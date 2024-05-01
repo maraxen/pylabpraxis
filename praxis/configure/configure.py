@@ -1,5 +1,8 @@
 from os import PathLike
 import json
+import inspect
+
+from pylabrobot.utils.object_parsing import find_subclass
 
 class Configuration:
   """
@@ -38,6 +41,39 @@ class LabConfiguration(Configuration):
   def __init__(self, configuration_file: PathLike):
     super().__init__(configuration_file)
     self.configuration = self.configuration["lab_configuration"]
+    self.resources = self.configuration["resources"]
+    self.unpack_resources()
+
+  def unpack_resources(self):
+    """
+    Unpacks the resources in the configuration file.
+    """
+    for resource in self.resources:
+      resource_mro = inspect.getmro(resource.__class__)
+      for cls in resource_mro:
+        if cls.__name__ == "Machine":
+          self.machines.append(resource)
+          break
+
+      resource_path = resource["resource_path"]
+      setattr(self, resource_name, resource_path)
+
+
+
+
+class TaskConfiguration(Configuration):
+  """
+  Task configuration denoting specific settings for a task.
+
+  Attributes:
+    configuration_file (PathLike): The path to the configuration json file.
+    configuration (dict): The  configuration dictionary.
+  """
+  def __init__(self, configuration_file: PathLike):
+    super().__init__(configuration_file)
+    self.configuration = self.configuration["task_configuration"]
+
+
 
 class ExperimentConfiguration(Configuration):
   """
@@ -46,3 +82,5 @@ class ExperimentConfiguration(Configuration):
   def __init__(self, configuration_file: PathLike):
     super().__init__(configuration_file)
     self.configuration = self.configuration["experiment_configuration"]
+
+
