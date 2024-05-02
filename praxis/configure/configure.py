@@ -18,6 +18,9 @@ from pylabrobot.temperature_controlling import TemperatureController
 
 from contextlib import AsyncExitStack
 
+import importlib
+import sys
+
 
 class Configuration:
   """
@@ -824,14 +827,111 @@ class TaskConfiguration(Configuration):
     super().__init__(configuration_file)
     self.configuration = self.configuration["task_configuration"]
 
-
-
 class ExperimentConfiguration(Configuration):
   """
   Exeriment configuration denoting specific settings for an experiment.
   """
-  def __init__(self, configuration_file: PathLike):
+  def __init__(self,
+                configuration_file: PathLike,
+                lab_configuration: Union[PathLike, LabConfiguration]):
     super().__init__(configuration_file)
     self.configuration = self.configuration["experiment_configuration"]
+    if isinstance(lab_configuration, PathLike):
+      lab_configuration = LabConfiguration(lab_configuration)
+    if not isinstance(lab_configuration, LabConfiguration):
+      raise ValueError(f"lab_configuration must be a LabConfiguration object, not \
+                        {type(lab_configuration)}")
+    self.lab_configuration = lab_configuration
+    self.resources_to_use = self.configuration["resources_to_use"]
+    self.experiment_parameters = self.configuration["experiment_parameters"]
+    self.experiment_name = self.configuration["experiment_name"]
+    self.experiment_details = self.configuration["experiment_details"]
+    self.experiment_module_path = self.configuration["experiment_module_path"]
+    self.experiment_module_name = self.configuration["experiment_module_name"]
+    self.experiment_args = self.configuration["experiment_args"]
+    self._paused = False
+    self._failed = False
+
+  @property
+  def paused(self) -> bool:
+    return self._paused
+
+  @property
+  def failed(self) -> bool:
+    return self._failed
+
+  async def execute_experiment(self, lab: LabConfiguration):
+    """
+    Execute the experiment.
+
+    Args:
+      lab (LabConfiguration): The lab configuration.
+    """
+    try:
+      spec = importlib.util.spec_from_file_location(
+        name = self.experiment_module_name,
+        location = self.experiment_script_path
+        )
+      module = importlib.util.module_from_spec(spec)
+      sys.modules["plr_experiment"] = module
+      spec.loader.exec_module(module)
+      module.Experiment(lab = lab,
+                        experiment_parameters = self.experiment_parameters,
+                        experiment_name = self.experiment_name,
+                        experiment_details = self.experiment_details
+                        **self.kwargs)
+    except KeyboardInterrupt:
+      await self.pause_experiment()
+    except Exception as e: # pylint: disable=broad-except
+      print(f"An error occurred: {e}")
+      print("")
+    finally:
+      if self.failed:
+        print("Experiment failed.")
+      else:
+        print("Experiment completed.")
+
+  async def shut_down_experiment(self):
+    """
+    Shut down the experiment.
+    """
+    pass
+
+  async def pause_experiment(self):
+    """
+    Pause the experiment.
+    """
+    if not self.paused:
+      self._paused = True
+      print("Experiment paused.")
+      user_input = input("Type command or press enter to continue...")
+    if user_input:
+      try: # we will NOT use exec in production code, but and instead use a parser to parse input
+        exec(user_input) # pylint: disable=exec-used
+      except Exception as e: # pylint: disable=broad-except
+        print(f"An error occurred attempting to execute user input: {e}")
+        user_input = input("Reinput command or press enter to continue...")
+      finally:
+        if user_input:
+          await self.pause_experiment()
+        else:
+          await self.resume_experiment()
+    else:
+      await self.resume_experiment()
+
+  async def resume_experiment(self):
+    """
+    Resume the experiment.
+    """
+    self._paused = False
+    print("Experiment resumed.")
 
 
+  async def __aenter__(self):
+    await self.lab_configuration.specify_resources_to_use(self.resources_to_use)
+    async with self.lab_configuration as lab:
+      await self.execute_experiment(lab)
+    return self
+
+  async def __aexit__(self, exc_type, exc_value, traceback):
+    await self.shut_down_experiment()
