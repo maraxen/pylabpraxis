@@ -1,3 +1,4 @@
+import os
 from os import PathLike
 import json
 from typing import Union
@@ -31,6 +32,7 @@ class Configuration:
     configuration (dict): The  configuration dictionary.
   """
   def __init__(self, configuration_file: PathLike):
+    self.configuration_file = configuration_file
     if not isinstance(configuration_file, PathLike):
       raise ValueError(f"configuration_file must be a PathLike object, \
                         not {type(configuration_file)}")
@@ -875,11 +877,17 @@ class ExperimentConfiguration(Configuration):
       module = importlib.util.module_from_spec(spec)
       sys.modules["plr_experiment"] = module
       spec.loader.exec_module(module)
-      module.Experiment(lab = lab,
+      experiment_directory = os.path.dirname(self.configuration_file)
+      experiment = module.Experiment(lab = lab,
+                        experiment_dir = os.path.realpath(experiment_directory),
                         experiment_parameters = self.experiment_parameters,
                         experiment_name = self.experiment_name,
                         experiment_details = self.experiment_details
                         **self.kwargs)
+      await experiment.start()
+    except ModuleNotFoundError as e:
+      print(f"ModuleNotFoundError: {e}")
+      self._failed = True
     except KeyboardInterrupt:
       await self.pause_experiment()
     except Exception as e: # pylint: disable=broad-except

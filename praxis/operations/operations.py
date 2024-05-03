@@ -1,5 +1,5 @@
 from typing import Optional, List, Awaitable, Union, Callable, Coroutine
-from pylabrobot import Resource # pyright: ignore
+from pylabrobot.resources import Resource
 import asyncio
 import logging
 import uuid
@@ -34,29 +34,29 @@ class Operation:
     executed in case of an error.
     loop (Optional[bool]): A boolean that indicates whether the operations should be executed
     repeatedly.
-    until (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates whether the
-    operations should be executed until a certain condition is met.
+    stop_condition (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates
+    whether the operations should be executed stop_condition a certain condition is met.
     delay_time (Optional[float]): A float that indicates the delay time between operations,
     between loops, or between checking if a condition to proceed with execution is met.
   """
   def __init__(self,
               operations: list[Union[Callable, "Operation", Coroutine]],
-              resources: Union[Resource, list[Resource]],
+              resources: Optional[Union[Resource, list[Resource]]]=None,
               parallel: Optional[bool]=False,
-              condition: Optional[Callable[[], bool]]=None,
+              start_condition: Optional[Union[Callable[[],bool], bool]]=None,
+              stop_condition: Optional[Union[Callable[[],bool], bool]]=None,
               error_recovery_operations: Optional[Union[Callable, "Operation"]]=None,
               loop: Optional[bool]=False,
-              until: Optional[Union[Callable[[],bool], bool]]=None,
               delay_time: Optional[float]=0.1,
               allow_errors: Optional[bool]=False,
               **kwargs):
     self.operations = operations
     self.resources = resources
     self.parallel = parallel
-    self.condition = condition
+    self.start_condition = start_condition
     self.error_recovery_operations = error_recovery_operations
     self.loop = loop
-    self.until = until
+    self.stop_condition = stop_condition
     self.delay_time = delay_time
     self.allow_errors: Optional[bool] = allow_errors
     self._suboperations: Optional[bool] = None
@@ -64,6 +64,7 @@ class Operation:
     self._parent_operation: Optional["Operation"] = None
     self._unique_id = uuid.uuid4()
     self._suboperations_ids: List[uuid.UUID] = []
+    self._is_base: bool = False
     self.kwargs = kwargs
     if self.resources is not None:
       self.resources = [self.resources] if not isinstance(self.resources, list) else self.resources
@@ -71,20 +72,26 @@ class Operation:
         if not isinstance(resource, Resource):
           raise OperationError("Invalid resource type.")
         resource.is_available = True
-    for operation in self.operations:
-      if isinstance(operation, Operation):
-        operation._parent_operation = self
-        self._suboperations_ids.append(operation._unique_id)
-      if isinstance(operation, (Callable, Coroutine)):
-        if not self.parallel and len(self.operations) > 1:
-          operation = Operation(operations=[operation], resources=self.resources, **self.kwargs)
+    if not self._is_base:
+      if self.parallel and all(isinstance(operation, (Callable, Coroutine)) \
+                                for operation in self.operations):
+        self._is_base = True
+      for operation in self.operations:
+        if isinstance(operation, Operation):
           operation._parent_operation = self
           self._suboperations_ids.append(operation._unique_id)
-        elif self.parallel and not all(isinstance(operation, (Callable, Coroutine))
-                                        for operation in self.operations):
-          operation = Operation(operations=[operation], resources=self.resources, **self.kwargs)
-          operation._parent_operation = self
-          self._suboperations_ids.append(operation._unique_id)
+        if isinstance(operation, (Callable, Coroutine)):
+          if not self.parallel and len(self.operations) > 1:
+            operation = Operation(operations=[operation], resources=self.resources, **self.kwargs)
+            operation._parent_operation = self
+            operation._is_base = True
+            self._suboperations_ids.append(operation._unique_id)
+          elif self.parallel and not all(isinstance(operation, (Callable, Coroutine))
+                                          for operation in self.operations):
+            operation = Operation(operations=[operation], resources=self.resources, **self.kwargs)
+            operation._is_base = True
+            operation._parent_operation = self
+            self._suboperations_ids.append(operation._unique_id)
 
   def __len__(self) -> int:
     return len(self.operations)
@@ -142,15 +149,11 @@ class Operation:
     return len(self.operations) >= len(other.operations)
 
   async def __await__(self):
-    await self.execute(until=self._until)
+    await self.execute(stop_condition=self._stop_condition)
 
   def __call__(self, **kwargs):
     self.kwargs = kwargs
     return self
-
-  @property
-  def until(self) -> Optional[Union[Callable[[],bool], bool]]:
-    return self._until
 
   @property
   def suboperations(self) -> bool:
@@ -186,10 +189,7 @@ class Operation:
 
   @property
   def is_base(self) -> bool:
-    if self.parallel:
-      return all(isinstance(operation, (Callable, Coroutine)) for operation in self.operations)
-    else:
-      return len(self.operations) == 1 and isinstance(self.operations[0], (Callable, Coroutine))
+    return self._is_base
 
   @property
   def all_tasks(self) -> List[asyncio.Task]:
@@ -200,32 +200,33 @@ class Operation:
     return asyncio.current_task()
 
   async def execute(self,
-                    until: Optional[Union[Callable[[],bool], bool]]=None,
+                    stop_condition: Optional[Union[Callable[[],bool], bool]]=None,
                     loop: Optional[bool]=None):
     """
-    Execute the operations. If until is not None, the operations will be executed until the
-    condition is met. Includes built in handling for errors, pausing, resuming, stopping, and
-    state saving. Performance: If until is None, operations will be  executed once or repeatedly if
-    loop is True. If until is a callable, the operations will be executed until the callable returns
-    True. If until is a bool, the operations will be executed until the bool is True.
+    Execute the operations. If stop_condition is not None, the operations will be executed
+    stop_condition the condition is met. Includes built in handling for errors, pausing, resuming,
+    stopping, and state saving. Performance: If stop_condition is None, operations will be  executed
+    once or repeatedly if loop is True. If stop_condition is a callable, the operations will be
+    executed stop_condition the callable returns True. If stop_condition is a bool, the operations
+    will be executed stop_condition the bool is True.
 
     Args:
-      until (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates whether
-      the operations should be executed until a certain condition is met. If until is None, the
-      Operation _until attribute will be used. This allows for at-execution changes of until from
-      standard library operations if needed.
+      stop_condition (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates
+      whether the operations should be executed stop_condition a certain condition is met. If
+      stop_condition is None, the Operation _stop_condition attribute will be used. This allows for
+      at-execution changes of stop_condition from standard library operations if needed.
       loop (Optional[bool]): A boolean that indicates whether the operations should be executed
       repeatedly. If loop is None, the Operation _loop attribute will be used. This allows for
       at-execution changes of loop from standard library operations if needed.
       overide (bool):
 
     """
-    if until is not None:
-      self._until = until
+    if stop_condition is not None:
+      self.stop_condition = stop_condition
     if loop is not None:
       self.loop = loop
     try:
-      await self._execute(until=self.until)
+      await self._execute(stop_condition=self.stop_condition)
     except OperationError as e:
       await self._error_recovery(error=e)
       raise e
@@ -237,69 +238,67 @@ class Operation:
       await self.save()
       await self.stop()
 
-  async def _execute(self, until: Optional[Union[Callable[[],bool], bool]]):
+  async def _execute(self, stop_condition: Optional[Union[Callable[[],bool], bool]]):
     """
-    Helper function to determine whether until condition has been met or if until.
+    Helper function to determine whether stop_condition condition has been met or if stop_condition.
     """
     logger.info("Executing operation:", extra={"operation id": self.unique_id})
-    match until:
-      case callable(until):
-        while not until():
-          await self._execute_continuously()
-          self._current_state = None
-        await self.stop()
-      case bool():
-        while not until:
-          await self._execute_continuously()
-          self._current_state = None
-        await self.stop()
-      case None:
-        await self._process_execution(until=until)
-      case _:
-        raise OperationError("Invalid value for until parameter.")
-    pass
+    if stop_condition is None:
+      await self._process_execution(stop_condition=stop_condition)
+    elif isinstance(stop_condition, (Callable, bool)):
+      while not stop_condition:
+        await self._process_execution(stop_condition=stop_condition)
+        self._current_state = None
+      await self.stop()
+    else:
+      raise OperationError("Invalid value for stop_condition parameter.")
+
 
   async def _process_execution(self,
-                              until: Optional[Union[Callable[[],bool], bool]]=None,
+                              stop_condition: Optional[Union[Callable[[],bool], bool]]=None,
                               source: Optional[str]=None):
     """
     Helper function to process the execution of the operations. Ensures that the operations are
     executed in the correct order and manner.
 
     Args:
-      until (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates whether
-        the operations should be executed until a certain condition is met.
+      stop_condition (Optional[Union[Callable[[],bool], bool]]): A callable or bool that indicates
+      whether the operations should be executed stop_condition a certain condition is met.
       source (Optional[str]): A string that indicates the source of the call to
         _process_execution.
     """
     if self.is_base:
-      self._base_operation_execute()
+      await self._base_operation_execute()
       return
     if source is not None:
-      if source != "conditional" and self.condition is not None:
-        await self._conditional_execute(until=until)
+      if source != "conditional" and self.start_condition is not None:
+        await self._conditional_execute(stop_condition=stop_condition)
         return
       elif source != "loop" and self.loop:
-        await self._execute_continuously(until=until)
+        await self._execute_continuously(stop_condition=stop_condition)
         return
     if self.parallel:
       if not self.is_mother:
-        self._parent_operation.set_current_state(self.unique_id)
-      await self._parallel_execute(until=until, allow_errors=self.allow_errors)
+        await self._parent_operation.set_current_state(self.unique_id)
+      await self._parallel_execute(stop_condition=stop_condition, allow_errors=self.allow_errors)
     else:
       if not self.is_mother:
-        self._parent_operation.set_current_state(self.unique_id)
-      await self._sequential_execute(until=until)
+        await self._parent_operation.set_current_state(self.unique_id)
+      await self._sequential_execute(stop_condition=stop_condition)
 
   async def _base_operation_execute(self):
     """
     Helper function to execute the operations if the operation is a base operation.
     This is where callables are actually executed. If the operation is not a base operation, the
-    function will process until it reaches the base operation in it's suboperations.
+    function will process stop_condition it reaches the base operation in it's suboperations.
     """
+    if self.parallel:
+      await self._base_parallel_execute(allow_errors=self.allow_errors)
+      return
     for operation in self.operations:
       if isinstance(operation, Coroutine): # if loaded from coroutine which should already have args
         await operation
+        return
       else:
         argspec = inspect.getfullargspec(operation) # get argspec of operation
         for resource in self.resources:
@@ -314,36 +313,55 @@ class Operation:
           some_args = dict((k,self.kwargs[k]) for k in argspec.args if k in self.kwargs)
         if isinstance(operation, Awaitable):
           await operation(**some_args)
+          return
         else:
           operation(**some_args)
+          return
 
-  async def _conditional_execute(self, until: Optional[Union[Callable[[],bool], bool]]=None):
-    while not self.condition():
+  async def _conditional_execute(self,
+                                  stop_condition: Optional[Union[Callable[[],bool], bool]]=None):
+    while not self.start_condition():
       await asyncio.sleep(delay=self.delay_time)
-    await self._process_execution(until=until)
+    await self._process_execution(stop_condition=stop_condition)
+
+  async def _base_parallel_execute(self, allow_errors: Optional[bool]=False):
+    """
+    Helper function to execute the operations if the operation is a base operation and parallel.
+    """
+    if allow_errors:
+      await asyncio.gather(*self.operations)
+    else:
+      tasks = []
+      async with asyncio.TaskGroup() as tg:
+        for operation in self.operations:
+          tasks.append(tg.create_task(operation))
 
   async def _parallel_execute(self,
-                              until: Optional[Union[Callable[[],bool], bool]]=None,
+                              stop_condition: Optional[Union[Callable[[],bool], bool]]=None,
                               allow_errors: Optional[bool]=False):
     """
     Helper function to execute the operations in parallel. If allow_errors is True, the operations
     will be executed even if an error occurs in one. If allow_errors is False, the operations will
-    be executed until an error occurs in one or all operations are completed.
+    be executed stop_condition an error occurs in one or all operations are completed.
     """
     if allow_errors:
-      await asyncio.gather(*[operation.execute(until=until) for operation in self.operations])
+      await asyncio.gather(*[
+        operation.execute(stop_condition=stop_condition) for operation in self.operations
+        ])
     else:
       tasks =[]
       async with asyncio.TaskGroup() as tg:
         for operation in self.operations:
-          tasks.append(tg.create_task(operation.execute(until=until)))
+          tasks.append(tg.create_task(operation.execute(stop_condition=stop_condition)))
 
-  async def _sequential_execute(self, until: Optional[Union[Callable[[],bool], bool]]=None):
+  async def _sequential_execute(self,
+                                stop_condition: Optional[Union[Callable[[],bool], bool]]=None):
     for operation in self.operations[self.current_state:]:
-      await operation.execute(until=until)
+      await operation.execute(stop_condition=stop_condition)
 
-  async def _execute_continuously(self, until: Optional[Union[Callable[[],bool], bool]]=None):
-    await self._process_execution(until=until, source="loop")
+  async def _execute_continuously(self,
+                                  stop_condition: Optional[Union[Callable[[],bool], bool]]=None):
+    await self._process_execution(stop_condition=stop_condition, source="loop")
     await asyncio.sleep(delay=self.delay_time)
 
   async def _error_recovery(self, error: "OperationError"):
@@ -400,19 +418,16 @@ class Operation:
   async def _safe_parallel_stop(self):
     if not self.parallel:
       raise OperationError("Operation is not parallel.")
-    tasks = []
-    async with asyncio.TaskGroup() as tg:
-      for operation in self.operations:
-        tasks.append(tg.create_task(operation.stop()))
-
-  async def stop(self):
-    if self.is_mother and self.parallel:
-      await self._safe_parallel_stop()
-    if self.parallel:
+    if not self.is_base:
       tasks = []
       async with asyncio.TaskGroup() as tg:
         for operation in self.operations:
           tasks.append(tg.create_task(operation.stop()))
+    print("All operations stopped.")
+
+  async def stop(self):
+    if self.parallel:
+      await self._safe_parallel_stop()
     if hasattr(self, "stop_operations"):
       for operation in self.stop_operations:
         await operation.execute()
