@@ -17,10 +17,11 @@ from pylabrobot.scales import Scale
 from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 
-from contextlib import AsyncExitStack
-
+import asyncio
 import importlib
 import sys
+
+from praxis.experiment.experiment import Experiment
 
 
 class Configuration:
@@ -772,12 +773,25 @@ class LabConfiguration(Configuration):
     with open(configuration_file, "wb") as f:
       json.dump(self.configuration, f, indent=4)
 
+  async def _start_machines(self):
+    """
+    Scaffold function. Eventually this should check that the machines in use are started by having
+    the start method set a state in the PLR object.
+    """
+    for machine in self._loaded_machines:
+      await machine.setup()
+    while not all(machine.setup_finished for machine in self._loaded_machines):
+      await asyncio.sleep(1)
+
   async def _stop_machines(self):
     """
     Scaffold function. Eventually this should check that the machines in use are stopped by having
     the stop method set a state in the PLR object.
     """
-    pass
+    for machine in self._loaded_machines:
+      await machine.stop()
+    while all(machine.setup_finished for machine in self._loaded_machines):
+      await asyncio.sleep(1)
 
   async def __aenter__(self):
     for resource in self.resources:
@@ -808,10 +822,7 @@ class LabConfiguration(Configuration):
         machine_class = find_subclass(machine.type, cls=Machine)
         machine = machine_class.deserialize(**machine)
         self._load_machine(machine)
-      async with AsyncExitStack() as stack:
-        machines = [ # pylint: disable=unused-variable
-          await stack.enter_async_context(machine) for machine in self.loaded_machines
-          ]
+        self._start_machines()
     return self
 
   async def __aexit__(self, exc_type, exc_value, traceback):
@@ -851,6 +862,8 @@ class ExperimentConfiguration(Configuration):
     self.experiment_module_path = self.configuration["experiment_module_path"]
     self.experiment_module_name = self.configuration["experiment_module_name"]
     self.experiment_args = self.configuration["experiment_args"]
+    self._experiment_directory = None
+    self._experiment = None
     self._paused = False
     self._failed = False
 
@@ -862,42 +875,51 @@ class ExperimentConfiguration(Configuration):
   def failed(self) -> bool:
     return self._failed
 
-  async def execute_experiment(self, lab: LabConfiguration):
+  @property
+  def experiment(self) -> Experiment:
+    return self._experiment
+
+  @property
+  def experiment_directory(self) -> PathLike:
+    return self._experiment_directory
+
+  async def execute_experiment(self):
     """
     Execute the experiment.
 
     Args:
       lab (LabConfiguration): The lab configuration.
     """
-    try:
-      spec = importlib.util.spec_from_file_location(
-        name = self.experiment_module_name,
-        location = self.experiment_script_path
-        )
-      module = importlib.util.module_from_spec(spec)
-      sys.modules["plr_experiment"] = module
-      spec.loader.exec_module(module)
-      experiment_directory = os.path.dirname(self.configuration_file)
-      experiment = module.Experiment(lab = lab,
-                        experiment_dir = os.path.realpath(experiment_directory),
-                        experiment_parameters = self.experiment_parameters,
-                        experiment_name = self.experiment_name,
-                        experiment_details = self.experiment_details
-                        **self.kwargs)
-      await experiment.start()
-    except ModuleNotFoundError as e:
-      print(f"ModuleNotFoundError: {e}")
-      self._failed = True
-    except KeyboardInterrupt:
-      await self.pause_experiment()
-    except Exception as e: # pylint: disable=broad-except
-      print(f"An error occurred: {e}")
-      print("")
-    finally:
-      if self.failed:
-        print("Experiment failed.")
-      else:
-        print("Experiment completed.")
+    async with self.lab_configuration as lab: # ensures safety using machines
+      try:
+        spec = importlib.util.spec_from_file_location(
+          name = self.experiment_module_name,
+          location = self.experiment_script_path
+          )
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["plr_experiment"] = module
+        spec.loader.exec_module(module)
+        self._experiment_directory = os.path.realpath(os.path.dirname(self.configuration_file))
+        self._experiment = module.Experiment(lab = lab,
+                          experiment_directory = self.experiment_directory,
+                          experiment_parameters = self.experiment_parameters,
+                          experiment_name = self.experiment_name,
+                          experiment_details = self.experiment_details
+                          **self.kwargs)
+        await self.experiment.start()
+      except ModuleNotFoundError as e:
+        print(f"ModuleNotFoundError: {e}")
+        self._failed = True
+      except KeyboardInterrupt:
+        await self.pause_experiment()
+      except Exception as e: # pylint: disable=broad-except
+        print(f"An error occurred: {e}")
+        print("")
+      finally:
+        if self.failed:
+          print("Experiment failed.")
+        else:
+          print("Experiment completed.")
 
   async def shut_down_experiment(self):
     """
@@ -911,11 +933,13 @@ class ExperimentConfiguration(Configuration):
     """
     if not self.paused:
       self._paused = True
+      self.experiment.pause()
       print("Experiment paused.")
-      user_input = input("Type command or press enter to continue...")
+      user_input = input("Type command or press enter to continue. Input 'help' to see available \
+                          commands.")
     if user_input:
-      try: # we will NOT use exec in production code, but and instead use a parser to parse input
-        exec(user_input) # pylint: disable=exec-used
+      try:
+        self.experiment.intervene(input)
       except Exception as e: # pylint: disable=broad-except
         print(f"An error occurred attempting to execute user input: {e}")
         user_input = input("Reinput command or press enter to continue...")
@@ -934,11 +958,8 @@ class ExperimentConfiguration(Configuration):
     self._paused = False
     print("Experiment resumed.")
 
-
   async def __aenter__(self):
     await self.lab_configuration.specify_resources_to_use(self.resources_to_use)
-    async with self.lab_configuration as lab:
-      await self.execute_experiment(lab)
     return self
 
   async def __aexit__(self, exc_type, exc_value, traceback):

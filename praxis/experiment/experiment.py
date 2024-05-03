@@ -5,6 +5,7 @@ import os
 from os import PathLike
 import datetime
 import logging
+import asyncio
 
 class Experiment(ABC):
   """
@@ -36,6 +37,15 @@ class Experiment(ABC):
     self._readme_file = None
     self._experiment_start_time = datetime.datetime.now()
     self._plr_logger = None
+    self._available_commands = {
+      "abort": "Abort the experiment",
+      "pause": "Pause the experiment",
+      "resume": "Resume the experiment",
+      "save": "Save the experiment state",
+      "load": "Load the experiment state",
+      "status": "Get the status of the experiment",
+      "help": "Get a list of available commands"
+    }
 
 
   async def start(self):
@@ -63,6 +73,65 @@ class Experiment(ABC):
     """
     Pause the experiment
     """
+
+  async def intervene(self, user_input: str):
+    """
+    Intervene in the experiment. This function is called when the user wants to intervene in the
+    experiment. The user can enter commands to pause, resume, save, load, or abort the experiment.
+    Please do not override this function, which should retain united sets of possible interventions.
+    Instead, override the _intervene function to add more interventions.
+    """
+    match user_input:
+      case "abort":
+        await self.abort()
+      case "pause":
+        await self.pause()
+      case "resume":
+        await self.resume()
+      case "save":
+        await self.save_state()
+      case "load":
+        await self.load_state()
+      case "status":
+        await self.status()
+      case "help":
+        print("Available commands:")
+        for command, description in self._available_commands.items():
+          print(f"{command}: {description}")
+        new_input = input("Enter a command: ")
+        await self.intervene(new_input)
+      case "wait_then_resume":
+        time_to_wait = input("Enter the time to wait in seconds: ")
+        print(f"Waiting for {time_to_wait} seconds before resuming.")
+        confirmation = input("Press Enter to confirm, 'n' to cancel waiting before resuming, or \
+                              input another command: ")
+        if confirmation == "":
+          asyncio.sleep(int(time_to_wait))
+          await self.resume()
+        elif confirmation == "n":
+          print("Waiting and resuming the experiment has been cancelled.")
+          new_input = input("Enter a new command or press enter to resume: ")
+          if new_input == "":
+            await self.resume()
+          else:
+            await self.intervene(new_input)
+        else:
+          await self.intervene(confirmation)
+      case _:
+        await self._intervene(user_input)
+
+
+  async def _intervene(self, user_input: str):
+    """
+    Helper function for interventions in the experiment. Please override this function in the
+    subclass if you want to add more interventions.
+    """
+    print(f"Command {user_input} not recognized.")
+    new_input = input("Enter a new command or press enter to resume experiment:")
+    if new_input == "":
+      await self.resume()
+    else:
+      await self.intervene(new_input)
 
   @abstractmethod
   async def resume(self):
