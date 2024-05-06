@@ -1,4 +1,5 @@
 from praxis.configure import LabConfiguration, ExperimentConfiguration
+from praxis.configure import LabConfiguration, ExperimentConfiguration
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Optional
 import os
@@ -6,6 +7,7 @@ from os import PathLike
 import datetime
 import logging
 import asyncio
+from praxis.utils.notify import Emailer
 from praxis.utils.notify import Emailer
 
 class Experiment(ABC):
@@ -32,7 +34,7 @@ class Experiment(ABC):
     self._end_time = None
     self._status = None
     self._results = None
-    self._errors = None
+    self._errors = []
     self._logger = None
     self._plr_logger = None
     self._state = None
@@ -43,6 +45,9 @@ class Experiment(ABC):
     self._failed = False
     self._start_time = None
     self._plr_logger = None
+    self._emailer = None
+    self._common_prompt = "Type command or press enter to resume experiment. Input 'help' to see \
+                          available commands."
     self._emailer = None
     self._common_prompt = "Type command or press enter to resume experiment. Input 'help' to see \
                           available commands."
@@ -180,27 +185,31 @@ class Experiment(ABC):
     Execute the experiment
     """
     self.lab_configuration.specify_resources_to_use(selection = self.resources)
-    async with self.lab_configuration as lab: # ensures safety using machines
-      self._lab = lab
-      try:
+    try:
+      async with self.lab_configuration as lab: # ensures safety using machines
+        self._lab = lab
         await self.initialize()
         self.start_time = datetime.datetime.now()
         await self._execute()
-      except KeyboardInterrupt:
-        await self.pause()
-      except Exception as e: # pylint: disable=broad-except
-        self.logger.error("An error occurred: %s", e)
-        print(f"An error occurred: {e}")
-        self.emailer.send_email(subject = f"Error in {self.name}",
-                                message = f"An error occurred in the experiment {self.name}.")
-        self._failed = True
-        await self.pause()
-      finally:
-        await self.stop()
-        if self.failed:
-          print("Experiment failed.")
-        else:
-          print("Experiment completed.")
+    except KeyboardInterrupt:
+      self._lab = None
+      await self.pause()
+    except Exception as e: # pylint: disable=broad-except
+      self._lab = None
+      self.logger.error("An error occurred: %s", e)
+      print(f"An error occurred: {e}")
+      self.errors.append(e)
+      self.log_error(error = e)
+      self.emailer.send_email(subject = f"Error in {self.name}",
+                              message = f"An error occurred in the experiment {self.name}.")
+      self._failed = True
+      await self.pause()
+    finally:
+      await self.stop()
+      if self.failed:
+        print("Experiment failed.")
+      else:
+        print("Experiment completed.")
 
   async def initialize(self):
     """
@@ -208,14 +217,10 @@ class Experiment(ABC):
     """
     if self._id is None:
       self._id = self._generate_experiment_id()
+    if self._id is None:
+      self._id = self._generate_experiment_id()
     await self._create_experiment_files()
     await self._start_loggers()
-
-  @abstractmethod
-  async def _execute(self):
-    """
-    Execute the experiment
-    """
 
   async def stop(self):
     """
@@ -226,25 +231,34 @@ class Experiment(ABC):
     self.logger.info("Experiment %s ended.", self.name)
     self.plr_logger.info("Experiment %s ended.", self.name)
     await self._stop()
-
-  @abstractmethod
-  async def _stop(self):
-    """
-    Stop the experiment
-    """
+    self._end_time = datetime.datetime.now()
+    self._status = "completed"
+    self.logger.info("Experiment %s ended.", self.name)
+    self.plr_logger.info("Experiment %s ended.", self.name)
+    await self._stop()
 
   async def get_status(self):
     """
     Get the status of the experiment
     """
     print(f"Experiment Status: {self.status}")
-    self.logger.info("Experiment %s status: %s", self.name, self.status)
-    self.plr_logger.info("Experiment %s status: %s", self.name, self.status)
+    self.logger.info("Experiment %s status queried; status: %s", self.name, self.status)
+    self.plr_logger.info("Experiment %s status queried; status: %s", self.name, self.status)
 
   async def pause(self):
     """
     Pause the experiment.
+    Pause the experiment.
     """
+    if not self.paused:
+      self._paused = True
+      print("Experiment paused.")
+      self.logger.info("Experiment %s paused.", self.name)
+      self.plr_logger.info("Experiment %s paused.", self.name)
+      await self._pause()
+    else:
+      print("Experiment is already paused.")
+    self.intervene(input(self.common_prompt))
     if not self.paused:
       self._paused = True
       print("Experiment paused.")
@@ -268,20 +282,26 @@ class Experiment(ABC):
       case "pause":
         await self.pause()
       case "resume" | "":
+      case "resume" | "":
         await self.resume()
       case "save":
         await self.save_state()
         await self.intervene(input(self.common_prompt))
+        await self.intervene(input(self.common_prompt))
       case "load":
         await self.load_state()
         await self.intervene(input(self.common_prompt))
+        await self.intervene(input(self.common_prompt))
       case "status":
+        await self.get_status()
+        await self.intervene(input(self.common_prompt))
         await self.get_status()
         await self.intervene(input(self.common_prompt))
       case "help":
         print("Available commands:")
         for command, description in self._available_commands.items():
           print(f"{command}: {description}")
+        await self.intervene(input(self.common_prompt))
         await self.intervene(input(self.common_prompt))
       case "wait_then_resume":
         time_to_wait = input("Enter the time to wait in seconds: ")
@@ -294,6 +314,7 @@ class Experiment(ABC):
         elif confirmation == "n":
           print("Waiting and resuming the experiment has been cancelled.")
           await self.intervene(input(self.common_prompt))
+          await self.intervene(input(self.common_prompt))
         else:
           await self.intervene(confirmation)
       case _:
@@ -302,13 +323,11 @@ class Experiment(ABC):
           await self.intervene(input(self.common_prompt))
         else:
           await self._intervene(user_input)
-
-  @abstractmethod
-  async def _intervene(self, user_input: str):
-    """
-    Helper function for interventions in the experiment. Please override this function in the
-    subclass if you want to add more interventions.
-    """
+        if user_input not in self.available_commands:
+          print(f"Command {user_input} not recognized.")
+          await self.intervene(input(self.common_prompt))
+        else:
+          await self._intervene(user_input)
 
   async def resume(self):
     """
@@ -318,12 +337,10 @@ class Experiment(ABC):
     self.logger.info("Experiment %s resumed.", self.name)
     self.plr_logger.info("Experiment %s resumed.", self.name)
     await self._resume()
-
-  @abstractmethod
-  async def _resume(self):
-    """
-    Resume the experiment
-    """
+    self._paused = False
+    self.logger.info("Experiment %s resumed.", self.name)
+    self.plr_logger.info("Experiment %s resumed.", self.name)
+    await self._resume()
 
   async def save_state(self):
     """
@@ -334,12 +351,11 @@ class Experiment(ABC):
     self.logger.info("Experiment %s state saved.", self.name)
     self.plr_logger.info("Experiment %s state saved.", self.name)
     await self._save_state()
-
-  @abstractmethod
-  async def _save_state(self):
-    """
-    Save the experiment state
-    """
+    with open(self.state_file, "wb") as f:
+      f.write(self.state)
+    self.logger.info("Experiment %s state saved.", self.name)
+    self.plr_logger.info("Experiment %s state saved.", self.name)
+    await self._save_state()
 
   async def load_state(self):
     """
@@ -350,12 +366,11 @@ class Experiment(ABC):
     self.logger.info("Experiment %s state loaded.", self.name)
     self.plr_logger.info("Experiment %s state loaded.", self.name)
     self._load_state()
-
-  @abstractmethod
-  async def _load_state(self):
-    """
-    Load the experiment state
-    """
+    with open(self.state_file, "rb") as f:
+      self._state = f.read()
+    self.logger.info("Experiment %s state loaded.", self.name)
+    self.plr_logger.info("Experiment %s state loaded.", self.name)
+    self._load_state()
 
   async def abort(self):
     """
@@ -364,6 +379,14 @@ class Experiment(ABC):
     self.logger.info("Experiment %s aborted.", self.name)
     self.plr_logger.info("Experiment %s aborted.", self.name)
     await self._abort()
+
+  async def log_error(self, error: Exception):
+    """
+    Log error and append it to the errors list.
+    """
+    self.logger.error("An error occurred: %s", error)
+    self.plr_logger.error("An experiment error occurred: %s", error)
+    self.errors.append(error)
 
   async def _create_experiment_files(self):
     """
@@ -375,11 +398,11 @@ class Experiment(ABC):
     await self.load_state()
     await self.create_emailer()
 
-
   async def _start_loggers(self):
     """
     Start the loggers
     """
+    logging.basicConfig(filename=os.path.join(self.directory, "experiment.log"),
     logging.basicConfig(filename=os.path.join(self.directory, "experiment.log"),
                         level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -391,7 +414,16 @@ class Experiment(ABC):
     self.logger.info("Experiment ID: %s", self.id)
     self._plr_logger = logging.get_logger("pylabrobot")
     self.plr_logger.info("Experiment %s started.", self.name)
+    self.logger.info("Experiment %s.", self.name)
+    self.logger.info("Experiment Directory: %s", self.directory)
+    self.logger.info("Experiment State File: %s", self.state_file)
+    self.logger.info("Experiment start time: %s", self.start_time)
+    self.logger.info("Experiment ID: %s", self.id)
+    self._plr_logger = logging.get_logger("pylabrobot")
+    self.plr_logger.info("Experiment %s started.", self.name)
 
+  async def _create_needed_dirs(self,
+                directory_names: list[PathLike] = ("data")): # pylint: disable=superfluous-parens
   async def _create_needed_dirs(self,
                 directory_names: list[PathLike] = ("data")): # pylint: disable=superfluous-parens
     """
@@ -406,11 +438,14 @@ class Experiment(ABC):
     Create the needed files
     """
     if not os.path.exists(self.state_file):
+    if not os.path.exists(self.state_file):
       with open(self._experiment_state_file, "wb") as f:
         f.write("{}")
     else:
       print(f"State file already exists at {self.state_file}.")
+      print(f"State file already exists at {self.state_file}.")
       print("Please check the file to ensure it is correct.")
+      self.intervene(input(self.common_prompt))
 
   async def _create_readme(self):
     """
@@ -478,6 +513,50 @@ class Experiment(ABC):
         return False
     return True
 
+  @abstractmethod
+  async def _execute(self):
+    """
+    Execute the experiment
+    """
+
+  @abstractmethod
+  async def _stop(self):
+    """
+    Stop the experiment
+    """
+
+  @abstractmethod
+  async def _intervene(self, user_input: str):
+    """
+    Helper function for interventions in the experiment. Please override this function in the
+    subclass if you want to add more interventions.
+    """
+
+  @abstractmethod
+  async def _resume(self):
+    """
+    Resume the experiment
+    """
+
+  @abstractmethod
+  async def _save_state(self):
+    """
+    Save the experiment state
+    """
+
+  @abstractmethod
+  async def _load_state(self):
+    """
+    Load the experiment state
+    """
+
+  @abstractmethod
+  async def _abort(self):
+    """
+    Abort the experiment.
+    """
+
+
 class ContinuousExperiment(Experiment, metaclass=ABCMeta):
   """
   Looping Experiment class to execute an experiment which repeatedly runs a cycle of steps until
@@ -487,11 +566,14 @@ class ContinuousExperiment(Experiment, metaclass=ABCMeta):
   def __init__(self,
                 lab_configuration: LabConfiguration,
                 experiment_configuration: ExperimentConfiguration,
+                lab_configuration: LabConfiguration,
+                experiment_configuration: ExperimentConfiguration,
                 cycle_time: int,
                 cycle_count: Optional[int] = None,
                 stop_condition: Optional[callable] = None,
                 pause_condition: Optional[callable] = None,
                 resume_condition: Optional[callable] = None):
+    super().__init__(lab_configuration, experiment_configuration)
     super().__init__(lab_configuration, experiment_configuration)
     self.cycle_time = cycle_time
     self.cycle_count = cycle_count
