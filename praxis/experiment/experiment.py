@@ -1,5 +1,4 @@
 from praxis.configure import LabConfiguration, ExperimentConfiguration
-from praxis.configure import LabConfiguration, ExperimentConfiguration
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Optional
 import os
@@ -7,7 +6,6 @@ from os import PathLike
 import datetime
 import logging
 import asyncio
-from praxis.utils.notify import Emailer
 from praxis.utils.notify import Emailer
 
 class Experiment(ABC):
@@ -231,11 +229,6 @@ class Experiment(ABC):
     self.logger.info("Experiment %s ended.", self.name)
     self.plr_logger.info("Experiment %s ended.", self.name)
     await self._stop()
-    self._end_time = datetime.datetime.now()
-    self._status = "completed"
-    self.logger.info("Experiment %s ended.", self.name)
-    self.plr_logger.info("Experiment %s ended.", self.name)
-    await self._stop()
 
   async def get_status(self):
     """
@@ -259,15 +252,6 @@ class Experiment(ABC):
     else:
       print("Experiment is already paused.")
     self.intervene(input(self.common_prompt))
-    if not self.paused:
-      self._paused = True
-      print("Experiment paused.")
-      self.logger.info("Experiment %s paused.", self.name)
-      self.plr_logger.info("Experiment %s paused.", self.name)
-      await self._pause()
-    else:
-      print("Experiment is already paused.")
-    self.intervene(input(self.common_prompt))
 
   async def intervene(self, user_input: str):
     """
@@ -282,26 +266,20 @@ class Experiment(ABC):
       case "pause":
         await self.pause()
       case "resume" | "":
-      case "resume" | "":
         await self.resume()
       case "save":
         await self.save_state()
         await self.intervene(input(self.common_prompt))
-        await self.intervene(input(self.common_prompt))
       case "load":
         await self.load_state()
         await self.intervene(input(self.common_prompt))
-        await self.intervene(input(self.common_prompt))
       case "status":
-        await self.get_status()
-        await self.intervene(input(self.common_prompt))
         await self.get_status()
         await self.intervene(input(self.common_prompt))
       case "help":
         print("Available commands:")
         for command, description in self._available_commands.items():
           print(f"{command}: {description}")
-        await self.intervene(input(self.common_prompt))
         await self.intervene(input(self.common_prompt))
       case "wait_then_resume":
         time_to_wait = input("Enter the time to wait in seconds: ")
@@ -314,7 +292,6 @@ class Experiment(ABC):
         elif confirmation == "n":
           print("Waiting and resuming the experiment has been cancelled.")
           await self.intervene(input(self.common_prompt))
-          await self.intervene(input(self.common_prompt))
         else:
           await self.intervene(confirmation)
       case _:
@@ -323,20 +300,12 @@ class Experiment(ABC):
           await self.intervene(input(self.common_prompt))
         else:
           await self._intervene(user_input)
-        if user_input not in self.available_commands:
-          print(f"Command {user_input} not recognized.")
-          await self.intervene(input(self.common_prompt))
-        else:
-          await self._intervene(user_input)
+
 
   async def resume(self):
     """
     Resume the experiment
     """
-    self._paused = False
-    self.logger.info("Experiment %s resumed.", self.name)
-    self.plr_logger.info("Experiment %s resumed.", self.name)
-    await self._resume()
     self._paused = False
     self.logger.info("Experiment %s resumed.", self.name)
     self.plr_logger.info("Experiment %s resumed.", self.name)
@@ -351,21 +320,11 @@ class Experiment(ABC):
     self.logger.info("Experiment %s state saved.", self.name)
     self.plr_logger.info("Experiment %s state saved.", self.name)
     await self._save_state()
-    with open(self.state_file, "wb") as f:
-      f.write(self.state)
-    self.logger.info("Experiment %s state saved.", self.name)
-    self.plr_logger.info("Experiment %s state saved.", self.name)
-    await self._save_state()
 
   async def load_state(self):
     """
     Load the experiment state
     """
-    with open(self.state_file, "rb") as f:
-      self._state = f.read()
-    self.logger.info("Experiment %s state loaded.", self.name)
-    self.plr_logger.info("Experiment %s state loaded.", self.name)
-    self._load_state()
     with open(self.state_file, "rb") as f:
       self._state = f.read()
     self.logger.info("Experiment %s state loaded.", self.name)
@@ -403,7 +362,6 @@ class Experiment(ABC):
     Start the loggers
     """
     logging.basicConfig(filename=os.path.join(self.directory, "experiment.log"),
-    logging.basicConfig(filename=os.path.join(self.directory, "experiment.log"),
                         level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     self.logger = logging.getLogger(__name__)
@@ -414,16 +372,7 @@ class Experiment(ABC):
     self.logger.info("Experiment ID: %s", self.id)
     self._plr_logger = logging.get_logger("pylabrobot")
     self.plr_logger.info("Experiment %s started.", self.name)
-    self.logger.info("Experiment %s.", self.name)
-    self.logger.info("Experiment Directory: %s", self.directory)
-    self.logger.info("Experiment State File: %s", self.state_file)
-    self.logger.info("Experiment start time: %s", self.start_time)
-    self.logger.info("Experiment ID: %s", self.id)
-    self._plr_logger = logging.get_logger("pylabrobot")
-    self.plr_logger.info("Experiment %s started.", self.name)
 
-  async def _create_needed_dirs(self,
-                directory_names: list[PathLike] = ("data")): # pylint: disable=superfluous-parens
   async def _create_needed_dirs(self,
                 directory_names: list[PathLike] = ("data")): # pylint: disable=superfluous-parens
     """
@@ -438,11 +387,9 @@ class Experiment(ABC):
     Create the needed files
     """
     if not os.path.exists(self.state_file):
-    if not os.path.exists(self.state_file):
       with open(self._experiment_state_file, "wb") as f:
         f.write("{}")
     else:
-      print(f"State file already exists at {self.state_file}.")
       print(f"State file already exists at {self.state_file}.")
       print("Please check the file to ensure it is correct.")
       self.intervene(input(self.common_prompt))
@@ -564,8 +511,6 @@ class ContinuousExperiment(Experiment, metaclass=ABCMeta):
   """
 
   def __init__(self,
-                lab_configuration: LabConfiguration,
-                experiment_configuration: ExperimentConfiguration,
                 lab_configuration: LabConfiguration,
                 experiment_configuration: ExperimentConfiguration,
                 cycle_time: int,
