@@ -846,26 +846,16 @@ class ExperimentConfiguration(Configuration):
   Exeriment configuration denoting specific settings for an experiment.
   """
   def __init__(self,
-                configuration_file: PathLike,
-                lab_configuration: Union[PathLike, LabConfiguration]):
+                configuration_file: PathLike):
     super().__init__(configuration_file)
     self.configuration = self.configuration["experiment_configuration"]
-    if isinstance(lab_configuration, PathLike):
-      lab_configuration = LabConfiguration(lab_configuration)
-    if not isinstance(lab_configuration, LabConfiguration):
-      raise ValueError(f"lab_configuration must be a LabConfiguration object, not \
-                        {type(lab_configuration)}")
-    self.lab_configuration = lab_configuration
-    self._resources = self.configuration["resources_to_use"]
-    self._parameters = self.configuration["parameters"]
-    self._name = self.configuration["name"]
-    self._details = self.configuration["details"]
-    self._other_args = self.configuration["other_args"]
-    self._user = self.configuration["user"]
-    self._directory = self.configuration["directory"]
-    self._directory = None
-    self._data_directory = None
-    self._experiment = None
+    self._resources = self["resources"]
+    self._parameters = self["parameters"]
+    self._name = self["name"]
+    self._details = self["details"]
+    self._other_args = self["other_args"]
+    self._user = self["user"]
+    self._directory = self["directory"]
 
   @property
   def name(self) -> str:
@@ -893,7 +883,7 @@ class ExperimentConfiguration(Configuration):
 
   @property
   def data_directory(self) -> PathLike:
-    return self._data_directory
+    return self._directory / "data"
 
   @property
   def user(self) -> str:
