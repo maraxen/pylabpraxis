@@ -1,4 +1,3 @@
-import os
 from os import PathLike
 import json
 from typing import Union
@@ -18,11 +17,6 @@ from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 
 import asyncio
-import importlib
-import sys
-
-from praxis.experiment.experiment import Experiment
-
 
 class Configuration:
   """
@@ -746,6 +740,13 @@ class LabConfiguration(Configuration):
             continue
           setattr(deck_resource, attr, config_resource[attr])
 
+  async def has_all_specified_resources(self, resources: list[Resource]) -> tuple[bool, str]:
+    """
+    Checks that all specified resources are in the lab configuration.
+    """
+    return [resource["name"] if not any(resource["name"] == lab_resource["name"] \
+        for lab_resource in self.resources) else True for resource in resources]
+
   async def _load_machine(self, machine: Machine):
     """
     Load machine to loaded machines.
@@ -855,112 +856,45 @@ class ExperimentConfiguration(Configuration):
       raise ValueError(f"lab_configuration must be a LabConfiguration object, not \
                         {type(lab_configuration)}")
     self.lab_configuration = lab_configuration
-    self.resources_to_use = self.configuration["resources_to_use"]
-    self.experiment_parameters = self.configuration["experiment_parameters"]
-    self.experiment_name = self.configuration["experiment_name"]
-    self.experiment_details = self.configuration["experiment_details"]
-    self.experiment_module_path = self.configuration["experiment_module_path"]
-    self.experiment_module_name = self.configuration["experiment_module_name"]
-    self.experiment_args = self.configuration["experiment_args"]
-    self._experiment_directory = None
+    self._resources = self.configuration["resources_to_use"]
+    self._parameters = self.configuration["parameters"]
+    self._name = self.configuration["name"]
+    self._details = self.configuration["details"]
+    self._other_args = self.configuration["other_args"]
+    self._user = self.configuration["user"]
+    self._directory = self.configuration["directory"]
+    self._directory = None
+    self._data_directory = None
     self._experiment = None
-    self._paused = False
-    self._failed = False
 
   @property
-  def paused(self) -> bool:
-    return self._paused
+  def name(self) -> str:
+    return self._name
 
   @property
-  def failed(self) -> bool:
-    return self._failed
+  def details(self) -> str:
+    return self._details
 
   @property
-  def experiment(self) -> Experiment:
-    return self._experiment
+  def resources(self) -> list[str]:
+    return self._resources
 
   @property
-  def experiment_directory(self) -> PathLike:
-    return self._experiment_directory
+  def parameters(self) -> dict:
+    return self._parameters
 
-  async def execute_experiment(self):
-    """
-    Execute the experiment.
+  @property
+  def other_args(self) -> dict:
+    return self._other_args
 
-    Args:
-      lab (LabConfiguration): The lab configuration.
-    """
-    async with self.lab_configuration as lab: # ensures safety using machines
-      try:
-        spec = importlib.util.spec_from_file_location(
-          name = self.experiment_module_name,
-          location = self.experiment_script_path
-          )
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["plr_experiment"] = module
-        spec.loader.exec_module(module)
-        self._experiment_directory = os.path.realpath(os.path.dirname(self.configuration_file))
-        self._experiment = module.Experiment(lab = lab,
-                          experiment_directory = self.experiment_directory,
-                          experiment_parameters = self.experiment_parameters,
-                          experiment_name = self.experiment_name,
-                          experiment_details = self.experiment_details
-                          **self.kwargs)
-        await self.experiment.start()
-      except ModuleNotFoundError as e:
-        print(f"ModuleNotFoundError: {e}")
-        self._failed = True
-      except KeyboardInterrupt:
-        await self.pause_experiment()
-      except Exception as e: # pylint: disable=broad-except
-        print(f"An error occurred: {e}")
-        print("")
-      finally:
-        if self.failed:
-          print("Experiment failed.")
-        else:
-          print("Experiment completed.")
+  @property
+  def directory(self) -> PathLike:
+    return self._directory
 
-  async def shut_down_experiment(self):
-    """
-    Shut down the experiment.
-    """
-    pass
+  @property
+  def data_directory(self) -> PathLike:
+    return self._data_directory
 
-  async def pause_experiment(self):
-    """
-    Pause the experiment.
-    """
-    if not self.paused:
-      self._paused = True
-      self.experiment.pause()
-      print("Experiment paused.")
-      user_input = input("Type command or press enter to continue. Input 'help' to see available \
-                          commands.")
-    if user_input:
-      try:
-        self.experiment.intervene(input)
-      except Exception as e: # pylint: disable=broad-except
-        print(f"An error occurred attempting to execute user input: {e}")
-        user_input = input("Reinput command or press enter to continue...")
-      finally:
-        if user_input:
-          await self.pause_experiment()
-        else:
-          await self.resume_experiment()
-    else:
-      await self.resume_experiment()
-
-  async def resume_experiment(self):
-    """
-    Resume the experiment.
-    """
-    self._paused = False
-    print("Experiment resumed.")
-
-  async def __aenter__(self):
-    await self.lab_configuration.specify_resources_to_use(self.resources_to_use)
-    return self
-
-  async def __aexit__(self, exc_type, exc_value, traceback):
-    await self.shut_down_experiment()
+  @property
+  def user(self) -> str:
+    return self._user
