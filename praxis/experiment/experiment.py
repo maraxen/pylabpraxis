@@ -46,9 +46,6 @@ class Experiment(ABC):
     self._emailer = None
     self._common_prompt = "Type command or press enter to resume experiment. Input 'help' to see \
                           available commands."
-    self._emailer = None
-    self._common_prompt = "Type command or press enter to resume experiment. Input 'help' to see \
-                          available commands."
     self._available_commands = {
       "abort": "Abort the experiment",
       "pause": "Pause the experiment",
@@ -252,6 +249,12 @@ class Experiment(ABC):
     else:
       print("Experiment is already paused.")
     self.intervene(input(self.common_prompt))
+
+  @abstractmethod
+  async def _pause(self):
+    """
+    Pause the experiment
+    """
 
   async def intervene(self, user_input: str):
     """

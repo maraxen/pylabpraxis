@@ -848,7 +848,7 @@ class ExperimentConfiguration(Configuration):
   def __init__(self,
                 configuration_file: PathLike):
     super().__init__(configuration_file)
-    self.configuration = self.configuration["experiment_configuration"]
+    self.configuration = self["experiment_configuration"]
     self._resources = self["resources"]
     self._parameters = self["parameters"]
     self._name = self["name"]

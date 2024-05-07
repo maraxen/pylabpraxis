@@ -209,4 +209,3 @@ class Data:
     Close the database connection.
     """
     self.conn.close()
-
