@@ -57,6 +57,7 @@ class LabConfiguration(Configuration):
     super().__init__(configuration_file)
     self.configuration = self.configuration["lab_configuration"]
     self.resources = self.configuration["resources"]
+    self.members = self.configuration["members"]
     self.refs = {
       "liquid_handlers": [],
       "decks": [],
@@ -75,121 +76,121 @@ class LabConfiguration(Configuration):
     self.unpack_resources()
 
   @property
-  def liquid_handlers(self):
+  def liquid_handlers(self) -> list[LiquidHandler]:
     return self["liquid_handlers"]
 
   @property
-  def decks(self):
+  def decks(self) -> list[Deck]:
     return self["decks"]
 
   @property
-  def pumps(self):
+  def pumps(self) -> list[Pump]:
     return self["pumps"]
 
   @property
-  def plate_readers(self):
+  def plate_readers(self) -> list[PlateReader]:
     return self["plate_readers"]
 
   @property
-  def plate_hotels(self):
+  def plate_hotels(self) -> list[Resource]:
     return self["plate_hotels"]
 
   @property
-  def heater_shakers(self):
+  def heater_shakers(self) -> list[HeaterShaker]:
     return self["heater_shakers"]
 
   @property
-  def powder_dispensers(self):
+  def powder_dispensers(self) -> list[PowderDispenser]:
     return self["powder_dispensers"]
 
   @property
-  def scales(self):
+  def scales(self) -> list[Scale]:
     return self["scales"]
 
   @property
-  def shakers(self):
+  def shakers(self) -> list[Shaker]:
     return self["shakers"]
 
   @property
-  def temperature_controllers(self):
+  def temperature_controllers(self) -> list[TemperatureController]:
     return self["temperature_controllers"]
 
   @property
-  def other_machines(self):
+  def other_machines(self) -> list[Machine]:
     return self["other_machines"]
 
   @property
-  def labware(self):
+  def labware(self) -> list[Resource]:
     return self["labware"]
 
   @property
-  def machines(self):
+  def machines(self) -> list[Machine]:
     return self.liquid_handlers + self.pumps + self.plate_readers + self.heater_shakers + \
             self.powder_dispensers + self.scales + self.shakers + self.temperature_controllers + \
             self.other_machines
 
   @property
-  def ordered_resources(self):
+  def ordered_resources(self) -> list[Resource]:
     return self.liquid_handlers + self.decks + self.pumps + self.plate_readers + \
             self.plate_hotels + self.heater_shakers + self.powder_dispensers + self.scales + \
             self.shakers + self.temperature_controllers + self.other_machines + self.labware
 
   @property
-  def liquid_handlers_to_use(self):
+  def liquid_handlers_to_use(self) -> list[LiquidHandler]:
     return [resource for resource in self.liquid_handlers if resource["to_use"]]
 
   @property
-  def decks_to_use(self):
+  def decks_to_use(self) -> list[Deck]:
     return [resource for resource in self.decks if resource["to_use"]]
 
   @property
-  def pumps_to_use(self):
+  def pumps_to_use(self) -> list[Pump]:
     return [resource for resource in self.pumps if resource["to_use"]]
 
   @property
-  def plate_readers_to_use(self):
+  def plate_readers_to_use(self) -> list[PlateReader]:
     return [resource for resource in self.plate_readers if resource["to_use"]]
 
   @property
-  def plate_hotels_to_use(self):
+  def plate_hotels_to_use(self) -> list[Resource]:
     return [resource for resource in self.plate_hotels if resource["to_use"]]
 
   @property
-  def heater_shakers_to_use(self):
+  def heater_shakers_to_use(self) -> list[HeaterShaker]:
     return [resource for resource in self.heater_shakers if resource["to_use"]]
 
   @property
-  def powder_dispensers_to_use(self):
+  def powder_dispensers_to_use(self) -> list[PowderDispenser]:
     return [resource for resource in self.powder_dispensers if resource["to_use"]]
 
   @property
-  def scales_to_use(self):
+  def scales_to_use(self) -> list[Scale]:
     return [resource for resource in self.scales if resource["to_use"]]
 
   @property
-  def shakers_to_use(self):
+  def shakers_to_use(self ) -> list[Shaker]:
     return [resource for resource in self.shakers if resource["to_use"]]
 
   @property
-  def temperature_controllers_to_use(self):
+  def temperature_controllers_to_use(self) -> list[TemperatureController]:
     return [resource for resource in self.temperature_controllers if resource["to_use"]]
 
   @property
-  def other_machines_to_use(self):
+  def other_machines_to_use(self) -> list[Machine]:
     return [resource for resource in self.other_machines if resource["to_use"]]
 
   @property
-  def labware_to_use(self):
+  def labware_to_use(self) -> list[Resource]:
     return [resource for resource in self.labware if resource["to_use"]]
 
   @property
-  def machines_to_use(self):
+  def machines_to_use(self) -> list[Machine]:
     return self.liquid_handlers_to_use + self.pumps_to_use + self.plate_readers_to_use + \
             self.heater_shakers_to_use + self.powder_dispensers_to_use + self.scales_to_use + \
             self.shakers_to_use + self.temperature_controllers_to_use + self.other_machines_to_use
 
   @property
-  def ordered_resources_to_use(self):
+  def ordered_resources_to_use(self) -> list[Resource]:
     return self.liquid_handlers_to_use + self.decks_to_use + self.pumps_to_use + \
             self.plate_readers_to_use + self.plate_hotels_to_use + self.heater_shakers_to_use + \
             self.powder_dispensers_to_use + self.scales_to_use + self.shakers_to_use + \
@@ -197,18 +198,20 @@ class LabConfiguration(Configuration):
             self.labware_to_use
 
   @property
-  def loaded_machines(self):
+  def loaded_machines(self) -> list[Machine]:
     return self._loaded_machines
 
   def __getitem__(self, key):
     if key == "resources":
       return self.resources
+    if key == "members":
+      return self.members
     return self.refs[key][0]
 
-  def _is_machine(self, resource_type: str):
+  def _is_machine(self, resource_type: str) -> bool:
     return issubclass(find_subclass(resource_type, cls=Resource), Machine)
 
-  def unpack_resources(self):
+  def unpack_resources(self) -> None:
     """
     Unpacks the resources in the configuration file.
     """
@@ -242,7 +245,7 @@ class LabConfiguration(Configuration):
         case _:
           self.refs["labware"].extend((resource["name"], index))
 
-  async def _get_by_resource_type(self, name: str, resource_type: str = "resources"):
+  async def _get_by_resource_type(self, name: str, resource_type: str = "resources") -> Resource:
     """
     Get a resource by resource_type.
 
@@ -257,7 +260,7 @@ class LabConfiguration(Configuration):
         return resource
     raise ValueError(f"{resource_type.capitalize().replace('_', ' ')[:-1]} {name} not found.")
 
-  async def get_resource(self, name: str):
+  async def get_resource(self, name: str) -> Resource:
     """
     Get a resource by name.
 
@@ -269,7 +272,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(name=name)
 
-  async def get_liquid_handler(self, name: str):
+  async def get_liquid_handler(self, name: str) -> LiquidHandler:
     """
     Get a liquid handler by name.
 
@@ -281,7 +284,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="liquid_handlers", name=name)
 
-  async def get_deck(self, name: str):
+  async def get_deck(self, name: str) -> Deck:
     """
     Get a deck by name.
 
@@ -293,7 +296,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="decks", name=name)
 
-  async def get_pump(self, name: str):
+  async def get_pump(self, name: str) -> Pump:
     """
     Get a pump by name.
 
@@ -305,7 +308,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="pumps", name=name)
 
-  async def get_plate_reader(self, name: str):
+  async def get_plate_reader(self, name: str) -> PlateReader:
     """
     Get a plate reader by name.
 
@@ -329,7 +332,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="plate_hotels", name=name)
 
-  async def get_heater_shaker(self, name: str):
+  async def get_heater_shaker(self, name: str) -> HeaterShaker:
     """
     Get a heater shaker by name.
 
@@ -341,7 +344,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="heater_shakers", name=name)
 
-  async def get_powder_dispenser(self, name: str):
+  async def get_powder_dispenser(self, name: str) -> PowderDispenser:
     """
     Get a powder dispenser by name.
 
@@ -353,7 +356,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="powder_dispensers", name=name)
 
-  async def get_scale(self, name: str):
+  async def get_scale(self, name: str) -> Scale:
     """
     Get a scale by name.
 
@@ -365,7 +368,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="scales", name=name)
 
-  async def get_shaker(self, name: str):
+  async def get_shaker(self, name: str) -> Shaker:
     """
     Get a shaker by name.
 
@@ -377,7 +380,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="shakers", name=name)
 
-  async def get_temperature_controller(self, name: str):
+  async def get_temperature_controller(self, name: str) -> TemperatureController:
     """
     Get a temperature controller by name.
 
@@ -389,7 +392,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="temperature_controllers", name=name)
 
-  async def get_other_machine(self, name: str):
+  async def get_other_machine(self, name: str) -> Machine:
     """
     Get an other machine by name.
 
@@ -401,7 +404,7 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="other_machines", name=name)
 
-  async def get_labware(self, name: str):
+  async def get_labware(self, name: str) -> Resource:
     """
     Get a labware by name.
 
@@ -413,7 +416,24 @@ class LabConfiguration(Configuration):
     """
     return await self._get_by_resource_type(resource_type="labware", name=name)
 
-  async def select_resource_of_type(self, selection: list[str], resource_type: str = "resources"):
+  async def get_member_info(self, name: str) -> dict:
+    """
+    Get member information by name.
+
+    Args:
+      name (str): The name of the member.
+
+    Returns:
+      dict: The member information.
+    """
+    for member in self.members:
+      if member["name"] == name:
+        return member
+    raise ValueError(f"Member {name} not found.")
+
+
+  async def select_resource_of_type(self, selection: list[str], resource_type: str = "resources") \
+      -> list[Resource]:
     """
     Select resources by name.
 
@@ -427,7 +447,7 @@ class LabConfiguration(Configuration):
     return [await self._get_by_resource_type(resource_type=resource_type, name=name) for name in \
             selection]
 
-  async def select_resources(self, selection: list[str]):
+  async def select_resources(self, selection: list[str]) -> list[Resource]:
     """
     Select resources by name.
 
@@ -439,7 +459,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_resource(name) for name in selection]
 
-  async def select_liquid_handlers(self, selection: list[str]):
+  async def select_liquid_handlers(self, selection: list[str]) -> list[LiquidHandler]:
     """
     Select liquid handlers by name.
 
@@ -451,7 +471,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_liquid_handler(name) for name in selection]
 
-  async def select_decks(self, selection: list[str]):
+  async def select_decks(self, selection: list[str]) -> list[Deck]:
     """
     Select decks by name.
 
@@ -463,7 +483,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_deck(name) for name in selection]
 
-  async def select_pumps(self, selection: list[str]):
+  async def select_pumps(self, selection: list[str]) -> list[Pump]:
     """
     Select pumps by name.
 
@@ -475,7 +495,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_pump(name) for name in selection]
 
-  async def select_plate_readers(self, selection: list[str]):
+  async def select_plate_readers(self, selection: list[str]) -> list[PlateReader]:
     """
     Select plate readers by name.
 
@@ -487,7 +507,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_plate_reader(name) for name in selection]
 
-  async def select_plate_hotels(self, selection: list[str]):
+  async def select_plate_hotels(self, selection: list[str]) -> list[Resource]:
     """
     Select plate hotels by name.
 
@@ -499,7 +519,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_plate_hotel(name) for name in selection]
 
-  async def select_heater_shakers(self, selection: list[str]):
+  async def select_heater_shakers(self, selection: list[str]) -> list[HeaterShaker]:
     """
     Select heater shakers by name.
 
@@ -511,7 +531,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_heater_shaker(name) for name in selection]
 
-  async def select_powder_dispensers(self, selection: list[str]):
+  async def select_powder_dispensers(self, selection: list[str]) -> list[PowderDispenser]:
     """
     Select powder dispensers by name.
 
@@ -523,7 +543,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_powder_dispenser(name) for name in selection]
 
-  async def select_scales(self, selection: list[str]):
+  async def select_scales(self, selection: list[str]) -> list[Scale]:
     """
     Select scales by name.
 
@@ -535,7 +555,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_scale(name) for name in selection]
 
-  async def select_shakers(self, selection: list[str]):
+  async def select_shakers(self, selection: list[str]) -> list[Shaker]:
     """
     Select shakers by name.
 
@@ -547,7 +567,8 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_shaker(name) for name in selection]
 
-  async def select_temperature_controllers(self, selection: list[str]):
+  async def select_temperature_controllers(self, selection: list[str]) \
+    -> list[TemperatureController]:
     """
     Select temperature controllers by name.
 
@@ -559,7 +580,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_temperature_controller(name) for name in selection]
 
-  async def select_other_machines(self, selection: list[str]):
+  async def select_other_machines(self, selection: list[str]) -> list[Machine]:
     """
     Select other machines by name.
 
@@ -571,7 +592,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_other_machine(name) for name in selection]
 
-  async def select_labware(self, selection: list[str]):
+  async def select_labware(self, selection: list[str]) -> list[Resource]:
     """
     Select labware by name.
 
@@ -583,7 +604,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_labware(name) for name in selection]
 
-  async def _to_be_used(self, resource_type: str, name: str):
+  async def _to_be_used(self, resource_type: str, name: str) -> None:
     """
     Use a resource by name.
 
@@ -596,7 +617,7 @@ class LabConfiguration(Configuration):
 
   async def specify_resources_to_use(self,
                             selection: Union[list[str], Resource],
-                            resource_types: Union[list[str], str] = "resources"):
+                            resource_types: Union[list[str], str] = "resources") -> None:
     """
     Use resources by name.
 
@@ -613,7 +634,8 @@ class LabConfiguration(Configuration):
     for name, resource_type in zip(selection, resource_types):
       await self._to_be_used(resource_type=resource_type, name=name)
 
-  async def specify_liquid_handlers_to_use(self, selection: Union[list[str], LiquidHandler]):
+  async def specify_liquid_handlers_to_use(self, selection: Union[list[str], LiquidHandler]) \
+      -> None:
     """
     Use liquid handlers by name.
 
@@ -622,7 +644,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="liquid_handlers")
 
-  async def specify_decks_to_use(self, selection: Union[list[str], Deck]):
+  async def specify_decks_to_use(self, selection: Union[list[str], Deck]) -> None:
     """
     Use decks by name.
 
@@ -631,7 +653,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="decks")
 
-  async def specify_pumps_to_use(self, selection: Union[list[str], Pump]):
+  async def specify_pumps_to_use(self, selection: Union[list[str], Pump]) -> None:
     """
     Use pumps by name.
 
@@ -640,7 +662,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="pumps")
 
-  async def specify_plate_readers_to_use(self, selection: Union[list[str], PlateReader]):
+  async def specify_plate_readers_to_use(self, selection: Union[list[str], PlateReader]) -> None:
     """
     Use plate readers by name.
 
@@ -649,7 +671,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="plate_readers")
 
-  async def specify_heater_shakers_to_use(self, selection: Union[list[str], HeaterShaker]):
+  async def specify_heater_shakers_to_use(self, selection: Union[list[str], HeaterShaker]) -> None:
     """
     Use heater shakers by name.
 
@@ -658,7 +680,8 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="heater_shakers")
 
-  async def specify_powder_dispensers_to_use(self, selection: Union[list[str], PowderDispenser]):
+  async def specify_powder_dispensers_to_use(self, selection: Union[list[str], PowderDispenser]) \
+      -> None:
     """
     Use powder dispensers by name.
 
@@ -667,7 +690,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="powder_dispensers")
 
-  async def specify_scales_to_use(self, selection: Union[list[str], Scale]):
+  async def specify_scales_to_use(self, selection: Union[list[str], Scale]) -> None:
     """
     Use scales by name.
 
@@ -676,7 +699,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="scales")
 
-  async def specify_shakers_to_use(self, selection: Union[list[str], Shaker]):
+  async def specify_shakers_to_use(self, selection: Union[list[str], Shaker]) -> None:
     """
     Use shakers by name.
 
@@ -689,7 +712,7 @@ class LabConfiguration(Configuration):
                                                     selection: Union[
                                                       list[str],
                                                       TemperatureController
-                                                      ]):
+                                                      ]) -> None:
     """
     Use temperature controllers by name.
 
@@ -701,7 +724,7 @@ class LabConfiguration(Configuration):
       resource_types="temperature_controllers"
       )
 
-  async def specify_other_machines_to_use(self, selection: Union[list[str], Machine]):
+  async def specify_other_machines_to_use(self, selection: Union[list[str], Machine]) -> None:
     """
     Use other machines by name.
 
@@ -719,7 +742,7 @@ class LabConfiguration(Configuration):
     """
     await self.specify_resources_to_use(selection=selection, resource_types="labware")
 
-  async def _assign_used_resources_to_deck(self, deck: Deck):
+  async def _assign_used_resources_to_deck(self, deck: Deck) -> None:
     """
     Assign used resources to a deck.
 
@@ -747,7 +770,7 @@ class LabConfiguration(Configuration):
     return [resource["name"] if not any(resource["name"] == lab_resource["name"] \
         for lab_resource in self.resources) else True for resource in resources]
 
-  async def _load_machine(self, machine: Machine):
+  async def _load_machine(self, machine: Machine) -> None:
     """
     Load machine to loaded machines.
 
@@ -756,7 +779,7 @@ class LabConfiguration(Configuration):
     """
     self._loaded_machines.append(machine)
 
-  async def update_deck_layouts(self):
+  async def update_deck_layouts(self) -> None:
     """
     Update the deck layouts. Use this after you update resources referenced in the deck layouts in
     the configuration file.
@@ -764,7 +787,7 @@ class LabConfiguration(Configuration):
     for deck in self.decks:
       await self._assign_used_resources_to_deck(deck)
 
-  async def save_configuration(self, configuration_file: PathLike):
+  async def save_configuration(self, configuration_file: PathLike) -> None:
     """
     Save the configuration to a file.
 
@@ -774,7 +797,7 @@ class LabConfiguration(Configuration):
     with open(configuration_file, "wb") as f:
       json.dump(self.configuration, f, indent=4)
 
-  async def _start_machines(self):
+  async def _start_machines(self) -> None:
     """
     Scaffold function. Eventually this should check that the machines in use are started by having
     the start method set a state in the PLR object.
@@ -784,7 +807,7 @@ class LabConfiguration(Configuration):
     while not all(machine.setup_finished for machine in self._loaded_machines):
       await asyncio.sleep(1)
 
-  async def _stop_machines(self):
+  async def _stop_machines(self) -> None:
     """
     Scaffold function. Eventually this should check that the machines in use are stopped by having
     the stop method set a state in the PLR object.
