@@ -74,7 +74,7 @@ async def type_check(items: list, types: list, in_list: bool = False) -> None:
     if not isinstance(item, item_type):
       raise ValueError(f"Expected {item_type} but got {type(item)}")
 
-async def check_list_length(items: list[list[Any]],
+async def check_list_length(items: list[Any] | list[list[Any]],
                             coerce_length: bool = False,
                             target_length: Optional[int] = None) -> list[list[Any]]:
   """
@@ -93,6 +93,13 @@ async def check_list_length(items: list[list[Any]],
   """
   if target_length is None:
     length = len(items[0])
+  if not isinstance(items[0], list):
+    if len(items) != target_length:
+      if len(items) == 1 and coerce_length:
+        assert target_length is not None, "Expected target length to be provided"
+        return items * target_length
+      else:
+        raise ValueError(f"Expected list of length {length} but got list of length {len(items)}")
   new_items = []
   for item in items:
     if not isinstance(item, list):
@@ -106,6 +113,7 @@ async def check_list_length(items: list[list[Any]],
   if all(len(item) == target_length for item in items):
     return items
   return new_items
+
 
 async def parse_well_name(well: Well) -> tuple:
   """
