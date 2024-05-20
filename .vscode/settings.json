@@ -4,6 +4,7 @@
   "cSpell.words": [
     "agrow",
     "agrowpumps",
+    "argspec",
     "coro",
     "Defaultable",
     "frontmost",
@@ -12,22 +13,29 @@
     "jsonify",
     "klass",
     "labware",
+    "levelname",
     "modbus",
     "pylabrobot",
     "pytest",
     "subclassing",
+    "suboperation",
+    "suboperations",
     "subresource",
     "tadm",
     "tiprack",
     "usascientific",
+    "varkw",
     "websockets"
   ],
-  "python.linting.pylintEnabled": true,
-  "python.linting.pylintArgs": [
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "python.analysis.extraPaths": [
+    "/Users/mar/Dropbox (MIT)/PLR_workspace/pylabrobot"
+  ],
+  "pylint.args": [
     "--disable={c0103}"
   ],
-  "python.linting.mypyEnabled": true,
-  "python.linting.enabled": true,
   "python.testing.pytestArgs": [
     "."
   ],
@@ -56,7 +64,7 @@
     "editor.wordWrap": "bounded",
     "editor.wordWrapColumn": 100
   },
-  "mypy.runUsingActiveInterpreter": true,
+  "peacock.color": "#42b883",
   "workbench.colorCustomizations": {
     "activityBar.activeBackground": "#65c89b",
     "activityBar.background": "#65c89b",
@@ -75,6 +83,5 @@
     "titleBar.activeForeground": "#15202b",
     "titleBar.inactiveBackground": "#42b88399",
     "titleBar.inactiveForeground": "#15202b99"
-  },
-  "peacock.color": "#42b883"
+  }
 }
