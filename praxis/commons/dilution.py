@@ -7,7 +7,7 @@ from praxis.utils.sanitation import (
   liquid_handler_setup_check,
   check_list_length,
   tip_mapping,
-  boolean_slice
+  parse_well_name
 )
 from typing import Optional, Literal
 from praxis.commons.liquid_handling import transfer_with_mixing
@@ -94,15 +94,13 @@ async def find_optimal_dilution_strategy(n_variables: int, # TODO: implement rep
     target_plate: Plate with the target wells
     variables_volumes: Volume in the source wells. If None, will transfer the total well volume \
       divided by the dilution factor.
-    undiluted_source: Whether the source is undiluted
     variable_ids: Names of the variables to dilute
 
   Returns:
     variable_details: Dictionary with the details of the dilution strategy for each variable
 
   """
-  wells_per_var = n_dilutions + int(undiluted_source)
-  if wells_per_var * n_variables > target_plate.num_items:
+  if n_dilutions * n_variables > target_plate.num_items:
     raise ValueError("Number of dilutions exceeds number of wells in plate")
   dilution_factors, variables_volumes = await coerce_to_list([dilution_factors, variables_volumes])
   assert isinstance(dilution_factors, list) and isinstance(variables_volumes, list)
@@ -118,7 +116,7 @@ async def find_optimal_dilution_strategy(n_variables: int, # TODO: implement rep
         raise ValueError("Number of dilutions does not match with dilution factors")
     else:
       dilution_factor = [dilution_factor] * n_dilutions
-  if n_variables <= target_plate.num_items_y and wells_per_var <= target_plate.num_items_x:
+  if n_variables <= target_plate.num_items_y and n_dilutions <= target_plate.num_items_x:
       strategy = "all_row"
   else:
     strategy = "split_row"
@@ -139,15 +137,14 @@ async def find_optimal_dilution_strategy(n_variables: int, # TODO: implement rep
           variable_details[var]["dilution_strategy"] = "snake"
         variable_details[var]["dilution_strategy"] = "row"
       else:
-        variable_details[var]["initial_well"] = target_plate[(i - target_plate.num_items_y) * \
-          wells_per_var][0]
-        variable_details[var]["initial_well_index"] = (i - target_plate.num_items_y) * \
-          wells_per_var
+        variable_details[var]["initial_well"] = target_plate[(i - target_plate.num_items_y)+ \
+          (n_dilutions * target_plate.num_items_y)][0]
+        variable_details[var]["initial_well_index"] = (i - target_plate.num_items_y)+ \
+          (n_dilutions * target_plate.num_items_y)
         variable_details[var]["dilution_strategy"] = "snake"
     for var in variable_details:
-      row_id = variable_details[var]["initial_well_index"] // target_plate.num_items_y
-      column_id = variable_details[var]["initial_well_index"] % target_plate.num_items_y
-      print(f"Variable {var}: {chr(row_id+ 65)}{column_id}")
+      column, row = await parse_well_name(variable_details[var]["initial_well"])
+      print(f"Variable {var}: {chr(row+ 65)}{column}")
   return variable_details
 
 
@@ -231,7 +228,7 @@ async def antigen_dilution_series(liquid_handler: LiquidHandler,
                               buffer_total_volume = buffer_total_volume,
                               return_tips = True)
     else:
-      raise NotImplementedError("Non-96 head transfer not implemented")
+      raise NotImplementedError("Non-96 head buffer transfer not implemented")
     await serial_dilution(liquid_handler = liquid_handler,
                           tips = dilution_tips,
                           plate = dilution_plate,
@@ -306,6 +303,8 @@ async def serial_dilution(liquid_handler: LiquidHandler,
       single_row.append(var)
     elif variable_dict[var]["dilution_strategy"] == "snake":
       snaked.append(var)
+    else:
+      raise ValueError("Invalid dilution strategy")
   await liquid_handler.pick_up_tips(tip_spots = [variable_dict[var]["tip_spot"] \
     for var in single_row])
   for i in range(n_dilutions - 1):
@@ -341,43 +340,51 @@ async def serial_dilution(liquid_handler: LiquidHandler,
   else:
     await liquid_handler.pick_up_tips(tip_spots = [variable_dict[var]["tip_spot"] \
       for var in snaked])
-    backward = False
+    backward, next_rows = False, False
     dilution_volumes = [variable_dict[var]["dilution_volume"] for var in snaked]
     wells_from = [variable_dict[var]["initial_well_index"] for var in snaked]
     for i in range(n_dilutions - 1):
-      if all(well + ((-1 if backward else 1) * i * plate.num_items_y) > plate.num_items \
+      if any(well + ((-1 if backward else 1) * plate.num_items_y) > plate.num_items \
         for well in wells_from):
         next_rows = True
         backward = True
-      if backward and all(well + ((-1 if backward else 1) * i * plate.num_items_y) < \
-        variable_dict[snaked[i]]["initial_well_index"] for well in wells_from):
+      elif backward and any(well + ((-1 if backward else 1) * plate.num_items_y) < \
+        variable_dict[snaked[j]]["initial_well_index"] for j, well in enumerate(wells_from)):
         next_rows = True
         backward = False
-      if next_rows:
-        wells_to = [well + len(snaked) for well in wells_from]
       if backward and not next_rows:
         wells_to = [well - plate.num_items_y for well in wells_from]
       if not backward and not next_rows:
         wells_to = [well + plate.num_items_y for well in wells_from]
+      if next_rows:
+        wells_to = [well + len(snaked) for well in wells_from]
+        next_rows = False
       if i == 0:
         for well, var in zip(plate[wells_from], snaked):
           setattr(well, "variable_id", variable_dict[var]["id"])
           setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
         await liquid_handler.aspirate(resources = plate[wells_from],
+                                      use_channels = list(range(len(snaked))),
                                     vols = dilution_volumes,
                                     mix_cycles = mix_cycles)
-      else:
-        await liquid_handler.aspirate(resources = plate[wells_from],
-                                    vols = dilution_volumes)
         await liquid_handler.dispense(resources = plate[wells_to],
+                                      use_channels = list(range(len(snaked))),
                                       vols = dilution_volumes,
                                       mix_cycles = mix_cycles)
-        for well, var in zip(plate[wells_to], single_row):
-          setattr(well, "variable_id", variable_dict[var]["id"])
-          setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
+      else:
+        await liquid_handler.aspirate(resources = plate[wells_from],
+                                      use_channels = list(range(len(snaked))),
+                                    vols = dilution_volumes)
+        await liquid_handler.dispense(resources = plate[wells_to],
+                                      use_channels = list(range(len(snaked))),
+                                      vols = dilution_volumes,
+                                      mix_cycles = mix_cycles)
+      for well, var in zip(plate[wells_to], snaked):
+        setattr(well, "variable_id", variable_dict[var]["id"])
+        setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
       wells_from = wells_to
     await liquid_handler.drop_tips(tip_spots = [variable_dict[var]["tip_spot"] \
-      for var in single_row])
+      for var in snaked])
 
 
 
