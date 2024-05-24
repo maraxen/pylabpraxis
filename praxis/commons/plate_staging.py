@@ -113,7 +113,7 @@ async def simple_interplate_transfer(
     well_cycle_size = target_plate.num_items_y if replicate_axis == 0 else target_plate.num_items_x
     source_wells_split = await split_wells_along_columns(_source_wells)
     source_wells_split_indexes = [[await well_to_int(well, source_plate) for well in wells] \
-      for wells in source_wells_split]
+      async for wells in source_wells_split]
     transfer_volumes = [[transfer_volume] * len(wells) for wells in source_wells_split]
     target_well_indexes = [[well_index + (offset * i) \
       + (n_replicates * j * target_plate.num_items_y) for i,well_index in enumerate(well_indexes)] \

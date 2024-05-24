@@ -3,6 +3,10 @@ from typing import Optional, Literal, Any
 from pylabrobot.resources import TipRack, TipSpot, Well, Container, Plate
 import warnings
 
+async def well_to_int(well: Well, plate: Plate) -> int:
+  column, row = await parse_well_name(well)
+  return int((column * plate.num_items_y) + row)
+
 def liquid_handler_setup_check(func):
   """
   A decorator function that checks if a liquid handler is set up before executing the decorated
@@ -146,6 +150,8 @@ async def parse_well_str_id(well: str, plate: Plate) -> list[Well]:
 
 async def tip_mapping(tips: TipRack | list[TipSpot],
                       sources: list[Well],
+                      source_plate: Plate, 
+                      target_plate: Optional[Plate] = None,
                       targets: Optional[list[Well]] = None,
                       map_tips: Optional[Literal["source", "target"]] = None) \
                         -> list[TipSpot]:
@@ -198,11 +204,11 @@ async def tip_mapping(tips: TipRack | list[TipSpot],
         tips as list[TipSpot].")
     for well in map_onto:
       assert isinstance(well, Well), "Expected Well object" # mypy compatible assert
-      row, column = await parse_well_name(well)
-      if not tips[row * column][0].has_tip():
+      well_number = await well_to_int(well, source_plate)
+      if not tips[well_number][0].has_tip():
         raise ValueError("Tip rack does not have tip at specified location.")
       else:
-        output_tips.append(tips[row * column][0])
+        output_tips.append(tips[well_number][0])
   return output_tips
 
 def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:

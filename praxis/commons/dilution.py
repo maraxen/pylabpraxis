@@ -12,6 +12,10 @@ from praxis.utils.sanitation import (
 from typing import Optional, Literal
 from praxis.commons.liquid_handling import transfer_with_mixing
 
+from praxis.commons.plate_staging import (
+  plate_idx_to_well,
+  split_wells_along_columns)
+
 from pylabrobot.utils import string_to_position
 
 
@@ -212,6 +216,7 @@ async def antigen_dilution_series(liquid_handler: LiquidHandler,
     return proceed
   proceed = await check_input(proceed)
   if proceed == "n":
+    return antigen_dilution_details
     raise RuntimeError("Dilution series aborted")
   buffer_transfer_volumes = [antigen_volumes[i] - antigen_volumes[i]/dilution_factors[i] \
     for i in range(len(antigen_ids))]
@@ -228,7 +233,7 @@ async def antigen_dilution_series(liquid_handler: LiquidHandler,
                               buffer_total_volume = buffer_total_volume,
                               return_tips = True)
     else:
-      raise NotImplementedError("Non-96 head buffer transfer not implemented")
+      raise NotImplementedError("8-well transfer head not implemented")
     await serial_dilution(liquid_handler = liquid_handler,
                           tips = dilution_tips,
                           plate = dilution_plate,
@@ -262,7 +267,7 @@ async def transfer_buffer96(liquid_handler: LiquidHandler,
     await liquid_handler.drop_tips96(resource = tip_rack)
 
 @liquid_handler_setup_check
-async def serial_dilution(liquid_handler: LiquidHandler,
+async def serial_dilution(liquid_handler: LiquidHandler, # TODO: handle single row and snaked dilutions that are longer than a column
                           tips: TipRack,
                           plate: Plate,
                           variable_dict: dict[str, dict],
@@ -290,9 +295,11 @@ async def serial_dilution(liquid_handler: LiquidHandler,
     source_volumes = [plate[0][0].max_volume] * len(variable_dict)
   dilution_factors, source_volumes = await coerce_to_list([dilution_factors, source_volumes])
   assert isinstance(dilution_factors, list) and isinstance(source_volumes, list)
-  await check_list_length([dilution_factors, source_volumes], True, len(variable_dict))
+  dilution_factors, source_volumes = await check_list_length([dilution_factors, source_volumes],
+                                                             True,
+                                                             len(variable_dict))
   initial_wells = [variable_dict[var]["initial_well"] for var in variable_dict]
-  tip_spots = await tip_mapping(tips = tips, sources = initial_wells)
+  tip_spots = await tip_mapping(tips = tips, sources = initial_wells, source_plate=plate)
   single_row, snaked = [], []
   for i,var in enumerate(variable_dict):
     variable_dict[var]["tip_spot"] = tip_spots[i]
@@ -305,6 +312,7 @@ async def serial_dilution(liquid_handler: LiquidHandler,
       snaked.append(var)
     else:
       raise ValueError("Invalid dilution strategy")
+  print([variable_dict[var]["tip_spot"] for var in single_row])
   await liquid_handler.pick_up_tips(tip_spots = [variable_dict[var]["tip_spot"] \
     for var in single_row])
   for i in range(n_dilutions - 1):
@@ -315,19 +323,26 @@ async def serial_dilution(liquid_handler: LiquidHandler,
     wells_to = [variable_dict[var]["initial_well_index"] + column_to \
       for var in single_row]
     dilution_volumes = [variable_dict[var]["dilution_volume"] for var in single_row]
+    mix_volume = [int(dilution_volumes[j] * 0.5 * 10) for j in range(len(single_row))]
+    mix_speed = [1200] * len(single_row)
     if i == 0:
       for well, var in zip(plate[wells_from], single_row):
         setattr(well, "variable_id", variable_dict[var]["id"])
         setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
       await liquid_handler.aspirate(resources = plate[wells_from],
                                   vols = dilution_volumes,
-                                  mix_cycles = mix_cycles)
+                                  homogenization_cycles = [mix_cycles] * len(single_row),
+                                  homogenization_volume = mix_volume,
+                                  homogenization_speed = mix_speed)
     else:
       await liquid_handler.aspirate(resources = plate[wells_from],
                                   vols = dilution_volumes)
     await liquid_handler.dispense(resources = plate[wells_to],
                                   vols = dilution_volumes,
-                                  mix_cycles = mix_cycles)
+                                  mix_cycles = [mix_cycles] * len(single_row),
+                                  mix_volume = mix_volume,
+                                  mix_speed = mix_speed
+                                  )
     for well, var in zip(plate[wells_to], single_row):
       setattr(well, "variable_id", variable_dict[var]["id"])
       setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
@@ -343,6 +358,8 @@ async def serial_dilution(liquid_handler: LiquidHandler,
     backward, next_rows = False, False
     dilution_volumes = [variable_dict[var]["dilution_volume"] for var in snaked]
     wells_from = [variable_dict[var]["initial_well_index"] for var in snaked]
+    mix_volume = [int(dilution_volumes[j] * 0.5 * 10) for j in range(len(snaked))]
+    mix_speed = [1200] * len(snaked)
     for i in range(n_dilutions - 1):
       if any(well + ((-1 if backward else 1) * plate.num_items_y) > plate.num_items \
         for well in wells_from):
@@ -366,19 +383,17 @@ async def serial_dilution(liquid_handler: LiquidHandler,
         await liquid_handler.aspirate(resources = plate[wells_from],
                                       use_channels = list(range(len(snaked))),
                                     vols = dilution_volumes,
-                                    mix_cycles = mix_cycles)
-        await liquid_handler.dispense(resources = plate[wells_to],
-                                      use_channels = list(range(len(snaked))),
-                                      vols = dilution_volumes,
-                                      mix_cycles = mix_cycles)
+                                    homogenization_cycles = [mix_cycles] * len(snaked),
+                                    homogenization_volume = mix_volume)
       else:
         await liquid_handler.aspirate(resources = plate[wells_from],
                                       use_channels = list(range(len(snaked))),
                                     vols = dilution_volumes)
-        await liquid_handler.dispense(resources = plate[wells_to],
-                                      use_channels = list(range(len(snaked))),
-                                      vols = dilution_volumes,
-                                      mix_cycles = mix_cycles)
+      await liquid_handler.dispense(resources = plate[wells_to],
+                                    use_channels = list(range(len(snaked))),
+                                    vols = dilution_volumes,
+                                    mix_cycles = [mix_cycles] * len(snaked),
+                                    mix_volume = mix_volume)
       for well, var in zip(plate[wells_to], snaked):
         setattr(well, "variable_id", variable_dict[var]["id"])
         setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)

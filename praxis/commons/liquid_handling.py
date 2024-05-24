@@ -1,8 +1,9 @@
 from pylabrobot.liquid_handling import LiquidHandler
 from typing import Optional, Literal
 from pylabrobot.liquid_handling import LiquidHandler, STAR
-from pylabrobot.resources import TipRack, Well, Container, Plate, TipSpot, ItemizedResource
-
+from pylabrobot.resources import (
+  TipRack, Container, Plate, TipSpot, ItemizedResource, Resource, Well
+)
 import warnings
 
 from pylabrobot.resources.errors import ResourceNotFoundError
@@ -13,6 +14,26 @@ from praxis.utils import (
   liquid_handler_setup_check,
   check_list_length,
   tip_mapping)
+
+async def split_along_columns(resources: list[Resource]) -> list[list[Resource]]:
+  """
+  Splits a list of resources into sublists based on their column indices.
+
+  Args:
+    resources (list[Resource]): The resources to split.
+
+  Returns:
+    list[list[Resource]]: The resources split into sublists based on their column indices.
+  """
+  if not all(isinstance(resources, Resource) for resource in resources):
+    raise ValueError("Invalid well type.")
+  if all(isinstance(resource, Plate) for resource in resources):
+    return [list(resource) for resource in resources]
+  if all(isinstance(resource, Well) for resource in resources):
+    columns = [(await parse_well_name(well))[0] for well in wells]
+  return [[well for column, well in zip(columns, wells) if column == i] for i in \
+    range(max(columns)+1)]
+
 
 async def inspect_mix_parameters(mix_proportion: Optional[float],
                                   mix_volumes: Optional[float | list[float]]) \
