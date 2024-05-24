@@ -82,29 +82,41 @@ async def simple_interplate_transfer(
     transfer_volume: float,
     source_wells: list[int | str | Well],
     offset: int = 0,
-    n_replicates: int = 1,
+    n_replicates: Optional[int] = None,
     mix_cycles: int = 1,
     replicate_axis: Literal['x', 'y', 0, 1] = 'x',
     use_96: bool = False):
   # TODO: add transfer_volumes checking
   _source_wells: list[Well] = [await plate_idx_to_well(source_plate, well) for well in source_wells]
   assert all(isinstance(well, Well) for well in source_wells)
-  if target_plate.num_items < n_replicates * len(source_wells):
-    raise ValueError("Target plate does not have enough wells")
   if use_96:
-    if n_replicates * 96 > target_plate.num_items:
-      raise ValueError("Target plate does not have enough wells")
-    await liquid_handler.pick_up_tips96(tip_rack=tips)
-    for i in range(n_replicates):
-      target_wells = target_plate.get_quadrant(i + 1)
+    if n_replicates:
+      if target_plate.num_items < n_replicates * len(source_wells):
+        raise ValueError("Target plate does not have enough wells")
+      if n_replicates * 96 > target_plate.num_items:
+        raise ValueError("Target plate does not have enough wells")
+      await liquid_handler.pick_up_tips96(tip_rack=tips)
+      for i in range(n_replicates):
+        target_wells = target_plate.get_quadrant(i + 1)
+        await liquid_handler.aspirate96(resource=source_plate, volume=transfer_volume)
+        await liquid_handler.dispense96(resource=target_wells, volume=transfer_volume)
+        for target_well, source_well in zip(target_wells, source_plate.get_wells(range(96))):
+              for attr in vars(source_well):
+                if not hasattr(target_well, attr):
+                  setattr(target_well, attr, vars(source_well)[attr])
+              setattr(target_well, "replicate", f"{i}")
+      await liquid_handler.drop_tips96(resource=tips)
+    else:
+      assert target_plate.num_items == source_plate.num_items
+      await liquid_handler.pick_up_tips96(tip_rack=tips)
       await liquid_handler.aspirate96(resource=source_plate, volume=transfer_volume)
-      await liquid_handler.dispense96(resource=target_wells, volume=transfer_volume)
-      for target_well, source_well in zip(target_wells, source_plate.get_wells(range(96))):
-            for attr in vars(source_well):
-              if not hasattr(target_well, attr):
-                setattr(target_well, attr, vars(source_well)[attr])
-            setattr(target_well, "replicate", f"{i}")
-    await liquid_handler.drop_tips96(resource=tips)
+      await liquid_handler.dispense96(resource=target_plate, volume=transfer_volume)
+      for target_well, source_well in zip(target_plate.get_wells(range(target_plate.num_items)),
+                                          source_plate.get_wells(range(target_plate.num_items))):
+              for attr in vars(source_well):
+                if not hasattr(target_well, attr):
+                  setattr(target_well, attr, vars(source_well)[attr])
+      await liquid_handler.drop_tips96(resource=tips)
   else:
     if replicate_axis not in ['x', 'y', 0, 1]:
       raise ValueError("Invalid replicate axis")
@@ -113,7 +125,7 @@ async def simple_interplate_transfer(
     well_cycle_size = target_plate.num_items_y if replicate_axis == 0 else target_plate.num_items_x
     source_wells_split = await split_wells_along_columns(_source_wells)
     source_wells_split_indexes = [[await well_to_int(well, source_plate) for well in wells] \
-      async for wells in source_wells_split]
+      for wells in source_wells_split]
     transfer_volumes = [[transfer_volume] * len(wells) for wells in source_wells_split]
     target_well_indexes = [[well_index + (offset * i) \
       + (n_replicates * j * target_plate.num_items_y) for i,well_index in enumerate(well_indexes)] \
@@ -128,8 +140,11 @@ async def simple_interplate_transfer(
                                         replicate_axis = replicate_axis):
       raise RuntimeError("Target plate not sufficient for transfer")
     for i, wells in enumerate(source_wells_split):
+      assert isinstance(target_wells[i], list)
+      assert all(isinstance(well, Well) for well in target_wells[i])
       tips_location = await tip_mapping(tips = tips,
                                         sources = wells,
+                                        source_plate=source_plate,
                                         targets = target_wells[i],
                                         map_tips = "source")
       await liquid_handler.pick_up_tips(tip_spots = tips_location)
@@ -150,5 +165,5 @@ async def simple_interplate_transfer(
       if i < len(source_wells) - 1:
         next_target_wells = [await well_to_int(well, target_plate) for well in target_wells[i]]
         next_target_wells = [well + well_cycle_size for well in next_target_wells]
-        target_wells[i] = [await plate_idx_to_well(target_plate, well) for well in next_target_wells]
+        target_wells[i + 1] = [await plate_idx_to_well(target_plate, well) for well in next_target_wells]
       await liquid_handler.drop_tips(tip_spots = tips_location)
