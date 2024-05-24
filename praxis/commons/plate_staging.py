@@ -3,6 +3,11 @@ from pylabrobot.resources import Plate, Well, TipRack, Coordinate
 from pylabrobot.liquid_handling import LiquidHandler
 from praxis.utils.errors import ExperimentError
 from pylabrobot.resources.errors import ResourceNotFoundError
+from pylabrobot.plate_reading import PlateReader
+from pylabrobot.resources import CarrierSite
+from pylabrobot.liquid_handling.standard import GripDirection
+from pylabrobot.resources import volume_tracker
+import numpy as np
 
 from praxis.utils.sanitation import liquid_handler_setup_check, coerce_to_list, type_check, \
   tip_mapping, check_list_length, parse_well_name
@@ -85,7 +90,8 @@ async def simple_interplate_transfer(
     n_replicates: Optional[int] = None,
     mix_cycles: int = 1,
     replicate_axis: Literal['x', 'y', 0, 1] = 'x',
-    use_96: bool = False):
+    use_96: bool = False,
+    return_tips: bool = False):
   # TODO: add transfer_volumes checking
   _source_wells: list[Well] = [await plate_idx_to_well(source_plate, well) for well in source_wells]
   assert all(isinstance(well, Well) for well in source_wells)
@@ -95,7 +101,8 @@ async def simple_interplate_transfer(
         raise ValueError("Target plate does not have enough wells")
       if n_replicates * 96 > target_plate.num_items:
         raise ValueError("Target plate does not have enough wells")
-      await liquid_handler.pick_up_tips96(tip_rack=tips)
+      if not all(tip.has_tip for tip in liquid_handler.head96.values()):
+        await liquid_handler.pick_up_tips96(tip_rack=tips)
       for i in range(n_replicates):
         target_wells = target_plate.get_quadrant(i + 1)
         await liquid_handler.aspirate96(resource=source_plate, volume=transfer_volume)
@@ -105,10 +112,12 @@ async def simple_interplate_transfer(
                 if not hasattr(target_well, attr):
                   setattr(target_well, attr, vars(source_well)[attr])
               setattr(target_well, "replicate", f"{i}")
-      await liquid_handler.drop_tips96(resource=tips)
+      if return_tips:
+        await liquid_handler.drop_tips96(resource=tips)
     else:
       assert target_plate.num_items == source_plate.num_items
-      await liquid_handler.pick_up_tips96(tip_rack=tips)
+      if not all(tip.has_tip for tip in liquid_handler.head96.values()):
+        await liquid_handler.pick_up_tips96(tip_rack=tips)
       await liquid_handler.aspirate96(resource=source_plate, volume=transfer_volume)
       await liquid_handler.dispense96(resource=target_plate, volume=transfer_volume)
       for target_well, source_well in zip(target_plate.get_wells(range(target_plate.num_items)),
@@ -116,54 +125,57 @@ async def simple_interplate_transfer(
               for attr in vars(source_well):
                 if not hasattr(target_well, attr):
                   setattr(target_well, attr, vars(source_well)[attr])
-      await liquid_handler.drop_tips96(resource=tips)
+      if return_tips:
+        await liquid_handler.drop_tips96(resource=tips)
   else:
-    if replicate_axis not in ['x', 'y', 0, 1]:
-      raise ValueError("Invalid replicate axis")
-    if not isinstance(replicate_axis, int):
-      replicate_axis = 0 if replicate_axis == 'x' else 1
-    well_cycle_size = target_plate.num_items_y if replicate_axis == 0 else target_plate.num_items_x
-    source_wells_split = await split_wells_along_columns(_source_wells)
-    source_wells_split_indexes = [[await well_to_int(well, source_plate) for well in wells] \
-      for wells in source_wells_split]
-    transfer_volumes = [[transfer_volume] * len(wells) for wells in source_wells_split]
-    target_well_indexes = [[well_index + (offset * i) \
-      + (n_replicates * j * target_plate.num_items_y) for i,well_index in enumerate(well_indexes)] \
-        for j,well_indexes in enumerate(source_wells_split_indexes)]
-    target_wells: list[list[Well]] = [target_plate[well_indexes] \
-        for well_indexes in target_well_indexes]
-    print(target_well_indexes)
-    if not await plate_sufficient_for_transfer(wells = source_wells_split,
-                                        target_plate = target_plate,
-                                        offset = offset,
-                                        n_replicates = n_replicates,
-                                        replicate_axis = replicate_axis):
-      raise RuntimeError("Target plate not sufficient for transfer")
-    for i, wells in enumerate(source_wells_split):
-      assert isinstance(target_wells[i], list)
-      assert all(isinstance(well, Well) for well in target_wells[i])
-      tips_location = await tip_mapping(tips = tips,
-                                        sources = wells,
-                                        source_plate=source_plate,
-                                        targets = target_wells[i],
-                                        map_tips = "source")
-      await liquid_handler.pick_up_tips(tip_spots = tips_location)
-      for k in range(n_replicates):
-        for target_well, source_well in zip(target_wells[i], wells):
-          for attr in vars(source_well):
-            if not hasattr(target_well, attr):
-              setattr(target_well, attr, vars(source_well)[attr])
-          setattr(target_well, "replicate", f"{k}")
-        await liquid_handler.aspirate(wells,
-                                      vols = transfer_volumes[i],
-                                      mix_vols = transfer_volumes[i] * 10,
-                                      mix_cycles = [mix_cycles])
-        await liquid_handler.dispense(target_wells[i],
-                                      vols = transfer_volumes[i],
-                                      mix_vols = [transfer_volumes[i] * 10],
-                                      mix_cycles = [mix_cycles])
-      if i < len(source_wells) - 1:
-        next_target_wells = [await well_to_int(well, target_plate) for well in target_wells[i]]
-        next_target_wells = [well + well_cycle_size for well in next_target_wells]
-        target_wells[i + 1] = [await plate_idx_to_well(target_plate, well) for well in next_target_wells]
-      await liquid_handler.drop_tips(tip_spots = tips_location)
+    raise NotImplementedError("Use of 8 channel not implemented")
+  
+async def read_plate(liquid_handler: LiquidHandler,
+           plate_reader: PlateReader,
+           plate: Plate,
+           wavelength: int = 580,
+           final_location: Optional[CarrierSite] = None):
+  """
+  Reads the optical density of a plate at a specified wavelength using a plate reader.
+  
+  Parameters:
+    liquid_handler (LiquidHandler): The liquid handler used to move the plate.
+    plate_reader (PlateReader): The plate reader used to read the plate.
+    plate (Plate): The plate to be read.
+    wavelength (int, optional): The wavelength at which to read the plate. Defaults to 580.
+    final_location (Optional[CarrierSite], optional): The final location where the plate will be moved after reading. 
+      If not specified, the plate will be moved to its parent location. Defaults to None.
+  
+  Returns:
+    numpy.ndarray: An array containing the optical density readings of the plate at the specified wavelength.
+  
+  Raises:
+    ValueError: If the final location is not a valid CarrierSite.
+  """
+  if final_location is None:
+    final_location = plate.parent
+  
+  if not isinstance(final_location, CarrierSite):
+    raise ValueError("Invalid final location")
+  
+  await plate_reader.open()
+  await liquid_handler.move_plate(plate,
+                  plate_reader,
+                  pickup_distance_from_top=12.2,
+                  get_direction=GripDirection.FRONT, put_direction=GripDirection.LEFT)
+
+  await plate_reader.close()
+
+  # read the optical depth at 580 nm
+  plate_reading = await plate_reader.read_absorbance(wavelength=wavelength, report="OD")
+  plate_reading = np.asarray(plate_reading)
+
+  await plate_reader.open()
+
+  # move plate out of the plate reader
+  await liquid_handler.move_plate(plate_reader.get_plate(),
+                  final_location,
+                  pickup_distance_from_top=12.2,
+                  get_direction=GripDirection.LEFT, put_direction=GripDirection.FRONT)
+
+  return plate_reading
