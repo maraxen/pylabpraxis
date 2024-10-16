@@ -1,4 +1,23 @@
+from typing import Optional
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.resources import TipRack, Plate, Well
+from praxis.utils.sanitation import liquid_handler_setup_check, coerce_to_list, type_check, \
+  tip_mapping, check_list_length, parse_well_name
 
+
+async def wash_tips96(liquid_handler: LiquidHandler,
+                      tip_racks: list[TipRack],
+                      water_stations: list[Plate],
+                      bleach_station: Plate,
+                      volume: float = 500):
+  for tips in tip_racks:
+      await liquid_handler.pick_up_tips96(tips)
+      await liquid_handler.aspirate96(bleach_station, volume = volume)
+      await liquid_handler.dispense96(bleach_station, volume = volume)
+      for water_station in water_stations:
+        await liquid_handler.aspirate96(water_station, volume = volume)
+        await liquid_handler.dispense96(water_station, volume = volume)
+      await liquid_handler.drop_tips96(tips)
 
 async def split_tips_along_columns(wells: list[Well]) -> list[list[Well]]:
   if not all(isinstance(well, Well) for well in wells):

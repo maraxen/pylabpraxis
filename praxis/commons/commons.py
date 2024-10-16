@@ -1,5 +1,6 @@
 # pylint: disable=unused-import
 # pyright: reportMissingImports=false
+import warnings
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.liquid_handling.backends.hamilton import STAR, Vantage
 from pylabrobot.liquid_handling.backends.chatterbox_backend import ChatterBoxBackend
@@ -16,8 +17,17 @@ from pylabrobot.resources import (TIP_CAR_480_A00,
                                   Deck,
                                   Resource,
                                   Coordinate,
-                                  STARDeck
+                                  STARDeck,
+                                  Plate,
+                                  Container,
+                                  Well,
+                                  Trough
                                   )
+
+from pylabrobot.resources.well import Well, WellBottomType, CrossSectionType
+from pylabrobot.resources.utils import create_ordered_items_2d
+
+from pylabrobot.resources.corning_costar.plates import _compute_volume_from_height_Cos_96_DW_2mL
 from pylabrobot.liquid_handling.liquid_classes.hamilton.star import HighVolumeFilter_Water_DispenseSurface_Empty
 from pylabrobot.pumps import (
   Pump,
@@ -26,36 +36,14 @@ from pylabrobot.pumps import (
   AgrowPumpArray,
   Masterflex
 )
+from pylabrobot.machines import Machine
+from pylabrobot.utils.object_parsing import find_subclass
 from pylabrobot.resources.hamilton.vantage_decks import VantageDeck
 from pylabrobot.pumps.backend import PumpBackend, PumpArrayBackend
-from typing import Union, Optional, Literal
+from typing import Union, Optional, Any, Sequence, Coroutine, Callable
 import json
-
-class NamedPump(Pump):
-  """
-  A pump with a name.
-  """
-  def __init__(self,
-                backend: PumpBackend,
-                size_x: float,
-                size_y: float,
-                size_z: float,
-                name: str,
-                category: Optional[str]=None,
-                model: Optional[str]=None,
-                calibration: Optional[PumpCalibration]=None
-                ):
-    super().__init__(backend=backend,
-                      size_x=size_x,
-                      size_y=size_y,
-                      size_z=size_z,
-                      name=name,
-                      category=category,
-                      model=model) #calibration=calibration)
-    self.calibration = calibration
-
-  def __size__(self):
-    return 1
+from praxis.utils.sanitation import fill_in_defaults
+import asyncio
 
 class NamedPumpArray(PumpArray):
 
@@ -63,7 +51,7 @@ class NamedPumpArray(PumpArray):
   A pump array with a name and channel names for clear coding.
   """
   def __init__(self,
-                backend: PumpBackend,
+                backend: PumpArrayBackend,
                 size_x: float,
                 size_y: float,
                 size_z: float,
@@ -91,31 +79,36 @@ class NamedPumpArray(PumpArray):
       raise ValueError("The pump array must have channel names.")
     if item not in self.channel_names:
       raise ValueError("The channel name is not in the pump array.")
-    return self.channel_names.index(item)
+    return int(self.channel_names.index(item))
 
-  def __size__(self) -> int:
+  def __len__(self) -> int:
     """
     Get the size of the pump array in terms of the number of channels."""
-    size = self.get("num_channels", None)
-    if size is None:
-      if self.channel_names is None:
-        return 0
-      return len(self.channel_names)
-    return size
+    return self.num_channels
 
-  async def serialize(self):
+  def _validate_channel_names(self):
+    """
+    Helper function to validate the channel names.
+    """
+    if self.channel_names is None:
+      return
+    if not self._setup_finished:
+      return
+    if len(self.channel_names) != self.num_channels:
+        raise ValueError("The number of channels does not match the length of channel_names.")
+
+  def serialize(self):
     return {
       **super().serialize(),
-      "calibration": self.calibration,
       "channel_names": self.channel_names,
     }
 
-  def get_channels(self, channels: Union[int, str, list[int, str]]):
+  def get_channels(self, channels: int | str | list[int | str]):
     """
     Get the channels for a pump.
 
     Args:
-      channels (Union[int, str, list[int, str]]): The channels to get.
+      channels (int | str | list[int | str]): The channels to get.
     """
     if not isinstance(channels, list):
       channels = [channels]
@@ -123,223 +116,142 @@ class NamedPumpArray(PumpArray):
       raise ValueError("The channels must be a list of strings or integers.")
     return [self[channel] if isinstance(channel,str) else channel for channel in channels]
 
-class PumpManager:
+  async def setup(self):
+    """
+    Set up the pump array.
+    """
+    await super().setup()
+    if self.channel_names is None:
+      self.channel_names = [f"channel_{i}" for i in range(self.num_channels)]
+    self._validate_channel_names()
+
+class MachineManager(Resource):
+  """
+  A class to handle multiple of the same machine type.
+  """
+  def __init__(self,
+                machines: list[Machine],
+                accepted_types: Optional[type[Machine] | tuple[type[Machine]]] = None):
+    if not all(isinstance(machine, Machine) for machine in machines):
+      raise ValueError("All loaded resources must be of type machine.")
+    if accepted_types is None:
+      accepted_types = type(machines[0])
+    if accepted_types is not None:
+      if not isinstance(accepted_types, tuple):
+        accepted_types = (accepted_types)
+      if not all(isinstance(machine, accepted_types)for machine in machines):
+        raise ValueError("All loaded resources must be of the accepted types.")
+    self.machines = machines
+    self.accepted_types = accepted_types
+    self._names = [machine.name for machine in machines]
+    self._check_names()
+
+  def __repr__(self) -> str:
+    return f"MachineManager(machines={self.machines})"
+
+  def __getitem__(self, item: str) -> Machine:
+    """
+    Get a machine by name.
+    """
+    fetched_machine = list(filter(lambda machine: machine.name == item, self.machines))[0]
+    assert fetched_machine is not None, f"Machine {item} not found"
+    assert isinstance(fetched_machine, Machine), "Machine is not a machine."
+    return fetched_machine
+
+  def __len__(self) -> int:
+    return len(self.machines)
+
+  @property
+  def names(self) -> list[str]:
+    """
+    Get the names of the machines.
+    """
+    return self._names
+
+  async def setup(self):
+    """
+    Set up the machines.
+    """
+    for machine in self.machines:
+      if machine.setup_finished:
+        continue
+      await machine.setup()
+
+  def _check_names(self):
+    """
+    Check the names of the machines for duplicates.
+    """
+    if len(self.names) != len(set(self.names)):
+      raise ValueError("Machine names are not unique.")
+
+  def serialize(self) -> dict:
+    return {"machines": [machine.serialize() for machine in self.machines],
+            "accepted_types": self.accepted_types}
+
+  @classmethod
+  def deserialize(cls, data: dict[str, Any], allow_marshal: bool = False) -> "MachineManager":
+    accepted_types = data.get("accepted_types", Machine)
+    for machine_data in data["machines"]:
+      if not isinstance(machine_data, dict):
+        raise ValueError("Machine data must be a dictionary.")
+      if "type" not in machine_data:
+        raise ValueError("Machine data must have a type.")
+    machine_subclasses = [find_subclass(machine_data["type"], Machine) \
+      for machine_data in data["machines"]]
+    if any(machine_subclass is None for machine_subclass in machine_subclasses):
+      raise ValueError("All machines must be of type Machine.")
+    machines = [machine_subclass.deserialize(machine_data) \
+      for machine_subclass, machine_data in zip(data["machines"], machine_subclasses)]
+    return cls(machines = machines, accepted_types = accepted_types)
+
+  async def __aenter__(self):
+    tasks = [asyncio.create_task(machine.setup() for machine in self.machines)]
+    await asyncio.gather(*tasks)
+    return self
+
+  async def __aexit__(self, exc_type, exc_value, traceback):
+    tasks = [asyncio.create_task(machine.stop() for machine in self.machines)]
+    await asyncio.gather(*tasks)
+
+
+class PumpManager(MachineManager):
   """
   A class to handle pumps.
 
   Args:
     pumps (list[NamedPump, NamedPumpArray]): The pumps to manage.
 
-  Example:
-  ```python
-  agrow_backend = AgrowPumpArray(port="/dev/tty.usbserial-DN02MMWP",unit=1)
-  masterflex_backend = Masterflex(port="/dev/tty.usbserial-DN02MMWP",unit=2)
-  agrow_calibration = PumpCalibration([1]*6)
-  masterflex_calibration = PumpCalibration([1])
-  agrow_channel_names = ["water_in","bleach_in","water_bleach_out","air","bacteria 1","bacteria 2"]
-  pump_handler = PumpHandler(
-                  pumps=[NamedPump(backend=agrow_backend,
-                                  calibration=agrow_calibration,
-                                  name="agrow"),
-                          NamedPump(backend=masterflex_backend,
-                                  calibration=masterflex_calibration,
-                                  name="masterflex")],
-                  )
-  pump_handler.setup_pumps()
-
-  ```
-
   """
-  def __init__(self, pumps: list[NamedPump, NamedPumpArray]):
-    self.pumps = pumps
-    self._len = len(self.backends)
-
-  async def __aenter__(self):
-    await self.setup_pumps()
-    return self
-
-  async def __aexit__(self, exc_type, exc_value, traceback):
-    for pump in self.pumps:
-      await pump.close()
+  def __init__(self,
+                pumps: list[Pump | NamedPumpArray]):
+    assert all(isinstance(pump, Pump | NamedPumpArray) for pump in pumps),\
+      "All pumps must be pumps or pump arrays."
+    super().__init__(machines=pumps, accepted_types=Machine) # type: ignore
+    self._pumps = pumps
 
   def __repr__(self) -> str:
     return f"PumpManager(pumps={self.pumps})"
 
-  def __getitem__(self, item) -> Union[Pump, PumpArray]:
-    return list(filter(lambda pump: pump.name == item, self.pumps))[0]
-
-  @classmethod
-  def from_dict(cls, pump_dict: dict[str,list]) -> "PumpManager":
-    """
-    Create a pump handler from a dictionary.
-
-    Args:
-      pump_dict (dict): A dictionary with keys that are either "pumps" or "backends". If both are
-      included, an error will be raised. If "pumps", the NamedPump and NamedPumpArray objects should
-      be included in a list to be loaded directly. If "backends" is included as a key,
-      "calibrations", "names", and "channel_names" will also be called, with handling for cases
-      where they are not present.
-    """
-    if "backends" in pump_dict.keys() and "pumps" in pump_dict.keys():
-      raise NotImplementedError("Keys include both 'pumps' and 'backends'. \
-                                One or the other is allowed.")
-    if "backends" in pump_dict.keys():
-      calibrations = pump_dict.get("calibrations", [None]*len(pump_dict["backends"]))
-      names = pump_dict.get("names", [str(i) for i in range(len(pump_dict["backends"]))])
-      channel_names = pump_dict.get("channel_names", [None]*len(pump_dict["backends"]))
-      categories = pump_dict.get("categories", [None]*len(pump_dict["backends"]))
-      models = pump_dict.get("models", [None]*len(pump_dict["backends"]))
-      size_xs = pump_dict.get("size_xs", [0]*len(pump_dict["backends"]))
-      size_ys = pump_dict.get("size_ys", [0]*len(pump_dict["backends"]))
-      size_zs = pump_dict.get("size_zs", [0]*len(pump_dict["backends"]))
-      return cls.load_from_lists(backends=pump_dict["backends"],
-                  calibrations=calibrations,
-                  names=names,
-                  channel_names=channel_names,
-                  size_xs=size_xs,
-                  size_ys=size_ys,
-                  size_zs=size_zs,
-                  categories=categories,
-                  models=models)
-    if "pumps" in dict.keys():
-      return cls(pumps=pump_dict["pumps"])
-    else:
-      raise ValueError("The dictionary must include either 'pumps' or 'backends'.")
-
-  @classmethod
-  def from_json(cls, pump_json: str = "pump_handler.json") -> "PumpManager":
-    """
-    Create a pump handler from a json string.
-    """
-    with open(pump_json, "rb") as f:
-      return cls.from_dict(pump_dict=json.loads(f))
-
-  @classmethod
-  def load_from_lists(cls,
-                    backends:list[PumpBackend, PumpArrayBackend],
-                    calibrations: Optional[list[PumpCalibration]] = None ,
-                    names: Optional[list[str]] = None,
-                    channel_names: Optional[list[list[str]]]=None,
-                    size_xs: Optional[list[float]] = None,
-                    size_ys: Optional[list[float]] = None,
-                    size_zs: Optional[list[float]] = None,
-                    models: Optional[list[str]] = None,
-                    categories: Optional[list[str]] = None,
-                    ) -> "PumpManager":
-    """
-    Load the pump handler from lists.
-    Args:
-      backends (list[PumpBackend, PumpArrayBackend]): The pumps to be handled.
-        This can be a single pump, a pump array, or a list of pumps or pump arrays.
-        These should be initialized backends.
-      calibrations (Union[PumpCalibration, list[PumpCalibration]]): The pump calibration.
-        This can be a single pump calibration or a list of pump calibrations.
-      names (Optional[list[str]]): The names of the pumps. This is an optional parameter
-        and should be a list of strings.
-      channel_names (Optional[list[list[str]]]): The names to assign to of the pump channels.
-        This is an optional parameter and can be a list of strings or integers, or a dictionary
-        mapping strings or integers to lists or dictionaries of strings or integers.
-        Ultimately, this should map pump names and individual pump"""
-    if calibrations is None:
-      calibrations = [None]*len(backends)
-    if names is None:
-      names = [str(i) for i in range(len(backends))]
-    if channel_names is None:
-      channel_names = [None]*len(backends)
-    if size_xs is None:
-      size_xs = [0]*len(backends)
-    if size_ys is None:
-      size_ys = [0]*len(backends)
-    if size_zs is None:
-      size_zs = [0]*len(backends)
-    if models is None:
-      models = [None]*len(backends)
-    if categories is None:
-      categories = [None]*len(backends)
-    if len(backends) != len(calibrations) != len(names) != len(channel_names) != len(size_xs) != \
-      len(size_ys) != len(size_zs) != len(models) != len(categories):
-      raise ValueError("Lengths of inputs do not match.")
-    if len(names) != len(set(names)):
-      raise ValueError("The pump names must be unique.")
-    return cls(pumps=[NamedPumpArray(backend=backends[i],
-                                calibration=calibrations[i],
-                                name=names[i],
-                                size_x=size_xs[i],
-                                size_y=size_ys[i],
-                                size_z=size_zs[i],
-                                channel_names=channel_names[i],
-                                model=models[i],
-                                category=categories[i])
-                                if isinstance(backends[i], PumpArrayBackend)
-                                else NamedPump(backend=backends[i],
-                                calibration=calibrations[i],
-                                name=names[i],
-                                size_x=size_xs[i],
-                                size_y=size_ys[i],
-                                size_z=size_zs[i],
-                                model=models[i],
-                                category=categories[i]) for i in range(len(backends))])
-
-  def save_to_json(self, filepath: str = "pump_handler.json"):
-    """
-    Convert the pump handler to a json string and save it.
-    """
-    with open(filepath, "wb") as f:
-      f.write(self._to_json())
-
-  def to_dict(self, as_pump_attributes: bool = False) \
-    -> dict[str, Union[list[NamedPump, NamedPumpArray], dict[str, list]]]:
-    """
-    Convert the pump handler to a dictionary.
-    """
-    if as_pump_attributes:
-      backends, calibrations, names, channel_names, size_xs, size_ys, size_zs, models, \
-        categories = zip(*[(pump.backend, pump.calibration, pump.name, pump.channel_names, \
-                            pump.size_x, pump.size_y, pump.size_z, pump.model, pump.category)
-                for pump in self.pumps])
-      return {"backends": backends,
-      "calibrations": calibrations,
-      "names": names,
-      "channel_names": channel_names,
-      "size_xs": size_xs,
-      "size_ys": size_ys,
-      "size_zs": size_zs,
-      "models": models,
-      "categories": categories}
-    else:
-      return {"pumps": self.pumps}
-
-  def _to_json(self) -> str:
-    """
-    Convert the pump handler to a json string."""
-    return json.dumps(self.to_dict())
+  def __getitem__(self, item) -> Pump | NamedPumpArray:
+    fetched_pump = list(filter(lambda pump: pump.name == item, self.pumps))[0]
+    assert fetched_pump is not None, f"Pump {item} not found"
+    assert isinstance(fetched_pump, (Pump, PumpArray)), "Pump is not a pump or pump array."
+    return fetched_pump
 
   @property
-  def pumps(self) -> list[NamedPump, NamedPumpArray]:
+  def pumps(self) -> list[Pump | NamedPumpArray]:
     """
     Get the pumps.
     """
-    return self._pumps.values()
+    return self._pumps
 
   def __len__(self) -> int:
     return len(self.pumps)
 
-  def __size__(self) -> tuple[str,int]:
-    return ((pump.name, pump.size) for pump in self.pumps)
-
-  async def setup_pumps(self):
-    """
-    Set up the pumps.
-    """
-    for pump in self.pumps:
-      if pump.setup_finished:
-        continue
-      pump.setup()
-
   async def pump_volume(self,
                         pump_name: str,
                         volume: float,
-                        use_channels: Optional[Union[int, str, list[int, str]]] = None,
+                        use_channels: Optional[int | str | list[int | str]] = None,
                         speed: float = 1.0):
     """
     Dispense a volume of liquid from a pump."""
@@ -353,7 +265,7 @@ class PumpManager:
   async def run_for_duration(self,
                             pump_name: str,
                             duration: float,
-                            use_channels: Optional[Union[int, str, list[int, str]]] = None,
+                            use_channels: Optional[int | str | list[int | str]] = None,
                             speed: float = 1.0):
     """
     Run a pump for a duration."""
@@ -364,9 +276,9 @@ class PumpManager:
                               use_channels=use_channels,
                               speed=speed)
 
-  async def run_continously(self,
+  async def run_continuously(self,
                       pump_name: str,
-                      use_channels: Optional[Union[int, str, list[int, str]]] = None,
+                      use_channels: Optional[int | str | list[int | str]] = None,
                       speed: float = 1.0):
     """
     Run a pump continuously."""
@@ -378,12 +290,12 @@ class PumpManager:
 
   async def stop_pump(self,
                       pump_name: str,
-                      use_channels: Optional[Union[int, str, list[int, str]]] = None):
+                      use_channels: Optional[int | str | list[int | str]] = None):
     """
     Stop a pump."""
     pump = self[pump_name]
     await self._process_pump_command(pump=pump,
-                              command=pump.run_continously,
+                              command=pump.run_continuously,
                               speed=0,
                               use_channels=use_channels)
 
@@ -412,15 +324,14 @@ class PumpManager:
     self[pump_name].calibration = calibration
 
   async def _process_pump_command(self,
-                            pump: Union[NamedPump, NamedPumpArray],
-                            command: callable,
-                            **kwargs) -> callable:
+                            pump: Pump | NamedPumpArray,
+                            command: Callable,
+                            **kwargs) -> None:
     """
     Handle the pump command and check if the pump is a pump or a pump array.
     """
-
     match pump:
-      case NamedPump():
+      case Pump():
         kwargs.pop("use_channels", None)
         await command(**kwargs)
       case NamedPumpArray():
@@ -430,42 +341,163 @@ class PumpManager:
         raise ValueError("The pump must be a pump or a pump array.")
 
   async def _load_pump(self,
-                        backend: Union[PumpBackend,PumpArrayBackend],
+                        name: str,
+                        backend: PumpBackend | PumpArrayBackend,
+                        size_x: float = 0,
+                        size_y: float = 0,
+                        size_z: float = 0,
                         calibration: Optional[PumpCalibration]=None,
-                        name: Optional[str]=None,
+                        model: Optional[str]=None,
+                        category: Optional[str]=None,
                         channel_names: Optional[list[str]]=None):
     """
     Load the pump.
     """
+    if name in self.names:
+      raise ValueError(f"The pump {name} already exists.")
     if isinstance(backend, PumpBackend):
-      return NamedPump(backend=backend,
-                        calibration=calibration,
-                        name=name)
+      return Pump(backend=backend,
+                  size_x=size_x,
+                  size_y=size_y,
+                  size_z=size_z,
+                  calibration=calibration,
+                  name=name,
+                  model=model,
+                  category=category)
     else:
       return NamedPumpArray(backend=backend,
+                            size_x=size_x,
+                            size_y=size_y,
+                            size_z=size_z,
                             calibration=calibration,
                             name=name,
+                            model=model,
+                            category=category,
                             channel_names=channel_names)
 
 class StabilizedWells(ResourceStack):
   """
   A stack of resources that are used to stabilize the plate.
   """
-  def __init__(self, name: str):
+  def __init__(self, name: str, **kwargs):
     super().__init__(f"{name}_stack", "z", [
-      Cos_96_DW_2mL(name),
-      Lid(f"{name}_lid", size_x=127.0, size_y=86.0, size_z=9),
+      Plate(
+    name=name,
+    size_x=127.0,
+    size_y=86.0,
+    size_z=43.5,
+    lid=None,
+    model="StabilizedWells",
+    ordered_items=create_ordered_items_2d(Well,
+      num_items_x=12,
+      num_items_y=8,
+      dx=10.0,
+      dy=7.5,
+      dz=1.0,
+      item_dx=9.0,
+      item_dy=9.0,
+      size_x=8.0,
+      size_y=8.0,
+      size_z=42.0,
+      bottom_type=WellBottomType.U,
+      cross_section_type=CrossSectionType.CIRCLE,
+      compute_volume_from_height=_compute_volume_from_height_Cos_96_DW_2mL,
+    ),
+  ),
+      Lid(f"{name}_lid", size_x=127.0, size_y=86.0, size_z=9, nesting_z_height=1.0),
     ])
 
 class BlueBucket(Resource):
   """
   A blue bucket resource for buckets that hold liquid statically on the deck."""
-  def __init__(self, name: str):
+  def __init__(self, name: str, **kwargs):
     super().__init__(name, size_x=123, size_y=82, size_z=75, category="bucket")
 
-class TipWasher(Resource):
+class TipWasherBasin(Container):
+  """
+  A tip washer basin.
+
+  Args:
+    name (str): The name of the tip washer basin.
+    max_volume (float): The maximum volume of the tip washer basin.
+  """
+  def __init__(self, name: str,
+                max_volume: float = 500,
+                pump_lines: list[str] = ["0", "1"]):
+    super().__init__(name,
+                      size_x=111.0,
+                      size_y=70.0,
+                      size_z=77.0, #bottom starts 19 above chassis
+                      max_volume=max_volume
+                      )
+    self.max_volume = 500
+    self.pump_lines = pump_lines
+
+
+class TipWasherChassis(Resource):
+  """
+  A tip washer basin.
+
+  Args:
+    name (str): The name of the tip washer basin.
+    max_volume (float): The maximum volume of the tip washer basin.
+  """
+  def __init__(self, name: str):
+    super().__init__(name,
+                      size_x=135.0,
+                      size_y=179.0,
+                      size_z=22.0, # really 19  mm is the top of the bottom, but I want to allow for a little extra
+                      category="basin_chassis")
+
+class DualTipWasherBasin(ResourceStack):
+  """
+  Two back to back tip washer basins.
+
+  Args:
+    name (str): The name of the dual tip washer stack.
+  """
+  def __init__(self, name: str):
+    super().__init__(name, "y", [
+      Resource(f"{name}_spacer_dual_front", size_x=111.0, size_y=18.0, size_z=77.0),
+      TipWasherBasin(f"{name}_basin1"),
+      Resource(f"{name}_spacer_dual_middle", size_x=111.0, size_y=3.0, size_z=77.0),
+      TipWasherBasin(f"{name}_basin2"),
+      Resource(f"{name}_spacer_dual_back", size_x=111.0, size_y=18.0, size_z=77.0)
+    ])
+
+class CenteredDualTipWasherBasin(ResourceStack):
+  """
+  Two back to back tip washer basins.
+
+  Args:
+    name (str): The name of the dual tip washer stack.
+  """
+  def __init__(self, name: str):
+    super().__init__(name, "x", [
+      Resource(f"{name}_spacer_dual_left", size_x=12.0, size_y=64.0, size_z=77.0),
+      DualTipWasherBasin(name),
+      Resource(f"{name}_spacer_dual_right", size_x=12.0, size_y=64.0, size_z=77.0)
+    ])
+
+class TipWasher(ResourceStack):
   """
   A tip washer resource for washing tips.
   """
   def __init__(self, name: str):
-    super().__init__(name, size_x=1, size_y=1, size_z=1, category="tip_washer")  # TODO: Update the size of the tip washer resource. pylint: disable=line-too-long
+    super().__init__(name, "z", [
+      CenteredDualTipWasherBasin(name),
+      TipWasherChassis(f"{name}_chassis")])
+
+
+class SampleReservoir(Container):
+  """
+  A sample reservoir for holding liquid.
+  """
+  def __init__(self, name: str, max_volume: float = 1000):
+    super().__init__(name, size_x=50, size_y=100, size_z=120, max_volume=1000, category="sample_reservoir")
+    # TODO: figure out how to specify pickup location as in the middle since it is sloped
+    self._is_empty = True
+
+  @property
+  def is_empty(self):
+    return self._is_empty

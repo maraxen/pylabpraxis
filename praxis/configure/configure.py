@@ -1,6 +1,8 @@
+import os
 from os import PathLike
+import tomllib
 import json
-from typing import Union
+from typing import Literal, Any, Optional
 import warnings
 
 from pylabrobot.utils.object_parsing import find_subclass
@@ -27,22 +29,71 @@ class Configuration:
     configuration (dict): The  configuration dictionary.
   """
   def __init__(self, configuration_file: PathLike):
-    self.configuration_file = configuration_file
+    self.supported_extensions = [".json", ".txt", ".toml", ".cfg"]
     if not isinstance(configuration_file, PathLike):
       raise ValueError(f"configuration_file must be a PathLike object, \
                         not {type(configuration_file)}")
-    if not configuration_file.exists():
+    if not os.path.exists(configuration_file):
       raise FileNotFoundError(f"configuration_file {configuration_file} does not exist")
-    if configuration_file.is_dir():
+    if os.path.isdir(configuration_file):
       raise IsADirectoryError(f"configuration_file {configuration_file} is a directory")
-    if configuration_file.suffix != ".json":
-      raise ValueError(f"configuration_file {configuration_file} must be a .json file")
     self.configuration_file = configuration_file
-    with open(self.configuration_file, "rb") as f:
-      self.configuration = json.load(f)
+    self.configuration = self.load_configuration(configuration_file)
+
+  def load_configuration(self, configuration_file: PathLike) -> dict:
+    """
+    Load the configuration from a file.
+
+    Args:
+      configuration_file (PathLike): The path to the configuration file.
+
+    Returns:
+      dict: The configuration.
+    """
+    config_extension = os.path.splitext(configuration_file)[1]
+    if config_extension not in self.supported_extensions:
+      raise ValueError(f"configuration_file {configuration_file} must be a supported file type. \
+                        Supported file types are {self.supported_extensions}")
+    match config_extension:
+      case ".json":
+        return self.load_json(configuration_file)
+      case _:
+        return self.load_toml(configuration_file)
+
+  def load_json(self, configuration_file: PathLike) -> dict:
+    """
+    Load the configuration from a json file.
+
+    Args:
+      configuration_file (PathLike): The path to the configuration file.
+
+    Returns:
+      dict: The configuration.
+    """
+    with open(configuration_file, "rb") as f:
+      config = json.load(f)
+      if not isinstance(config, dict):
+        raise ValueError(f"configuration_file {configuration_file} must be a dictionary.")
+      return config
+
+  def load_toml(self, configuration_file: PathLike) -> dict:
+    """
+    Load the configuration from a toml file.
+
+    Args:
+      configuration_file (PathLike): The path to the configuration file.
+
+    Returns:
+      dict: The configuration.
+    """
+    with open(configuration_file, "rb") as f:
+      return tomllib.load(f)
 
   def __getitem__(self, key):
     return self.configuration[key]
+
+  def __contains__(self, key):
+    return key in self.configuration
 
 
 class LabConfiguration(Configuration):
@@ -56,11 +107,12 @@ class LabConfiguration(Configuration):
   def __init__(self, configuration_file: PathLike):
     super().__init__(configuration_file)
     self.configuration = self.configuration["lab_configuration"]
-    self.resources = self.configuration["resources"]
-    self.members = self.configuration["members"]
-    self.refs = {
+    self.resources: list[dict[str, Any]] = self.configuration["resources"]
+    self._members: dict[str, dict] = self.configuration["members"]
+    self.smtp_server: str = self.configuration["smtp_server"]
+    self.smtp_port: int = self.configuration["smtp_port"]
+    self.refs: dict[str, list] = {
       "liquid_handlers": [],
-      "decks": [],
       "pumps": [],
       "plate_readers": [],
       "plate_hotels": [],
@@ -72,56 +124,51 @@ class LabConfiguration(Configuration):
       "other_machines": [],
       "labware": []
     }
-    self._loaded_machines = []
-    self.unpack_resources()
+    self._loaded_machines: list[Machine] = []
 
   @property
   def liquid_handlers(self) -> list[LiquidHandler]:
-    return self["liquid_handlers"]
-
-  @property
-  def decks(self) -> list[Deck]:
-    return self["decks"]
+    return self["liquid_handlers"] # type: ignore
 
   @property
   def pumps(self) -> list[Pump]:
-    return self["pumps"]
+    return self["pumps"] # type: ignore
 
   @property
   def plate_readers(self) -> list[PlateReader]:
-    return self["plate_readers"]
+    return self["plate_readers"] # type: ignore
 
   @property
   def plate_hotels(self) -> list[Resource]:
-    return self["plate_hotels"]
+    return self["plate_hotels"] # type: ignore
 
   @property
   def heater_shakers(self) -> list[HeaterShaker]:
-    return self["heater_shakers"]
+    return self["heater_shakers"] # type: ignore
 
   @property
   def powder_dispensers(self) -> list[PowderDispenser]:
-    return self["powder_dispensers"]
+    return self["powder_dispensers"] # type: ignore
 
   @property
   def scales(self) -> list[Scale]:
-    return self["scales"]
+    return self["scales"] # type: ignore
 
   @property
   def shakers(self) -> list[Shaker]:
-    return self["shakers"]
+    return self["shakers"] # type: ignore
 
   @property
   def temperature_controllers(self) -> list[TemperatureController]:
-    return self["temperature_controllers"]
+    return self["temperature_controllers"] # type: ignore
 
   @property
   def other_machines(self) -> list[Machine]:
-    return self["other_machines"]
+    return self["other_machines"] # type: ignore
 
   @property
   def labware(self) -> list[Resource]:
-    return self["labware"]
+    return self["labware"] # type: ignore
 
   @property
   def machines(self) -> list[Machine]:
@@ -131,121 +178,114 @@ class LabConfiguration(Configuration):
 
   @property
   def ordered_resources(self) -> list[Resource]:
-    return self.liquid_handlers + self.decks + self.pumps + self.plate_readers + \
+    return self.liquid_handlers + self.pumps + self.plate_readers + \
             self.plate_hotels + self.heater_shakers + self.powder_dispensers + self.scales + \
             self.shakers + self.temperature_controllers + self.other_machines + self.labware
-
-  @property
-  def liquid_handlers_to_use(self) -> list[LiquidHandler]:
-    return [resource for resource in self.liquid_handlers if resource["to_use"]]
-
-  @property
-  def decks_to_use(self) -> list[Deck]:
-    return [resource for resource in self.decks if resource["to_use"]]
-
-  @property
-  def pumps_to_use(self) -> list[Pump]:
-    return [resource for resource in self.pumps if resource["to_use"]]
-
-  @property
-  def plate_readers_to_use(self) -> list[PlateReader]:
-    return [resource for resource in self.plate_readers if resource["to_use"]]
-
-  @property
-  def plate_hotels_to_use(self) -> list[Resource]:
-    return [resource for resource in self.plate_hotels if resource["to_use"]]
-
-  @property
-  def heater_shakers_to_use(self) -> list[HeaterShaker]:
-    return [resource for resource in self.heater_shakers if resource["to_use"]]
-
-  @property
-  def powder_dispensers_to_use(self) -> list[PowderDispenser]:
-    return [resource for resource in self.powder_dispensers if resource["to_use"]]
-
-  @property
-  def scales_to_use(self) -> list[Scale]:
-    return [resource for resource in self.scales if resource["to_use"]]
-
-  @property
-  def shakers_to_use(self ) -> list[Shaker]:
-    return [resource for resource in self.shakers if resource["to_use"]]
-
-  @property
-  def temperature_controllers_to_use(self) -> list[TemperatureController]:
-    return [resource for resource in self.temperature_controllers if resource["to_use"]]
-
-  @property
-  def other_machines_to_use(self) -> list[Machine]:
-    return [resource for resource in self.other_machines if resource["to_use"]]
-
-  @property
-  def labware_to_use(self) -> list[Resource]:
-    return [resource for resource in self.labware if resource["to_use"]]
-
-  @property
-  def machines_to_use(self) -> list[Machine]:
-    return self.liquid_handlers_to_use + self.pumps_to_use + self.plate_readers_to_use + \
-            self.heater_shakers_to_use + self.powder_dispensers_to_use + self.scales_to_use + \
-            self.shakers_to_use + self.temperature_controllers_to_use + self.other_machines_to_use
-
-  @property
-  def ordered_resources_to_use(self) -> list[Resource]:
-    return self.liquid_handlers_to_use + self.decks_to_use + self.pumps_to_use + \
-            self.plate_readers_to_use + self.plate_hotels_to_use + self.heater_shakers_to_use + \
-            self.powder_dispensers_to_use + self.scales_to_use + self.shakers_to_use + \
-            self.temperature_controllers_to_use + self.other_machines_to_use + \
-            self.labware_to_use
 
   @property
   def loaded_machines(self) -> list[Machine]:
     return self._loaded_machines
 
-  def __getitem__(self, key):
+  @property
+  def members(self) -> dict[str, dict]:
+    return self._members
+
+  def __getitem__(self, key) -> list[Any] | dict[str, Any]:
     if key == "resources":
       return self.resources
     if key == "members":
       return self.members
-    return self.refs[key][0]
+    if key == "liquid_handlers":
+      return self.refs["liquid_handlers"]
+    if key == "pumps":
+      return self.refs["pumps"]
+    if key == "plate_readers":
+      return self.refs["plate_readers"]
+    if key == "plate_hotels":
+      return self.refs["plate_hotels"]
+    if key == "heater_shakers":
+      return self.refs["heater_shakers"]
+    if key == "powder_dispensers":
+      return self.refs["powder_dispensers"]
+    if key == "scales":
+      return self.refs["scales"]
+    if key == "shakers":
+      return self.refs["shakers"]
+    if key == "temperature_controllers":
+      return self.refs["temperature_controllers"]
+    if key == "other_machines":
+      return self.refs["other_machines"]
+    if key == "labware":
+      return self.refs["labware"]
+    return self.refs[key]
 
   def _is_machine(self, resource_type: str) -> bool:
-    return issubclass(find_subclass(resource_type, cls=Resource), Machine)
+    subclass = find_subclass(resource_type, cls=Resource)
+    if subclass is None:
+      return False
+    return issubclass(subclass, Machine)
 
-  def unpack_resources(self) -> None:
+  def using(self,
+            using: Optional[Literal["all"] | list[str]] = None) -> None:
+    self.unpack_resources(using=using)
+
+  def specify_deck(self, deck: Deck) -> None:
+    """
+    Specify the deck for the liquid handler.
+    """
+    self.specified_deck = True
+    self.deck = deck
+
+  def unpack_resources(self, using: Optional[Literal["all"] | list[str]]) -> None:
     """
     Unpacks the resources in the configuration file.
     """
-    for index,resource in enumerate(self.resources):
+    if using is None:
+      return
+    for resource in self.resources:
+      if not using == "all" and resource["name"] not in using:
+        continue
       resource_class = find_subclass(resource["type"], cls=Resource)
-      match resource_class():
+      if resource_class is None:
+        raise ValueError(f"Resource {resource['name']} does not have a valid type.")
+      match resource_class:
         case LiquidHandler():
-          self.refs["liquid_handlers"].extend((resource["name"], index))
-        case Deck():
-          self.refs["decks"].extend((resource["name"], index))
+          self.refs["liquid_handlers"].append(LiquidHandler.deserialize(**resource))
         case Pump():
-          self.refs["pumps"].extend((resource["name"], index))
+          self.refs["pumps"].append(Pump.deserialize(**resource))
         case PumpArray():
-          self.refs["pumps"].extend((resource["name"], index))
+          self.refs["pumps"].append(PumpArray.deserialize(**resource))
         case PlateReader():
-          self.refs["plate_readers"].extend((resource["name"], index))
+          self.refs["plate_readers"].append(PlateReader.deserialize(**resource))
         #case PlateHotel():
           #self.plate_hotels.append((resource["name"], index))
         case HeaterShaker():
-          self.refs["heater_shakers"].extend((resource["name"], index))
+          self.refs["heater_shakers"].append(HeaterShaker.deserialize(**resource))
         case PowderDispenser():
-          self.refs["powder_dispensers"].extend((resource["name"], index))
+          self.refs["powder_dispensers"].append(PowderDispenser.deserialize(**resource))
         case Scale():
-          self.refs["scales"].extend((resource["name"], index))
+          self.refs["scales"].append(Scale.deserialize(**resource))
         case Shaker():
-          self.refs["shakers"].extend((resource["name"], index))
+          self.refs["shakers"].append(Shaker.deserialize(**resource))
         case TemperatureController():
-          self.refs["temperature_controllers"].extend((resource["name"], index))
-        case issubclass(resource_class, Machine()):
-          self.refs["other_machines"].extend((resource["name"], index))
+          self.refs["temperature_controllers"].append(TemperatureController.deserialize(**resource))
+        case Machine():
+          self.refs["other_machines"].append(Machine.deserialize(**resource))
         case _:
-          self.refs["labware"].extend((resource["name"], index))
+          self.refs["labware"].append(Resource.deserialize(**resource))
 
-  async def _get_by_resource_type(self, name: str, resource_type: str = "resources") -> Resource:
+  async def _get_by_resource_type(self, name: str,
+                                  resource_type: Literal["resources",
+                                                        "liquid_handlers",
+                                                        "pumps",
+                                                        "plate_readers",
+                                                        "heater_shakers",
+                                                        "powder_dispensers",
+                                                        "scales",
+                                                        "shakers",
+                                                        "temperature_controllers",
+                                                        "other_machines",
+                                                        "labware"] = "resources") -> Resource:
     """
     Get a resource by resource_type.
 
@@ -256,7 +296,7 @@ class LabConfiguration(Configuration):
       list[Resource]: The resources of the given resource_type.
     """
     for resource in self[resource_type]:
-      if resource["name"] == name:
+      if isinstance(resource, Resource) and resource.name == name:
         return resource
     raise ValueError(f"{resource_type.capitalize().replace('_', ' ')[:-1]} {name} not found.")
 
@@ -282,21 +322,12 @@ class LabConfiguration(Configuration):
     Returns:
       LiquidHandler: The liquid handler.
     """
-    return await self._get_by_resource_type(resource_type="liquid_handlers", name=name)
+    resource = await self._get_by_resource_type(resource_type="liquid_handlers", name=name)
+    if isinstance(resource, LiquidHandler):
+      return resource
+    raise ValueError(f"Liquid handler {name} not found.")
 
-  async def get_deck(self, name: str) -> Deck:
-    """
-    Get a deck by name.
-
-    Args:
-      name (str): The name of the deck.
-
-    Returns:
-      Deck: The deck.
-    """
-    return await self._get_by_resource_type(resource_type="decks", name=name)
-
-  async def get_pump(self, name: str) -> Pump:
+  async def get_pump(self, name: str) -> Pump | PumpArray:
     """
     Get a pump by name.
 
@@ -304,9 +335,12 @@ class LabConfiguration(Configuration):
       name (str): The name of the pump.
 
     Returns:
-      Pump: The pump.
+      Pump | PumpArray: The pump.
     """
-    return await self._get_by_resource_type(resource_type="pumps", name=name)
+    resource = await self._get_by_resource_type(resource_type="pumps", name=name)
+    if isinstance(resource, (Pump, PumpArray)):
+      return resource
+    raise ValueError(f"Pump {name} not found.")
 
   async def get_plate_reader(self, name: str) -> PlateReader:
     """
@@ -318,19 +352,10 @@ class LabConfiguration(Configuration):
     Returns:
       PlateReader: The plate reader.
     """
-    return await self._get_by_resource_type(resource_type="plate_readers", name=name)
-
-  async def get_plate_hotel(self, name: str):
-    """
-    Get a plate hotel by name.
-
-    Args:
-      name (str): The name of the plate hotel.
-
-    Returns:
-      PlateHotel: The plate hotel.
-    """
-    return await self._get_by_resource_type(resource_type="plate_hotels", name=name)
+    resource = await self._get_by_resource_type(resource_type="plate_readers", name=name)
+    if isinstance(resource, PlateReader):
+      return resource
+    raise ValueError(f"Plate reader {name} not found.")
 
   async def get_heater_shaker(self, name: str) -> HeaterShaker:
     """
@@ -342,7 +367,10 @@ class LabConfiguration(Configuration):
     Returns:
       HeaterShaker: The heater shaker.
     """
-    return await self._get_by_resource_type(resource_type="heater_shakers", name=name)
+    resource = await self._get_by_resource_type(resource_type="heater_shakers", name=name)
+    if isinstance(resource, HeaterShaker):
+      return resource
+    raise ValueError(f"Heater shaker {name} not found.")
 
   async def get_powder_dispenser(self, name: str) -> PowderDispenser:
     """
@@ -354,7 +382,10 @@ class LabConfiguration(Configuration):
     Returns:
       PowderDispenser: The powder dispenser.
     """
-    return await self._get_by_resource_type(resource_type="powder_dispensers", name=name)
+    resource = await self._get_by_resource_type(resource_type="powder_dispensers", name=name)
+    if isinstance(resource, PowderDispenser):
+      return resource
+    raise ValueError(f"Powder dispenser {name} not found.")
 
   async def get_scale(self, name: str) -> Scale:
     """
@@ -366,7 +397,10 @@ class LabConfiguration(Configuration):
     Returns:
       Scale: The scale.
     """
-    return await self._get_by_resource_type(resource_type="scales", name=name)
+    resource = await self._get_by_resource_type(resource_type="scales", name=name)
+    if isinstance(resource, Scale):
+      return resource
+    raise ValueError(f"Scale {name} not found.")
 
   async def get_shaker(self, name: str) -> Shaker:
     """
@@ -378,7 +412,10 @@ class LabConfiguration(Configuration):
     Returns:
       Shaker: The shaker.
     """
-    return await self._get_by_resource_type(resource_type="shakers", name=name)
+    resource = await self._get_by_resource_type(resource_type="shakers", name=name)
+    if isinstance(resource, Shaker):
+      return resource
+    raise ValueError(f"Shaker {name} not found.")
 
   async def get_temperature_controller(self, name: str) -> TemperatureController:
     """
@@ -390,7 +427,10 @@ class LabConfiguration(Configuration):
     Returns:
       TemperatureController: The temperature controller.
     """
-    return await self._get_by_resource_type(resource_type="temperature_controllers", name=name)
+    resource = await self._get_by_resource_type(resource_type="temperature_controllers", name=name)
+    if isinstance(resource, TemperatureController):
+      return resource
+    raise ValueError(f"Temperature controller {name} not found.")
 
   async def get_other_machine(self, name: str) -> Machine:
     """
@@ -402,7 +442,10 @@ class LabConfiguration(Configuration):
     Returns:
       Machine: The other machine.
     """
-    return await self._get_by_resource_type(resource_type="other_machines", name=name)
+    resource = await self._get_by_resource_type(resource_type="other_machines", name=name)
+    if isinstance(resource, Machine):
+      return resource
+    raise ValueError(f"Machine {name} not found.")
 
   async def get_labware(self, name: str) -> Resource:
     """
@@ -426,14 +469,25 @@ class LabConfiguration(Configuration):
     Returns:
       dict: The member information.
     """
-    for member in self.members:
-      if member["name"] == name:
-        return member
+    for member_name, member_info in self.members.items():
+      if member_name == name:
+        return member_info
     raise ValueError(f"Member {name} not found.")
 
 
-  async def select_resource_of_type(self, selection: list[str], resource_type: str = "resources") \
-      -> list[Resource]:
+  async def select_resource_of_type(self,
+                                    selection: list[str],
+                                    resource_type: Literal["resources",
+                                                        "liquid_handlers",
+                                                        "pumps",
+                                                        "plate_readers",
+                                                        "heater_shakers",
+                                                        "powder_dispensers",
+                                                        "scales",
+                                                        "shakers",
+                                                        "temperature_controllers",
+                                                        "other_machines",
+                                                        "labware"] = "resources") -> list[Resource]:
     """
     Select resources by name.
 
@@ -471,19 +525,8 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_liquid_handler(name) for name in selection]
 
-  async def select_decks(self, selection: list[str]) -> list[Deck]:
-    """
-    Select decks by name.
 
-    Args:
-      selection (list[str]): The names of the decks.
-
-    Returns:
-      list[Deck]: The selected decks.
-    """
-    return [await self.get_deck(name) for name in selection]
-
-  async def select_pumps(self, selection: list[str]) -> list[Pump]:
+  async def select_pumps(self, selection: list[str]) -> list[Pump | PumpArray]:
     """
     Select pumps by name.
 
@@ -506,18 +549,6 @@ class LabConfiguration(Configuration):
       list[PlateReader]: The selected plate readers.
     """
     return [await self.get_plate_reader(name) for name in selection]
-
-  async def select_plate_hotels(self, selection: list[str]) -> list[Resource]:
-    """
-    Select plate hotels by name.
-
-    Args:
-      selection (list[str]): The names of the plate hotels.
-
-    Returns:
-      list[PlateHotel]: The selected plate hotels.
-    """
-    return [await self.get_plate_hotel(name) for name in selection]
 
   async def select_heater_shakers(self, selection: list[str]) -> list[HeaterShaker]:
     """
@@ -604,171 +635,11 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_labware(name) for name in selection]
 
-  async def _to_be_used(self, resource_type: str, name: str) -> None:
-    """
-    Use a resource by name.
-
-    Args:
-      resource_type (str): The resource_type of the resource.
-      name (str): The name of the resource.
-    """
-    resource = self._get_by_resource_type(resource_type=resource_type, name=name)
-    resource["to_use"] = True
-
-  async def specify_resources_to_use(self,
-                            selection: Union[list[str], Resource],
-                            resource_types: Union[list[str], str] = "resources") -> None:
-    """
-    Use resources by name.
-
-    Args:
-      resource_types (Union[list[str], str]): The resource_types of the resources.
-      selection (list[str]): The names of the resources.
-    """
-    if isinstance(resource_types, str):
-      resource_types = [resource_types] * len(selection)
-    if len(selection) != len(resource_types):
-      raise ValueError("selection and resource_types must have the same length")
-    if isinstance(selection, Resource):
-      selection = [selection.name]
-    for name, resource_type in zip(selection, resource_types):
-      await self._to_be_used(resource_type=resource_type, name=name)
-
-  async def specify_liquid_handlers_to_use(self, selection: Union[list[str], LiquidHandler]) \
-      -> None:
-    """
-    Use liquid handlers by name.
-
-    Args:
-      selection (list[str]): The names of the liquid handlers.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="liquid_handlers")
-
-  async def specify_decks_to_use(self, selection: Union[list[str], Deck]) -> None:
-    """
-    Use decks by name.
-
-    Args:
-      selection (list[str]): The names of the decks.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="decks")
-
-  async def specify_pumps_to_use(self, selection: Union[list[str], Pump]) -> None:
-    """
-    Use pumps by name.
-
-    Args:
-      selection (list[str]): The names of the pumps.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="pumps")
-
-  async def specify_plate_readers_to_use(self, selection: Union[list[str], PlateReader]) -> None:
-    """
-    Use plate readers by name.
-
-    Args:
-      selection (list[str]): The names of the plate readers.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="plate_readers")
-
-  async def specify_heater_shakers_to_use(self, selection: Union[list[str], HeaterShaker]) -> None:
-    """
-    Use heater shakers by name.
-
-    Args:
-      selection (list[str]): The names of the heater shakers.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="heater_shakers")
-
-  async def specify_powder_dispensers_to_use(self, selection: Union[list[str], PowderDispenser]) \
-      -> None:
-    """
-    Use powder dispensers by name.
-
-    Args:
-      selection (list[str]): The names of the powder dispensers.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="powder_dispensers")
-
-  async def specify_scales_to_use(self, selection: Union[list[str], Scale]) -> None:
-    """
-    Use scales by name.
-
-    Args:
-      selection (list[str]): The names of the scales.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="scales")
-
-  async def specify_shakers_to_use(self, selection: Union[list[str], Shaker]) -> None:
-    """
-    Use shakers by name.
-
-    Args:
-      selection (list[str]): The names of the shakers.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="shakers")
-
-  async def specify_temperature_controllers_to_use(self,
-                                                    selection: Union[
-                                                      list[str],
-                                                      TemperatureController
-                                                      ]) -> None:
-    """
-    Use temperature controllers by name.
-
-    Args:
-      selection (list[str]): The names of the temperature controllers.
-    """
-    await self.specify_resources_to_use(
-      selection=selection,
-      resource_types="temperature_controllers"
-      )
-
-  async def specify_other_machines_to_use(self, selection: Union[list[str], Machine]) -> None:
-    """
-    Use other machines by name.
-
-    Args:
-      selection (list[str]): The names of the other machines.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="other_machines")
-
-  async def specify_labware_to_use(self, selection: Union[list[str], Resource]):
-    """
-    Use labware by name.
-
-    Args:
-      selection (list[str]): The names of the labware.
-    """
-    await self.specify_resources_to_use(selection=selection, resource_types="labware")
-
-  async def _assign_used_resources_to_deck(self, deck: Deck) -> None:
-    """
-    Assign used resources to a deck.
-
-    Args:
-      deck (Deck): The deck.
-    """
-    for deck_layout in self.decks:
-      for resource in deck_layout.get_all_resources():
-        if resource["location"] is None:
-          if not self._is_machine(resource["type"]):
-            raise ValueError(f"Resource {resource['name']} is not a machine and must have a \
-                              location specified.")
-          continue
-        deck_resource = deck.get_resource(resource["name"])
-        config_resource = await self._get_by_resource_type(resource["name"], resource["type"])
-        for attr in resource.__dict__:
-          if attr == "location":
-            continue
-          setattr(deck_resource, attr, config_resource[attr])
-
-  async def has_all_specified_resources(self, resources: list[Resource]) -> tuple[bool, str]:
+  def has_all_specified_resources(self, resources: list[str]) -> bool:
     """
     Checks that all specified resources are in the lab configuration.
     """
-    return [resource["name"] if not any(resource["name"] == lab_resource["name"] \
-        for lab_resource in self.resources) else True for resource in resources]
+    return all(resource in self.resources for resource in resources)
 
   async def _load_machine(self, machine: Machine) -> None:
     """
@@ -779,14 +650,6 @@ class LabConfiguration(Configuration):
     """
     self._loaded_machines.append(machine)
 
-  async def update_deck_layouts(self) -> None:
-    """
-    Update the deck layouts. Use this after you update resources referenced in the deck layouts in
-    the configuration file.
-    """
-    for deck in self.decks:
-      await self._assign_used_resources_to_deck(deck)
-
   async def save_configuration(self, configuration_file: PathLike) -> None:
     """
     Save the configuration to a file.
@@ -794,8 +657,22 @@ class LabConfiguration(Configuration):
     Args:
       configuration_file (PathLike): The path to the configuration file.
     """
-    with open(configuration_file, "wb") as f:
+    with open(configuration_file, "ws") as f:
       json.dump(self.configuration, f, indent=4)
+
+
+  async def align_states(self) -> None:
+    """
+    Scaffold function. Eventually this should check that the machines in use are aligned by having
+    the align method set a state in the PLR object.
+    """
+    for machine in self._loaded_machines:
+      if machine == self.liquid_handlers[0]:
+        continue
+      machine_state = self.liquid_handlers[0].get_resource(machine.name)
+      for attr in machine_state.__dict__:
+        if getattr(machine, attr) != getattr(machine_state, attr):
+          machine.__dict__[attr] = machine_state.__dict__[attr]
 
   async def _start_machines(self) -> None:
     """
@@ -806,6 +683,7 @@ class LabConfiguration(Configuration):
       await machine.setup()
     while not all(machine.setup_finished for machine in self._loaded_machines):
       await asyncio.sleep(1)
+    self.liquid_handler = self.liquid_handlers[0]
 
   async def _stop_machines(self) -> None:
     """
@@ -818,35 +696,21 @@ class LabConfiguration(Configuration):
       await asyncio.sleep(1)
 
   async def __aenter__(self):
-    for resource in self.resources:
-      if "to_use" not in resource:
-        resource["to_use"] = False
-    if len(self.liquid_handlers_to_use) > 1:
-      raise ValueError("Only one liquid handler is supported at a time.")
-    if len(self.decks_to_use) > 1:
-      raise ValueError("Only one deck is supported at a time.")
-    for liquid_handler in self.liquid_handlers_to_use:
-      liquid_handler = LiquidHandler.deserialize(**liquid_handler)
-      if len(liquid_handler.deck.get_all_resources()) != 0:
-        warnings.warn(
-          message = f"Liquid handler {liquid_handler.name} is not empty. Please load in liquid \
-                      handlers without any resources assigned to the Deck and maintain deck \
-                      layouts separately. This will be deprecated in future versions.",
-          category = ResourceWarning
-          )
-        self.decks_in_use = [liquid_handler.deck]
-      else:
-        liquid_handler.deck = self.decks_to_use[0]
-        await self._assign_used_resources_to_deck(liquid_handler.deck)
-      for machine in self.machines_to_use:
+    if len(self.liquid_handlers) > 1:
+      raise ValueError("Only one liquid handler is supported at a time currently.")
+    for liquid_handler in self.liquid_handlers:
+      if self.specified_deck:
+        liquid_handler.deck = self.deck
+      for machine in self.machines:
         if machine.name == liquid_handler.name:
           machine = liquid_handler
-          self._load_machine(machine)
+          await self._load_machine(machine)
           continue
-        machine_class = find_subclass(machine.type, cls=Machine)
-        machine = machine_class.deserialize(**machine)
-        self._load_machine(machine)
-        self._start_machines()
+        for resource in liquid_handler.deck.get_all_resources():
+          if machine.name == resource:
+            machine = resource if isinstance(resource, Machine) else machine
+            await self._load_machine(machine)
+    await self._start_machines()
     return self
 
   async def __aexit__(self, exc_type, exc_value, traceback):
@@ -866,19 +730,36 @@ class TaskConfiguration(Configuration):
 
 class ExperimentConfiguration(Configuration):
   """
-  Exeriment configuration denoting specific settings for an experiment.
+  Experiment configuration denoting specific settings for an experiment.
+
+  Attributes:
+    configuration_file (PathLike): The path to the configuration toml or json file.
   """
   def __init__(self,
                 configuration_file: PathLike):
     super().__init__(configuration_file)
     self.configuration = self["experiment_configuration"]
-    self._resources = self["resources"]
-    self._parameters = self["parameters"]
-    self._name = self["name"]
-    self._details = self["details"]
-    self._other_args = self["other_args"]
-    self._user = self["user"]
-    self._directory = self["directory"]
+    self._liquid_handler: str = self["liquid_handler"]
+    if self._liquid_handler not in self["machines"]:
+      self["machines"].append(self._liquid_handler)
+    self._machines: list[str] = self["machines"]
+    self._parameters: dict = self["parameters"]
+    self._name: str = self["name"]
+    self._details: str = self["details"]
+    self._description: str = self["description"]
+    self._other_args: dict = self["other_args"]
+    self._user: str = self["user"]
+    self._directory: str = self["directory"]
+    self._deck: str = self["deck"]
+    self.deck = Deck.load_from_json_file(self._deck)
+
+  @property
+  def liquid_handler(self) -> str:
+    return self._liquid_handler
+
+  @property
+  def machines(self) -> list[str]:
+    return self._machines
 
   @property
   def name(self) -> str:
@@ -889,8 +770,8 @@ class ExperimentConfiguration(Configuration):
     return self._details
 
   @property
-  def resources(self) -> list[str]:
-    return self._resources
+  def description(self) -> str:
+    return self._description
 
   @property
   def parameters(self) -> dict:
@@ -901,12 +782,12 @@ class ExperimentConfiguration(Configuration):
     return self._other_args
 
   @property
-  def directory(self) -> PathLike:
+  def directory(self) -> str:
     return self._directory
 
   @property
-  def data_directory(self) -> PathLike:
-    return self._directory / "data"
+  def data_directory(self) -> str:
+    return os.path.join(self._directory, "data")
 
   @property
   def user(self) -> str:

@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages # type: ignore
 
 from praxis.__version__ import __version__
 
@@ -41,6 +41,10 @@ extras_inheco = [
 
 extras_agrow = [
   "pymodbus"
+]
+
+extras_email = [
+  "boto3"
 ]
 
 extras_dev = extras_fw + extras_http + extras_plate_reading + extras_websockets + \

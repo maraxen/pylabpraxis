@@ -15,7 +15,7 @@ from praxis.utils import (
   check_list_length,
   tip_mapping)
 
-async def split_along_columns(resources: list[Resource]) -> list[list[Resource]]:
+async def split_along_columns(resources: list[Container]) -> list[list[Resource]]:
   """
   Splits a list of resources into sublists based on their column indices.
 

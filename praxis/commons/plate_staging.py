@@ -25,6 +25,9 @@ async def plate_idx_to_well(plate: Plate, index: int | str | Well) -> Well:
     raise ValueError("Invalid index type")
   return well
 
+def get_all_wells(plate: Plate) -> list[Well]:
+  return [well for well in plate.get_wells(range(plate.num_items))]
+
 async def well_to_int(well: Well, plate: Plate) -> int:
   column, row = await parse_well_name(well)
   return int((column * plate.num_items_y) + row)
@@ -57,6 +60,12 @@ async def plate_sufficient_for_transfer(wells: list[list[Well]], target_plate: P
     if any(target_plate.num_items_x < len(wells) + (offset * len(wells)) for wells in wells):
       raise ExperimentError("Number of wells exceeds number of columns in target plate")
   return True
+
+async def group_wells_by_variables(wells: list[Well], key: str, variables: list[str]) \
+  -> list[list[Well]]:
+  if not all(isinstance(well, Well) for well in wells):
+    raise ValueError("Invalid well type.")
+  return [[well for well in wells if getattr(well, key, None) == var] for var in variables]
 
 async def well_check(wells: list[int | str | Well] | list[Well],
                       plate: Plate,
@@ -129,35 +138,38 @@ async def simple_interplate_transfer(
         await liquid_handler.drop_tips96(resource=tips)
   else:
     raise NotImplementedError("Use of 8 channel not implemented")
-  
+
 async def read_plate(liquid_handler: LiquidHandler,
            plate_reader: PlateReader,
            plate: Plate,
            wavelength: int = 580,
-           final_location: Optional[CarrierSite] = None):
+           final_location: Optional[CarrierSite | Coordinate] = None):
   """
   Reads the optical density of a plate at a specified wavelength using a plate reader.
-  
+
   Parameters:
     liquid_handler (LiquidHandler): The liquid handler used to move the plate.
     plate_reader (PlateReader): The plate reader used to read the plate.
     plate (Plate): The plate to be read.
     wavelength (int, optional): The wavelength at which to read the plate. Defaults to 580.
-    final_location (Optional[CarrierSite], optional): The final location where the plate will be moved after reading. 
-      If not specified, the plate will be moved to its parent location. Defaults to None.
-  
+    final_location (Optional[CarrierSite], optional): The final location where the plate will be
+    moved after reading.  If not specified, the plate will be moved to its parent location. Defaults to None.
+
   Returns:
     numpy.ndarray: An array containing the optical density readings of the plate at the specified wavelength.
-  
+
   Raises:
     ValueError: If the final location is not a valid CarrierSite.
   """
   if final_location is None:
-    final_location = plate.parent
-  
-  if not isinstance(final_location, CarrierSite):
+    if not isinstance(plate.parent, CarrierSite):
+      final_location = plate.get_absolute_location()
+    else:
+      final_location = plate.parent
+
+  if not isinstance(final_location, (CarrierSite, Coordinate)):
     raise ValueError("Invalid final location")
-  
+
   await plate_reader.open()
   await liquid_handler.move_plate(plate,
                   plate_reader,

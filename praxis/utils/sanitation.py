@@ -2,6 +2,9 @@ from functools import wraps
 from typing import Optional, Literal, Any
 from pylabrobot.resources import TipRack, TipSpot, Well, Container, Plate
 import warnings
+from typing import TypeVar
+
+T = TypeVar("T")
 
 async def well_to_int(well: Well, plate: Plate) -> int:
   column, row = await parse_well_name(well)
@@ -35,7 +38,7 @@ def liquid_handler_setup_check(func):
     return await func(*args, **kwargs)
   return wrapper
 
-async def coerce_to_list(items: list | tuple) -> list:
+async def coerce_to_list(items: list | tuple, target_length: Optional[int]) -> list:
   """
   Coerces the given items into a list.
 
@@ -47,14 +50,46 @@ async def coerce_to_list(items: list | tuple) -> list:
 
   """
   new_items : list = []
+  if target_length is None:
+    target_length = 1
   for item in items:
     if item is None:
       new_items.append(None)
     elif not isinstance(item, (list, tuple)):
-      new_items.append([item])
+      new_items.append([item] * target_length)
     else:
-      new_items.append(item)
+      if len(item) == 1:
+        new_items.append(item * target_length)
+      elif len(item) == target_length:
+        new_items.append(item)
+      else:
+        raise ValueError(f"Expected list of length {target_length} but got list of length \
+          {len(item)}")
   return new_items
+
+async def fill_in_default(val: Optional[list[T]], default: list[T]) -> list[T]:
+  """ Util for converting an argument to the appropriate format for low level methods. """
+  t = type(default[0])
+  # if the val is None, use the default.
+  if val is None:
+    return default
+  # repeat val if it is not a list.
+  if not isinstance(val, list):
+    return [val] * len(default)
+  # if the val is a list, it must be of the correct length.
+  if len(val) != len(default):
+    raise ValueError(f"Value length must equal num operations ({len(default)}), but is {val}")
+  # if the val is a list of the correct length, the values must be of the right type.
+  if not all(isinstance(v, t) for v in val):
+    raise ValueError(f"Value must be a list of {t}, but is {val}")
+  # the value is ready to be used.
+  return val
+
+async def fill_in_defaults(items: list[Optional[list[T]]], defaults: list[list[T]])\
+  -> list[list[T]]:
+  """ Util for converting an argument to the appropriate format for low level methods. """
+  return [await fill_in_default(val, default) for val, default in zip(items, defaults)]
+
 
 async def type_check(items: list, types: list, in_list: bool = False) -> None:
   """
@@ -150,7 +185,7 @@ async def parse_well_str_id(well: str, plate: Plate) -> list[Well]:
 
 async def tip_mapping(tips: TipRack | list[TipSpot],
                       sources: list[Well],
-                      source_plate: Plate, 
+                      source_plate: Plate,
                       target_plate: Optional[Plate] = None,
                       targets: Optional[list[Well]] = None,
                       map_tips: Optional[Literal["source", "target"]] = None) \
