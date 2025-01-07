@@ -1,8 +1,7 @@
-from praxis.configure import LabConfiguration, ExperimentConfiguration
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import os
 from os import PathLike
-from shelve import DbfilenameShelf
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources.deck import Deck
 from pylabrobot.resources import Resource
@@ -10,45 +9,58 @@ import datetime
 import logging
 import json
 import asyncio
+from .parameter import Parameter, ProtocolParameters  # Import ProtocolParameters
+from praxis.configure import LabConfiguration, ProtocolConfiguration
 from praxis.utils.notify import Notifier
+from praxis.utils.state import State
 from praxis.operations import Operation, OperationError, OperationManager
 from pylabrobot.visualizer.visualizer import Visualizer
 from praxis.utils.data import Data
-from typing import Optional, Coroutine, Any, Sequence
+from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING
 
-class Experiment(ABC):
+if TYPE_CHECKING:
+    from ..workcell import Workcell
+    from ..conductor import Conductor
+
+import warnings
+
+class Protocol(ABC):
   """
-  Experiment class to execute the experiment and store the results.
+  Protocol class to execute the protocol and store the results.
 
-  State variables and parameters should never have the same name.
   """
 
   def __init__(
       self,
-      lab_configuration: PathLike,
-      experiment_configuration: PathLike,
-      needed_parameters: dict[str, type],
-      needed_deck_resources: dict[str, type],
-      check_list: list[str]
-  ):
+      protocol_configuration: ProtocolConfiguration,
+      protocol_parameters: ProtocolParameters,
+      needed_deck_resources: dict[str, type] | None,
+      manual_check_list: list[str]):
+
     self.lab_configuration = LabConfiguration(lab_configuration)
-    self.experiment_configuration = ExperimentConfiguration(experiment_configuration)
-    self.deck = self.experiment_configuration.deck
-    self.check_experiment_configuration(needed_parameters, needed_deck_resources)
-    self.parameters = self.experiment_configuration.parameters
-    self.liquid_handler_id = self.experiment_configuration.liquid_handler
-    self.machines = self.experiment_configuration.machines
-    self.directory = self.experiment_configuration.directory
-    self.name = self.experiment_configuration.name
-    self.user = self.experiment_configuration.user
+    self.protocol_configuration = ProtocolConfiguration(protocol_configuration)
+    self.state = State() # TODO: pull from praxis ini
+    self.parameters = self.protocol_configuration.parameters
+    self.uses_deck = not needed_deck_resources is None
+
+    self.decks = self.protocol_configuration.decks
+    if len(self.decks) != len(needed_deck_resources):
+      raise ValueError("Number of decks and needed deck resources must be equal.")
+    self.check_protocol_configuration(needed_deck_resources)
+    self.parameters = self.protocol_configuration.parameters
+    self.machines = self.protocol_configuration.machines
+    self.directory = self.protocol_configuration.directory
+    self.name = self.protocol_configuration.name
+    self.user = self.protocol_configuration.user
     self.user_info = self.lab_configuration.members["users"][self.user]
-    self.description = self.experiment_configuration.description
-    self.data_directory = self.experiment_configuration.data_directory
-    self._lh_state_file = os.path.join(self.directory, self.name, "_lh_state.json")
-    self._lab = None
-    self._liquid_handler = None
-    self._runtime_state: dict = {}
-    self._state_file = os.path.join(self.directory, self.name + ".db")
+    self.description = self.protocol_configuration.description
+    self.data_directory = self.protocol_configuration.data_directory
+    self.liquid_handler_ids = self.protocol_configuration.liquid_handler_ids
+    self.decks = self.protocol_configuration.decks
+    self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
+    if len(self.liquid_handler_ids) != len(self.decks):
+      raise ValueError("Number of liquid handlers and decks must be equal.")
+    self._workcell = None
     self._start_time = datetime.datetime.now()
     self._status = "initializing"
     self._end_time = datetime.datetime.now()
@@ -56,15 +68,15 @@ class Experiment(ABC):
     self._errors: list[Exception] = []
     self._paused = False
     self._failed = False
-    self._common_prompt = "Type command or press enter to resume experiment. Input 'help' to see \
+    self._common_prompt = "Type command or press enter to resume protocol. Input 'help' to see \
                       available commands."
     self._available_commands = {
-        "abort": "Abort the experiment",
-        "pause": "Pause the experiment",
-        "resume": "Resume the experiment",
-        "save": "Save the experiment state",
-        "load": "Load the experiment state",
-        "status": "Get the status of the experiment",
+        "abort": "Abort the protocol",
+        "pause": "Pause the protocol",
+        "resume": "Resume the protocol",
+        "save": "Save the protocol state",
+        "load": "Load the protocol state",
+        "status": "Get the status of the protocol",
         "help": "Get a list of available commands",
     }
     self._visualizer = None
@@ -79,9 +91,6 @@ class Experiment(ABC):
     self.setup_state_file()
     self.setup_data_directory()
     self.create_readme()
-    self.lab_configuration.using(using=self.machines)
-    self.lab_configuration.specify_deck(deck=self.deck)
-
 
   @property
   def paused(self) -> bool:
@@ -140,89 +149,54 @@ class Experiment(ABC):
       return self._visualizer
 
   @property
-  def state_file(self) -> str:
-    return self._state_file
-
-  @property
-  def liquid_handler(self) -> LiquidHandler | None:
-    return self._liquid_handler
-
-  @property
-  def lab(self) -> LabConfiguration | None:
-    return self._lab
-
-  @property
-  def lh_state_file(self) -> str:
-    return self._lh_state_file
+  def lab(self) -> Workcell | None:
+    return self._workcell
 
   def __getitem__(self, key: str) -> Any:
-    if key in self.parameters:
-      return self.parameters[key]
-    if key in self.runtime_state:
-      return self.runtime_state[key]
-    raise KeyError(f"Key {key} not found in parameters or runtime state.")
+    return self.state[self.name][key]
 
   def __setitem__(self, key: str, value: Any) -> None:
-    self.runtime_state[key] = value
-    self.sync_state()
+    self.state[self.name][key] = value
 
   def check_list(self, check_list: list[str]):
     """
-    Remind the user of experiment information before beginning the experiment.
+    Remind the user of protocol information before beginning the protocol.
     """
-    print("Initializing experiment...")
+    print("Initializing protocol...")
     for item in check_list:
       print(f"- {item}")
       input = input("Press any key to continue. Otherwise, press Ctrl+C to exit.")
-    print("All set to begin the experiment.")
+    print("All set to begin the protocol.")
 
-  def check_experiment_configuration(self,
-                                      needed_parameters: dict[str, type],
-                                      needed_deck_resources: dict[str, type]):
+  def check_protocol_configuration(self,
+                                needed_parameters: dict[str, type],
+                                needed_deck_resources: dict[str, type]):
     """
-    Check the experiment configuration for required fields and validate that resources
+    Check the protocol configuration for required fields and validate that resources
     are available in the lab configuration.
 
     Args:
       needed_parameters: A dictionary of needed parameters and their types.
-      needed_deck_resources: A list of needed deck resources.
+      needed_deck_resources: A list of dictionaries denoting needed deck resources.
 
     Raises:
       ValueError: If a parameter is missing or is not of the correct type.
     """
-    if not self.experiment_configuration.name:
-      raise ValueError("Experiment name is required.")
-    if not self.experiment_configuration.description:
-      raise ValueError("Experiment description is required.")
-    if not self.experiment_configuration.user:
-      raise ValueError("Experiment user is required.")
-    if not self.experiment_configuration.directory:
-      raise ValueError("Experiment directory is required.")
-    if not self.experiment_configuration.data_directory:
-      raise ValueError("Experiment data directory is required.")
-    self.check_parameters(needed_parameters)
+    if not self.protocol_configuration.name:
+      raise ValueError("Protocol name is required.")
+    if not self.protocol_configuration.description:
+      raise ValueError("Protocol description is required.")
+    if not self.protocol_configuration.user:
+      raise ValueError("Protocol user is required.")
+    if not self.protocol_configuration.directory:
+      raise ValueError("Protocol directory is required.")
+    if not self.protocol_configuration.data_directory:
+      raise ValueError("Protocol data directory is required.")
     self.check_deck_resources(needed_deck_resources)
 
-  def check_parameters(self, needed_parameters: dict[str, type]):
+  def check_deck_resources(self, needed_deck_resources: dict[str | int, dict[str, type]]): #TODO: figure out best way to have which deck to check specified, probably just a dictionary
     """
-    Check the experiment configuration for required fields.
-
-    Args:
-      needed_parameters: A dictionary of needed parameters and their types.
-
-    Raises:
-      ValueError: If a parameter is missing or is not of the correct type.
-    """
-    for parameter in needed_parameters:
-      if parameter not in self.experiment_configuration.parameters:
-        raise ValueError(f"Missing parameter {parameter}")
-      if not isinstance(self.experiment_configuration[parameter], needed_parameters[parameter]):
-        raise ValueError(f"Parameter {parameter} should be of type {needed_parameters[parameter]}")
-    self._check_parameters(needed_parameters)
-
-  def check_deck_resources(self, needed_deck_resources: dict):
-    """
-    Check that the deck has all the resources needed for the experiment.
+    Check that the deck has all the resources needed for the protocol.
 
     Args:
       needed_deck_resources: A list of needed deck resources as their PLR resource names.
@@ -230,23 +204,41 @@ class Experiment(ABC):
     Raises:
       ValueError: If a component is missing
     """
-    for resource in needed_deck_resources:
-      if not self.deck.has_resource(resource):
-        raise ValueError(f"Deck is missing {resource}")
-      if not isinstance(self.deck.get_resource(resource), needed_deck_resources[resource]):
-        raise ValueError(f"Resource {resource} should be of type {needed_deck_resources[resource]}")
-    self._check_deck_resources(needed_deck_resources)
+
+    errors: list = []
+    if not all(isinstance(deck, Deck) for deck in self.decks):
+      raise ValueError("All decks must be of type Deck.")
+    for deck, resource_set in needed_deck_resources.items():
+      for resource in resource_set:
+        if not isinstance(resource, dict):
+          raise ValueError("Resource must be a dictionary.")
+        if not all(isinstance(key, str) for key in resource.keys()):
+          raise ValueError("Resource keys must be strings.")
+        if not all(isinstance(value, type) for value in resource.values()):
+          raise ValueError("Resource values must be types.")
+        if all(deck.has_resource(resource) for deck in self.decks):
+          raise ValueError(f"All decks have resource {resource}. \
+                            Please assign resources unique names to resources on different decks.")
+        if not any(deck.has_resource(resource) for deck in self.decks):
+          errors.append(f"No deck has needed resource {resource}.")
+        deck_with_resource = [deck.has_resource(resource) for deck in self.decks].index(True)
+        if not isinstance(self.decks[deck_with_resource].get_resource(resource), resource[resource]):
+          errors.append(f"Resource {resource} in deck {deck_with_resource} should be of type \
+            {resource[resource]}.")
+      if errors:
+          raise ValueError("Deck check failed with the following errors:\n" + "\n".join(errors))
+      self._check_deck_resources(needed_deck_resources)
 
   @abstractmethod
   def _check_parameters(self, parameters: dict[str, type]):
     """
-    Check the parameters for the experiment bounded by method specific constraints.
+    Check the parameters for the protocol bounded by method specific constraints.
     """
 
   @abstractmethod
-  def _check_deck_resources(self, needed_deck_resources: dict[str, type]):
+  def _check_deck_resources(self, needed_deck_resources: list[dict[str, type]]):
     """
-    Check that the deck has all the resources needed for the experiment.
+    Check that the deck has all the resources needed for the protocol.
     """
 
   async def update_resource_state(self,
@@ -265,22 +257,6 @@ class Experiment(ABC):
       elif isinstance(resource, str):
         self[resource].update(update)
 
-  def setup_state_file(self):
-    """
-    Check if the state file exists and create it if it does not. If the state file exists, load
-    the state.
-    """
-    persistent_state: DbfilenameShelf = DbfilenameShelf(self.state_file)
-    with persistent_state as state:
-      if "name" not in state:
-        state["name"] = self.name
-        state["status"] = self.status
-        state["start_time"] = self.start_time
-      else:
-        self.already_ran = True
-        self.load_state()
-      self._runtime_state.update(state)
-
   async def setup_data_directory(self):
     """
     Check if the data directory exists and create it if it does not.
@@ -292,21 +268,22 @@ class Experiment(ABC):
 
   async def execute(self):
       """
-      Execute the experiment
+      Execute the protocol
       """
       try:
-        async with self.lab_configuration as lab:  # ensures safety using machines
-          self._lab = lab
-          self._liquid_handler = lab.liquid_handler
-          assert self.liquid_handler is not None, "Liquid handler not set up."
+        wc: Workcell = Workcell(lab_configuration=self.lab_configuration,
+                                      user=self.user,
+                                      using_machines=self.machines)
+        async with wc as workcell:  # ensures safety using machines
+          self._workcell = workcell
           await self._setup()
           if not self.already_ran:
-            for resource in self.liquid_handler.get_all_children():
-              self[resource.name] = {}
-            await self.sync_state()
+            for liquid_handler in self.workcell.liquid_handlers:
+              for resource in liquid_handler.get_all_children():
+                self[resource.name] = {}
           await self._execute()
       except KeyboardInterrupt:
-        await self.sync_state()
+        self.sync_state()
         await self.save_lab_state()
         await self.pause()
       except Exception as e:  # pylint: disable=broad-except
@@ -321,9 +298,9 @@ class Experiment(ABC):
       finally:
         await self.stop()
         if self.failed:
-            print("Experiment failed.")
+            print("Protocol failed.")
         else:
-            print("Experiment completed.")
+            print("Protocol completed.")
 
   async def notify_error(self, error: Exception):
     """
@@ -339,15 +316,15 @@ class Experiment(ABC):
               sender_email=sender_email,
               recipient_phone=user_phone,
               carrier=user_phone_carrier,
-              subject=f"Error in experiment {self.name}",
-              body=f"An error occurred in experiment {self.name}: {error}",
+              subject=f"Error in protocol {self.name}",
+              body=f"An error occurred in protocol {self.name}: {error}",
           )
       if user_email:
         self.emailer.send_email(
             sender_email=sender_email,
             recipient_email=self.user_info["notification_email"],
-            subject=f"Error in experiment {self.name}",
-            body=f"An error occurred in experiment {self.name}: {error}",
+            subject=f"Error in protocol {self.name}",
+            body=f"An error occurred in protocol {self.name}: {error}",
         )
     except Exception as e:
       self.logger.error("Error sending notification: %s", e)
@@ -356,7 +333,7 @@ class Experiment(ABC):
 
   async def stop(self):
     """
-    End the experiment
+    End the protocol
     """
     self._end_time = datetime.datetime.now()
     self._status = "completed"
@@ -364,47 +341,59 @@ class Experiment(ABC):
     self["last_update"] = self.end_time
     self["end_time"] = self.end_time
     await self.sync_state()
-    await self.log("Experiment ended.")
-    self.update_readme("## Experiment Ends", f"- {self.end_time}")
+    await self.log("Protocol ended.")
+    self.update_readme("## Protocol Ends", f"- {self.end_time}")
     await self._stop()
-
-  def sync_state(self):
-    """
-    Sync the state of the experiment
-    """
-    state: DbfilenameShelf
-    with DbfilenameShelf(self.state_file) as state:
-      state.update(self.runtime_state)
 
   async def get_status(self):
       """
-      Get the status of the experiment
+      Get the status of the protocol
       """
-      status_message = f"Experiment Status: {self.status}"
+      status_message = f"Protocol Status: {self.status}"
       print(f"{status_message}")
       await self.log(status_message)
 
+  async def _cleanup(self):
+    """
+    Performs cleanup operations to ensure safety.
+    This method should be called if the protocol is interrupted or fails.
+    """
+    print("Performing cleanup operations...")
+    try:
+        # Example: Turn off all pumps
+        if hasattr(self, "pump_manager"): # Check if it exists
+            await self.pump_manager.stop_all_pumps()
+
+        # Example: Ensure liquid handler is in a safe position
+        if hasattr(self, "liquid_handler") and self.liquid_handler is not None:
+            await self.liquid_handler.move_to_safe_position() # You would define this method in your LiquidHandler class
+
+        # Add more cleanup operations as needed
+
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
   async def pause(self):
     """
-    Pause the experiment.
+    Pause the protocol.
     """
     if not self.paused:
       self._paused = True
       self._status = "paused"
       self["last_status"] = self.status
       self["last_update"] = datetime.datetime.now()
-      print("Experiment paused.")
-      await self.log("Experiment paused.")
-      self.update_readme("## Experiment Pauses", f"- {self.runtime_state['last_update']}")
+      print("Protocol paused.")
+      await self.log("Protocol paused.")
+      self.update_readme("## Protocol Pauses", f"- {self.runtime_state['last_update']}")
       await self._pause()
     else:
-        print("Experiment is already paused.")
+        print("Protocol is already paused.")
     await self.intervene(input(self.common_prompt))
 
   @abstractmethod
   async def _setup(self):
       """
-      Setup the experiment. This should reference the lab configuration to get the necessary
+      Setup the protocol. This should reference the lab configuration to get the necessary
       resources and set them up the deck. You can also set up the visualizer here. You can
       set up deck layout, liquid handlers, and other resources from an existing file, but
       you should pop in the resources from the lab configuration.
@@ -413,13 +402,13 @@ class Experiment(ABC):
   @abstractmethod
   async def _pause(self):
       """
-      Pause the experiment
+      Pause the protocol
       """
 
   async def intervene(self, user_input: str):
       """
-      Intervene in the experiment. This function is called when the user wants to intervene in the
-      experiment. The user can enter commands to pause, resume, save, load, or abort the experiment.
+      Intervene in the protocol. This function is called when the user wants to intervene in the
+      protocol. The user can enter commands to pause, resume, save, load, or abort the protocol.
       Please do not override this function, which should retain united sets of possible interventions.
       Instead, override the _intervene function to add more interventions.
       """
@@ -455,7 +444,7 @@ class Experiment(ABC):
                   await asyncio.sleep(int(time_to_wait))
                   await self.resume()
               elif confirmation == "n":
-                  print("Waiting and resuming the experiment has been cancelled.")
+                  print("Waiting and resuming the protocol has been cancelled.")
                   await self.intervene(input(self.common_prompt))
               else:
                   await self.intervene(confirmation)
@@ -468,83 +457,78 @@ class Experiment(ABC):
 
   async def resume(self):
     """
-    Resume the experiment
+    Resume the protocol
     """
     self._paused = False
     self._status = "running"
     self["last_status"] = self.status
     self["last_update"] = datetime.datetime.now()
-    self.update_readme("## Experiment Resumes", f"- {self.runtime_state['last_update']}")
-    print("Experiment resumed.")
-    await self.log("Experiment resumed.")
+    self.update_readme("## Protocol Resumes", f"- {self.runtime_state['last_update']}")
+    print("Protocol resumed.")
+    await self.log("Protocol resumed.")
     await self._resume()
 
-  async def save_lab_state(self):
+  async def save_state(self):
     """
     Save the lab state
     """
-    if self.liquid_handler is not None:
-      self.liquid_handler.save_state_to_file(f"{self.name}_lh.json")
-      await self.log("Experiment state saved.")
+    await self.workcell.save_state_to_file(self.workcell_state_file)
     await self._save_state()
 
   async def load_state(self):
     """
-    Load the experiment state and lab state.
+    Load the protocol state and lab state.
     """
-    if self.liquid_handler is not None:
-      assert self.lab is not None, "Lab not loaded."
-      self.liquid_handler.load_state_from_file("{self.name}_lh.json") # should this be awaited?
-      await self.lab.align_states()
+    await self.workcell.load_state_from_file(self.workcell_state_file)
     state: DbfilenameShelf
     with DbfilenameShelf(self.state_file) as state:
       self._runtime_state.update(state)
       self._status = state["status"]
       self._start_time = state["start_time"]
-    await self.log("Experiment state loaded.")
+    await self.log("Protocol state loaded.")
     await self._load_state()
 
   async def abort(self):
     """
-    Abort the experiment
+    Abort the protocol
     """
-    await self.log("Aborting experiment.")
+    await self.log("Aborting protocol.")
     await self._abort()
 
   async def log(self, message: str):
-      """
-      Log a message and append it to the readme file.
-      """
-      self.logger.info(message)
-      self.plr_logger.info(message)
+    """
+    Log a message and append it to the readme file.
+    """
+    self.logger.info(message)
+    self.plr_logger.info(message)
 
   async def log_error(self, error: Exception):
-      """
-      Log error and append it to the errors list.
-      """
-      self.logger.error("An error occurred: %s", error)
-      self.plr_logger.error("An experiment error occurred: %s", error)
-      self.update_readme("## Experiment Errors", f"- {error}")
-      self.errors.append(error)
+    """
+    Log error and append it to the errors list.
+    """
+    self.logger.error("An error occurred: %s", error)
+    self.plr_logger.error("An protocol error occurred: %s", error)
+    self.update_readme("## Protocol Errors", f"- {error}")
+    self.errors.append(error)
 
   def start_loggers(self):
     """
     Start the loggers
     """
     logging.basicConfig(
-        filename=os.path.join(self.directory, "experiment.log"),
+        filename=os.path.join(self.directory, "protocol.log"),
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     self.logger = logging.getLogger(__name__)
-    self.logger.info("Experiment %s.", self.name)
-    self.logger.info("Experiment Directory: %s", self.directory)
-    self.logger.info("Experiment State File: %s", self.state_file + ".db")
-    self.logger.info("Experiment Data Directory: %s", self.data_directory)
-    self.logger.info("Experiment start time: %s", self.start_time)
-    self.logger.info("Experiment Name: %s", self.name)
+    self.logger.info("Protocol %s.", self.name)
+    self.logger.info("Protocol Directory: %s", self.directory)
+    self.logger.info("Protocol State File: %s", self.state_file + ".db")
+    self.logger.info("Protocol Data Directory: %s", self.data_directory)
+    self.logger.info("Protocol start time: %s", self.start_time)
+    self.logger.info("Protocol Name: %s", self.name)
     self.plr_logger = logging.getLogger("pylabrobot")
-    self.plr_logger.info("Experiment %s started.", self.name)
+    self.plr_logger.info("Protocol %s started.", self.name)
 
   def create_readme(self):
     """
@@ -555,32 +539,32 @@ class Experiment(ABC):
       with open(self._readme_file, "ws") as f:
         f.write(f"# {self.name}\n\n")
         f.write(f"{self.description}\n\n")
-        f.write("## Experiment Parameters\n\n")
+        f.write("## Protocol Parameters\n\n")
         for key, value in self.parameters.items():
           f.write(f"- {key}: {value}\n")
         f.write("\n")
-        f.write("## Experiment Results\n\n")
+        f.write("## Protocol Results\n\n")
         f.write("No results yet.\n")
         f.write("\n")
-        f.write("## Experiment Errors\n\n")
+        f.write("## Protocol Errors\n\n")
         f.write("No errors yet.\n")
         f.write("\n")
-        f.write("## Experiment Starts\n\n")
+        f.write("## Protocol Starts\n\n")
         f.write("No start time yet.\n")
         f.write("\n")
-        f.write("## Experiment Pauses\n\n")
+        f.write("## Protocol Pauses\n\n")
         f.write("No pause times yet.\n")
         f.write("\n")
-        f.write("## Experiment Resumes\n\n")
+        f.write("## Protocol Resumes\n\n")
         f.write("No resume times yet.\n")
         f.write("\n")
-        f.write("## Experiment Ends\n\n")
+        f.write("## Protocol Ends\n\n")
         f.write("No end time yet.\n")
         f.write("\n")
     else:
       print(f"Readme file already exists at {self._readme_file}.")
       self._check_readme_structure()
-      self.update_readme("## Experiment Starts", f"- {self.start_time}")
+      self.update_readme("## Protocol Starts", f"- {self.start_time}")
 
 
   def _check_readme_structure(self):
@@ -599,13 +583,13 @@ class Experiment(ABC):
         lines=lines,
         headers=[
           f"# {self.name}",
-          "## Experiment Parameters",
-          "## Experiment Results",
-          "## Experiment Errors",
-          "## Experiment Starts",
-          "## Experiment Pauses",
-          "## Experiment Resumes",
-          "## Experiment Ends",
+          "## Protocol Parameters",
+          "## Protocol Results",
+          "## Protocol Errors",
+          "## Protocol Starts",
+          "## Protocol Pauses",
+          "## Protocol Resumes",
+          "## Protocol Ends",
         ],
       ):
         raise ValueError("Readme file is missing proper headers.")
@@ -627,8 +611,6 @@ class Experiment(ABC):
       if header not in lines:
         return False
     return True
-
-
 
   def update_readme(self, section: str, message: str) -> None:
     """
@@ -658,42 +640,42 @@ class Experiment(ABC):
   @abstractmethod
   async def _execute(self):
       """
-      Execute the experiment
+      Execute the protocol
       """
 
   @abstractmethod
   async def _stop(self):
       """
-      Stop the experiment
+      Stop the protocol
       """
 
   @abstractmethod
   async def _intervene(self, user_input: str):
       """
-      Helper function for interventions in the experiment. Please override this function in the
+      Helper function for interventions in the protocol. Please override this function in the
       subclass if you want to add more interventions.
       """
 
   @abstractmethod
   async def _resume(self):
       """
-      Resume the experiment
+      Resume the protocol
       """
 
   @abstractmethod
   async def _save_state(self):
       """
-      Save the experiment state
+      Save the protocol state
       """
 
   @abstractmethod
   async def _load_state(self):
       """
-      Load the experiment state
+      Load the protocol state
       """
 
   @abstractmethod
   async def _abort(self):
       """
-      Abort the experiment.
+      Abort the protocol.
       """

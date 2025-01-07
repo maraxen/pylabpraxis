@@ -21,7 +21,8 @@ from pylabrobot.resources import (TIP_CAR_480_A00,
                                   Plate,
                                   Container,
                                   Well,
-                                  Trough
+                                  Trough,
+                                  ItemizedResource
                                   )
 
 from pylabrobot.resources.well import Well, WellBottomType, CrossSectionType
@@ -45,6 +46,13 @@ import json
 from praxis.utils.sanitation import fill_in_defaults
 import asyncio
 
+from pylabrobot.resources.height_volume_functions import (
+  calculate_liquid_volume_container_2segments_square_vbottom,
+  calculate_liquid_height_in_container_2segments_square_vbottom
+)
+
+from functools import partial
+
 class NamedPumpArray(PumpArray):
 
   """
@@ -52,24 +60,15 @@ class NamedPumpArray(PumpArray):
   """
   def __init__(self,
                 backend: PumpArrayBackend,
-                size_x: float,
-                size_y: float,
-                size_z: float,
-                name: str,
-                category: Optional[str]=None,
-                model: Optional[str]=None,
                 calibration: Optional[PumpCalibration]=None,
+                name: Optional[str]=None,
                 channel_names: Optional[list[str]]=None
                 ):
     super().__init__(backend=backend,
-                      size_x=size_x,
-                      size_y=size_y,
-                      size_z=size_z,
-                      name=name,
-                      category=category,
-                      model=model)
-    self.calibration = calibration
+                      calibration=calibration)
+    self.name = name
     self.channel_names = channel_names
+
 
   def __getitem__(self, item: str) -> int:
     """
@@ -116,7 +115,7 @@ class NamedPumpArray(PumpArray):
       raise ValueError("The channels must be a list of strings or integers.")
     return [self[channel] if isinstance(channel,str) else channel for channel in channels]
 
-  async def setup(self):
+  async def setup(self, **backend_kwargs):
     """
     Set up the pump array.
     """
@@ -143,7 +142,11 @@ class MachineManager(Resource):
         raise ValueError("All loaded resources must be of the accepted types.")
     self.machines = machines
     self.accepted_types = accepted_types
-    self._names = [machine.name for machine in machines]
+    if not all(hasattr(machine, "name") for machine in machines):
+      for i,machine in enumerate(machines):
+        if not hasattr(machine, "name"):
+          setattr(machine, "name", f"machine{i}")
+    self._names = [getattr(machine, "name", f"machine{i}") for i,machine in enumerate(machines)]
     self._check_names()
 
   def __repr__(self) -> str:
@@ -153,7 +156,8 @@ class MachineManager(Resource):
     """
     Get a machine by name.
     """
-    fetched_machine = list(filter(lambda machine: machine.name == item, self.machines))[0]
+    fetched_machine = list(filter(lambda machine: getattr(machine, "name") == item,
+                                  self.machines))[0]
     assert fetched_machine is not None, f"Machine {item} not found"
     assert isinstance(fetched_machine, Machine), "Machine is not a machine."
     return fetched_machine
@@ -162,7 +166,7 @@ class MachineManager(Resource):
     return len(self.machines)
 
   @property
-  def names(self) -> list[str]:
+  def names(self) -> list[str | None]:
     """
     Get the names of the machines.
     """
@@ -233,7 +237,7 @@ class PumpManager(MachineManager):
     return f"PumpManager(pumps={self.pumps})"
 
   def __getitem__(self, item) -> Pump | NamedPumpArray:
-    fetched_pump = list(filter(lambda pump: pump.name == item, self.pumps))[0]
+    fetched_pump = list(filter(lambda pump: getattr(pump, "name", ) == item, self.pumps))[0]
     assert fetched_pump is not None, f"Pump {item} not found"
     assert isinstance(fetched_pump, (Pump, PumpArray)), "Pump is not a pump or pump array."
     return fetched_pump
@@ -343,12 +347,7 @@ class PumpManager(MachineManager):
   async def _load_pump(self,
                         name: str,
                         backend: PumpBackend | PumpArrayBackend,
-                        size_x: float = 0,
-                        size_y: float = 0,
-                        size_z: float = 0,
                         calibration: Optional[PumpCalibration]=None,
-                        model: Optional[str]=None,
-                        category: Optional[str]=None,
                         channel_names: Optional[list[str]]=None):
     """
     Load the pump.
@@ -356,23 +355,13 @@ class PumpManager(MachineManager):
     if name in self.names:
       raise ValueError(f"The pump {name} already exists.")
     if isinstance(backend, PumpBackend):
-      return Pump(backend=backend,
-                  size_x=size_x,
-                  size_y=size_y,
-                  size_z=size_z,
-                  calibration=calibration,
-                  name=name,
-                  model=model,
-                  category=category)
+      pump = Pump(backend=backend, calibration=calibration)
+      setattr(pump, "name", name)
+      return pump
     else:
       return NamedPumpArray(backend=backend,
-                            size_x=size_x,
-                            size_y=size_y,
-                            size_z=size_z,
                             calibration=calibration,
                             name=name,
-                            model=model,
-                            category=category,
                             channel_names=channel_names)
 
 class StabilizedWells(ResourceStack):
@@ -434,70 +423,109 @@ class TipWasherBasin(Container):
     self.pump_lines = pump_lines
 
 
-class TipWasherChassis(Resource):
-  """
-  A tip washer basin.
-
-  Args:
-    name (str): The name of the tip washer basin.
-    max_volume (float): The maximum volume of the tip washer basin.
-  """
-  def __init__(self, name: str):
-    super().__init__(name,
-                      size_x=135.0,
-                      size_y=179.0,
-                      size_z=22.0, # really 19  mm is the top of the bottom, but I want to allow for a little extra
-                      category="basin_chassis")
-
-class DualTipWasherBasin(ResourceStack):
-  """
-  Two back to back tip washer basins.
-
-  Args:
-    name (str): The name of the dual tip washer stack.
-  """
-  def __init__(self, name: str):
-    super().__init__(name, "y", [
-      Resource(f"{name}_spacer_dual_front", size_x=111.0, size_y=18.0, size_z=77.0),
-      TipWasherBasin(f"{name}_basin1"),
-      Resource(f"{name}_spacer_dual_middle", size_x=111.0, size_y=3.0, size_z=77.0),
-      TipWasherBasin(f"{name}_basin2"),
-      Resource(f"{name}_spacer_dual_back", size_x=111.0, size_y=18.0, size_z=77.0)
-    ])
-
-class CenteredDualTipWasherBasin(ResourceStack):
-  """
-  Two back to back tip washer basins.
-
-  Args:
-    name (str): The name of the dual tip washer stack.
-  """
-  def __init__(self, name: str):
-    super().__init__(name, "x", [
-      Resource(f"{name}_spacer_dual_left", size_x=12.0, size_y=64.0, size_z=77.0),
-      DualTipWasherBasin(name),
-      Resource(f"{name}_spacer_dual_right", size_x=12.0, size_y=64.0, size_z=77.0)
-    ])
-
-class TipWasher(ResourceStack):
+class TipWasher(ItemizedResource[Container]): # TODO: change to itemized resource
   """
   A tip washer resource for washing tips.
   """
-  def __init__(self, name: str):
-    super().__init__(name, "z", [
-      CenteredDualTipWasherBasin(name),
-      TipWasherChassis(f"{name}_chassis")])
+  def __init__(self,
+                name: str, basins: list[str],
+                ordered_items: Optional[dict[str, Container]] = None):
+    BOTTOM_LEFT_CORNER_X: float = 14.15
+    BOTTOM_LEFT_CORNER_Y: float = 18.2
+    BASIN_X: float = 108.0
+    BASIN_Y_WITH_EDGE: float = 73.0
+    BASIN_Y: float = 70.0
+    BASIN_Z: float = 68.0
+    BASIN_TO_BOTTOM: float = 23.0
+    OVERALL_X: float = 136.0
+    OVERALL_Y: float = 398.0
+    OVERALL_Z: float = 103.0
+    volume_from_height = lambda h: h * BASIN_X * BASIN_Y
+    height_from_volume = lambda v: v / (BASIN_X * BASIN_Y)
+    if ordered_items is None:
+      ordered_items = create_ordered_items_2d(Container,
+                                              num_items_x=1,
+                                              num_items_y=len(basins),
+                                              dx=BOTTOM_LEFT_CORNER_X,
+                                              dy=BOTTOM_LEFT_CORNER_Y,
+                                              dz=BASIN_TO_BOTTOM,
+                                              item_dx=BASIN_X,
+                                              item_dy=BASIN_Y_WITH_EDGE,
+                                              size_x=BASIN_X,
+                                              size_y=BASIN_Y,
+                                              size_z=BASIN_Z,
+                                              material_z_thickness=BASIN_TO_BOTTOM,
+                                              compute_volume_from_height=volume_from_height,
+                                              compute_height_from_volume=height_from_volume,
+                                              max_volume=BASIN_X * BASIN_Y * BASIN_Z,
+                                              category="tip_washer_basin")
+      for i,(k,v) in enumerate(ordered_items.items()):
+        v.name = basins[i]
+    super().__init__(name=name,
+                      size_x=OVERALL_X,
+                      size_y=OVERALL_Y,
+                      size_z=OVERALL_Z,
+                      ordered_items=ordered_items,
+                      category="tip_washer")
+    self.basins = basins
+
+  @property
+  def num_basins(self) -> int:
+    return len(self.basins)
 
 
-class SampleReservoir(Container):
+class SampleReservoir(ItemizedResource[Container]):
   """
   A sample reservoir for holding liquid.
   """
-  def __init__(self, name: str, max_volume: float = 1000):
-    super().__init__(name, size_x=50, size_y=100, size_z=120, max_volume=1000, category="sample_reservoir")
-    # TODO: figure out how to specify pickup location as in the middle since it is sloped
-    self._is_empty = True
-
-  @property
-  def is_empty(self):
-    return self._is_empty
+  def __init__(self,
+                name: str,
+                container_names: list[str],
+                max_volume: float = 45.0,
+                ordered_items: Optional[dict[str, Container]] = None,
+                category: str = "sample_reservoir"):
+    BOTTOM_LEFT_CORNER_X: float = 27.5
+    BOTTOM_LEFT_CORNER_Y: float = 31.75
+    HOLDER_X: float = 127.0
+    HOLDER_Y: float = 82.5 # 85 individually, 2.5 overlap in mesh for multi
+    HOLDER_Z: float = 110.0
+    BASIN_X: float = 77.0
+    BASIN_Y: float = 27.0
+    BASIN_Z: float = 36.0
+    BASIN_H_PYRAMID: float = 36.0
+    BASIN_H_CUBE: float = 9.5
+    RESERVOIR_HEIGHT: float = 63.0
+    volume_from_height = partial(calculate_liquid_volume_container_2segments_square_vbottom,
+                                  x=BASIN_X,
+                                  y=BASIN_Y,
+                                  h_pyramid=BASIN_H_PYRAMID,
+                                  h_cube=BASIN_H_CUBE)
+    height_from_volume = partial(calculate_liquid_height_in_container_2segments_square_vbottom,
+                                  x=BASIN_X,
+                                  y=BASIN_Y,
+                                  h_pyramid=BASIN_H_PYRAMID,
+                                  h_cube=BASIN_H_CUBE)
+    if ordered_items is None:
+      ordered_items = create_ordered_items_2d(Container,
+                                              num_items_x=1,
+                                              num_items_y=len(container_names),
+                                              dx=BOTTOM_LEFT_CORNER_X,
+                                              dy=BOTTOM_LEFT_CORNER_Y,
+                                              dz=RESERVOIR_HEIGHT,
+                                              item_dx=HOLDER_X,
+                                              item_dy=HOLDER_Y,
+                                              size_x=BASIN_X,
+                                              size_y=BASIN_Y,
+                                              size_z=BASIN_Z,
+                                              compute_volume_from_height=volume_from_height,
+                                              compute_height_from_volume=height_from_volume,
+                                              max_volume=max_volume,
+                                              category=category)
+      for i,(k,v) in enumerate(ordered_items.items()):
+        v.name = container_names[i]
+    super().__init__(name=name,
+                      size_x=HOLDER_X,
+                      size_y=HOLDER_Y * len(container_names),
+                      size_z=HOLDER_Z,
+                      ordered_items=ordered_items,
+                      category=category)

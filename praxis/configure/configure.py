@@ -2,9 +2,13 @@ import os
 from os import PathLike
 import tomllib
 import json
-from typing import Literal, Any, Optional
+from typing import Literal, Any, Optional, cast
 import warnings
+import asyncio
 
+from praxis.protocol.parameter import Parameter, ProtocolParameters
+
+# TODO: add arms
 from pylabrobot.utils.object_parsing import find_subclass
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources.resource import Resource
@@ -18,7 +22,13 @@ from pylabrobot.scales import Scale
 from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 
-import asyncio
+from praxis.commons.overrides import patch_subclasses
+
+overrides = patch_subclasses()
+
+for cls_name, override in overrides.items():
+  globals()[cls_name] = override
+
 
 class Configuration:
   """
@@ -106,173 +116,15 @@ class LabConfiguration(Configuration):
   """
   def __init__(self, configuration_file: PathLike):
     super().__init__(configuration_file)
-    self.configuration = self.configuration["lab_configuration"]
+    if "lab_configuration" not in self.configuration:
+      raise ValueError("Configuration file must have a lab_configuration key. Structure must be \
+                        {\"lab_configuration\": {\"resources\": [], \"members\": {}, ...}}")
+    self.configuration: dict[str, Any] = self.configuration["lab_configuration"]
     self.resources: list[dict[str, Any]] = self.configuration["resources"]
-    self._members: dict[str, dict] = self.configuration["members"]
+    self.machines: list[dict[str, Any]] = self.configuration["machines"]
+    self.members: dict[str, dict] = self.configuration["members"]
     self.smtp_server: str = self.configuration["smtp_server"]
     self.smtp_port: int = self.configuration["smtp_port"]
-    self.refs: dict[str, list] = {
-      "liquid_handlers": [],
-      "pumps": [],
-      "plate_readers": [],
-      "plate_hotels": [],
-      "heater_shakers": [],
-      "powder_dispensers": [],
-      "scales": [],
-      "shakers": [],
-      "temperature_controllers": [],
-      "other_machines": [],
-      "labware": []
-    }
-    self._loaded_machines: list[Machine] = []
-
-  @property
-  def liquid_handlers(self) -> list[LiquidHandler]:
-    return self["liquid_handlers"] # type: ignore
-
-  @property
-  def pumps(self) -> list[Pump]:
-    return self["pumps"] # type: ignore
-
-  @property
-  def plate_readers(self) -> list[PlateReader]:
-    return self["plate_readers"] # type: ignore
-
-  @property
-  def plate_hotels(self) -> list[Resource]:
-    return self["plate_hotels"] # type: ignore
-
-  @property
-  def heater_shakers(self) -> list[HeaterShaker]:
-    return self["heater_shakers"] # type: ignore
-
-  @property
-  def powder_dispensers(self) -> list[PowderDispenser]:
-    return self["powder_dispensers"] # type: ignore
-
-  @property
-  def scales(self) -> list[Scale]:
-    return self["scales"] # type: ignore
-
-  @property
-  def shakers(self) -> list[Shaker]:
-    return self["shakers"] # type: ignore
-
-  @property
-  def temperature_controllers(self) -> list[TemperatureController]:
-    return self["temperature_controllers"] # type: ignore
-
-  @property
-  def other_machines(self) -> list[Machine]:
-    return self["other_machines"] # type: ignore
-
-  @property
-  def labware(self) -> list[Resource]:
-    return self["labware"] # type: ignore
-
-  @property
-  def machines(self) -> list[Machine]:
-    return self.liquid_handlers + self.pumps + self.plate_readers + self.heater_shakers + \
-            self.powder_dispensers + self.scales + self.shakers + self.temperature_controllers + \
-            self.other_machines
-
-  @property
-  def ordered_resources(self) -> list[Resource]:
-    return self.liquid_handlers + self.pumps + self.plate_readers + \
-            self.plate_hotels + self.heater_shakers + self.powder_dispensers + self.scales + \
-            self.shakers + self.temperature_controllers + self.other_machines + self.labware
-
-  @property
-  def loaded_machines(self) -> list[Machine]:
-    return self._loaded_machines
-
-  @property
-  def members(self) -> dict[str, dict]:
-    return self._members
-
-  def __getitem__(self, key) -> list[Any] | dict[str, Any]:
-    if key == "resources":
-      return self.resources
-    if key == "members":
-      return self.members
-    if key == "liquid_handlers":
-      return self.refs["liquid_handlers"]
-    if key == "pumps":
-      return self.refs["pumps"]
-    if key == "plate_readers":
-      return self.refs["plate_readers"]
-    if key == "plate_hotels":
-      return self.refs["plate_hotels"]
-    if key == "heater_shakers":
-      return self.refs["heater_shakers"]
-    if key == "powder_dispensers":
-      return self.refs["powder_dispensers"]
-    if key == "scales":
-      return self.refs["scales"]
-    if key == "shakers":
-      return self.refs["shakers"]
-    if key == "temperature_controllers":
-      return self.refs["temperature_controllers"]
-    if key == "other_machines":
-      return self.refs["other_machines"]
-    if key == "labware":
-      return self.refs["labware"]
-    return self.refs[key]
-
-  def _is_machine(self, resource_type: str) -> bool:
-    subclass = find_subclass(resource_type, cls=Resource)
-    if subclass is None:
-      return False
-    return issubclass(subclass, Machine)
-
-  def using(self,
-            using: Optional[Literal["all"] | list[str]] = None) -> None:
-    self.unpack_resources(using=using)
-
-  def specify_deck(self, deck: Deck) -> None:
-    """
-    Specify the deck for the liquid handler.
-    """
-    self.specified_deck = True
-    self.deck = deck
-
-  def unpack_resources(self, using: Optional[Literal["all"] | list[str]]) -> None:
-    """
-    Unpacks the resources in the configuration file.
-    """
-    if using is None:
-      return
-    for resource in self.resources:
-      if not using == "all" and resource["name"] not in using:
-        continue
-      resource_class = find_subclass(resource["type"], cls=Resource)
-      if resource_class is None:
-        raise ValueError(f"Resource {resource['name']} does not have a valid type.")
-      match resource_class:
-        case LiquidHandler():
-          self.refs["liquid_handlers"].append(LiquidHandler.deserialize(**resource))
-        case Pump():
-          self.refs["pumps"].append(Pump.deserialize(**resource))
-        case PumpArray():
-          self.refs["pumps"].append(PumpArray.deserialize(**resource))
-        case PlateReader():
-          self.refs["plate_readers"].append(PlateReader.deserialize(**resource))
-        #case PlateHotel():
-          #self.plate_hotels.append((resource["name"], index))
-        case HeaterShaker():
-          self.refs["heater_shakers"].append(HeaterShaker.deserialize(**resource))
-        case PowderDispenser():
-          self.refs["powder_dispensers"].append(PowderDispenser.deserialize(**resource))
-        case Scale():
-          self.refs["scales"].append(Scale.deserialize(**resource))
-        case Shaker():
-          self.refs["shakers"].append(Shaker.deserialize(**resource))
-        case TemperatureController():
-          self.refs["temperature_controllers"].append(TemperatureController.deserialize(**resource))
-        case Machine():
-          self.refs["other_machines"].append(Machine.deserialize(**resource))
-        case _:
-          self.refs["labware"].append(Resource.deserialize(**resource))
 
   async def _get_by_resource_type(self, name: str,
                                   resource_type: Literal["resources",
@@ -285,7 +137,8 @@ class LabConfiguration(Configuration):
                                                         "shakers",
                                                         "temperature_controllers",
                                                         "other_machines",
-                                                        "labware"] = "resources") -> Resource:
+                                                        "labware"] = "resources") \
+                                                          -> Resource | Machine:
     """
     Get a resource by resource_type.
 
@@ -296,11 +149,11 @@ class LabConfiguration(Configuration):
       list[Resource]: The resources of the given resource_type.
     """
     for resource in self[resource_type]:
-      if isinstance(resource, Resource) and resource.name == name:
+      if isinstance(resource, Resource | Machine) and getattr(resource, "name") == name:
         return resource
     raise ValueError(f"{resource_type.capitalize().replace('_', ' ')[:-1]} {name} not found.")
 
-  async def get_resource(self, name: str) -> Resource:
+  async def get_resource(self, name: str) -> Resource | Machine:
     """
     Get a resource by name.
 
@@ -447,7 +300,7 @@ class LabConfiguration(Configuration):
       return resource
     raise ValueError(f"Machine {name} not found.")
 
-  async def get_labware(self, name: str) -> Resource:
+  async def get_labware(self, name: str) -> Resource | Machine:
     """
     Get a labware by name.
 
@@ -474,7 +327,6 @@ class LabConfiguration(Configuration):
         return member_info
     raise ValueError(f"Member {name} not found.")
 
-
   async def select_resource_of_type(self,
                                     selection: list[str],
                                     resource_type: Literal["resources",
@@ -487,7 +339,8 @@ class LabConfiguration(Configuration):
                                                         "shakers",
                                                         "temperature_controllers",
                                                         "other_machines",
-                                                        "labware"] = "resources") -> list[Resource]:
+                                                        "labware"] = "resources") \
+                                                          -> list[Resource | Machine]:
     """
     Select resources by name.
 
@@ -501,7 +354,7 @@ class LabConfiguration(Configuration):
     return [await self._get_by_resource_type(resource_type=resource_type, name=name) for name in \
             selection]
 
-  async def select_resources(self, selection: list[str]) -> list[Resource]:
+  async def select_resources(self, selection: list[str]) -> list[Resource | Machine]:
     """
     Select resources by name.
 
@@ -524,7 +377,6 @@ class LabConfiguration(Configuration):
       list[LiquidHandler]: The selected liquid handlers.
     """
     return [await self.get_liquid_handler(name) for name in selection]
-
 
   async def select_pumps(self, selection: list[str]) -> list[Pump | PumpArray]:
     """
@@ -623,7 +475,7 @@ class LabConfiguration(Configuration):
     """
     return [await self.get_other_machine(name) for name in selection]
 
-  async def select_labware(self, selection: list[str]) -> list[Resource]:
+  async def select_labware(self, selection: list[str]) -> list[Resource | Machine]:
     """
     Select labware by name.
 
@@ -641,15 +493,6 @@ class LabConfiguration(Configuration):
     """
     return all(resource in self.resources for resource in resources)
 
-  async def _load_machine(self, machine: Machine) -> None:
-    """
-    Load machine to loaded machines.
-
-    Args:
-      machine (Machine): The machine.
-    """
-    self._loaded_machines.append(machine)
-
   async def save_configuration(self, configuration_file: PathLike) -> None:
     """
     Save the configuration to a file.
@@ -660,77 +503,9 @@ class LabConfiguration(Configuration):
     with open(configuration_file, "ws") as f:
       json.dump(self.configuration, f, indent=4)
 
-
-  async def align_states(self) -> None:
-    """
-    Scaffold function. Eventually this should check that the machines in use are aligned by having
-    the align method set a state in the PLR object.
-    """
-    for machine in self._loaded_machines:
-      if machine == self.liquid_handlers[0]:
-        continue
-      machine_state = self.liquid_handlers[0].get_resource(machine.name)
-      for attr in machine_state.__dict__:
-        if getattr(machine, attr) != getattr(machine_state, attr):
-          machine.__dict__[attr] = machine_state.__dict__[attr]
-
-  async def _start_machines(self) -> None:
-    """
-    Scaffold function. Eventually this should check that the machines in use are started by having
-    the start method set a state in the PLR object.
-    """
-    for machine in self._loaded_machines:
-      await machine.setup()
-    while not all(machine.setup_finished for machine in self._loaded_machines):
-      await asyncio.sleep(1)
-    self.liquid_handler = self.liquid_handlers[0]
-
-  async def _stop_machines(self) -> None:
-    """
-    Scaffold function. Eventually this should check that the machines in use are stopped by having
-    the stop method set a state in the PLR object.
-    """
-    for machine in self._loaded_machines:
-      await machine.stop()
-    while all(machine.setup_finished for machine in self._loaded_machines):
-      await asyncio.sleep(1)
-
-  async def __aenter__(self):
-    if len(self.liquid_handlers) > 1:
-      raise ValueError("Only one liquid handler is supported at a time currently.")
-    for liquid_handler in self.liquid_handlers:
-      if self.specified_deck:
-        liquid_handler.deck = self.deck
-      for machine in self.machines:
-        if machine.name == liquid_handler.name:
-          machine = liquid_handler
-          await self._load_machine(machine)
-          continue
-        for resource in liquid_handler.deck.get_all_resources():
-          if machine.name == resource:
-            machine = resource if isinstance(resource, Machine) else machine
-            await self._load_machine(machine)
-    await self._start_machines()
-    return self
-
-  async def __aexit__(self, exc_type, exc_value, traceback):
-    await self._stop_machines()
-
-class TaskConfiguration(Configuration):
+class ProtocolConfiguration(Configuration):
   """
-  Task configuration denoting specific settings for a task.
-
-  Attributes:
-    configuration_file (PathLike): The path to the configuration json file.
-    configuration (dict): The  configuration dictionary.
-  """
-  def __init__(self, configuration_file: PathLike):
-    super().__init__(configuration_file)
-    self.configuration = self.configuration["task_configuration"]
-
-class ExperimentConfiguration(Configuration):
-  """
-  Experiment configuration denoting specific settings for an experiment.
+  Protocol configuration denoting specific settings for a method.
 
   Attributes:
     configuration_file (PathLike): The path to the configuration toml or json file.
@@ -738,28 +513,18 @@ class ExperimentConfiguration(Configuration):
   def __init__(self,
                 configuration_file: PathLike):
     super().__init__(configuration_file)
-    self.configuration = self["experiment_configuration"]
-    self._liquid_handler: str = self["liquid_handler"]
-    if self._liquid_handler not in self["machines"]:
-      self["machines"].append(self._liquid_handler)
-    self._machines: list[str] = self["machines"]
-    self._parameters: dict = self["parameters"]
-    self._name: str = self["name"]
-    self._details: str = self["details"]
-    self._description: str = self["description"]
-    self._other_args: dict = self["other_args"]
-    self._user: str = self["user"]
+    self.configuration = self["method_configuration"]
+    self.machines: list[str | int] = cast(list, self["machines"])
+    self.liquid_handler_ids = cast(list[str | int], self["liquid_handler_ids"])
+    self._name: str = cast(str, self["name"])
+    self._details: str = cast(str, self["details"])
+    self._description: str = cast(str, self["description"])
+    self._other_args: dict = cast(dict, self["other_args"])
+    self._user: str = cast(str, self["user"])
     self._directory: str = self["directory"]
     self._deck: str = self["deck"]
-    self.deck = Deck.load_from_json_file(self._deck)
-
-  @property
-  def liquid_handler(self) -> str:
-    return self._liquid_handler
-
-  @property
-  def machines(self) -> list[str]:
-    return self._machines
+    self._parameters: ProtocolParameters = ProtocolParameters(self["parameters"])
+    self.deck = DeckManager(self._deck)
 
   @property
   def name(self) -> str:
@@ -774,7 +539,7 @@ class ExperimentConfiguration(Configuration):
     return self._description
 
   @property
-  def parameters(self) -> dict:
+  def parameters(self) -> ProtocolParameters:
     return self._parameters
 
   @property

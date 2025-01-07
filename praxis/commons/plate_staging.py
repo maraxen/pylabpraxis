@@ -12,6 +12,8 @@ import numpy as np
 from praxis.utils.sanitation import liquid_handler_setup_check, coerce_to_list, type_check, \
   tip_mapping, check_list_length, parse_well_name
 
+# take advantage of traverse and snake
+
 from pylabrobot.utils.positions import string_to_index
 
 async def plate_idx_to_well(plate: Plate, index: int | str | Well) -> Well:

@@ -4,6 +4,7 @@
   "cSpell.words": [
     "agrow",
     "agrowpumps",
+    "aiosqlite",
     "argspec",
     "boto",
     "coro",
@@ -19,6 +20,7 @@
     "jsonmerge",
     "klass",
     "labware",
+    "lastrowid",
     "levelname",
     "mailmymobile",
     "metropcs",
@@ -55,6 +57,7 @@
     "vmobl",
     "vtext",
     "websockets",
+    "workcell",
     "xfinity"
   ],
   "[python]": {

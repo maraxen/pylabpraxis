@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from typing import Optional
-from praxis.experiment import Experiment
+from praxis.protocol import Experiment
 
 class ContinuousExperiment(Experiment, metaclass=ABCMeta):
     """

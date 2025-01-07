@@ -1,1 +1,1 @@
-from .configure import Configuration, LabConfiguration, ExperimentConfiguration
+from .configure import Configuration, LabConfiguration, ProtocolConfiguration
