@@ -8,12 +8,13 @@ from typing import Optional, Dict
 from celery import Celery
 
 from pylabrobot.resources import Deck, Resource, Coordinate
+from ..configure import Configuration
 
 from praxis.protocol import Protocol, initialize_registry, Registry
 from praxis.utils import acquire_lock, release_lock, Data, initialize_data
 
 class Conductor:
-    def __init__(self, config_file):
+    def __init__(self):
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
 
