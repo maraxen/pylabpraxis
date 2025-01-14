@@ -316,7 +316,7 @@ class Protocol(ABC):
       Execute the protocol
       """
       try:
-        wc: Workcell = Workcell(lab_configuration=self.lab_configuration,
+        wc: Workcell = Workcell(configuration=self.conductor.configuration,
                                       user=self.user,
                                       using_machines=self.machines)
         async with wc as workcell:  # ensures safety using machines

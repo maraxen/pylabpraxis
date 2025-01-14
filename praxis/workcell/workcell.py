@@ -27,14 +27,12 @@ class Workcell:
   def __init__(self,
               configuration: PraxisConfiguration,
               user: Optional[str] = None,
-              using_machines: Optional[Literal["all"] | list[str | int]] = None,
-              using_resources: Optional[Literal["all"] | list[str | int]] = None) -> None:
+              using_machines: Optional[Literal["all"] | list[str | int]] = None) -> None:
       self.configuration = configuration
       self.registry = Registry(configuration)
       self.asset_database = AsyncAssetDatabase(configuration.asset_dir)
       self.user = user
       self.using_machines = using_machines
-      self.using_resources = using_resources
       self.refs: dict[str, list] = {
       "liquid_handlers": [],
       "pumps": [],
@@ -80,11 +78,9 @@ class Workcell:
 
   @classmethod
   async def initialize(self, configuration: PraxisConfiguration, user: Optional[str] = None,
-                        using_machines: Optional[Literal["all"] | list[str | int]] = None,
-                        using_resources: Optional[Literal["all"] | list[str | int]] = None) -> Self:
+                        using_machines: Optional[Literal["all"] | list[str | int]] = None) -> Self:
     workcell = Workcell(configuration, user, using_machines)
     await workcell.unpack_machines(using_machines)
-    await workcell.unpack_resources(using_resources)
     return workcell
 
   async def stop(self):
@@ -156,18 +152,6 @@ class Workcell:
     Specify the deck for the liquid handler.
     """
     liquid_handler.deck = deck
-
-  async def unpack_resources(self, using: Optional[Literal["all"] | list[str]]) -> None:
-    """
-    Unpacks the resources in the configuration file.
-    """
-    if using is None:
-      return
-    elif using == "all":
-      self.refs["labware"].extend(await self.asset_database.get_all_resources())
-    else:
-      self.refs["labware"].append(await self.asset_database.get_resources(using))
-    self.children.extend(self.refs["labware"])
 
   async def _load_machine(self, machine: Machine) -> None:
     """
