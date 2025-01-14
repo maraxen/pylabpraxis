@@ -4,7 +4,8 @@ from typing import Dict, Any, List, cast
 import os
 from os import PathLike
 from typing import Dict, Any, cast, Optional, List
-from ..protocol import ProtocolParameters  # Assuming parameter.py is in the same protocol module
+from .protocol import ProtocolParameters
+from .utils import AsyncAssetDatabase
 from pylabrobot.resources import Deck
 from pylabrobot.machines import Machine
 from pylabrobot.liquid_handling import LiquidHandler
@@ -117,7 +118,7 @@ class ProtocolConfiguration:
     Protocol configuration denoting specific settings for a method.
     """
 
-    def __init__(self, config_data: Dict[str, Any], lab_inventory: str, deck_directory: str):
+    def __init__(self, config_data: Dict[str, Any], praxis_config: PraxisConfiguration):
         """
         Initializes the ProtocolConfiguration.
 
@@ -126,8 +127,10 @@ class ProtocolConfiguration:
             deck_directory: The directory where deck layout files are stored.
         """
         self._config_data = config_data
-        self.lab_inventory = lab_inventory
-        self.deck_directory = deck_directory
+        self.praxis_config = praxis_config
+        self.deck_directory = praxis_config.get_section("deck_management").get("deck_directory", "../protocols/decks")
+        self.asset_db_file = praxis_config.get_section("database").get("asset_db", "asset_db.json")
+        self.asset_database = AsyncAssetDatabase(self.asset_db_file)
         self._machines: list[str | int] = cast(list, config_data.get("machines", []))
         self.machines = self._parse_machines()
         self.liquid_handler_id: str = cast(str, config_data.get("liquid_handler_ids",
@@ -143,16 +146,10 @@ class ProtocolConfiguration:
 
     def _parse_machines (self) -> list[str | int]:
         """Parses the machines field from the config data."""
-        self.lab_inventory = self.lab_inventory or "lab_inventory.json"
-        if not os.path.exists(self.lab_inventory):
-            return []
-        with open(self.lab_inventory, "r") as f:
-            try:
-                machines_data = json.load(f)
-            except json.JSONDecodeError:
-                return []
-        if isinstance(machines_data, list):
-            machines = [machine for machine in machines_data if machines.get("machine_id", None)]
+        machines = []
+
+        if isinstance(self._machines, list):
+            machines = [machine for machine in self._machines if machines.get("machine_id", None)]
             machines = [machine for machine in machines if isinstance(machine["machine_id"], str)
                     or isinstance(machine["machine_id"], int)]
         else:
@@ -165,6 +162,8 @@ class ProtocolConfiguration:
             return users_data  # Single user as a string
         elif isinstance(users_data, list):
             return [user for user in users_data if isinstance(user, str)]  # List of users
+        elif isinstance(users_data, dict):
+            return [user for user in users_data.keys() if isinstance(user, str)]
         else:
             return []  # Default to empty list if invalid format
 
