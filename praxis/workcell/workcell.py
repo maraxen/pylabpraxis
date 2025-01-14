@@ -20,14 +20,21 @@ from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 from pylabrobot.serializer import serialize, deserialize
 
+from praxis.configure import PraxisConfiguration
+from praxis.utils import Registry, AsyncAssetDatabase
+
 class Workcell:
   def __init__(self,
-              lab_configuration: LabConfiguration,
+              configuration: PraxisConfiguration,
               user: Optional[str] = None,
-              using_machines: Optional[Literal["all"] | list[str | int]] = None) -> None:
-      self.lab_configuration = lab_configuration
+              using_machines: Optional[Literal["all"] | list[str | int]] = None,
+              using_resources: Optional[Literal["all"] | list[str | int]] = None) -> None:
+      self.configuration = configuration
+      self.registry = Registry(configuration)
+      self.asset_database = AsyncAssetDatabase(configuration.asset_dir)
       self.user = user
       self.using_machines = using_machines
+      self.using_resources = using_resources
       self.refs: dict[str, list] = {
       "liquid_handlers": [],
       "pumps": [],
@@ -42,9 +49,7 @@ class Workcell:
       }
       self._loaded_machines: list[Machine] = []
       self.children: list[Resource | Machine] = []
-      self.resources = self.lab_configuration.resources
-      self.unpack_machines(using_machines)
-      self.unpack_resources(using="all")
+      self._assets = []
       self.liquid_handlers = self.refs["liquid_handlers"]
       self.pumps = self.refs["pumps"]
       self.plate_readers = self.refs["plate_readers"]
@@ -66,6 +71,21 @@ class Workcell:
     for machine in self.all_machines:
       await self._load_machine(machine)
     await self._start_machines()
+
+  async def initialize_dependencies(self,
+                                    using_machines: Optional[Literal["all"] | list[str | int]] = None,
+                                    using_resources: Optional[Literal["all"] | list[str | int]] = None) -> None:
+    await self.unpack_machines(using_machines)
+    await self.unpack_resources(using_resources)
+
+  @classmethod
+  async def initialize(self, configuration: PraxisConfiguration, user: Optional[str] = None,
+                        using_machines: Optional[Literal["all"] | list[str | int]] = None,
+                        using_resources: Optional[Literal["all"] | list[str | int]] = None) -> Self:
+    workcell = Workcell(configuration, user, using_machines)
+    await workcell.unpack_machines(using_machines)
+    await workcell.unpack_resources(using_resources)
+    return workcell
 
   async def stop(self):
     await self._stop_machines()
@@ -98,52 +118,37 @@ class Workcell:
       return self.refs["labware"]
     return self.refs[key]
 
-  def _is_machine(self, resource_type: str) -> bool:
-    subclass = find_subclass(resource_type, cls=Machine)
-    if subclass is None:
-      return False
-    return issubclass(subclass, Machine)
-
-  def unpack_machines(self, using: Optional[Literal["all"] | list[str | int]]) -> None:
-    def get_machine_id(machine: dict[str, Any]) -> str:
-      return cast(str, machine.get("name", machine.get("device_id", machine.get("serial_number", \
-              machine.get("port", None)))))
+  async def unpack_machines(self, using: Optional[Literal["all"] | list[str | int]]) -> None:
     if using is None:
       return
-    for machine in self.lab_configuration.machines:
-      id = get_machine_id(machine)
-      if id is None:
-        raise ValueError(f"Machine {machine} does not have a device_id, serial_number, port or \
-          name.")
-      if using == "all" or id in using:
-        machine_class = find_subclass(machine["type"], cls=Machine)
-        if machine_class is None:
-          raise ValueError(f"Machine {machine} does not have a valid type.")
-        match machine_class:
-          case LiquidHandler():
-            self.refs["liquid_handlers"].append(LiquidHandler.deserialize(**machine))
-          case Pump():
-            self.refs["pumps"].append(Pump.deserialize(**machine))
-          case PumpArray():
-            self.refs["pumps"].append(PumpArray.deserialize(**machine))
-          case PlateReader():
-            self.refs["plate_readers"].append(PlateReader.deserialize(**machine))
-          case HeaterShaker():
-            self.refs["heater_shakers"].append(HeaterShaker.deserialize(**machine))
-          case PowderDispenser():
-            self.refs["powder_dispensers"].append(PowderDispenser.deserialize(**machine))
-          case Scale():
-            self.refs["scales"].append(Scale.deserialize(**machine))
-          case Shaker():
-            self.refs["shakers"].append(Shaker.deserialize(**machine))
-          case TemperatureController():
-            self.refs["temperature_controllers"].append(
-              TemperatureController.deserialize(**machine)
-              )
-          case Machine():
-            self.refs["other_machines"].append(Machine.deserialize(**machine))
-          case _:
-            raise ValueError(f"Machine {machine['device_id']} does not have a valid type.")
+    if using == "all":
+      machines = await self.asset_database.get_all_machines()
+    else:
+      machines = await self.asset_database.get_machines(using)
+    for machine in machines:
+      match machine.__class__:
+        case LiquidHandler():
+          self.refs["liquid_handlers"].append(machine)
+        case Pump():
+          self.refs["pumps"].append(machine)
+        case PumpArray():
+          self.refs["pumps"].append(machine)
+        case PlateReader():
+          self.refs["plate_readers"].append(machine)
+        case HeaterShaker():
+          self.refs["heater_shakers"].append(machine)
+        case PowderDispenser():
+          self.refs["powder_dispensers"].append(machine)
+        case Scale():
+          self.refs["scales"].append(machine)
+        case Shaker():
+          self.refs["shakers"].append(machine)
+        case TemperatureController():
+          self.refs["temperature_controllers"].append(machine)
+        case Machine():
+          self.refs["other_machines"].append(machine)
+        case _:
+          raise ValueError(f"Machine does not have a valid type.")
     self.children.extend(self.all_machines)
 
   def specify_deck(self, liquid_handler: LiquidHandler, deck: Deck) -> None:
@@ -152,19 +157,16 @@ class Workcell:
     """
     liquid_handler.deck = deck
 
-  def unpack_resources(self, using: Optional[Literal["all"] | list[str]]) -> None:
+  async def unpack_resources(self, using: Optional[Literal["all"] | list[str]]) -> None:
     """
     Unpacks the resources in the configuration file.
     """
     if using is None:
       return
-    for resource in self.resources:
-      if not using == "all" and resource["name"] not in using:
-        continue
-      resource_class = find_subclass(resource["type"], cls=Resource)
-      if resource_class is None:
-        raise ValueError(f"Resource {resource['name']} does not have a valid type.")
-      self.refs["labware"].append(Resource.deserialize(**resource))
+    elif using == "all":
+      self.refs["labware"].extend(await self.asset_database.get_all_resources())
+    else:
+      self.refs["labware"].append(await self.asset_database.get_resources(using))
     self.children.extend(self.refs["labware"])
 
   async def _load_machine(self, machine: Machine) -> None:
@@ -199,7 +201,7 @@ class Workcell:
   def serialize(self) -> dict:
     """Serialize this."""
     return {
-      "lab_configuration": self.lab_configuration.configuration,
+      "configuration": self.configuration,
       "user": self.user,
       "using_machines": self.using_machines
     }

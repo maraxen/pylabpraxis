@@ -1,3 +1,3 @@
 from .protocol import *
-from .registry import *
+from ..utils.protocol_registry import *
 from .standalone_task import *

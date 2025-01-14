@@ -11,7 +11,7 @@ from pylabrobot.resources import Deck, Resource, Coordinate
 from ..configure import Configuration
 
 from praxis.protocol import Protocol, initialize_registry, Registry
-from praxis.utils import acquire_lock, release_lock, Data, initialize_data
+from praxis.utils import acquire_lock, release_lock, Data, initialize_data, AsyncAssetDatabase
 
 class Orchestrator:
     def __init__(self, config_file: str):
@@ -21,11 +21,13 @@ class Orchestrator:
         self.protocols: Dict[str, Protocol] = {}
         self.registry = Registry(config_file=config_file)
 
-        self.lab_configuration = self.config["lab_configuration"]
-
         # Load baseline decks
         self.baseline_decks: Dict[str, Deck] = {}
         self._load_baseline_decks()
+
+        self.asset_database = AsyncAssetDatabase(self.config["database"]["asset_dir"])
+
+        self.workcell_states = {}
 
         # Configure Celery
         self.celery_app = Celery('tasks', broker=self.config['celery']['broker'], backend=self.config['celery']['backend'])
@@ -131,7 +133,7 @@ class Orchestrator:
       protocol = Protocol(# ... other config ...,
                           deck=merged_deck,
                           registry=self.registry,
-                          conductor=self,
+                          orchestrator=self,
                           liquid_handler_name=liquid_handler_name)
       self.protocols[protocol.name] = protocol
 
@@ -145,15 +147,11 @@ class Orchestrator:
         """
         Creates a new Protocol instance based on the provided configuration.
         """
-        protocol = Protocol(experiment_configuration=protocol_config, #TODO: adapt to new config
-                             lab_configuration=protocol_config,
-                             needed_deck_resources=protocol_config,
-                             check_list=protocol_config,
-                             experiment_registry=self.protocol_registry)
+        protocol = Protocol(protocol_configuration=protocol_config, registry=self.registry, orchestrator=self)
         self.protocols[protocol.name] = protocol
         return protocol
 
-    def start_protocol(self, protocol_name):
+    def start_protocol_thread(self, protocol_name):
         """
         Starts a protocol in a separate thread.
         """
@@ -165,7 +163,7 @@ class Orchestrator:
         else:
             raise ValueError(f"Protocol '{protocol_name}' not found.")
 
-    def run_protocol(self, protocol_name):
+    def run_protocol_async(self, protocol_name):
         """
         Retrieves and runs a protocol in an asynchronous manner.
         """

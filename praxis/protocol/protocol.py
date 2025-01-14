@@ -28,6 +28,51 @@ class Protocol(ABC):
   """
   Protocol class to execute the protocol and store the results.
 
+  Args:
+    protocol_configuration: The protocol configuration
+    state: The state of the protocol
+    manual_check_list: A list of manual checks to perform before starting the protocol
+    orchestrator: The orchestrator
+    deck: The deck to use
+    user_info: The user information
+
+  Methods:
+    check_list: Remind the user of protocol information before beginning the protocol.
+    check_protocol_configuration: Check the protocol configuration for required fields and validate that resources are available in the lab configuration.
+    check_deck_resources: Check that the deck has all the resources needed for the protocol.
+    update_resource_state: Update the state of a resource with the given dictionary.
+    setup_data_directory: Check if the data directory exists and create it if it does not.
+    execute: Execute the protocol
+    notify_error: Email and text user about error.
+    stop: End the protocol
+    get_status: Get the status of the protocol
+    results: Get the results of the protocol
+    errors: Get the errors of the protocol
+    runtime_state: Get the runtime state of the protocol
+    start_time: Get the start time of the protocol
+    end_time: Get the end time of the protocol
+    data: Get the data of the protocol
+    readme_file: Get the readme file of the protocol
+    visualizer: Get the visualizer of the protocol
+    lab: Get the lab of the protocol
+    paused: Get the paused status of the protocol
+    failed: Get the failed status of the protocol
+    available_commands: Get the available commands of the protocol
+    emailer: Get the emailer of the protocol
+    common_prompt: Get the common prompt of the protocol
+    status: Get the status of the protocol
+    start_loggers: Start the loggers
+    create_readme: Create the readme file
+    update_readme: Update the readme file
+    log: Log a message and append it to the readme file
+    log_error: Log error and append it to the errors list
+    start_loggers: Start the loggers
+    create_readme: Create the readme file
+    update_readme: Update the readme file
+    update_readme: Update the readme file
+    _check_readme_structure: Check the structure of the readme file
+    _lines_exist_with_headers: Check if the lines exist with the headers
+
   """
 
   def __init__(
@@ -35,7 +80,7 @@ class Protocol(ABC):
         protocol_configuration: ProtocolConfiguration,
         state: State,
         manual_check_list: list[str],
-        conductor: Orchestrator,
+        orchestrator: Orchestrator,
         deck: Optional[Deck] = None,
         user_info: Optional[dict[str, dict]] = None,
     ):
@@ -46,14 +91,14 @@ class Protocol(ABC):
         self.users = self.protocol_configuration.users
         self.state = state
         self.parameters = self.protocol_configuration.parameters
-        self.conductor = conductor
+        self.conductor = orchestrator
         self.deck = deck  # Store the assigned Deck
         self.liquid_handler = None
         self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
         if protocol_configuration.liquid_handler_id:
-            self.liquid_handler = conductor.get_liquid_handler(self.liquid_handler_id)
+            self.liquid_handler = orchestrator.get_liquid_handler(self.liquid_handler_id)
             self.liquid_handler.deck = deck
-        self.manager = conductor
+        self.manager = orchestrator
         self.protocol_parameters = self.protocol_configuration.parameters # access protocol parameters
         self.check_protocol_configuration()
 
@@ -149,7 +194,7 @@ class Protocol(ABC):
       return self._visualizer
 
   @property
-  def lab(self) -> Workcell | None:
+  def workcell(self) -> Workcell | None:
     return self._workcell
 
   def __getitem__(self, key: str) -> Any:
@@ -263,8 +308,8 @@ class Protocol(ABC):
     """
     if not os.path.exists(self.data_directory):
         os.makedirs(self.data_directory)
-    db_file = os.path.join(self.data_directory, "data.db")
-    self._data = Data(db_file)
+    data_db = os.path.join(self.data_directory, f"{self.name}_data.db")
+    self._data = Data(data_db)
 
   async def execute(self):
       """
@@ -283,7 +328,6 @@ class Protocol(ABC):
                 self[resource.name] = {}
           await self._execute()
       except KeyboardInterrupt:
-        self.sync_state()
         await self.save_lab_state()
         await self.pause()
       except Exception as e:  # pylint: disable=broad-except
@@ -480,11 +524,6 @@ class Protocol(ABC):
     Load the protocol state and lab state.
     """
     await self.workcell.load_state_from_file(self.workcell_state_file)
-    state: DbfilenameShelf
-    with DbfilenameShelf(self.state_file) as state:
-      self._runtime_state.update(state)
-      self._status = state["status"]
-      self._start_time = state["start_time"]
     await self.log("Protocol state loaded.")
     await self._load_state()
 
@@ -498,6 +537,9 @@ class Protocol(ABC):
   async def log(self, message: str):
     """
     Log a message and append it to the readme file.
+
+    Args:
+      message: The message to log
     """
     self.logger.info(message)
     self.plr_logger.info(message)
@@ -505,6 +547,9 @@ class Protocol(ABC):
   async def log_error(self, error: Exception):
     """
     Log error and append it to the errors list.
+
+    Args:
+      error: The error to log
     """
     self.logger.error("An error occurred: %s", error)
     self.plr_logger.error("An protocol error occurred: %s", error)

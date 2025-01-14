@@ -36,7 +36,7 @@ async def initialize_registry(config_file: str="config.ini"):
 class Registry:
     """
     A class that provides a registry for storing and managing protocol metadata and
-    resource usage.
+    asset usage.
 
     Attributes:
         config: A dictionary containing configuration parameters.
@@ -56,11 +56,11 @@ class Registry:
           use.
         get_next_plate_reader_use: Asynchronously retrieves the estimated time for the next plate
           reader use.
-        add_resource: Asynchronously adds a new resource to the registry.
-        is_resource_available: Asynchronously checks if a resource is available.
-        acquire_lock: Asynchronously acquires a lock on a resource.
-        release_lock: Asynchronously releases a lock on a resource.
-        resource_exists: Asynchronously checks if a resource exists in the registry.
+        add_asset: Asynchronously adds a new asset to the registry.
+        is_asset_available: Asynchronously checks if a asset is available.
+        acquire_lock: Asynchronously acquires a lock on a asset.
+        release_lock: Asynchronously releases a lock on a asset.
+        asset_exists: Asynchronously checks if a asset exists in the registry.
         close: Asynchronously closes the connection to the database.
     """
     def __init__(self, config: dict, db_file: str, data_dir: str, conn: aiosqlite.Connection):
@@ -111,9 +111,9 @@ class Registry:
                 )
             """)
             await cursor.execute("""
-                CREATE TABLE IF NOT EXISTS resources (
-                    resource_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    resource_name TEXT UNIQUE NOT NULL,
+                CREATE TABLE IF NOT EXISTS assets (
+                    asset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset_id TEXT UNIQUE NOT NULL,
                     is_available BOOLEAN DEFAULT 1,
                     locked_by_protocol TEXT,
                     locked_by_task TEXT,
@@ -124,18 +124,34 @@ class Registry:
             """)
             await self.conn.commit()
 
-    async def register_protocol(self, protocol_name, user, data_directory, database_file, parameters):
-        start_time = datetime.datetime.now()
-        status = "initializing"
-        parameters_json = json.dumps(parameters)
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("""
-                INSERT INTO protocols_metadata (
-                    protocol_name, start_time, user, status, data_directory, database_file, parameters
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (protocol_name, start_time, user, status, data_directory, database_file, parameters_json))
-            await self.conn.commit()
-            return cursor.lastrowid  # Return the protocol_id
+    async def register_protocol(self,
+                                protocol_name: str,
+                                user: str,
+                                data_directory: str, database_file: str, parameters: dict) -> int:
+      """
+      Asynchronously registers a new protocol.
+
+      Args:
+        protocol_name: The name of the protocol.
+        user: The user who is registering the protocol.
+        data_directory: The directory where data files are stored.
+        database_file: The path to the database file.
+        parameters: A dictionary of parameters for the protocol.
+
+      Returns:
+        The protocol_id of the newly registered protocol.
+      """
+      start_time = datetime.datetime.now()
+      status = "initializing"
+      parameters_json = json.dumps(parameters)
+      async with self.conn.cursor() as cursor:
+          await cursor.execute("""
+              INSERT INTO protocols_metadata (
+                  protocol_name, start_time, user, status, data_directory, database_file, parameters
+              ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          """, (protocol_name, start_time, user, status, data_directory, database_file, parameters_json))
+          await self.conn.commit()
+          return cursor.lastrowid  # Return the protocol_id
 
     async def update_protocol_status(self, protocol_name, status):
         async with self.conn.cursor() as cursor:
@@ -208,32 +224,32 @@ class Registry:
             else:
                 return None
 
-    async def add_resource(self, resource_name: str):
-        """Adds a new resource to the registry."""
+    async def add_asset(self, asset_id: str):
+        """Adds a new asset to the registry."""
         async with self.conn.cursor() as cursor:
             try:
-                await cursor.execute("INSERT INTO resources (resource_name) VALUES (?)", (resource_name,))
+                await cursor.execute("INSERT INTO assets (asset_id) VALUES (?)", (asset_id,))
                 await self.conn.commit()
             except aiosqlite.IntegrityError:
-                print(f"Resource '{resource_name}' already exists.")
+                print(f"Resource '{asset_id}' already exists.")
 
-    async def is_resource_available(self, resource_name: str) -> bool:
-        """Checks if a resource is currently available."""
+    async def is_asset_available(self, asset_id: str) -> bool:
+        """Checks if a asset is currently available."""
         async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT is_available FROM resources WHERE resource_name = ?", (resource_name,))
+            await cursor.execute("SELECT is_available FROM assets WHERE asset_id = ?", (asset_id,))
             row = await cursor.fetchone()
             if row:
                 return bool(row[0])  # Convert from integer (SQLite) to boolean
             else:
-                raise ValueError(f"Resource '{resource_name}' not found.")
+                raise ValueError(f"Resource '{asset_id}' not found.")
 
-    async def acquire_lock(self, resource_name: str, protocol_name: str, task_id: str,
-                     lock_timeout: int = 60, acquire_timeout: Optional[int] = None) -> bool:
+    async def acquire_lock(self, asset_id: str, protocol_name: str, task_id: str,
+                      lock_timeout: int = 60, acquire_timeout: Optional[int] = None) -> bool:
         """
-        Acquires a lock on a resource using both Redis and the database.
+        Acquires a lock on a asset using both Redis and the database.
 
         Args:
-            resource_name: The name of the resource to lock.
+            asset_id: The name of the asset to lock.
             protocol_name: The name of the protocol acquiring the lock.
             task_id: The ID of the task acquiring the lock.
             lock_timeout: The duration of the lock in seconds.
@@ -242,12 +258,12 @@ class Registry:
         Returns:
             True if the lock was acquired, False otherwise.
         """
-        lock_name = f"lock:{resource_name}"
+        lock_name = f"lock:{asset_id}"
         identifier = f"{protocol_name}:{task_id}"
 
-        # Check if the resource exists
-        if not await self.resource_exists(resource_name):
-            await self.add_resource(resource_name)  # Add the resource if it doesn't exist
+        # Check if the asset exists
+        if not await self.asset_exists(asset_id):
+            await self.add_asset(asset_id)  # Add the asset if it doesn't exist
 
         start_time = time.time()
         while True:
@@ -255,15 +271,15 @@ class Registry:
                 async with self.conn.cursor() as cursor:
                     await cursor.execute("BEGIN EXCLUSIVE TRANSACTION")  # Use an exclusive transaction
 
-                    # Check if the resource is available or if the lock has expired
+                    # Check if the asset is available or if the lock has expired
                     await cursor.execute("""
                         SELECT is_available, lock_expires_at
-                        FROM resources
-                        WHERE resource_name = ?
-                    """, (resource_name,))
+                        FROM assets
+                        WHERE asset_id = ?
+                    """, (asset_id,))
                     row = await cursor.fetchone()
                     if not row:
-                        raise ValueError(f"Resource '{resource_name}' not found.")
+                        raise ValueError(f"Resource '{asset_id}' not found.")
 
                     is_available, lock_expires_at_str = row
 
@@ -272,10 +288,10 @@ class Registry:
                         if self.redis_client.set(lock_name, identifier, ex=lock_timeout, nx=True):
                             lock_expires_at = datetime.datetime.now() + datetime.timedelta(seconds=lock_timeout)
                             await cursor.execute("""
-                                UPDATE resources
+                                UPDATE assets
                                 SET is_available = 0, locked_by_protocol = ?, locked_by_task = ?, lock_acquired_at = ?, lock_expires_at = ?
-                                WHERE resource_name = ?
-                            """, (protocol_name, task_id, datetime.datetime.now(), lock_expires_at, resource_name))
+                                WHERE asset_id = ?
+                            """, (protocol_name, task_id, datetime.datetime.now(), lock_expires_at, asset_id))
                             await self.conn.commit()
                             return True
                         else:
@@ -303,44 +319,44 @@ class Registry:
                 await self.conn.rollback()
                 raise e
 
-    async def release_lock(self, resource_name: str, protocol_name: str, task_id: str):
-        """Releases a lock on a resource."""
-        lock_name = f"lock:{resource_name}"
+    async def release_lock(self, asset_id: str, protocol_name: str, task_id: str):
+        """Releases a lock on a asset."""
+        lock_name = f"lock:{asset_id}"
         async with self.conn.cursor() as cursor:
             try:
                 await cursor.execute("BEGIN EXCLUSIVE TRANSACTION")
                 # Verify that the lock is held by the requesting protocol and task
                 await cursor.execute("""
                     SELECT 1
-                    FROM resources
-                    WHERE resource_name = ? AND locked_by_protocol = ? AND locked_by_task = ?
-                """, (resource_name, protocol_name, task_id))
+                    FROM assets
+                    WHERE asset_id = ? AND locked_by_protocol = ? AND locked_by_task = ?
+                """, (asset_id, protocol_name, task_id))
 
                 if await cursor.fetchone():
                     # Release the lock in Redis and the database
                     if self.redis_client.get(lock_name).decode('utf-8') == f"{protocol_name}:{task_id}":
                         self.redis_client.delete(lock_name)
                         await cursor.execute("""
-                            UPDATE resources
+                            UPDATE assets
                             SET is_available = 1, locked_by_protocol = NULL, locked_by_task = NULL, lock_acquired_at = NULL, lock_expires_at = NULL
-                            WHERE resource_name = ?
-                        """, (resource_name,))
+                            WHERE asset_id = ?
+                        """, (asset_id,))
                         await self.conn.commit()
                     else:
                         await self.conn.commit()  # Release the transaction lock
-                        raise ValueError(f"Inconsistent lock state for resource '{resource_name}'. Lock held by another protocol or task.")
+                        raise ValueError(f"Inconsistent lock state for asset '{asset_id}'. Lock held by another protocol or task.")
                 else:
                     await self.conn.commit()  # Release the transaction lock
-                    raise ValueError(f"Lock on resource '{resource_name}' is not held by protocol '{protocol_name}' and task '{task_id}'.")
+                    raise ValueError(f"Lock on asset '{asset_id}' is not held by protocol '{protocol_name}' and task '{task_id}'.")
 
             except Exception as e:
                 await self.conn.rollback()
                 raise e
 
-    async def resource_exists(self, resource_name: str) -> bool:
-        """Checks if a resource exists in the registry."""
+    async def asset_exists(self, asset_id: str) -> bool:
+        """Checks if a asset exists in the registry."""
         async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT 1 FROM resources WHERE resource_name = ?", (resource_name,))
+            await cursor.execute("SELECT 1 FROM assets WHERE asset_id = ?", (asset_id,))
             return await cursor.fetchone() is not None
 
     async def close(self):

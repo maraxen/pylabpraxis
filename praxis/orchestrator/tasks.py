@@ -1,6 +1,6 @@
 from celery import Celery
 import asyncio
-from praxis.orchestrator.conductor import Orchestrator
+from praxis.orchestrator.orchestrator import Orchestrator
 
 # Configure Celery
 celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
