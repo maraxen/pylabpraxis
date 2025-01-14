@@ -95,10 +95,7 @@ class Protocol(ABC):
         self.deck = deck  # Store the assigned Deck
         self.liquid_handler = None
         self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
-        if protocol_configuration.liquid_handler_id:
-            self.liquid_handler = orchestrator.get_liquid_handler(self.liquid_handler_id)
-            self.liquid_handler.deck = deck
-        self.manager = orchestrator
+        self.orchestrator = orchestrator
         self.protocol_parameters = self.protocol_configuration.parameters # access protocol parameters
         self.check_protocol_configuration()
 
@@ -318,20 +315,22 @@ class Protocol(ABC):
       try:
         wc: Workcell = Workcell(configuration=self.conductor.configuration,
                                       user=self.user,
-                                      using_machines=self.machines)
+                                      using_machines=self.machines,
+                                      orchestrator=self.orchestrator,
+                                      filepath=self.workcell_state_file)
+        wc.specify_deck(liquid_handler_id=self.liquid_handler_id, deck=self.deck)
+        await wc.initialize_dependencies()
         async with wc as workcell:  # ensures safety using machines
           self._workcell = workcell
           await self._setup()
           if not self.already_ran:
-            for liquid_handler in self.workcell.liquid_handlers:
-              for resource in liquid_handler.get_all_children():
+            for resource in self.workcell.get_all_children():
                 self[resource.name] = {}
+          asyncio.create_task(self.save_workcell_state())
           await self._execute()
       except KeyboardInterrupt:
-        await self.save_lab_state()
         await self.pause()
       except Exception as e:  # pylint: disable=broad-except
-        await self.save_lab_state()
         self.logger.error("An error occurred: %s", e)
         print(f"An error occurred: {e}")
         self.errors.append(e)
@@ -404,13 +403,9 @@ class Protocol(ABC):
     """
     print("Performing cleanup operations...")
     try:
-        # Example: Turn off all pumps
-        if hasattr(self, "pump_manager"): # Check if it exists
-            await self.pump_manager.stop_all_pumps()
-
         # Example: Ensure liquid handler is in a safe position
         if hasattr(self, "liquid_handler") and self.liquid_handler is not None:
-            await self.liquid_handler.move_to_safe_position() # You would define this method in your LiquidHandler class
+            await self.liquid_handler.move_to_safe_position() # TODO: find some way to implement this
 
         # Add more cleanup operations as needed
 

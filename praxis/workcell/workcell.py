@@ -5,6 +5,7 @@ from typing import Optional, Any, Literal, cast, Self, Callable
 
 import asyncio
 import json
+import asyncio
 
 from pylabrobot.utils.object_parsing import find_subclass
 from pylabrobot.machines.machine import Machine
@@ -22,30 +23,39 @@ from pylabrobot.serializer import serialize, deserialize
 
 from praxis.configure import PraxisConfiguration
 from praxis.utils import Registry, AsyncAssetDatabase
+from praxis.orchestrator import Orchestrator
 
 class Workcell:
   def __init__(self,
               configuration: PraxisConfiguration,
+              orchestrator: Orchestrator,
+              filepath: str,
               user: Optional[str] = None,
-              using_machines: Optional[Literal["all"] | list[str | int]] = None) -> None:
+              using_machines: Optional[Literal["all"] | list[str | int]] = None,
+              backup_interval: Optional[int] = 60,
+              num_backups: Optional[int] = 3,
+              ) -> None:
       self.configuration = configuration
       self.registry = Registry(configuration)
       self.asset_database = AsyncAssetDatabase(configuration.asset_dir)
+      if filepath[-5:] != ".json":
+        raise ValueError("Filepath must be a json file ending in .json")
+      self.orchestrator = orchestrator
       self.user = user
       self.using_machines = using_machines
-      self.refs: dict[str, list] = {
-      "liquid_handlers": [],
-      "pumps": [],
-      "plate_readers": [],
-      "heater_shakers": [],
-      "powder_dispensers": [],
-      "scales": [],
-      "shakers": [],
-      "temperature_controllers": [],
-      "other_machines": [],
-      "labware": []
+      self.refs: dict[str, dict] = {
+      "liquid_handlers": {},
+      "pumps": {},
+      "plate_readers": {},
+      "heater_shakers": {},
+      "powder_dispensers": {},
+      "scales": {},
+      "shakers": {},
+      "temperature_controllers": {},
+      "other_machines": {},
+      "labware": {}
       }
-      self._loaded_machines: list[Machine] = []
+      self._loaded_machines: dict[str, Machine] = {}
       self.children: list[Resource | Machine] = []
       self._assets = []
       self.liquid_handlers = self.refs["liquid_handlers"]
@@ -58,35 +68,38 @@ class Workcell:
       self.temperature_controllers = self.refs["temperature_controllers"]
       self.other_machines = self.refs["other_machines"]
       self.labware = self.refs["labware"]
+      self.filepath = filepath
+      self.backup_interval = backup_interval
+      self.num_backups = num_backups
+      self.backup_task = None
 
   @property
-  def all_machines(self) -> list[Machine]:
+  def all_machines(self) -> dict[str, Machine]:
     return self.liquid_handlers + self.pumps + self.plate_readers + self.heater_shakers + \
             self.powder_dispensers + self.scales + self.shakers + self.temperature_controllers + \
             self.other_machines
 
   async def setup(self):
-    for machine in self.all_machines:
-      await self._load_machine(machine)
+    for machine_id, machine in self.all_machines.items():
+      await self._load_machine(machine_id=machine_id, machine=machine)
     await self._start_machines()
 
-  async def initialize_dependencies(self,
-                                    using_machines: Optional[Literal["all"] | list[str | int]] = None,
-                                    using_resources: Optional[Literal["all"] | list[str | int]] = None) -> None:
-    await self.unpack_machines(using_machines)
-    await self.unpack_resources(using_resources)
+  async def initialize_dependencies(self) -> None:
+    await self.unpack_machines(self.using_machines)
 
   @classmethod
   async def initialize(self, configuration: PraxisConfiguration, user: Optional[str] = None,
-                        using_machines: Optional[Literal["all"] | list[str | int]] = None) -> Self:
-    workcell = Workcell(configuration, user, using_machines)
+                        using_machines: Optional[Literal["all"] | list[str | int]] = None,
+                        backup_interval: Optional[int] = 60,
+                        num_backups: Optional[int] = 3,) -> Self:
+    workcell = Workcell(configuration, user, using_machines, backup_interval, num_backups)
     await workcell.unpack_machines(using_machines)
     return workcell
 
   async def stop(self):
     await self._stop_machines()
 
-  def loaded_machines(self) -> list[Machine]:
+  def loaded_machines(self) -> dict[str, Machine]:
     return self._loaded_machines
 
   def __getitem__(self, key) -> list[Any] | dict[str, Any]:
@@ -121,53 +134,54 @@ class Workcell:
       machines = await self.asset_database.get_all_machines()
     else:
       machines = await self.asset_database.get_machines(using)
-    for machine in machines:
+    for machine_id, machine in machines.items():
       match machine.__class__:
         case LiquidHandler():
-          self.refs["liquid_handlers"].append(machine)
+          self.refs["liquid_handlers"][machine_id] = machine
         case Pump():
-          self.refs["pumps"].append(machine)
+          self.refs["pumps"][machine_id] = machine
         case PumpArray():
-          self.refs["pumps"].append(machine)
+          self.refs["pumps"][machine_id] = machine
         case PlateReader():
-          self.refs["plate_readers"].append(machine)
+          self.refs["plate_readers"][machine_id] = machine
         case HeaterShaker():
-          self.refs["heater_shakers"].append(machine)
+          self.refs["heater_shakers"][machine_id] = machine
         case PowderDispenser():
-          self.refs["powder_dispensers"].append(machine)
+          self.refs["powder_dispensers"][machine_id] = machine
         case Scale():
-          self.refs["scales"].append(machine)
+          self.refs["scales"][machine_id] = machine
         case Shaker():
-          self.refs["shakers"].append(machine)
+          self.refs["shakers"][machine_id] = machine
         case TemperatureController():
-          self.refs["temperature_controllers"].append(machine)
+          self.refs["temperature_controllers"][machine_id] = machine
         case Machine():
-          self.refs["other_machines"].append(machine)
+          self.refs["other_machines"][machine_id] = machine
         case _:
           raise ValueError(f"Machine does not have a valid type.")
-    self.children.extend(self.all_machines)
+    self.children.extend(list(self.all_machines.values()))
 
-  def specify_deck(self, liquid_handler: LiquidHandler, deck: Deck) -> None:
+  def specify_deck(self, liquid_handler_id: str, deck: Deck) -> None:
     """
     Specify the deck for the liquid handler.
     """
-    liquid_handler.deck = deck
+    liquid_handler = cast(LiquidHandler, self.refs["liquid_handlers"][liquid_handler_id])
+    liquid_handler.deck = cast(Deck, deck)
 
-  async def _load_machine(self, machine: Machine) -> None:
+  async def _load_machine(self, machine_id: str, machine: Machine) -> None:
     """
     Load machine to loaded machines.
 
     Args:
       machine (Machine): The machine.
     """
-    self._loaded_machines.append(machine)
+    self._loaded_machines[machine_id] = machine
 
   async def _start_machines(self) -> None:
     """
     Scaffold function. Eventually this should check that the machines in use are started by having
     the start method set a state in the PLR object.
     """
-    for machine in self._loaded_machines:
+    for machine_id, machine in self._loaded_machines.items():
       await machine.setup()
     while not all(machine.setup_finished for machine in self._loaded_machines):
       await asyncio.sleep(1)
@@ -177,7 +191,7 @@ class Workcell:
     Scaffold function. Eventually this should check that the machines in use are stopped by having
     the stop method set a state in the PLR object.
     """
-    for machine in self._loaded_machines:
+    for machine_id, machine in self._loaded_machines.items():
       await machine.stop()
     while all(machine.setup_finished for machine in self._loaded_machines):
       await asyncio.sleep(1)
@@ -186,9 +200,19 @@ class Workcell:
     """Serialize this."""
     return {
       "configuration": self.configuration,
+      "filepath": self.filepath,
       "user": self.user,
-      "using_machines": self.using_machines
+      "using_machines": self.using_machines,
+      "backup_interval": self.backup_interval,
+      "num_backups": self.num_backups,
     }
+
+  def get_all_children(self) -> list[Resource | Machine]:
+    """Recursively get all children of this resource."""
+    children = self.children.copy()
+    for child in self.children:
+      children += child.get_all_children()
+    return children
 
   def save(self, fn: str, indent: Optional[int] = None):
     """Save a resource to a JSON file.
@@ -302,9 +326,33 @@ class Workcell:
       content = json.load(f)
     self.load_all_state(content)
 
+  def get_all_children(self) -> list[Resource | Machine]:
+    return self.children
+
+  async def continuous_backup(self, interval: int = 60, num_backups: int = 3) -> None:
+    """Continuously save the state of the workcell to a file.
+
+    Args:
+      interval: The interval in seconds to save the state.
+      num_backups: The number of backups to keep.
+      backup_file: The file to save the state to.
+
+
+    """
+    self.save_state_to_file(self.file_path[:-5] + "_initial.json")
+    backup_num = 0
+    while True:
+      self.save_state_to_file(self.file_path)
+      self.save_state_to_file(self.file_path[:-5] + f"_{backup_num}.json")
+      backup_num += 1
+      await asyncio.sleep(interval)
+
   async def __aenter__(self):
     await self.setup()
+    self.backup_task = asyncio.create_task(self.continuous_backup())
     return self
 
   async def __aexit__(self, exc_type, exc_value, traceback):
+    await self.save_state_to_file(self.file_path)
+    self.backup_task.cancel()
     await self.stop()

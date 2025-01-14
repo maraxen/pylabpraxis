@@ -94,7 +94,7 @@ class AsyncAssetDatabase:
               await f.write(json.dumps(data, indent=4))
               await f.truncate()
 
-    async def get_asset(self, asset_id: str) -> Dict[str, Any]:
+    async def get_asset(self, asset_id: str) -> dict[str, Any]:
         """
         Gets an asset by its asset_id.
 
@@ -122,7 +122,7 @@ class AsyncAssetDatabase:
 
             return self._deserialize_asset(data[asset_id])
 
-    async def list_assets(self) -> List[str]:
+    async def list_assets(self) -> list[str]:
       """
       Lists all asset_ids in the database.
 
@@ -141,7 +141,7 @@ class AsyncAssetDatabase:
 
           return list(data.keys())
 
-    async def get_all_machines(self) -> List[Machine]:
+    async def get_all_machines(self) -> dict[str, Machine]:
       """
       Lists all asset_ids in the database.
 
@@ -158,15 +158,15 @@ class AsyncAssetDatabase:
           except json.JSONDecodeError:
               raise ValueError("Invalid JSON format in database file")
 
-          machines = []
+          machines = {}
           for asset_id, asset_data in data.items():
               asset = self._deserialize_asset(asset_data)
               if isinstance(asset, Machine):
-                  machines.append(asset)
+                  machines[asset_id] = asset
           return machines
 
 
-    async def get_all_resources(self) -> List[Resource]:
+    async def get_all_resources(self) -> dict[str, Resource]:
       """
       Lists all asset_ids in the database.
 
@@ -183,14 +183,14 @@ class AsyncAssetDatabase:
           except json.JSONDecodeError:
               raise ValueError("Invalid JSON format in database file")
 
-          resources = []
+          resources = {}
           for asset_id, asset_data in data.items():
               asset = self._deserialize_asset(asset_data)
               if isinstance(asset, Resource):
-                  resources.append(asset)
+                  resources[asset_id] = asset
           return resources
 
-    async def get_resources(self, resource_ids: list[str]) -> list[Resource]:
+    async def get_resources(self, resource_ids: list[str]) -> dict[str, Resource]:
       """
       Get resources by their asset_ids.
       """
@@ -201,15 +201,15 @@ class AsyncAssetDatabase:
           except json.JSONDecodeError:
               raise ValueError("Invalid JSON format in database file")
 
-          resources = []
+          resources = {}
           for asset_id in resource_ids:
               if asset_id in data:
                   asset = self._deserialize_asset(data[asset_id])
                   if isinstance(asset, Resource):
-                      resources.append(asset)
+                      resources[asset_id] = asset
           return resources
 
-    async def get_machines(self, machine_ids: list[str]) -> list[Machine]:
+    async def get_machines(self, machine_ids: list[str]) -> dict[str, Machine]:
       """
       Get machines by their asset_ids.
       """
@@ -220,12 +220,12 @@ class AsyncAssetDatabase:
           except json.JSONDecodeError:
               raise ValueError("Invalid JSON format in database file")
 
-          machines = []
+          machines = {}
           for asset_id in machine_ids:
               if asset_id in data:
                   asset = self._deserialize_asset(data[asset_id])
                   if isinstance(asset, Machine):
-                      machines.append(asset)
+                      machines[asset_id] = asset
           return machines
 
     def _get_asset_id(self, asset: Resource | Machine) -> str:
