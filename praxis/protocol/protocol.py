@@ -20,7 +20,7 @@ from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..workcell import Workcell
-    from ..conductor import Conductor
+    from ..orchestrator import Orchestrator
 
 import warnings
 
@@ -31,66 +31,66 @@ class Protocol(ABC):
   """
 
   def __init__(
-      self,
-      protocol_configuration: ProtocolConfiguration,
-      protocol_parameters: ProtocolParameters,
-      needed_deck_resources: dict[str, type] | None,
-      manual_check_list: list[str]):
+        self,
+        protocol_configuration: ProtocolConfiguration,
+        state: State,
+        manual_check_list: list[str],
+        conductor: Orchestrator,
+        deck: Optional[Deck] = None,
+        user_info: Optional[dict[str, dict]] = None,
+    ):
+        self.protocol_configuration = protocol_configuration
+        self.machines = self.protocol_configuration.machines
+        self.directory = self.protocol_configuration.directory
+        self.name = self.protocol_configuration.name
+        self.users = self.protocol_configuration.users
+        self.state = state
+        self.parameters = self.protocol_configuration.parameters
+        self.conductor = conductor
+        self.deck = deck  # Store the assigned Deck
+        self.liquid_handler = None
+        self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
+        if protocol_configuration.liquid_handler_id:
+            self.liquid_handler = conductor.get_liquid_handler(self.liquid_handler_id)
+            self.liquid_handler.deck = deck
+        self.manager = conductor
+        self.protocol_parameters = self.protocol_configuration.parameters # access protocol parameters
+        self.check_protocol_configuration()
 
-    self.lab_configuration = LabConfiguration(lab_configuration)
-    self.protocol_configuration = ProtocolConfiguration(protocol_configuration)
-    self.state = State() # TODO: pull from praxis ini
-    self.parameters = self.protocol_configuration.parameters
-    self.uses_deck = not needed_deck_resources is None
-
-    self.decks = self.protocol_configuration.decks
-    if len(self.decks) != len(needed_deck_resources):
-      raise ValueError("Number of decks and needed deck resources must be equal.")
-    self.check_protocol_configuration(needed_deck_resources)
-    self.parameters = self.protocol_configuration.parameters
-    self.machines = self.protocol_configuration.machines
-    self.directory = self.protocol_configuration.directory
-    self.name = self.protocol_configuration.name
-    self.user = self.protocol_configuration.user
-    self.user_info = self.lab_configuration.members["users"][self.user]
-    self.description = self.protocol_configuration.description
-    self.data_directory = self.protocol_configuration.data_directory
-    self.liquid_handler_ids = self.protocol_configuration.liquid_handler_ids
-    self.decks = self.protocol_configuration.decks
-    self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
-    if len(self.liquid_handler_ids) != len(self.decks):
-      raise ValueError("Number of liquid handlers and decks must be equal.")
-    self._workcell = None
-    self._start_time = datetime.datetime.now()
-    self._status = "initializing"
-    self._end_time = datetime.datetime.now()
-    self._results = None
-    self._errors: list[Exception] = []
-    self._paused = False
-    self._failed = False
-    self._common_prompt = "Type command or press enter to resume protocol. Input 'help' to see \
-                      available commands."
-    self._available_commands = {
-        "abort": "Abort the protocol",
-        "pause": "Pause the protocol",
-        "resume": "Resume the protocol",
-        "save": "Save the protocol state",
-        "load": "Load the protocol state",
-        "status": "Get the status of the protocol",
-        "help": "Get a list of available commands",
-    }
-    self._visualizer = None
-    self.check_list(check_list)
-    self.start_loggers()
-    self._emailer = Notifier(
-      smtp_server=self.lab_configuration.smtp_server,
-      smtp_port=self.lab_configuration.smtp_port,
-      smtp_username=self.user_info["smtp_username"],
-      smtp_password=self.user_info["smtp_password"]
-    )
-    self.setup_state_file()
-    self.setup_data_directory()
-    self.create_readme()
+        self.user_info = user_info or {} # user_info is now an argument
+        self.description = self.protocol_configuration.description
+        self.data_directory = self.protocol_configuration.data_directory
+        self.workcell_state_file = os.path.join(self.directory, "workcell_state.json") # TODO: interface with conductor instead
+        self._workcell = None
+        self._start_time = datetime.datetime.now()
+        self._status = "initializing"
+        self._end_time = datetime.datetime.now()
+        self._results = None
+        self._errors: list[Exception] = []
+        self._paused = False
+        self._failed = False
+        self._common_prompt = (
+            "Type command or press enter to resume protocol. Input 'help' to see "
+            "available commands."
+        )
+        self._available_commands = {
+            "abort": "Abort the protocol",
+            "pause": "Pause the protocol",
+            "resume": "Resume the protocol",
+            "status": "Get the status of the protocol",
+            "help": "Get a list of available commands",
+        }
+        self._visualizer = None
+        self.manual_check_list(manual_check_list)
+        self.start_loggers()
+        self._emailer = Notifier(
+            smtp_server=self.conductor.config.get("email", "smtp_server"),
+            smtp_port=self.conductor.config.getint("email", "smtp_port"),
+            smtp_username=self.user_info.get("smtp_username", ""),
+            smtp_password=self.user_info.get("smtp_password", ""),
+        )
+        self.setup_data_directory()
+        self.create_readme()
 
   @property
   def paused(self) -> bool:

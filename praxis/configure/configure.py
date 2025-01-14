@@ -6,6 +6,16 @@ from os import PathLike
 from typing import Dict, Any, cast, Optional, List
 from ..protocol import ProtocolParameters  # Assuming parameter.py is in the same protocol module
 from pylabrobot.resources import Deck
+from pylabrobot.machines import Machine
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.plate_reading import PlateReader
+from pylabrobot.scales import Scale
+from pylabrobot.arms import Arm
+from pylabrobot.centrifuge import Centrifuge
+from pylabrobot.heating_shaking import HeatingShaker
+from pylabrobot.only_fans import Fan
+from pylabrobot.temperature_controlling import TemperatureController
+from pylabrobot.pumps import Pump, PumpArray
 
 
 class PraxisConfiguration:
@@ -107,7 +117,7 @@ class ProtocolConfiguration:
     Protocol configuration denoting specific settings for a method.
     """
 
-    def __init__(self, config_data: Dict[str, Any], deck_directory: str):
+    def __init__(self, config_data: Dict[str, Any], lab_inventory: str, deck_directory: str):
         """
         Initializes the ProtocolConfiguration.
 
@@ -116,7 +126,10 @@ class ProtocolConfiguration:
             deck_directory: The directory where deck layout files are stored.
         """
         self._config_data = config_data
-        self.machines: list[str | int] = cast(list, config_data.get("machines", []))
+        self.lab_inventory = lab_inventory
+        self.deck_directory = deck_directory
+        self._machines: list[str | int] = cast(list, config_data.get("machines", []))
+        self.machines = self._parse_machines()
         self.liquid_handler_id: str = cast(str, config_data.get("liquid_handler_ids",
                                                                               []))
         self.name: str = cast(str, config_data.get("name", ""))
@@ -127,7 +140,24 @@ class ProtocolConfiguration:
         self.directory: str = cast(str, config_data.get("directory", ""))
         self._deck: str = cast(str, config_data.get("deck", ""))
         self.parameters = ProtocolParameters(config_data.get("parameters", {}))
-        self.deck_directory = deck_directory
+
+    def _parse_machines (self) -> list[str | int]:
+        """Parses the machines field from the config data."""
+        self.lab_inventory = self.lab_inventory or "lab_inventory.json"
+        if not os.path.exists(self.lab_inventory):
+            return []
+        with open(self.lab_inventory, "r") as f:
+            try:
+                machines_data = json.load(f)
+            except json.JSONDecodeError:
+                return []
+        if isinstance(machines_data, list):
+            machines = [machine for machine in machines_data if machines.get("machine_id", None)]
+            machines = [machine for machine in machines if isinstance(machine["machine_id"], str)
+                    or isinstance(machine["machine_id"], int)]
+        else:
+            return []
+        return machines
 
     def _parse_users(self, users_data: Any) -> str | list[str]:
         """Parses the users field from the config data."""

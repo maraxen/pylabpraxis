@@ -1,12 +1,12 @@
 from celery import Celery
 import asyncio
-from praxis.conductor.conductor import Conductor
+from praxis.orchestrator.conductor import Orchestrator
 
 # Configure Celery
 celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
 
 # Initialize the Conductor
-conductor = Conductor("path/to/config.ini")
+conductor = Orchestrator("path/to/config.ini")
 
 # Example Celery task (you'll need to define this separately in a 'tasks.py' file)
 @celery_app.task
