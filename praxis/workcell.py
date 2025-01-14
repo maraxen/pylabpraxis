@@ -23,7 +23,7 @@ from pylabrobot.serializer import serialize, deserialize
 
 from praxis.configure import PraxisConfiguration
 from praxis.utils import Registry, AsyncAssetDatabase
-from praxis.orchestrator import Orchestrator
+from praxis.core import Orchestrator
 
 class Workcell:
   def __init__(self,

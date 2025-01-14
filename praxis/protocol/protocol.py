@@ -19,8 +19,8 @@ from praxis.utils.data import Data
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..workcell import Workcell
-    from ..orchestrator import Orchestrator
+    from .. import Workcell
+    from ..core import Orchestrator
 
 import warnings
 
