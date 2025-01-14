@@ -28,7 +28,6 @@ from praxis.orchestrator import Orchestrator
 class Workcell:
   def __init__(self,
               configuration: PraxisConfiguration,
-              orchestrator: Orchestrator,
               filepath: str,
               user: Optional[str] = None,
               using_machines: Optional[Literal["all"] | list[str | int]] = None,
@@ -40,7 +39,6 @@ class Workcell:
       self.asset_database = AsyncAssetDatabase(configuration.asset_dir)
       if filepath[-5:] != ".json":
         raise ValueError("Filepath must be a json file ending in .json")
-      self.orchestrator = orchestrator
       self.user = user
       self.using_machines = using_machines
       self.refs: dict[str, dict] = {
