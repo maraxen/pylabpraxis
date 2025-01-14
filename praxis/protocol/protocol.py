@@ -10,7 +10,7 @@ import logging
 import json
 import asyncio
 from .parameter import Parameter, ProtocolParameters  # Import ProtocolParameters
-from praxis.configure import LabConfiguration, ProtocolConfiguration
+from praxis.configure import PraxisConfiguration, ProtocolConfiguration
 from praxis.utils.notify import Notifier
 from praxis.utils.state import State
 from praxis.operations import Operation, OperationError, OperationManager

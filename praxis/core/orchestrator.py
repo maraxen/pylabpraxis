@@ -8,10 +8,12 @@ from typing import Optional, Dict
 from celery import Celery
 
 from pylabrobot.resources import Deck, Resource, Coordinate
-from ..configure import Configuration
-
-from praxis.protocol import Protocol, initialize_registry, Registry
-from praxis.utils import acquire_lock, release_lock, Data, initialize_data, AsyncAssetDatabase
+from pylabrobot.resources import Deck, Resource, Coordinate
+from .deck import DeckManager
+from ..protocol.protocol import Protocol
+from ..utils.protocol_registry import Registry
+from ..protocol.parameter import ProtocolParameters
+from praxis.utils import acquire_lock, release_lock, Data, initialize_data, AsyncAssetDatabase, initialize_registry
 
 class Orchestrator:
     def __init__(self, config_file: str):

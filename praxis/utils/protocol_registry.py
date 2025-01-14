@@ -141,7 +141,7 @@ class Registry:
       Returns:
         The protocol_id of the newly registered protocol.
       """
-      start_time = datetime.datetime.now()
+      start_time = datetime.datetime.now(datetime.timezone.utc)
       status = "initializing"
       parameters_json = json.dumps(parameters)
       async with self.conn.cursor() as cursor:
@@ -220,7 +220,7 @@ class Registry:
             await cursor.execute("SELECT estimated_plate_reader_time FROM protocols_metadata WHERE protocol_name = ?", (protocol_name,))
             row = await cursor.fetchone()
             if row and row[0]:
-                return datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f')
+                return datetime.datetime.fromisoformat(row[0]) # Parse ISO format string
             else:
                 return None
 
@@ -283,15 +283,15 @@ class Registry:
 
                     is_available, lock_expires_at_str = row
 
-                    if is_available or (lock_expires_at_str and datetime.datetime.strptime(lock_expires_at_str, '%Y-%m-%d %H:%M:%S.%f') < datetime.datetime.now()):
+                    if is_available or (lock_expires_at_str and datetime.datetime.fromisoformat(lock_expires_at_str) < datetime.datetime.now(datetime.timezone.utc)):
                         # Acquire the lock using Redis
                         if self.redis_client.set(lock_name, identifier, ex=lock_timeout, nx=True):
-                            lock_expires_at = datetime.datetime.now() + datetime.timedelta(seconds=lock_timeout)
+                            lock_expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=lock_timeout)
                             await cursor.execute("""
                                 UPDATE assets
                                 SET is_available = 0, locked_by_protocol = ?, locked_by_task = ?, lock_acquired_at = ?, lock_expires_at = ?
                                 WHERE asset_id = ?
-                            """, (protocol_name, task_id, datetime.datetime.now(), lock_expires_at, asset_id))
+                            """, (protocol_name, task_id, datetime.datetime.now(datetime.timezone.utc), lock_expires_at, asset_id))
                             await self.conn.commit()
                             return True
                         else:
