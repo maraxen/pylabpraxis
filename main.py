@@ -2,6 +2,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from starlette.responses import RedirectResponse
 
 from praxis.api import protocols, auth
 from praxis.core.orchestrator import Orchestrator
@@ -25,7 +26,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown logic
     await orchestrator.registry.close()
-    await orchestrator.data_instance.close()
     print("Application shutdown: Closing connections.")
 
 app = FastAPI(lifespan=lifespan)
@@ -36,3 +36,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include API routers
 app.include_router(protocols.router, prefix="/api/protocols", tags=["protocols"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
+# Redirect root URL to index.html
+@app.get("/")
+async def redirect_to_index():
+    return RedirectResponse(url="/static/index.html")

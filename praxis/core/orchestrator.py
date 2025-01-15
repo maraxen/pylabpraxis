@@ -4,7 +4,7 @@ import threading
 import asyncio
 import json
 import os
-from typing import Optional, Dict, Any, List, cast
+from typing import Optional, Dict, Any, List, cast, TypeVar, Type
 from celery import Celery
 
 from pylabrobot.resources import Deck, Resource, Coordinate
@@ -12,26 +12,34 @@ from praxis.core.deck import DeckManager
 from praxis.protocol.protocol import Protocol
 from praxis.protocol.registry import Registry, initialize_registry
 from praxis.protocol.parameter import ProtocolParameters
-from praxis.configure import PraxisConfiguration, ProtocolConfiguration
+from praxis.configure import PraxisConfiguration
+from praxis.protocol.config import ProtocolConfiguration
 from praxis.utils.assets import AsyncAssetDatabase
 from praxis.utils.data import initialize_data, Data
+from praxis.utils.state import State
+
+P = TypeVar("P", bound=Protocol)
 
 class Orchestrator:
-    def __init__(self, config_file: str):
-        self.config_file = config_file
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file)
-        self.configuration = PraxisConfiguration(config_file)
+    def __init__(self, config: str | PraxisConfiguration):
+        if isinstance(config, str):
+            config = PraxisConfiguration(config)
+        if not isinstance(config, PraxisConfiguration):
+            raise ValueError("Invalid configuration object.")
+        self.config = config
 
         self.protocols: Dict[str, Protocol] = {}
-        self.data_instance = None
-        self.registry = None
 
         # Deck Manager
         self.deck_manager = DeckManager(self.config)
 
-        self.asset_db_file = self.config["database"]["lab_inventory"]
-        self.asset_database = AsyncAssetDatabase(self.asset_db_file)
+        self.data_dir = self.config.data_directory
+
+        self.asset_database = AsyncAssetDatabase(self.config.asset_db)
+
+        self.state = State(redis_host=self.config.redis_host,
+                            redis_port=self.config.redis_port,
+                            redis_db=self.config.redis_db)
 
         # Configure Celery
         self.celery_app = Celery(
@@ -40,35 +48,67 @@ class Orchestrator:
             backend=self.config["celery"]["backend"],
         )
 
-    async def initialize_dependencies(self):
-        self.registry = await initialize_registry(config_file=self.config_file)
-        self.data_instance = await initialize_data(db_file=self.config["database"]["data_dir"])
 
-    def get_user_info(self, user_identifier: str) -> Dict[str, Any]:
+    async def initialize_dependencies(self):
+        self.registry = await initialize_registry(config=self.config)
+
+    async def get_user_info(self, user_identifier: str) -> Dict[str, Any]:
         """Retrieves user information for a given user identifier."""
-        users = self.configuration.get_lab_users()
+        users = self.config.get_lab_users()
         return users.get_user_info(user_identifier)
 
-    def create_protocol(self, protocol_config_data, protocol_deck_file, liquid_handler_name, manual_check_list, user_info):
+    async def create_protocol(
+        self,
+        protocol_class: Type[P],
+        protocol_config_data: Dict[str, Any],
+        protocol_deck_file: str,
+        manual_check_list: List[str],
+        user_info: Dict[str, Any],
+        **kwargs
+    ) -> P:
         protocol_config = ProtocolConfiguration(
-            protocol_config_data, self.deck_manager.deck_directory
+            protocol_config_data, self.configuration
         )
 
-        # Get the deck from the DeckManager
+        # Get the deck from the DeckManager asynchronously
         try:
-            deck = self.deck_manager.get_deck(protocol_deck_file)
+            deck = await self.deck_manager.get_deck(protocol_deck_file)
         except Exception as e:
             raise ValueError(f"Error getting deck: {e}")
 
-        protocol = Protocol(
+        protocol = protocol_class(
             protocol_configuration=protocol_config,
             manual_check_list=manual_check_list,
             orchestrator=self,
             deck=deck,
             user_info=user_info,
+            state=self.state
         )
+
         self.protocols[protocol.name] = protocol
         return protocol
+
+    async def create_and_start_protocol(
+        self,
+        protocol_class: Type[P],
+        protocol_config_data: Dict[str, Any],
+        protocol_deck_file: str,
+        manual_check_list: List[str],
+        user_info: Dict[str, Any],
+    ):
+        """
+        Creates and starts a protocol.
+        """
+        protocol = await self.create_protocol(
+            protocol_class,
+            protocol_config_data,
+            protocol_deck_file,
+            manual_check_list,
+            user_info,
+        )
+        await self.run_protocol(protocol.name)
+        return protocol
+
 
     async def run_protocol(self, protocol_name):
       """
@@ -79,14 +119,6 @@ class Orchestrator:
           asyncio.create_task(protocol.execute())
       else:
           raise ValueError(f"Protocol '{protocol_name}' not found.")
-
-    def create_and_start_protocol(self, protocol_config, protocol_deck_file, liquid_handler_name, manual_check_list, user_info):
-        """
-        Creates and starts a protocol.
-        """
-        protocol = self.create_protocol(protocol_config, protocol_deck_file, liquid_handler_name, manual_check_list, user_info)
-        asyncio.create_task(self.run_protocol(protocol.name))
-        return protocol
 
     def get_protocol(self, protocol_name: str) -> Optional[Protocol]:
         """Retrieves a protocol instance by name."""
@@ -122,16 +154,6 @@ class Orchestrator:
         thread = threading.Thread(target=task_instance.run_task)
         thread.daemon = True
         thread.start()
-
-    def schedule_plate_reader_task(self, experiment_name, plate_name, measurement_type, wells, estimated_duration):
-        """
-        Schedules a plate reader task.
-        """
-        # Create a PlateReaderTask instance (which is a StandaloneTask)
-        task = PlateReaderTask(experiment_name, plate_name, measurement_type, wells, estimated_duration, self.protocol_registry, self._data)
-
-        # Schedule the task using the generic method
-        self.schedule_standalone_task(task)
 
     async def _run_protocol(self, protocol):
         """

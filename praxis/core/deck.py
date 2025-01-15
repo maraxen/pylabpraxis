@@ -2,21 +2,25 @@ import os
 import json
 from typing import Dict, List
 from pylabrobot.resources import Deck
-import configparser
+from praxis.configure import PraxisConfiguration
 import aiofiles
 
 class DeckManager:
-    def __init__(self, config: configparser.ConfigParser):
+    def __init__(self, config: str | PraxisConfiguration):
+        if isinstance(config, str):
+            config = PraxisConfiguration(config)
+        if not isinstance(config, PraxisConfiguration):
+            raise ValueError("Invalid configuration object.")
         self.config = config
-        self.deck_directory = config["deck_management"]["deck_directory"]
+        self.deck_directory = self.config.deck_directory
         self.baseline_decks: Dict[str, Deck] = {}
         self.active_decks: Dict[str, Deck] = {}
 
     async def _load_baseline_decks(self) -> Dict[str, Deck]:
         """Loads the baseline deck layouts specified in the config file."""
         baseline_decks = {}
-        if "baseline_decks" in self.config:
-            for liquid_handler_name, deck_file in self.config["baseline_decks"].items():
+        if self.config.baseline_decks:
+            for liquid_handler_name, deck_file in self.config.baseline_decks.items():
                 if not os.path.exists(deck_file):
                     raise FileNotFoundError(f"Baseline deck file not found: {deck_file}")
                 try:

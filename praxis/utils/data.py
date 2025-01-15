@@ -1,3 +1,4 @@
+import os
 import aiosqlite
 import pandas as pd
 from typing import List, Dict, Any
@@ -15,8 +16,9 @@ class Data:
         conn (aiosqlite.Connection): The aiosqlite connection object.
         db_file (str): The path to the SQLite database file.
     """
-    self.db_file = db_file
+
     self.conn = conn
+    self.db_file = db_file
 
   async def create_table(self, table_name: str, columns: List[str]):
     """
@@ -28,7 +30,7 @@ class Data:
     """
     columns_str = ", ".join(columns)
     async with self.conn.cursor() as cursor:
-        await cursor.execute(f"CREATE TABLE {table_name} ({columns_str})")
+        await cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_str})")
         await self.conn.commit()
 
   async def insert_data(self, table_name: str, data: Dict[str, Any]):
@@ -225,6 +227,8 @@ async def initialize_data(db_file: str) -> Data:
     """
     Asynchronously creates and initializes a Data instance.
     """
+    if not os.path.exists(db_file):
+      open(db_file, 'w').close()
     conn = await aiosqlite.connect(db_file)
     data = Data(conn, db_file)
     return data

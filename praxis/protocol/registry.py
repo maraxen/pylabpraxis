@@ -1,5 +1,4 @@
 import aiosqlite
-import configparser
 import json
 import datetime
 import os
@@ -7,29 +6,35 @@ import asyncio
 import redis
 import time
 from typing import Optional, List, Dict
+from praxis.utils import AsyncAssetDatabase
+from praxis.configure import PraxisConfiguration
 
-async def initialize_registry(config_file: str="config.ini"):
+async def initialize_registry(config: str | PraxisConfiguration="config.ini"):
     """
     Asynchronously creates and initializes a Registry instance.
 
     Args:
         config_file: The path to the configuration file.
     """
-    config = configparser.ConfigParser()
-    config.read(config_file)
+    if isinstance(config, str):
+        config = PraxisConfiguration(config)
+    if not isinstance(config, PraxisConfiguration):
+        raise ValueError("Invalid configuration object.")
 
-    db_file = config['database']['registry_db']
-    data_dir = config['database']['data_dir']
-    os.makedirs(data_dir, exist_ok=True)
+    db_file = config.registry_db
+    data_dir = config.data_directory
+
+    if not os.path.exists(data_dir):
+      os.makedirs(data_dir)
 
     conn = await aiosqlite.connect(db_file)  # Connect asynchronously
 
-    registry = Registry(config, db_file, data_dir, conn)
+    registry = Registry(db_file, data_dir, conn)
     await registry._create_tables()  # Now an async method
 
-    registry.redis_client = redis.Redis(host=config['redis']['host'],
-                                        port=int(config['redis']['port']),
-                                        db=int(config['redis']['db']))
+    registry.redis_client = redis.Redis(host=config.redis_host,
+                                        port=config.redis_port,
+                                        db=config.redis_db)
 
     return registry
 
@@ -39,7 +44,6 @@ class Registry:
     asset usage.
 
     Attributes:
-        config: A dictionary containing configuration parameters.
         db_file: The path to the SQLite database file.
         data_dir: The path to the directory where data files are stored.
         conn: An aiosqlite.Connection object.
@@ -63,8 +67,7 @@ class Registry:
         asset_exists: Asynchronously checks if a asset exists in the registry.
         close: Asynchronously closes the connection to the database.
     """
-    def __init__(self, config: dict, db_file: str, data_dir: str, conn: aiosqlite.Connection):
-        self.config = config
+    def __init__(self, db_file: str, data_dir: str, conn: aiosqlite.Connection):
         self.db_file = db_file
         self.data_dir = data_dir
         self.conn = conn
@@ -112,7 +115,7 @@ class Registry:
             """)
             await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS assets (
-                    asset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset_int_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     asset_id TEXT UNIQUE NOT NULL,
                     is_available BOOLEAN DEFAULT 1,
                     locked_by_protocol TEXT,

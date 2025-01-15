@@ -10,7 +10,8 @@ import logging
 import json
 import asyncio
 from .parameter import Parameter, ProtocolParameters  # Import ProtocolParameters
-from praxis.configure import PraxisConfiguration, ProtocolConfiguration
+from .config import ProtocolConfiguration
+from praxis.configure import PraxisConfiguration
 from praxis.utils.notify import Notifier
 from praxis.utils.state import State
 from praxis.operations import Operation, OperationError, OperationManager
@@ -83,6 +84,7 @@ class Protocol(ABC):
         orchestrator: Orchestrator,
         deck: Optional[Deck] = None,
         user_info: Optional[dict[str, dict]] = None,
+        **kwargs
     ):
         self.protocol_configuration = protocol_configuration
         self.machines = self.protocol_configuration.machines
