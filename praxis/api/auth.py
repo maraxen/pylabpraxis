@@ -13,13 +13,19 @@ router = APIRouter()
 # Load configuration from praxis.ini
 config = PraxisConfiguration()  # Assuming you initialize Configuration with "praxis.ini"
 auth_config = config.get_section("auth")
+admin_config = config.get_section("admin")
 
 
 # --- Configuration ---
 SECRET_KEY = auth_config.get("secret_key")
 ALGORITHM = auth_config.get("algorithm")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(auth_config.get("access_token_expire_minutes"))
-USER_DB_FILE = USER_DB_FILE = config.get_section("database").get("users", "users.json")
+USER_DB_FILE = config.get_section("database").get("users", "users.json")
+
+
+# --- Admin Credentials ---
+ADMIN_USERNAME = admin_config.get("username")
+ADMIN_PASSWORD = admin_config.get("password")
 
 # --- User Database ---
 # Placeholder for user database using JSON file
@@ -90,13 +96,18 @@ def decode_access_token(token: str) -> Dict[str, Any]:
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """Endpoint for user login and token generation."""
     users_db = get_user_db()  # Load users from the JSON file
-    user = users_db.get(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+
+    # Check if the user is the admin user
+    if form_data.username == ADMIN_USERNAME and form_data.password == ADMIN_PASSWORD:
+        user = {"username": form_data.username, "is_admin": True}
+    else:
+        user = users_db.get(form_data.username)
+        if not user or not verify_password(form_data.password, user["hashed_password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -117,14 +128,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         if username is None:
             raise credentials_exception
         # In a real application, you would fetch the user from the database here
-        user = USER_DB_FILE.get(username)
+        users_db = get_user_db()
+        user = users_db.get(username)
         if user is None:
-            raise credentials_exception
-        return username
+            if username == ADMIN_USERNAME:
+                return {"username": ADMIN_USERNAME, "is_admin": True}
+            else:
+                raise credentials_exception
+        return {"username": username, "is_admin": user.get("is_admin", False)}
     except JWTError:
         raise credentials_exception
 
+async def get_current_active_user(current_user: Dict = Depends(get_current_user)):
+    """Dependency to get the current active user."""
+    return current_user
+
+# Dependency to check for admin privileges
+async def get_current_admin_user(current_user: Dict = Depends(get_current_active_user)):
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized for admin access")
+    return current_user
+
 @router.get("/users/me")
-async def read_users_me(current_user: str = Depends(get_current_user)):
+async def read_users_me(current_user: Dict = Depends(get_current_active_user)):
     """Protected endpoint that requires a valid JWT token."""
-    return {"username": current_user}
+    return {"username": current_user["username"], "is_admin": current_user.get("is_admin", False)}

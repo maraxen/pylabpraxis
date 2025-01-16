@@ -8,85 +8,87 @@
 
 <body>
   <div id="app">
-    <h1>Praxis Dashboard</h1>
-
     <section id="auth-section">
-      <form id="login-form">
+      <form id="login-form" onsubmit="event.preventDefault(); login();">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required><br><br>
-        <button type="button" onclick="login()">Login</button>
+        <button type="submit">Login</button>
       </form>
       <div id="login-status">Not logged in</div>
     </section>
 
-    <section id="protocols-section">
-      <h2>Protocols</h2>
-      <button type="button" onclick="fetchProtocols()">Refresh Protocols</button>
-      <ul id="protocol-list">
-      </ul>
-    </section>
+    <section id="dashboard-content" style="display: none;">
+      <h1>Praxis Dashboard</h1>
+      <button type="button" onclick="logout()">Logout</button>
+      <section id="protocols-section">
+        <h2>Protocols</h2>
+        <button type="button" onclick="fetchProtocols()">Refresh Protocols</button>
+        <ul id="protocol-list">
+        </ul>
+      </section>
 
-    <section id="running-protocols-section">
-      <h2>Running Protocols</h2>
-      <ul id="running-protocols-list">
-      </ul>
-    </section>
+      <section id="running-protocols-section">
+        <h2>Running Protocols</h2>
+        <ul id="running-protocols-list">
+        </ul>
+      </section>
 
-    <section id="start-protocol-section">
-      <h2>Start Protocol</h2>
-      <form id="start-protocol-form" onsubmit="event.preventDefault(); startProtocol();">
-        <div>
-          <label for="protocol-name">Protocol Name:</label>
-          <input type="text" id="protocol-name" name="protocol-name" required>
-        </div>
-        <div>
-          <label for="config-file">Config File:</label>
-          <input type="file" id="config-file" name="config-file" accept=".json, .toml, .ini" required>
-        </div>
-        <div>
-          <label for="deck-file">Deck File:</label>
-          <select id="deck-file" name="deck-file">
-          </select>
-        </div>
-        <div>
-          <label for="liquid-handler-name">Liquid Handler Name:</label>
-          <input type="text" id="liquid-handler-name" name="liquid-handler-name" required>
-        </div>
-        <div>
-          <input type="checkbox" id="manual-check" name="manual-check">
-          <label for="manual-check">Perform Manual Checks</label>
-        </div>
-        <button type="submit">Start Protocol</button>
-      </form>
-    </section>
+      <section id="start-protocol-section">
+        <h2>Start Protocol</h2>
+        <form id="start-protocol-form" onsubmit="event.preventDefault(); startProtocol();">
+          <div>
+            <label for="protocol-name">Protocol Name:</label>
+            <input type="text" id="protocol-name" name="protocol-name" required>
+          </div>
+          <div>
+            <label for="config-file">Config File:</label>
+            <input type="file" id="config-file" name="config-file" accept=".json, .toml, .ini" required>
+          </div>
+          <div>
+            <label for="deck-file">Deck File:</label>
+            <select id="deck-file" name="deck-file">
+            </select>
+          </div>
+          <div>
+            <label for="liquid-handler-name">Liquid Handler Name:</label>
+            <input type="text" id="liquid-handler-name" name="liquid-handler-name" required>
+          </div>
+          <div>
+            <input type="checkbox" id="manual-check" name="manual-check">
+            <label for="manual-check">Perform Manual Checks</label>
+          </div>
+          <button type="submit">Start Protocol</button>
+        </form>
+      </section>
 
-    <section id="plate-reader-section">
-      <h2>Plate Reader Task</h2>
-      <form id="plate-reader-form" onsubmit="event.preventDefault(); schedulePlateReaderTask();">
-        <div>
-          <label for="experiment-name">Experiment Name:</label>
-          <input type="text" id="experiment-name" name="experiment-name" required>
-        </div>
-        <div>
-          <label for="plate-name">Plate Name:</label>
-          <input type="text" id="plate-name" name="plate-name" required>
-        </div>
-        <div>
-          <label for="measurement-type">Measurement Type:</label>
-          <input type="text" id="measurement-type" name="measurement-type" required>
-        </div>
-        <div>
-          <label for="wells">Wells:</label>
-          <input type="text" id="wells" name="wells" placeholder="e.g. A1,B2,C3" required>
-        </div>
-        <div>
-          <label for="estimated-duration">Estimated Duration (seconds):</label>
-          <input type="number" id="estimated-duration" name="estimated-duration" value="60" required>
-        </div>
-        <button type="submit">Schedule Task</button>
-      </form>
+      <section id="plate-reader-section">
+        <h2>Plate Reader Task</h2>
+        <form id="plate-reader-form" onsubmit="event.preventDefault(); schedulePlateReaderTask();">
+          <div>
+            <label for="experiment-name">Experiment Name:</label>
+            <input type="text" id="experiment-name" name="experiment-name" required>
+          </div>
+          <div>
+            <label for="plate-name">Plate Name:</label>
+            <input type="text" id="plate-name" name="plate-name" required>
+          </div>
+          <div>
+            <label for="measurement-type">Measurement Type:</label>
+            <input type="text" id="measurement-type" name="measurement-type" required>
+          </div>
+          <div>
+            <label for="wells">Wells:</label>
+            <input type="text" id="wells" name="wells" placeholder="e.g. A1,B2,C3" required>
+          </div>
+          <div>
+            <label for="estimated-duration">Estimated Duration (seconds):</label>
+            <input type="number" id="estimated-duration" name="estimated-duration" value="60" required>
+          </div>
+          <button type="submit">Schedule Task</button>
+        </form>
+      </section>
     </section>
   </div>
 

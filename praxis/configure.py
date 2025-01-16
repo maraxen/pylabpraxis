@@ -34,6 +34,7 @@ class PraxisConfiguration:
       self.baseline_decks = cast(dict[str, str], self.baseline_decks) or {}
       self.logging_level = self.logging.get("level", "INFO")
       self.log_file = self.logging.get("file", "/var/log/praxis/praxis.log")
+      self.admin_credentials = self.get_section("admin")
 
   def __getitem__(self, key: str) -> Any:
       return self.config[key]

@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TypeVar, Type, Generic
 
 import aiofiles
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, status
@@ -8,10 +8,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
 
+from praxis.configure import PraxisConfiguration
 from praxis.core.orchestrator import Orchestrator
 from praxis.protocol.protocol import Protocol
 
+config = PraxisConfiguration("praxis.ini")
 router = APIRouter()
+orchestrator = Orchestrator(config)  # Initialize the Orchestrator instance
+P = TypeVar("P", bound=Protocol)
 
 # Dependency to get the Orchestrator instance
 def get_orchestrator() -> Orchestrator:
@@ -31,12 +35,14 @@ def get_orchestrator() -> Orchestrator:
     return orchestrator
 
 class ProtocolStartRequest(BaseModel):
+    protocol_class: Type[P]
     protocol_name: str
     config_data: Dict[str, Any]
     deck_file: str
     liquid_handler_name: str
     manual_check_list: Optional[List[str]] = None
     user_info: Optional[Dict[str, Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
 
 class ProtocolStatus(BaseModel):
     name: str
@@ -52,6 +58,18 @@ async def upload_config_file(file: UploadFile = File(...)):
         os.makedirs("protocol_configs", exist_ok=True)
 
         # Save the uploaded file
+        if file.filename is None:
+            raise HTTPException(
+                status_code=400, detail="No file selected"
+            )
+        if not file.filename.endswith(".json"):
+            raise HTTPException(
+                status_code=400, detail="Invalid file format. Please upload a JSON file."
+            )
+        if not isinstance(file.filename, str):
+            raise HTTPException(
+                status_code=400, detail="Invalid file name. Please upload a JSON file."
+            )
         file_path = os.path.join("protocol_configs", file.filename)
         async with aiofiles.open(file_path, "wb") as out_file:
             content = await file.read()  # Read the file asynchronously
@@ -73,6 +91,20 @@ async def upload_deck_file(file: UploadFile = File(...)):
     try:
         # Ensure the directory exists
         os.makedirs("deck_layouts", exist_ok=True)
+
+        # Save the uploaded file
+        if file.filename is None:
+            raise HTTPException(
+                status_code=400, detail="No file selected"
+            )
+        if not file.filename.endswith(".json"):
+            raise HTTPException(
+                status_code=400, detail="Invalid file format. Please upload a JSON file."
+            )
+        if not isinstance(file.filename, str):
+            raise HTTPException(
+                status_code=400, detail="Invalid file name. Please upload a JSON file."
+            )
 
         # Save the uploaded file
         file_path = os.path.join("deck_layouts", file.filename)
@@ -103,12 +135,14 @@ async def list_protocols(orchestrator: Orchestrator = Depends(get_orchestrator))
 
 @router.post("/start", response_model=ProtocolStatus)
 async def start_protocol(
+    protocol_class: Type[P] = Form(...),
     protocol_name: str = Form(...),
     config_file: UploadFile = File(...),
     deck_file: UploadFile = File(...),
     liquid_handler_name: str = Form(...),
     manual_check_list: Optional[List[str]] = Form(None),
     orchestrator: Orchestrator = Depends(get_orchestrator),
+    **kwargs: Any
 ):
     """Starts a new protocol instance."""
     try:
@@ -128,14 +162,15 @@ async def start_protocol(
             await temp_deck.write(content)
 
         # Get user info (currently, it's an empty dictionary)
-        user_info = {}  # You can modify this to fetch actual user info if needed
+        user_info = config.get_lab_users().get_user_info("admin")
 
-        protocol = orchestrator.create_protocol(
+        protocol = await orchestrator.create_protocol(
+            protocol_class,
             protocol_config_data,
             temp_deck_path,
-            liquid_handler_name,
             manual_check_list,
             user_info,
+            **kwargs
         )
         asyncio.create_task(orchestrator.run_protocol(protocol.name))
         return ProtocolStatus(name=protocol.name, status=protocol.status)
