@@ -97,6 +97,10 @@ class PraxisConfiguration:
         """Creates and returns a PraxisUsers object."""
         return PraxisUsers(self.users)
 
+    def get_user_info(self, username: str) -> Dict[str, Any]:
+        """Retrieves user information."""
+        return self.get_lab_users().get_user_info(username)
+
     def get_protocol_directories(self) -> List[str]:
         """Get list of additional protocol directories."""
         dirs_str = self.config.get(

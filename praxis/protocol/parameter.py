@@ -1,10 +1,17 @@
 from typing import Any, Optional, Union, List, Dict, Callable
 
+
 class Parameter:
-    def __init__(self, name: str, datatype: type, description: Optional[str] = None,
-                 default: Optional[Any] = None, required: bool = True,
-                 constraints: Optional[Dict[str, Any]] = None,
-                 validation_func: Optional[Callable[[Any], bool]] = None):
+    def __init__(
+        self,
+        name: str,
+        datatype: type,
+        description: Optional[str] = None,
+        default: Optional[Any] = None,
+        required: bool = True,
+        constraints: Optional[Dict[str, Any]] = None,
+        validation_func: Optional[Callable[[Any], bool]] = None,
+    ):
         self.name = name
         self.datatype = datatype
         self.description = description
@@ -19,30 +26,44 @@ class Parameter:
         """
         # Check data type
         if not isinstance(value, self.datatype):
-            raise TypeError(f"Invalid data type for parameter '{self.name}'. Expected {self.datatype}, got {type(value)}.")
+            raise TypeError(
+                f"Invalid data type for parameter '{self.name}'. Expected {self.datatype}, got {type(value)}."
+            )
 
         # Check constraints
         for constraint_name, constraint_value in self.constraints.items():
             if constraint_name == "min_value":
                 if value < constraint_value:
-                    raise ValueError(f"Value for parameter '{self.name}' must be greater than or equal to {constraint_value}.")
+                    raise ValueError(
+                        f"Value for parameter '{self.name}' must be greater than or equal to {constraint_value}."
+                    )
             elif constraint_name == "max_value":
                 if value > constraint_value:
-                    raise ValueError(f"Value for parameter '{self.name}' must be less than or equal to {constraint_value}.")
+                    raise ValueError(
+                        f"Value for parameter '{self.name}' must be less than or equal to {constraint_value}."
+                    )
             elif constraint_name == "allowed_values":
                 if value not in constraint_value:
-                    raise ValueError(f"Invalid value for parameter '{self.name}'. Allowed values are: {constraint_value}.")
+                    raise ValueError(
+                        f"Invalid value for parameter '{self.name}'. Allowed values are: {constraint_value}."
+                    )
             # Add more constraint checks as needed
 
         # Custom validation function
         if self.validation_func and not self.validation_func(value):
-            raise ValueError(f"Value for parameter '{self.name}' failed custom validation.")
+            raise ValueError(
+                f"Value for parameter '{self.name}' failed custom validation."
+            )
 
         return True
 
+
 class ProtocolParameters:
-    def __init__(self, parameters: Optional[Union[List[Parameter], Dict[str, Any]]] = None):
-        self.parameters: Dict[str, Parameter] = {}
+    def __init__(
+        self, parameters: Optional[Union[List[Parameter], Dict[str, Any]]] = None
+    ):
+        self._parameters: Dict[str, Parameter] = {}
+        self._values: Dict[str, Any] = {}
 
         if parameters:
             if isinstance(parameters, list):
@@ -53,66 +74,82 @@ class ProtocolParameters:
                     self.add_parameter_from_dict(param_name, param_details)
 
     def add_parameter(self, parameter: Parameter):
-        """Adds a Parameter object to the collection."""
-        self.parameters[parameter.name] = parameter
+        """Add a parameter to the protocol parameters."""
+        self._parameters[parameter.name] = parameter
+        if parameter.default is not None:
+            self._values[parameter.name] = parameter.default
 
     def add_parameter_from_dict(self, param_name: str, param_details: Dict[str, Any]):
-        """Adds a parameter from a dictionary."""
-        datatype = param_details.get("datatype")
-        description = param_details.get("description")
-        default = param_details.get("default")
-        required = param_details.get("required", True)
-        constraints = param_details.get("constraints")
-        validation_func = param_details.get("validation_func")
-
-        parameter = Parameter(param_name, datatype, description, default, required, constraints, validation_func)
-        self.add_parameter(parameter)
+        """Add a parameter from a dictionary specification."""
+        param = Parameter(
+            name=param_name,
+            datatype=param_details.get("type", Any),
+            description=param_details.get("description"),
+            default=param_details.get("default"),
+            required=param_details.get("required", True),
+            constraints=param_details.get("constraints"),
+            validation_func=param_details.get("validation_func"),
+        )
+        self.add_parameter(param)
 
     def validate_parameters(self, input_parameters: Dict[str, Any]) -> bool:
-        """
-        Validates the given input parameters against the defined parameters.
-        """
-        # Check for missing required parameters
-        for param_name, parameter in self.parameters.items():
-            if parameter.required and param_name not in input_parameters:
-                raise ValueError(f"Missing required parameter: {param_name}")
+        """Validate input parameters against parameter specifications."""
+        for param_name, param in self._parameters.items():
+            if param.required and param_name not in input_parameters:
+                if param.default is None:
+                    raise ValueError(f"Required parameter '{param_name}' not provided.")
+                value = param.default
+            else:
+                value = input_parameters.get(param_name, param.default)
 
-        # Validate each parameter
-        for param_name, param_value in input_parameters.items():
-            if param_name in self.parameters:
-                self.parameters[param_name].validate(param_value)
+            if value is not None:
+                param.validate(value)
+                self._values[param_name] = value
 
         return True
 
-    def get_parameter_info(self, param_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Returns information about a parameter for the dashboard.
-        """
-        param = self.parameters.get(param_name)
-        if param:
-            return {
-                "name": param.name,
-                "datatype": str(param.datatype),
-                "description": param.description,
-                "default": param.default,
-                "required": param.required,
-                "constraints": param.constraints,
-            }
+    def get(self, name: str, default: Any = None) -> Any:
+        """Get a parameter value by name."""
+        return self._values.get(name, default)
+
+    def __getattr__(self, name: str) -> Any:
+        """Support attribute-style access to parameter values."""
+        if name in self._values:
+            return self._values[name]
+        raise AttributeError(f"Parameter '{name}' not found")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Support attribute-style setting of parameter values."""
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+            return
+
+        if name in getattr(self, "_parameters", {}):
+            self._parameters[name].validate(value)
+            self._values[name] = value
         else:
+            super().__setattr__(name, value)
+
+    def get_parameter_info(self, param_name: str) -> Optional[Dict[str, Any]]:
+        """Get information about a parameter."""
+        if param_name not in self._parameters:
             return None
 
+        param = self._parameters[param_name]
+        return {
+            "name": param.name,
+            "type": param.datatype,
+            "description": param.description,
+            "default": param.default,
+            "required": param.required,
+            "constraints": param.constraints,
+            "current_value": self._values.get(param_name),
+        }
+
     def get_parameters_for_ui(self) -> List[Dict[str, Any]]:
-        """
-        Returns a list of parameter information for the dashboard.
-        """
-        parameters_info = []
-        for param_name, param in self.parameters.items():
-            parameters_info.append({
-                "name": param_name,
-                "datatype": str(param.datatype),  # Convert type to string for easier handling in UI
-                "description": param.description,
-                "default": param.default,
-                "required": param.required,
-                "constraints": param.constraints,
-            })
-        return parameters_info
+        """Get parameter information formatted for UI display."""
+        return [
+            info
+            for name in self._parameters.keys()
+            if (info := self.get_parameter_info(name)) is not None
+        ]

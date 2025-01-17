@@ -1,10 +1,12 @@
-from typing import Any, Dict, Optional, cast, Union, Type
+from typing import Any, Dict, Optional, cast, Union, Type, List
 from datetime import datetime as dt, timedelta
 from itertools import product
 import asyncio
 
 from praxis.protocol.protocol import Protocol
 from praxis.protocol.config import ProtocolConfiguration
+from praxis.protocol.deck_assets import DeckAssets
+from praxis.protocol.parameter import ProtocolParameters, Parameter
 from praxis.utils.state import State
 from praxis.core.orchestrator import Orchestrator
 from pylabrobot.resources import (
@@ -16,48 +18,129 @@ from pylabrobot.resources import (
     Resource,
     Lid,
 )
-from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.plate_reading import PlateReader
+from pylabrobot.liquid_handling import LiquidHandler
 from praxis.commons.commons import (
     PumpManager,
     TipWasher,
     SampleReservoir,
 )
 
-needed_parameters: Dict[str, type] = {
-    "tips_staged": bool,
-    "bacteria_ids": list,
-    "phage_ids": list,
-    "no_phage_control": int,
-    "cycle_time": int,
-    "sampling_interval": int,
-    "mixing": bool,
-    "mixing_volume": float,
-    "mixing_speed": float,
-    "mixing_cycles": int,
-    "lagoon_flow_rate": float,
-    "washer_volume": float,
-    "basin_refill_frequency": timedelta,
-    "inducer_volume": float,
-}
+# Initialize protocol parameters with default values
+needed_parameters = ProtocolParameters(
+    {
+        "tips_staged": {
+            "type": bool,
+            "description": "Whether tips have been staged on the deck",
+            "default": False,
+        },
+        "bacteria_ids": {
+            "type": list,
+            "description": "List of bacteria IDs to use",
+            "default": [],
+        },
+        "phage_ids": {
+            "type": list,
+            "description": "List of phage IDs to use",
+            "default": [],
+        },
+        "no_phage_control": {
+            "type": int,
+            "description": "Number of no-phage control wells",
+            "default": 0,
+        },
+        "cycle_time": {
+            "type": int,
+            "description": "Time between cycles in minutes",
+            "default": 60,
+            "constraints": {"min_value": 1},
+        },
+        "sampling_interval": {
+            "type": int,
+            "description": "Time between samples in minutes",
+            "default": 30,
+            "constraints": {"min_value": 1},
+        },
+        "mixing": {
+            "type": bool,
+            "description": "Whether to mix samples",
+            "default": True,
+        },
+        "mixing_volume": {
+            "type": float,
+            "description": "Volume to use for mixing in µL",
+            "default": 100.0,
+            "constraints": {"min_value": 10.0, "max_value": 1000.0},
+        },
+        "mixing_speed": {
+            "type": float,
+            "description": "Speed to use for mixing in µL/s",
+            "default": 100.0,
+            "constraints": {"min_value": 10.0, "max_value": 1000.0},
+        },
+        "mixing_cycles": {
+            "type": int,
+            "description": "Number of mixing cycles",
+            "default": 3,
+            "constraints": {"min_value": 1, "max_value": 10},
+        },
+        "lagoon_flow_rate": {
+            "type": float,
+            "description": "Flow rate for lagoon operations in mL/min",
+            "default": 0.5,
+            "constraints": {"min_value": 0.1, "max_value": 5.0},
+        },
+        "washer_volume": {
+            "type": float,
+            "description": "Volume to use for washing in µL",
+            "default": 1000.0,
+            "constraints": {"min_value": 100.0, "max_value": 5000.0},
+        },
+        "basin_refill_frequency": {
+            "type": int,
+            "description": "How often to refill the basin in hours",
+            "default": 24,
+            "constraints": {"min_value": 1, "max_value": 72},
+        },
+        "inducer_volume": {
+            "type": float,
+            "description": "Volume of inducer to add in µL",
+            "default": 50.0,
+            "constraints": {"min_value": 1.0, "max_value": 1000.0},
+        },
+    }
+)
 
-needed_deck_resources: Dict[str, type] = {
-    "pump_manager": PumpManager,
-    "tip_washer": TipWasher,
-    "sample_reservoir": SampleReservoir,
-    "holding": Plate,
-    "induced": Plate,
-    "lagoons": Plate,
-    "holding_tip_rack": TipRack,
-    "induced_tip_rack": TipRack,
-    "lagoon_tip_rack_1": TipRack,
-    "plate_reader": PlateReader,
-}
-
-deck_resource_types: Dict[str | int, Dict[str, type]] = {
-    str(i): {"type": resource_type}
-    for i, (_, resource_type) in enumerate(needed_deck_resources.items())
-}
+# Initialize deck assets with a dictionary
+needed_deck_assets = DeckAssets(
+    {
+        "pump_manager": {"type": PumpManager, "description": "Manager for fluid pumps"},
+        "tip_washer": {"type": TipWasher, "description": "Washer for tip cleaning"},
+        "sample_reservoir": {
+            "type": SampleReservoir,
+            "description": "Reservoir for samples",
+        },
+        "holding": {"type": Plate, "description": "Plate for holding samples"},
+        "induced": {"type": Plate, "description": "Plate for induced samples"},
+        "lagoons": {"type": Plate, "description": "Plate for lagoon samples"},
+        "holding_tip_rack": {
+            "type": TipRack,
+            "description": "Tip rack for holding operations",
+        },
+        "induced_tip_rack": {
+            "type": TipRack,
+            "description": "Tip rack for induction operations",
+        },
+        "lagoon_tip_rack_1": {
+            "type": TipRack,
+            "description": "First tip rack for lagoon operations",
+        },
+        "plate_reader": {
+            "type": PlateReader,
+            "description": "Reader for plate measurements",
+        },
+    }
+)
 
 
 class Prance(Protocol):
@@ -72,20 +155,10 @@ class Prance(Protocol):
         manual_check_list: list[str],
         orchestrator: Orchestrator,
         deck: Optional[Deck] = None,
-        user_info: Optional[Dict[str, Dict]] = None,
+        user_info: Optional[Dict[str, Dict[str, Any]]] = None,
         **kwargs,
     ):
-        """Initialize the Prance protocol.
-
-        Args:
-            protocol_configuration: Protocol configuration object
-            state: State object for storing protocol state
-            manual_check_list: List of manual checks to perform
-            orchestrator: Orchestrator instance
-            deck: Optional deck configuration
-            user_info: Optional user information
-            **kwargs: Additional keyword arguments
-        """
+        """Initialize the Prance protocol."""
         super().__init__(
             protocol_configuration=protocol_configuration,
             state=state,
@@ -100,185 +173,51 @@ class Prance(Protocol):
         self.cycle_n: int = 0
         self.cycle_start_time: dt = dt.now()
         self.reader_plate_stack_in_use: Optional[str] = None
-        self.cycle_time: timedelta = timedelta(minutes=60)  # Default value
 
-        # Get parameters with defaults
+        # Validate and get parameters from configuration
         params = protocol_configuration.parameters
-        tips_staged = False
-        bacteria_ids = []
-        phage_ids = []
-        no_phage_control = 0
-        cycle_time_minutes = 60
+        params.validate_parameters(needed_parameters._values)
 
-        # Try to get parameters from configuration
-        try:
-            tips_staged = bool(params.tips_staged)
-            bacteria_ids = list(params.bacteria_ids)
-            phage_ids = list(params.phage_ids)
-            no_phage_control = int(params.no_phage_control)
-            cycle_time_minutes = int(params.cycle_time)
-        except AttributeError:
-            pass
+        # Store parameters as instance attributes with proper type hints
+        self.tips_staged: bool = params.get("tips_staged", False)
+        self.bacteria_ids: List[str] = params.get("bacteria_ids", [])
+        self.phage_ids: List[str] = params.get("phage_ids", [])
+        self.no_phage_control: int = params.get("no_phage_control", 0)
+        self.cycle_time: timedelta = timedelta(minutes=params.get("cycle_time", 60))
+        self.sampling_interval: timedelta = timedelta(
+            minutes=params.get("sampling_interval", 30)
+        )
+        self.mixing: bool = params.get("mixing", True)
+        self.mixing_volume: float = params.get("mixing_volume", 100.0)
+        self.mixing_speed: float = params.get("mixing_speed", 100.0)
+        self.mixing_cycles: int = params.get("mixing_cycles", 3)
+        self.lagoon_flow_rate: float = params.get("lagoon_flow_rate", 0.5)
+        self.washer_volume: float = params.get("washer_volume", 1000.0)
+        self.basin_refill_frequency: timedelta = timedelta(
+            hours=params.get("basin_refill_frequency", 24)
+        )
+        self.inducer_volume: float = params.get("inducer_volume", 50.0)
 
-        self.cycle_time = timedelta(minutes=cycle_time_minutes)
-
-        if not tips_staged:
-            raise ValueError(
-                "Tips are not staged. Run tip_staging.py with PRANCE specified."
-            )
-
-        self._available_commands["add_phage"] = "Add phage to the phage control wells."
-
-        # Load state if already ran
-        if self.state[self.name].get("cycle_n") is not None:
-            self.cycle_n = self.state[self.name]["cycle_n"]
-            self.cycle_start_time = self.state[self.name]["cycle_start_time"]
-            self.reader_plate_stack_in_use = self.state[self.name][
-                "reader_plate_stack_in_use"
-            ]
-        else:
-            self.reader_plate_stack_in_use = self.state[self.name].get(
-                "to_read_plate_stack"
-            )
+        # Initialize state
+        self._status = "initialized"
 
         # Generate variable combinations
-        self.variable_combinations = list(product(bacteria_ids, phage_ids))
+        self.variable_combinations = list(product(self.bacteria_ids, self.phage_ids))
 
         if (
-            len(self.variable_combinations) + (no_phage_control * len(bacteria_ids))
+            len(self.variable_combinations)
+            + (self.no_phage_control * len(self.bacteria_ids))
             > 48
         ):
             raise ValueError(
                 "Too many variable combinations. A maximum of 48 are supported."
             )
 
-    async def _setup(self) -> None:
-        """Setup the protocol."""
-        print("Setting up Prance protocol...")
+    def _check_deck_resources(self, deck_assets: DeckAssets) -> None:
+        """Check that the deck has all the resources needed for the protocol."""
+        deck_assets.validate(self.deck)
 
-        # Initialize resources and verify configuration
-        await self.check_protocol_configuration(needed_parameters)
-        await self._check_deck_resources(deck_resource_types)
-
-        # Initialize protocol state
-        self._status = "initializing"
-        self.cycle_n = 0
-        self.cycle_start_time = dt.now()
-
-        print("Prance protocol setup complete.")
-
-    async def _execute(self) -> None:
-        """Execute the protocol."""
-        print("Starting Prance protocol execution...")
-
-        try:
-            self._status = "running"
-            while not self.failed and not self.paused:
-                print(f"Starting cycle {self.cycle_n}")
-                await self.run_cycle()
-                self.cycle_n += 1
-                await asyncio.sleep(self.cycle_time.total_seconds())
-        except Exception as e:
-            self._status = "failed"
-            print(f"Protocol failed: {str(e)}")
-            raise
-
-    async def _pause(self) -> None:
-        """Pause the protocol."""
-        print("Pausing Prance protocol...")
-        self._status = "paused"
-        await self.save_state()
-
-    async def _resume(self) -> None:
-        """Resume the protocol."""
-        print("Resuming Prance protocol...")
-        self._status = "resuming"
-        await self.load_state()
-        self._status = "running"
-
-    async def run_cycle(self) -> None:
-        """Run one cycle of the protocol."""
-        print(f"Running cycle {self.cycle_n}")
-        # Implementation here
+    def _check_parameters(self, parameters: dict[str, type]) -> None:
+        """Check the parameters for the protocol bounded by method specific constraints."""
+        # The parameter validation is now handled by the ProtocolParameters class
         pass
-
-    def _check_parameters(self, parameters: Dict[str, Any]) -> None:
-        """Check protocol parameters."""
-        for param_name, param_type in needed_parameters.items():
-            if param_name not in parameters:
-                raise ValueError(f"Missing required parameter: {param_name}")
-            if not isinstance(parameters[param_name], param_type):
-                raise TypeError(
-                    f"Parameter {param_name} must be of type {param_type}, "
-                    f"got {type(parameters[param_name])}"
-                )
-
-    def _check_deck_resources(
-        self, needed_deck_resources: Dict[str | int, Dict[str, type]]
-    ) -> None:
-        """Check deck resources."""
-        if not self.deck:
-            raise ValueError("Deck is not initialized")
-
-        for resource_name, resource_info in needed_deck_resources.items():
-            if not hasattr(self.deck, str(resource_name)):
-                raise ValueError(f"Missing required deck resource: {resource_name}")
-            resource = getattr(self.deck, str(resource_name))
-            if not isinstance(resource, resource_info["type"]):
-                raise TypeError(
-                    f"Resource {resource_name} must be of type {resource_info['type']}, "
-                    f"got {type(resource)}"
-                )
-
-    async def _save_state(self) -> None:
-        """Save the protocol state."""
-        print("Saving protocol state...")
-        state = {
-            "cycle_n": self.cycle_n,
-            "cycle_start_time": self.cycle_start_time,
-            "reader_plate_stack_in_use": self.reader_plate_stack_in_use,
-            "status": self._status,
-        }
-        self.state[self.name].update(state)
-        print("Protocol state saved.")
-
-    async def _load_state(self) -> None:
-        """Load the protocol state."""
-        print("Loading protocol state...")
-        state = self.state[self.name]
-        self.cycle_n = state.get("cycle_n", 0)
-        self.cycle_start_time = state.get("cycle_start_time", dt.now())
-        self.reader_plate_stack_in_use = state.get("reader_plate_stack_in_use")
-        self._status = state.get("status", "initializing")
-        print("Protocol state loaded.")
-
-    async def _intervene(self, user_input: str) -> None:
-        """Handle user intervention.
-
-        Args:
-            user_input: The command from the user
-        """
-        print(f"Handling user intervention: {user_input}")
-        if user_input == "add_phage":
-            print("Adding phage to control wells...")
-            # Implementation for adding phage
-            pass
-        else:
-            print(f"Unknown command: {user_input}")
-            await super()._intervene(user_input)
-
-    async def _stop(self) -> None:
-        """Stop the protocol."""
-        print("Stopping Prance protocol...")
-        self._status = "stopping"
-        # Cleanup implementation here
-        self._status = "stopped"
-        print("Prance protocol stopped.")
-
-    async def _abort(self) -> None:
-        """Abort the protocol."""
-        print("Aborting Prance protocol...")
-        self._status = "aborting"
-        # Abort implementation here
-        self._status = "aborted"
-        print("Prance protocol aborted.")

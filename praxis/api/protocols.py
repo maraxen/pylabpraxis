@@ -293,9 +293,12 @@ async def discover_protocols(
             print(f"Adding default protocol directory: {config.default_protocol_dir}")
             directories.append(config.default_protocol_dir)
 
+        print(f"Scanning directories: {directories}")
         for directory in directories:
             print(f"Scanning directory: {directory}")
             for root, _, files in os.walk(directory):
+                print(f"Walking directory: {root}")
+                print(f"Found files: {files}")
                 for file in files:
                     if file.endswith(".py"):
                         try:
@@ -305,33 +308,41 @@ async def discover_protocols(
                                 file[:-3], filepath
                             )
                             if spec is None:
-                                raise ImportError(f"Could not load spec for {filepath}")
+                                print(f"Could not load spec for {filepath}")
+                                continue
                             module = importlib.util.module_from_spec(spec)
                             if spec.loader is None:
-                                raise ImportError(
-                                    f"Could not load module for {filepath}"
-                                )
+                                print(f"Could not load module for {filepath}")
+                                continue
                             spec.loader.exec_module(module)
 
                             # Look for Protocol subclasses
+                            print(f"Looking for Protocol subclasses in {file}")
                             for item in dir(module):
                                 obj = getattr(module, item)
-                                if (
-                                    isinstance(obj, type)
-                                    and issubclass(obj, Protocol)
-                                    and obj != Protocol
-                                ):
-                                    print(f"Found protocol: {obj.__name__}")
-                                    protocols.append(
-                                        {
-                                            "name": obj.__name__,
-                                            "file": filepath,
-                                            "description": obj.__doc__
-                                            or "No description available",
-                                        }
-                                    )
+                                print(f"Checking item: {item}, type: {type(obj)}")
+                                try:
+                                    if (
+                                        isinstance(obj, type)
+                                        and issubclass(obj, Protocol)
+                                        and obj != Protocol
+                                    ):
+                                        print(f"Found protocol: {obj.__name__}")
+                                        protocols.append(
+                                            {
+                                                "name": obj.__name__,
+                                                "file": filepath,
+                                                "description": obj.__doc__
+                                                or "No description available",
+                                            }
+                                        )
+                                except TypeError:
+                                    # This happens when obj is not a class
+                                    continue
                         except Exception as e:
                             print(f"Error loading protocol from {file}: {e}")
+                            print(f"Error type: {type(e)}")
+                            print(f"Error traceback: {traceback.format_exc()}")
 
         print(f"Returning discovered protocols: {protocols}")
         return protocols

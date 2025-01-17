@@ -1,13 +1,12 @@
-
 import configparser
 import threading
 import asyncio
 import json
 import os
-from typing import Optional, Dict, Any, List, cast, TypeVar, Type
-from celery import Celery
+from typing import Any, Dict, List, Optional, Type, TypeVar, cast
+from celery import Celery  # type: ignore
 
-from pylabrobot.resources import Deck, Resource, Coordinate
+from pylabrobot.resources import Coordinate, Deck, Resource
 from praxis.core.deck import DeckManager
 from praxis.protocol.protocol import Protocol
 from praxis.protocol.registry import Registry, initialize_registry
@@ -19,6 +18,7 @@ from praxis.utils.data import initialize_data, Data
 from praxis.utils.state import State
 
 P = TypeVar("P", bound=Protocol)
+
 
 class Orchestrator:
     def __init__(self, config: str | PraxisConfiguration):
@@ -37,9 +37,11 @@ class Orchestrator:
 
         self.asset_database = AsyncAssetDatabase(self.config.asset_db)
 
-        self.state = State(redis_host=self.config.redis_host,
-                            redis_port=self.config.redis_port,
-                            redis_db=self.config.redis_db)
+        self.state = State(
+            redis_host=self.config.redis_host,
+            redis_port=self.config.redis_port,
+            redis_db=self.config.redis_db,
+        )
 
         # Configure Celery
         self.celery_app = Celery(
@@ -47,7 +49,6 @@ class Orchestrator:
             broker=self.config["celery"]["broker"],
             backend=self.config["celery"]["backend"],
         )
-
 
     async def initialize_dependencies(self):
         self.registry = await initialize_registry(config=self.config)
@@ -64,11 +65,9 @@ class Orchestrator:
         protocol_deck_file: str,
         manual_check_list: List[str],
         user_info: Dict[str, Any],
-        **kwargs
+        **kwargs,
     ) -> P:
-        protocol_config = ProtocolConfiguration(
-            protocol_config_data, self.configuration
-        )
+        protocol_config = ProtocolConfiguration(protocol_config_data, self.config)
 
         # Get the deck from the DeckManager asynchronously
         try:
@@ -82,7 +81,7 @@ class Orchestrator:
             orchestrator=self,
             deck=deck,
             user_info=user_info,
-            state=self.state
+            state=self.state,
         )
 
         self.protocols[protocol.name] = protocol
@@ -109,16 +108,15 @@ class Orchestrator:
         await self.run_protocol(protocol.name)
         return protocol
 
-
     async def run_protocol(self, protocol_name):
-      """
-      Retrieves and runs a protocol in an asynchronous manner.
-      """
-      protocol = self.protocols.get(protocol_name)
-      if protocol:
-          asyncio.create_task(protocol.execute())
-      else:
-          raise ValueError(f"Protocol '{protocol_name}' not found.")
+        """
+        Retrieves and runs a protocol in an asynchronous manner.
+        """
+        protocol = self.protocols.get(protocol_name)
+        if protocol:
+            asyncio.create_task(protocol.execute())
+        else:
+            raise ValueError(f"Protocol '{protocol_name}' not found.")
 
     def get_protocol(self, protocol_name: str) -> Optional[Protocol]:
         """Retrieves a protocol instance by name."""
@@ -165,5 +163,5 @@ class Orchestrator:
             print(f"An error occurred while running protocol {protocol.name}: {e}")
             await protocol._cleanup()
         finally:
-          if protocol.status in ["stopped", "completed", "errored"]:
-            await protocol._cleanup()
+            if protocol.status in ["stopped", "completed", "errored"]:
+                await protocol._cleanup()
