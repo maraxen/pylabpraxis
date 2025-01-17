@@ -9,6 +9,7 @@ from praxis.api import protocols, auth
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
 from praxis.api.auth import get_current_admin_user
+from praxis.protocol.registry import initialize_registry
 from fastapi import Depends
 
 # Create a Configuration instance
@@ -29,9 +30,16 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup logic
-    await orchestrator.initialize_dependencies()
     print(f"Application startup: Initializing dependencies.")
     print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
+
+    # Initialize protocol registry
+    registry = await initialize_registry(config)
+    orchestrator.registry = registry
+
+    # Initialize other dependencies
+    await orchestrator.initialize_dependencies()
+
     yield
     # Shutdown logic
     await orchestrator.registry.close()

@@ -9,22 +9,9 @@ from praxis.protocol.deck_assets import DeckAssets
 from praxis.protocol.parameter import ProtocolParameters, Parameter
 from praxis.utils.state import State
 from praxis.core.orchestrator import Orchestrator
-from pylabrobot.resources import (
-    Deck,
-    Plate,
-    TipRack,
-    TipSpot,
-    Well,
-    Resource,
-    Lid,
-)
+from pylabrobot.resources import Deck, Plate, TipRack, TipSpot, Well, Resource, Lid
 from pylabrobot.plate_reading import PlateReader
 from pylabrobot.liquid_handling import LiquidHandler
-from praxis.commons.commons import (
-    PumpManager,
-    TipWasher,
-    SampleReservoir,
-)
 
 # Initialize protocol parameters with default values
 needed_parameters = ProtocolParameters(
@@ -114,10 +101,10 @@ needed_parameters = ProtocolParameters(
 # Initialize deck assets with a dictionary
 needed_deck_assets = DeckAssets(
     {
-        "pump_manager": {"type": PumpManager, "description": "Manager for fluid pumps"},
-        "tip_washer": {"type": TipWasher, "description": "Washer for tip cleaning"},
+        "pump_manager": {"type": Resource, "description": "Manager for fluid pumps"},
+        "tip_washer": {"type": Resource, "description": "Washer for tip cleaning"},
         "sample_reservoir": {
-            "type": SampleReservoir,
+            "type": Resource,
             "description": "Reservoir for samples",
         },
         "holding": {"type": Plate, "description": "Plate for holding samples"},

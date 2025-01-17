@@ -1,6 +1,8 @@
 import os
 import asyncio
+import hashlib
 from typing import List, Dict, Any, Optional, TypeVar, Type, Generic
+import inspect
 
 import aiofiles
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form, status
@@ -276,6 +278,16 @@ async def get_protocol_directories():
         )
 
 
+def get_protocol_hash(protocol_class: Type[Protocol]) -> str:
+    """Generate a hash of the protocol class based on its source code."""
+    try:
+        source = inspect.getsource(protocol_class)
+        return hashlib.md5(source.encode()).hexdigest()
+    except (TypeError, OSError):
+        # If we can't get the source code, use the class name as fallback
+        return hashlib.md5(protocol_class.__name__.encode()).hexdigest()
+
+
 @router.post(
     "/discover", response_model=List[Dict[str, Any]], name="discover_protocols"
 )
@@ -285,7 +297,7 @@ async def discover_protocols(
     """Discover protocols in the specified directories."""
     try:
         print("\nHandling POST /discover request...")
-        protocols = []
+        protocols = {}  # Use dict for deduplication by hash
 
         # Add default directory to the list if not already included
         directories = list(dirs.directories)
@@ -328,14 +340,13 @@ async def discover_protocols(
                                         and obj != Protocol
                                     ):
                                         print(f"Found protocol: {obj.__name__}")
-                                        protocols.append(
-                                            {
-                                                "name": obj.__name__,
-                                                "file": filepath,
-                                                "description": obj.__doc__
-                                                or "No description available",
-                                            }
-                                        )
+                                        protocol_hash = get_protocol_hash(obj)
+                                        protocols[protocol_hash] = {
+                                            "name": obj.__name__,
+                                            "file": filepath,
+                                            "description": obj.__doc__
+                                            or "No description available",
+                                        }
                                 except TypeError:
                                     # This happens when obj is not a class
                                     continue
@@ -344,8 +355,8 @@ async def discover_protocols(
                             print(f"Error type: {type(e)}")
                             print(f"Error traceback: {traceback.format_exc()}")
 
-        print(f"Returning discovered protocols: {protocols}")
-        return protocols
+        print(f"Returning discovered protocols: {list(protocols.values())}")
+        return list(protocols.values())
     except Exception as e:
         print(f"Error in discover_protocols: {str(e)}")
         print(f"Error type: {type(e)}")

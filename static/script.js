@@ -80,7 +80,10 @@ async function login() {
     const data = await response.json();
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('username', username);
-    localStorage.setItem('is_admin', data.is_admin || false); // Store admin status
+    localStorage.setItem('is_admin', data.is_admin || false);
+
+    // Immediately load protocols after successful login
+    await refreshAvailableProtocols();
 
     updateUI();
   } catch (error) {
@@ -180,6 +183,7 @@ function showHome() {
 
 function showStartProtocolForm() {
   const protocols = JSON.parse(localStorage.getItem('available_protocols') || '[]');
+  console.log('Available protocols:', protocols);
 
   const content = `
     <h2>Start Protocol</h2>
@@ -189,10 +193,10 @@ function showStartProtocolForm() {
         <select id="protocol-select" name="protocol-select" required onchange="updateProtocolForm(this.value)">
           <option value="">Choose a protocol...</option>
           ${protocols.map(p => `
-            <option value="${p.name}">${p.name}</option>
+            <option value="${p.name}" title="${p.file}">${p.name} (${p.file})</option>
           `).join('')}
         </select>
-        <button type="button" onclick="refreshAvailableProtocols()" class="small-button">
+        <button type="button" onclick="debugProtocolLoading()" class="small-button" title="Refresh protocols">
           <i class="fas fa-sync"></i>
         </button>
       </div>
@@ -567,39 +571,112 @@ async function removeProtocolDirectory(directory) {
 // Protocol discovery and management
 async function refreshAvailableProtocols() {
   const token = localStorage.getItem('access_token');
+  if (!token) {
+    console.error('No access token found');
+    return [];
+  }
 
   try {
+    // Try to refresh the token first
+    await refreshToken();
+    const newToken = localStorage.getItem('access_token');
+
     // Get protocol directories from server
     const dirResponse = await fetch('/api/protocols/protocol_directories', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${newToken}`
       }
     });
 
-    if (!dirResponse.ok) throw new Error('Failed to get protocol directories');
+    if (!dirResponse.ok) {
+      if (dirResponse.status === 401) {
+        // If unauthorized, try logging in again
+        alert('Your session has expired. Please log in again.');
+        logout();
+        return [];
+      }
+      throw new Error('Failed to get protocol directories');
+    }
+
     const directories = await dirResponse.json();
+    console.log('Found protocol directories:', directories);
 
     // Discover protocols in these directories
     const response = await fetch('/api/protocols/discover', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${newToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ directories })
     });
 
-    if (!response.ok) throw new Error('Failed to discover protocols');
+    if (!response.ok) {
+      if (response.status === 401) {
+        alert('Your session has expired. Please log in again.');
+        logout();
+        return [];
+      }
+      throw new Error('Failed to discover protocols');
+    }
+
     const protocols = await response.json();
+    console.log('Discovered protocols:', protocols);
     localStorage.setItem('available_protocols', JSON.stringify(protocols));
     return protocols;
   } catch (error) {
     console.error('Error discovering protocols:', error);
+    if (error.message.includes('401') || error.message.includes('unauthorized')) {
+      alert('Your session has expired. Please log in again.');
+      logout();
+    }
     return [];
   }
+}
+
+// Add this function to help with debugging
+async function debugProtocolLoading() {
+  console.log('Starting protocol debug...');
+
+  // First, check what's in localStorage
+  const storedProtocols = localStorage.getItem('available_protocols');
+  console.log('Currently stored protocols:', storedProtocols);
+
+  // Then try to refresh protocols
+  const newProtocols = await refreshAvailableProtocols();
+  console.log('Newly fetched protocols:', newProtocols);
+
+  // Update the form
+  showStartProtocolForm();
 }
 
 // Call updateUI on page load
 window.onload = () => {
   updateUI();
 };
+
+// Add token refresh functionality
+async function refreshToken() {
+  const token = localStorage.getItem('access_token');
+  if (!token) return false;
+
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Token refresh failed');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('access_token', data.access_token);
+    return true;
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return false;
+  }
+}
