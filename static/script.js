@@ -225,7 +225,7 @@ async function showSettings() {
       fetch('/api/protocols/settings', {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
-      fetch('/api/protocols/directories', {
+      fetch('/api/protocols/protocol_directories', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
     ]);
@@ -510,16 +510,30 @@ async function addProtocolDirectory() {
 
   input.addEventListener('change', async (e) => {
     const directory = e.target.files[0].path.split('/').slice(0, -1).join('/');
-    const dirs = JSON.parse(localStorage.getItem('protocol_directories') || '[]');
+    const token = localStorage.getItem('access_token');
 
-    if (!dirs.includes(directory)) {
-      dirs.push(directory);
-      localStorage.setItem('protocol_directories', JSON.stringify(dirs));
+    try {
+      // Send directory to backend for discovery
+      const response = await fetch('/api/protocols/discover', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ directories: [directory] })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add directory');
+      }
 
       // Refresh available protocols
       await refreshAvailableProtocols();
       // Refresh settings view
-      showSettings();
+      await showSettings();
+    } catch (error) {
+      console.error('Error adding directory:', error);
+      alert('Failed to add directory: ' + error.message);
     }
   });
 
@@ -553,16 +567,26 @@ async function removeProtocolDirectory(directory) {
 // Protocol discovery and management
 async function refreshAvailableProtocols() {
   const token = localStorage.getItem('access_token');
-  const dirs = JSON.parse(localStorage.getItem('protocol_directories') || '[]');
 
   try {
+    // Get protocol directories from server
+    const dirResponse = await fetch('/api/protocols/protocol_directories', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!dirResponse.ok) throw new Error('Failed to get protocol directories');
+    const directories = await dirResponse.json();
+
+    // Discover protocols in these directories
     const response = await fetch('/api/protocols/discover', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ directories: dirs })
+      body: JSON.stringify({ directories })
     });
 
     if (!response.ok) throw new Error('Failed to discover protocols');

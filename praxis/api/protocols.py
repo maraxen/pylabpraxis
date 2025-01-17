@@ -8,16 +8,21 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
 import importlib.util
+import traceback
 
 from praxis.configure import PraxisConfiguration
 from praxis.core.orchestrator import Orchestrator
 from praxis.protocol.protocol import Protocol
 from praxis.api.auth import get_current_active_user, get_current_user  # Add this import
 
+# Initialize router and configuration
+print("\nInitializing protocol router...")
+router = APIRouter()
 config = PraxisConfiguration("praxis.ini")
 router = APIRouter()
 orchestrator = Orchestrator(config)  # Initialize the Orchestrator instance
 P = TypeVar("P", bound=Protocol)
+
 
 # Dependency to get the Orchestrator instance
 def get_orchestrator() -> Orchestrator:
@@ -31,12 +36,11 @@ def get_orchestrator() -> Orchestrator:
     global orchestrator  # Access the global orchestrator instance (for now)
 
     if orchestrator is None:
-        raise HTTPException(
-            status_code=500, detail="Orchestrator is not initialized"
-        )
+        raise HTTPException(status_code=500, detail="Orchestrator is not initialized")
     return orchestrator
 
-class ProtocolStartRequest(BaseModel):
+
+class ProtocolStartRequest(BaseModel, Generic[P]):
     protocol_class: Type[P]
     protocol_name: str
     config_data: Dict[str, Any]
@@ -46,12 +50,15 @@ class ProtocolStartRequest(BaseModel):
     user_info: Optional[Dict[str, Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
 
+
 class ProtocolStatus(BaseModel):
     name: str
     status: str
 
+
 class ProtocolDirectories(BaseModel):
     directories: List[str]
+
 
 @router.post("/upload_config_file")
 async def upload_config_file(file: UploadFile = File(...)):
@@ -64,12 +71,11 @@ async def upload_config_file(file: UploadFile = File(...)):
 
         # Save the uploaded file
         if file.filename is None:
-            raise HTTPException(
-                status_code=400, detail="No file selected"
-            )
+            raise HTTPException(status_code=400, detail="No file selected")
         if not file.filename.endswith(".json"):
             raise HTTPException(
-                status_code=400, detail="Invalid file format. Please upload a JSON file."
+                status_code=400,
+                detail="Invalid file format. Please upload a JSON file.",
             )
         if not isinstance(file.filename, str):
             raise HTTPException(
@@ -84,9 +90,8 @@ async def upload_config_file(file: UploadFile = File(...)):
             content={"filename": file.filename, "path": file_path}, status_code=200
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error uploading file: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
+
 
 @router.post("/upload_deck_file")
 async def upload_deck_file(file: UploadFile = File(...)):
@@ -99,12 +104,11 @@ async def upload_deck_file(file: UploadFile = File(...)):
 
         # Save the uploaded file
         if file.filename is None:
-            raise HTTPException(
-                status_code=400, detail="No file selected"
-            )
+            raise HTTPException(status_code=400, detail="No file selected")
         if not file.filename.endswith(".json"):
             raise HTTPException(
-                status_code=400, detail="Invalid file format. Please upload a JSON file."
+                status_code=400,
+                detail="Invalid file format. Please upload a JSON file.",
             )
         if not isinstance(file.filename, str):
             raise HTTPException(
@@ -121,9 +125,8 @@ async def upload_deck_file(file: UploadFile = File(...)):
             content={"filename": file.filename, "path": file_path}, status_code=200
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error uploading file: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
+
 
 @router.get("/deck_layouts", response_model=List[str])
 async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator)):
@@ -133,10 +136,12 @@ async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator
     deck_files = orchestrator.deck_manager.get_available_deck_files()
     return deck_files
 
+
 @router.get("/", response_model=List[str])
 async def list_protocols(orchestrator: Orchestrator = Depends(get_orchestrator)):
     """Lists all available protocols."""
     return list(orchestrator.protocols.keys())
+
 
 @router.post("/start", response_model=ProtocolStatus)
 async def start_protocol(
@@ -147,7 +152,7 @@ async def start_protocol(
     liquid_handler_name: str = Form(...),
     manual_check_list: Optional[List[str]] = Form(None),
     orchestrator: Orchestrator = Depends(get_orchestrator),
-    **kwargs: Any
+    **kwargs: Any,
 ):
     """Starts a new protocol instance."""
     try:
@@ -173,9 +178,9 @@ async def start_protocol(
             protocol_class,
             protocol_config_data,
             temp_deck_path,
-            manual_check_list,
+            manual_check_list or [],  # Provide empty list as default if None
             user_info,
-            **kwargs
+            **kwargs,
         )
         asyncio.create_task(orchestrator.run_protocol(protocol.name))
         return ProtocolStatus(name=protocol.name, status=protocol.status)
@@ -190,6 +195,176 @@ async def start_protocol(
         if os.path.exists(temp_deck_path):
             os.remove(temp_deck_path)
 
+
+# Protocol discovery endpoints (register these before the {protocol_name} endpoint)
+@router.get("/settings", response_model=Dict[str, Any], name="get_settings")
+async def get_settings():
+    """Get application settings."""
+    try:
+        print("\nHandling GET /settings request...")
+        # Get protocol directories
+        directories = []
+
+        # Add default directory
+        if os.path.exists(config.default_protocol_dir):
+            print(f"Adding default protocol directory: {config.default_protocol_dir}")
+            directories.append(config.default_protocol_dir)
+
+        # Add additional directories from config
+        additional_dirs = config.get_protocol_directories()
+        print(f"Found additional directories in config: {additional_dirs}")
+        for directory in additional_dirs:
+            if directory and os.path.exists(directory):
+                print(f"Adding additional directory: {directory}")
+                directories.append(directory)
+
+        # Scan directories for protocol files
+        protocol_files = []
+        for directory in directories:
+            for root, _, files in os.walk(directory):
+                for file in files:
+                    if file.endswith(".py") and file != "__init__.py":
+                        protocol_files.append(os.path.join(root, file))
+        print(f"Found protocol files: {protocol_files}")
+
+        response = {
+            "default_protocol_dir": config.default_protocol_dir,
+            "protocol_directories": directories,
+            "protocol_files": protocol_files,
+            "user_settings": {
+                "username": "debug_user",
+                "is_admin": True,
+            },
+        }
+        print(f"Returning settings response: {response}")
+        return response
+    except Exception as e:
+        print(f"Error in get_settings: {str(e)}")
+        print(f"Error type: {type(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
+
+
+@router.get(
+    "/protocol_directories", response_model=List[str], name="get_protocol_directories"
+)
+async def get_protocol_directories():
+    """Get list of directories where protocols are searched for."""
+    try:
+        print("\nHandling GET /protocol_directories request...")
+        directories = []
+
+        # Add default directory
+        if os.path.exists(config.default_protocol_dir):
+            print(f"Adding default protocol directory: {config.default_protocol_dir}")
+            directories.append(config.default_protocol_dir)
+
+        # Add additional directories from config
+        for directory in config.get_protocol_directories():
+            if directory and os.path.exists(directory):
+                print(f"Adding additional directory: {directory}")
+                directories.append(directory)
+
+        print(f"Returning directories response: {directories}")
+        return directories
+    except Exception as e:
+        print(f"Error in get_protocol_directories: {str(e)}")
+        print(f"Error type: {type(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get directories: {str(e)}"
+        )
+
+
+@router.post(
+    "/discover", response_model=List[Dict[str, Any]], name="discover_protocols"
+)
+async def discover_protocols(
+    dirs: ProtocolDirectories, current_user: Dict = Depends(get_current_active_user)
+):
+    """Discover protocols in the specified directories."""
+    try:
+        print("\nHandling POST /discover request...")
+        protocols = []
+
+        # Add default directory to the list if not already included
+        directories = list(dirs.directories)
+        if config.default_protocol_dir not in directories:
+            print(f"Adding default protocol directory: {config.default_protocol_dir}")
+            directories.append(config.default_protocol_dir)
+
+        for directory in directories:
+            print(f"Scanning directory: {directory}")
+            for root, _, files in os.walk(directory):
+                for file in files:
+                    if file.endswith(".py"):
+                        try:
+                            filepath = os.path.join(root, file)
+                            print(f"Loading protocol from: {filepath}")
+                            spec = importlib.util.spec_from_file_location(
+                                file[:-3], filepath
+                            )
+                            if spec is None:
+                                raise ImportError(f"Could not load spec for {filepath}")
+                            module = importlib.util.module_from_spec(spec)
+                            if spec.loader is None:
+                                raise ImportError(
+                                    f"Could not load module for {filepath}"
+                                )
+                            spec.loader.exec_module(module)
+
+                            # Look for Protocol subclasses
+                            for item in dir(module):
+                                obj = getattr(module, item)
+                                if (
+                                    isinstance(obj, type)
+                                    and issubclass(obj, Protocol)
+                                    and obj != Protocol
+                                ):
+                                    print(f"Found protocol: {obj.__name__}")
+                                    protocols.append(
+                                        {
+                                            "name": obj.__name__,
+                                            "file": filepath,
+                                            "description": obj.__doc__
+                                            or "No description available",
+                                        }
+                                    )
+                        except Exception as e:
+                            print(f"Error loading protocol from {file}: {e}")
+
+        print(f"Returning discovered protocols: {protocols}")
+        return protocols
+    except Exception as e:
+        print(f"Error in discover_protocols: {str(e)}")
+        print(f"Error type: {type(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to discover protocols: {str(e)}"
+        )
+
+
+@router.delete("/directories/{directory_path:path}")
+async def remove_protocol_directory(
+    directory_path: str, current_user: Dict = Depends(get_current_active_user)
+):
+    """Remove a protocol directory from the search paths."""
+    if directory_path == config.default_protocol_dir:
+        raise HTTPException(
+            status_code=400, detail="Cannot remove default protocol directory"
+        )
+
+    try:
+        config.remove_protocol_directory(directory_path)
+        return {"status": "success", "message": f"Removed directory: {directory_path}"}
+    except Exception as e:
+        print(f"Error in remove_protocol_directory: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Failed to remove directory: {str(e)}"
+        )
+
+
+# Protocol management endpoints (register these after the discovery endpoints)
 @router.get("/{protocol_name}", response_model=ProtocolStatus)
 async def get_protocol_status(
     protocol_name: str, orchestrator: Orchestrator = Depends(get_orchestrator)
@@ -200,115 +375,22 @@ async def get_protocol_status(
         raise HTTPException(status_code=404, detail="Protocol not found")
     return ProtocolStatus(name=protocol.name, status=protocol.status)
 
+
 @router.post("/{protocol_name}/command")
 async def send_command(
-    protocol_name: str, command: str, orchestrator: Orchestrator = Depends(get_orchestrator)
+    protocol_name: str,
+    command: str,
+    orchestrator: Orchestrator = Depends(get_orchestrator),
 ):
     """Sends a command to a running protocol."""
     try:
         orchestrator.send_command(protocol_name, command)
-        return {
-            "message": f"Command '{command}' sent to protocol '{protocol_name}'"
-        }
+        return {"message": f"Command '{command}' sent to protocol '{protocol_name}'"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/discover")
-async def discover_protocols(dirs: ProtocolDirectories, current_user: Dict = Depends(get_current_active_user)):
-    protocols = []
 
-    # Add default directory to the list if not already included
-    directories = list(dirs.directories)
-    if config.default_protocol_dir not in directories:  # Use config instead of imported constant
-        directories.append(config.default_protocol_dir)
+print("Protocol endpoints registered\n")
 
-    for directory in directories:
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith('.py'):
-                    try:
-                        filepath = os.path.join(root, file)
-                        spec = importlib.util.spec_from_file_location(file[:-3], filepath)
-                        module = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(module)
-
-                        # Look for Protocol subclasses
-                        for item in dir(module):
-                            obj = getattr(module, item)
-                            if isinstance(obj, type) and issubclass(obj, Protocol) and obj != Protocol:
-                                protocols.append({
-                                    "name": obj.__name__,
-                                    "file": filepath,
-                                    "description": obj.__doc__ or "No description available"
-                                })
-                    except Exception as e:
-                        print(f"Error loading protocol from {file}: {e}")
-
-    return protocols
-
-@router.get("/settings")
-async def get_settings(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
-    """Get application settings."""
-    try:
-        # Get protocol directories
-        directories = []
-        if os.path.exists(config.default_protocol_dir):
-            directories.append(config.default_protocol_dir)
-
-        additional_dirs = [d for d in config.get_protocol_directories() if d]
-        directories.extend(additional_dirs)
-
-        return {
-            "default_protocol_dir": config.default_protocol_dir,
-            "protocol_directories": directories,
-            "user_settings": {
-                "username": current_user["username"],
-                "is_admin": current_user.get("is_admin", False)
-            }
-        }
-    except Exception as e:
-        print(f"Error in get_settings: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get settings: {str(e)}"
-        )
-
-@router.get("/directories")
-async def get_protocol_directories(current_user: Dict = Depends(get_current_active_user)):
-    """Get list of directories where protocols are searched for."""
-    try:
-        directories = []
-        if os.path.exists(config.default_protocol_dir):
-            directories.append(config.default_protocol_dir)
-
-        for directory in config.get_protocol_directories():
-            if directory and os.path.exists(directory):
-                directories.append(directory)
-
-        return directories
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get directories: {str(e)}"
-        )
-
-@router.delete("/directories/{directory_path:path}")
-async def remove_protocol_directory(
-    directory_path: str,
-    current_user: Dict = Depends(get_current_active_user)
-):
-    """Remove a protocol directory from the search paths."""
-    if directory_path == config.default_protocol_dir:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot remove default protocol directory"
-        )
-
-    try:
-        config.remove_protocol_directory(directory_path)
-        return {"status": "success", "message": f"Removed directory: {directory_path}"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Failed to remove directory: {str(e)}"
-        )
+# Initialize orchestrator after router setup
+orchestrator = Orchestrator(config)

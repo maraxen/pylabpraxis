@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
 from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
+from jose import JWTError, jwt  # type: ignore
 import json
 import os
 from praxis.configure import PraxisConfiguration
@@ -11,21 +11,24 @@ from praxis.configure import PraxisConfiguration
 router = APIRouter()
 
 # Load configuration from praxis.ini
-config = PraxisConfiguration()  # Assuming you initialize Configuration with "praxis.ini"
+config = (
+    PraxisConfiguration()
+)  # Assuming you initialize Configuration with "praxis.ini"
 auth_config = config.get_section("auth")
 admin_config = config.get_section("admin")
 
 
 # --- Configuration ---
-SECRET_KEY = auth_config.get("secret_key")
-ALGORITHM = auth_config.get("algorithm")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(auth_config.get("access_token_expire_minutes"))
+SECRET_KEY = auth_config.get("secret_key") or ""
+ALGORITHM = auth_config.get("algorithm") or "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = int(auth_config.get("access_token_expire_minutes") or 30)
 USER_DB_FILE = config.get_section("database").get("users", "users.json")
 
 
 # --- Admin Credentials ---
 ADMIN_USERNAME = admin_config.get("username")
 ADMIN_PASSWORD = admin_config.get("password")
+
 
 # --- User Database ---
 # Placeholder for user database using JSON file
@@ -40,15 +43,19 @@ def get_user_db():
             users = {}
     return users
 
+
 # --- OAuth2 ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+
 
 # --- Pydantic Models ---
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 # --- Helper Functions ---
+
 
 def get_password_hash(password: str) -> str:
     """Hashes the password using bcrypt (replace with your actual hashing logic)."""
@@ -59,15 +66,21 @@ def get_password_hash(password: str) -> str:
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     return hashed_password.decode("utf-8")  # Store as a string
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against a stored hash."""
     # !!! In a real application, use a proper password hashing library like bcrypt !!!
     # Example (using bcrypt):
     import bcrypt
 
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
-def create_access_token(data: Dict[str, Any], expires_delta: timedelta = None) -> str:
+
+def create_access_token(
+    data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+) -> str:
     """Creates a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
@@ -76,13 +89,14 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta = None) -
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return str(encoded_jwt)
+
 
 def decode_access_token(token: str) -> Dict[str, Any]:
     """Decodes and verifies a JWT access token."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return dict(payload)  # Convert to dict to match return type annotation
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -90,7 +104,9 @@ def decode_access_token(token: str) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 # --- API Endpoints ---
+
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -102,7 +118,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         user = {"username": form_data.username, "is_admin": True}
     else:
         user = users_db.get(form_data.username)
-        if not user or not verify_password(form_data.password, user["hashed_password"]):
+        if not user or not verify_password(
+            form_data.password, str(user["hashed_password"])
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -115,41 +133,57 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return Token(access_token=access_token, token_type="bearer")
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Dependency to get the current user from the JWT token."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    """Get the current user from the JWT token."""
     try:
+        print(f"Decoding token: {token}")
         payload = decode_access_token(token)
-        username: str = payload.get("sub")
+        username = payload.get("sub")
         if username is None:
-            raise credentials_exception
-        # In a real application, you would fetch the user from the database here
-        users_db = get_user_db()
-        user = users_db.get(username)
-        if user is None:
-            if username == ADMIN_USERNAME:
-                return {"username": ADMIN_USERNAME, "is_admin": True}
-            else:
-                raise credentials_exception
-        return {"username": username, "is_admin": user.get("is_admin", False)}
-    except JWTError:
-        raise credentials_exception
+            print("No username in token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        print(f"Found user: {username}")
+        return {"username": username, "is_admin": username == ADMIN_USERNAME}
+    except Exception as e:
+        print(f"Error in get_current_user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 
 async def get_current_active_user(current_user: Dict = Depends(get_current_user)):
-    """Dependency to get the current active user."""
-    return current_user
+    """Get the current active user."""
+    try:
+        print(f"Checking if user is active: {current_user}")
+        return current_user
+    except Exception as e:
+        print(f"Error in get_current_active_user: {str(e)}")
+        raise HTTPException(status_code=400, detail="Inactive user")
 
-# Dependency to check for admin privileges
+
 async def get_current_admin_user(current_user: Dict = Depends(get_current_active_user)):
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Not authorized for admin access")
-    return current_user
+    """Get the current admin user."""
+    try:
+        print(f"Checking if user is admin: {current_user}")
+        if not current_user.get("is_admin", False):
+            raise HTTPException(status_code=403, detail="Not an admin user")
+        return current_user
+    except Exception as e:
+        print(f"Error in get_current_admin_user: {str(e)}")
+        raise HTTPException(status_code=403, detail="Not an admin user")
+
 
 @router.get("/users/me")
 async def read_users_me(current_user: Dict = Depends(get_current_active_user)):
     """Protected endpoint that requires a valid JWT token."""
-    return {"username": current_user["username"], "is_admin": current_user.get("is_admin", False)}
+    return {
+        "username": current_user["username"],
+        "is_admin": current_user.get("is_admin", False),
+    }
