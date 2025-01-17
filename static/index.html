@@ -4,12 +4,27 @@
 <head>
   <title>Praxis Dashboard</title>
   <link rel="stylesheet" type="text/css" href="/static/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    /* Add initial loading state */
+    .loading #auth-section,
+    .loading #content {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
-  <div id="app">
+  <div id="app" class="loading">
+    <!-- Add loading indicator -->
+    <div id="initial-loader"
+      style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; display: flex; align-items: center; justify-content: center;">
+      <div style="color: var(--dark-gray);">Loading...</div>
+    </div>
+    <!-- Authentication section -->
     <section id="auth-section">
-      <form id="login-form" onsubmit="event.preventDefault(); login();">
+      <form id="login-form">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required><br><br>
         <label for="password">Password:</label>
@@ -19,77 +34,54 @@
       <div id="login-status">Not logged in</div>
     </section>
 
-    <section id="dashboard-content" style="display: none;">
-      <h1>Praxis Dashboard</h1>
-      <button type="button" onclick="logout()">Logout</button>
-      <section id="protocols-section">
-        <h2>Protocols</h2>
-        <button type="button" onclick="fetchProtocols()">Refresh Protocols</button>
-        <ul id="protocol-list">
-        </ul>
-      </section>
+    <!-- Main application layout -->
+    <nav id="sidebar">
+      <div class="sidebar-controls">
+        <button type="button" id="menu-toggle" onclick="toggleSidebar()">
+          <i class="fas fa-bars"></i>
+        </button>
+        <button type="button" id="home-button" onclick="showSection('home')">
+          <i class="fas fa-house"></i>
+        </button>
+      </div>
+      <ul id="sidebar-nav">
+        <li data-section="home" class="active">
+          <i class="fas fa-house"></i> Home
+        </li>
+        <li data-section="start-protocol">
+          <i class="fas fa-play"></i> Start Protocol
+        </li>
+        <li data-section="manage-protocols">
+          <i class="fas fa-list-check"></i> Manage Protocols
+        </li>
+        <li data-section="data-viewer">
+          <i class="fas fa-chart-line"></i> Data Viewer
+        </li>
+        <li data-section="lab-inventory">
+          <i class="fas fa-clipboard-list"></i> Lab Inventory
+        </li>
+      </ul>
+    </nav>
 
-      <section id="running-protocols-section">
-        <h2>Running Protocols</h2>
-        <ul id="running-protocols-list">
-        </ul>
-      </section>
+    <div id="content">
+      <header id="top-bar">
+        <div id="user-info">
+          <button id="settings-btn" onclick="showSection('settings')">
+            <i class="fas fa-cog"></i> Settings
+          </button>
+          <button id="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </header>
 
-      <section id="start-protocol-section">
-        <h2>Start Protocol</h2>
-        <form id="start-protocol-form" onsubmit="event.preventDefault(); startProtocol();">
-          <div>
-            <label for="protocol-name">Protocol Name:</label>
-            <input type="text" id="protocol-name" name="protocol-name" required>
-          </div>
-          <div>
-            <label for="config-file">Config File:</label>
-            <input type="file" id="config-file" name="config-file" accept=".json, .toml, .ini" required>
-          </div>
-          <div>
-            <label for="deck-file">Deck File:</label>
-            <select id="deck-file" name="deck-file">
-            </select>
-          </div>
-          <div>
-            <label for="liquid-handler-name">Liquid Handler Name:</label>
-            <input type="text" id="liquid-handler-name" name="liquid-handler-name" required>
-          </div>
-          <div>
-            <input type="checkbox" id="manual-check" name="manual-check">
-            <label for="manual-check">Perform Manual Checks</label>
-          </div>
-          <button type="submit">Start Protocol</button>
-        </form>
-      </section>
+      <main id="main-content"></main>
 
-      <section id="plate-reader-section">
-        <h2>Plate Reader Task</h2>
-        <form id="plate-reader-form" onsubmit="event.preventDefault(); schedulePlateReaderTask();">
-          <div>
-            <label for="experiment-name">Experiment Name:</label>
-            <input type="text" id="experiment-name" name="experiment-name" required>
-          </div>
-          <div>
-            <label for="plate-name">Plate Name:</label>
-            <input type="text" id="plate-name" name="plate-name" required>
-          </div>
-          <div>
-            <label for="measurement-type">Measurement Type:</label>
-            <input type="text" id="measurement-type" name="measurement-type" required>
-          </div>
-          <div>
-            <label for="wells">Wells:</label>
-            <input type="text" id="wells" name="wells" placeholder="e.g. A1,B2,C3" required>
-          </div>
-          <div>
-            <label for="estimated-duration">Estimated Duration (seconds):</label>
-            <input type="number" id="estimated-duration" name="estimated-duration" value="60" required>
-          </div>
-          <button type="submit">Schedule Task</button>
-        </form>
-      </section>
-    </section>
+      <footer id="status-bar">
+        <span id="logged-in-user"></span>
+        <span id="system-status">System Status: OK</span>
+      </footer>
+    </div>
   </div>
 
   <script src="/static/script.js"></script>

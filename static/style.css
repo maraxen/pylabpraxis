@@ -1,94 +1,693 @@
-/* Basic styling - customize as needed */
+/* Reset and base styles */
 body {
-  font-family: sans-serif;
-  margin: 20px;
-}
-
-section {
-  margin-bottom: 20px;
-  border: 1px solid #ccc;
-  padding: 10px;
-  border-radius: 5px;
-}
-
-h2 {
-  margin-top: 0;
-}
-
-ul {
-  list-style-type: none;
+  margin: 0;
   padding: 0;
+  font-family: sans-serif;
+  height: 100vh;
+  overflow-x: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-li {
-  margin-bottom: 5px;
-}
-
-form {
+#app {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  width: 300px;
 }
 
-label {
-  margin-top: 10px;
-}
-
-input[type="text"],
-input[type="password"],
-input[type="number"],
-input[type="file"],
-select {
+/* Auth section */
+#auth-section {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  padding: 5px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-button {
-  margin-top: 10px;
-  padding: 8px 15px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-#login-form {
-  display: flex;
+  height: 100%;
+  background: white;
+  z-index: 1000;
+  display: none;
+  /* Hide by default */
   flex-direction: column;
-  max-width: 300px;
-  margin: auto;
+  align-items: center;
+  justify-content: center;
 }
 
-#login-form input {
-  margin-bottom: 10px;
+/* Main layout */
+#content {
+  flex: 1;
+  margin-left: 0;
+  transition: margin-left 0.3s ease;
+  padding: 20px;
+  display: none;
+  /* Hide by default */
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+#content.sidebar-open {
+  margin-left: 250px;
+}
+
+/* Sidebar */
+#sidebar {
+  position: fixed;
+  left: -250px;
+  top: 0;
+  width: 250px;
+  height: 100%;
+  background: var(--bg-tertiary);
+  transition: left 0.3s ease;
+  z-index: 100;
+  box-shadow: 2px 0 5px var(--shadow-color);
+}
+
+#sidebar.open {
+  left: 0;
+}
+
+/* Complete replacement for sidebar controls */
+.sidebar-controls {
+  position: fixed;
+  top: 10px;
+  /* Fixed distance from top */
+  left: 15px;
+  display: flex;
+  gap: 20px;
+  z-index: 200;
+  height: 40px;
+  /* Match top bar height for perfect centering */
+  transition: transform 0.3s ease, left 0.3s ease;
+}
+
+.sidebar-controls button {
+  width: 40px;
+  height: 40px;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: none;
+  /* Remove border */
   border-radius: 4px;
+  background-color: transparent;
+  /* Remove background */
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  /* Smooth transition for all properties */
+  box-shadow: none;
+  /* Remove shadow */
 }
 
-#login-form button {
-  padding: 10px;
-  background-color: #4CAF50;
+.sidebar-controls button:hover {
+  color: var(--blue);
+  transform: translateY(-2px);
+}
+
+/* Smooth transition for sidebar open state */
+#sidebar.open .sidebar-controls {
+  transform: translateX(260px);
+  /* Use X translation only */
+  transition: transform 0.3s ease;
+}
+
+/* Remove any old sidebar button styles */
+#sidebar>button {
+  display: none;
+}
+
+#sidebar-nav {
+  list-style: none;
+  padding: 20px 0;
+  margin: 0;
+}
+
+#sidebar-nav li {
+  padding: 15px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+}
+
+#sidebar-nav li i {
+  width: 20px;
+  text-align: center;
+  color: inherit;
+}
+
+#sidebar-nav li:hover {
+  background-color: var(--bg-secondary);
+}
+
+#sidebar-nav li.active {
+  background-color: var(--blue);
   color: white;
+}
+
+/* Top bar */
+#top-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 60px;
+  background: var(--bg-secondary);
+  padding: 0 20px;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  z-index: 99;
+  transition: left 0.3s ease;
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+#content.sidebar-open #top-bar {
+  left: 250px;
+}
+
+#user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#user-info button {
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+#user-info button:hover {
+  transform: translateY(-1px);
+}
+
+#user-info button i {
+  font-size: 16px;
+}
+
+#settings-btn {
+  background-color: var(--blue);
+  color: white;
+}
+
+#settings-btn:hover {
+  background-color: #2980b9;
+}
+
+#logout-btn {
+  background-color: var(--red);
+  color: white;
+}
+
+#logout-btn:hover {
+  background-color: #c0392b;
+}
+
+/* Main content area */
+#main-content {
+  flex: 1;
+  padding: 80px 20px 60px 20px;
+  /* Top and bottom padding to account for fixed bars */
+  overflow-y: auto;
+  min-height: calc(100vh - 140px);
+  /* Viewport height minus top and bottom bars */
+}
+
+/* Status bar */
+#status-bar {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 40px;
+  background: var(--bg-secondary);
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  z-index: 99;
+  transition: left 0.3s ease;
+  color: var(--text-primary);
+}
+
+#logged-in-user {
+  display: none;
+}
+
+#status-bar #logged-in-user {
+  display: block;
+  grid-column: 1;
+  justify-self: start;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+#system-status {
+  grid-column: 2;
+  justify-self: center;
+  color: var(--text-primary);
+}
+
+#content.sidebar-open #status-bar {
+  left: 250px;
+}
+
+/* Forms */
+form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+form div {
+  margin-bottom: 15px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  #content.sidebar-open {
+    margin-left: 0;
+  }
+
+  #sidebar {
+    width: 100%;
+    left: -100%;
+  }
+
+  #sidebar.open {
+    left: 0;
+  }
+
+  #content.sidebar-open #top-bar,
+  #content.sidebar-open #status-bar {
+    left: 0;
+  }
+
+  #sidebar.open button {
+    left: auto;
+    right: 10px;
+  }
+
+  #sidebar.open .sidebar-controls {
+    transform: translateY(-50%);
+    /* Reset horizontal transform but keep vertical centering */
+    right: 10px;
+    left: auto;
+  }
+
+  .sidebar-controls {
+    gap: 10px;
+    /* Slightly smaller gap on mobile */
+  }
+}
+
+/* Color palette (colorblind friendly) */
+:root {
+  --blue: #3498db;
+  --red: #e74c3c;
+  --gray: #95a5a6;
+  --dark-gray: #34495e;
+  --light-gray: #ecf0f1;
+  --green: #2ecc71;
+  --green-dark: #27ae60;
+  /* Light theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #dee2e6;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #333333;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --border-color: #404040;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* High Contrast Light */
+[data-theme="high-contrast-light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f0f0f0;
+  --bg-tertiary: #e0e0e0;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --border-color: #000000;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+
+  --blue: #0066cc;
+  --red: #cc0000;
+  --green: #006600;
+  --green-dark: #004d00;
+}
+
+/* High Contrast Dark */
+[data-theme="high-contrast-dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #262626;
+  --text-primary: #ffffff;
+  --text-secondary: #ffff00;
+  --border-color: #ffffff;
+  --shadow-color: rgba(255, 255, 255, 0.2);
+
+  --blue: #00ccff;
+  --red: #ff6666;
+  --green: #33ff33;
+  --green-dark: #00ff00;
+}
+
+/* Add styles for action buttons */
+.action-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  color: white;
+}
+
+.action-button i {
+  font-size: 16px;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+}
+
+.action-button.green {
+  background-color: var(--green);
+}
+
+.action-button.green:hover {
+  background-color: var(--green-dark);
+}
+
+/* Settings page styles */
+.settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.settings-search {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 16px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.settings-search::placeholder {
+  color: var(--text-secondary);
+}
+
+.settings-section {
+  margin-bottom: 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+}
+
+.settings-section.admin {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.settings-section.admin.enabled {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-header {
+  padding: 15px 20px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-header:hover {
+  background-color: var(--bg-secondary);
+}
+
+.settings-header i {
+  transition: transform 0.3s ease;
+  color: var(--text-primary);
+}
+
+.settings-header.expanded i {
+  transform: rotate(180deg);
+}
+
+.settings-content {
+  padding: 20px;
+  display: none;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-content.expanded {
+  display: block;
+}
+
+/* Add styles for theme selector */
+.theme-selector {
+  width: 100%;
+  padding: 8px;
+  margin: 10px 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
-#login-form button:hover {
-  background-color: #45a049;
+.theme-selector option {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-#login-status {
+/* Fix status bar colors */
+#status-bar #logged-in-user,
+#system-status {
+  color: var(--text-primary);
+}
+
+/* Fix sidebar colors */
+#sidebar-nav li {
+  color: var(--text-primary);
+}
+
+#sidebar-nav li:hover {
+  background-color: var(--bg-secondary);
+}
+
+#sidebar-nav li.active {
+  background-color: var(--blue);
+  color: white;
+}
+
+#sidebar-nav li i {
+  color: inherit;
+}
+
+/* Fix control buttons colors */
+.sidebar-controls button {
+  color: var(--text-primary);
+}
+
+.sidebar-controls button:hover {
+  color: var(--blue);
+}
+
+/* Update form elements globally */
+input,
+select,
+textarea {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Update headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+}
+
+/* Fix disabled admin section */
+.settings-section.admin:not(.enabled) {
+  opacity: 0.5;
+  background-color: var(--bg-tertiary);
+}
+
+/* Protocol directory styles */
+.directory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.directory-item span {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.directory-actions {
+  margin-top: 15px;
+}
+
+.small-button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.small-button:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
+}
+
+/* Protocol selection styles */
+#protocol-select {
+  width: calc(100% - 44px);
+  margin-right: 8px;
+}
+
+#protocol-specific-form {
+  margin-top: 20px;
+}
+
+/* Protocol directory list styles */
+.directory-list {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  margin: 10px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.directory-item {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-primary);
+}
+
+.directory-item:last-child {
+  border-bottom: none;
+}
+
+.directory-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 10px;
+  color: var(--text-primary);
+}
+
+.directory-badge {
+  background-color: var(--blue);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.directory-controls {
+  display: flex;
+  gap: 8px;
   margin-top: 10px;
-  text-align: center;
-  font-weight: bold;
+}
+
+.directory-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.directory-button:hover {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+}
+
+.directory-button.remove {
+  color: var(--red);
+}
+
+.directory-button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.directory-button:hover {
+  background-color: var(--bg-secondary);
+  transform: translateY(-1px);
+}
+
+.directory-button.remove:hover {
+  color: var(--red);
 }

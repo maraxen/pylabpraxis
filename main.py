@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
+import os
 
 from praxis.api import protocols, auth
 from praxis.core.orchestrator import Orchestrator
@@ -12,9 +13,13 @@ from fastapi import Depends
 
 # Create a Configuration instance
 config_file = "praxis.ini"
+config = PraxisConfiguration(config_file)
+
+# Set up default protocol directory
+DEFAULT_PROTOCOL_DIR = config.default_protocol_dir
 
 # Create and initialize Orchestrator
-orchestrator = Orchestrator(config_file)
+orchestrator = Orchestrator(config)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +29,8 @@ async def lifespan(app: FastAPI):
     """
     # Startup logic
     await orchestrator.initialize_dependencies()
-    print("Application startup: Initializing dependencies.")
+    print(f"Application startup: Initializing dependencies.")
+    print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
     yield
     # Shutdown logic
     await orchestrator.registry.close()
@@ -50,3 +56,6 @@ async def admin_only_endpoint():
 @app.get("/")
 async def redirect_to_index():
     return RedirectResponse(url="/static/index.html")
+
+# Add additional directories to the protocols section
+config.additional_directories = ""

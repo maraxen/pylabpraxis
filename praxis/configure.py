@@ -35,6 +35,14 @@ class PraxisConfiguration:
       self.logging_level = self.logging.get("level", "INFO")
       self.log_file = self.logging.get("file", "/var/log/praxis/praxis.log")
       self.admin_credentials = self.get_section("admin")
+      self.protocol_directories = self.get_section("protocol_directories")
+      self.default_protocol_dir = self.protocol_directories.get("default_directory", os.path.join(
+        os.path.dirname(__file__), "protocol", "protocols"
+      ))
+      self.additional_directories = self.protocol_directories.get("additional_directories",
+                                                                  "")
+      if not os.path.exists(self.default_protocol_dir):
+          os.makedirs(self.default_protocol_dir)
 
   def __getitem__(self, key: str) -> Any:
       return self.config[key]
@@ -79,6 +87,28 @@ class PraxisConfiguration:
   def get_lab_users(self) -> "PraxisUsers":
       """Creates and returns a PraxisUsers object."""
       return PraxisUsers(self.users)
+
+  def get_protocol_directories(self) -> List[str]:
+      """Get list of additional protocol directories."""
+      return self.config.get('Protocols', 'additional_directories', fallback='').split(',')
+
+  def remove_protocol_directory(self, directory: str) -> None:
+      """Remove a directory from the protocol search paths."""
+      dirs = self.get_protocol_directories()
+      if directory in dirs:
+          dirs.remove(directory)
+          self.config.set('Protocols', 'additional_directories', ','.join(dirs))
+          with open(self.config_file, 'w') as f:
+              self.config.write(f)
+
+  def add_protocol_directory(self, directory: str) -> None:
+      """Add a directory to protocol search paths."""
+      dirs = self.get_protocol_directories()
+      if directory not in dirs:
+          dirs.append(directory)
+          self.config.set('Protocols', 'additional_directories', ','.join(dirs))
+          with open(self.config_file, 'w') as f:
+              self.config.write(f)
 
 
 class PraxisUsers:
