@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Button,
   Input,
   VStack,
   Heading,
   Text,
+  Fieldset,
 } from '@chakra-ui/react';
-import { FormControl, FormLabel } from '@chakra-ui/form-control';
 import { authService } from '../services/auth';
 import { useToast } from '@chakra-ui/toast';
+import { Field } from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
+
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -65,41 +67,46 @@ export const Login: React.FC = () => {
         bg="white"
         width="90%"
       >
-        <VStack align="stretch">
+        <VStack gap={4} align="stretch">
           <Heading textAlign="center" mb={6}>
             Login to PLR
           </Heading>
           <form onSubmit={handleSubmit}>
-            <VStack>
-              <FormControl isRequired>
-                <FormLabel>Username</FormLabel>
-                <Input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                />
-              </FormControl>
-              <Button loading>  </Button>
+            <Fieldset.Root>
+              <Fieldset.Legend>Login Credentials</Fieldset.Legend>
+              <Fieldset.HelperText>
+                Please enter your credentials below
+              </Fieldset.HelperText>
+              <Fieldset.Content>
+                <Field label="Username">
+                  <Input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your username"
+                  />
+                </Field>
+                <Field label="Password">
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                  />
+                </Field>
+              </Fieldset.Content>
+
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme="brand"
                 width="full"
                 mt={4}
                 loadingText="Signing in..."
+                loading={isLoading}
               >
                 Sign In
               </Button>
-            </VStack>
+            </Fieldset.Root>
           </form>
           <Text fontSize="sm" color="gray.600" textAlign="center" mt={4}>
             Contact your administrator if you need access.
