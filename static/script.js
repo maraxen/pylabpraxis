@@ -80,13 +80,7 @@ async function login() {
     const data = await response.json();
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('username', username);
-    localStorage.setItem('is_admin', data.is_admin || false);
-
-    // Load all initial data
-    await Promise.all([
-      refreshAvailableProtocols(),
-      loadInitialData()
-    ]);
+    localStorage.setItem('is_admin', data.is_admin || false); // Store admin status
 
     updateUI();
   } catch (error) {
@@ -184,342 +178,23 @@ function showHome() {
   fetchRunningProtocols();
 }
 
-// Protocol form handling functions
-function getInputTypeForParameter(param) {
-  switch (param.type) {
-    case 'bool':
-      return 'checkbox';
-    case 'int':
-    case 'float':
-      return 'number';
-    case 'list':
-      return 'text'; // Will be handled as comma-separated values
-    default:
-      return 'text';
-  }
-}
-
-function renderParameterInput(param) {
-  const inputType = getInputTypeForParameter(param);
-  const id = `param-${param.name}`;
-  const name = `param-${param.name}`;
-
-  if (inputType === 'checkbox') {
-    return `
-      <input type="checkbox"
-             id="${id}"
-             name="${name}"
-             ${param.default ? 'checked' : ''}
-             ${param.required ? 'required' : ''}>
-    `;
-  }
-
-  if (inputType === 'number') {
-    const constraints = param.constraints || {};
-    return `
-      <input type="number"
-             id="${id}"
-             name="${name}"
-             value="${param.default !== undefined ? param.default : ''}"
-             ${constraints.min_value !== undefined ? `min="${constraints.min_value}"` : ''}
-             ${constraints.max_value !== undefined ? `max="${constraints.max_value}"` : ''}
-             ${param.required ? 'required' : ''}>
-    `;
-  }
-
-  return `
-    <input type="text"
-           id="${id}"
-           name="${name}"
-           value="${param.default !== undefined ? param.default : ''}"
-           ${param.required ? 'required' : ''}>
-  `;
-}
-
-function updateProtocolForm(protocolName) {
-  console.log("Updating protocol form for:", protocolName);
-  const protocols = JSON.parse(localStorage.getItem('available_protocols') || '[]');
-  const assets = JSON.parse(localStorage.getItem('available_assets') || '[]');
-  const users = JSON.parse(localStorage.getItem('available_users') || '[]');
-  const deckFiles = JSON.parse(localStorage.getItem('available_deck_files') || '[]');
-
-  console.log('Available protocols:', protocols);
-  console.log('Available assets:', assets);
-  console.log('Available users:', users);
-  console.log('Available deck files:', deckFiles);
-
-  const protocol = protocols.find(p => p.name === protocolName);
-
-  if (!protocol) {
-    console.error("Protocol not found:", protocolName);
-    return;
-  }
-
-  console.log("Protocol data:", protocol);
-
-  // Create the form content
-  const formContent = `
-    <div class="form-section">
-      <h3>Protocol Configuration</h3>
-      <div class="form-group">
-        <label for="protocol-name">Name:</label>
-        <input type="text" id="protocol-name" name="name" required value="${protocol.name || ''}"
-               onchange="validateProtocolName(this.value)">
-        <div id="name-validation-message" class="validation-message"></div>
-      </div>
-      <div class="form-group">
-        <label for="protocol-details">Details:</label>
-        <textarea id="protocol-details" name="details">${protocol.config_fields?.details || ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label for="protocol-description">Description:</label>
-        <textarea id="protocol-description" name="description">${protocol.config_fields?.description || ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label for="protocol-machines">Machines:</label>
-        <div class="select-with-refresh">
-          <select id="protocol-machines" name="machines" multiple>
-            ${assets.filter(a => a.type === 'machine').map(m => `
-              <option value="${m.id}">${m.name}</option>
-            `).join('')}
-          </select>
-          <button type="button" onclick="refreshAssets()" class="refresh-button" title="Refresh machines">
-            <i class="fas fa-sync"></i>
-          </button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="protocol-liquid-handlers">Liquid Handlers:</label>
-        <div class="select-with-refresh">
-          <select id="protocol-liquid-handlers" name="liquid_handler_ids" multiple>
-            ${assets.filter(a => a.type === 'liquid_handler').map(h => `
-              <option value="${h.id}">${h.name}</option>
-            `).join('')}
-          </select>
-          <button type="button" onclick="refreshAssets()" class="refresh-button" title="Refresh liquid handlers">
-            <i class="fas fa-sync"></i>
-          </button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="protocol-users">Users:</label>
-        <div class="select-with-refresh">
-          <select id="protocol-users" name="users" multiple>
-            ${users.map(u => `
-              <option value="${u.username}">${u.display_name || u.username}</option>
-            `).join('')}
-          </select>
-          <button type="button" onclick="refreshUsers()" class="refresh-button" title="Refresh users">
-            <i class="fas fa-sync"></i>
-          </button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="protocol-directory">Directory:</label>
-        <div class="directory-select">
-          <input type="text" id="protocol-directory" name="directory"
-                 value="${protocol.config_fields?.directory || ''}" readonly>
-          <button type="button" onclick="selectDirectory()" class="directory-button">
-            <i class="fas fa-folder-open"></i> Browse
-          </button>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="protocol-deck">Deck File:</label>
-        <div class="select-with-refresh">
-          <select id="protocol-deck" name="deck" required>
-            <option value="">Select a deck file...</option>
-            ${deckFiles.map(f => `<option value="${f}">${f}</option>`).join('')}
-          </select>
-          <button type="button" onclick="refreshDeckFiles()" class="refresh-button" title="Refresh deck files">
-            <i class="fas fa-sync"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-    <div id="protocol-parameters" class="form-section">
-      <!-- Parameters will be dynamically added here -->
-    </div>
-    <div class="form-actions">
-      <button type="submit" class="action-button">Start Protocol</button>
-    </div>
-  `;
-
-  const formContainer = document.getElementById('protocol-specific-form');
-  formContainer.innerHTML = formContent;
-
-  // Initialize SlimSelect for all select elements
-  const selectElements = {
-    'protocol-machines': {
-      placeholder: 'Select machines...',
-      searchText: 'No machines found'
-    },
-    'protocol-liquid-handlers': {
-      placeholder: 'Select liquid handlers...',
-      searchText: 'No liquid handlers found'
-    },
-    'protocol-users': {
-      placeholder: 'Select users...',
-      searchText: 'No users found'
-    },
-    'protocol-deck': {
-      placeholder: 'Select a deck file...',
-      searchText: 'No deck files found'
-    }
-  };
-
-  // Initialize each select with SlimSelect
-  Object.entries(selectElements).forEach(([id, settings]) => {
-    const element = document.getElementById(id);
-    if (element) {
-      console.log(`Initializing SlimSelect for ${id}`);
-      new SlimSelect({
-        select: element,
-        settings: {
-          ...settings,
-          allowDeselect: true
-        }
-      });
-    } else {
-      console.error(`Element not found: ${id}`);
-    }
-  });
-
-  // Set any previously selected values
-  if (protocol.config_fields?.machines) {
-    const machinesSelect = document.getElementById('protocol-machines');
-    if (machinesSelect && machinesSelect.slim) {
-      machinesSelect.slim.setSelected(protocol.config_fields.machines);
-    }
-  }
-  if (protocol.config_fields?.liquid_handler_ids) {
-    const lhSelect = document.getElementById('protocol-liquid-handlers');
-    if (lhSelect && lhSelect.slim) {
-      lhSelect.slim.setSelected(protocol.config_fields.liquid_handler_ids);
-    }
-  }
-  if (protocol.config_fields?.users) {
-    const usersSelect = document.getElementById('protocol-users');
-    if (usersSelect && usersSelect.slim) {
-      usersSelect.slim.setSelected(protocol.config_fields.users);
-    }
-  }
-  if (protocol.config_fields?.deck) {
-    const deckSelect = document.getElementById('protocol-deck');
-    if (deckSelect && deckSelect.slim) {
-      deckSelect.slim.setSelected(protocol.config_fields.deck);
-    }
-  }
-
-  // Add parameters if they exist
-  if (protocol.parameters && protocol.parameters.length > 0) {
-    console.log("Rendering parameters:", protocol.parameters);
-
-    const parametersDiv = document.createElement('div');
-    parametersDiv.className = 'protocol-parameters';
-    parametersDiv.innerHTML = '<h3>Protocol Parameters</h3>';
-
-    protocol.parameters.forEach((param) => {
-      const paramGroup = document.createElement('div');
-      paramGroup.className = 'parameter-group';
-
-      const label = document.createElement('label');
-      label.className = 'parameter-label';
-      label.textContent = param.name;
-
-      const description = document.createElement('div');
-      description.className = 'parameter-description';
-      description.textContent = param.description || '';
-
-      paramGroup.appendChild(label);
-      paramGroup.appendChild(description);
-
-      const input = createParameterInput(param.name, param);
-      input.className = 'parameter-input';
-      paramGroup.appendChild(input);
-
-      parametersDiv.appendChild(paramGroup);
-    });
-
-    const parametersContainer = document.getElementById('protocol-parameters');
-    if (parametersContainer) {
-      parametersContainer.innerHTML = '';
-      parametersContainer.appendChild(parametersDiv);
-    }
-  }
-}
-
-function createParameterInput(name, param) {
-  let input;
-
-  switch (param.type) {
-    case 'bool':
-      input = document.createElement('input');
-      input.type = 'checkbox';
-      input.name = name;
-      input.checked = param.default || false;
-      break;
-
-    case 'number':
-    case 'float':
-    case 'int':
-      input = document.createElement('input');
-      input.type = 'number';
-      input.name = name;
-      input.value = param.default || '';
-      if (param.constraints) {
-        if (param.constraints.min_value !== undefined) {
-          input.min = param.constraints.min_value;
-        }
-        if (param.constraints.max_value !== undefined) {
-          input.max = param.constraints.max_value;
-        }
-        if (param.type === 'int') {
-          input.step = 1;
-        }
-      }
-      break;
-
-    case 'list':
-      input = document.createElement('select');
-      input.name = name;
-      input.multiple = true;
-      if (param.default) {
-        param.default.forEach(value => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = value;
-          option.selected = true;
-          input.appendChild(option);
-        });
-      }
-      break;
-
-    default:
-      input = document.createElement('input');
-      input.type = 'text';
-      input.name = name;
-      input.value = param.default || '';
-  }
-
-  return input;
-}
-
 function showStartProtocolForm() {
   const protocols = JSON.parse(localStorage.getItem('available_protocols') || '[]');
-  console.log('Available protocols:', protocols);
 
   const content = `
     <h2>Start Protocol</h2>
-    <form id="start-protocol-form">
-      <div class="form-group">
+    <form id="start-protocol-form" onsubmit="event.preventDefault(); startProtocol();">
+      <div>
         <label for="protocol-select">Select Protocol:</label>
-        <select id="protocol-select" name="protocol-select" required class="searchable-select">
+        <select id="protocol-select" name="protocol-select" required onchange="updateProtocolForm(this.value)">
           <option value="">Choose a protocol...</option>
           ${protocols.map(p => `
-            <option value="${p.name}" title="${p.file}">${p.name} (${p.file})</option>
+            <option value="${p.name}">${p.name}</option>
           `).join('')}
         </select>
+        <button type="button" onclick="refreshAvailableProtocols()" class="small-button">
+          <i class="fas fa-sync"></i>
+        </button>
       </div>
       <div id="protocol-specific-form">
         <!-- Protocol-specific form will be loaded here -->
@@ -528,23 +203,6 @@ function showStartProtocolForm() {
   `;
 
   document.getElementById('main-content').innerHTML = content;
-
-  // Initialize searchable select for protocol selection
-  new SlimSelect({
-    select: '#protocol-select',
-    settings: {
-      allowDeselect: true,
-      searchPlaceholder: 'Type to search protocols...',
-      searchText: 'No protocols found'
-    },
-    events: {
-      afterChange: (newVal) => {
-        if (newVal && newVal[0] && newVal[0].value) {
-          updateProtocolForm(newVal[0].value);
-        }
-      }
-    }
-  });
 }
 
 function showDataViewer() {
@@ -567,7 +225,7 @@ async function showSettings() {
       fetch('/api/protocols/settings', {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
-      fetch('/api/protocols/protocol_directories', {
+      fetch('/api/protocols/directories', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
     ]);
@@ -749,111 +407,76 @@ async function fetchRunningProtocols() {
 
 async function fetchDeckFiles() {
   try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/deck_layouts', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
+    const response = await fetch('/api/protocols/deck_layouts');
     if (!response.ok) {
-      throw new Error(`Failed to fetch deck files: ${response.status}`);
+      throw new Error('Failed to fetch deck files');
     }
-
     const deckFiles = await response.json();
-    const deckSelect = document.getElementById('protocol-deck');
-    if (!deckSelect) {
-      console.error('Deck select element not found');
-      return;
-    }
+    const deckFileSelect = document.getElementById('deck-file');
+    deckFileSelect.innerHTML = ''; // Clear existing options
 
-    // Clear existing options
-    deckSelect.innerHTML = '<option value="">Select a deck file...</option>';
-
-    // Add new options
-    if (Array.isArray(deckFiles)) {
-      deckFiles.forEach(file => {
-        const option = document.createElement('option');
-        option.value = file;
-        option.text = file;
-        deckSelect.appendChild(option);
-      });
-    } else {
-      console.error('Deck files response is not an array:', deckFiles);
-    }
+    deckFiles.forEach(file => {
+      const option = document.createElement('option');
+      option.value = file;
+      option.text = file;
+      deckFileSelect.appendChild(option);
+    });
   } catch (error) {
-    console.error('Error fetching deck files:', error);
+    console.error('Error:', error);
   }
 }
 
 async function startProtocol() {
-  const form = document.getElementById('start-protocol-form');
-  const protocolName = document.getElementById('protocol-select').value;
-  const protocols = JSON.parse(localStorage.getItem('available_protocols') || '[]');
-  const protocol = protocols.find(p => p.name === protocolName);
+  const protocolName = document.getElementById('protocol-name').value;
+  const configFile = document.getElementById('config-file').files[0];
+  const deckFileName = document.getElementById('deck-file').value; // Get the selected file name
+  const liquidHandler = document.getElementById('liquid-handler-name').value;
+  const manualCheck = document.getElementById('manual-check').checked;
+  const token = localStorage.getItem('access_token');
 
-  if (!protocol) {
-    alert('Protocol not found');
-    return;
-  }
-
-  // Gather configuration data
-  const configData = {
-    name: form.querySelector('#protocol-name').value,
-    details: form.querySelector('#protocol-details').value,
-    description: form.querySelector('#protocol-description').value,
-    machines: Array.from(form.querySelector('#protocol-machines').selectedOptions).map(opt => opt.value),
-    liquid_handler_ids: Array.from(form.querySelector('#protocol-liquid-handlers').selectedOptions).map(opt => opt.value),
-    users: Array.from(form.querySelector('#protocol-users').selectedOptions).map(opt => opt.value),
-    directory: form.querySelector('#protocol-directory').value,
-    deck: form.querySelector('#protocol-deck').value,
-    parameters: {}
-  };
-
-  // Gather parameter values
-  if (protocol.parameters && protocol.parameters.length > 0) {
-    protocol.parameters.forEach(param => {
-      const input = form.querySelector(`#param-${param.name}`);
-      if (input) {
-        let value;
-        if (input.type === 'checkbox') {
-          value = input.checked;
-        } else if (input.type === 'number') {
-          value = param.type === 'int' ? parseInt(input.value) : parseFloat(input.value);
-        } else if (param.type === 'list') {
-          value = Array.from(input.selectedOptions).map(opt => opt.value);
-        } else {
-          value = input.value;
-        }
-        configData.parameters[param.name] = value;
-      }
-    });
-  }
+  const configFormData = new FormData();
+  configFormData.append('file', configFile);
 
   try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/start', {
+    // First, upload the config file
+    const configFileResponse = await fetch('/api/protocols/upload_config_file', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
+      },
+      body: configFormData
+    });
+    if (!configFileResponse.ok) throw new Error('Failed to upload config file');
+    const configFilePath = await configFileResponse.json();
+
+    // Construct the full path for the deck file
+    const deckFilePath = './protocol/deck_layouts/' + deckFileName;
+
+    // Start the protocol with the selected deck file
+    const protocolResponse = await fetch('/api/protocols/start', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         protocol_name: protocolName,
-        config_data: configData
+        config_file: configFilePath,
+        deck_file: deckFilePath, // Send the full path
+        liquid_handler_name: liquidHandler,
+        manual_check_list: manualCheck ? ['Manual check required'] : []
       })
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to start protocol');
-    }
+    if (!protocolResponse.ok) throw new Error('Failed to start protocol');
+    const protocolStatus = await protocolResponse.json();
+    alert(`Protocol started: ${protocolStatus.name} - Status: ${protocolStatus.status}`);
 
-    const result = await response.json();
-    alert(`Protocol ${protocolName} started successfully!`);
-    window.location.hash = 'manage-protocols';
+    // Refresh the list of running protocols
+    fetchRunningProtocols();
   } catch (error) {
-    console.error('Error starting protocol:', error);
-    alert('Failed to start protocol: ' + error.message);
+    console.error('Error:', error);
+    alert(error.message);
   }
 }
 
@@ -887,30 +510,16 @@ async function addProtocolDirectory() {
 
   input.addEventListener('change', async (e) => {
     const directory = e.target.files[0].path.split('/').slice(0, -1).join('/');
-    const token = localStorage.getItem('access_token');
+    const dirs = JSON.parse(localStorage.getItem('protocol_directories') || '[]');
 
-    try {
-      // Send directory to backend for discovery
-      const response = await fetch('/api/protocols/discover', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ directories: [directory] })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add directory');
-      }
+    if (!dirs.includes(directory)) {
+      dirs.push(directory);
+      localStorage.setItem('protocol_directories', JSON.stringify(dirs));
 
       // Refresh available protocols
       await refreshAvailableProtocols();
       // Refresh settings view
-      await showSettings();
-    } catch (error) {
-      console.error('Error adding directory:', error);
-      alert('Failed to add directory: ' + error.message);
+      showSettings();
     }
   });
 
@@ -944,254 +553,29 @@ async function removeProtocolDirectory(directory) {
 // Protocol discovery and management
 async function refreshAvailableProtocols() {
   const token = localStorage.getItem('access_token');
-  if (!token) {
-    console.error('No access token found');
-    return [];
-  }
+  const dirs = JSON.parse(localStorage.getItem('protocol_directories') || '[]');
 
   try {
-    // Try to refresh the token first
-    await refreshToken();
-    const newToken = localStorage.getItem('access_token');
-
-    // Get protocol directories from server
-    const dirResponse = await fetch('/api/protocols/protocol_directories', {
-      headers: {
-        'Authorization': `Bearer ${newToken}`
-      }
-    });
-
-    if (!dirResponse.ok) {
-      if (dirResponse.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        logout();
-        return [];
-      }
-      throw new Error('Failed to get protocol directories');
-    }
-
-    const directories = await dirResponse.json();
-    console.log('Found protocol directories:', directories);
-
-    // Discover protocols in these directories
     const response = await fetch('/api/protocols/discover', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${newToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ directories })
+      body: JSON.stringify({ directories: dirs })
     });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        alert('Your session has expired. Please log in again.');
-        logout();
-        return [];
-      }
-      throw new Error('Failed to discover protocols');
-    }
-
+    if (!response.ok) throw new Error('Failed to discover protocols');
     const protocols = await response.json();
-    console.log('Discovered protocols:', protocols);
-
-    // Store the full protocol data
     localStorage.setItem('available_protocols', JSON.stringify(protocols));
     return protocols;
   } catch (error) {
     console.error('Error discovering protocols:', error);
-    if (error.message.includes('401') || error.message.includes('unauthorized')) {
-      alert('Your session has expired. Please log in again.');
-      logout();
-    }
     return [];
   }
-}
-
-// Add this function to help with debugging
-async function debugProtocolLoading() {
-  console.log('Starting protocol debug...');
-
-  // First, check what's in localStorage
-  const storedProtocols = localStorage.getItem('available_protocols');
-  console.log('Currently stored protocols:', JSON.parse(storedProtocols));
-
-  // Then try to refresh protocols
-  const newProtocols = await refreshAvailableProtocols();
-  console.log('Newly fetched protocols:', newProtocols);
-
-  // Update the form
-  showStartProtocolForm();
 }
 
 // Call updateUI on page load
 window.onload = () => {
   updateUI();
 };
-
-// Add token refresh functionality
-async function refreshToken() {
-  const token = localStorage.getItem('access_token');
-  if (!token) return false;
-
-  try {
-    const response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Token refresh failed');
-    }
-
-    const data = await response.json();
-    localStorage.setItem('access_token', data.access_token);
-    return true;
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    return false;
-  }
-}
-
-// Add these helper functions for fetching data
-async function fetchAssets() {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/assets', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error('Failed to fetch assets');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching assets:', error);
-    return [];
-  }
-}
-
-async function fetchUsers() {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/users', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error('Failed to fetch users');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    return [];
-  }
-}
-
-// Add these functions at the top level
-async function loadInitialData() {
-  console.log('Loading initial data...');
-  await Promise.all([
-    refreshAssets(),
-    refreshUsers(),
-    refreshDeckFiles()
-  ]);
-}
-
-async function refreshAssets() {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/assets', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        // If unauthorized, try refreshing token
-        if (await refreshToken()) {
-          return refreshAssets(); // Retry with new token
-        } else {
-          alert('Your session has expired. Please log in again.');
-          logout();
-        }
-      }
-      throw new Error('Failed to fetch assets');
-    }
-    const assets = await response.json();
-    localStorage.setItem('available_assets', JSON.stringify(assets));
-    return assets;
-  } catch (error) {
-    console.error('Error fetching assets:', error);
-    return [];
-  }
-}
-
-async function refreshUsers() {
-  try {
-    console.log('Fetching users...');
-    const token = localStorage.getItem('access_token');
-    console.log('Token:', token ? 'Present' : 'Missing');
-
-    const response = await fetch('/api/protocols/users', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    console.log('Response status:', response.status);
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.log('Unauthorized, attempting token refresh...');
-        // If unauthorized, try refreshing token
-        if (await refreshToken()) {
-          console.log('Token refreshed, retrying...');
-          return refreshUsers(); // Retry with new token
-        } else {
-          console.log('Token refresh failed');
-          alert('Your session has expired. Please log in again.');
-          logout();
-          return [];
-        }
-      }
-
-      const errorText = await response.text();
-      console.error('Server error response:', errorText);
-      throw new Error(`Failed to fetch users: ${response.status} ${errorText}`);
-    }
-
-    const users = await response.json();
-    console.log('Fetched users:', users);
-    localStorage.setItem('available_users', JSON.stringify(users));
-    return users;
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    console.error('Error stack:', error.stack);
-    return [];
-  }
-}
-
-async function refreshDeckFiles() {
-  try {
-    const token = localStorage.getItem('access_token');
-    const response = await fetch('/api/protocols/deck_layouts', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        // If unauthorized, try refreshing token
-        if (await refreshToken()) {
-          return refreshDeckFiles(); // Retry with new token
-        } else {
-          alert('Your session has expired. Please log in again.');
-          logout();
-        }
-      }
-      throw new Error('Failed to fetch deck files');
-    }
-    const deckFiles = await response.json();
-    localStorage.setItem('available_deck_files', JSON.stringify(deckFiles));
-    return deckFiles;
-  } catch (error) {
-    console.error('Error fetching deck files:', error);
-    return [];
-  }
-}

@@ -4423,3 +4423,4 @@ Registered routes:
 2025-01-17 21:11:38,465 [INFO] praxis.main - /api/auth/users/me [GET]
 2025-01-17 21:11:38,465 [INFO] praxis.main - /some_admin_only_endpoint [POST]
 2025-01-17 21:11:38,465 [INFO] praxis.main - / [GET]
+2025-01-21 11:59:20,530 [INFO] praxis.main - Application shutdown: Closing connections.
