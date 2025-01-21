@@ -11,8 +11,9 @@ class PraxisConfiguration:
 
     def __init__(self, config_file: str = "praxis.ini"):
         self.config_file = config_file
-        self.config = configparser.ConfigParser()
-        self.config.read(config_file)
+        self.config = self._load_config(config_file)
+        self.protocol_discovery_dirs = self._get_protocol_discovery_dirs()
+        self.output_dirs = self._get_output_dirs()
         self.databases = self.get_section("database")
         self.redis = self.get_section("redis")
         self.email = self.get_section("email")
@@ -48,6 +49,12 @@ class PraxisConfiguration:
         )
         if not os.path.exists(self.default_protocol_dir):
             os.makedirs(self.default_protocol_dir)
+
+    def _load_config(self, config_file: str) -> configparser.ConfigParser:
+        """Loads the configuration file."""
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        return config
 
     def __getitem__(self, key: str) -> Any:
         return self.config[key]
@@ -129,6 +136,37 @@ class PraxisConfiguration:
             )
             with open(self.config_file, "w") as f:
                 self.config.write(f)
+
+    def _get_protocol_discovery_dirs(self) -> List[str]:
+        """Get protocol discovery directories from config."""
+        if "protocol_discovery" not in self.config:
+            return ["./protocols"]
+        directories = self.config["protocol_discovery"].get(
+            "directories", fallback="./protocols"
+        )
+        if not isinstance(directories, str):
+            return ["./protocols"]
+        return [d.strip() for d in directories.split(",") if d.strip()]
+
+    def _get_output_dirs(self) -> Dict[str, str]:
+        """Get output directories from config."""
+        if "output_directories" not in self.config:
+            return {
+                "protocol_output": "./protocol_output",
+                "workcell_save": "./workcell_saves",
+                "data_backup": "./data_backups",
+            }
+        return {
+            "protocol_output": self.config["output_directories"].get(
+                "protocol_output", "./protocol_output"
+            ),
+            "workcell_save": self.config["output_directories"].get(
+                "workcell_save", "./workcell_saves"
+            ),
+            "data_backup": self.config["output_directories"].get(
+                "data_backup", "./data_backups"
+            ),
+        }
 
 
 class PraxisUsers:

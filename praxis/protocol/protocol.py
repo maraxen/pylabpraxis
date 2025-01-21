@@ -18,7 +18,7 @@ from praxis.utils.state import State
 from praxis.operations import Operation, OperationError, OperationManager
 from pylabrobot.visualizer.visualizer import Visualizer
 from praxis.utils.data import Data, initialize_data
-from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING
+from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
     from .. import Workcell
@@ -84,9 +84,11 @@ class Protocol(ABC):
         state: State,
         manual_check_list: list[str],
         orchestrator: Orchestrator,
+        baseline_parameters: ProtocolParameters,
         deck: Optional[Deck] = None,
         **kwargs,
     ):
+        self.baseline_parameters: ProtocolParameters = baseline_parameters
         self.protocol_configuration = protocol_configuration
         self.machines = self.protocol_configuration.machines
         self.directory = self.protocol_configuration.directory
@@ -140,6 +142,8 @@ class Protocol(ABC):
             smtp_password=self.user_info.get("smtp_password", ""),
         )
         self.already_ran = self.state.get(self.name, {}).get("already_ran", False)
+        self.workcell_saves_dir = os.path.join(self.directory, "workcell_saves")
+        self.data_backups_dir = os.path.join(self.directory, "data_backups")
         self.setup_data_directory()
         self.create_readme()
 
@@ -481,7 +485,11 @@ class Protocol(ABC):
         Save the lab state
         """
         if self.workcell:
-            self.workcell.save_state_to_file(self.workcell_state_file)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_path = os.path.join(
+                self.workcell_saves_dir, f"workcell_state_{timestamp}.json"
+            )
+            self.workcell.save_state_to_file(save_path)
         await self._save_state()
 
     async def load_state(self):
@@ -692,3 +700,33 @@ class Protocol(ABC):
         """
         Abort the protocol.
         """
+
+    async def save_output(self, config: PraxisConfiguration) -> None:
+        """Save protocol output files."""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Save readme in protocol directory
+        readme_path = os.path.join(self.directory, "README.md")
+        with open(readme_path, "w") as f:
+            f.write(self.create_readme())
+
+        # Save workcell state in protocol's workcell_saves directory
+        workcell_path = os.path.join(
+            self.workcell_saves_dir, f"workcell_state_{timestamp}.json"
+        )
+        if self.workcell:
+            self.workcell.save_state_to_file(workcell_path)
+
+    async def backup_data(self, config: PraxisConfiguration) -> None:
+        """Backup protocol data during takedown."""
+        backup_dir = os.path.join(
+            self.data_backups_dir, datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
+        os.makedirs(backup_dir, exist_ok=True)
+        # Save protocol data to backup directory
+        if self.data:
+            backup_file = os.path.join(backup_dir, "data.db")
+            await self.data.close()  # Close the connection first
+            import shutil
+
+            shutil.copy2(self.data.db_path, backup_file)  # Copy the database file

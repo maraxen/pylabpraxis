@@ -35,7 +35,7 @@ class Orchestrator:
 
         self.data_dir = self.config.data_directory
 
-        self.asset_database = AsyncAssetDatabase(self.config.asset_db)
+        self.asset_db = AsyncAssetDatabase(self.config.asset_db)
 
         self.state = State(
             redis_host=self.config.redis_host,

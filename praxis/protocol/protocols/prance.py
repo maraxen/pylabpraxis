@@ -14,7 +14,7 @@ from pylabrobot.plate_reading import PlateReader
 from pylabrobot.liquid_handling import LiquidHandler
 
 # Initialize protocol parameters with default values
-needed_parameters = ProtocolParameters(
+baseline_parameters = ProtocolParameters(
     {
         "tips_staged": {
             "type": bool,
@@ -143,6 +143,7 @@ class Prance(Protocol):
         orchestrator: Orchestrator,
         deck: Optional[Deck] = None,
         user_info: Optional[Dict[str, Dict[str, Any]]] = None,
+        baseline_parameters: ProtocolParameters = baseline_parameters,
         **kwargs,
     ):
         """Initialize the Prance protocol."""
@@ -151,11 +152,12 @@ class Prance(Protocol):
             state=state,
             manual_check_list=manual_check_list,
             orchestrator=orchestrator,
+            baseline_parameters=baseline_parameters,
             deck=deck,
             user_info=user_info,
             **kwargs,
         )
-
+        self.baseline_parameters = baseline_parameters
         # Initialize instance attributes
         self.cycle_n: int = 0
         self.cycle_start_time: dt = dt.now()
@@ -163,7 +165,7 @@ class Prance(Protocol):
 
         # Validate and get parameters from configuration
         params = protocol_configuration.parameters
-        params.validate_parameters(needed_parameters._values)
+        params.validate_parameters(self.baseline_parameters._values)
 
         # Store parameters as instance attributes with proper type hints
         self.tips_staged: bool = params.get("tips_staged", False)

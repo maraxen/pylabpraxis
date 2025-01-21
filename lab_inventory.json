@@ -1,0 +1,14 @@
+[
+  {
+    "id": "lh1",
+    "name": "Liquid Handler 1",
+    "type": "liquid_handler",
+    "description": "Default liquid handler"
+  },
+  {
+    "id": "m1",
+    "name": "Machine 1",
+    "type": "machine",
+    "description": "Default machine"
+  }
+]

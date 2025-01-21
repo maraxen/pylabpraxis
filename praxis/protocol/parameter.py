@@ -64,6 +64,9 @@ class ProtocolParameters:
     ):
         self._parameters: Dict[str, Parameter] = {}
         self._values: Dict[str, Any] = {}
+        self.initial_input: Optional[Union[List[Parameter], Dict[str, Any]]] = (
+            parameters
+        )
 
         if parameters:
             if isinstance(parameters, list):
@@ -148,8 +151,19 @@ class ProtocolParameters:
 
     def get_parameters_for_ui(self) -> List[Dict[str, Any]]:
         """Get parameter information formatted for UI display."""
-        return [
-            info
-            for name in self._parameters.keys()
-            if (info := self.get_parameter_info(name)) is not None
-        ]
+        ui_parameters = []
+        for name, param in self._parameters.items():
+            param_info = {
+                "name": param.name,
+                "type": (
+                    param.datatype.__name__
+                    if hasattr(param.datatype, "__name__")
+                    else str(param.datatype)
+                ),
+                "description": param.description or "",
+                "default": param.default,
+                "required": param.required,
+                "constraints": param.constraints,
+            }
+            ui_parameters.append(param_info)
+        return ui_parameters
