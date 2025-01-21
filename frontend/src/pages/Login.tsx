@@ -69,7 +69,7 @@ export const Login: React.FC = () => {
       >
         <VStack gap={4} align="stretch">
           <Heading textAlign="center" mb={6}>
-            Login to PLR
+            Login to Praxis
           </Heading>
           <form onSubmit={handleSubmit}>
             <Fieldset.Root>

@@ -14,6 +14,7 @@ export interface User {
   username: string;
   is_active: boolean;
   is_admin: boolean;
+  avatarUrl?: string;
 }
 
 const AUTH_TOKEN_KEY = 'auth_token';
