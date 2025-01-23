@@ -6,6 +6,10 @@ import { ManageUsers } from './pages/ManageUsers';
 import { Settings } from './pages/Settings';
 import { authService } from './services/auth';
 import { Layout } from './components/Layout';
+import { RunProtocols } from './pages/protocols/RunProtocols';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { useAppDispatch } from './hooks/redux';
+import { refreshUserSession } from './store/userSlice';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,50 +34,98 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 function App() {
+  const dispatch = useAppDispatch();
+
   useEffect(() => {
-    // Setup axios interceptors for authentication
-    authService.setupAxiosInterceptors();
-  }, []);
+    authService.setupAxiosInterceptors(dispatch);
+
+    // Check and refresh user session
+    if (authService.isAuthenticated()) {
+      dispatch(refreshUserSession());
+    }
+  }, [dispatch]);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <Home />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/manage-users"
-          element={
-            <ProtectedRoute>
-              <AdminRoute>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
                 <Layout>
-                  <ManageUsers />
+                  <Home />
                 </Layout>
-              </AdminRoute>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <Settings />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        {/* Add more routes here */}
-      </Routes>
-    </Router>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-users"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <Layout>
+                    <ManageUsers />
+                  </Layout>
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/protocols"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <RunProtocols />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/databases"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <div>Database Management Coming Soon</div>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vixn"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <div>Vixn Coming Soon</div>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/docs"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <div>Documentation Coming Soon</div>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          {/* Add more routes here */}
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

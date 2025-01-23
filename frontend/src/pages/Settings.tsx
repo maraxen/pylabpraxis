@@ -9,7 +9,7 @@ import {
   HStack,
   Card,
   createListCollection,
-  Tabs,
+  Tabs
 } from '@chakra-ui/react';
 import { Avatar } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button';
@@ -116,9 +116,7 @@ export const Settings: React.FC = () => {
     items: [
       { label: 'Use System Settings', value: 'system' },
       { label: 'Light Mode', value: 'light' },
-      { label: 'Dark Mode', value: 'dark' },
-      { label: 'High Contrast Light', value: 'high-contrast-light' },
-      { label: 'High Contrast Dark', value: 'high-contrast-dark' },
+      { label: 'Dark Mode', value: 'dark' }
     ],
   });
 
@@ -212,6 +210,11 @@ export const Settings: React.FC = () => {
                   <Button
                     size="sm"
                     variant="ghost"
+                    color={{ base: 'brand.300', _dark: 'brand.100' }}
+                    _hover={{
+                      color: { base: 'white', _dark: 'brand.50' },
+                      bg: { base: 'brand.300', _dark: 'brand.800' },
+                    }}
                     onClick={() => handleRemoveDirectory(dir)}
                   >
                     Remove
@@ -219,8 +222,13 @@ export const Settings: React.FC = () => {
                 </HStack>
               ))}
               <Button
-                colorScheme="brand"
                 variant="outline"
+                color={{ base: 'brand.300', _dark: 'brand.100' }}
+                borderColor={{ base: 'brand.300', _dark: 'brand.100' }}
+                _hover={{
+                  color: { base: 'white', _dark: 'brand.50' },
+                  bg: { base: 'brand.300', _dark: 'brand.800' },
+                }}
                 onClick={handleAddDirectory}
               >
                 Add Directory

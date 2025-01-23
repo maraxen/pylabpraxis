@@ -3,6 +3,21 @@ import { Box, Flex, HStack, Text, Button, Heading } from '@chakra-ui/react';
 import { Avatar } from "@/components/ui/avatar"
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
+import {
+  LuPlay,
+  LuDatabase,
+  LuChartArea,
+  LuBook
+} from "react-icons/lu";
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import {
+  logout,
+  selectUserProfile,
+  selectIsAuthenticated,
+  selectIsLoading,
+  selectErrors
+} from '../store/userSlice';
+import { LoadingOverlay } from './LoadingOverlay';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,58 +25,127 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  const [user, setUser] = React.useState<{ username: string; is_admin: boolean; avatarUrl?: string } | null>(null);
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-    };
-    fetchUser();
-  }, []);
+  const dispatch = useAppDispatch();
+  const { username, isAdmin, avatarUrl } = useAppSelector(selectUserProfile);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const isLoading = useAppSelector(selectIsLoading);
+  const errors = useAppSelector(selectErrors);
 
   const handleLogout = () => {
-    authService.logout();
+    dispatch(logout());
     navigate('/login');
   };
 
+  const navItems = [
+    { path: '/protocols', label: 'Run Protocols', icon: LuPlay },
+    { path: '/databases', label: 'Manage Databases', icon: LuDatabase },
+    { path: '/vixn', label: 'Vixn', icon: LuChartArea },
+    { path: '/docs', label: 'Documentation', icon: LuBook },
+  ];
+
+  const currentPath = window.location.pathname;
+
   return (
-    <Box minH="100vh" bg="gray.50">
+    <Box minH="100vh" bg={{ base: 'white', _dark: 'gray.900' }}>
+      {isLoading && <LoadingOverlay />}
       <Flex
-        as="header"
+        direction="column"
         width="full"
-        height="16"
-        alignItems="center"
-        px="6"
-        bg="white"
+        bg={{ base: 'white', _dark: 'gray.800' }}
         borderBottomWidth="1px"
-        borderColor="gray.200"
-        justify="space-between"
+        borderColor={{ base: 'brand.100', _dark: 'brand.700' }}
       >
-        <Heading size="md" cursor="pointer" onClick={() => navigate('/')}>
-          Praxis
-        </Heading>
-        <HStack gap={4}>
-          <HStack>
-            <Text>{user?.username}</Text>
-            <Avatar
-              size="sm"
-              name={user?.username}
-              src={user?.avatarUrl || undefined}
-              cursor="pointer"
+        <Flex
+          height="16"
+          alignItems="center"
+          px="6"
+          justify="space-between"
+        >
+          <Heading
+            size="md"
+            cursor="pointer"
+            onClick={() => navigate('/')}
+            color={{ base: 'brand.300', _dark: 'brand.100' }}
+            _hover={{ color: { base: 'brand.400', _dark: 'brand.50' } }}
+          >
+            Praxis
+          </Heading>
+          <HStack gap={4}>
+            <HStack>
+              <Text color={{ base: 'brand.300', _dark: 'brand.100' }}>{username}</Text>
+              <Avatar
+                size="sm"
+                name={username}
+                src={avatarUrl}
+                cursor="pointer"
+                onClick={() => navigate('/settings')}
+              />
+            </HStack>
+            <Button
+              variant="ghost"
+              color={{ base: 'brand.300', _dark: 'brand.100' }}
+              _hover={{
+                color: { base: 'white', _dark: 'brand.50' },
+                bg: { base: 'brand.300', _dark: 'brand.800' },
+              }}
               onClick={() => navigate('/settings')}
-            />
+            >
+              Settings
+            </Button>
+            <Button
+              variant="outline"
+              color={{ base: 'brand.300', _dark: 'brand.100' }}
+              borderColor={{ base: 'brand.300', _dark: 'brand.100' }}
+              _hover={{
+                color: { base: 'white', _dark: 'brand.50' },
+                bg: { base: 'brand.300', _dark: 'brand.800' },
+                borderColor: { base: 'brand.300', _dark: 'brand.100' }
+              }}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
           </HStack>
-          <Button variant="ghost" onClick={() => navigate('/settings')}>
-            Settings
-          </Button>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
+        </Flex>
+
+        <HStack px="6" height="12" gap={8}>
+          {navItems.map(({ path, label, icon: Icon }) => (
+            <Button
+              key={path}
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(path)}
+              color={currentPath === path
+                ? { base: 'brand.300', _dark: 'brand.100' }
+                : { base: 'brand.600', _dark: 'brand.300' }
+              }
+              _hover={{
+                color: { base: 'white', _dark: 'brand.50' },
+                bg: { base: 'brand.300', _dark: 'brand.800' },
+              }}
+            >
+              <Icon size={20} />
+              {label}
+            </Button>
+          ))}
         </HStack>
       </Flex>
 
-      <Box as="main" p="6">
+      {errors.fetchUser && (
+        <Text
+          color={{ base: 'red.500', _dark: 'red.300' }}
+          fontSize="sm"
+          px={6}
+        >
+          Error: {errors.fetchUser}
+        </Text>
+      )}
+
+      <Box
+        as="main"
+        p="6"
+        bg={{ base: 'gray.50', _dark: 'gray.900' }}
+      >
         {children}
       </Box>
 
@@ -71,17 +155,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         height="12"
         alignItems="center"
         px="6"
-        bg="white"
+        bg={{ base: 'white', _dark: 'gray.800' }}
         borderTopWidth="1px"
-        borderColor="gray.200"
+        borderColor={{ base: 'brand.100', _dark: 'brand.700' }}
         justify="space-between"
         position="fixed"
         bottom="0"
       >
-        <Text fontSize="sm" color="gray.600">
-          Logged in as {user?.username}
+        <Text
+          fontSize="sm"
+          color={{ base: 'brand.300', _dark: 'brand.100' }}
+        >
+          Logged in as {username}
         </Text>
-        <Text fontSize="sm" color="gray.600">
+        <Text
+          fontSize="sm"
+          color={{ base: 'brand.300', _dark: 'brand.100' }}
+        >
           System Status: OK
         </Text>
       </Flex>

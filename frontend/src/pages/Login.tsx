@@ -8,10 +8,14 @@ import {
   Text,
   Fieldset,
 } from '@chakra-ui/react';
-import { authService } from '../services/auth';
 import { useToast } from '@chakra-ui/toast';
 import { Field } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { loginUser, selectError } from '../store/userSlice';
+
+// Keep authService for type definitions and potential direct usage
+import type { LoginCredentials } from '../services/auth';
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -19,28 +23,29 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
+  const dispatch = useAppDispatch();
+  const error = useAppSelector(selectError);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      await authService.login({ username, password });
-      const user = await authService.getCurrentUser();
+    const credentials: LoginCredentials = { username, password };
 
+    try {
+      await dispatch(loginUser(credentials)).unwrap();
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${user?.username}!`,
+        description: `Welcome back!`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
-
       navigate('/');
-    } catch (error) {
+    } catch (err) {
       toast({
         title: 'Login failed',
-        description: 'Invalid username or password',
+        description: error || 'An error occurred during login',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -78,6 +83,11 @@ export const Login: React.FC = () => {
                 Please enter your credentials below
               </Fieldset.HelperText>
               <Fieldset.Content>
+                {error && (
+                  <Text color="red.500" mb={4} fontSize="sm">
+                    {error}
+                  </Text>
+                )}
                 <Field label="Username">
                   <Input
                     type="text"
@@ -98,11 +108,16 @@ export const Login: React.FC = () => {
 
               <Button
                 type="submit"
-                colorScheme="brand"
+                variant="solid"
                 width="full"
                 mt={4}
-                loadingText="Signing in..."
                 loading={isLoading}
+                loadingText="Signing in..."
+                color={{ base: 'white', _dark: 'brand.50' }}
+                bg={{ base: 'brand.300', _dark: 'brand.600' }}
+                _hover={{
+                  bg: { base: 'brand.400', _dark: 'brand.500' },
+                }}
               >
                 Sign In
               </Button>

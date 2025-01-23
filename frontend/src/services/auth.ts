@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { Dispatch } from '@reduxjs/toolkit';
+import { sessionExpired } from '../store/userSlice';
 
 export interface LoginCredentials {
   username: string;
@@ -74,7 +76,8 @@ class AuthService {
   }
 
   // Setup axios interceptor to add auth header to all requests
-  setupAxiosInterceptors(): void {
+  setupAxiosInterceptors(dispatch: Dispatch): void {
+    // Request interceptor
     axios.interceptors.request.use((config) => {
       const token = this.getStoredToken();
       if (token && config.headers) {
@@ -83,17 +86,92 @@ class AuthService {
       return config;
     });
 
-    // Handle 401 responses
+    // Response interceptor with token refresh
     axios.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            const newToken = await this.refreshToken();
+            originalRequest.headers.Authorization = `Bearer ${newToken.access_token}`;
+            return axios(originalRequest);
+          } catch (refreshError) {
+            this.logout();
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          }
+        }
+
         if (error.response?.status === 401) {
-          this.logout();
-          window.location.href = '/login';
+          // Try to refresh the token first
+          try {
+            await this.refreshToken();
+            return axios(error.config);
+          } catch (refreshError) {
+            // If refresh fails, mark the session as expired
+            dispatch(sessionExpired());
+            this.logout();
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }
     );
+  }
+
+  async updateAvatar(formData: FormData): Promise<{ avatarUrl: string }> {
+    const token = this.getStoredToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await axios.post<{ avatarUrl: string }>(
+      `${this.baseUrl}/avatar`,
+      formData,
+      {
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    return response.data;
+  }
+
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const token = this.getStoredToken();
+    if (!token) throw new Error('Not authenticated');
+
+    await axios.post(
+      `${this.baseUrl}/update-password`,
+      { current_password: currentPassword, new_password: newPassword },
+      {
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+        },
+      }
+    );
+  }
+
+  async refreshToken(): Promise<AuthToken> {
+    const token = this.getStoredToken();
+    if (!token) throw new Error('No token to refresh');
+
+    const response = await axios.post<AuthToken>(
+      `${this.baseUrl}/refresh-token`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+        },
+      }
+    );
+
+    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(response.data));
+    return response.data;
   }
 }
 

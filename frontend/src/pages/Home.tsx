@@ -17,7 +17,7 @@ export const Home: React.FC = () => {
 
   return (
     <VStack gap={4} align="stretch" maxW="container.xl" mx="auto">
-      <Box bg="white" p="6" borderRadius="lg" shadow="sm">
+      <Box bg="white" p="6" borderRadius="lg" shadow="sm" color={{ base: "brand.500", _dark: "brand.50" }}>
         <Heading size="lg" mb="6">
           Welcome to Praxis
         </Heading>
@@ -36,6 +36,6 @@ export const Home: React.FC = () => {
           )}
         </HStack>
       </Box>
-    </VStack>
+    </VStack >
   );
 };
