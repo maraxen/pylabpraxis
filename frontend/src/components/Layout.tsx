@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Flex, HStack, Text, Button, Heading } from '@chakra-ui/react';
+import { Box, Flex, HStack, Text, Heading, Icon } from '@chakra-ui/react';
+import { Button } from './ui/button';
 import { Avatar } from "@/components/ui/avatar"
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
@@ -7,7 +8,8 @@ import {
   LuPlay,
   LuDatabase,
   LuChartArea,
-  LuBook
+  LuBook,
+  LuSettings,
 } from "react-icons/lu";
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import {
@@ -18,6 +20,8 @@ import {
   selectErrors
 } from '../store/userSlice';
 import { LoadingOverlay } from './LoadingOverlay';
+import { Tabs, TabList, TabTrigger } from './ui/tabs';
+import { ColorModeButton } from './ui/color-mode';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,8 +56,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         direction="column"
         width="full"
         bg={{ base: 'white', _dark: 'gray.800' }}
-        borderBottomWidth="1px"
-        borderColor={{ base: 'brand.100', _dark: 'brand.700' }}
       >
         <Flex
           height="16"
@@ -82,25 +84,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               />
             </HStack>
             <Button
-              variant="ghost"
-              color={{ base: 'brand.300', _dark: 'brand.100' }}
-              _hover={{
-                color: { base: 'white', _dark: 'brand.50' },
-                bg: { base: 'brand.300', _dark: 'brand.800' },
-              }}
+              visual="ghost"
+              size="sm"
               onClick={() => navigate('/settings')}
             >
+              <Icon as={LuSettings} boxSize={4} marginRight={2} />
               Settings
             </Button>
             <Button
-              variant="outline"
-              color={{ base: 'brand.300', _dark: 'brand.100' }}
-              borderColor={{ base: 'brand.300', _dark: 'brand.100' }}
-              _hover={{
-                color: { base: 'white', _dark: 'brand.50' },
-                bg: { base: 'brand.300', _dark: 'brand.800' },
-                borderColor: { base: 'brand.300', _dark: 'brand.100' }
-              }}
+              visual="outline"
+              size="sm"
               onClick={handleLogout}
             >
               Logout
@@ -108,27 +101,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </HStack>
         </Flex>
 
-        <HStack px="6" height="12" gap={8}>
-          {navItems.map(({ path, label, icon: Icon }) => (
-            <Button
-              key={path}
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(path)}
-              color={currentPath === path
-                ? { base: 'brand.300', _dark: 'brand.100' }
-                : { base: 'brand.600', _dark: 'brand.300' }
-              }
-              _hover={{
-                color: { base: 'white', _dark: 'brand.50' },
-                bg: { base: 'brand.300', _dark: 'brand.800' },
-              }}
-            >
-              <Icon size={20} />
-              {label}
-            </Button>
-          ))}
-        </HStack>
+        <Tabs value={currentPath} onChange={(details) => navigate(details.value)}>
+          <TabList>
+            {navItems.map(({ path, label, icon: Icon }) => (
+              <TabTrigger
+                key={path}
+                value={path}
+              >
+                <Icon size={16} />
+                {label}
+              </TabTrigger>
+            ))}
+          </TabList>
+        </Tabs>
       </Flex>
 
       {errors.fetchUser && (
@@ -156,18 +141,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         alignItems="center"
         px="6"
         bg={{ base: 'white', _dark: 'gray.800' }}
-        borderTopWidth="1px"
-        borderColor={{ base: 'brand.100', _dark: 'brand.700' }}
         justify="space-between"
         position="fixed"
         bottom="0"
       >
-        <Text
-          fontSize="sm"
-          color={{ base: 'brand.300', _dark: 'brand.100' }}
-        >
-          Logged in as {username}
-        </Text>
+        <HStack gap={2}>
+          <Text
+            fontSize="sm"
+            color={{ base: 'brand.300', _dark: 'brand.100' }}
+          >
+            Logged in as {username}
+          </Text>
+          <ColorModeButton />
+        </HStack>
         <Text
           fontSize="sm"
           color={{ base: 'brand.300', _dark: 'brand.100' }}

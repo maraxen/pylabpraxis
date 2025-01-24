@@ -1,48 +1,35 @@
-import type { ButtonProps as ChakraButtonProps } from "@chakra-ui/react"
-import { chakra, AbsoluteCenter, Span, Spinner, useRecipe } from "@chakra-ui/react"
-import * as React from "react"
+"use client"
+
+import { chakra, Spinner } from "@chakra-ui/react"
 import { buttonRecipe } from "@/recipes/button.recipe"
-import type { RecipeVariantProps } from "@chakra-ui/react"
+import * as React from "react"
 
-type ButtonVariantProps = RecipeVariantProps<typeof buttonRecipe>
+const ChakraButton = chakra("button", buttonRecipe)
 
-interface ButtonLoadingProps {
+interface ButtonProps extends React.ComponentProps<typeof ChakraButton> {
   loading?: boolean
-  loadingText?: React.ReactNode
+  loadingText?: string
 }
 
-export interface ButtonProps extends ButtonVariantProps, ButtonLoadingProps, Omit<ChakraButtonProps, keyof ButtonVariantProps> { }
-
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  function Button(props, ref) {
-    const { loading, disabled, loadingText, children, ...rest } = props
-    const recipe = useRecipe({ key: "button" })
-    const [recipeProps, otherProps] = recipe.splitVariantProps(rest)
-    const styles = recipe(recipeProps)
-
+  ({ children, loading, loadingText, ...props }, ref) => {
     return (
-      <chakra.button
+      <ChakraButton
         ref={ref}
-        disabled={loading || disabled}
-        css={styles}
-        {...otherProps}
+        loading={loading}
+        disabled={loading}
+        {...props}
       >
-        {loading && !loadingText ? (
-          <>
-            <AbsoluteCenter display="inline-flex">
-              <Spinner size="inherit" color="inherit" />
-            </AbsoluteCenter>
-            <Span opacity={0}>{children}</Span>
-          </>
-        ) : loading && loadingText ? (
-          <>
-            <Spinner size="inherit" color="inherit" />
-            {loadingText}
-          </>
-        ) : (
-          children
+        {loading && (
+          <Spinner
+            className="button-spinner"
+            size={props.size === "sm" ? "xs" : "sm"}
+          />
         )}
-      </chakra.button>
+        <span className="button-content">
+          {loading && loadingText ? loadingText : children}
+        </span>
+      </ChakraButton>
     )
-  },
+  }
 )

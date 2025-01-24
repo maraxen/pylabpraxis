@@ -1,75 +1,69 @@
 "use client"
 
-import type { IconButtonProps } from "@chakra-ui/react"
-import { ClientOnly, IconButton, Skeleton } from "@chakra-ui/react"
-import { ThemeProvider, useTheme } from "next-themes"
-import type { ThemeProviderProps } from "next-themes"
-import * as React from "react"
-import { LuMoon, LuSun } from "react-icons/lu"
+import * as React from 'react'
+import { LuSun, LuMoon } from 'react-icons/lu'
+import { Button } from './button'
 
-export interface ColorModeProviderProps extends ThemeProviderProps {}
+type ColorMode = 'light' | 'dark' | 'system'
 
-export function ColorModeProvider(props: ColorModeProviderProps) {
-  return (
-    <ThemeProvider attribute="class" disableTransitionOnChange {...props} />
+function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+  const [storedValue, setStoredValue] = React.useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key)
+      return item ? JSON.parse(item) : initialValue
+    } catch (error) {
+      return initialValue
+    }
+  })
+
+  React.useEffect(() => {
+    window.localStorage.setItem(key, JSON.stringify(storedValue))
+  }, [key, storedValue])
+
+  return [storedValue, setStoredValue]
+}
+
+export function useColorMode() {
+  const [colorMode, setColorMode] = useLocalStorage<ColorMode>(
+    'chakra-ui-color-mode',
+    'system'
   )
-}
 
-export type ColorMode = "light" | "dark"
+  React.useEffect(() => {
+    const root = document.documentElement
+    if (colorMode === 'system') {
+      const systemMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      root.setAttribute('data-color-mode', systemMode)
+    } else {
+      root.setAttribute('data-color-mode', colorMode)
+    }
+  }, [colorMode])
 
-export interface UseColorModeReturn {
-  colorMode: ColorMode
-  setColorMode: (colorMode: ColorMode) => void
-  toggleColorMode: () => void
-}
-
-export function useColorMode(): UseColorModeReturn {
-  const { resolvedTheme, setTheme } = useTheme()
-  const toggleColorMode = () => {
-    setTheme(resolvedTheme === "light" ? "dark" : "light")
-  }
   return {
-    colorMode: resolvedTheme as ColorMode,
-    setColorMode: setTheme,
-    toggleColorMode,
+    colorMode,
+    setColorMode,
+    toggleColorMode: () => setColorMode((prev: ColorMode) => prev === 'dark' ? 'light' : 'dark')
   }
 }
 
 export function useColorModeValue<T>(light: T, dark: T) {
   const { colorMode } = useColorMode()
-  return colorMode === "dark" ? dark : light
+  return colorMode === 'dark' ? dark : light
 }
 
-export function ColorModeIcon() {
-  const { colorMode } = useColorMode()
-  return colorMode === "dark" ? <LuMoon /> : <LuSun />
-}
+export const ColorModeButton = () => {
+  const { colorMode, setColorMode } = useColorMode();
 
-interface ColorModeButtonProps extends Omit<IconButtonProps, "aria-label"> {}
+  const toggleColorMode = () => {
+    const newMode = colorMode === 'light' ? 'dark' : 'light';
+    setColorMode(newMode);
+    localStorage.setItem('theme', newMode);
+    document.documentElement.setAttribute('data-theme', newMode);
+  };
 
-export const ColorModeButton = React.forwardRef<
-  HTMLButtonElement,
-  ColorModeButtonProps
->(function ColorModeButton(props, ref) {
-  const { toggleColorMode } = useColorMode()
   return (
-    <ClientOnly fallback={<Skeleton boxSize="8" />}>
-      <IconButton
-        onClick={toggleColorMode}
-        variant="ghost"
-        aria-label="Toggle color mode"
-        size="sm"
-        ref={ref}
-        {...props}
-        css={{
-          _icon: {
-            width: "5",
-            height: "5",
-          },
-        }}
-      >
-        <ColorModeIcon />
-      </IconButton>
-    </ClientOnly>
-  )
-})
+    <Button onClick={toggleColorMode} visual="ghost" size="xs">
+      {colorMode === 'light' ? <LuMoon size={14} /> : <LuSun size={14} />}
+    </Button>
+  );
+};

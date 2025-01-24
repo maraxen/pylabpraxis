@@ -6,16 +6,29 @@ import {
   VStack,
   Heading,
   Text,
-  Fieldset,
 } from '@chakra-ui/react';
+import { Fieldset, FieldsetContent, FieldsetLegend } from '@/components/ui/fieldset';
+import { authService } from '../services/auth';
 import { useToast } from '@chakra-ui/toast';
 import { Field } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { loginUser, selectError } from '../store/userSlice';
 
-// Keep authService for type definitions and potential direct usage
-import type { LoginCredentials } from '../services/auth';
+const inputStyles = {
+  width: '98%',  // Keep your current width
+  margin: '0 auto',  // Add this to center the input
+  display: 'block',  // Add this to ensure proper block layout
+  border: '1px solid',
+  borderColor: { base: 'brand.100', _dark: 'brand.700' },
+  bg: { base: 'white', _dark: 'whiteAlpha.50' },
+  _hover: {
+    borderColor: { base: 'brand.200', _dark: 'brand.600' },
+  },
+  _focus: {
+    zIndex: 1,
+    borderColor: { base: 'brand.300', _dark: 'brand.500' },
+    boxShadow: '0 0 0 3px var(--chakra-colors-brand-300)',
+  },
+};
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -23,29 +36,28 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
-  const dispatch = useAppDispatch();
-  const error = useAppSelector(selectError);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const credentials: LoginCredentials = { username, password };
-
     try {
-      await dispatch(loginUser(credentials)).unwrap();
+      await authService.login({ username, password });
+      const user = await authService.getCurrentUser();
+
       toast({
         title: 'Login successful',
-        description: `Welcome back!`,
+        description: `Welcome back, ${user?.username}!`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+
       navigate('/');
-    } catch (err) {
+    } catch (error) {
       toast({
         title: 'Login failed',
-        description: error || 'An error occurred during login',
+        description: 'Invalid username or password',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -77,23 +89,17 @@ export const Login: React.FC = () => {
             Login to Praxis
           </Heading>
           <form onSubmit={handleSubmit}>
-            <Fieldset.Root>
-              <Fieldset.Legend>Login Credentials</Fieldset.Legend>
-              <Fieldset.HelperText>
-                Please enter your credentials below
-              </Fieldset.HelperText>
-              <Fieldset.Content>
-                {error && (
-                  <Text color="red.500" mb={4} fontSize="sm">
-                    {error}
-                  </Text>
-                )}
+            <Fieldset>
+              <FieldsetLegend>Login Credentials</FieldsetLegend>
+              <FieldsetContent>
                 <Field label="Username">
                   <Input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
+                    size="md"
+                    {...inputStyles}
                   />
                 </Field>
                 <Field label="Password">
@@ -102,26 +108,23 @@ export const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
+                    size="md"
+                    {...inputStyles}
                   />
                 </Field>
-              </Fieldset.Content>
+              </FieldsetContent>
 
               <Button
                 type="submit"
-                variant="solid"
+                colorScheme="brand"
                 width="full"
                 mt={4}
-                loading={isLoading}
                 loadingText="Signing in..."
-                color={{ base: 'white', _dark: 'brand.50' }}
-                bg={{ base: 'brand.300', _dark: 'brand.600' }}
-                _hover={{
-                  bg: { base: 'brand.400', _dark: 'brand.500' },
-                }}
+                loading={isLoading}
               >
                 Sign In
               </Button>
-            </Fieldset.Root>
+            </Fieldset>
           </form>
           <Text fontSize="sm" color="gray.600" textAlign="center" mt={4}>
             Contact your administrator if you need access.

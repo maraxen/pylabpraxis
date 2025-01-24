@@ -1,5 +1,11 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 import { buttonRecipe } from './recipes/button.recipe';
+import { tabsRecipe } from './recipes/tabs.recipe';
+import { cardRecipe } from './recipes/card.recipe';
+import { fieldsetRecipe } from './recipes/fieldset.recipe';
+import { fieldRecipe } from './recipes/field.recipe';
+import { selectRecipe } from './recipes/select.recipe';
+import { inputRecipe } from './recipes/input.recipe';
 
 const customConfig = defineConfig({
   conditions: {
@@ -66,8 +72,17 @@ const customConfig = defineConfig({
         }
       },
     },
+
+    slotRecipes: {
+      tabs: tabsRecipe,
+      card: cardRecipe,
+      fieldset: fieldsetRecipe,
+      field: fieldRecipe,
+      select: selectRecipe
+    },
     recipes: {
       button: buttonRecipe,
+      input: inputRecipe,
     },
   },
 });
