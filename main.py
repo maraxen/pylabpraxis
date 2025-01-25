@@ -8,8 +8,9 @@ import os
 from praxis.api import protocols, auth
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
-from praxis.api.auth import get_current_admin_user
+from praxis.api import get_current_admin_user
 from fastapi import Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 # Create a Configuration instance
 config_file = "praxis.ini"
@@ -38,13 +39,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Update CORS middleware with specific headers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],  # More permissive for development
+    expose_headers=["*"],
+    max_age=3600,
+)
+
 # Mount static files (for serving the frontend)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Include API routers
-app.include_router(protocols.router, prefix="/api/protocols", tags=["protocols"])
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-
+# Include API routers with versioning
+app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
+app.include_router(auth.router, tags=["auth"])  # Remove prefix as it's already in the router
 
 # Example of an endpoint that requires admin access
 @app.post("/some_admin_only_endpoint", dependencies=[Depends(get_current_admin_user)])
@@ -56,6 +67,7 @@ async def admin_only_endpoint():
 @app.get("/")
 async def redirect_to_index():
     return RedirectResponse(url="/static/index.html")
+
 
 # Add additional directories to the protocols section
 config.additional_directories = ""

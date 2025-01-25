@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
 import {
   Box,
   Input,
@@ -12,6 +14,7 @@ import { authService } from '../services/auth';
 import { useToast } from '@chakra-ui/toast';
 import { Field } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
+import { setUser } from '../store/authSlice';
 
 const inputStyles = {
   width: '98%',  // Keep your current width
@@ -34,37 +37,65 @@ export const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
   const toast = useToast();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    if (isSubmitting) return;
+
     setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
-      await authService.login({ username, password });
-      const user = await authService.getCurrentUser();
+      const response = await authService.login({ username, password });
+      dispatch(setUser(response.user)); // Add this line to update auth state
 
       toast({
         title: 'Login successful',
-        description: `Welcome back, ${user?.username}!`,
+        description: `Welcome back, ${response.user.username}!`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
 
-      navigate('/');
+      // Navigation will be handled by the useEffect
     } catch (error) {
+      console.error('Login error:', error);
+      setIsSubmitting(false);
+      setIsLoading(false);
+
       toast({
         title: 'Login failed',
-        description: 'Invalid username or password',
+        description: error instanceof Error ? error.message : 'Invalid username or password',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
-    } finally {
-      setIsLoading(false);
+
+      // Clear password field on error
+      setPassword('');
     }
+  };
+
+  // Disable form submission while processing
+  const formProps = {
+    onSubmit: handleSubmit,
+    style: { pointerEvents: isSubmitting ? 'none' as const : 'auto' as const }
   };
 
   return (
@@ -88,8 +119,8 @@ export const Login: React.FC = () => {
           <Heading textAlign="center" mb={6}>
             Login to Praxis
           </Heading>
-          <form onSubmit={handleSubmit}>
-            <Fieldset>
+          <form {...formProps}>
+            <Fieldset disabled={isSubmitting}>
               <FieldsetLegend>Login Credentials</FieldsetLegend>
               <FieldsetContent>
                 <Field label="Username">
@@ -119,8 +150,9 @@ export const Login: React.FC = () => {
                 colorScheme="brand"
                 width="full"
                 mt={4}
-                loadingText="Signing in..."
                 loading={isLoading}
+                loadingText="Signing in..."
+                disabled={isSubmitting || !username || !password}
               >
                 Sign In
               </Button>

@@ -41,45 +41,41 @@ const initialState: UserState = {
   isAuthenticated: authService.isAuthenticated(),
 };
 
-export const loginUser = createAsyncThunk(
+export const loginUser = createAsyncThunk<User, LoginCredentials>(
   'user/login',
-  async (credentials: LoginCredentials, { rejectWithValue }) => {
+  async (credentials, { rejectWithValue }) => {
     try {
-      await authService.login(credentials);
-      const user = await authService.getCurrentUser();
-      return user;
+      const response = await authService.login(credentials);
+      return response.user;
     } catch (error) {
-      return rejectWithValue('Invalid username or password');
+      return rejectWithValue((error as Error).message || 'Login failed');
     }
   }
 );
 
-export const fetchCurrentUser = createAsyncThunk(
+export const fetchCurrentUser = createAsyncThunk<User, void>(
   'user/fetchCurrent',
   async (_, { rejectWithValue }) => {
     try {
       const user = await authService.getCurrentUser();
+      if (!user) throw new Error('No user found');
       return user;
     } catch (error) {
-      return rejectWithValue('Failed to fetch user data');
+      return rejectWithValue((error as Error).message || 'Failed to fetch user data');
     }
   }
 );
 
-export const updateUserAvatar = createAsyncThunk(
+export const updateUserAvatar = createAsyncThunk<string, File>(
   'user/updateAvatar',
-  async (file: File, { rejectWithValue }) => {
+  async (file, { rejectWithValue }) => {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-
-      // TODO: Implement actual API call in authService
-      // const response = await authService.updateAvatar(formData);
-      // return response.avatarUrl;
-
-      return 'temp-avatar-url'; // Temporary return for testing
+      const response = await authService.updateAvatar(formData);
+      return response.avatarUrl;
     } catch (error) {
-      return rejectWithValue('Failed to update avatar');
+      return rejectWithValue((error as Error).message || 'Failed to update avatar');
     }
   }
 );
@@ -129,23 +125,14 @@ const userSlice = createSlice({
       state.currentUser = null;
       state.isAuthenticated = false;
       state.errors = initialState.errors;
+      state.loadingStates = initialState.loadingStates;
       authService.logout();
-    },
-    clearError: (state) => {
-      state.errors = initialState.errors;
     },
     clearErrors: (state) => {
       state.errors = initialState.errors;
     },
     clearLoadingStates: (state) => {
       state.loadingStates = initialState.loadingStates;
-    },
-    sessionExpired: (state) => {
-      state.currentUser = null;
-      state.isAuthenticated = false;
-      state.errors = initialState.errors;
-      state.loadingStates = initialState.loadingStates;
-      authService.logout();
     },
   },
   extraReducers: (builder) => {
@@ -165,6 +152,7 @@ const userSlice = createSlice({
         state.loadingStates.login = false;
         state.errors.login = action.payload as string;
         state.isAuthenticated = false;
+        state.currentUser = null;
       })
       // Fetch current user
       .addCase(fetchCurrentUser.pending, (state) => {
@@ -189,7 +177,7 @@ const userSlice = createSlice({
       .addCase(updateUserAvatar.fulfilled, (state, action) => {
         state.loadingStates.updateAvatar = false;
         if (state.currentUser) {
-          state.currentUser.avatarUrl = action.payload;
+          state.currentUser.picture = action.payload;
         }
         state.errors.updateAvatar = null;
       })
@@ -212,13 +200,13 @@ const userSlice = createSlice({
         state.currentUser = action.payload;
         state.isAuthenticated = true;
       })
-      .addCase(refreshUserSession.rejected, (state, action) => {
-        userSlice.caseReducers.sessionExpired(state);
+      .addCase(refreshUserSession.rejected, (state) => {
+        userSlice.caseReducers.logout(state);
       });
   },
 });
 
-export const { logout, clearError, clearErrors, clearLoadingStates, sessionExpired } = userSlice.actions;
+export const { logout, clearErrors, clearLoadingStates } = userSlice.actions;
 
 // Type-safe selectors
 export const selectIsAuthenticated = (state: RootState): boolean => state.user.isAuthenticated;
@@ -230,10 +218,14 @@ export const selectIsAdmin = (state: RootState): boolean => state.user.currentUs
 export const selectUsername = (state: RootState): string => state.user.currentUser?.username ?? '';
 
 // Composite selectors
-export const selectUserProfile = (state: RootState) => ({
+export const selectUserProfile = (state: RootState): {
+  username: string;
+  isAdmin: boolean;
+  avatarUrl: string | null;
+} => ({
   username: state.user.currentUser?.username ?? '',
   isAdmin: state.user.currentUser?.is_admin ?? false,
-  avatarUrl: state.user.currentUser?.avatarUrl,
+  avatarUrl: state.user.currentUser?.picture ?? null,
 });
 
 // Memoized selector for checking specific permissions

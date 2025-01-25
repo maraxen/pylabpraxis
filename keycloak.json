@@ -1,0 +1,14 @@
+{
+  "realm": "praxis",
+  "auth-server-url": "http://localhost:8080",
+  "ssl-required": "external",
+  "resource": "praxis-client",
+  "verify-token-audience": true,
+  "credentials": {
+    "secret": "eKOIGj6td8mKFPxwoyNVhtRK7imTzpJU",
+    "admin_secret": "MQ1Cb78FpD323Hkda9QfJKdsh8tQRnzR",
+    "admin_id": "admin-cli"
+  },
+  "confidential-port": 0,
+  "policy-enforcer": {}
+}

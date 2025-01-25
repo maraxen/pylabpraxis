@@ -12,7 +12,7 @@ import importlib.util
 from praxis.configure import PraxisConfiguration
 from praxis.core.orchestrator import Orchestrator
 from praxis.protocol.protocol import Protocol
-from praxis.api.auth import get_current_active_user, get_current_user  # Add this import
+from praxis.api import get_current_user  # Add this import
 
 config = PraxisConfiguration("praxis.ini")
 router = APIRouter()
@@ -214,7 +214,7 @@ async def send_command(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/discover")
-async def discover_protocols(dirs: ProtocolDirectories, current_user: Dict = Depends(get_current_active_user)):
+async def discover_protocols(dirs: ProtocolDirectories, current_user: Dict = Depends(get_current_user)):
     protocols = []
 
     # Add default directory to the list if not already included
@@ -274,7 +274,7 @@ async def get_settings(current_user: dict = Depends(get_current_user)) -> Dict[s
         )
 
 @router.get("/directories")
-async def get_protocol_directories(current_user: Dict = Depends(get_current_active_user)):
+async def get_protocol_directories(current_user: Dict = Depends(get_current_user)):
     """Get list of directories where protocols are searched for."""
     try:
         directories = []
@@ -295,7 +295,7 @@ async def get_protocol_directories(current_user: Dict = Depends(get_current_acti
 @router.delete("/directories/{directory_path:path}")
 async def remove_protocol_directory(
     directory_path: str,
-    current_user: Dict = Depends(get_current_active_user)
+    current_user: Dict = Depends(get_current_user)
 ):
     """Remove a protocol directory from the search paths."""
     if directory_path == config.default_protocol_dir:

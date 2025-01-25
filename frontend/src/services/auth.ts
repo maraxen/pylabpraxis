@@ -1,6 +1,7 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { api, AxiosResponse, AxiosRequestConfig } from './api';
 import { Dispatch } from '@reduxjs/toolkit';
-import { sessionExpired } from '../store/userSlice';
+import { logout } from '../store/userSlice';
 
 export interface LoginCredentials {
   username: string;
@@ -16,42 +17,82 @@ export interface User {
   username: string;
   is_active: boolean;
   is_admin: boolean;
-  avatarUrl?: string;
+  roles: string[] | undefined;
+  picture: string;
 }
 
 const AUTH_TOKEN_KEY = 'auth_token';
 
 class AuthService {
-  private baseUrl = '/api/auth';
+  private baseUrl = '/api/v1/auth'; // Add API version prefix
 
-  async login(credentials: LoginCredentials): Promise<AuthToken> {
-    const formData = new FormData();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
+  async login({ username, password }: LoginCredentials) {
+    // Clear existing token from memory but don't reload
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    api.defaults.headers.common['Authorization'] = '';
 
-    const response = await axios.post<AuthToken>(`${this.baseUrl}/token`, formData);
-    const token = response.data;
+    try {
+      const formData = new URLSearchParams();
+      formData.append('username', username.trim());
+      formData.append('password', password.trim());
+      formData.append('grant_type', 'password');
 
-    // Store the token
-    localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
+      // First get the token
+      const tokenResponse = await api.post(
+        `${this.baseUrl}/token`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
 
-    return token;
+      if (!tokenResponse.data || !tokenResponse.data.access_token) {
+        throw new Error('Invalid response from server');
+      }
+
+      const token = {
+        access_token: tokenResponse.data.access_token,
+        token_type: tokenResponse.data.token_type || 'bearer'
+      };
+
+      // Store token and set authorization header
+      localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(token));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token.access_token}`;
+
+      // Fetch user data using login-user endpoint
+      const userResponse = await api.get<User>(`${this.baseUrl}/login-user`);
+      if (!userResponse.data) {
+        throw new Error('Failed to get user information');
+      }
+
+      return { token, user: userResponse.data };
+    } catch (error) {
+      // Clean up but don't reload
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      api.defaults.headers.common['Authorization'] = '';
+      throw error instanceof Error ? error : new Error('Login failed');
+    }
   }
 
   async getCurrentUser(): Promise<User | null> {
+    const token = this.getStoredToken();
+
+    if (!token || window.location.pathname === '/login') {
+      return null;
+    }
+
     try {
-      const token = this.getStoredToken();
-      if (!token) return null;
+      // Get basic user info
+      const userInfo = await api.get<User>(`${this.baseUrl}/login-user`);
+      console.info('userInfo:', userInfo)
 
-      const response = await axios.get<User>(`${this.baseUrl}/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token.access_token}`,
-        },
-      });
-
-      return response.data;
+      return {
+        ...userInfo.data
+      };
     } catch (error) {
-      this.logout();
+      console.error('Error fetching user info:', error);
       return null;
     }
   }
@@ -69,6 +110,12 @@ class AuthService {
 
   logout(): void {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    api.defaults.headers.common['Authorization'] = '';
+
+    // Only redirect if not already on login page
+    if (window.location.pathname !== '/login') {
+      window.location.replace('/login');
+    }
   }
 
   isAuthenticated(): boolean {
@@ -78,46 +125,38 @@ class AuthService {
   // Setup axios interceptor to add auth header to all requests
   setupAxiosInterceptors(dispatch: Dispatch): void {
     // Request interceptor
-    axios.interceptors.request.use((config) => {
+    api.interceptors.request.use((config: AxiosRequestConfig) => {
       const token = this.getStoredToken();
       if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token.access_token}`;
+        config.headers['Authorization'] = `Bearer ${token.access_token}`;
       }
-      return config;
+      return config as AxiosRequestConfig;
     });
 
     // Response interceptor with token refresh
-    axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
+    api.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      async (error: AxiosError) => {
+        if (!error.config) return Promise.reject(error);
+
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
           try {
             const newToken = await this.refreshToken();
-            originalRequest.headers.Authorization = `Bearer ${newToken.access_token}`;
-            return axios(originalRequest);
+            if (originalRequest.headers) {
+              originalRequest.headers['Authorization'] = `Bearer ${newToken.access_token}`;
+            }
+            return api.request(originalRequest);
           } catch (refreshError) {
+            dispatch(logout());
             this.logout();
-            window.location.href = '/login';
             return Promise.reject(refreshError);
           }
         }
 
-        if (error.response?.status === 401) {
-          // Try to refresh the token first
-          try {
-            await this.refreshToken();
-            return axios(error.config);
-          } catch (refreshError) {
-            // If refresh fails, mark the session as expired
-            dispatch(sessionExpired());
-            this.logout();
-            window.location.href = '/login';
-          }
-        }
         return Promise.reject(error);
       }
     );
@@ -127,8 +166,8 @@ class AuthService {
     const token = this.getStoredToken();
     if (!token) throw new Error('Not authenticated');
 
-    const response = await axios.post<{ avatarUrl: string }>(
-      `${this.baseUrl}/avatar`,
+    const response = await api.post<{ avatarUrl: string }>(
+      `${this.baseUrl} / avatar`,
       formData,
       {
         headers: {
@@ -145,8 +184,8 @@ class AuthService {
     const token = this.getStoredToken();
     if (!token) throw new Error('Not authenticated');
 
-    await axios.post(
-      `${this.baseUrl}/update-password`,
+    await api.post(
+      `${this.baseUrl} / update - password`,
       { current_password: currentPassword, new_password: newPassword },
       {
         headers: {
@@ -160,8 +199,8 @@ class AuthService {
     const token = this.getStoredToken();
     if (!token) throw new Error('No token to refresh');
 
-    const response = await axios.post<AuthToken>(
-      `${this.baseUrl}/refresh-token`,
+    const response = await api.post<AuthToken>(
+      `${this.baseUrl} / refresh - token`,
       {},
       {
         headers: {

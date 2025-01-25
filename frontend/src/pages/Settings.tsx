@@ -19,11 +19,17 @@ import {
   LuPalette,
   LuFolderCog,
   LuShieldAlert,
-  LuKey
+  LuKey,
+  LuUserPlus,
+  LuUsers,
+  LuDatabase,
+  LuActivity
 } from "react-icons/lu";
 import { Card, CardBody } from '@/components/ui/card';
 import { Fieldset, FieldsetContent, FieldsetLegend } from '@/components/ui/fieldset';
 import { useColorMode } from '@/components/ui/color-mode';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
@@ -299,18 +305,79 @@ const SecurityTab = React.memo(() => {
   );
 });
 
-const AdminTab = React.memo(() => (
-  <Card>
-    <CardBody>
-      <Fieldset>
-        <FieldsetLegend>Admin Settings</FieldsetLegend>
-        <FieldsetContent>
-          <Text>Admin-only settings will go here</Text>
-        </FieldsetContent>
-      </Fieldset>
-    </CardBody>
-  </Card>
-));
+const UserManagement = () => (
+  <Fieldset>
+    <FieldsetLegend>User Management</FieldsetLegend>
+    <FieldsetContent>
+      <VStack align="stretch" gap={4}>
+        <Button
+          visual="outline"
+        >
+          <LuUserPlus size={16} />
+          Invite New User
+        </Button>
+        <Button
+          visual="outline"
+        >
+          <LuUsers size={16} />
+          Manage Users
+        </Button>
+      </VStack>
+    </FieldsetContent>
+  </Fieldset>
+);
+
+const SystemSettings = () => (
+  <Fieldset>
+    <FieldsetLegend>System Settings</FieldsetLegend>
+    <FieldsetContent>
+      <VStack align="stretch" gap={4}>
+        <Button
+          visual="outline"
+        >
+          <LuDatabase size={16} />
+          Database Configuration
+
+        </Button>
+        <Button
+          visual="outline"
+        >
+          <LuActivity size={16} />
+          View System Logs
+        </Button>
+      </VStack>
+    </FieldsetContent>
+  </Fieldset>
+);
+
+const AdminTab = React.memo(() => {
+  const isAdmin = useSelector((state: RootState) => state.auth.user?.is_admin);
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <CardBody>
+          <Text color="red.500">You don't have permission to access admin settings.</Text>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  return (
+    <VStack gap={6} align="stretch">
+      <Card>
+        <CardBody>
+          <UserManagement />
+        </CardBody>
+      </Card>
+      <Card>
+        <CardBody>
+          <SystemSettings />
+        </CardBody>
+      </Card>
+    </VStack>
+  );
+});
 
 // Fix the TabRenderer to properly render content
 const TabRenderer = React.memo(({ tabContent, selectedTab }: {
@@ -424,6 +491,17 @@ export const Settings: React.FC = () => {
     directories, handleRemoveDirectory, handleAddDirectory,
   ]);
 
+  const isAdmin = useSelector((state: RootState) => state.auth.user?.is_admin);
+
+  const tabs = [
+    { value: 'profile', label: 'Profile', icon: LuUser },
+    { value: 'appearance', label: 'Appearance', icon: LuPalette },
+    { value: 'protocols', label: 'Protocols', icon: LuFolderCog },
+    { value: 'security', label: 'Security', icon: LuKey },
+    // Only show admin tab if user is admin
+    ...(isAdmin ? [{ value: 'admin', label: 'Admin', icon: LuShieldAlert }] : []),
+  ];
+
   return (
     <Box p={6}>
       <Heading
@@ -439,28 +517,12 @@ export const Settings: React.FC = () => {
         onChange={handleTabChange}
       >
         <TabList>
-          <TabTrigger value="profile">
-            <LuUser size={16} />
-            Profile
-          </TabTrigger>
-          <TabTrigger value="appearance">
-            <LuPalette size={16} />
-            Appearance
-          </TabTrigger>
-          <TabTrigger value="protocols">
-            <LuFolderCog size={16} />
-            Protocols
-          </TabTrigger>
-          <TabTrigger value="security">
-            <LuKey size={16} />
-            Security
-          </TabTrigger>
-          {user?.is_admin && (
-            <TabTrigger value="admin">
-              <LuShieldAlert size={16} />
-              Admin
+          {tabs.map(({ value, label, icon: Icon }) => (
+            <TabTrigger key={value} value={value}>
+              <Icon size={16} />
+              {label}
             </TabTrigger>
-          )}
+          ))}
         </TabList>
         <TabRenderer tabContent={tabContent} selectedTab={selectedTab} />
       </Tabs>

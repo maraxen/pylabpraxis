@@ -3,7 +3,7 @@ import { Box, VStack, Heading, Button, HStack, Text } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 
-export const Home: React.FC = () => {
+export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = React.useState<{ username: string; is_admin: boolean } | null>(null);
 
