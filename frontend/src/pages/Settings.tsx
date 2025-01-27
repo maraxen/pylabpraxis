@@ -13,7 +13,6 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Tabs, TabList, TabTrigger, TabContent } from '@/components/ui/tabs';
-import { authService } from '../services/auth';
 import {
   LuUser,
   LuPalette,
@@ -30,6 +29,8 @@ import { Fieldset, FieldsetContent, FieldsetLegend } from '@/components/ui/field
 import { useColorMode } from '@/components/ui/color-mode';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { useOidc } from '../oidc';
+import { selectUserProfile, selectIsAdmin } from '../store/userSlice';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
@@ -51,144 +52,45 @@ const inputStyles = {
   },
 }
 
-const SecurityForm = React.memo(({
-  onSubmit,
-  currentPassword,
-  setCurrentPassword,
-  newPassword,
-  setNewPassword,
-  confirmPassword,
-  setConfirmPassword,
-  error,
-  isLoading
-}: {
-  onSubmit: (e: React.FormEvent) => void;
-  currentPassword: string;
-  setCurrentPassword: (value: string) => void;
-  newPassword: string;
-  setNewPassword: (value: string) => void;
-  confirmPassword: string;
-  setConfirmPassword: (value: string) => void;
-  error?: string | null;
-  isLoading: boolean;
-}) => {
-  const handleChange = React.useCallback((setter: (value: string) => void) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => setter(e.target.value),
-    []
-  );
+const ProfileTab = React.memo(() => {
+  const { goToAuthServer, backFromAuthServer } = useOidc({ assertUserLoggedIn: true });
+  const { oidcTokens } = useOidc();
+  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
 
   return (
-    <form onSubmit={onSubmit}>
-      <Fieldset defaultOpen disabled={isLoading}>
-        <FieldsetLegend>Change Password</FieldsetLegend>
-        <FieldsetContent>
-          <VStack gap={4}>
-            {error && (
-              <Text color="red.500" fontSize="sm" width="full">
-                {error}
-              </Text>
-            )}
-            <Field label="Current Password">
-              <Input
-                type="password"
-                value={currentPassword}
-                onChange={handleChange(setCurrentPassword)}
-                size="md"
-                required
-                {...inputStyles}
-              />
-            </Field>
-            <Field label="New Password">
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={handleChange(setNewPassword)}
-                size="md"
-                required
-                {...inputStyles}
-              />
-            </Field>
-            <Field label="Confirm New Password">
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={handleChange(setConfirmPassword)}
-                size="md"
-                required
-                {...inputStyles}
-              />
-            </Field>
-            <Button
-              type="submit"
-              visual="solid"
-              width="full"
-              mt={2}
-              loading={isLoading}
-              loadingText="Updating password..."
-            >
-              Change Password
-            </Button>
-          </VStack>
-        </FieldsetContent>
-      </Fieldset>
-    </form>
-  );
-});
-
-SecurityForm.displayName = 'SecurityForm';
-
-interface ProfileTabProps {
-  user: { username: string; avatarUrl?: string } | null;
-  onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  avatarError: string;
-}
-
-const ProfileTab = React.memo(({ user, onAvatarChange, avatarError }: ProfileTabProps) => (
-  <Card>
-    <CardBody>
-      <Fieldset defaultOpen>
-        <FieldsetLegend>Profile</FieldsetLegend>
-        <FieldsetContent>
-          <VStack align="start" gap={4}>
-            <HStack gap={4} width="full">
-              <Avatar
-                size="xl"
-                name={user?.username}
-                src={user?.avatarUrl}
-              />
-              <VStack align="start" gap={2}>
-                <label htmlFor="avatar-upload">
+    <Card>
+      <CardBody>
+        <Fieldset defaultOpen>
+          <FieldsetLegend>Profile Management</FieldsetLegend>
+          <FieldsetContent>
+            <VStack align="start" gap={4}>
+              <HStack gap={4} width="full">
+                <Avatar
+                  size="xl"
+                  name={userProfile.username}
+                  src={userProfile.picture}
+                />
+                <VStack align="start" gap={2}>
                   <Button
                     visual="outline"
-                    cursor="pointer"
-                    as="span"
+                    onClick={() => goToAuthServer({
+                      extraQueryParams: { kc_action: "UPDATE_PROFILE" }
+                    })}
                   >
-                    Change Avatar
+                    Edit Profile
                   </Button>
-                  <input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={onAvatarChange}
-                  />
-                </label>
-                {avatarError && (
-                  <Text color="red.500" fontSize="sm">
-                    {avatarError}
+                  <Text fontSize="sm" color="gray.600">
+                    Edit your profile information on Keycloak
                   </Text>
-                )}
-                <Text fontSize="sm" color="brand.500">
-                  Supported formats: JPEG, PNG, GIF (max. 5MB)
-                </Text>
-              </VStack>
-            </HStack>
-          </VStack>
-        </FieldsetContent>
-      </Fieldset>
-    </CardBody>
-  </Card>
-));
+                </VStack>
+              </HStack>
+            </VStack>
+          </FieldsetContent>
+        </Fieldset>
+      </CardBody>
+    </Card>
+  );
+});
 
 const AppearanceTab = React.memo(() => (
   <Card>
@@ -253,73 +155,34 @@ const ProtocolsTab = React.memo(({ directories, onRemove, onAdd }: ProtocolsTabP
 ));
 
 const SecurityTab = React.memo(() => {
-  const [currentPassword, setCurrentPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const toast = useToast();
-
-  const validatePasswords = React.useCallback(() => {
-    if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters');
-      return false;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    setError(null);
-    return true;
-  }, [newPassword, confirmPassword]);
-
-  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validatePasswords()) return;
-
-    setIsLoading(true);
-    try {
-      await authService.updatePassword(currentPassword, newPassword);
-
-      toast({
-        title: 'Password Changed',
-        description: 'Your password has been updated successfully.',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      // Clear form
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update password',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [validatePasswords, currentPassword, newPassword, toast]);
+  const { goToAuthServer, backFromAuthServer } = useOidc({ assertUserLoggedIn: true });
 
   return (
     <Card>
       <CardBody>
-        <SecurityForm
-          onSubmit={handleSubmit}
-          currentPassword={currentPassword}
-          setCurrentPassword={setCurrentPassword}
-          newPassword={newPassword}
-          setNewPassword={setNewPassword}
-          confirmPassword={confirmPassword}
-          setConfirmPassword={setConfirmPassword}
-          error={error}
-          isLoading={isLoading}
-        />
+        <Fieldset defaultOpen>
+          <FieldsetLegend>Security Settings</FieldsetLegend>
+          <FieldsetContent>
+            <VStack gap={4}>
+              <Button
+                width="full"
+                visual="solid"
+                onClick={() => goToAuthServer({
+                  extraQueryParams: { kc_action: "UPDATE_PASSWORD" }
+                })}
+              >
+                Change Password
+              </Button>
+              {backFromAuthServer?.extraQueryParams.kc_action === "UPDATE_PASSWORD" && (
+                <Text color={backFromAuthServer.result.kc_action_status === "success" ? "green.500" : "gray.500"}>
+                  {backFromAuthServer.result.kc_action_status === "success"
+                    ? "Password successfully updated"
+                    : "Password unchanged"}
+                </Text>
+              )}
+            </VStack>
+          </FieldsetContent>
+        </Fieldset>
       </CardBody>
     </Card>
   );
@@ -371,7 +234,9 @@ const SystemSettings = () => (
 );
 
 const AdminTab = React.memo(() => {
-  const isAdmin = useSelector((state: RootState) => state.auth.user?.is_admin);
+  const { oidcTokens } = useOidc();
+  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
+  const isAdmin = selectIsAdmin(oidcTokens?.decodedIdToken);
 
   if (!isAdmin) {
     return (
@@ -424,24 +289,22 @@ const handleAddDirectory = () => {
 }
 
 export const Settings: React.FC = () => {
+  const { oidcTokens } = useOidc();
+  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
+  const isAdmin = selectIsAdmin(oidcTokens?.decodedIdToken);
   const [selectedTab, setSelectedTab] = React.useState('profile');
-  const [user, setUser] = React.useState<{ username: string; is_admin: boolean; avatarUrl?: string } | null>(null);
   const [directories, setDirectories] = React.useState<string[]>([]);
   const [avatarError, setAvatarError] = React.useState<string>('');
   const { colorMode } = useColorMode();
 
   React.useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-    };
+
     const fetchDirectories = async () => {
       // TODO: Implement API call to fetch directories
       // For now, using mock data
       setDirectories(['/path/to/protocols', '/another/path']);
     };
 
-    fetchUser();
     fetchDirectories();
   }, []);
 
@@ -449,36 +312,6 @@ export const Settings: React.FC = () => {
     setSelectedTab(details.value);
   }, []);
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      setAvatarError('File size must be less than 5MB');
-      return;
-    }
-
-    // Validate file type
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      setAvatarError('Please upload a valid image file (JPEG, PNG, or GIF)');
-      return;
-    }
-
-    try {
-      // Create a FormData object
-      const formData = new FormData();
-      formData.append('avatar', file);
-
-      // TODO: Implement API call to upload avatar
-      console.log('Uploading avatar:', file);
-
-      // Clear any previous errors
-      setAvatarError('');
-    } catch (error) {
-      setAvatarError('Failed to upload avatar');
-    }
-  };
 
   const themeOptions = createListCollection({
     items: [
@@ -490,11 +323,7 @@ export const Settings: React.FC = () => {
 
   const tabContent = React.useMemo(() => ({
     profile: (
-      <ProfileTab
-        user={user}
-        onAvatarChange={handleAvatarChange}
-        avatarError={avatarError}
-      />
+      <ProfileTab />
     ),
     appearance: <AppearanceTab />,
     protocols: (
@@ -507,18 +336,15 @@ export const Settings: React.FC = () => {
     security: <SecurityTab />,
     admin: <AdminTab />
   }), [
-    user, handleAvatarChange, avatarError,
+    userProfile, avatarError,
     directories, handleRemoveDirectory, handleAddDirectory,
   ]);
-
-  const isAdmin = useSelector((state: RootState) => state.auth.user?.is_admin);
 
   const tabs = [
     { value: 'profile', label: 'Profile', icon: LuUser },
     { value: 'appearance', label: 'Appearance', icon: LuPalette },
     { value: 'protocols', label: 'Protocols', icon: LuFolderCog },
     { value: 'security', label: 'Security', icon: LuKey },
-    // Only show admin tab if user is admin
     ...(isAdmin ? [{ value: 'admin', label: 'Admin', icon: LuShieldAlert }] : []),
   ];
 

@@ -2,9 +2,12 @@ import { HStack, Text, Box } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { ColorModeButton } from './ui/color-mode';
+import { useOidc } from '../oidc';
+import { selectUsername } from '../store/userSlice';
 
 export const StatusBar = () => {
-  const user = useSelector((state: RootState) => state.auth.user);
+  const { oidcTokens } = useOidc();
+  const username = selectUsername(oidcTokens?.decodedIdToken);
 
   return (
     <Box
@@ -21,7 +24,7 @@ export const StatusBar = () => {
     >
       <HStack h="full" justify="space-between">
         <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>
-          Logged in as {user?.username}
+          Logged in as {username}
         </Text>
         <HStack gap={4}>
           <Text fontSize="sm" color={{ base: 'gray.600', _dark: 'gray.400' }}>

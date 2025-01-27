@@ -3,8 +3,6 @@ import { Box, Flex, HStack, Text, Heading, Icon } from '@chakra-ui/react';
 import { Button } from './ui/button';
 import { Avatar } from "./ui/avatar"
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../store/authSlice';
 import { RootState } from '../store';
 import {
   LuPlay,
@@ -14,6 +12,8 @@ import {
   LuSettings,
 } from "react-icons/lu";
 import { Tabs, TabList, TabTrigger } from './ui/tabs';
+import { useOidc } from '../oidc';
+import { selectUserProfile } from '../store/userSlice';
 
 const navItems = [
   { path: '/protocols', label: 'Run Protocols', icon: LuPlay },
@@ -24,13 +24,18 @@ const navItems = [
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const { oidcTokens, logout, goToAuthServer } = useOidc({ assertUserLoggedIn: true });
   const currentPath = window.location.pathname;
+  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
 
   const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login', { replace: true });
+    logout({ redirectTo: "home" });
+  };
+
+  const handleProfileClick = () => {
+    goToAuthServer({
+      extraQueryParams: { kc_action: "UPDATE_PROFILE" }
+    });
   };
 
   return (
@@ -39,7 +44,7 @@ export const Navbar: React.FC = () => {
         <Heading
           size="md"
           cursor="pointer"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/home')}
           color={{ base: 'brand.300', _dark: 'brand.100' }}
         >
           Praxis
@@ -47,15 +52,19 @@ export const Navbar: React.FC = () => {
 
         <HStack gap={4}>
           <HStack>
-            <Text color={{ base: 'brand.300', _dark: 'brand.100' }}>
-              {user?.username}
+            <Text
+              color={{ base: 'brand.300', _dark: 'brand.100' }}
+              cursor="pointer"
+              onClick={handleProfileClick}
+            >
+              {userProfile.username}
             </Text>
             <Avatar
               size="sm"
-              name={user?.username}
-              src={user?.picture}
+              name={userProfile.username}
+              src={userProfile.picture}
               cursor="pointer"
-              onClick={() => navigate('/settings')}
+              onClick={handleProfileClick}
             />
           </HStack>
           <Button

@@ -1,19 +1,13 @@
 import React from 'react';
 import { Box, VStack, Heading, Button, HStack, Text } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/auth';
+import { useOidc } from '../oidc';
+import { selectUserProfile } from '../store/userSlice';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = React.useState<{ username: string; is_admin: boolean } | null>(null);
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-    };
-    fetchUser();
-  }, []);
+  const { oidcTokens } = useOidc();
+  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
 
   return (
     <VStack gap={4} align="stretch" maxW="container.xl" mx="auto">
@@ -25,7 +19,7 @@ export const Dashboard: React.FC = () => {
 
         <HStack mt="6" gap={4}>
           <Button colorScheme="brand">View Protocols</Button>
-          {user?.is_admin && (
+          {userProfile.isAdmin && (
             <Button
               colorScheme="brand"
               variant="outline"

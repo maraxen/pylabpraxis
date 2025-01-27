@@ -1,31 +1,22 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { setUser, setLoading } from './store/authSlice';
-import ProtectedRoute from '@/components/ProtectedRoute';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { RunProtocols } from './pages/protocols/RunProtocols';
-import { authService } from './services/auth';
-import { RootState } from './store';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useOidc } from './oidc';
 
-export const App: React.FC = () => {
-  const dispatch = useDispatch();
-  // Fetch the current user on app load
-  useEffect(() => {
-    dispatch(setLoading(true));
-    authService.getCurrentUser()
-      .then(user => {
-        dispatch(setUser(user));
-      })
-      .finally(() => {
-        dispatch(setLoading(false));
-      });
-  }, [dispatch]);
+
+export const App = () => {
+  const { isUserLoggedIn, login } = useOidc();
 
   return (
     <Routes>
       <Route path="/" element={
+        isUserLoggedIn ? <Navigate to="/home" /> : <Navigate to="/login" />
+      } />
+      <Route path="/login" />
+      <Route path="/home" element={
         <ProtectedRoute>
           <Dashboard />
         </ProtectedRoute>
@@ -40,8 +31,7 @@ export const App: React.FC = () => {
           <RunProtocols />
         </ProtectedRoute>
       } />
-      {/* Add other routes as needed */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );
 };
