@@ -1,51 +1,30 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setUser, setLoading } from './store/authSlice';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { RunProtocols } from './pages/protocols/RunProtocols';
 import { authService } from './services/auth';
+import { RootState } from './store';
 
-export const App = () => {
+export const App: React.FC = () => {
   const dispatch = useDispatch();
-  const location = useLocation();
-
+  // Fetch the current user on app load
   useEffect(() => {
-    const initAuth = async () => {
-      // Skip auth initialization on login page
-      if (location.pathname === '/login') {
-        dispatch(setLoading(false));
-        return;
-      }
-
-      dispatch(setLoading(true));
-
-      if (!authService.getStoredToken()) {
-        dispatch(setUser(null));
-        dispatch(setLoading(false));
-        return;
-      }
-
-      try {
-        const user = await authService.getCurrentUser();
+    dispatch(setLoading(true));
+    authService.getCurrentUser()
+      .then(user => {
         dispatch(setUser(user));
-      } catch (error) {
-        console.error('Auth initialization failed:', error);
-        dispatch(setUser(null));
-      } finally {
+      })
+      .finally(() => {
         dispatch(setLoading(false));
-      }
-    };
-
-    initAuth();
-  }, [dispatch, location.pathname]);
+      });
+  }, [dispatch]);
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
       <Route path="/" element={
         <ProtectedRoute>
           <Dashboard />
@@ -66,4 +45,3 @@ export const App = () => {
     </Routes>
   );
 };
-

@@ -66,7 +66,7 @@ class AuthService {
       if (!userResponse.data) {
         throw new Error('Failed to get user information');
       }
-
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
       return { token, user: userResponse.data };
     } catch (error) {
       // Clean up but don't reload
@@ -87,6 +87,7 @@ class AuthService {
       // Get basic user info
       const userInfo = await api.get<User>(`${this.baseUrl}/login-user`);
       console.info('userInfo:', userInfo)
+      localStorage.setItem('user', JSON.stringify(userInfo.data));
 
       return {
         ...userInfo.data
@@ -183,16 +184,30 @@ class AuthService {
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
     const token = this.getStoredToken();
     if (!token) throw new Error('Not authenticated');
+    const user = await this.getCurrentUser();
+    if (!user) throw new Error('No user found');
 
-    await api.post(
-      `${this.baseUrl} / update - password`,
-      { current_password: currentPassword, new_password: newPassword },
-      {
-        headers: {
-          Authorization: `Bearer ${token.access_token}`,
+    try {
+      await api.put(
+        `${this.baseUrl}/update-password`,
+        {
+          username: user.username,
+          current_password: currentPassword,
+          new_password: newPassword
         },
+        {
+          headers: {
+            'Authorization': `Bearer ${token.access_token}`,
+            'Content-Type': 'application/json'
+          },
+        }
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        throw new Error(error.response.data.detail || 'Current password is incorrect');
       }
-    );
+      throw new Error('Failed to update password');
+    }
   }
 
   async refreshToken(): Promise<AuthToken> {

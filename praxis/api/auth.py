@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Body
+from fastapi import APIRouter, HTTPException, Depends, status, Body, Request, Response, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from typing import Dict, List, Optional
-from keycloak import KeycloakOpenID, KeycloakAdmin
+from keycloak import KeycloakOpenID
 import json
 from pathlib import Path
 import logging
 from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -29,7 +31,6 @@ keycloak_openid = KeycloakOpenID(
     verify=True
 )
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
 # Models
@@ -50,8 +51,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     try:
         token = await keycloak_openid.a_token(
             username=form_data.username,
-            password=form_data.password,
-            grant_type="password"
+            password=form_data.password
         )
         return {
             "access_token": token["access_token"],
@@ -159,3 +159,88 @@ async def verify_token(token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
+
+# --- Auth flow endpoints ---
+
+@router.get("/register-uri")
+async def get_register_uri(redirect_uri: str = "http://localhost:5173/"):
+    """
+    Returns the Keycloak registration URI.
+    """
+    register_url = keycloak_config["auth-server-url"] + f"/realms/{keycloak_openid.realm_name}/login-actions/registration"
+    register_url += f"?client_id={keycloak_config['resource']}"
+    register_url += f"&redirect_uri={quote(redirect_uri, safe='')}"
+    register_url += f"&response_mode=query"
+    register_url += f"&response_type=code"
+    register_url += f"&scope=openid+email+profile"
+    try:
+        return {"uri": register_url}
+    except Exception as e:
+        logger.error(f"Error generating registration URI: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating registration URI"
+        )
+
+@router.post("/create-user")
+async def create_user(request: Request, response: Response):
+    """
+    Handles user creation by redirecting to the Keycloak registration page.
+    """
+    redirect_uri = request.url_for("get_register_uri")
+    return RedirectResponse(url=redirect_uri)
+
+@router.get("/forgot-password-uri")
+async def get_forgot_password_uri(redirect_uri: str = "http://localhost:8000/static/index.html"):
+    """
+    Returns the Keycloak forgot password URI.
+    """
+    forgot_password_url = keycloak_openid.server_url + f"realms/{keycloak_openid.realm_name}/login-actions/reset-credentials"
+    forgot_password_url += f"?client_id={keycloak_openid.client_id}"
+    forgot_password_url += f"&redirect_uri={quote(redirect_uri, safe='')}"
+    try:
+        return {"uri": forgot_password_url}
+    except Exception as e:
+        logger.error(f"Error generating forgot password URI: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating forgot password URI"
+        )
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request, response: Response):
+    """
+    Handles forgot password requests by redirecting to the Keycloak forgot password page.
+    """
+    redirect_uri = request.url_for("get_forgot_password_uri")
+    return RedirectResponse(url=redirect_uri)
+
+@router.get("/update-password-uri")
+async def get_update_password_uri(redirect_uri: str = "http://localhost:8000/static/index.html"):
+    """
+    Returns the Keycloak update password URI.
+    """
+    update_password_url = keycloak_openid.server_url + f"realms/{keycloak_openid.realm_name}/login-actions/action-token"
+    update_password_url += f"?client_id={keycloak_openid.client_id}"
+    update_password_url += f"&redirect_uri={quote(redirect_uri, safe='')}"
+    update_password_url += f"&execution=execute-actions"
+    update_password_url += f"&key=UPDATE_PASSWORD"
+    try:
+        return {"uri": update_password_url}
+    except Exception as e:
+        logger.error(f"Error generating update password URI: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating update password URI"
+        )
+
+@router.put("/update-password")
+async def update_password(
+    request: Request,
+    response: Response
+):
+    """
+    Handles password updates by redirecting to the Keycloak update password page.
+    """
+    redirect_uri = request.url_for("get_update_password_uri")
+    return RedirectResponse(url=redirect_uri)

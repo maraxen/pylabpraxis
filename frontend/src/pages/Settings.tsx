@@ -59,7 +59,8 @@ const SecurityForm = React.memo(({
   setNewPassword,
   confirmPassword,
   setConfirmPassword,
-  error
+  error,
+  isLoading
 }: {
   onSubmit: (e: React.FormEvent) => void;
   currentPassword: string;
@@ -69,6 +70,7 @@ const SecurityForm = React.memo(({
   confirmPassword: string;
   setConfirmPassword: (value: string) => void;
   error?: string | null;
+  isLoading: boolean;
 }) => {
   const handleChange = React.useCallback((setter: (value: string) => void) =>
     (e: React.ChangeEvent<HTMLInputElement>) => setter(e.target.value),
@@ -77,7 +79,7 @@ const SecurityForm = React.memo(({
 
   return (
     <form onSubmit={onSubmit}>
-      <Fieldset defaultOpen>
+      <Fieldset defaultOpen disabled={isLoading}>
         <FieldsetLegend>Change Password</FieldsetLegend>
         <FieldsetContent>
           <VStack gap={4}>
@@ -121,6 +123,8 @@ const SecurityForm = React.memo(({
               visual="solid"
               width="full"
               mt={2}
+              loading={isLoading}
+              loadingText="Updating password..."
             >
               Change Password
             </Button>
@@ -253,6 +257,7 @@ const SecurityTab = React.memo(() => {
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
   const toast = useToast();
 
   const validatePasswords = React.useCallback(() => {
@@ -268,24 +273,38 @@ const SecurityTab = React.memo(() => {
     return true;
   }, [newPassword, confirmPassword]);
 
-  const handleSubmit = React.useCallback((e: React.FormEvent) => {
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validatePasswords()) return;
 
-    // TODO: Implement actual password change
-    toast({
-      title: 'Password Changed',
-      description: 'Your password has been updated successfully.',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
+    setIsLoading(true);
+    try {
+      await authService.updatePassword(currentPassword, newPassword);
 
-    // Clear form
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  }, [validatePasswords, toast]);
+      toast({
+        title: 'Password Changed',
+        description: 'Your password has been updated successfully.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      // Clear form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update password',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [validatePasswords, currentPassword, newPassword, toast]);
 
   return (
     <Card>
@@ -299,6 +318,7 @@ const SecurityTab = React.memo(() => {
           confirmPassword={confirmPassword}
           setConfirmPassword={setConfirmPassword}
           error={error}
+          isLoading={isLoading}
         />
       </CardBody>
     </Card>

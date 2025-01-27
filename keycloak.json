@@ -9,6 +9,10 @@
     "admin_secret": "MQ1Cb78FpD323Hkda9QfJKdsh8tQRnzR",
     "admin_id": "admin-cli"
   },
+  "admin": {
+    "username": "test2",
+    "password": "test"
+  },
   "confidential-port": 0,
   "policy-enforcer": {}
 }
