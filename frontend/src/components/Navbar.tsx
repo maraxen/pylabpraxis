@@ -29,7 +29,7 @@ export const Navbar: React.FC = () => {
   const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
 
   const handleLogout = () => {
-    logout({ redirectTo: "home" });
+    logout({ redirectTo: "current page" });
   };
 
   const handleProfileClick = () => {

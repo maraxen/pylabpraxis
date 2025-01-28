@@ -7,4 +7,8 @@ export const { OidcProvider, useOidc, getOidc } = createReactOidc({
   clientId: "praxis-client",
   publicUrl: import.meta.env.BASE_URL,
   isAuthGloballyRequired: true,
+  postLoginRedirectUrl: "/home",
 });
+
+
+

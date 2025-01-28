@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Box, Spinner, Center } from '@chakra-ui/react';
 import { Navbar } from './Navbar';
 import { StatusBar } from './StatusBar';
@@ -15,25 +15,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAdmin = false
 }) => {
-  const location = useLocation();
-  const { isUserLoggedIn, oidcTokens } = useOidc();
+  // const { oidcTokens } = useOidc();
 
-  if (!oidcTokens) {
-    return (
-      <Center h="100vh">
-        <Spinner size="xl" color="brand.500" />
-      </Center>
-    );
-  }
-
-  if (!isUserLoggedIn) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  const isAdmin = selectIsAdmin(oidcTokens.decodedIdToken);
-  if (requireAdmin && !isAdmin) {
-    return <Navigate to="/home" replace />;
-  }
+  // const isAdmin = selectIsAdmin(oidcTokens.decodedIdToken);
+  // if (requireAdmin && !isAdmin) {
+  //  return <Navigate to="/home" replace />;
+  // }
 
   return (
     <>
