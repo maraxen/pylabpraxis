@@ -1,8 +1,9 @@
 import React from 'react';
-import { Box, VStack, Heading, Button, HStack, Text } from '@chakra-ui/react';
+import { Box, VStack, Heading, HStack, Text } from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useOidc } from '../oidc';
-import { selectUserProfile } from '../store/userSlice';
+import { useOidc } from '@/oidc';
+import { selectUserProfile } from '@/store/userSlice';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -16,13 +17,10 @@ export const Dashboard: React.FC = () => {
           Welcome to Praxis
         </Heading>
         <Text>Select an action to get started:</Text>
-
         <HStack mt="6" gap={4}>
-          <Button colorScheme="brand">View Protocols</Button>
+          <Button>View Protocols</Button>
           {userProfile.isAdmin && (
             <Button
-              colorScheme="brand"
-              variant="outline"
               onClick={() => navigate('/manage-users')}
             >
               Manage Users
