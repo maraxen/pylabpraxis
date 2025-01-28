@@ -5,6 +5,8 @@ import {
   VStack,
   Input,
   Checkbox,
+  For,
+  createListCollection
 } from '@chakra-ui/react';
 import { useToast } from '@chakra-ui/toast';
 import { Button } from '@/components/ui/button';
@@ -30,7 +32,7 @@ interface RunningProtocol {
 export const RunProtocols: React.FC = () => {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [runningProtocols, setRunningProtocols] = useState<RunningProtocol[]>([]);
-  const [selectedProtocol, setSelectedProtocol] = useState('');
+  const [selectedProtocol, setSelectedProtocol] = useState<string[]>([]);
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [deckFiles, setDeckFiles] = useState<string[]>([]);
   const [selectedDeckFile, setSelectedDeckFile] = useState('');
@@ -45,6 +47,8 @@ export const RunProtocols: React.FC = () => {
     fetchRunningProtocols();
     fetchDeckFiles();
   }, []);
+
+
 
   const fetchProtocols = async () => {
     try {
@@ -100,7 +104,7 @@ export const RunProtocols: React.FC = () => {
 
       // Start protocol
       await api.post('/protocols/start', {
-        protocol_name: selectedProtocol,
+        protocol_name: selectedProtocol[0],
         config_file: configFilePath,
         deck_file: `./protocol/deck_layouts/${selectedDeckFile}`,
         liquid_handler_name: liquidHandler,
@@ -127,10 +131,16 @@ export const RunProtocols: React.FC = () => {
     }
   };
 
+  const protocolsCollection = createListCollection({
+    items: protocols.map(protocol => ({
+      label: protocol.name,
+      value: protocol.name
+    }))
+  });
+
   return (
     <VStack align="stretch" gap={6}>
       <Heading size="lg">Run Protocols</Heading>
-
       <Card>
         <CardBody>
           <form onSubmit={handleStartProtocol}>
@@ -139,7 +149,7 @@ export const RunProtocols: React.FC = () => {
               <FieldsetContent>
                 <VStack gap={4}>
                   <Field label="Select Protocol" required>
-                    <SelectRoot value={selectedProtocol} onValueChange={setSelectedProtocol}>
+                    <SelectRoot collection={protocolsCollection} onChange={(value) => setSelectedProtocol(value)}>
                       <SelectTrigger>
                         <SelectValueText placeholder="Choose a protocol..." />
                       </SelectTrigger>
@@ -199,11 +209,10 @@ export const RunProtocols: React.FC = () => {
                   <Button
                     type="submit"
                     visual="solid"
-                    isLoading={isLoading}
-                    leftIcon={<LuPlay />}
+                    loading={isLoading}
                     width="full"
                   >
-                    Start Protocol
+                    <LuPlay />Start Protocol
                   </Button>
                 </VStack>
               </FieldsetContent>
@@ -221,9 +230,8 @@ export const RunProtocols: React.FC = () => {
               ml={4}
               onClick={fetchRunningProtocols}
               visual="ghost"
-              leftIcon={<LuRefreshCw />}
             >
-              Refresh
+              <LuRefreshCw />Refresh
             </Button>
           </Heading>
           <VStack align="stretch">
@@ -247,6 +255,6 @@ export const RunProtocols: React.FC = () => {
           </VStack>
         </CardBody>
       </Card>
-    </VStack>
+    </VStack >
   );
 };

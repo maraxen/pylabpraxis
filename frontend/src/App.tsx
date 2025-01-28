@@ -1,10 +1,10 @@
-import React from 'react';
-import { useOidc } from './oidc';
-import { selectUserProfile } from '@/store/userSlice';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
-import { RunProtocols } from './pages/protocols/RunProtocols';
+import { RunProtocols } from '@/pages/RunProtocols';
+import { ManageDatabases } from '@/pages/ManageDatabases';
+import { Vixn } from '@/pages/Vixn';
+import { Documentation } from '@/pages/Documentation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 
@@ -27,7 +27,22 @@ export const App = () => {
           <RunProtocols />
         </ProtectedRoute>
       } />
-      // <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/databases" element={
+        <ProtectedRoute>
+          <ManageDatabases />
+        </ProtectedRoute>
+      } />
+      <Route path="/vixn" element={
+        <ProtectedRoute>
+          <Vixn />
+        </ProtectedRoute>
+      } />
+      <Route path="/docs" element={
+        <ProtectedRoute>
+          <Documentation />
+        </ProtectedRoute>
+      } />
+
     </Routes>
   );
 };

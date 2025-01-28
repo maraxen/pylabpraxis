@@ -3,7 +3,7 @@ import { Box, Flex, HStack, Text, Heading, Icon } from '@chakra-ui/react';
 import { Button } from './ui/button';
 import { Avatar } from "./ui/avatar"
 import { useNavigate } from 'react-router-dom';
-import { RootState } from '../store';
+import { RootState } from '@/store';
 import {
   LuPlay,
   LuDatabase,
