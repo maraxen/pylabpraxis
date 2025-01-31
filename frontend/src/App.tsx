@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { RunProtocols } from '@/pages/RunProtocols';
@@ -42,7 +42,7 @@ export const App = () => {
           <Documentation />
         </ProtectedRoute>
       } />
-
+      <Route path="/" element={<Navigate to="/home" />} />
     </Routes>
   );
 };

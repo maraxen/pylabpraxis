@@ -3,21 +3,18 @@ from abc import ABC, abstractmethod
 import os
 from os import PathLike
 from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.resources.deck import Deck
-from pylabrobot.resources import Resource
+from pylabrobot.resources import Resource, Deck
 import datetime
 import logging
 import json
 import asyncio
 from .parameter import Parameter, ProtocolParameters
 from .config import ProtocolConfiguration
-from .deck_assets import DeckAssets
-from praxis.configure import PraxisConfiguration
-from praxis.utils.notify import Notifier
-from praxis.utils.state import State
-from praxis.operations import Operation, OperationError, OperationManager
-from pylabrobot.visualizer.visualizer import Visualizer
-from praxis.utils.data import Data, initialize_data
+from .required_assets import WorkcellAssets
+from ..configure import PraxisConfiguration
+from ..utils import Notifier
+from ..utils import State
+from ..workcell import Workcell
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
@@ -85,10 +82,12 @@ class Protocol(ABC):
         manual_check_list: list[str],
         orchestrator: Orchestrator,
         baseline_parameters: ProtocolParameters,
+        workcell_assets: WorkcellAssets,
         deck: Optional[Deck] = None,
         **kwargs,
     ):
         self.baseline_parameters: ProtocolParameters = baseline_parameters
+        self.required_assets: WorkcellAssets = workcell_assets
         self.protocol_configuration = protocol_configuration
         self.machines = self.protocol_configuration.machines
         self.directory = self.protocol_configuration.directory
@@ -103,7 +102,8 @@ class Protocol(ABC):
             raise ValueError(
                 "Protocol parameters must be a dictionary or ProtocolParameters object."
             )
-        self.deck = deck  # Store the assigned Deck
+        self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
+        self.deck = deck
         self.liquid_handler = None
         self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
         self.orchestrator = orchestrator
@@ -112,8 +112,6 @@ class Protocol(ABC):
         )  # user_info is now an argument
         self.description = self.protocol_configuration.description
         self.data_directory = self.protocol_configuration.data_directory
-        self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
-        self._workcell = None
         self._start_time = datetime.datetime.now()
         self._status = "initializing"
         self._end_time = datetime.datetime.now()
@@ -144,7 +142,6 @@ class Protocol(ABC):
         self.already_ran = self.state.get(self.name, {}).get("already_ran", False)
         self.workcell_saves_dir = os.path.join(self.directory, "workcell_saves")
         self.data_backups_dir = os.path.join(self.directory, "data_backups")
-        self.setup_data_directory()
         self.create_readme()
 
     @property
@@ -188,10 +185,6 @@ class Protocol(ABC):
         return self._end_time
 
     @property
-    def data(self) -> Data:
-        return self._data
-
-    @property
     def readme_file(self) -> str:
         return self._readme_file
 
@@ -218,20 +211,6 @@ class Protocol(ABC):
             print(f"- {item}")
             input = input("Press any key to continue. Otherwise, press Ctrl+C to exit.")
         print("All set to begin the protocol.")
-
-    def check_deck_resources(self, deck_assets: DeckAssets) -> None:
-        """Check that the deck has all the resources needed for the protocol.
-
-        Args:
-            deck_assets: DeckAssets object specifying required resources and machines.
-
-        Raises:
-            ValueError: If deck is not initialized or if required assets are missing
-            TypeError: If assets are of incorrect type
-        """
-        if not isinstance(self.deck, Deck):
-            raise ValueError("Deck must be of type Deck.")
-        deck_assets.validate(self.deck)
 
     @abstractmethod
     def _check_deck_resources(self, deck_assets: DeckAssets) -> None:
@@ -266,15 +245,6 @@ class Protocol(ABC):
             elif isinstance(resource, str):
                 self[resource].update(update)
 
-    async def setup_data_directory(self):
-        """
-        Check if the data directory exists and create it if it does not.
-        """
-        if not os.path.exists(self.data_directory):
-            os.makedirs(self.data_directory)
-        data_db = os.path.join(self.data_directory, f"{self.name}_data.db")
-        self._data = await initialize_data(data_db)
-
     async def execute(self):
         """
         Execute the protocol
@@ -293,6 +263,7 @@ class Protocol(ABC):
                     liquid_handler_id=self.liquid_handler_id, deck=self.deck
                 )
             await wc.initialize_dependencies()
+            await self.workcell_assets.validate(wc)
             async with wc as workcell:  # ensures safety using machines
                 self._workcell = workcell
                 if not self.workcell:

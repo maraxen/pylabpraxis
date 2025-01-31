@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
     yield
     # Shutdown logic
-    await orchestrator.registry.close()
+    await orchestrator.db.close()
     print("Application shutdown: Closing connections.")
 
 app = FastAPI(lifespan=lifespan)
@@ -49,9 +49,6 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=3600,
 )
-
-# Mount static files (for serving the frontend)
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include API routers with versioning
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])

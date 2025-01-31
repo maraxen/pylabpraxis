@@ -9,13 +9,11 @@ from celery import Celery  # type: ignore
 from pylabrobot.resources import Coordinate, Deck, Resource
 from praxis.core.deck import DeckManager
 from praxis.protocol.protocol import Protocol
-from praxis.protocol.registry import Registry, initialize_registry
 from praxis.protocol.parameter import ProtocolParameters
 from praxis.configure import PraxisConfiguration
 from praxis.protocol.config import ProtocolConfiguration
-from praxis.utils.assets import AsyncAssetDatabase
-from praxis.utils.data import initialize_data, Data
 from praxis.utils.state import State
+from praxis.utils.db import DatabaseManager
 
 P = TypeVar("P", bound=Protocol)
 
@@ -33,9 +31,7 @@ class Orchestrator:
         # Deck Manager
         self.deck_manager = DeckManager(self.config)
 
-        self.data_dir = self.config.data_directory
-
-        self.asset_db = AsyncAssetDatabase(self.config.asset_db)
+        self.db = None
 
         self.state = State(
             redis_host=self.config.redis_host,
@@ -51,12 +47,14 @@ class Orchestrator:
         )
 
     async def initialize_dependencies(self):
-        self.registry = await initialize_registry(config=self.config)
+        print(self.config.database["praxis_dsn"])
+        self.db = await DatabaseManager.initialize(praxis_dsn=self.config.database["praxis_dsn"],
+                                             keycloak_dsn=self.config.database["keycloak_dsn"])
 
-    async def get_user_info(self, user_identifier: str) -> Dict[str, Any]:
+    async def get_user_info(self, username: str) -> Dict[str, Any]:
         """Retrieves user information for a given user identifier."""
-        users = self.config.get_lab_users()
-        return users.get_user_info(user_identifier)
+        user_info = await self.db.get_user(username)
+        return user_info
 
     async def create_protocol(
         self,

@@ -1,7 +1,9 @@
+import time
+from typing import Optional
 from fastapi import HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from keycloak import KeycloakOpenID
-from typing import Dict
+from keycloak.exceptions import KeycloakConnectionError
 import json
 from pathlib import Path
 import logging
@@ -24,23 +26,36 @@ if '/auth' not in server_url:
 
 logger.info(f"Initializing Keycloak with server URL: {server_url}")
 
-# Initialize Keycloak client
-keycloak_openid = KeycloakOpenID(
-    server_url=server_url,
-    realm_name=keycloak_config["realm"],
-    client_id=keycloak_config["resource"],
-    client_secret_key=keycloak_config["credentials"]["secret"],
-    verify=True
-)
+def init_keycloak(max_retries: int = 30, retry_delay: int = 2) -> KeycloakOpenID:
+    """Initialize Keycloak with retries."""
+    retries = 0
+    last_error = None
 
-# Test the configuration
-try:
-    well_known = keycloak_openid.well_known()
-    logger.info("Successfully retrieved Keycloak OIDC configuration")
-    logger.debug(f"OIDC Configuration: {well_known}")
-except Exception as e:
-    logger.error(f"Failed to retrieve Keycloak OIDC configuration: {e}")
-    raise
+    while retries < max_retries:
+        try:
+            keycloak_openid = KeycloakOpenID(
+                server_url=server_url,
+                realm_name=keycloak_config["realm"],
+                client_id=keycloak_config["resource"],
+                client_secret_key=keycloak_config["credentials"]["secret"],
+                verify=True
+            )
+            # Test the connection
+            keycloak_openid.well_known()
+            return keycloak_openid
+        except KeycloakConnectionError as e:
+            last_error = e
+            print(f"Attempt {retries + 1}/{max_retries}: Keycloak not ready, retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+            retries += 1
+
+    raise HTTPException(
+        status_code=503,
+        detail=f"Failed to connect to Keycloak after {max_retries} attempts: {last_error}"
+    )
+
+# Initialize Keycloak with retry mechanism
+keycloak_openid = init_keycloak()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 

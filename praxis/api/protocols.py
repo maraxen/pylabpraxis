@@ -312,3 +312,13 @@ async def remove_protocol_directory(
             status_code=400,
             detail=f"Failed to remove directory: {str(e)}"
         )
+
+@router.get("/protocol/{protocol_path:path}")
+async def get_protocol_details(
+    protocol_path: str,
+    current_user: Dict = Depends(get_current_user)
+) -> Dict:
+    """Get details about a specific protocol."""
+    details = await db.get_protocol_details(protocol_path)
+    return details
+

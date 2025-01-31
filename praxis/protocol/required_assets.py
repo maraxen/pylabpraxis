@@ -2,17 +2,18 @@ from typing import Dict, Type, Optional, Any, Union, Mapping
 from dataclasses import dataclass
 from pylabrobot.resources import Resource, Deck
 from pylabrobot.machines import Machine
+from ..workcell import Workcell
 
 # Define a type alias for asset types
 AssetType = Type[Union[Resource, Machine]]
 
 
 @dataclass
-class DeckAssetSpec:
-    """Specification for a required deck asset (resource or machine).
+class WorkcellAssetSpec:
+    """Specification for a required workcell asset (resource or machine).
 
     Attributes:
-        name: Name of the asset on the deck
+        name: Name of the asset on the workcell
         type: Expected type of the asset (Resource or Machine)
         description: Optional description of what this asset is used for
         required: Whether this asset is required (defaults to True)
@@ -24,25 +25,25 @@ class DeckAssetSpec:
     required: bool = True
 
 
-class DeckAssets:
-    """Container for deck asset specifications and validation logic.
+class WorkcellAssets:
+    """Container for workcell asset specifications and validation logic.
 
     This class handles both physical resources (plates, tips, etc.) and machines
-    (liquid handlers, plate readers, etc.) that are part of the deck setup.
+    (liquid handlers, plate readers, etc.) that are part of the workcell setup.
     """
 
     def __init__(
         self,
         assets: Optional[Mapping[str, Union[AssetType, Dict[str, Any]]]] = None,
     ):
-        """Initialize deck assets.
+        """Initialize workcell assets.
 
         Args:
             assets: Optional mapping of asset names to either:
                    - Asset type (e.g., {"plate": Plate} or {"reader": PlateReader})
                    - Asset spec dict (e.g., {"plate": {"type": Plate, "description": "Sample plate"}})
         """
-        self._assets: Dict[str, DeckAssetSpec] = {}
+        self._assets: Dict[str, WorkcellAssetSpec] = {}
         if assets:
             self.load_from_dict(assets)
 
@@ -81,39 +82,39 @@ class DeckAssets:
         description: Optional[str] = None,
         required: bool = True,
     ) -> None:
-        """Add a required deck asset."""
-        self._assets[name] = DeckAssetSpec(name, type_, description, required)
+        """Add a required workcell asset."""
+        self._assets[name] = WorkcellAssetSpec(name, type_, description, required)
 
-    def validate(self, deck: Optional[Deck]) -> None:
-        """Validate that all required assets exist on the deck and are of correct type."""
-        if deck is None:
+    def validate(self, workcell: Optional[Workcell]) -> None:
+        """Validate that all required assets exist in the Workcell and are of correct type."""
+        if workcell is None:
             raise ValueError("Deck is not initialized")
 
         errors = []
-        for name, spec in self._assets.items():
+        for id, spec in self._assets.items():
             # Skip optional assets that don't exist
-            if not spec.required and not hasattr(deck, name):
+            if not spec.required and id not in workcell:
                 continue
 
             # Check if asset exists
-            if not hasattr(deck, name):
-                errors.append(f"Missing required deck asset: {name}")
+            if not id not in workcell:
+                errors.append(f"Missing required workcell asset: {id}")
                 continue
 
             # Check asset type
-            asset = getattr(deck, name)
+            asset = getattr(workcell, id)
             if not isinstance(asset, spec.type):
                 errors.append(
-                    f"Asset {name} must be of type {spec.type.__name__}, "
+                    f"Asset {id} must be of type {spec.type.__name__}, "
                     f"got {type(asset).__name__}"
                 )
 
         if errors:
             raise ValueError("Deck validation failed:\n" + "\n".join(errors))
 
-    def get_spec(self, name: str) -> DeckAssetSpec:
+    def get_spec(self, id: str) -> WorkcellAssetSpec:
         """Get the specification for an asset by name."""
-        return self._assets[name]
+        return self._assets[id]
 
     def __iter__(self):
         return iter(self._assets.values())
@@ -121,5 +122,6 @@ class DeckAssets:
     def __len__(self):
         return len(self._assets)
 
-    def __contains__(self, name: str):
+    def __contains__(self, id: str):
         return name in self._assets
+

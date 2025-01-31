@@ -4,24 +4,41 @@ import {
   Heading,
   VStack,
   Input,
-  Checkbox,
-  For,
-  createListCollection
+  createListCollection,
+  Group,
+  Stack,
+  Text,
 } from '@chakra-ui/react';
 import { useToast } from '@chakra-ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
-import { SelectRoot, SelectItem, SelectContent, SelectTrigger, SelectValueText } from "@/components/ui/select";
+import {
+  SelectRoot,
+  SelectItem,
+  SelectContent,
+  SelectTrigger,
+  SelectValueText
+} from "@/components/ui/select";
 import { Fieldset, FieldsetContent, FieldsetLegend } from '@/components/ui/fieldset';
 import { Field } from '@/components/ui/field';
-import { LuPlay, LuRefreshCw } from "react-icons/lu";
+import { Checkbox } from '@/components/ui/checkbox';
+import { LuPlay, LuRefreshCw, LuUpload, LuSettings, LuList } from "react-icons/lu";
 import { api } from '@/services/api';
 import { useOidc } from '@/oidc';
-import { inputStyles, selectStyles, checkboxStyles, formControlStyles } from '@/styles/form';
+import { inputStyles, checkboxStyles } from '@/styles/form';
+import {
+  StepsCompletedContent,
+  StepsContent,
+  StepsItem,
+  StepsList,
+  StepsNextTrigger,
+  StepsPrevTrigger,
+  StepsRoot,
+} from "@/components/ui/steps";
 
 interface Protocol {
   name: string;
-  // Add other protocol properties as needed
+  path: string;
 }
 
 interface RunningProtocol {
@@ -29,26 +46,42 @@ interface RunningProtocol {
   status: string;
 }
 
+interface ProtocolDetails {
+  name: string;
+  path: string;
+  description: string;
+  has_assets: boolean;
+  has_parameters: boolean;
+}
+
+type ConfigurationPath = 'upload' | 'specify';
+type SetupStep = 'select' | 'configure' | 'assets' | 'parameters';
+
 export const RunProtocols: React.FC = () => {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [runningProtocols, setRunningProtocols] = useState<RunningProtocol[]>([]);
-  const [selectedProtocol, setSelectedProtocol] = useState<string[]>([]);
+  const [selectedProtocol, setSelectedProtocol] = useState<string>('');
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [deckFiles, setDeckFiles] = useState<string[]>([]);
-  const [selectedDeckFile, setSelectedDeckFile] = useState('');
+  const [selectedDeckFile, setSelectedDeckFile] = useState<string>('');
   const [liquidHandler, setLiquidHandler] = useState('');
   const [manualCheck, setManualCheck] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
   const { oidcTokens } = useOidc();
+  const [availableProtocols, setAvailableProtocols] = useState<ProtocolDetails[]>([]);
+  const [configPath, setConfigPath] = useState<ConfigurationPath | null>(null);
+  const [currentStep, setCurrentStep] = useState<SetupStep>('select');
+  const [protocolDetails, setProtocolDetails] = useState<any>(null);
+  const [step, setStep] = useState(0);
+  const [isConfigValid, setIsConfigValid] = useState(false);
 
   useEffect(() => {
     fetchProtocols();
     fetchRunningProtocols();
     fetchDeckFiles();
+    fetchAvailableProtocols();
   }, []);
-
-
 
   const fetchProtocols = async () => {
     try {
@@ -82,6 +115,20 @@ export const RunProtocols: React.FC = () => {
     }
   };
 
+  const fetchAvailableProtocols = async () => {
+    try {
+      const response = await api.get<ProtocolDetails[]>('/protocols/discover');
+      setAvailableProtocols(response.data);
+    } catch (error) {
+      console.error('Error fetching protocols:', error);
+      toast({
+        title: 'Error fetching available protocols',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
+
   const handleStartProtocol = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProtocol || !configFile || !selectedDeckFile) {
@@ -104,7 +151,7 @@ export const RunProtocols: React.FC = () => {
 
       // Start protocol
       await api.post('/protocols/start', {
-        protocol_name: selectedProtocol[0],
+        protocol_name: selectedProtocol,
         config_file: configFilePath,
         deck_file: `./protocol/deck_layouts/${selectedDeckFile}`,
         liquid_handler_name: liquidHandler,
@@ -131,6 +178,53 @@ export const RunProtocols: React.FC = () => {
     }
   };
 
+  const handleProtocolSelect = async (protocol: ProtocolDetails) => {
+    setSelectedProtocol(protocol.name);
+    try {
+      const details = await api.get(`/protocols/protocol/${encodeURIComponent(protocol.path)}`);
+      setProtocolDetails(details.data);
+    } catch (error) {
+      console.error('Error fetching protocol details:', error);
+    }
+  };
+
+  const handleConfigPathSelect = (path: ConfigurationPath) => {
+    setConfigPath(path);
+    setCurrentStep(path === 'upload' ? 'configure' : 'assets');
+  };
+
+  const handleConfigFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setConfigFile(file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post('/protocols/upload_config_file', formData);
+
+      // If we have a valid config, we can skip asset and parameter configuration
+      setIsConfigValid(true);
+      setConfigPath('upload');
+    } catch (error) {
+      console.error('Error uploading config:', error);
+      setIsConfigValid(false);
+      toast({
+        title: 'Error uploading configuration file',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
+
+  const canProceed = () => {
+    if (step === 0) return selectedProtocol;
+    if (step === 1) return isConfigValid || (configPath === 'specify' && protocolDetails?.assets);
+    if (step === 2) return isConfigValid || (configPath === 'specify' && protocolDetails?.parameters);
+    return true;
+  };
+
+  // Create collections for select components
   const protocolsCollection = createListCollection({
     items: protocols.map(protocol => ({
       label: protocol.name,
@@ -138,88 +232,165 @@ export const RunProtocols: React.FC = () => {
     }))
   });
 
+  const deckFilesCollection = createListCollection({
+    items: deckFiles.map(file => ({
+      label: file,
+      value: file
+    }))
+  });
+
   return (
     <VStack align="stretch" gap={6}>
       <Heading size="lg">Run Protocols</Heading>
-      <Card>
-        <CardBody>
-          <form onSubmit={handleStartProtocol}>
-            <Fieldset>
-              <FieldsetLegend>Protocol Configuration</FieldsetLegend>
-              <FieldsetContent>
-                <VStack gap={4}>
-                  <Field label="Select Protocol" required>
-                    <SelectRoot collection={protocolsCollection} onChange={(value) => setSelectedProtocol(value)}>
-                      <SelectTrigger>
-                        <SelectValueText placeholder="Choose a protocol..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {protocols.map((protocol) => (
-                          <SelectItem key={protocol.name} value={protocol.name}>
-                            {protocol.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </SelectRoot>
-                  </Field>
 
-                  <Field label="Configuration File" required>
-                    <Input
-                      type="file"
-                      onChange={(e) => setConfigFile(e.target.files?.[0] || null)}
-                      accept=".json,.yaml,.yml"
-                      {...inputStyles}
-                    />
-                  </Field>
+      <StepsRoot
+        step={step}
+        onStepChange={(e) => setStep(e.step)}
+        count={4}
+        colorPalette="brand"
+        size="lg"
+      >
+        <StepsList>
+          <StepsItem
+            index={0}
+            title="Select Protocol"
+            icon={<LuList />}
+            description="Choose a protocol to run"
+          />
+          <StepsItem
+            index={1}
+            title="Configure Assets"
+            icon={<LuSettings />}
+            description="Set up required resources"
+          />
+          <StepsItem
+            index={2}
+            title="Set Parameters"
+            icon={<LuSettings />}
+            description="Configure protocol parameters"
+          />
+          <StepsItem
+            index={3}
+            title="Review & Start"
+            icon={<LuPlay />}
+            description="Review and start protocol"
+          />
+        </StepsList>
 
-                  <Field label="Deck Layout" required>
-                    <SelectRoot value={selectedDeckFile} onValueChange={setSelectedDeckFile}>
-                      <SelectTrigger>
-                        <SelectValueText placeholder="Select deck layout..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {deckFiles.map((file) => (
-                          <SelectItem key={file} value={file}>
-                            {file}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </SelectRoot>
-                  </Field>
-
-                  <Field label="Liquid Handler" required>
-                    <Input
-                      value={liquidHandler}
-                      onChange={(e) => setLiquidHandler(e.target.value)}
-                      placeholder="Enter liquid handler name"
-                      {...inputStyles}
-                    />
-                  </Field>
-
-                  <Box pt={2}>
-                    <Checkbox
-                      isChecked={manualCheck}
-                      onChange={(e) => setManualCheck(e.target.checked)}
-                      {...checkboxStyles}
-                    >
-                      Require Manual Check
-                    </Checkbox>
-                  </Box>
-
-                  <Button
-                    type="submit"
-                    visual="solid"
-                    loading={isLoading}
-                    width="full"
+        <StepsContent index={0}>
+          <Card>
+            <CardBody>
+              <VStack gap={4}>
+                <Field label="Select Protocol" required>
+                  <SelectRoot
+                    collection={createListCollection({
+                      items: availableProtocols.map(p => ({
+                        label: p.name,
+                        value: p.path
+                      }))
+                    })}
+                    value={[selectedProtocol]}
+                    onChange={(event) => {
+                      const protocol = availableProtocols.find(p => p.path === event.value[0]);
+                      if (protocol) handleProtocolSelect(protocol);
+                    }}
                   >
-                    <LuPlay />Start Protocol
-                  </Button>
-                </VStack>
-              </FieldsetContent>
-            </Fieldset>
-          </form>
-        </CardBody>
-      </Card>
+                    <SelectTrigger>
+                      <SelectValueText placeholder="Choose a protocol..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableProtocols.map((protocol) => (
+                        <SelectItem
+                          key={protocol.path}
+                          item={{ value: protocol.path, label: protocol.name }}
+                        >
+                          {protocol.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </SelectRoot>
+                </Field>
+
+                <Field label="Configuration File (Optional)">
+                  <Input
+                    type="file"
+                    onChange={handleConfigFileUpload}
+                    accept=".json,.yaml,.yml"
+                    {...inputStyles}
+                  />
+                  <Text fontSize="sm" color="gray.500">
+                    Upload a configuration file to skip manual setup
+                  </Text>
+                </Field>
+              </VStack>
+            </CardBody>
+          </Card>
+        </StepsContent>
+
+        <StepsContent index={1}>
+          {isConfigValid ? (
+            <Box p={4}>
+              <Text>Assets configured from uploaded file</Text>
+            </Box>
+          ) : (
+            <Card>
+              <CardBody>
+                {/* Asset configuration form - to be implemented */}
+                <Text>Asset configuration coming soon</Text>
+              </CardBody>
+            </Card>
+          )}
+        </StepsContent>
+
+        <StepsContent index={2}>
+          {isConfigValid ? (
+            <Box p={4}>
+              <Text>Parameters configured from uploaded file</Text>
+            </Box>
+          ) : (
+            <Card>
+              <CardBody>
+                {/* Parameter configuration form - to be implemented */}
+                <Text>Parameter configuration coming soon</Text>
+              </CardBody>
+            </Card>
+          )}
+        </StepsContent>
+
+        <StepsContent index={3}>
+          <Card>
+            <CardBody>
+              <VStack gap={4}>
+                {/* Review summary */}
+                <Button
+                  type="submit"
+                  visual="solid"
+                  loading={isLoading}
+                  width="full"
+                  onClick={handleStartProtocol}
+                >
+                  <LuPlay />Start Protocol
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+        </StepsContent>
+
+        <Group justify="space-between" mt={4}>
+          <StepsPrevTrigger asChild>
+            <Button visual="outline" size="sm">Previous</Button>
+          </StepsPrevTrigger>
+          <StepsNextTrigger asChild>
+            <Button
+              visual="solid"
+              size="sm"
+              disabled={!canProceed()}
+            >
+              Next
+            </Button>
+          </StepsNextTrigger>
+        </Group>
+      </StepsRoot>
 
       <Card>
         <CardBody>
@@ -255,6 +426,6 @@ export const RunProtocols: React.FC = () => {
           </VStack>
         </CardBody>
       </Card>
-    </VStack >
+    </VStack>
   );
 };

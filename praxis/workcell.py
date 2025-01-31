@@ -21,7 +21,7 @@ from pylabrobot.temperature_controlling import TemperatureController
 from pylabrobot.serializer import serialize, deserialize
 
 from praxis.configure import PraxisConfiguration
-from praxis.utils import AsyncAssetDatabase
+from praxis.utils import DatabaseManager
 
 
 class Workcell:
@@ -39,7 +39,7 @@ class Workcell:
         if not isinstance(config, PraxisConfiguration):
             raise ValueError("Invalid configuration object.")
         self.config = config
-        self.asset_database = AsyncAssetDatabase(self.config.asset_db)
+        self.db: Optional[DatabaseManager] = None
         if save_file[-5:] != ".json":
             raise ValueError("Filepath must be a json file ending in .json")
         self.user = user
@@ -58,7 +58,7 @@ class Workcell:
         }
         self._loaded_machines: dict[str, Machine] = {}
         self.children: list[Resource | Machine] = []
-        self._assets: list = []
+        self._asset_ids: Optional[list[str]] = None
         self.liquid_handlers = self.refs["liquid_handlers"]
         self.pumps = self.refs["pumps"]
         self.plate_readers = self.refs["plate_readers"]
@@ -88,6 +88,15 @@ class Workcell:
         all_machines.update(self.other_machines)
         return all_machines
 
+    @property
+    def asset_ids(self) -> list[str]:
+      self.children = self.get_all_children()
+      self._asset_ids = [child.name for child in self.children if isinstance(child, Resource)]
+      self._asset_ids += [id for id, _ in self.all_machines.items() \
+        if id not in self._asset_ids]
+      return self._asset_ids
+
+
     async def setup(self):
         for machine_id, machine in self.all_machines.items():
             await self._load_machine(machine_id=machine_id, machine=machine)
@@ -109,6 +118,8 @@ class Workcell:
         workcell = self(
             configuration, save_file, user, using_machines, backup_interval, num_backups
         )
+        workcell.db = await DatabaseManager.initialize(praxis_dsn=configuration.database["praxis_dsn"],
+                                                       keycloak_dsn=configuration.database["keycloak_dsn"])
         await workcell.unpack_machines(using_machines)
         return workcell
 
@@ -149,9 +160,9 @@ class Workcell:
         if using is None:
             return
         if using == "all":
-            machines = await self.asset_database.get_all_machines()
+            machines = await self.db.get_machines()
         else:
-            machines = await self.asset_database.get_machines(using)
+            machines = await self.db.get_machines(using)
         for machine_id, machine in machines.items():
             match machine.__class__:
                 case LiquidHandler():
@@ -368,6 +379,9 @@ class Workcell:
             self.save_state_to_file(self.save_file[:-5] + f"_{backup_num}.json")
             backup_num += 1
             await asyncio.sleep(interval)
+
+    def __contains__(self, item: str) -> bool:
+        return item in self.asset_ids
 
     async def __aenter__(self):
         await self.setup()

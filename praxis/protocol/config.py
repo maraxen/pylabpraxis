@@ -2,7 +2,7 @@ import os
 import json
 from typing import Dict, Any, Optional, cast
 from .parameter import ProtocolParameters, Parameter
-from ..utils import AsyncAssetDatabase
+from ..utils import db
 from ..configure import PraxisConfiguration
 from pylabrobot.resources import Deck
 
@@ -36,9 +36,7 @@ class ProtocolConfiguration:
         self._config_data = config_data
         self.praxis_config = praxis_config
         self.deck_directory = praxis_config.deck_directory
-        self.data_directory = praxis_config.data_directory
-        self.asset_db_file = praxis_config.asset_db
-        self.asset_database = AsyncAssetDatabase(self.asset_db_file)
+        self.db = db
         self._machines: list[str | int] = cast(list, config_data.get("machines", []))
         self.liquid_handler_id: str = cast(
             str, config_data.get("liquid_handler_ids", [])

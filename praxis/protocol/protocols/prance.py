@@ -5,13 +5,14 @@ import asyncio
 
 from praxis.protocol.protocol import Protocol
 from praxis.protocol.config import ProtocolConfiguration
-from praxis.protocol.deck_assets import DeckAssets
+from praxis.protocol.required_assets import WorkcellAssets
 from praxis.protocol.parameter import ProtocolParameters, Parameter
 from praxis.utils.state import State
 from praxis.core.orchestrator import Orchestrator
 from pylabrobot.resources import Deck, Plate, TipRack, TipSpot, Well, Resource, Lid
 from pylabrobot.plate_reading import PlateReader
 from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.pumps import PumpArray
 
 # Initialize protocol parameters with default values
 baseline_parameters = ProtocolParameters(
@@ -99,9 +100,10 @@ baseline_parameters = ProtocolParameters(
 )
 
 # Initialize deck assets with a dictionary
-needed_deck_assets = DeckAssets(
+required_assets = WorkcellAssets(
     {
-        "pump_manager": {"type": Resource, "description": "Manager for fluid pumps"},
+        "pumps1": {"type": PumpArray, "description": "Fluidic pump 1"},
+        "pumps2": {"type": PumpArray, "description": "Fluidic pump 2"},
         "tip_washer": {"type": Resource, "description": "Washer for tip cleaning"},
         "sample_reservoir": {
             "type": Resource,
