@@ -56,18 +56,22 @@ class DatabaseManager:
     # Context managers for connections
     @asynccontextmanager
     async def praxis_connection(self):
+        if self._pool is None:
+            raise RuntimeError("Database pool not initialized. Call initialize() first.")
         async with self._pool.acquire() as connection:
             yield connection
 
     @asynccontextmanager
     async def keycloak_connection(self):
-        async with self._keycloak_pool.acquire() as connection:
-            yield connection
+      if self._keycloak_pool is None:
+          raise RuntimeError("Database pool not initialized. Call initialize() first.")
+      async with self._keycloak_pool.acquire() as connection:
+          yield connection
 
     # Protocol management methods
-    async def register_protocol(self, protocol_name: str, user_id: str, **kwargs) -> int:
+    async def register_protocol(self, protocol_name: str, user_id: str, **kwargs) -> int: # TODO: change to UUID
         async with self.praxis_connection() as conn:
-            return await conn.fetchval("""
+            protocol_id = await conn.fetchval("""
                 INSERT INTO protocols_metadata
                 (protocol_name, user_id, status, data_directory, database_file, parameters, required_assets)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -77,6 +81,9 @@ class DatabaseManager:
                 kwargs.get('database_file'),
                 json.dumps(kwargs.get('parameters', {})),
                 json.dumps(kwargs.get('assets', {})))
+            if protocol_id is None:
+                raise ValueError("Failed to create protocol: no protocol_id returned")
+            return int(protocol_id)
 
     async def get_protocol(self, protocol_name: str) -> Optional[Dict]:
         async with self.praxis_connection() as conn:
@@ -184,6 +191,114 @@ class DatabaseManager:
             """, protocol_name)
             return [dict(r) for r in records]
 
+    async def export_protocol_data(self, protocol_name: str, backup_path: str) -> None:
+        """Export all data related to a specific protocol to a SQLite database file."""
+        try:
+            async with self.praxis_connection() as conn:
+                # Get protocol metadata
+                protocol_data = await conn.fetch("""
+                    SELECT *
+                    FROM protocols_metadata
+                    WHERE protocol_name = $1
+                """, protocol_name)
+
+                # Get protocol timing data
+                timing_data = await conn.fetch("""
+                    SELECT *
+                    FROM substep_timings
+                    WHERE protocol_name = $1
+                """, protocol_name)
+
+                # Get asset usage data
+                asset_data = await conn.fetch("""
+                    SELECT a.*
+                    FROM assets a
+                    JOIN protocol_asset_usage pau ON a.asset_id = pau.asset_id
+                    WHERE pau.protocol_name = $1
+                """, protocol_name)
+
+                # Create SQLite backup
+                import sqlite3
+                import aiosqlite
+
+                async with aiosqlite.connect(backup_path) as sqlite_conn:
+                    # Create tables
+                    await sqlite_conn.execute("""
+                        CREATE TABLE IF NOT EXISTS protocol_metadata (
+                            protocol_id INTEGER PRIMARY KEY,
+                            protocol_name TEXT,
+                            user_id TEXT,
+                            start_time TIMESTAMP,
+                            end_time TIMESTAMP,
+                            status TEXT,
+                            data_directory TEXT,
+                            database_file TEXT,
+                            parameters JSON,
+                            required_assets JSON
+                        )
+                    """)
+
+                    await sqlite_conn.execute("""
+                        CREATE TABLE IF NOT EXISTS substep_timings (
+                            timing_id INTEGER PRIMARY KEY,
+                            protocol_name TEXT,
+                            func_hash TEXT,
+                            func_name TEXT,
+                            duration FLOAT,
+                            caller_name TEXT,
+                            task_id TEXT,
+                            timestamp TIMESTAMP
+                        )
+                    """)
+
+                    await sqlite_conn.execute("""
+                        CREATE TABLE IF NOT EXISTS assets (
+                            asset_id INTEGER PRIMARY KEY,
+                            name TEXT UNIQUE,
+                            type TEXT,
+                            metadata JSON,
+                            plr_serialized JSON,
+                            is_available BOOLEAN,
+                            locked_by_protocol TEXT,
+                            locked_by_task TEXT,
+                            lock_acquired_at TIMESTAMP,
+                            lock_expires_at TIMESTAMP
+                        )
+                    """)
+
+                    # Insert data
+                    await sqlite_conn.executemany(
+                        "INSERT INTO protocol_metadata VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        [(p['protocol_id'], p['protocol_name'], p['user_id'],
+                          p['start_time'], p['end_time'], p['status'],
+                          p['data_directory'], p['database_file'],
+                          json.dumps(p['parameters']), json.dumps(p['required_assets']))
+                         for p in protocol_data]
+                    )
+
+                    await sqlite_conn.executemany(
+                        "INSERT INTO substep_timings VALUES (?,?,?,?,?,?,?,?)",
+                        [(t['timing_id'], t['protocol_name'], t['func_hash'],
+                          t['func_name'], t['duration'], t['caller_name'],
+                          t['task_id'], t['timestamp'])
+                         for t in timing_data]
+                    )
+
+                    await sqlite_conn.executemany(
+                        "INSERT INTO assets VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        [(a['asset_id'], a['name'], a['type'],
+                          json.dumps(a['metadata']), json.dumps(a['plr_serialized']),
+                          a['is_available'], a['locked_by_protocol'],
+                          a['locked_by_task'], a['lock_acquired_at'],
+                          a['lock_expires_at'])
+                         for a in asset_data]
+                    )
+
+                    await sqlite_conn.commit()
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to export protocol data: {str(e)}")
+
     # Asset management methods
     async def add_asset(self, name: str, asset_type: str, metadata: dict, plr_serialized: dict) -> int:
         """Add an asset to the database with validation."""
@@ -191,7 +306,7 @@ class DatabaseManager:
             raise ValueError("Asset name and type are required")
 
         async with self.praxis_connection() as conn:
-            return await conn.fetchval("""
+            result = await conn.fetchval("""
                 INSERT INTO assets (name, type, metadata, plr_serialized)
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (name)
@@ -201,6 +316,9 @@ class DatabaseManager:
                     plr_serialized = EXCLUDED.plr_serialized
                 RETURNING asset_id
             """, name, asset_type, json.dumps(metadata), json.dumps(plr_serialized))
+            if result is None:
+                raise ValueError("Failed to add asset: no asset_id returned")
+            return int(result)
 
     async def get_asset(self, name: str) -> Optional[Dict]:
         async with self.praxis_connection() as conn:
@@ -243,7 +361,7 @@ class DatabaseManager:
                 WHERE type LIKE '%Machine%'
             """)
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized'])
+                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
                 for record in records
             }
 
@@ -256,7 +374,7 @@ class DatabaseManager:
                 WHERE type LIKE '%Resource%'
             """)
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized'])
+                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
                 for record in records
             }
 
@@ -269,7 +387,7 @@ class DatabaseManager:
                 WHERE name = ANY($1) AND type LIKE '%Resource%'
             """, resource_ids)
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized'])
+                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
                 for record in records
             }
 
@@ -282,7 +400,7 @@ class DatabaseManager:
                 WHERE name = ANY($1) AND type LIKE '%Machine%'
             """, machine_ids)
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized'])
+                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
                 for record in records
             }
 

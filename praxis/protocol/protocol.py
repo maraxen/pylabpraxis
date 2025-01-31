@@ -87,7 +87,7 @@ class Protocol(ABC):
         **kwargs,
     ):
         self.baseline_parameters: ProtocolParameters = baseline_parameters
-        self.required_assets: WorkcellAssets = workcell_assets
+        self.workcell_assets: WorkcellAssets = workcell_assets
         self.protocol_configuration = protocol_configuration
         self.machines = self.protocol_configuration.machines
         self.directory = self.protocol_configuration.directory
@@ -102,16 +102,14 @@ class Protocol(ABC):
             raise ValueError(
                 "Protocol parameters must be a dictionary or ProtocolParameters object."
             )
+        self._workcell = None
+        self.data_directory = os.path.join(self.directory, "data")
         self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
         self.deck = deck
         self.liquid_handler = None
         self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
         self.orchestrator = orchestrator
-        self.user_info = (
-            self.protocol_configuration.user_info or {}
-        )  # user_info is now an argument
         self.description = self.protocol_configuration.description
-        self.data_directory = self.protocol_configuration.data_directory
         self._start_time = datetime.datetime.now()
         self._status = "initializing"
         self._end_time = datetime.datetime.now()
@@ -133,16 +131,12 @@ class Protocol(ABC):
         self._visualizer = None
         self.check_list(manual_check_list)
         self.start_loggers()
-        self._emailer = Notifier(
-            smtp_server=self.orchestrator.config.smtp_server,
-            smtp_port=self.orchestrator.config.smtp_port,
-            smtp_username=self.user_info.get("smtp_username", ""),
-            smtp_password=self.user_info.get("smtp_password", ""),
-        )
         self.already_ran = self.state.get(self.name, {}).get("already_ran", False)
         self.workcell_saves_dir = os.path.join(self.directory, "workcell_saves")
         self.data_backups_dir = os.path.join(self.directory, "data_backups")
         self.create_readme()
+        self._user_info: dict[str, dict[str, Any]] = {"null": {}}
+        self._emailer: Optional[Notifier] = None
 
     @property
     def paused(self) -> bool:
@@ -157,7 +151,7 @@ class Protocol(ABC):
         return self._available_commands
 
     @property
-    def emailer(self) -> Notifier:
+    def emailer(self) -> Notifier | None:
         return self._emailer
 
     @property
@@ -188,13 +182,14 @@ class Protocol(ABC):
     def readme_file(self) -> str:
         return self._readme_file
 
-    @property
-    def visualizer(self) -> None | Visualizer:
-        return self._visualizer
 
     @property
     def workcell(self) -> Workcell | None:
         return self._workcell
+
+    @property
+    def user_info(self) -> dict[str, dict[str, Any]]:
+        return self._user_info
 
     def __getitem__(self, key: str) -> Any:
         return self.state[self.name][key]
@@ -213,7 +208,7 @@ class Protocol(ABC):
         print("All set to begin the protocol.")
 
     @abstractmethod
-    def _check_deck_resources(self, deck_assets: DeckAssets) -> None:
+    def _check_workcell_assets(self, workcell_assets: WorkcellAssets) -> None:
         """Check that the deck has all the resources needed for the protocol.
 
         This method should be implemented by subclasses to perform protocol-specific
@@ -228,6 +223,7 @@ class Protocol(ABC):
     def _check_parameters(self, parameters: dict[str, type]) -> None:
         """Check the parameters for the protocol bounded by method specific constraints."""
         pass
+
 
     async def update_resource_state(
         self, resources: str | Resource | Sequence[str | Resource], update: dict
@@ -249,6 +245,11 @@ class Protocol(ABC):
         """
         Execute the protocol
         """
+        self._user_info = {user : await self.orchestrator.get_user_info(user) for user in self.users}
+        self._emailer = Notifier(smtp_server=self.orchestrator.config.smtp_server,
+                                  smtp_port=self.orchestrator.config.smtp_port,
+                                  smtp_username=self.orchestrator.config.smtp_username,
+                                  smtp_password=self.orchestrator.config.smtp_password,) # TODO: fix this
         try:
             wc: Workcell = Workcell(
                 config=self.orchestrator.config,
@@ -263,7 +264,7 @@ class Protocol(ABC):
                     liquid_handler_id=self.liquid_handler_id, deck=self.deck
                 )
             await wc.initialize_dependencies()
-            await self.workcell_assets.validate(wc)
+            self.workcell_assets.validate(wc)
             async with wc as workcell:  # ensures safety using machines
                 self._workcell = workcell
                 if not self.workcell:
@@ -293,6 +294,7 @@ class Protocol(ABC):
         """
         Email and text user about error.
         """
+        assert self.emailer is not None, "Emailer not initialized"
         for user in self.users:
             user_info = self.user_info[user]
             sender_email = user_info["sender_email"]
@@ -689,15 +691,34 @@ class Protocol(ABC):
             self.workcell.save_state_to_file(workcell_path)
 
     async def backup_data(self, config: PraxisConfiguration) -> None:
-        """Backup protocol data during takedown."""
-        backup_dir = os.path.join(
-            self.data_backups_dir, datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        )
-        os.makedirs(backup_dir, exist_ok=True)
-        # Save protocol data to backup directory
-        if self.data:
-            backup_file = os.path.join(backup_dir, "data.db")
-            await self.data.close()  # Close the connection first
-            import shutil
+        """Backup protocol data during takedown or periodically."""
+        try:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_dir = os.path.join(self.data_backups_dir, timestamp)
+            os.makedirs(backup_dir, exist_ok=True)
 
-            shutil.copy2(self.data.db_path, backup_file)  # Copy the database file
+            # Backup file path
+            backup_file = os.path.join(backup_dir, f"{self.name}_data.sqlite")
+
+            # Export protocol data to SQLite backup
+            assert self.orchestrator.db is not None, "Database not initialized"
+            await self.orchestrator.db.export_protocol_data(self.name, backup_file)
+
+            # Also backup the workcell state if available
+            if self.workcell:
+                workcell_backup = os.path.join(backup_dir, "workcell_state.json")
+                self.workcell.save_state_to_file(workcell_backup)
+
+            self.logger.info(f"Created backup at {backup_dir}")
+
+            # Clean up old backups (keep last 5)
+            backups = sorted([d for d in os.listdir(self.data_backups_dir)
+                            if os.path.isdir(os.path.join(self.data_backups_dir, d))])
+            while len(backups) > 5:
+                oldest = backups.pop(0)
+                import shutil
+                shutil.rmtree(os.path.join(self.data_backups_dir, oldest))
+
+        except Exception as e:
+            self.logger.error(f"Failed to backup data: {str(e)}")
+            await self.log_error(error=e)

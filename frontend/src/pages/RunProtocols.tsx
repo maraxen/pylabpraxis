@@ -54,6 +54,17 @@ interface ProtocolDetails {
   has_parameters: boolean;
 }
 
+interface Asset {
+  name: string;
+  type: string;
+  required: boolean;
+  description?: string;
+}
+
+interface AssetConfig {
+  [key: string]: string | number;
+}
+
 type ConfigurationPath = 'upload' | 'specify';
 type SetupStep = 'select' | 'configure' | 'assets' | 'parameters';
 
@@ -75,6 +86,8 @@ export const RunProtocols: React.FC = () => {
   const [protocolDetails, setProtocolDetails] = useState<any>(null);
   const [step, setStep] = useState(0);
   const [isConfigValid, setIsConfigValid] = useState(false);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assetConfig, setAssetConfig] = useState<AssetConfig>({});
 
   useEffect(() => {
     fetchProtocols();
@@ -217,6 +230,13 @@ export const RunProtocols: React.FC = () => {
     }
   };
 
+  const handleAssetChange = (assetName: string, value: string) => {
+    setAssetConfig(prev => ({
+      ...prev,
+      [assetName]: value
+    }));
+  };
+
   const canProceed = () => {
     if (step === 0) return selectedProtocol;
     if (step === 1) return isConfigValid || (configPath === 'specify' && protocolDetails?.assets);
@@ -335,8 +355,50 @@ export const RunProtocols: React.FC = () => {
           ) : (
             <Card>
               <CardBody>
-                {/* Asset configuration form - to be implemented */}
-                <Text>Asset configuration coming soon</Text>
+                <VStack gap={4}>
+                  {protocolDetails?.assets?.map((asset: Asset) => (
+                    <Field
+                      key={asset.name}
+                      label={asset.name}
+                      required={asset.required}
+                      helperText={asset.description}
+                    >
+                      {asset.type === 'labware' ? (
+                        <SelectRoot
+                          collection={createListCollection({
+                            items: deckFiles.map(file => ({
+                              label: file,
+                              value: file
+                            }))
+                          })}
+                          value={[assetConfig[asset.name] as string]}
+                          onChange={(event) => handleAssetChange(asset.name, event.value[0])}
+                        >
+                          <SelectTrigger>
+                            <SelectValueText placeholder={`Select ${asset.name}...`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {deckFiles.map((file) => (
+                              <SelectItem
+                                key={file}
+                                item={{ value: file, label: file }}
+                              >
+                                {file}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </SelectRoot>
+                      ) : (
+                        <Input
+                          type={asset.type === 'number' ? 'number' : 'text'}
+                          value={assetConfig[asset.name] || ''}
+                          onChange={(e) => handleAssetChange(asset.name, e.target.value)}
+                          {...inputStyles}
+                        />
+                      )}
+                    </Field>
+                  ))}
+                </VStack>
               </CardBody>
             </Card>
           )}

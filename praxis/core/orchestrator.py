@@ -7,11 +7,10 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, cast
 from celery import Celery  # type: ignore
 
 from pylabrobot.resources import Coordinate, Deck, Resource
-from praxis.core.deck import DeckManager
-from praxis.protocol.protocol import Protocol
+from .deck import DeckManager
+from ..protocol import Protocol, ProtocolConfiguration, ProtocolParameters, WorkcellAssets
 from praxis.protocol.parameter import ProtocolParameters
 from praxis.configure import PraxisConfiguration
-from praxis.protocol.config import ProtocolConfiguration
 from praxis.utils.state import State
 from praxis.utils.db import DatabaseManager
 
@@ -53,6 +52,7 @@ class Orchestrator:
 
     async def get_user_info(self, username: str) -> Dict[str, Any]:
         """Retrieves user information for a given user identifier."""
+        assert self.db is not None, "Database not initialized"
         user_info = await self.db.get_user(username)
         return user_info
 
@@ -63,6 +63,8 @@ class Orchestrator:
         protocol_deck_file: str,
         manual_check_list: List[str],
         user_info: Dict[str, Any],
+        baseline_parameters: ProtocolParameters = ProtocolParameters(),
+        workcell_assets: WorkcellAssets = WorkcellAssets({}),
         **kwargs,
     ) -> P:
         protocol_config = ProtocolConfiguration(protocol_config_data, self.config)
@@ -80,6 +82,8 @@ class Orchestrator:
             deck=deck,
             user_info=user_info,
             state=self.state,
+            baseline_parameters=baseline_parameters,
+            workcell_assets=workcell_assets,
         )
 
         self.protocols[protocol.name] = protocol

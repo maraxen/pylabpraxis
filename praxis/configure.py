@@ -22,6 +22,8 @@ class PraxisConfiguration:
         self.baseline_decks = self.get_section("baseline_decks")
         self.smtp_server = self.email.get("smtp_server", "localhost")
         self.smtp_port = self.email.get("smtp_port", 25)
+        self.smtp_username = self.email.get("smtp_username", "")
+        self.smtp_password = self.email.get("smtp_password", "")
         self.redis_host = self.redis.get("host", "localhost")
         self.redis_port = self.redis.get("port", 6379)
         self.redis_db = self.redis.get("db", 0)
@@ -109,4 +111,3 @@ class PraxisConfiguration:
         """Get the protocol discovery directories."""
         protocol_discovery_dirs = self.get_section("protocol_discovery")
         return protocol_discovery_dirs.get("directories", "").split(",")
-

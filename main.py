@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
 import os
 
-from praxis.api import protocols, auth
+from praxis.api import protocols, auth, assets
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
 from praxis.api import get_current_admin_user
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
     yield
     # Shutdown logic
+    assert orchestrator.db is not None
     await orchestrator.db.close()
     print("Application shutdown: Closing connections.")
 
@@ -53,6 +54,7 @@ app.add_middleware(
 # Include API routers with versioning
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
 app.include_router(auth.router, tags=["auth"])  # Remove prefix as it's already in the router
+app.include_router(assets.router, tags=["assets"])
 
 # Example of an endpoint that requires admin access
 @app.post("/some_admin_only_endpoint", dependencies=[Depends(get_current_admin_user)])

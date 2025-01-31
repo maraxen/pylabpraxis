@@ -123,5 +123,5 @@ class WorkcellAssets:
         return len(self._assets)
 
     def __contains__(self, id: str):
-        return name in self._assets
+        return id in self._assets
 

@@ -61,9 +61,6 @@ class ProtocolConfiguration:
                 param = Parameter(name=name, datatype=type(value), default=value)
                 self._parameters.add_parameter(param)
 
-        self.user_info: dict[str, dict] = {
-            user: self.praxis_config.get_user_info(user) for user in self.users
-        }
         self._needed_deck_resources: dict[str, list[str]] = cast(
             dict, config_data.get("needed_deck_resources", {})
         )
