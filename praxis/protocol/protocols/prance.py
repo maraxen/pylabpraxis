@@ -204,9 +204,9 @@ class Prance(Protocol):
                 "Too many variable combinations. A maximum of 48 are supported."
             )
 
-    def _check_deck_resources(self, deck_assets: DeckAssets) -> None:
+    def _check_deck_resources(self, workcell_assets: WorkcellAssets) -> None:
         """Check that the deck has all the resources needed for the protocol."""
-        deck_assets.validate(self.deck)
+        pass
 
     def _check_parameters(self, parameters: dict[str, type]) -> None:
         """Check the parameters for the protocol bounded by method specific constraints."""

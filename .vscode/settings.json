@@ -27,6 +27,7 @@
     "ILIKE",
     "Inheco",
     "iswap",
+    "jdbc",
     "jsonify",
     "jsonmerge",
     "klass",
@@ -81,6 +82,11 @@
     "workcell",
     "wrongpassword",
     "xfinity"
+  ],
+  "cSpell.ignorePaths": [
+    "**/docker-compose.yml",
+    "**/keycloak.json",
+    "**/praxis.ini"
   ],
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
