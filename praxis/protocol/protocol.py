@@ -14,12 +14,12 @@ from .required_assets import WorkcellAssets
 from ..configure import PraxisConfiguration
 from ..utils import Notifier
 from ..utils import State
-from ..workcell import Workcell
+from ..workcell import Workcell, WorkcellView
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
     from .. import Workcell
-    from ..core import Orchestrator
+    from ..core import Orchestrator, DeckManager
 
 import warnings
 
@@ -77,39 +77,43 @@ class Protocol(ABC):
 
     def __init__(
         self,
-        protocol_configuration: ProtocolConfiguration,
-        state: State,
-        manual_check_list: list[str],
-        orchestrator: Orchestrator,
-        baseline_parameters: ProtocolParameters,
-        workcell_assets: WorkcellAssets,
-        deck: Optional[Deck] = None,
-        **kwargs,
+        config: ProtocolConfiguration | dict[str, Any],
     ):
-        self.baseline_parameters: ProtocolParameters = baseline_parameters
-        self.workcell_assets: WorkcellAssets = workcell_assets
-        self.protocol_configuration = protocol_configuration
+        """Initialize Protocol with configuration.
+
+        Args:
+            config: Either a ProtocolConfiguration object or a dictionary containing configuration
+        """
+        # Parse configuration
+        if isinstance(config, dict):
+            self.protocol_configuration = ProtocolConfiguration(config, None)
+        else:
+            self.protocol_configuration = config
+
+        if config is None:
+            raise ValueError("")
+
+        self.praxis_config = self.protocol_configuration.praxis_config
+
+        # Basic configuration setup
         self.machines = self.protocol_configuration.machines
         self.directory = self.protocol_configuration.directory
         self.name = self.protocol_configuration.name
         self.users = self.protocol_configuration.users
-        self.state = state
-        if isinstance(self.protocol_configuration.parameters, dict):
-            self.parameters = ProtocolParameters(self.protocol_configuration.parameters)
-        elif isinstance(self.protocol_configuration.parameters, ProtocolParameters):
-            self.parameters = self.protocol_configuration.parameters
-        else:
-            raise ValueError(
-                "Protocol parameters must be a dictionary or ProtocolParameters object."
-            )
-        self._workcell = None
+        self.parameters = self.protocol_configuration.parameters
+        self.description = self.protocol_configuration.description
+
+        # Get required assets from configuration
+        self.required_assets = self.protocol_configuration.required_assets
+
+        # Initialize state management
+        self._workcell: Optional[Workcell | WorkcellView] = None
+        self.state: State = State()  # Default empty state if no orchestrator
+        self._orchestrator: Optional[Orchestrator] = None
         self.data_directory = os.path.join(self.directory, "data")
         self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
-        self.deck = deck
-        self.liquid_handler = None
-        self.liquid_handler_id = self.protocol_configuration.liquid_handler_id
-        self.orchestrator = orchestrator
-        self.description = self.protocol_configuration.description
+
+        # Status tracking
         self._start_time = datetime.datetime.now()
         self._status = "initializing"
         self._end_time = datetime.datetime.now()
@@ -129,14 +133,67 @@ class Protocol(ABC):
             "help": "Get a list of available commands",
         }
         self._visualizer = None
-        self.check_list(manual_check_list)
         self.start_loggers()
         self.already_ran = self.state.get(self.name, {}).get("already_ran", False)
         self.workcell_saves_dir = os.path.join(self.directory, "workcell_saves")
         self.data_backups_dir = os.path.join(self.directory, "data_backups")
+        os.makedirs(self.workcell_saves_dir, exist_ok=True)
+        os.makedirs(self.data_backups_dir, exist_ok=True)
+
+        # Start logging and readme
+        self.start_loggers()
         self.create_readme()
-        self._user_info: dict[str, dict[str, Any]] = {"null": {}}
-        self._emailer: Optional[Notifier] = None
+
+    async def initialize(self, orchestrator: Optional[Orchestrator] = None):
+        """Initialize protocol with optional orchestrator integration."""
+        self._orchestrator = orchestrator
+        if orchestrator:
+            self.state = orchestrator.state
+            # Create workcell view if using orchestrator
+            self._workcell = await orchestrator.create_workcell_view(
+                protocol_name=self.name, required_assets=self.required_assets
+            )
+        else:
+            # Create standalone workcell if no orchestrator
+            self._workcell = await self._create_workcell_from_config()
+
+    async def _load_workcell_from_file(self, filepath: str) -> Workcell:
+        """Load workcell from a saved state file."""
+        workcell = Workcell(
+            config=self.praxis_config, save_file=self.workcell_state_file
+        )
+        workcell.load_state_from_file(filepath)
+        return workcell
+
+    async def _create_workcell_from_config(self) -> Workcell:
+        """Create new workcell from protocol configuration."""
+        workcell = Workcell(
+            config=self.protocol_configuration.praxis_config,
+            save_file=self.workcell_state_file,
+            user=self.users[0] if isinstance(self.users, list) else self.users,
+            using_machines=[str(m) for m in self.machines],
+        )
+
+        if not self.protocol_configuration.decks_unspecified:
+            for liquid_handler_id in self.protocol_configuration.liquid_handler_ids:
+                if self._orchestrator is not None:
+                    deck_manager = self._orchestrator.deck_manager
+                else:
+                    deck_manager = DeckManager(self.praxis_config)
+                deck = deck_manager.get_deck(
+                    self.protocol_configuration.decks[liquid_handler_id]
+                )
+                workcell.specify_deck(
+                    liquid_handler_id=liquid_handler_id,
+                    deck=deck,
+                )
+
+        await workcell.initialize_dependencies()
+
+        # Validate required assets
+        self.required_assets.validate(workcell)
+
+        return workcell
 
     @property
     def paused(self) -> bool:
@@ -182,7 +239,6 @@ class Protocol(ABC):
     def readme_file(self) -> str:
         return self._readme_file
 
-
     @property
     def workcell(self) -> Workcell | None:
         return self._workcell
@@ -224,7 +280,6 @@ class Protocol(ABC):
         """Check the parameters for the protocol bounded by method specific constraints."""
         pass
 
-
     async def update_resource_state(
         self, resources: str | Resource | Sequence[str | Resource], update: dict
     ):
@@ -245,30 +300,12 @@ class Protocol(ABC):
         """
         Execute the protocol
         """
-        self._user_info = {user : await self.orchestrator.get_user_info(user) for user in self.users}
-        self._emailer = Notifier(smtp_server=self.orchestrator.config.smtp_server,
-                                  smtp_port=self.orchestrator.config.smtp_port,
-                                  smtp_username=self.orchestrator.config.smtp_username,
-                                  smtp_password=self.orchestrator.config.smtp_password,) # TODO: fix this
         try:
-            wc: Workcell = Workcell(
-                config=self.orchestrator.config,
-                save_file=self.workcell_state_file,
-                user=self.users[0] if isinstance(self.users, list) else self.users,
-                using_machines=[str(m) for m in self.machines],
-                backup_interval=60,
-                num_backups=3,
-            )
-            if self.deck is not None:
-                wc.specify_deck(
-                    liquid_handler_id=self.liquid_handler_id, deck=self.deck
-                )
-            await wc.initialize_dependencies()
-            self.workcell_assets.validate(wc)
-            async with wc as workcell:  # ensures safety using machines
-                self._workcell = workcell
-                if not self.workcell:
-                    raise ValueError("Workcell not initialized")
+            # No need to create new workcell - use the view we already have
+            if not self.workcell:
+                raise ValueError("Workcell not initialized")
+
+            async with self.workcell:  # This will handle resource access coordination
                 if not self.already_ran:
                     self["already_ran"] = True
                 await self._setup()
@@ -712,13 +749,20 @@ class Protocol(ABC):
             self.logger.info(f"Created backup at {backup_dir}")
 
             # Clean up old backups (keep last 5)
-            backups = sorted([d for d in os.listdir(self.data_backups_dir)
-                            if os.path.isdir(os.path.join(self.data_backups_dir, d))])
+            backups = sorted(
+                [
+                    d
+                    for d in os.listdir(self.data_backups_dir)
+                    if os.path.isdir(os.path.join(self.data_backups_dir, d))
+                ]
+            )
             while len(backups) > 5:
                 oldest = backups.pop(0)
                 import shutil
+
                 shutil.rmtree(os.path.join(self.data_backups_dir, oldest))
 
         except Exception as e:
             self.logger.error(f"Failed to backup data: {str(e)}")
             await self.log_error(error=e)
+            self.errors.append(e)

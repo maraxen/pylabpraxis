@@ -3,16 +3,23 @@ import threading
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional, Type, TypeVar, cast
+from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set
 from celery import Celery  # type: ignore
 
 from pylabrobot.resources import Coordinate, Deck, Resource
 from .deck import DeckManager
-from ..protocol import Protocol, ProtocolConfiguration, ProtocolParameters, WorkcellAssets
+from ..protocol import (
+    Protocol,
+    ProtocolConfiguration,
+    ProtocolParameters,
+    WorkcellAssets,
+)
 from praxis.protocol.parameter import ProtocolParameters
 from praxis.configure import PraxisConfiguration
 from praxis.utils.state import State
 from praxis.utils.db import DatabaseManager
+from .deck import DeckManager
+from ..workcell import Workcell, WorkcellView
 
 P = TypeVar("P", bound=Protocol)
 
@@ -45,10 +52,24 @@ class Orchestrator:
             backend=self.config["celery"]["backend"],
         )
 
+        self._main_workcell: Optional[Workcell] = None
+        self._workcell_views: Dict[str, WorkcellView] = {}
+        self._active_resources: Dict[str, Set[str]] = (
+            {}
+        )  # resource_name -> set of protocol names
+
     async def initialize_dependencies(self):
         print(self.config.database["praxis_dsn"])
-        self.db = await DatabaseManager.initialize(praxis_dsn=self.config.database["praxis_dsn"],
-                                             keycloak_dsn=self.config.database["keycloak_dsn"])
+        self.db = await DatabaseManager.initialize(
+            praxis_dsn=self.config.database["praxis_dsn"],
+            keycloak_dsn=self.config.database["keycloak_dsn"],
+        )
+        # Initialize main workcell
+        self._main_workcell = Workcell(
+            config=self.config,
+            save_file="workcell_state.json",
+        )
+        await self._main_workcell.initialize_dependencies()
 
     async def get_user_info(self, username: str) -> Dict[str, Any]:
         """Retrieves user information for a given user identifier."""
@@ -60,53 +81,25 @@ class Orchestrator:
         self,
         protocol_class: Type[P],
         protocol_config_data: Dict[str, Any],
-        protocol_deck_file: str,
-        manual_check_list: List[str],
-        user_info: Dict[str, Any],
-        baseline_parameters: ProtocolParameters = ProtocolParameters(),
-        workcell_assets: WorkcellAssets = WorkcellAssets({}),
-        **kwargs,
     ) -> P:
-        protocol_config = ProtocolConfiguration(protocol_config_data, self.config)
+        """Create a new protocol instance with orchestrator integration."""
+        # Create protocol instance
+        protocol = protocol_class(protocol_config_data)
 
-        # Get the deck from the DeckManager asynchronously
-        try:
-            deck = await self.deck_manager.get_deck(protocol_deck_file)
-        except Exception as e:
-            raise ValueError(f"Error getting deck: {e}")
+        # Initialize with orchestrator integration
+        await protocol.initialize(orchestrator=self)
 
-        protocol = protocol_class(
-            protocol_configuration=protocol_config,
-            manual_check_list=manual_check_list,
-            orchestrator=self,
-            deck=deck,
-            user_info=user_info,
-            state=self.state,
-            baseline_parameters=baseline_parameters,
-            workcell_assets=workcell_assets,
-        )
-
+        # Store protocol reference
         self.protocols[protocol.name] = protocol
         return protocol
 
     async def create_and_start_protocol(
-        self,
-        protocol_class: Type[P],
-        protocol_config_data: Dict[str, Any],
-        protocol_deck_file: str,
-        manual_check_list: List[str],
-        user_info: Dict[str, Any],
+        self, protocol_class: Type[P], protocol_config_data: Dict[str, Any]
     ):
         """
         Creates and starts a protocol.
         """
-        protocol = await self.create_protocol(
-            protocol_class,
-            protocol_config_data,
-            protocol_deck_file,
-            manual_check_list,
-            user_info,
-        )
+        protocol = await self.create_protocol(protocol_class, protocol_config_data)
         await self.run_protocol(protocol.name)
         return protocol
 
@@ -167,3 +160,37 @@ class Orchestrator:
         finally:
             if protocol.status in ["stopped", "completed", "errored"]:
                 await protocol._cleanup()
+
+    async def create_workcell_view(
+        self, protocol_name: str, required_assets: WorkcellAssets
+    ) -> WorkcellView:
+        """Creates a view of the main workcell for a specific protocol."""
+        if not self._main_workcell:
+            raise RuntimeError("Main workcell not initialized")
+
+        # Create new view
+        view = WorkcellView(
+            parent_workcell=self._main_workcell,
+            protocol_name=protocol_name,
+            required_assets=required_assets,
+        )
+
+        self._workcell_views[protocol_name] = view
+        return view
+
+    async def release_workcell_view(self, protocol_name: str):
+        """Releases a protocol's workcell view."""
+        if protocol_name in self._workcell_views:
+            view = self._workcell_views.pop(protocol_name)
+            await view.release()
+
+    def get_resource_users(self, resource_name: str) -> Set[str]:
+        """Get protocols currently using a resource."""
+        return self._active_resources.get(resource_name, set())
+
+    async def _cleanup_protocol(self, protocol_name: str):
+        """Clean up protocol resources when it ends."""
+        await self.release_workcell_view(protocol_name)
+        # Remove protocol from active resources
+        for users in self._active_resources.values():
+            users.discard(protocol_name)

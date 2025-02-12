@@ -1,10 +1,13 @@
 import os
 import json
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, Mapping, Union
 from .parameter import ProtocolParameters, Parameter
 from ..utils import db
 from ..configure import PraxisConfiguration
-from pylabrobot.resources import Deck
+from pylabrobot.resources import Deck, Resource
+from pylabrobot.machines import Machine
+from ..workcell import Workcell
+from .required_assets import WorkcellAssets, WorkcellAssetSpec
 
 
 class ProtocolConfiguration:
@@ -15,7 +18,7 @@ class ProtocolConfiguration:
     def __init__(
         self,
         protocol_config: str | Dict[str, Any],
-        praxis_config: str | PraxisConfiguration,
+        praxis_config: Optional[str | PraxisConfiguration] = None,
     ):
         """
         Initializes the ProtocolConfiguration.
@@ -38,8 +41,8 @@ class ProtocolConfiguration:
         self.deck_directory = praxis_config.deck_directory
         self.db = db
         self._machines: list[str | int] = cast(list, config_data.get("machines", []))
-        self.liquid_handler_id: str = cast(
-            str, config_data.get("liquid_handler_ids", [])
+        self.liquid_handler_ids: list[str] = cast(
+            list[str], config_data.get("liquid_handler_ids", [])
         )
         self.name: str = cast(str, config_data.get("name", ""))
         self.details: str = cast(str, config_data.get("details", ""))
@@ -47,7 +50,15 @@ class ProtocolConfiguration:
         self.other_args: dict[str, Any] = cast(dict, config_data.get("other_args", {}))
         self.users: str | list[str] = self._parse_users(config_data.get("users", []))
         self.directory: str = cast(str, config_data.get("directory", ""))
-        self._deck: str = cast(str, config_data.get("deck", ""))
+        self._decks: dict[str, str] = cast(dict[str, str], config_data.get("decks", ""))
+
+        # Add workcell configuration options
+        self.workcell_file: Optional[str] = cast(
+            Optional[str], config_data.get("workcell_file")
+        )
+        self.workcell: Optional[Workcell] = cast(
+            Optional[Workcell], config_data.get("workcell")
+        )
 
         # Initialize parameters
         self._parameters = ProtocolParameters()
@@ -61,9 +72,11 @@ class ProtocolConfiguration:
                 param = Parameter(name=name, datatype=type(value), default=value)
                 self._parameters.add_parameter(param)
 
-        self._needed_deck_resources: dict[str, list[str]] = cast(
-            dict, config_data.get("needed_deck_resources", {})
-        )
+        # Parse required assets
+        self._required_assets = WorkcellAssets()
+        assets_data = config_data.get("required_assets", {})
+        if isinstance(assets_data, Mapping):
+            self._required_assets.load_from_dict(assets_data)
 
     @property
     def machines(self) -> list[str | int]:
@@ -79,24 +92,22 @@ class ProtocolConfiguration:
         return users
 
     @property
-    def deck(self) -> Optional[Deck]:
-        """
-        Loads and returns the deck layout for each liquid handler specified in the configuration.
-        """
-        if not self.deck_directory:
-            return None
-
-        deck_path = os.path.join(self.deck_directory, self._deck)
-        if not os.path.exists(deck_path):
-            raise FileNotFoundError(f"Deck file not found: {deck_path}")
-        return Deck.load_from_json_file(deck_path)
-
-    @property
-    def needed_deck_resources(self) -> dict[str, list[str]]:
-        """Get the needed deck resources."""
-        return self._needed_deck_resources
-
-    @property
     def parameters(self) -> ProtocolParameters:
         """Get the protocol parameters."""
         return self._parameters
+
+    @property
+    def required_assets(self) -> WorkcellAssets:
+        """Get the required workcell assets."""
+        return self._required_assets
+
+    @property
+    def decks(self) -> dict[str, str]:
+        """Get the deck names specified for a given liquid handler."""
+        return self._decks
+
+    @property
+    def decks_unspecified(self) -> bool:
+        """See if decks are assigned to liquid handlers. This can be bypassed if a workcell is loaded
+        directly with the decks initialized."""
+        return self._decks == {}

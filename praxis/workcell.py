@@ -1,6 +1,7 @@
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources.deck import Deck
-from typing import Optional, Any, Literal, cast, Self
+from typing import Optional, Any, Literal, cast, Self, Set, Dict
+from .protocol import WorkcellAssets
 
 import asyncio
 import json
@@ -20,8 +21,10 @@ from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 from pylabrobot.serializer import serialize, deserialize
 
-from praxis.configure import PraxisConfiguration
-from praxis.utils import DatabaseManager
+# TODO: make different resource types from inspection of PLR
+
+from ..configure import PraxisConfiguration
+from ..utils import DatabaseManager
 
 
 class Workcell:
@@ -73,6 +76,8 @@ class Workcell:
         self.backup_interval = backup_interval
         self.num_backups = num_backups
         self.backup_task: Optional[asyncio.Task] = None
+        self._in_use_by: Dict[str, str] = {}  # resource_name -> protocol_name
+        self._resource_states: Dict[str, Dict[str, Any]] = {}
 
     @property
     def all_machines(self) -> dict[str, Machine]:
@@ -90,12 +95,14 @@ class Workcell:
 
     @property
     def asset_ids(self) -> list[str]:
-      self.children = self.get_all_children()
-      self._asset_ids = [child.name for child in self.children if isinstance(child, Resource)]
-      self._asset_ids += [id for id, _ in self.all_machines.items() \
-        if id not in self._asset_ids]
-      return self._asset_ids
-
+        self.children = self.get_all_children()
+        self._asset_ids = [
+            child.name for child in self.children if isinstance(child, Resource)
+        ]
+        self._asset_ids += [
+            id for id, _ in self.all_machines.items() if id not in self._asset_ids
+        ]
+        return self._asset_ids
 
     async def setup(self):
         for machine_id, machine in self.all_machines.items():
@@ -118,8 +125,10 @@ class Workcell:
         workcell = self(
             configuration, save_file, user, using_machines, backup_interval, num_backups
         )
-        workcell.db = await DatabaseManager.initialize(praxis_dsn=configuration.database["praxis_dsn"],
-                                                       keycloak_dsn=configuration.database["keycloak_dsn"])
+        workcell.db = await DatabaseManager.initialize(
+            praxis_dsn=configuration.database["praxis_dsn"],
+            keycloak_dsn=configuration.database["keycloak_dsn"],
+        )
         await workcell.unpack_machines(using_machines)
         return workcell
 
@@ -157,6 +166,8 @@ class Workcell:
     async def unpack_machines(
         self, using: Optional[Literal["all"] | list[str]]
     ) -> None:
+        if self.db is None:
+            raise ValueError("DatabaseManager not specified.")
         if using is None:
             return
         if using == "all":
@@ -385,11 +396,224 @@ class Workcell:
 
     async def __aenter__(self):
         await self.setup()
+        await self._synchronize_resource_states()
         self.backup_task = asyncio.create_task(self.continuous_backup())
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
+        # Ensure all resource states are saved before shutting down
+        if self.db is not None:
+            for resource_name, state in self._resource_states.items():
+                await self.db.update_asset_state(resource_name, state)
+
         await self.save_state_to_file(self.save_file)
         if self.backup_task is not None:
             self.backup_task.cancel()
         await self.stop()
+
+    async def is_resource_in_use(self, resource_name: str) -> bool:
+        """Check if a resource is currently in use by any protocol."""
+        if self.db is None:
+            return resource_name in self._in_use_by
+        # Check database first for resource lock
+        is_locked = await self.db.is_resource_locked(resource_name)
+        if is_locked:
+            return True
+        return resource_name in self._in_use_by
+
+    async def mark_resource_in_use(
+        self, resource_name: str, protocol_name: str
+    ) -> None:
+        """Mark a resource as being used by a protocol."""
+        if self.db is not None:
+            # Try to acquire lock in database
+            lock_acquired = await self.db.acquire_lock(
+                resource_name, protocol_name, str(id(self))
+            )
+            if not lock_acquired:
+                raise RuntimeError(
+                    f"Could not acquire lock for resource {resource_name}"
+                )
+        self._in_use_by[resource_name] = protocol_name
+
+    async def mark_resource_released(
+        self, resource_name: str, protocol_name: str
+    ) -> None:
+        """Mark a resource as no longer being used by a protocol."""
+        if (
+            resource_name in self._in_use_by
+            and self._in_use_by[resource_name] == protocol_name
+        ):
+            if self.db is not None:
+                await self.db.release_lock(resource_name, protocol_name, str(id(self)))
+            del self._in_use_by[resource_name]
+
+    def get_resource_state(self, resource_name: str) -> Dict[str, Any]:
+        """Get the current state of a resource."""
+        # First check local state cache
+        if resource_name in self._resource_states:
+            return self._resource_states[resource_name].copy()
+
+        # Then check different resource types
+        if resource_name in self.labware:
+            state = self.labware[resource_name].get_state()
+        elif resource_name in self.all_machines:
+            state = self.all_machines[resource_name].get_state()
+        else:
+            raise KeyError(f"Resource {resource_name} not found")
+
+        # Cache the state
+        self._resource_states[resource_name] = state
+        return state.copy()
+
+    async def update_resource_state(
+        self, resource_name: str, state: Dict[str, Any]
+    ) -> None:
+        """Update the state of a resource."""
+        if self.db is not None:
+            # Update state in database first
+            await self.db.update_asset_state(resource_name, state)
+
+        # Update local state
+        if resource_name not in self._resource_states:
+            self._resource_states[resource_name] = {}
+        self._resource_states[resource_name].update(state)
+
+        # Update actual resource
+        if resource_name in self.labware:
+            self.labware[resource_name].update_state(state)
+        elif resource_name in self.all_machines:
+            self.all_machines[resource_name].update_state(state)
+        else:
+            raise KeyError(f"Resource {resource_name} not found")
+
+    async def _synchronize_resource_states(self) -> None:
+        """Synchronize resource states with database."""
+        if self.db is None:
+            return
+
+        for resource_name in self.asset_ids:
+            db_state = await self.db.get_asset_state(resource_name)
+            if db_state:
+                await self.update_resource_state(resource_name, db_state)
+
+    def get_resource_users(self, resource_name: str) -> Set[str]:
+        """Get all protocols currently using a resource."""
+        users = set()
+        if resource_name in self._in_use_by:
+            users.add(self._in_use_by[resource_name])
+        return users
+
+    async def __aenter__(self):
+        await self.setup()
+        await self._synchronize_resource_states()
+        self.backup_task = asyncio.create_task(self.continuous_backup())
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        # Ensure all resource states are saved before shutting down
+        if self.db is not None:
+            for resource_name, state in self._resource_states.items():
+                await self.db.update_asset_state(resource_name, state)
+
+        await self.save_state_to_file(self.save_file)
+        if self.backup_task is not None:
+            self.backup_task.cancel()
+        await self.stop()
+
+
+class WorkcellView:
+    """A protocol's view into a shared workcell, managing resource access."""
+
+    def __init__(
+        self,
+        parent_workcell: Workcell,
+        protocol_name: str,
+        required_assets: WorkcellAssets,
+    ):
+        self.parent = parent_workcell
+        self.protocol_name = protocol_name
+        self.required_assets = required_assets
+        self._active_resources: Set[str] = set()
+        self._resource_states: Dict[str, Dict[str, Any]] = {}
+
+    async def __aenter__(self):
+        """Acquire access to required resources."""
+        # Check resource availability
+        unavailable = []
+        for asset in self.required_assets:
+            if self.parent.is_resource_in_use(asset.name):
+                unavailable.append(asset.name)
+
+        if unavailable:
+            raise RuntimeError(
+                f"Resources currently in use by other protocols: {', '.join(unavailable)}"
+            )
+
+        # Mark resources as in use
+        for asset in self.required_assets:
+            self.parent.mark_resource_in_use(asset.name, self.protocol_name)
+            self._active_resources.add(asset.name)
+
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Release acquired resources."""
+        for resource in self._active_resources:
+            # Sync any state changes back to parent
+            if resource in self._resource_states:
+                self.parent.update_resource_state(
+                    resource, self._resource_states[resource]
+                )
+            self.parent.mark_resource_released(resource, self.protocol_name)
+        self._active_resources.clear()
+        self._resource_states.clear()
+
+    def update_resource_state(
+        self, resource_name: str, state_update: Dict[str, Any]
+    ) -> None:
+        """Update the state of a resource."""
+        if resource_name not in self._active_resources:
+            raise RuntimeError(f"Resource {resource_name} not currently acquired")
+
+        # Track state changes locally until context exit
+        if resource_name not in self._resource_states:
+            self._resource_states[resource_name] = {}
+        self._resource_states[resource_name].update(state_update)
+
+    def get_resource_state(self, resource_name: str) -> Dict[str, Any]:
+        """Get the current state of a resource."""
+        if resource_name not in self.required_assets:
+            raise RuntimeError(
+                f"Resource {resource_name} not declared in required assets"
+            )
+
+        # Combine parent state with any local changes
+        state = self.parent.get_resource_state(resource_name).copy()
+        if resource_name in self._resource_states:
+            state.update(self._resource_states[resource_name])
+        return state
+
+    async def release(self):
+        """Explicitly release all resources."""
+        if self._active_resources:
+            async with self:
+                pass  # This will trigger __aexit__ and release resources
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to parent workcell for declared resources."""
+        # Only allow access to declared resources
+        if name not in self.required_assets and not name.startswith("_"):
+            raise AttributeError(
+                f"Resource '{name}' not declared in required assets for protocol {self.protocol_name}"
+            )
+        return getattr(self.parent, name)
+
+    @property
+    def active_resources(self) -> Set[str]:
+        """Get the set of currently active resources."""
+        return self._active_resources.copy()
+
+    def is_resource_active(self, resource_name: str) -> bool:
+        """Check if a resource is currently active."""
+        return resource_name in self._active_resources
