@@ -1,6 +1,4 @@
 import { HStack, Text, Box } from '@chakra-ui/react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
 import { ColorModeButton } from './ui/color-mode';
 import { useOidc } from '../oidc';
 import { selectUsername } from '../store/userSlice';

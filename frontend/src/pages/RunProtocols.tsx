@@ -59,6 +59,15 @@ interface Asset {
   type: string;
   required: boolean;
   description?: string;
+  is_available?: boolean;
+  options?: string[];
+}
+
+interface AssetOption {
+  name: string;
+  type: string;
+  is_available: boolean;
+  description?: string;
 }
 
 interface AssetConfig {
@@ -88,6 +97,7 @@ export const RunProtocols: React.FC = () => {
   const [isConfigValid, setIsConfigValid] = useState(false);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [assetConfig, setAssetConfig] = useState<AssetConfig>({});
+  const [availableAssets, setAvailableAssets] = useState<{ [key: string]: AssetOption[] }>({});
 
   useEffect(() => {
     fetchProtocols();
@@ -96,9 +106,15 @@ export const RunProtocols: React.FC = () => {
     fetchAvailableProtocols();
   }, []);
 
+  useEffect(() => {
+    if (selectedProtocol && protocolDetails?.assets) {
+      fetchAvailableAssets();
+    }
+  }, [selectedProtocol, protocolDetails]);
+
   const fetchProtocols = async () => {
     try {
-      const response = await api.get<Protocol[]>('/protocols/');
+      const response = await api.get<Protocol[]>('/api/v1/protocols/');
       setProtocols(response.data);
     } catch (error) {
       console.error('Error fetching protocols:', error);
@@ -112,7 +128,7 @@ export const RunProtocols: React.FC = () => {
 
   const fetchRunningProtocols = async () => {
     try {
-      const response = await api.get<RunningProtocol[]>('/protocols/running');
+      const response = await api.get<RunningProtocol[]>('/api/v1/protocols/running');
       setRunningProtocols(response.data);
     } catch (error) {
       console.error('Error fetching running protocols:', error);
@@ -121,7 +137,7 @@ export const RunProtocols: React.FC = () => {
 
   const fetchDeckFiles = async () => {
     try {
-      const response = await api.get<string[]>('/protocols/deck_layouts');
+      const response = await api.get<string[]>('/api/v1/protocols/deck_layouts');
       setDeckFiles(response.data);
     } catch (error) {
       console.error('Error fetching deck files:', error);
@@ -130,12 +146,33 @@ export const RunProtocols: React.FC = () => {
 
   const fetchAvailableProtocols = async () => {
     try {
-      const response = await api.get<ProtocolDetails[]>('/protocols/discover');
+      const response = await api.get<ProtocolDetails[]>('/api/v1/protocols/discover');
       setAvailableProtocols(response.data);
     } catch (error) {
       console.error('Error fetching protocols:', error);
       toast({
         title: 'Error fetching available protocols',
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
+
+  const fetchAvailableAssets = async () => {
+    try {
+      const assetTypes = new Set(protocolDetails.assets.map((asset: Asset) => asset.type));
+      const assetPromises = Array.from(assetTypes).map(async (type) => {
+        const response = await api.get<AssetOption[]>(`/api/v1/assets/available/${type}`);
+        return [type, response.data];
+      });
+
+      const results = await Promise.all(assetPromises);
+      const assetsMap = Object.fromEntries(results);
+      setAvailableAssets(assetsMap);
+    } catch (error) {
+      console.error('Error fetching available assets:', error);
+      toast({
+        title: 'Error fetching available assets',
         status: 'error',
         duration: 3000,
       });
@@ -159,11 +196,11 @@ export const RunProtocols: React.FC = () => {
       formData.append('file', configFile);
 
       // Upload config file
-      const configResponse = await api.post('/protocols/upload_config_file', formData);
+      const configResponse = await api.post('/api/v1/protocols/upload_config_file', formData);
       const configFilePath = configResponse.data;
 
       // Start protocol
-      await api.post('/protocols/start', {
+      await api.post('/api/v1/protocols/start', {
         protocol_name: selectedProtocol,
         config_file: configFilePath,
         deck_file: `./protocol/deck_layouts/${selectedDeckFile}`,
@@ -194,7 +231,7 @@ export const RunProtocols: React.FC = () => {
   const handleProtocolSelect = async (protocol: ProtocolDetails) => {
     setSelectedProtocol(protocol.name);
     try {
-      const details = await api.get(`/protocols/protocol/${encodeURIComponent(protocol.path)}`);
+      const details = await api.get(`/api/v1/protocols/protocol/${encodeURIComponent(protocol.path)}`);
       setProtocolDetails(details.data);
     } catch (error) {
       console.error('Error fetching protocol details:', error);
@@ -239,7 +276,13 @@ export const RunProtocols: React.FC = () => {
 
   const canProceed = () => {
     if (step === 0) return selectedProtocol;
-    if (step === 1) return isConfigValid || (configPath === 'specify' && protocolDetails?.assets);
+    if (step === 1) {
+      if (isConfigValid) return true;
+      if (!protocolDetails?.assets) return true;
+      return protocolDetails.assets.every((asset: Asset) =>
+        !asset.required || assetConfig[asset.name]
+      );
+    }
     if (step === 2) return isConfigValid || (configPath === 'specify' && protocolDetails?.parameters);
     return true;
   };
@@ -363,39 +406,39 @@ export const RunProtocols: React.FC = () => {
                       required={asset.required}
                       helperText={asset.description}
                     >
-                      {asset.type === 'labware' ? (
-                        <SelectRoot
-                          collection={createListCollection({
-                            items: deckFiles.map(file => ({
-                              label: file,
-                              value: file
-                            }))
-                          })}
-                          value={[assetConfig[asset.name] as string]}
-                          onChange={(event) => handleAssetChange(asset.name, event.value[0])}
-                        >
-                          <SelectTrigger>
-                            <SelectValueText placeholder={`Select ${asset.name}...`} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {deckFiles.map((file) => (
-                              <SelectItem
-                                key={file}
-                                item={{ value: file, label: file }}
-                              >
-                                {file}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </SelectRoot>
-                      ) : (
-                        <Input
-                          type={asset.type === 'number' ? 'number' : 'text'}
-                          value={assetConfig[asset.name] || ''}
-                          onChange={(e) => handleAssetChange(asset.name, e.target.value)}
-                          {...inputStyles}
-                        />
-                      )}
+                      <SelectRoot
+                        collection={createListCollection({
+                          items: (availableAssets[asset.type] || []).map(item => ({
+                            label: `${item.name}${item.description ? ` - ${item.description}` : ''}`,
+                            value: item.name,
+                            disabled: !item.is_available
+                          }))
+                        })}
+                        value={[assetConfig[asset.name] as string]}
+                        onChange={(event) => handleAssetChange(asset.name, event.value[0])}
+                      >
+                        <SelectTrigger>
+                          <SelectValueText placeholder={`Select ${asset.name}...`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(availableAssets[asset.type] || []).map((item) => (
+                            <SelectItem
+                              key={item.name}
+                              item={{
+                                value: item.name,
+                                label: `${item.name}${item.description ? ` - ${item.description}` : ''}`
+                              }}
+                            >
+                              <Group gap={2}>
+                                <Text>{item.name}</Text>
+                                {!item.is_available && (
+                                  <Text textStyle="sm" color="gray.500">(In use)</Text>
+                                )}
+                              </Group>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </SelectRoot>
                     </Field>
                   ))}
                 </VStack>
@@ -488,6 +531,6 @@ export const RunProtocols: React.FC = () => {
           </VStack>
         </CardBody>
       </Card>
-    </VStack>
+    </VStack >
   );
 };

@@ -87,9 +87,7 @@
       }
     ]
   },
-  "groups": [
-    "admin"
-  ],
+  "groups": [],
   "defaultRoles": [
     "offline_access",
     "uma_authorization"
@@ -131,7 +129,8 @@
         "http://localhost:5173/*"
       ],
       "webOrigins": [
-        "http://localhost:5173/*"
+        "http://localhost:5173/*",
+        "+"
       ],
       "notBefore": 0,
       "bearerOnly": false,

@@ -5,10 +5,9 @@ from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
 import os
 
-from praxis.api import protocols, auth, assets
+from praxis.api import protocols, assets
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
-from praxis.api import get_current_admin_user
 from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,21 +21,46 @@ DEFAULT_PROTOCOL_DIR = config.default_protocol_dir
 # Create and initialize Orchestrator
 orchestrator = Orchestrator(config)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Asynchronous context manager for lifespan events.
     Handles startup and shutdown events.
     """
-    # Startup logic
-    await orchestrator.initialize_dependencies()
-    print(f"Application startup: Initializing dependencies.")
-    print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
-    yield
-    # Shutdown logic
-    assert orchestrator.db is not None
-    await orchestrator.db.close()
-    print("Application shutdown: Closing connections.")
+    try:
+        # Startup logic
+        print("Starting application initialization...")
+        print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
+
+        try:
+            await orchestrator.initialize_dependencies()
+            print("Successfully initialized dependencies")
+        except ConnectionError as e:
+            print(f"Failed to initialize database connections: {str(e)}")
+            # You might want to exit here depending on your requirements
+            raise
+        except Exception as e:
+            print(f"Unexpected error during initialization: {str(e)}")
+            raise
+
+        yield
+
+    except Exception as e:
+        print(f"Error during application startup: {str(e)}")
+        raise
+
+    finally:
+        # Shutdown logic
+        print("Starting application shutdown...")
+        try:
+            if orchestrator.db is not None:
+                await orchestrator.db.close()
+                print("Successfully closed database connections")
+        except Exception as e:
+            print(f"Error during database shutdown: {str(e)}")
+        print("Application shutdown complete")
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -53,14 +77,8 @@ app.add_middleware(
 
 # Include API routers with versioning
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
-app.include_router(auth.router, tags=["auth"])  # Remove prefix as it's already in the router
-app.include_router(assets.router, tags=["assets"])
+app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 
-# Example of an endpoint that requires admin access
-@app.post("/some_admin_only_endpoint", dependencies=[Depends(get_current_admin_user)])
-async def admin_only_endpoint():
-    # This endpoint can only be accessed by an authenticated admin user
-    return {"message": "Admin access granted"}
 
 # Redirect root URL to index.html
 @app.get("/")

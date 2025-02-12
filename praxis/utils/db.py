@@ -9,11 +9,15 @@ from pylabrobot.machines import Machine
 from pylabrobot.utils import find_subclass
 import importlib.util
 from pathlib import Path
+import asyncio
+
 
 class DatabaseManager:
-    _instance: Optional['DatabaseManager'] = None
+    _instance: Optional["DatabaseManager"] = None
     _pool: Optional[asyncpg.Pool] = None
     _keycloak_pool: Optional[asyncpg.Pool] = None
+    _max_retries = 3
+    _retry_delay = 1  # seconds
 
     def __new__(cls):
         if cls._instance is None:
@@ -21,104 +25,155 @@ class DatabaseManager:
         return cls._instance
 
     @classmethod
-    async def initialize(cls, praxis_dsn: str, keycloak_dsn: str, min_size: int = 5, max_size: int = 10):
+    async def initialize(
+        cls, praxis_dsn: str, keycloak_dsn: str, min_size: int = 5, max_size: int = 10
+    ):
         if not cls._instance:
             cls._instance = cls()
 
         # Validate DSNs
         if not praxis_dsn.startswith(("postgresql://", "postgres://")):
-            raise ValueError("Invalid praxis_dsn: must start with postgresql:// or postgres://")
+            raise ValueError(
+                "Invalid praxis_dsn: must start with postgresql:// or postgres://"
+            )
         if not keycloak_dsn.startswith(("postgresql://", "postgres://")):
-            raise ValueError("Invalid keycloak_dsn: must start with postgresql:// or postgres://")
+            raise ValueError(
+                "Invalid keycloak_dsn: must start with postgresql:// or postgres://"
+            )
 
-        try:
-            if not cls._pool:
-                cls._pool = await asyncpg.create_pool(
-                    dsn=praxis_dsn,
-                    min_size=min_size,
-                    max_size=max_size,
-                    command_timeout=60
-                )
+        retries = 0
+        last_error = None
 
-            if not cls._keycloak_pool:
-                cls._keycloak_pool = await asyncpg.create_pool(
-                    dsn=keycloak_dsn,
-                    min_size=min_size,
-                    max_size=max_size,
-                    command_timeout=60
-                )
+        while retries < cls._max_retries:
+            try:
+                if not cls._pool:
+                    cls._pool = await asyncpg.create_pool(
+                        dsn=praxis_dsn,
+                        min_size=min_size,
+                        max_size=max_size,
+                        command_timeout=60,
+                        timeout=10.0,  # Connection timeout in seconds
+                    )
+                    # Test the connection
+                    async with cls._pool.acquire() as conn:
+                        await conn.execute("SELECT 1")
 
-            return cls._instance
-        except Exception as e:
-            print(f"Failed to initialize database connections: {e}")
-            raise
+                if not cls._keycloak_pool:
+                    cls._keycloak_pool = await asyncpg.create_pool(
+                        dsn=keycloak_dsn,
+                        min_size=min_size,
+                        max_size=max_size,
+                        command_timeout=60,
+                        timeout=10.0,  # Connection timeout in seconds
+                    )
+                    # Test the connection
+                    async with cls._keycloak_pool.acquire() as conn:
+                        await conn.execute("SELECT 1")
+
+                print("Successfully connected to databases")
+                return cls._instance
+
+            except (ConnectionError, asyncpg.PostgresError) as e:
+                last_error = e
+                retries += 1
+                if retries < cls._max_retries:
+                    print(f"Database connection attempt {retries} failed: {str(e)}")
+                    print(f"Retrying in {cls._retry_delay} seconds...")
+                    await asyncio.sleep(cls._retry_delay)
+                    cls._retry_delay *= 2  # Exponential backoff
+                continue
+            except Exception as e:
+                print(f"Unexpected error during database initialization: {str(e)}")
+                raise
+
+        # If we get here, all retries failed
+        print(f"Failed to connect to database after {cls._max_retries} attempts")
+        print(f"Last error: {str(last_error)}")
+        raise ConnectionError(
+            f"Could not establish database connection: {str(last_error)}"
+        )
 
     # Context managers for connections
     @asynccontextmanager
     async def praxis_connection(self):
         if self._pool is None:
-            raise RuntimeError("Database pool not initialized. Call initialize() first.")
+            raise RuntimeError(
+                "Database pool not initialized. Call initialize() first."
+            )
         async with self._pool.acquire() as connection:
             yield connection
 
     @asynccontextmanager
     async def keycloak_connection(self):
-      if self._keycloak_pool is None:
-          raise RuntimeError("Database pool not initialized. Call initialize() first.")
-      async with self._keycloak_pool.acquire() as connection:
-          yield connection
+        if self._keycloak_pool is None:
+            raise RuntimeError(
+                "Database pool not initialized. Call initialize() first."
+            )
+        async with self._keycloak_pool.acquire() as connection:
+            yield connection
 
     # Protocol management methods
-    async def register_protocol(self, protocol_name: str, user_id: str, **kwargs) -> int: # TODO: change to UUID
+    async def register_protocol(
+        self, protocol_name: str, user_id: str, **kwargs
+    ) -> int:  # TODO: change to UUID
         async with self.praxis_connection() as conn:
-            protocol_id = await conn.fetchval("""
+            protocol_id = await conn.fetchval(
+                """
                 INSERT INTO protocols_metadata
                 (protocol_name, user_id, status, data_directory, database_file, parameters, required_assets)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING protocol_id
-            """, protocol_name, user_id, 'initializing',
-                kwargs.get('data_directory'),
-                kwargs.get('database_file'),
-                json.dumps(kwargs.get('parameters', {})),
-                json.dumps(kwargs.get('assets', {})))
+            """,
+                protocol_name,
+                user_id,
+                "initializing",
+                kwargs.get("data_directory"),
+                kwargs.get("database_file"),
+                json.dumps(kwargs.get("parameters", {})),
+                json.dumps(kwargs.get("assets", {})),
+            )
             if protocol_id is None:
                 raise ValueError("Failed to create protocol: no protocol_id returned")
             return int(protocol_id)
 
     async def get_protocol(self, protocol_name: str) -> Optional[Dict]:
         async with self.praxis_connection() as conn:
-            record = await conn.fetchrow("""
+            record = await conn.fetchrow(
+                """
                 SELECT p.*, k.username, k.email, k.first_name, k.last_name
                 FROM protocols_metadata p
                 LEFT JOIN keycloak_users k ON p.user_id = k.id
                 WHERE p.protocol_name = $1
-            """, protocol_name)
+            """,
+                protocol_name,
+            )
 
             if record:
                 return {
-                    'protocol_id': record['protocol_id'],
-                    'protocol_name': record['protocol_name'],
-                    'start_time': record['start_time'],
-                    'end_time': record['end_time'],
-                    'status': record['status'],
-                    'user': {
-                        'id': record['user_id'],
-                        'username': record['username'],
-                        'email': record['email'],
-                        'first_name': record['first_name'],
-                        'last_name': record['last_name']
+                    "protocol_id": record["protocol_id"],
+                    "protocol_name": record["protocol_name"],
+                    "start_time": record["start_time"],
+                    "end_time": record["end_time"],
+                    "status": record["status"],
+                    "user": {
+                        "id": record["user_id"],
+                        "username": record["username"],
+                        "email": record["email"],
+                        "first_name": record["first_name"],
+                        "last_name": record["last_name"],
                     },
-                    'data_directory': record['data_directory'],
-                    'database_file': record['database_file'],
-                    'parameters': json.loads(record['parameters']),
-                    'assets': json.loads(record['assets'])
+                    "data_directory": record["data_directory"],
+                    "database_file": record["database_file"],
+                    "parameters": json.loads(record["parameters"]),
+                    "assets": json.loads(record["assets"]),
                 }
             return None
 
     async def update_protocol_status(self, protocol_name: str, status: str):
         """Update the status of a protocol and set end_time if completed."""
         async with self.praxis_connection() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 UPDATE protocols_metadata
                 SET status = $1,
                     end_time = CASE
@@ -127,7 +182,10 @@ class DatabaseManager:
                         ELSE end_time
                     END
                 WHERE protocol_name = $2
-            """, status, protocol_name)
+            """,
+                status,
+                protocol_name,
+            )
 
     async def list_protocols(self, status: Optional[str] = None) -> List[Dict]:
         """List all protocols, optionally filtered by status."""
@@ -150,45 +208,62 @@ class DatabaseManager:
             records = await conn.fetch(query, *params)
             return [
                 {
-                    'protocol_id': r['protocol_id'],
-                    'protocol_name': r['protocol_name'],
-                    'start_time': r['start_time'],
-                    'end_time': r['end_time'],
-                    'status': r['status'],
-                    'user': {
-                        'id': r['user_id'],
-                        'username': r['username'],
-                        'email': r['email'],
-                        'first_name': r['first_name'],
-                        'last_name': r['last_name']
+                    "protocol_id": r["protocol_id"],
+                    "protocol_name": r["protocol_name"],
+                    "start_time": r["start_time"],
+                    "end_time": r["end_time"],
+                    "status": r["status"],
+                    "user": {
+                        "id": r["user_id"],
+                        "username": r["username"],
+                        "email": r["email"],
+                        "first_name": r["first_name"],
+                        "last_name": r["last_name"],
                     },
-                    'data_directory': r['data_directory'],
-                    'database_file': r['database_file'],
-                    'parameters': json.loads(r['parameters']),
-                    'assets': json.loads(r['assets'])
+                    "data_directory": r["data_directory"],
+                    "database_file": r["database_file"],
+                    "parameters": json.loads(r["parameters"]),
+                    "assets": json.loads(r["assets"]),
                 }
                 for r in records
             ]
 
-    async def store_substep_timing(self, func_hash: str, func_name: str,
-                                 duration: float, caller_name: str,
-                                 task_id: str, protocol_name: str):
+    async def store_substep_timing(
+        self,
+        func_hash: str,
+        func_name: str,
+        duration: float,
+        caller_name: str,
+        task_id: str,
+        protocol_name: str,
+    ):
         """Store timing information for a protocol substep."""
         async with self.praxis_connection() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO substep_timings
                 (func_hash, func_name, duration, caller_name, task_id, protocol_name)
                 VALUES ($1, $2, $3, $4, $5, $6)
-            """, func_hash, func_name, duration, caller_name, task_id, protocol_name)
+            """,
+                func_hash,
+                func_name,
+                duration,
+                caller_name,
+                task_id,
+                protocol_name,
+            )
 
     async def get_protocol_timing(self, protocol_name: str) -> List[Dict]:
         """Get timing information for a protocol."""
         async with self.praxis_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT * FROM substep_timings
                 WHERE protocol_name = $1
                 ORDER BY timestamp
-            """, protocol_name)
+            """,
+                protocol_name,
+            )
             return [dict(r) for r in records]
 
     async def export_protocol_data(self, protocol_name: str, backup_path: str) -> None:
@@ -196,26 +271,35 @@ class DatabaseManager:
         try:
             async with self.praxis_connection() as conn:
                 # Get protocol metadata
-                protocol_data = await conn.fetch("""
+                protocol_data = await conn.fetch(
+                    """
                     SELECT *
                     FROM protocols_metadata
                     WHERE protocol_name = $1
-                """, protocol_name)
+                """,
+                    protocol_name,
+                )
 
                 # Get protocol timing data
-                timing_data = await conn.fetch("""
+                timing_data = await conn.fetch(
+                    """
                     SELECT *
                     FROM substep_timings
                     WHERE protocol_name = $1
-                """, protocol_name)
+                """,
+                    protocol_name,
+                )
 
                 # Get asset usage data
-                asset_data = await conn.fetch("""
+                asset_data = await conn.fetch(
+                    """
                     SELECT a.*
                     FROM assets a
                     JOIN protocol_asset_usage pau ON a.asset_id = pau.asset_id
                     WHERE pau.protocol_name = $1
-                """, protocol_name)
+                """,
+                    protocol_name,
+                )
 
                 # Create SQLite backup
                 import sqlite3
@@ -223,7 +307,8 @@ class DatabaseManager:
 
                 async with aiosqlite.connect(backup_path) as sqlite_conn:
                     # Create tables
-                    await sqlite_conn.execute("""
+                    await sqlite_conn.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS protocol_metadata (
                             protocol_id INTEGER PRIMARY KEY,
                             protocol_name TEXT,
@@ -236,9 +321,11 @@ class DatabaseManager:
                             parameters JSON,
                             required_assets JSON
                         )
-                    """)
+                    """
+                    )
 
-                    await sqlite_conn.execute("""
+                    await sqlite_conn.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS substep_timings (
                             timing_id INTEGER PRIMARY KEY,
                             protocol_name TEXT,
@@ -249,9 +336,11 @@ class DatabaseManager:
                             task_id TEXT,
                             timestamp TIMESTAMP
                         )
-                    """)
+                    """
+                    )
 
-                    await sqlite_conn.execute("""
+                    await sqlite_conn.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS assets (
                             asset_id INTEGER PRIMARY KEY,
                             name TEXT UNIQUE,
@@ -264,34 +353,63 @@ class DatabaseManager:
                             lock_acquired_at TIMESTAMP,
                             lock_expires_at TIMESTAMP
                         )
-                    """)
+                    """
+                    )
 
                     # Insert data
                     await sqlite_conn.executemany(
                         "INSERT INTO protocol_metadata VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        [(p['protocol_id'], p['protocol_name'], p['user_id'],
-                          p['start_time'], p['end_time'], p['status'],
-                          p['data_directory'], p['database_file'],
-                          json.dumps(p['parameters']), json.dumps(p['required_assets']))
-                         for p in protocol_data]
+                        [
+                            (
+                                p["protocol_id"],
+                                p["protocol_name"],
+                                p["user_id"],
+                                p["start_time"],
+                                p["end_time"],
+                                p["status"],
+                                p["data_directory"],
+                                p["database_file"],
+                                json.dumps(p["parameters"]),
+                                json.dumps(p["required_assets"]),
+                            )
+                            for p in protocol_data
+                        ],
                     )
 
                     await sqlite_conn.executemany(
                         "INSERT INTO substep_timings VALUES (?,?,?,?,?,?,?,?)",
-                        [(t['timing_id'], t['protocol_name'], t['func_hash'],
-                          t['func_name'], t['duration'], t['caller_name'],
-                          t['task_id'], t['timestamp'])
-                         for t in timing_data]
+                        [
+                            (
+                                t["timing_id"],
+                                t["protocol_name"],
+                                t["func_hash"],
+                                t["func_name"],
+                                t["duration"],
+                                t["caller_name"],
+                                t["task_id"],
+                                t["timestamp"],
+                            )
+                            for t in timing_data
+                        ],
                     )
 
                     await sqlite_conn.executemany(
                         "INSERT INTO assets VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        [(a['asset_id'], a['name'], a['type'],
-                          json.dumps(a['metadata']), json.dumps(a['plr_serialized']),
-                          a['is_available'], a['locked_by_protocol'],
-                          a['locked_by_task'], a['lock_acquired_at'],
-                          a['lock_expires_at'])
-                         for a in asset_data]
+                        [
+                            (
+                                a["asset_id"],
+                                a["name"],
+                                a["type"],
+                                json.dumps(a["metadata"]),
+                                json.dumps(a["plr_serialized"]),
+                                a["is_available"],
+                                a["locked_by_protocol"],
+                                a["locked_by_task"],
+                                a["lock_acquired_at"],
+                                a["lock_expires_at"],
+                            )
+                            for a in asset_data
+                        ],
                     )
 
                     await sqlite_conn.commit()
@@ -300,13 +418,16 @@ class DatabaseManager:
             raise RuntimeError(f"Failed to export protocol data: {str(e)}")
 
     # Asset management methods
-    async def add_asset(self, name: str, asset_type: str, metadata: dict, plr_serialized: dict) -> int:
+    async def add_asset(
+        self, name: str, asset_type: str, metadata: dict, plr_serialized: dict
+    ) -> int:
         """Add an asset to the database with validation."""
         if not name or not asset_type:
             raise ValueError("Asset name and type are required")
 
         async with self.praxis_connection() as conn:
-            result = await conn.fetchval("""
+            result = await conn.fetchval(
+                """
                 INSERT INTO assets (name, type, metadata, plr_serialized)
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (name)
@@ -315,7 +436,12 @@ class DatabaseManager:
                     metadata = EXCLUDED.metadata,
                     plr_serialized = EXCLUDED.plr_serialized
                 RETURNING asset_id
-            """, name, asset_type, json.dumps(metadata), json.dumps(plr_serialized))
+            """,
+                name,
+                asset_type,
+                json.dumps(metadata),
+                json.dumps(plr_serialized),
+            )
             if result is None:
                 raise ValueError("Failed to add asset: no asset_id returned")
             return int(result)
@@ -325,82 +451,95 @@ class DatabaseManager:
             record = await conn.fetchrow("SELECT * FROM assets WHERE name = $1", name)
             if record:
                 return {
-                    'asset_id': record['asset_id'],
-                    'name': record['name'],
-                    'type': record['type'],
-                    'metadata': json.loads(record['metadata']),
-                    'plr_serialized': json.loads(record['plr_serialized']),
-                    'is_available': record['is_available'],
-                    'locked_by_protocol': record['locked_by_protocol'],
-                    'locked_by_task': record['locked_by_task'],
-                    'lock_acquired_at': record['lock_acquired_at'],
-                    'lock_expires_at': record['lock_expires_at']
+                    "asset_id": record["asset_id"],
+                    "name": record["name"],
+                    "type": record["type"],
+                    "metadata": json.loads(record["metadata"]),
+                    "plr_serialized": json.loads(record["plr_serialized"]),
+                    "is_available": record["is_available"],
+                    "locked_by_protocol": record["locked_by_protocol"],
+                    "locked_by_task": record["locked_by_task"],
+                    "lock_acquired_at": record["lock_acquired_at"],
+                    "lock_expires_at": record["lock_expires_at"],
                 }
             return None
 
     async def instantiate_asset(self, name: str) -> Union[Resource, Machine]:
         """Retrieves and instantiates an asset from the database."""
         async with self.praxis_connection() as conn:
-            record = await conn.fetchrow("""
+            record = await conn.fetchrow(
+                """
                 SELECT type, plr_serialized
                 FROM assets
                 WHERE name = $1
-            """, name)
+            """,
+                name,
+            )
 
             if not record:
                 raise ValueError(f"Asset {name} not found")
 
-            return self.deserialize_asset(record['plr_serialized'])
+            return self.deserialize_asset(record["plr_serialized"])
 
     async def get_all_machines(self) -> dict[str, Machine]:
         """Get all machines from the database."""
         async with self.praxis_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT name, plr_serialized
                 FROM assets
                 WHERE type LIKE '%Machine%'
-            """)
+            """
+            )
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
+                record["name"]: self.deserialize_asset(record["plr_serialized"])  # type: ignore
                 for record in records
             }
 
     async def get_all_resources(self) -> dict[str, Resource]:
         """Get all resources from the database."""
         async with self.praxis_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT name, plr_serialized
                 FROM assets
                 WHERE type LIKE '%Resource%'
-            """)
+            """
+            )
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
+                record["name"]: self.deserialize_asset(record["plr_serialized"])  # type: ignore
                 for record in records
             }
 
     async def get_resources(self, resource_ids: list[str]) -> dict[str, Resource]:
         """Get specific resources by their IDs."""
         async with self.praxis_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT name, plr_serialized
                 FROM assets
                 WHERE name = ANY($1) AND type LIKE '%Resource%'
-            """, resource_ids)
+            """,
+                resource_ids,
+            )
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
+                record["name"]: self.deserialize_asset(record["plr_serialized"])  # type: ignore
                 for record in records
             }
 
     async def get_machines(self, machine_ids: list[str]) -> dict[str, Machine]:
         """Get specific machines by their IDs."""
         async with self.praxis_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT name, plr_serialized
                 FROM assets
                 WHERE name = ANY($1) AND type LIKE '%Machine%'
-            """, machine_ids)
+            """,
+                machine_ids,
+            )
             return {
-                record['name']: self.deserialize_asset(record['plr_serialized']) # type: ignore
+                record["name"]: self.deserialize_asset(record["plr_serialized"])  # type: ignore
                 for record in records
             }
 
@@ -412,7 +551,7 @@ class DatabaseManager:
             name=self.get_asset_id(machine),
             asset_type=machine.__class__.__name__,
             metadata={},
-            plr_serialized=self.serialize_asset(machine)
+            plr_serialized=self.serialize_asset(machine),
         )
 
     async def add_resource(self, resource: Resource) -> int:
@@ -423,14 +562,15 @@ class DatabaseManager:
             name=self.get_asset_id(resource),
             asset_type=resource.__class__.__name__,
             metadata={},
-            plr_serialized=self.serialize_asset(resource)
+            plr_serialized=self.serialize_asset(resource),
         )
 
     # User management methods
     async def get_all_users(self) -> Dict[str, Dict[str, Any]]:
         """Get all users as a dictionary keyed by username."""
         async with self.keycloak_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT
                     id,
                     username,
@@ -443,17 +583,18 @@ class DatabaseManager:
                 FROM keycloak_users
                 WHERE enabled = true
                 ORDER BY username
-            """)
+            """
+            )
             return {
-                record['username']: {
-                    'id': record['id'],
-                    'username': record['username'],
-                    'email': record['email'],
-                    'first_name': record['first_name'],
-                    'last_name': record['last_name'],
-                    'roles': record['roles'],
-                    'phone_number': record['phone_number'],
-                    'is_active': record['enabled']
+                record["username"]: {
+                    "id": record["id"],
+                    "username": record["username"],
+                    "email": record["email"],
+                    "first_name": record["first_name"],
+                    "last_name": record["last_name"],
+                    "roles": record["roles"],
+                    "phone_number": record["phone_number"],
+                    "is_active": record["enabled"],
                 }
                 for record in records
             }
@@ -461,7 +602,8 @@ class DatabaseManager:
     async def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         """Get user information by username."""
         async with self.keycloak_connection() as conn:
-            record = await conn.fetchrow("""
+            record = await conn.fetchrow(
+                """
                 SELECT
                     id,
                     username,
@@ -473,36 +615,41 @@ class DatabaseManager:
                     phone_number
                 FROM keycloak_users
                 WHERE username = $1
-            """, username)
+            """,
+                username,
+            )
 
             if record:
                 return {
-                    'id': record['id'],
-                    'username': record['username'],
-                    'email': record['email'],
-                    'first_name': record['first_name'],
-                    'last_name': record['last_name'],
-                    'roles': record['roles'],
-                    'phone_number': record['phone_number'],
-                    'is_active': record['enabled']
+                    "id": record["id"],
+                    "username": record["username"],
+                    "email": record["email"],
+                    "first_name": record["first_name"],
+                    "last_name": record["last_name"],
+                    "roles": record["roles"],
+                    "phone_number": record["phone_number"],
+                    "is_active": record["enabled"],
                 }
             return None
 
     async def list_users(self) -> List[str]:
         """Get a list of all usernames."""
         async with self.keycloak_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT username
                 FROM keycloak_users
                 WHERE enabled = true
                 ORDER BY username
-            """)
-            return [record['username'] for record in records]
+            """
+            )
+            return [record["username"] for record in records]
 
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user information by UUID."""
         async with self.keycloak_connection() as conn:
-            record = await conn.fetchrow("""
+            record = await conn.fetchrow(
+                """
                 SELECT
                     id,
                     username,
@@ -514,25 +661,28 @@ class DatabaseManager:
                     phone_number
                 FROM keycloak_users
                 WHERE id = $1
-            """, user_id)
+            """,
+                user_id,
+            )
 
             if record:
                 return {
-                    'id': record['id'],
-                    'username': record['username'],
-                    'email': record['email'],
-                    'first_name': record['first_name'],
-                    'last_name': record['last_name'],
-                    'roles': record['roles'],
-                    'phone_number': record['phone_number'],
-                    'is_active': record['enabled']
+                    "id": record["id"],
+                    "username": record["username"],
+                    "email": record["email"],
+                    "first_name": record["first_name"],
+                    "last_name": record["last_name"],
+                    "roles": record["roles"],
+                    "phone_number": record["phone_number"],
+                    "is_active": record["enabled"],
                 }
             return None
 
     async def search_users(self, query: str) -> List[Dict[str, Any]]:
         """Search users by username, email, or name."""
         async with self.keycloak_connection() as conn:
-            records = await conn.fetch("""
+            records = await conn.fetch(
+                """
                 SELECT
                     id,
                     username,
@@ -552,18 +702,20 @@ class DatabaseManager:
                         OR last_name ILIKE $1
                     )
                 ORDER BY username
-            """, f"%{query}%")
+            """,
+                f"%{query}%",
+            )
 
             return [
                 {
-                    'id': r['id'],
-                    'username': r['username'],
-                    'email': r['email'],
-                    'first_name': r['first_name'],
-                    'last_name': r['last_name'],
-                    'roles': r['roles'],
-                    'phone_number': r['phone_number'],
-                    'is_active': r['enabled']
+                    "id": r["id"],
+                    "username": r["username"],
+                    "email": r["email"],
+                    "first_name": r["first_name"],
+                    "last_name": r["last_name"],
+                    "roles": r["roles"],
+                    "phone_number": r["phone_number"],
+                    "is_active": r["enabled"],
                 }
                 for r in records
             ]
@@ -594,11 +746,13 @@ class DatabaseManager:
             return pd.DataFrame(records)
 
     # Asset locking methods
-    async def acquire_lock(self, asset_name: str, protocol_name: str, task_id: str,
-                          lock_timeout: int = 60) -> bool:
+    async def acquire_lock(
+        self, asset_name: str, protocol_name: str, task_id: str, lock_timeout: int = 60
+    ) -> bool:
         async with self.praxis_connection() as conn:
             async with conn.transaction():
-                result = await conn.fetchrow("""
+                result = await conn.fetchrow(
+                    """
                     UPDATE assets
                     SET is_available = false,
                         locked_by_protocol = $1,
@@ -608,12 +762,18 @@ class DatabaseManager:
                     WHERE name = $4
                         AND (is_available = true OR lock_expires_at < CURRENT_TIMESTAMP)
                     RETURNING asset_id
-                """, protocol_name, task_id, lock_timeout, asset_name)
+                """,
+                    protocol_name,
+                    task_id,
+                    lock_timeout,
+                    asset_name,
+                )
                 return result is not None
 
     async def release_lock(self, asset_name: str, protocol_name: str, task_id: str):
         async with self.praxis_connection() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 UPDATE assets
                 SET is_available = true,
                     locked_by_protocol = null,
@@ -623,7 +783,11 @@ class DatabaseManager:
                 WHERE name = $1
                     AND locked_by_protocol = $2
                     AND locked_by_task = $3
-            """, asset_name, protocol_name, task_id)
+            """,
+                asset_name,
+                protocol_name,
+                task_id,
+            )
 
     # Cleanup method
     async def close(self):
@@ -638,7 +802,7 @@ class DatabaseManager:
         if isinstance(asset, (Resource, Machine)):
             serialized = asset.serialize()
             # Add type information for proper deserialization
-            serialized['type'] = asset.__class__.__name__
+            serialized["type"] = asset.__class__.__name__
             return serialized
         raise ValueError("Asset must be an instance of Resource or Machine")
 
@@ -702,22 +866,27 @@ class DatabaseManager:
 
                     for item_name in dir(module):
                         item = getattr(module, item_name)
-                        if (isinstance(item, type) and
-                            hasattr(item, '__module__') and
-                            item.__module__ == module.__name__):
+                        if (
+                            isinstance(item, type)
+                            and hasattr(item, "__module__")
+                            and item.__module__ == module.__name__
+                        ):
 
                             # Get WorkcellAssets and ProtocolParameters if they exist
-                            assets = getattr(module, 'required_assets', None)
-                            parameters = getattr(module, 'baseline_parameters', None)
+                            assets = getattr(module, "required_assets", None)
+                            parameters = getattr(module, "baseline_parameters", None)
 
-                            protocols.append({
-                                'name': item.__name__,
-                                'path': str(file),
-                                'module': module.__name__,
-                                'description': item.__doc__ or 'No description available',
-                                'has_assets': assets is not None,
-                                'has_parameters': parameters is not None
-                            })
+                            protocols.append(
+                                {
+                                    "name": item.__name__,
+                                    "path": str(file),
+                                    "module": module.__name__,
+                                    "description": item.__doc__
+                                    or "No description available",
+                                    "has_assets": assets is not None,
+                                    "has_parameters": parameters is not None,
+                                }
+                            )
 
                 except Exception as e:
                     print(f"Error loading protocol from {file}: {e}")
@@ -727,7 +896,7 @@ class DatabaseManager:
     async def get_protocol_details(self, protocol_path: str) -> dict:
         """Get the WorkcellAssets and ProtocolParameters for a protocol."""
         try:
-            spec = importlib.util.spec_from_file_location('protocol', protocol_path)
+            spec = importlib.util.spec_from_file_location("protocol", protocol_path)
             if spec is None or spec.loader is None:
                 raise ValueError(f"Cannot load protocol from {protocol_path}")
 
@@ -735,11 +904,12 @@ class DatabaseManager:
             spec.loader.exec_module(module)
 
             return {
-                'assets': getattr(module, 'required_assets', None),
-                'parameters': getattr(module, 'baseline_parameters', None)
+                "assets": getattr(module, "required_assets", None),
+                "parameters": getattr(module, "baseline_parameters", None),
             }
         except Exception as e:
             raise ValueError(f"Error loading protocol details: {e}")
+
 
 # Global instance
 db = DatabaseManager()
