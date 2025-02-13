@@ -52,6 +52,7 @@
     "pylint",
     "pytest",
     "republicwireless",
+    "reqs",
     "smtext",
     "sprintpcs",
     "starlette",

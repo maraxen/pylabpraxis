@@ -1,90 +1,80 @@
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
 import os
 
-from praxis.api import protocols, assets
+from praxis.api import protocols, workcell, assets
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
-from fastapi import Depends
-from fastapi.middleware.cors import CORSMiddleware
+from praxis.utils.db import db
 
-# Create a Configuration instance
-config_file = "praxis.ini"
-config = PraxisConfiguration(config_file)
-
-# Set up default protocol directory
-DEFAULT_PROTOCOL_DIR = config.default_protocol_dir
-
-# Create and initialize Orchestrator
+# Global instances
+config = PraxisConfiguration("praxis.ini")
 orchestrator = Orchestrator(config)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Asynchronous context manager for lifespan events.
-    Handles startup and shutdown events.
-    """
+    """Lifecycle manager for application startup/shutdown."""
     try:
-        # Startup logic
+        # Startup
         print("Starting application initialization...")
-        print(f"Default protocol directory: {DEFAULT_PROTOCOL_DIR}")
+        print(f"Default protocol directory: {config.default_protocol_dir}")
 
-        try:
-            await orchestrator.initialize_dependencies()
-            print("Successfully initialized dependencies")
-        except ConnectionError as e:
-            print(f"Failed to initialize database connections: {str(e)}")
-            # You might want to exit here depending on your requirements
-            raise
-        except Exception as e:
-            print(f"Unexpected error during initialization: {str(e)}")
-            raise
+        # Initialize orchestrator and attach to app state
+        await orchestrator.initialize_dependencies()
+        app.state.orchestrator = orchestrator
+        print("Successfully initialized dependencies")
 
         yield
 
     except Exception as e:
-        print(f"Error during application startup: {str(e)}")
+        print(f"Error during startup: {str(e)}")
         raise
 
     finally:
-        # Shutdown logic
+        # Shutdown
         print("Starting application shutdown...")
         try:
-            if orchestrator.db is not None:
+            if orchestrator.db:
                 await orchestrator.db.close()
-                print("Successfully closed database connections")
+            print("Successfully closed database connections")
         except Exception as e:
-            print(f"Error during database shutdown: {str(e)}")
-        print("Application shutdown complete")
+            print(f"Error during shutdown: {str(e)}")
 
 
 app = FastAPI(lifespan=lifespan)
 
-# Update CORS middleware with specific headers
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],  # More permissive for development
+    allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
 )
 
-# Include API routers with versioning
+# API routes
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
+app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["workcell"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 
+# Static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Redirect root URL to index.html
+
 @app.get("/")
 async def redirect_to_index():
+    """Redirect root to frontend."""
     return RedirectResponse(url="/static/index.html")
 
 
-# Add additional directories to the protocols section
-config.additional_directories = ""
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

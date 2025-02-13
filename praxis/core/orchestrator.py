@@ -3,8 +3,9 @@ import threading
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set
+from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set, MutableMapping
 from celery import Celery  # type: ignore
+from dataclasses import dataclass, field
 
 from pylabrobot.resources import Coordinate, Deck, Resource
 from .deck import DeckManager
@@ -22,6 +23,16 @@ from .deck import DeckManager
 from ..workcell import Workcell, WorkcellView
 
 P = TypeVar("P", bound=Protocol)
+
+
+@dataclass
+class ValidationResult:
+    """Validation result container with typed fields."""
+
+    valid: bool = True
+    errors: Dict[str, Any] = field(default_factory=dict)
+    warnings: List[str] = field(default_factory=list)
+    validated_config: Dict[str, Any] = field(default_factory=dict)
 
 
 class Orchestrator:
@@ -57,6 +68,7 @@ class Orchestrator:
         self._active_resources: Dict[str, Set[str]] = (
             {}
         )  # resource_name -> set of protocol names
+        self._validation_data: MutableMapping[str, Any] = {}
 
     async def initialize_dependencies(self):
         print(self.config.database["praxis_dsn"])
@@ -194,3 +206,122 @@ class Orchestrator:
         # Remove protocol from active resources
         for users in self._active_resources.values():
             users.discard(protocol_name)
+
+    async def match_assets_to_requirements(
+        self, requirements: Dict[str, Any]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Match required assets to available assets in database."""
+        if self.db is None:
+            raise RuntimeError("Database not initialized")
+
+        matches: Dict[str, List[Dict[str, Any]]] = {}
+
+        for asset_name, asset_reqs in requirements["required_assets"].items():
+            query = """
+            SELECT
+                name,
+                type,
+                metadata,
+                CASE
+                    WHEN type = $1 THEN 1.0
+                    WHEN type LIKE $2 THEN 0.8
+                    ELSE 0.5
+                END as compatibility_score
+            FROM assets
+            WHERE is_available = true
+                AND (type = $1 OR type LIKE $2)
+                AND metadata @> $3
+            ORDER BY compatibility_score DESC
+            """
+
+            asset_type = asset_reqs.get("type")
+            metadata_requirements = asset_reqs.get("metadata", {})
+
+            results = await self.db.fetch_all(
+                query, asset_type, f"%{asset_type}%", json.dumps(metadata_requirements)
+            )
+
+            matches[asset_name] = [
+                {
+                    "asset_name": r["name"],
+                    "asset_type": r["type"],
+                    "compatibility_score": r["compatibility_score"],
+                    "metadata": r["metadata"],
+                }
+                for r in results
+            ]
+
+        return matches
+
+    async def validate_configuration(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate a complete protocol configuration."""
+        try:
+            result = ValidationResult(validated_config=config.copy())
+
+            # 1. Basic config validation
+            required_fields = ["name", "protocol_path", "required_assets"]
+            missing_fields = [f for f in required_fields if f not in config]
+            if missing_fields:
+                result.valid = False
+                result.errors["missing_fields"] = missing_fields
+                return result.__dict__
+
+            # 2. Validate assets
+            assets = WorkcellAssets(config.get("required_assets", {}))
+            temp_view = None
+
+            try:
+                # Create temporary view
+                temp_view = await self.create_workcell_view(
+                    protocol_name=f"temp_{config['name']}", required_assets=assets
+                )
+
+                # Check asset availability
+                unavailable: list[str] = []
+                if self.db is None:
+                    raise RuntimeError("Database not initialized")
+
+                for asset in assets:
+                    if await temp_view.parent.is_asset_in_use(asset.name):
+                        unavailable.append(asset.name)
+                    else:
+                        # Verify asset exists
+                        asset_info = await self.db.get_asset(asset.name)
+                        if not asset_info:
+                            unavailable.append(f"{asset.name} (not found)")
+
+                if len(unavailable) > 0:
+                    result.valid = False
+                    result.errors["unavailable_assets"] = unavailable
+                    return result.__dict__
+
+                # 3. Validate parameters
+                if "parameters" in config and self.db is not None:
+                    try:
+                        details = await self.db.get_protocol_details(
+                            config["protocol_path"]
+                        )
+                        if details and details.get("parameters"):
+                            validated_params = details["parameters"].validate(
+                                config["parameters"]
+                            )
+                            result.validated_config["parameters"] = validated_params
+                    except ValueError as e:
+                        result.valid = False
+                        result.errors["parameters"] = str(e)
+                        return result.__dict__
+
+                # Add warnings
+                if self.get_running_protocols():
+                    result.warnings.append("Other protocols are currently running")
+
+                return result.__dict__
+
+            finally:
+                if temp_view:
+                    await self.release_workcell_view(f"temp_{config['name']}")
+
+        except Exception as e:
+            return ValidationResult(
+                valid=False, errors={"validation": str(e)}, validated_config=config
+            ).__dict__

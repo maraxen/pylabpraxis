@@ -9,40 +9,20 @@ from pydantic import BaseModel
 import json
 import importlib.util
 
-from praxis.configure import PraxisConfiguration
-from praxis.core.orchestrator import Orchestrator
-from praxis.protocol.protocol import Protocol
+from ..configure import PraxisConfiguration
+from ..core.orchestrator import Orchestrator
+from ..protocol.protocol import Protocol
+from ..utils import db
+from .dependencies import get_orchestrator
 
 config = PraxisConfiguration("praxis.ini")
 router = APIRouter()
-orchestrator = Orchestrator(config)  # Initialize the Orchestrator instance
 P = TypeVar("P", bound=Protocol)
 
 
-# Dependency to get the Orchestrator instance
-def get_orchestrator() -> Orchestrator:
-    """
-    FastAPI dependency to provide the Orchestrator instance to API endpoints.
-
-    Replace this with your actual way of getting the Orchestrator instance.
-    For example, you might use a global variable, a dependency injection
-    framework, or a singleton pattern to manage the Orchestrator instance.
-    """
-    global orchestrator  # Access the global orchestrator instance (for now)
-
-    if orchestrator is None:
-        raise HTTPException(status_code=500, detail="Orchestrator is not initialized")
-    return orchestrator
-
-
-class ProtocolStartRequest(BaseModel):
+class ProtocolStartRequest(BaseModel, Generic[P]):
     protocol_class: Type[P]
-    protocol_name: str
     config_data: Dict[str, Any]
-    deck_file: str
-    liquid_handler_name: str
-    manual_check_list: Optional[List[str]] = None
-    user_info: Optional[Dict[str, Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
 
 
@@ -53,6 +33,12 @@ class ProtocolStatus(BaseModel):
 
 class ProtocolDirectories(BaseModel):
     directories: List[str]
+
+
+class ProtocolPrepareRequest(BaseModel):
+    protocol_path: str
+    parameters: Optional[Dict[str, Any]] = None
+    asset_assignments: Optional[Dict[str, str]] = None
 
 
 @router.post("/upload_config_file")
@@ -138,56 +124,108 @@ async def list_protocols(orchestrator: Orchestrator = Depends(get_orchestrator))
     return list(orchestrator.protocols.keys())
 
 
+@router.post("/prepare", response_model=Dict[str, Any])
+async def prepare_protocol(
+    request: ProtocolPrepareRequest,
+    orchestrator: Orchestrator = Depends(get_orchestrator),
+) -> Dict[str, Any]:
+    """Prepare a protocol by loading its requirements and matching assets."""
+    try:
+        # Get protocol details
+        details = await db.get_protocol_details(request.protocol_path)
+        if not details:
+            raise HTTPException(status_code=404, detail="Protocol not found")
+
+        # Load and validate parameters
+        parameters = request.parameters or {}
+        if details["parameters"]:
+            # Validate against schema
+            try:
+                validated_params = details["parameters"].validate(parameters)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid parameters: {str(e)}"
+                )
+
+        # Match assets
+        required_assets = details["assets"]
+        if required_assets:
+            if request.asset_assignments:
+                # Verify assigned assets are valid
+                for name, asset_id in request.asset_assignments.items():
+                    if name not in required_assets:
+                        raise HTTPException(
+                            status_code=400, detail=f"Unknown asset requirement: {name}"
+                        )
+                    asset = await db.get_asset(asset_id)
+                    if not asset:
+                        raise HTTPException(
+                            status_code=400, detail=f"Asset not found: {asset_id}"
+                        )
+            else:
+                # Get asset suggestions
+                asset_matches = await orchestrator.match_assets_to_requirements(
+                    {
+                        "protocol_name": details["name"],
+                        "required_assets": required_assets.to_dict(),
+                        "parameters": validated_params,
+                    }
+                )
+
+        # Construct configuration
+        config = {
+            "name": details["name"],
+            "parameters": validated_params,
+            "required_assets": request.asset_assignments or {},
+            "protocol_path": request.protocol_path,
+        }
+
+        # Validate complete configuration
+        validation = await orchestrator.validate_configuration(config)
+        if not validation["valid"]:
+            return {
+                "status": "invalid",
+                "errors": validation["errors"],
+                "config": config,
+            }
+
+        return {
+            "status": "ready",
+            "config": validation["validated_config"],
+            "asset_suggestions": (
+                asset_matches if not request.asset_assignments else None
+            ),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to prepare protocol: {str(e)}"
+        )
+
+
 @router.post("/start", response_model=ProtocolStatus)
 async def start_protocol(
-    protocol_class: Type[P] = Form(...),
-    protocol_name: str = Form(...),
-    config_file: UploadFile = File(...),
-    deck_file: UploadFile = File(...),
-    liquid_handler_name: str = Form(...),
-    manual_check_list: Optional[List[str]] = Form(None),
-    orchestrator: Orchestrator = Depends(get_orchestrator),
-    **kwargs: Any,
+    config: Dict[str, Any], orchestrator: Orchestrator = Depends(get_orchestrator)
 ):
-    """Starts a new protocol instance."""
+    """Start a protocol with a validated configuration."""
     try:
-        # Save config file temporarily and load config data
-        temp_config_path = f"temp_config_{config_file.filename}"
-        async with aiofiles.open(temp_config_path, "wb") as temp_config:
-            content = await config_file.read()
-            await temp_config.write(content)
+        # Final validation
+        validation = await orchestrator.validate_configuration(config)
+        if not validation["valid"]:
+            raise HTTPException(status_code=400, detail=validation["errors"])
 
-        with open(temp_config_path, "r") as f:
-            protocol_config_data = json.load(f)
-
-        # Save deck file temporarily
-        temp_deck_path = f"temp_deck_{deck_file.filename}"
-        async with aiofiles.open(temp_deck_path, "wb") as temp_deck:
-            content = await deck_file.read()
-            await temp_deck.write(content)
-
-        # Get user info (currently, it's an empty dictionary)
-
+        # Create and start protocol
         protocol = await orchestrator.create_protocol(
-            protocol_class,
-            protocol_config_data,
-            temp_deck_path,
-            manual_check_list,
-            user_info,
-            **kwargs,
+            config["protocol_path"], validation["validated_config"]
         )
-        asyncio.create_task(orchestrator.run_protocol(protocol.name))
+
+        await orchestrator.run_protocol(protocol.name)
         return ProtocolStatus(name=protocol.name, status=protocol.status)
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    finally:
-        # Clean up temporary files
-        if os.path.exists(temp_config_path):
-            os.remove(temp_config_path)
-        if os.path.exists(temp_deck_path):
-            os.remove(temp_deck_path)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start protocol: {str(e)}"
+        )
 
 
 @router.get("/{protocol_name}", response_model=ProtocolStatus)
@@ -237,7 +275,11 @@ async def discover_protocols(
                         spec = importlib.util.spec_from_file_location(
                             file[:-3], filepath
                         )
+                        if spec is None:
+                            continue
                         module = importlib.util.module_from_spec(spec)
+                        if spec.loader is None:
+                            continue
                         spec.loader.exec_module(module)
 
                         # Look for Protocol subclasses
