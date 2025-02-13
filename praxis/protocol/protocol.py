@@ -12,8 +12,7 @@ from .parameter import Parameter, ProtocolParameters
 from .config import ProtocolConfiguration
 from .required_assets import WorkcellAssets
 from ..configure import PraxisConfiguration
-from ..utils import Notifier
-from ..utils import State
+from ..utils import Notifier, DEFAULT_NOTIFIER, State, db
 from ..workcell import Workcell, WorkcellView
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
@@ -139,6 +138,33 @@ class Protocol(ABC):
         self.data_backups_dir = os.path.join(self.directory, "data_backups")
         os.makedirs(self.workcell_saves_dir, exist_ok=True)
         os.makedirs(self.data_backups_dir, exist_ok=True)
+        smtp_details = self.protocol_configuration.config_data.get("smtp_details", None)
+        expected_keys = ["smtp_server", "smtp_port", "smtp_username", "smtp_password"]
+        if (smtp_details is None) or not all(
+            key in smtp_details for key in expected_keys
+        ):
+            raise ValueError(
+                f"SMTP server detail overrides not properly included. Structure should"
+                "be 'smtp_server': SMTP_SERVER, 'smtp_port': SMTP_PORT, 'smtp_username': SMTP_USERNAME,"
+                "'smtp_password': SMTP_PASSWORD' Current structure is: {smtp_details}"
+            )
+        self._notifier = (
+            DEFAULT_NOTIFIER
+            if smtp_details is None
+            else Notifier(**smtp_details)  # TODO: check structure
+        )
+        del expected_keys
+        del smtp_details
+        expected_keys = [
+            "sender_email",
+            "email",
+            "phone",
+            "phone_carrier",
+        ]  # TODO: maybe get rid of sender email and just have a default
+        self.user_info = self.protocol_configuration.user_info
+        if not all(key in self.user_info for key in expected_keys):
+            raise ValueError("Needed details missing from user info.")
+        self.db = db
 
         # Start logging and readme
         self.start_loggers()
@@ -180,7 +206,7 @@ class Protocol(ABC):
                     deck_manager = self._orchestrator.deck_manager
                 else:
                     deck_manager = DeckManager(self.praxis_config)
-                deck = deck_manager.get_deck(
+                deck = await deck_manager.get_deck(
                     self.protocol_configuration.decks[liquid_handler_id]
                 )
                 workcell.specify_deck(
@@ -208,8 +234,8 @@ class Protocol(ABC):
         return self._available_commands
 
     @property
-    def emailer(self) -> Notifier | None:
-        return self._emailer
+    def notifier(self) -> Notifier:
+        return self._notifier
 
     @property
     def common_prompt(self) -> str:
@@ -240,7 +266,7 @@ class Protocol(ABC):
         return self._readme_file
 
     @property
-    def workcell(self) -> Workcell | None:
+    def workcell(self) -> Workcell | WorkcellView | None:
         return self._workcell
 
     @property
@@ -331,16 +357,15 @@ class Protocol(ABC):
         """
         Email and text user about error.
         """
-        assert self.emailer is not None, "Emailer not initialized"
         for user in self.users:
             user_info = self.user_info[user]
-            sender_email = user_info["sender_email"]
-            user_email = user_info["email"]
-            user_phone = user_info["phone"]
-            user_phone_carrier = user_info["phone_carrier"]
+            sender_email = user_info.get("sender_email", False)
+            user_email = user_info.get("email", False)
+            user_phone = user_info.get("phone", False)
+            user_phone_carrier = user_info.get("phone_carrier", False)
             try:
                 if user_phone and user_phone_carrier:
-                    self.emailer.send_text(
+                    self.notifier.send_text(
                         sender_email=str(sender_email),
                         recipient_phone=str(user_phone),
                         carrier=str(user_phone_carrier),
@@ -348,9 +373,9 @@ class Protocol(ABC):
                         body=f"An error occurred in protocol {self.name}: {error}",
                     )
                 if user_email:
-                    self.emailer.send_email(
+                    self.notifier.send_email(
                         sender_email=str(sender_email),
-                        recipient_email=str(self.user_info["notification_email"]),
+                        recipient_email=str(user_email),
                         subject=f"Error in protocol {self.name}",
                         body=f"An error occurred in protocol {self.name}: {error}",
                     )
@@ -738,8 +763,7 @@ class Protocol(ABC):
             backup_file = os.path.join(backup_dir, f"{self.name}_data.sqlite")
 
             # Export protocol data to SQLite backup
-            assert self.orchestrator.db is not None, "Database not initialized"
-            await self.orchestrator.db.export_protocol_data(self.name, backup_file)
+            await self.db.export_protocol_data(self.name, backup_file)
 
             # Also backup the workcell state if available
             if self.workcell:

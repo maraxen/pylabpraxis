@@ -36,7 +36,7 @@ class ProtocolConfiguration:
                 config_data = json.load(f)
         elif isinstance(protocol_config, dict):
             config_data = protocol_config
-        self._config_data = config_data
+        self.config_data = config_data
         self.praxis_config = praxis_config
         self.deck_directory = praxis_config.deck_directory
         self.db = db
@@ -78,6 +78,10 @@ class ProtocolConfiguration:
         if isinstance(assets_data, Mapping):
             self._required_assets.load_from_dict(assets_data)
 
+        self.user_info: dict[str, Any] = cast(
+            dict, config_data.get("user_info", {})
+        )  # TODO: check structure
+
     @property
     def machines(self) -> list[str | int]:
         """Get the machines."""
@@ -111,3 +115,6 @@ class ProtocolConfiguration:
         """See if decks are assigned to liquid handlers. This can be bypassed if a workcell is loaded
         directly with the decks initialized."""
         return self._decks == {}
+
+    def __getitem__(self, key: Any) -> Any | None:
+        return self.config_data.get(key, None)

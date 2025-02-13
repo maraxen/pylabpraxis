@@ -48,24 +48,32 @@ class PraxisConfiguration:
             os.makedirs(self.default_protocol_dir)
 
         # Add default Keycloak configuration
-        if not self.config.has_section('keycloak'):
-            self.config.add_section('keycloak')
-            self.config.set('keycloak', 'server_url', 'http://localhost:8080')
-            self.config.set('keycloak', 'realm_name', 'praxis')
-            self.config.set('keycloak', 'client_id', 'praxis-client')
-            self.config.set('keycloak', 'client_secret', '')  # To be filled after initialization
+        if not self.config.has_section("keycloak"):
+            self.config.add_section("keycloak")
+            self.config.set("keycloak", "server_url", "http://localhost:8080")
+            self.config.set("keycloak", "realm_name", "praxis")
+            self.config.set("keycloak", "client_id", "praxis-client")
+            self.config.set(
+                "keycloak", "client_secret", ""
+            )  # To be filled after initialization
             self.save_config()
 
         # Update database configuration handling
         self.database = self.get_section("database")
         if "praxis_dsn" not in self.database:
-            self.database["praxis_dsn"] = "postgresql://praxis:praxis@localhost:5432/praxis_db"
+            self.database["praxis_dsn"] = (
+                "postgresql://praxis:praxis@localhost:5432/praxis_db"
+            )
         if "keycloak_dsn" not in self.database:
-            self.database["keycloak_dsn"] = "postgresql://keycloak:keycloak@localhost:5432/keycloak"
+            self.database["keycloak_dsn"] = (
+                "postgresql://keycloak:keycloak@localhost:5432/keycloak"
+            )
 
         # Ensure DSNs have proper scheme
         for key in ["praxis_dsn", "keycloak_dsn"]:
-            if self.database[key] and not self.database[key].startswith(("postgresql://", "postgres://")):
+            if self.database[key] and not self.database[key].startswith(
+                ("postgresql://", "postgres://")
+            ):
                 self.database[key] = f"postgresql://{self.database[key]}"
 
     def _load_config(self, config_file: str) -> configparser.ConfigParser:
@@ -85,27 +93,37 @@ class PraxisConfiguration:
 
     def get_keycloak_config(self):
         """Get Keycloak configuration."""
-        if not self.config.has_section('keycloak'):
+        if not self.config.has_section("keycloak"):
             raise ValueError("Keycloak configuration not found")
 
         return {
-            'server_url': self.config.get('keycloak', 'server_url'),
-            'realm_name': self.config.get('keycloak', 'realm_name'),
-            'client_id': self.config.get('keycloak', 'client_id'),
-            'client_secret': self.config.get('keycloak', 'client_secret'),
-            'client_initial_access_token': self.config.get('keycloak', 'client_initial_access_token', fallback=None)
+            "server_url": self.config.get("keycloak", "server_url"),
+            "realm_name": self.config.get("keycloak", "realm_name"),
+            "client_id": self.config.get("keycloak", "client_id"),
+            "client_secret": self.config.get("keycloak", "client_secret"),
+            "client_initial_access_token": self.config.get(
+                "keycloak", "client_initial_access_token", fallback=None
+            ),
         }
 
     def save_keycloak_config(self, client_id: str, client_secret: str) -> None:
         """Save Keycloak client credentials."""
-        if not self.config.has_section('keycloak'):
-            self.config.add_section('keycloak')
+        if not self.config.has_section("keycloak"):
+            self.config.add_section("keycloak")
 
-        self.config.set('keycloak', 'client_id', client_id)
-        self.config.set('keycloak', 'client_secret', client_secret)
+        self.config.set("keycloak", "client_id", client_id)
+        self.config.set("keycloak", "client_secret", client_secret)
 
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, "w") as f:
             self.config.write(f)
+
+    def smtp_details(self):
+        return (
+            self.smtp_server,
+            self.smtp_port,
+            self.smtp_username,
+            self.smtp_password,
+        )
 
     def _get_protocol_discovery_dirs(self) -> List[str]:
         """Get the protocol discovery directories."""
