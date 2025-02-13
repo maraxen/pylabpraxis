@@ -161,7 +161,7 @@ class Protocol(ABC):
             "phone",
             "phone_carrier",
         ]  # TODO: maybe get rid of sender email and just have a default
-        self.user_info = self.protocol_configuration.user_info
+        self._user_info = self.protocol_configuration.user_info
         if not all(key in self.user_info for key in expected_keys):
             raise ValueError("Needed details missing from user info.")
         self.db = db

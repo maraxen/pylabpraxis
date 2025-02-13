@@ -21,10 +21,20 @@ from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 from pylabrobot.serializer import serialize, deserialize
 
-# TODO: make different resource types from inspection of PLR
+# TODO: make different asset types from inspection of PLR
 
-from ..configure import PraxisConfiguration
-from ..utils import DatabaseManager
+from .configure import PraxisConfiguration
+from .utils import DatabaseManager, db
+
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class StateManaged(Protocol):  # Protocol from the typing library not praxis.
+    """Protocol for objects that support state management."""
+
+    def get_state(self) -> Dict[str, Any]: ...
+    def update_state(self, state: Dict[str, Any]) -> None: ...
 
 
 class Workcell:
@@ -42,7 +52,7 @@ class Workcell:
         if not isinstance(config, PraxisConfiguration):
             raise ValueError("Invalid configuration object.")
         self.config = config
-        self.db: Optional[DatabaseManager] = None
+        self.db: DatabaseManager = db
         if save_file[-5:] != ".json":
             raise ValueError("Filepath must be a json file ending in .json")
         self.user = user
@@ -76,8 +86,8 @@ class Workcell:
         self.backup_interval = backup_interval
         self.num_backups = num_backups
         self.backup_task: Optional[asyncio.Task] = None
-        self._in_use_by: Dict[str, str] = {}  # resource_name -> protocol_name
-        self._resource_states: Dict[str, Dict[str, Any]] = {}
+        self._in_use_by: Dict[str, str] = {}  # asset_name -> protocol_name
+        self._asset_states: Dict[str, Dict[str, Any]] = {}
 
     @property
     def all_machines(self) -> dict[str, Machine]:
@@ -125,10 +135,6 @@ class Workcell:
         workcell = self(
             configuration, save_file, user, using_machines, backup_interval, num_backups
         )
-        workcell.db = await DatabaseManager.initialize(
-            praxis_dsn=configuration.database["praxis_dsn"],
-            keycloak_dsn=configuration.database["keycloak_dsn"],
-        )
         await workcell.unpack_machines(using_machines)
         return workcell
 
@@ -171,7 +177,7 @@ class Workcell:
         if using is None:
             return
         if using == "all":
-            machines = await self.db.get_machines()
+            machines = await self.db.get_all_machines()
         else:
             machines = await self.db.get_machines(using)
         for machine_id, machine in machines.items():
@@ -252,7 +258,7 @@ class Workcell:
         }
 
     def get_all_children(self) -> list[Resource | Machine]:
-        """Recursively get all children of this resource."""
+        """Recursively get all children of this asset."""
         children = self.children.copy()
         for child in self.children:
             if isinstance(child, Resource):
@@ -262,7 +268,7 @@ class Workcell:
         return children
 
     def save(self, fn: str, indent: Optional[int] = None):
-        """Save a resource to a JSON file.
+        """Save a asset to a JSON file.
 
         Args:
           fn: File name. Caution: file will be overwritten.
@@ -271,7 +277,7 @@ class Workcell:
         Examples:
           Saving to a json file:
 
-          >>> from pylabrobot.resources.hamilton import STARLetDeck
+          >>> from pylabrobot.assets.hamilton import STARLetDeck
           >>> deck = STARLetDeck()
           >>> deck.save("my_layout.json")
         """
@@ -282,35 +288,35 @@ class Workcell:
 
     @classmethod
     def deserialize(cls, data: dict) -> Self:
-        """Deserialize a resource from a dictionary.
+        """Deserialize a asset from a dictionary.
 
         Args:
           allow_marshal: If `True`, the `marshal` module will be used to deserialize functions. This
             can be a security risk if the data is not trusted. Defaults to `False`.
 
         Examples:
-          Loading a resource from a json file:
+          Loading a asset from a json file:
 
-          >>> from pylabrobot.resources import Resource
-          >>> with open("my_resource.json", "r") as f:
+          >>> from pylabrobot.assets import Resource
+          >>> with open("my_asset.json", "r") as f:
           >>>   content = json.load(f)
-          >>> resource = Resource.deserialize(content)
+          >>> asset = Resource.deserialize(content)
         """
 
         return cls(**data)
 
     @classmethod
     def load_from_json_file(cls, json_file: str) -> Self:  # type: ignore
-        """Loads resources from a JSON file.
+        """Loads assets from a JSON file.
 
         Args:
           json_file: The path to the JSON file.
 
         Examples:
-          Loading a resource from a json file:
+          Loading a asset from a json file:
 
-          >>> from pylabrobot.resources import Resource
-          >>> resource = Resource.deserialize("my_resource.json")
+          >>> from pylabrobot.assets import Resource
+          >>> asset = Resource.deserialize("my_asset.json")
         """
 
         with open(json_file, "r", encoding="utf-8") as f:
@@ -323,8 +329,8 @@ class Workcell:
 
 
         Returns:
-          A dictionary where the keys are the names of the resources and the values are the serialized
-          states of the resources.
+          A dictionary where the keys are the names of the assets and the values are the serialized
+          states of the assets.
         """
 
         state = {}
@@ -396,134 +402,114 @@ class Workcell:
 
     async def __aenter__(self):
         await self.setup()
-        await self._synchronize_resource_states()
+        await self._synchronize_asset_states()
         self.backup_task = asyncio.create_task(self.continuous_backup())
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        # Ensure all resource states are saved before shutting down
+        # Ensure all asset states are saved before shutting down
         if self.db is not None:
-            for resource_name, state in self._resource_states.items():
-                await self.db.update_asset_state(resource_name, state)
+            for asset_name, state in self._asset_states.items():
+                await self.db.update_asset_state(asset_name, state)
 
         await self.save_state_to_file(self.save_file)
         if self.backup_task is not None:
             self.backup_task.cancel()
         await self.stop()
 
-    async def is_resource_in_use(self, resource_name: str) -> bool:
-        """Check if a resource is currently in use by any protocol."""
+    async def is_asset_in_use(self, asset_name: str) -> bool:
+        """Check if a asset is currently in use by any protocol."""
         if self.db is None:
-            return resource_name in self._in_use_by
-        # Check database first for resource lock
-        is_locked = await self.db.is_resource_locked(resource_name)
+            return asset_name in self._in_use_by
+        # Check database first for asset lock
+        is_locked = await self.db.is_asset_locked(asset_name)
         if is_locked:
             return True
-        return resource_name in self._in_use_by
+        return asset_name in self._in_use_by
 
-    async def mark_resource_in_use(
-        self, resource_name: str, protocol_name: str
-    ) -> None:
-        """Mark a resource as being used by a protocol."""
+    async def mark_asset_in_use(self, asset_name: str, protocol_name: str) -> None:
+        """Mark a asset as being used by a protocol."""
         if self.db is not None:
-            # Try to acquire lock in database
-            lock_acquired = await self.db.acquire_lock(
-                resource_name, protocol_name, str(id(self))
-            )
-            if not lock_acquired:
-                raise RuntimeError(
-                    f"Could not acquire lock for resource {resource_name}"
+            try:
+                lock_acquired = await self.db.acquire_lock(
+                    asset_name, protocol_name, str(id(self))
                 )
-        self._in_use_by[resource_name] = protocol_name
+                if not lock_acquired:
+                    raise RuntimeError(f"Could not acquire lock for asset {asset_name}")
+            except Exception as e:
+                raise RuntimeError(f"Failed to acquire lock: {str(e)}")
+        self._in_use_by[asset_name] = protocol_name
 
-    async def mark_resource_released(
-        self, resource_name: str, protocol_name: str
-    ) -> None:
-        """Mark a resource as no longer being used by a protocol."""
+    async def mark_asset_released(self, asset_name: str, protocol_name: str) -> None:
+        """Mark a asset as no longer being used by a protocol."""
         if (
-            resource_name in self._in_use_by
-            and self._in_use_by[resource_name] == protocol_name
+            asset_name in self._in_use_by
+            and self._in_use_by[asset_name] == protocol_name
         ):
             if self.db is not None:
-                await self.db.release_lock(resource_name, protocol_name, str(id(self)))
-            del self._in_use_by[resource_name]
+                await self.db.release_lock(asset_name, protocol_name, str(id(self)))
+            del self._in_use_by[asset_name]
 
-    def get_resource_state(self, resource_name: str) -> Dict[str, Any]:
-        """Get the current state of a resource."""
-        # First check local state cache
-        if resource_name in self._resource_states:
-            return self._resource_states[resource_name].copy()
+    def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
+        """Get the current state of a asset."""
+        if asset_name in self._asset_states:
+            return self._asset_states[asset_name].copy()
 
-        # Then check different resource types
-        if resource_name in self.labware:
-            state = self.labware[resource_name].get_state()
-        elif resource_name in self.all_machines:
-            state = self.all_machines[resource_name].get_state()
+        asset = None
+        if asset_name in self.labware:
+            asset = self.labware[asset_name]
+        elif asset_name in self.all_machines:
+            asset = self.all_machines[asset_name]
         else:
-            raise KeyError(f"Resource {resource_name} not found")
+            raise KeyError(f"Asset {asset_name} not found")
 
-        # Cache the state
-        self._resource_states[resource_name] = state
-        return state.copy()
+        if isinstance(asset, StateManaged):
+            state = asset.get_state()
+            self._asset_states[asset_name] = state
+            return state.copy()
+        return {}
 
-    async def update_resource_state(
-        self, resource_name: str, state: Dict[str, Any]
-    ) -> None:
-        """Update the state of a resource."""
-        if self.db is not None:
-            # Update state in database first
-            await self.db.update_asset_state(resource_name, state)
+    async def update_asset_state(self, asset_name: str, state: Dict[str, Any]) -> None:
+        """Update the state of a asset."""
+        try:
+            if self.db is not None:
+                await self.db.update_asset_state(asset_name, state)
 
-        # Update local state
-        if resource_name not in self._resource_states:
-            self._resource_states[resource_name] = {}
-        self._resource_states[resource_name].update(state)
+            if asset_name not in self._asset_states:
+                self._asset_states[asset_name] = {}
+            self._asset_states[asset_name].update(state)
 
-        # Update actual resource
-        if resource_name in self.labware:
-            self.labware[resource_name].update_state(state)
-        elif resource_name in self.all_machines:
-            self.all_machines[resource_name].update_state(state)
-        else:
-            raise KeyError(f"Resource {resource_name} not found")
+            asset = None
+            if asset_name in self.labware:
+                asset = self.labware[asset_name]
+            elif asset_name in self.all_machines:
+                asset = self.all_machines[asset_name]
 
-    async def _synchronize_resource_states(self) -> None:
-        """Synchronize resource states with database."""
+            if asset is not None and isinstance(asset, StateManaged):
+                asset.update_state(state)
+        except Exception as e:
+            raise RuntimeError(f"Failed to update asset state: {str(e)}")
+
+    async def _synchronize_asset_states(self) -> None:
+        """Synchronize asset states with database."""
         if self.db is None:
             return
 
-        for resource_name in self.asset_ids:
-            db_state = await self.db.get_asset_state(resource_name)
+        for asset_name in self.asset_ids:
+            db_state = await self.db.get_asset_state(asset_name)
             if db_state:
-                await self.update_resource_state(resource_name, db_state)
+                await self.update_asset_state(asset_name, db_state)
 
-    def get_resource_users(self, resource_name: str) -> Set[str]:
-        """Get all protocols currently using a resource."""
+    def get_asset_users(self, asset_name: str) -> Set[str]:
+        """Get all protocols currently using a asset."""
         users = set()
-        if resource_name in self._in_use_by:
-            users.add(self._in_use_by[resource_name])
+        if asset_name in self._in_use_by:
+            users.add(self._in_use_by[asset_name])
         return users
-
-    async def __aenter__(self):
-        await self.setup()
-        await self._synchronize_resource_states()
-        self.backup_task = asyncio.create_task(self.continuous_backup())
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        # Ensure all resource states are saved before shutting down
-        if self.db is not None:
-            for resource_name, state in self._resource_states.items():
-                await self.db.update_asset_state(resource_name, state)
-
-        await self.save_state_to_file(self.save_file)
-        if self.backup_task is not None:
-            self.backup_task.cancel()
-        await self.stop()
 
 
 class WorkcellView:
-    """A protocol's view into a shared workcell, managing resource access."""
+    """A protocol's view into a shared workcell, managing asset access."""
 
     def __init__(
         self,
@@ -534,15 +520,15 @@ class WorkcellView:
         self.parent = parent_workcell
         self.protocol_name = protocol_name
         self.required_assets = required_assets
-        self._active_resources: Set[str] = set()
-        self._resource_states: Dict[str, Dict[str, Any]] = {}
+        self._active_assets: Set[str] = set()
+        self._asset_states: Dict[str, Dict[str, Any]] = {}
 
     async def __aenter__(self):
-        """Acquire access to required resources."""
-        # Check resource availability
+        """Acquire access to required assets."""
+        # Check asset availability
         unavailable = []
         for asset in self.required_assets:
-            if self.parent.is_resource_in_use(asset.name):
+            if self.parent.is_asset_in_use(asset.name):
                 unavailable.append(asset.name)
 
         if unavailable:
@@ -550,59 +536,53 @@ class WorkcellView:
                 f"Resources currently in use by other protocols: {', '.join(unavailable)}"
             )
 
-        # Mark resources as in use
+        # Mark assets as in use
         for asset in self.required_assets:
-            self.parent.mark_resource_in_use(asset.name, self.protocol_name)
-            self._active_resources.add(asset.name)
+            await self.parent.mark_asset_in_use(asset.name, self.protocol_name)
+            self._active_assets.add(asset.name)
 
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Release acquired resources."""
-        for resource in self._active_resources:
+        """Release acquired assets."""
+        for asset in self._active_assets:
             # Sync any state changes back to parent
-            if resource in self._resource_states:
-                self.parent.update_resource_state(
-                    resource, self._resource_states[resource]
-                )
-            self.parent.mark_resource_released(resource, self.protocol_name)
-        self._active_resources.clear()
-        self._resource_states.clear()
+            if asset in self._asset_states:
+                await self.parent.update_asset_state(asset, self._asset_states[asset])
+            await self.parent.mark_asset_released(asset, self.protocol_name)
+        self._active_assets.clear()
+        self._asset_states.clear()
 
-    def update_resource_state(
-        self, resource_name: str, state_update: Dict[str, Any]
-    ) -> None:
-        """Update the state of a resource."""
-        if resource_name not in self._active_resources:
-            raise RuntimeError(f"Resource {resource_name} not currently acquired")
+    def update_asset_state(self, asset_name: str, state_update: Dict[str, Any]) -> None:
+        """Update the state of a asset."""
+        if asset_name not in self._active_assets:
+            raise RuntimeError(f"Resource {asset_name} not currently acquired")
 
         # Track state changes locally until context exit
-        if resource_name not in self._resource_states:
-            self._resource_states[resource_name] = {}
-        self._resource_states[resource_name].update(state_update)
+        if asset_name not in self._asset_states:
+            self._asset_states[asset_name] = {}
+        self._asset_states[asset_name].update(state_update)
 
-    def get_resource_state(self, resource_name: str) -> Dict[str, Any]:
-        """Get the current state of a resource."""
-        if resource_name not in self.required_assets:
-            raise RuntimeError(
-                f"Resource {resource_name} not declared in required assets"
-            )
+    def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
+        """Get the current state of a asset."""
+        if asset_name not in self.required_assets:
+            raise RuntimeError(f"Resource {asset_name} not declared in required assets")
 
         # Combine parent state with any local changes
-        state = self.parent.get_resource_state(resource_name).copy()
-        if resource_name in self._resource_states:
-            state.update(self._resource_states[resource_name])
+        state = self.parent.get_asset_state(asset_name).copy()
+        if asset_name in self._asset_states:
+            state.update(self._asset_states[asset_name])
         return state
 
     async def release(self):
-        """Explicitly release all resources."""
-        if self._active_resources:
+        """Explicitly release all assets."""
+        if self._active_assets:
             async with self:
-                pass  # This will trigger __aexit__ and release resources
+                pass  # This will trigger __aexit__ and release assets
 
     def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to parent workcell for declared resources."""
-        # Only allow access to declared resources
+        """Delegate attribute access to parent workcell for declared assets."""
+        # Only allow access to declared assets
         if name not in self.required_assets and not name.startswith("_"):
             raise AttributeError(
                 f"Resource '{name}' not declared in required assets for protocol {self.protocol_name}"
@@ -610,10 +590,10 @@ class WorkcellView:
         return getattr(self.parent, name)
 
     @property
-    def active_resources(self) -> Set[str]:
-        """Get the set of currently active resources."""
-        return self._active_resources.copy()
+    def active_assets(self) -> Set[str]:
+        """Get the set of currently active assets."""
+        return self._active_assets.copy()
 
-    def is_resource_active(self, resource_name: str) -> bool:
-        """Check if a resource is currently active."""
-        return resource_name in self._active_resources
+    def is_asset_active(self, asset_name: str) -> bool:
+        """Check if a asset is currently active."""
+        return asset_name in self._active_assets

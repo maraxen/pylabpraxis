@@ -55,8 +55,7 @@ class PraxisConfiguration:
             self.config.set("keycloak", "client_id", "praxis-client")
             self.config.set(
                 "keycloak", "client_secret", ""
-            )  # To be filled after initialization
-            self.save_config()
+            )  # TODO: see if this is deprecated
 
         # Update database configuration handling
         self.database = self.get_section("database")
@@ -128,4 +127,5 @@ class PraxisConfiguration:
     def _get_protocol_discovery_dirs(self) -> List[str]:
         """Get the protocol discovery directories."""
         protocol_discovery_dirs = self.get_section("protocol_discovery")
-        return protocol_discovery_dirs.get("directories", "").split(",")
+        dirs = protocol_discovery_dirs.get("directories", "")
+        return [d.strip() for d in dirs.split(",") if d.strip()]

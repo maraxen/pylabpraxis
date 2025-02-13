@@ -67,7 +67,7 @@ services:
       - "5433:5432"
       #- ./backups:/backups
 
-
+  # smtp server
 
   #backup:
     #image: walg/walg-pg:2.1  # Use a specific version tag

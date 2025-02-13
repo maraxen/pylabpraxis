@@ -54,6 +54,7 @@ class DatabaseManager:
                         command_timeout=60,
                         timeout=10.0,  # Connection timeout in seconds
                     )
+                    assert cls._pool is not None, "Failed to create database pool"
                     # Test the connection
                     async with cls._pool.acquire() as conn:
                         await conn.execute("SELECT 1")
@@ -67,6 +68,9 @@ class DatabaseManager:
                         timeout=10.0,  # Connection timeout in seconds
                     )
                     # Test the connection
+                    assert (
+                        cls._keycloak_pool is not None
+                    ), "Failed to create keycloak pool"
                     async with cls._keycloak_pool.acquire() as conn:
                         await conn.execute("SELECT 1")
 
@@ -909,6 +913,45 @@ class DatabaseManager:
             }
         except Exception as e:
             raise ValueError(f"Error loading protocol details: {e}")
+
+    async def update_asset_state(self, asset_name: str, state: Dict[str, Any]) -> None:
+        """Update the state of an asset in the database."""
+        async with self.praxis_connection() as conn:
+            await conn.execute(
+                """
+                UPDATE assets
+                SET metadata = jsonb_set(metadata, '{state}', $1::jsonb)
+                WHERE name = $2
+                """,
+                json.dumps(state),
+                asset_name,
+            )
+
+    async def get_asset_state(self, asset_name: str) -> Optional[Dict[str, Any]]:
+        """Get the current state of an asset from the database."""
+        async with self.praxis_connection() as conn:
+            result = await conn.fetchval(
+                """
+                SELECT metadata->'state'
+                FROM assets
+                WHERE name = $1
+                """,
+                asset_name,
+            )
+            return json.loads(result) if result else None
+
+    async def is_asset_locked(self, asset_name: str) -> bool:
+        """Check if an asset is currently locked."""
+        async with self.praxis_connection() as conn:
+            result = await conn.fetchval(
+                """
+                SELECT NOT is_available AND lock_expires_at > CURRENT_TIMESTAMP
+                FROM assets
+                WHERE name = $1
+                """,
+                asset_name,
+            )
+            return bool(result)
 
 
 # Global instance
