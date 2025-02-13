@@ -117,12 +117,12 @@ class PraxisConfiguration:
             self.config.write(f)
 
     def smtp_details(self):
-        return (
-            self.smtp_server,
-            self.smtp_port,
-            self.smtp_username,
-            self.smtp_password,
-        )
+        return {
+            "smtp_server": self.smtp_server,
+            "smtp_port": self.smtp_port,
+            "smtp_username": self.smtp_username,
+            "smtp_password": self.smtp_password,
+        }
 
     def _get_protocol_discovery_dirs(self) -> List[str]:
         """Get the protocol discovery directories."""

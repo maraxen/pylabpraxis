@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
 import os
 
-from praxis.api import protocols, workcell, assets
+from praxis.api import protocols, assets, workcell_api
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
 from praxis.utils.db import db
@@ -61,7 +61,7 @@ app.add_middleware(
 
 # API routes
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
-app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["workcell"])
+app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["workcell"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 
 # Static files

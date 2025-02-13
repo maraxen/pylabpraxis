@@ -26,6 +26,7 @@ from pylabrobot.serializer import serialize, deserialize
 from .configure import PraxisConfiguration
 from .utils import DatabaseManager, db
 
+from .core.base import WorkcellInterface
 from typing import Protocol, runtime_checkable
 
 
@@ -37,7 +38,10 @@ class StateManaged(Protocol):  # Protocol from the typing library not praxis.
     def update_state(self, state: Dict[str, Any]) -> None: ...
 
 
-class Workcell:
+from typing import Optional, Dict, Any
+
+
+class Workcell(WorkcellInterface):
     def __init__(
         self,
         config: str | PraxisConfiguration,
@@ -363,7 +367,7 @@ class Workcell:
         with open(fn, "w", encoding="utf-8") as f:
             json.dump(serialized, f, indent=indent)
 
-    def load_state_from_file(self, fn: str) -> None:
+    async def load_state_from_file(self, fn: str) -> None:
         """Load the state of this workcell and all children from a JSON file.
 
         Args:
@@ -507,8 +511,16 @@ class Workcell:
             users.add(self._in_use_by[asset_name])
         return users
 
+    async def get_state(self) -> Dict[str, Any]:
+        """Get the current state of all assets."""
+        return self._asset_states.copy()
 
-class WorkcellView:
+    async def update_state(self, state: Dict[str, Any]) -> None:
+        """Update the current state."""
+        self._asset_states.update(state)
+
+
+class WorkcellView(WorkcellInterface):
     """A protocol's view into a shared workcell, managing asset access."""
 
     def __init__(
@@ -597,3 +609,23 @@ class WorkcellView:
     def is_asset_active(self, asset_name: str) -> bool:
         """Check if a asset is currently active."""
         return asset_name in self._active_assets
+
+    async def get_state(self) -> Dict[str, Any]:
+        """Get state from parent."""
+        return await self.parent.get_state()
+
+    async def update_state(self, state: Dict[str, Any]) -> None:
+        """Update state in parent."""
+        await self.parent.update_state(state)
+
+    async def is_asset_in_use(self, asset_name: str) -> bool:
+        """Check if asset is in use."""
+        return await self.parent.is_asset_in_use(asset_name)
+
+    async def save_state_to_file(self, filepath: str) -> None:
+        """Save state to file."""
+        await self.parent.save_state_to_file(filepath)
+
+    async def load_state_from_file(self, filepath: str) -> None:
+        """Load state from file."""
+        await self.parent.load_state_from_file(filepath)

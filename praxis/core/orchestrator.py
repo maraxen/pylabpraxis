@@ -15,14 +15,18 @@ from ..protocol import (
     ProtocolParameters,
     WorkcellAssets,
 )
-from praxis.protocol.parameter import ProtocolParameters
 from praxis.configure import PraxisConfiguration
 from praxis.utils.state import State
 from praxis.utils.db import DatabaseManager
 from .deck import DeckManager
 from ..workcell import Workcell, WorkcellView
+from .base import ProtocolBase, WorkcellInterface
+from typing import TYPE_CHECKING
 
-P = TypeVar("P", bound=Protocol)
+if TYPE_CHECKING:
+    from ..protocol import Protocol, ProtocolConfiguration, WorkcellAssets
+
+P = TypeVar("P", bound=ProtocolBase)
 
 
 @dataclass

@@ -13,7 +13,6 @@ from .config import ProtocolConfiguration
 from .required_assets import WorkcellAssets
 from ..configure import PraxisConfiguration
 from ..utils import Notifier, DEFAULT_NOTIFIER, State, db
-from ..workcell import Workcell, WorkcellView
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
@@ -21,9 +20,10 @@ if TYPE_CHECKING:
     from ..core import Orchestrator, DeckManager
 
 import warnings
+from ..core.base import ProtocolBase, WorkcellInterface
 
 
-class Protocol(ABC):
+class Protocol(ProtocolBase):
     """
     Protocol class to execute the protocol and store the results.
 
@@ -97,7 +97,7 @@ class Protocol(ABC):
         # Basic configuration setup
         self.machines = self.protocol_configuration.machines
         self.directory = self.protocol_configuration.directory
-        self.name = self.protocol_configuration.name
+        self._name = self.protocol_configuration.name
         self.users = self.protocol_configuration.users
         self.parameters = self.protocol_configuration.parameters
         self.description = self.protocol_configuration.description
@@ -106,7 +106,7 @@ class Protocol(ABC):
         self.required_assets = self.protocol_configuration.required_assets
 
         # Initialize state management
-        self._workcell: Optional[Workcell | WorkcellView] = None
+        self._workcell: Optional[WorkcellInterface] = None
         self.state: State = State()  # Default empty state if no orchestrator
         self._orchestrator: Optional[Orchestrator] = None
         self.data_directory = os.path.join(self.directory, "data")
@@ -183,16 +183,23 @@ class Protocol(ABC):
             # Create standalone workcell if no orchestrator
             self._workcell = await self._create_workcell_from_config()
 
-    async def _load_workcell_from_file(self, filepath: str) -> Workcell:
+    async def _load_workcell_from_file(self, filepath: str) -> WorkcellInterface:
         """Load workcell from a saved state file."""
+        if self.praxis_config is None:
+            raise RuntimeError("Protocol configuration not initialized")
+
         workcell = Workcell(
             config=self.praxis_config, save_file=self.workcell_state_file
         )
-        workcell.load_state_from_file(filepath)
+        await workcell.initialize_dependencies()
+        await workcell.load_state_from_file(filepath)
         return workcell
 
-    async def _create_workcell_from_config(self) -> Workcell:
+    async def _create_workcell_from_config(self) -> WorkcellInterface:
         """Create new workcell from protocol configuration."""
+        if self.protocol_configuration is None:
+            raise RuntimeError("Protocol configuration not initialized")
+
         workcell = Workcell(
             config=self.protocol_configuration.praxis_config,
             save_file=self.workcell_state_file,
@@ -200,12 +207,12 @@ class Protocol(ABC):
             using_machines=[str(m) for m in self.machines],
         )
 
+        await workcell.initialize_dependencies()
+
+        # Configure deck layouts if specified
         if not self.protocol_configuration.decks_unspecified:
             for liquid_handler_id in self.protocol_configuration.liquid_handler_ids:
-                if self._orchestrator is not None:
-                    deck_manager = self._orchestrator.deck_manager
-                else:
-                    deck_manager = DeckManager(self.praxis_config)
+                deck_manager = DeckManager(self.praxis_config)
                 deck = await deck_manager.get_deck(
                     self.protocol_configuration.decks[liquid_handler_id]
                 )
@@ -214,10 +221,9 @@ class Protocol(ABC):
                     deck=deck,
                 )
 
-        await workcell.initialize_dependencies()
-
-        # Validate required assets
-        self.required_assets.validate(workcell)
+        # Validate required assets match workcell capabilities
+        if self.required_assets:
+            self.required_assets.validate(workcell)
 
         return workcell
 
@@ -266,12 +272,16 @@ class Protocol(ABC):
         return self._readme_file
 
     @property
-    def workcell(self) -> Workcell | WorkcellView | None:
+    def workcell(self) -> Optional[WorkcellInterface]:
         return self._workcell
 
     @property
     def user_info(self) -> dict[str, dict[str, Any]]:
         return self._user_info
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     def __getitem__(self, key: str) -> Any:
         return self.state[self.name][key]
@@ -516,24 +526,19 @@ class Protocol(ABC):
         await self._resume()
 
     async def save_state(self):
-        """
-        Save the lab state
-        """
+        """Save the lab state"""
         if self.workcell:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             save_path = os.path.join(
                 self.workcell_saves_dir, f"workcell_state_{timestamp}.json"
             )
-            self.workcell.save_state_to_file(save_path)
+            await self.workcell.save_state_to_file(save_path)
         await self._save_state()
 
     async def load_state(self):
-        """
-        Load the protocol state and lab state.
-        """
+        """Load the protocol state and lab state."""
         if self.workcell:
-            # load_state_from_file() returns None, so no need to await
-            self.workcell.load_state_from_file(self.workcell_state_file)
+            await self.workcell.load_state_from_file(self.workcell_state_file)
         await self.log("Protocol state loaded.")
         await self._load_state()
 
@@ -750,7 +755,7 @@ class Protocol(ABC):
             self.workcell_saves_dir, f"workcell_state_{timestamp}.json"
         )
         if self.workcell:
-            self.workcell.save_state_to_file(workcell_path)
+            await self.workcell.save_state_to_file(workcell_path)
 
     async def backup_data(self, config: PraxisConfiguration) -> None:
         """Backup protocol data during takedown or periodically."""
@@ -768,7 +773,7 @@ class Protocol(ABC):
             # Also backup the workcell state if available
             if self.workcell:
                 workcell_backup = os.path.join(backup_dir, "workcell_state.json")
-                self.workcell.save_state_to_file(workcell_backup)
+                await self.workcell.save_state_to_file(workcell_backup)
 
             self.logger.info(f"Created backup at {backup_dir}")
 

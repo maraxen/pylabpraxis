@@ -1,5 +1,6 @@
-from .protocol import *
-from .standalone_task import *
-from .parameter import *
-from .required_assets import *
-from .config import *
+from .protocol import Protocol
+from .config import ProtocolConfiguration
+from .required_assets import WorkcellAssets
+from .parameter import ProtocolParameters
+
+__all__ = ["Protocol", "ProtocolConfiguration", "WorkcellAssets"]
