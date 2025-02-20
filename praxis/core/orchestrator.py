@@ -20,13 +20,13 @@ from praxis.utils.state import State
 from praxis.utils.db import DatabaseManager
 from .deck import DeckManager
 from ..workcell import Workcell, WorkcellView
-from .base import ProtocolBase, WorkcellInterface
+from .base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..protocol import Protocol, ProtocolConfiguration, WorkcellAssets
 
-P = TypeVar("P", bound=ProtocolBase)
+P = TypeVar("P", bound=ProtocolInterface)
 
 
 @dataclass
@@ -99,14 +99,20 @@ class Orchestrator:
         protocol_config_data: Dict[str, Any],
     ) -> P:
         """Create a new protocol instance with orchestrator integration."""
-        # Create protocol instance
+        # Create protocol instance with config
         protocol = protocol_class(protocol_config_data)
 
-        # Initialize with orchestrator integration
-        await protocol.initialize(orchestrator=self)
+        workcell_view = await self.create_workcell_view(
+            protocol_name=protocol.name,
+            required_assets=protocol.required_assets,
+        )
+
+        # Initialize with orchestrator
+        await protocol.initialize(workcell=workcell_view)
 
         # Store protocol reference
-        self.protocols[protocol.name] = protocol
+        self.protocols[protocol.name] = cast(Protocol, protocol)
+
         return protocol
 
     async def create_and_start_protocol(
@@ -178,7 +184,7 @@ class Orchestrator:
                 await protocol._cleanup()
 
     async def create_workcell_view(
-        self, protocol_name: str, required_assets: WorkcellAssets
+        self, protocol_name: str, required_assets: WorkcellAssetsInterface
     ) -> WorkcellView:
         """Creates a view of the main workcell for a specific protocol."""
         if not self._main_workcell:

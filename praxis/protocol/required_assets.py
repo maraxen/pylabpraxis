@@ -3,29 +3,15 @@ from dataclasses import dataclass
 from pylabrobot.resources import Resource, Deck
 from pylabrobot.machines import Machine
 from ..workcell import Workcell
-
-# Define a type alias for asset types
-AssetType = Type[Union[Resource, Machine]]
-
-
-@dataclass
-class WorkcellAssetSpec:
-    """Specification for a required workcell asset (resource or machine).
-
-    Attributes:
-        name: Name of the asset on the workcell
-        type: Expected type of the asset (Resource or Machine)
-        description: Optional description of what this asset is used for
-        required: Whether this asset is required (defaults to True)
-    """
-
-    name: str
-    type: AssetType
-    description: Optional[str] = None
-    required: bool = True
+from ..core.base import (
+    WorkcellAssetsInterface,
+    WorkcellInterface,
+    WorkcellAssetSpec,
+    AssetType,
+)
 
 
-class WorkcellAssets:
+class WorkcellAssets(WorkcellAssetsInterface):
     """Container for workcell asset specifications and validation logic.
 
     This class handles both physical resources (plates, tips, etc.) and machines
@@ -85,7 +71,7 @@ class WorkcellAssets:
         """Add a required workcell asset."""
         self._assets[name] = WorkcellAssetSpec(name, type_, description, required)
 
-    def validate(self, workcell: Optional[Workcell]) -> None:
+    def validate(self, workcell: Optional[WorkcellInterface]) -> None:
         """Validate that all required assets exist in the Workcell and are of correct type."""
         if workcell is None:
             raise ValueError("Deck is not initialized")
@@ -124,4 +110,3 @@ class WorkcellAssets:
 
     def __contains__(self, id: str):
         return id in self._assets
-

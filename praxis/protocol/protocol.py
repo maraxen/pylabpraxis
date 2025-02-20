@@ -17,10 +17,10 @@ from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .. import Workcell
-    from ..core import Orchestrator, DeckManager
+    from ..core import DeckManager
 
 import warnings
-from ..core.base import ProtocolBase, WorkcellInterface
+from ..core.base import ProtocolBase, WorkcellInterface, WorkcellAssetsInterface
 
 
 class Protocol(ProtocolBase):
@@ -103,12 +103,15 @@ class Protocol(ProtocolBase):
         self.description = self.protocol_configuration.description
 
         # Get required assets from configuration
-        self.required_assets = self.protocol_configuration.required_assets
+        self._required_assets = self.protocol_configuration.required_assets
 
         # Initialize state management
         self._workcell: Optional[WorkcellInterface] = None
-        self.state: State = State()  # Default empty state if no orchestrator
-        self._orchestrator: Optional[Orchestrator] = None
+        self.state: State = State(
+            redis_host=self.praxis_config.redis_host,
+            redis_port=self.praxis_config.redis_port,
+            redis_db=self.praxis_config.redis_db,
+        )
         self.data_directory = os.path.join(self.directory, "data")
         self.workcell_state_file = os.path.join(self.directory, "workcell_state.json")
 
@@ -170,15 +173,11 @@ class Protocol(ProtocolBase):
         self.start_loggers()
         self.create_readme()
 
-    async def initialize(self, orchestrator: Optional[Orchestrator] = None):
+    async def initialize(self, workcell: Optional[WorkcellInterface] = None):
         """Initialize protocol with optional orchestrator integration."""
-        self._orchestrator = orchestrator
-        if orchestrator:
-            self.state = orchestrator.state
+        if workcell:
             # Create workcell view if using orchestrator
-            self._workcell = await orchestrator.create_workcell_view(
-                protocol_name=self.name, required_assets=self.required_assets
-            )
+            self._workcell = workcell
         else:
             # Create standalone workcell if no orchestrator
             self._workcell = await self._create_workcell_from_config()
@@ -222,8 +221,8 @@ class Protocol(ProtocolBase):
                 )
 
         # Validate required assets match workcell capabilities
-        if self.required_assets:
-            self.required_assets.validate(workcell)
+        if self._required_assets:
+            self._required_assets.validate(workcell)
 
         return workcell
 
@@ -282,6 +281,10 @@ class Protocol(ProtocolBase):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def required_assets(self) -> WorkcellAssetsInterface:
+        return self._required_assets
 
     def __getitem__(self, key: str) -> Any:
         return self.state[self.name][key]

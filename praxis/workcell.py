@@ -26,13 +26,13 @@ from pylabrobot.serializer import serialize, deserialize
 from .configure import PraxisConfiguration
 from .utils import DatabaseManager, db
 
-from .core.base import WorkcellInterface
-from typing import Protocol, runtime_checkable
+from .core.base import WorkcellInterface, WorkcellAssetsInterface
+from typing import Protocol as TypeProtocol, runtime_checkable
 
 
 @runtime_checkable
-class StateManaged(Protocol):  # Protocol from the typing library not praxis.
-    """Protocol for objects that support state management."""
+class StateManaged(TypeProtocol):  # Protocol from the typing library not praxis.
+    """Type protocol for objects that support state management."""
 
     def get_state(self) -> Dict[str, Any]: ...
     def update_state(self, state: Dict[str, Any]) -> None: ...
@@ -527,13 +527,17 @@ class WorkcellView(WorkcellInterface):
         self,
         parent_workcell: Workcell,
         protocol_name: str,
-        required_assets: WorkcellAssets,
+        required_assets: WorkcellAssetsInterface,
     ):
         self.parent = parent_workcell
         self.protocol_name = protocol_name
         self.required_assets = required_assets
         self._active_assets: Set[str] = set()
         self._asset_states: Dict[str, Dict[str, Any]] = {}
+
+    def __contains__(self, asset_name: str) -> bool:
+        """Check if a asset is declared in required assets."""
+        return asset_name in self.required_assets
 
     async def __aenter__(self):
         """Acquire access to required assets."""

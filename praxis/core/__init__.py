@@ -1,5 +1,19 @@
-from .base import WorkcellInterface, ProtocolBase, WorkcellBase
+from .base import (
+    WorkcellInterface,
+    ProtocolBase,
+    WorkcellAssetsInterface,
+    WorkcellAssetSpec,
+    AssetType,
+)
 from .orchestrator import Orchestrator
 from .deck import DeckManager
 
-__all__ = ["WorkcellInterface", "ProtocolBase", "WorkcellBase", "Orchestrator"]
+__all__ = [
+    "WorkcellInterface",
+    "ProtocolBase",
+    "Orchestrator",
+    "DeckManager",
+    "WorkcellAssetsInterface",
+    "WorkcellAssetSpec",
+    "AssetType",
+]
