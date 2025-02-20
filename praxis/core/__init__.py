@@ -7,6 +7,7 @@ from .base import (
 )
 from .orchestrator import Orchestrator
 from .deck import DeckManager
+from .workcell import Workcell, WorkcellView
 
 __all__ = [
     "WorkcellInterface",
@@ -16,4 +17,6 @@ __all__ = [
     "WorkcellAssetsInterface",
     "WorkcellAssetSpec",
     "AssetType",
+    "Workcell",
+    "WorkcellView",
 ]

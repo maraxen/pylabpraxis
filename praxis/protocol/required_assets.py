@@ -2,7 +2,6 @@ from typing import Dict, Type, Optional, Any, Union, Mapping
 from dataclasses import dataclass
 from pylabrobot.resources import Resource, Deck
 from pylabrobot.machines import Machine
-from ..workcell import Workcell
 from ..core.base import (
     WorkcellAssetsInterface,
     WorkcellInterface,

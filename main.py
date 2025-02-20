@@ -64,9 +64,6 @@ app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocol
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["workcell"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 
-# Static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 @app.get("/")
 async def redirect_to_index():

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
 from ..utils.db import db
-from ..workcell import Workcell, WorkcellView
+from ..core.workcell import Workcell, WorkcellView
 from ..protocol import WorkcellAssets
 from ..core.orchestrator import Orchestrator
 from ..configure import PraxisConfiguration

@@ -114,7 +114,7 @@ async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator
     """
     Returns a list of available deck layout files.
     """
-    deck_files = orchestrator.deck_manager.get_available_deck_files()
+    deck_files = await orchestrator.deck_manager.get_available_deck_files()
     return deck_files
 
 

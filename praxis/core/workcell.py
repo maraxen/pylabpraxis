@@ -1,7 +1,6 @@
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources.deck import Deck
 from typing import Optional, Any, Literal, cast, Self, Set, Dict
-from .protocol import WorkcellAssets
 
 import asyncio
 import json
@@ -23,10 +22,10 @@ from pylabrobot.serializer import serialize, deserialize
 
 # TODO: make different asset types from inspection of PLR
 
-from .configure import PraxisConfiguration
-from .utils import DatabaseManager, db
+from ..configure import PraxisConfiguration
+from ..utils import DatabaseManager, db
 
-from .core.base import WorkcellInterface, WorkcellAssetsInterface
+from .base import WorkcellInterface, WorkcellAssetsInterface
 from typing import Protocol as TypeProtocol, runtime_checkable
 
 
@@ -36,9 +35,6 @@ class StateManaged(TypeProtocol):  # Protocol from the typing library not praxis
 
     def get_state(self) -> Dict[str, Any]: ...
     def update_state(self, state: Dict[str, Any]) -> None: ...
-
-
-from typing import Optional, Dict, Any
 
 
 class Workcell(WorkcellInterface):
@@ -454,7 +450,7 @@ class Workcell(WorkcellInterface):
                 await self.db.release_lock(asset_name, protocol_name, str(id(self)))
             del self._in_use_by[asset_name]
 
-    def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
+    async def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
         """Get the current state of a asset."""
         if asset_name in self._asset_states:
             return self._asset_states[asset_name].copy()
@@ -520,12 +516,14 @@ class Workcell(WorkcellInterface):
         self._asset_states.update(state)
 
 
-class WorkcellView(WorkcellInterface):
+class WorkcellView(
+    WorkcellInterface
+):  # TODO: long term we want to be able to more granularly check for subprotocols
     """A protocol's view into a shared workcell, managing asset access."""
 
     def __init__(
         self,
-        parent_workcell: Workcell,
+        parent_workcell: WorkcellInterface,
         protocol_name: str,
         required_assets: WorkcellAssetsInterface,
     ):
@@ -569,7 +567,9 @@ class WorkcellView(WorkcellInterface):
         self._active_assets.clear()
         self._asset_states.clear()
 
-    def update_asset_state(self, asset_name: str, state_update: Dict[str, Any]) -> None:
+    async def update_asset_state(
+        self, asset_name: str, state_update: Dict[str, Any]
+    ) -> None:
         """Update the state of a asset."""
         if asset_name not in self._active_assets:
             raise RuntimeError(f"Resource {asset_name} not currently acquired")
@@ -579,13 +579,14 @@ class WorkcellView(WorkcellInterface):
             self._asset_states[asset_name] = {}
         self._asset_states[asset_name].update(state_update)
 
-    def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
+    async def get_asset_state(self, asset_name: str) -> Dict[str, Any]:
         """Get the current state of a asset."""
         if asset_name not in self.required_assets:
             raise RuntimeError(f"Resource {asset_name} not declared in required assets")
 
         # Combine parent state with any local changes
-        state = self.parent.get_asset_state(asset_name).copy()
+        state = await self.parent.get_asset_state(asset_name)
+        state = state.copy()
         if asset_name in self._asset_states:
             state.update(self._asset_states[asset_name])
         return state
@@ -633,3 +634,11 @@ class WorkcellView(WorkcellInterface):
     async def load_state_from_file(self, filepath: str) -> None:
         """Load state from file."""
         await self.parent.load_state_from_file(filepath)
+
+    async def mark_asset_in_use(self, asset_name: str, protocol_name: str) -> None:
+        """Mark asset in use."""
+        await self.parent.mark_asset_in_use(asset_name, protocol_name)
+
+    async def mark_asset_released(self, asset_name: str, protocol_name: str) -> None:
+        """Mark asset released."""
+        await self.parent.mark_asset_released(asset_name, protocol_name)

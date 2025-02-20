@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, Any, Optional, cast, Mapping, Union
+from typing import Dict, Any, Optional, cast, Mapping
 from ..configure import PraxisConfiguration
 from ..core.base import WorkcellInterface, WorkcellAssetsInterface
 from .parameter import ProtocolParameters, Parameter

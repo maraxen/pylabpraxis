@@ -20,10 +20,10 @@ if TYPE_CHECKING:
     from ..core import DeckManager
 
 import warnings
-from ..core.base import ProtocolBase, WorkcellInterface, WorkcellAssetsInterface
+from ..core.base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
 
 
-class Protocol(ProtocolBase):
+class Protocol(ProtocolInterface):
     """
     Protocol class to execute the protocol and store the results.
 

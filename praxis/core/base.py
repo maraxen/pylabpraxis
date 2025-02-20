@@ -57,6 +57,22 @@ class WorkcellInterface(AsyncContextManager, TypeProtocol):
     @abstractmethod
     async def load_state_from_file(self, filepath: str) -> None: ...
 
+    @abstractmethod
+    async def mark_asset_in_use(self, asset_name: str, protocol_name: str) -> None: ...
+
+    @abstractmethod
+    async def update_asset_state(
+        self, asset_name: str, state: Dict[str, Any]
+    ) -> None: ...
+
+    @abstractmethod
+    async def get_asset_state(self, asset_name: str) -> Dict[str, Any]: ...
+
+    @abstractmethod
+    async def mark_asset_released(
+        self, asset_name: str, protocol_name: str
+    ) -> None: ...
+
 
 class WorkcellAssetsInterface(TypeProtocol):
     """Interface for WorkcellAssets functionality."""

@@ -15,11 +15,11 @@ from ..protocol import (
     ProtocolParameters,
     WorkcellAssets,
 )
-from praxis.configure import PraxisConfiguration
+from ..configure import PraxisConfiguration
 from praxis.utils.state import State
 from praxis.utils.db import DatabaseManager
 from .deck import DeckManager
-from ..workcell import Workcell, WorkcellView
+from .workcell import Workcell, WorkcellView
 from .base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
 from typing import TYPE_CHECKING
 
@@ -67,7 +67,7 @@ class Orchestrator:
             backend=self.config["celery"]["backend"],
         )
 
-        self._main_workcell: Optional[Workcell] = None
+        self._main_workcell: Optional[WorkcellInterface] = None
         self._workcell_views: Dict[str, WorkcellView] = {}
         self._active_resources: Dict[str, Set[str]] = (
             {}
@@ -83,7 +83,7 @@ class Orchestrator:
         # Initialize main workcell
         self._main_workcell = Workcell(
             config=self.config,
-            save_file="workcell_state.json",
+            save_file="workcell_state.json",  # TODO: find a more robust way to handle this
         )
         await self._main_workcell.initialize_dependencies()
 
@@ -111,7 +111,9 @@ class Orchestrator:
         await protocol.initialize(workcell=workcell_view)
 
         # Store protocol reference
-        self.protocols[protocol.name] = cast(Protocol, protocol)
+        self.protocols[protocol.name] = cast(
+            Protocol, protocol
+        )  # TODO: check if this is appropriate
 
         return protocol
 
