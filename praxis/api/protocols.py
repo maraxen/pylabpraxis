@@ -127,74 +127,14 @@ async def upload_deck_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
 
 
-@router.get("/discover")  # Move this route up, before any path parameters
+@router.get("/discover")
 async def discover_protocols():
     """Discover available protocol files."""
     try:
-        # Use config directory as default
-        directory = config.default_protocol_dir
-        logger.info(f"Searching in directory: {directory}")
-        if not os.path.exists(directory):
-            logger.info(f"Protocol directory not found: {directory}")
-            return []
-
-        protocols = []
-        for root, _, files in os.walk(directory):
-            logger.info(f"Searching in {root}")
-            logger.info(f"Found {len(files)} files")
-            logger.info(files)
-
-            for file in files:
-                if not file.endswith(".py") and file != "__init__.py":
-                    logger.info(f"Skipping non-Python file {file} or init file")
-                    continue
-
-                try:
-                    filepath = os.path.join(root, file)
-                    logger.info(f"Loading protocol from {filepath}")
-
-                    if "__pycache__" in filepath:
-                        logger.info(f"Skipping __pycache__ file {filepath}")
-                        continue
-
-                    spec = importlib.util.spec_from_file_location(file[:-3], filepath)
-
-                    logger.info(f"Spec: {spec}")
-
-                    if spec is None or spec.loader is None:
-                        continue
-
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-
-                    # Look for Protocol subclasses
-                    for item in dir(module):
-                        obj = getattr(module, item)
-                        if (
-                            isinstance(obj, type)
-                            and issubclass(obj, Protocol)
-                            and obj != Protocol
-                            and not obj.__name__.startswith("_")
-                        ):
-                            protocols.append(
-                                ProtocolInfo(
-                                    name=obj.__name__,
-                                    path=filepath,
-                                    description=obj.__doc__
-                                    or "No description available",
-                                    has_assets=hasattr(obj, "required_assets"),
-                                    has_parameters=hasattr(obj, "parameters"),
-                                )
-                            )
-                except Exception as e:
-                    print(f"Error loading protocol from {file}: {e}")
-                    continue
-
-        print(f"Found {len(protocols)} protocols")
-        return protocols
-
+        protocols = await db.discover_protocols([config.default_protocol_dir])
+        return [ProtocolInfo(**p) for p in protocols]
     except Exception as e:
-        print(f"Error discovering protocols: {e}")
+        logger.error(f"Error discovering protocols: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -406,10 +346,29 @@ async def remove_protocol_directory(
 """
 
 
-@router.get("/protocol/{protocol_path:path}")
-async def get_protocol_details(
-    protocol_path: str,
-) -> Dict:
-    """Get details about a specific protocol."""
-    details = await db.get_protocol_details(protocol_path)
-    return details
+@router.get("/details")
+async def get_protocol_details(protocol_path: str) -> Dict:
+    """Get details about a specific protocol using query parameter."""
+    try:
+        # Convert to absolute path if needed
+        if not os.path.isabs(protocol_path):
+            protocol_path = os.path.join(config.default_protocol_dir, protocol_path)
+
+        protocol_path = os.path.normpath(protocol_path)
+
+        # Verify path is within allowed directories
+        if not protocol_path.startswith(config.default_protocol_dir):
+            raise HTTPException(
+                status_code=403,
+                detail="Protocol path must be within allowed directories",
+            )
+
+        details = await db.get_protocol_details(protocol_path)
+        if not details:
+            raise HTTPException(status_code=404, detail="Protocol not found")
+
+        return details
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

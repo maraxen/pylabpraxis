@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..core import DeckManager, Workcell
 
 import warnings
-from ..core.base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
+from ..interfaces import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
 
 
 class Protocol(ProtocolInterface):

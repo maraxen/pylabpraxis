@@ -1,7 +1,7 @@
 import asyncpg
 import pandas as pd
 import json
-from typing import Optional, Dict, List, Any, Union, cast
+from typing import Optional, Dict, List, Any, Union, cast, TYPE_CHECKING
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pylabrobot.resources import Resource
@@ -10,6 +10,23 @@ from pylabrobot.utils import find_subclass
 import importlib.util
 from pathlib import Path
 import asyncio
+import os
+
+if TYPE_CHECKING:
+    from ..interfaces import ProtocolInterface
+
+import logging
+
+from ..configure import PraxisConfiguration
+
+config = PraxisConfiguration("praxis.ini")
+logging.basicConfig(
+    filename=config.log_file,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -872,8 +889,12 @@ class DatabaseManager:
                         item = getattr(module, item_name)
                         if (
                             isinstance(item, type)
-                            and hasattr(item, "__module__")
-                            and item.__module__ == module.__name__
+                            and hasattr(
+                                item, "execute"
+                            )  # Check for ProtocolInterface methods
+                            and hasattr(item, "initialize")
+                            and hasattr(item, "required_assets")
+                            and not item.__name__.startswith("_")
                         ):
 
                             # Get WorkcellAssets and ProtocolParameters if they exist
@@ -897,22 +918,55 @@ class DatabaseManager:
 
         return protocols
 
-    async def get_protocol_details(self, protocol_path: str) -> dict:
-        """Get the WorkcellAssets and ProtocolParameters for a protocol."""
+    async def get_protocol_details(self, protocol_path: str) -> Dict[str, Any]:
+        """Load and return protocol details from a Python file."""
         try:
-            spec = importlib.util.spec_from_file_location("protocol", protocol_path)
+            # Convert to absolute path
+            abs_path = os.path.abspath(protocol_path)
+            if not os.path.exists(abs_path):
+                raise ValueError(f"Protocol file not found: {abs_path}")
+
+            # Load module
+            spec = importlib.util.spec_from_file_location(
+                os.path.basename(abs_path)[:-3], abs_path
+            )
             if spec is None or spec.loader is None:
-                raise ValueError(f"Cannot load protocol from {protocol_path}")
+                raise ValueError(f"Could not load module from {abs_path}")
 
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
+            # Find protocol class
+            protocol_class = None
+            for item in dir(module):
+                obj = getattr(module, item)
+                if (
+                    isinstance(obj, type)
+                    and hasattr(obj, "execute")  # Check for ProtocolInterface methods
+                    and hasattr(obj, "initialize")
+                    and hasattr(obj, "required_assets")
+                    and not obj.__name__.startswith("_")
+                ):
+                    protocol_class = obj
+                    break
+
+            if not protocol_class:
+                raise ValueError(f"No Protocol class found in {abs_path}")
+
+            # Extract protocol details
             return {
-                "assets": getattr(module, "required_assets", None),
-                "parameters": getattr(module, "baseline_parameters", None),
+                "name": protocol_class.__name__,
+                "path": abs_path,
+                "description": protocol_class.__doc__ or "No description available",
+                "has_assets": hasattr(protocol_class, "required_assets"),
+                "has_parameters": hasattr(protocol_class, "parameters"),
+                "assets": getattr(protocol_class, "required_assets", None),
+                "parameters": getattr(protocol_class, "parameters", None),
             }
+
         except Exception as e:
-            raise ValueError(f"Error loading protocol details: {e}")
+            logger.error(f"Error loading protocol details: {e}")
+            raise ValueError(f"Failed to load protocol: {str(e)}")
 
     async def update_asset_state(self, asset_name: str, state: Dict[str, Any]) -> None:
         """Update the state of an asset in the database."""

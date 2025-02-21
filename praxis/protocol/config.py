@@ -2,7 +2,7 @@ import os
 import json
 from typing import Dict, Any, Optional, cast, Mapping
 from ..configure import PraxisConfiguration
-from ..core.base import WorkcellInterface, WorkcellAssetsInterface
+from ..interfaces import WorkcellInterface, WorkcellAssetsInterface
 from .parameter import ProtocolParameters, Parameter
 from .required_assets import WorkcellAssets, WorkcellAssetSpec
 from ..utils import db

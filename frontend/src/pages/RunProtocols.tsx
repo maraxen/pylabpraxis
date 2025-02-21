@@ -35,6 +35,12 @@ import {
   StepsPrevTrigger,
   StepsRoot,
 } from "@/components/ui/steps";
+import {
+  AutoComplete,
+  AutoCompleteInput,
+  AutoCompleteItem,
+  AutoCompleteList,
+} from "@choc-ui/chakra-autocomplete";
 
 interface Protocol {
   name: string;
@@ -77,6 +83,15 @@ interface AssetConfig {
 type ConfigurationPath = 'upload' | 'specify';
 type SetupStep = 'select' | 'configure' | 'assets' | 'parameters';
 
+// Add new helper function
+const filterProtocols = (protocols: ProtocolDetails[], searchTerm: string) => {
+  const term = searchTerm.toLowerCase();
+  return protocols.filter(p =>
+    p.name.toLowerCase().includes(term) ||
+    p.description.toLowerCase().includes(term)
+  );
+};
+
 export const RunProtocols: React.FC = () => {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [runningProtocols, setRunningProtocols] = useState<RunningProtocol[]>([]);
@@ -98,6 +113,10 @@ export const RunProtocols: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [assetConfig, setAssetConfig] = useState<AssetConfig>({});
   const [availableAssets, setAvailableAssets] = useState<{ [key: string]: AssetOption[] }>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const searchContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchProtocols();
@@ -111,6 +130,13 @@ export const RunProtocols: React.FC = () => {
       fetchAvailableAssets();
     }
   }, [selectedProtocol, protocolDetails]);
+
+  // Add this effect to maintain focus
+  useEffect(() => {
+    if (isSelectOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSelectOpen]);
 
   const fetchProtocols = async () => {
     try {
@@ -236,10 +262,17 @@ export const RunProtocols: React.FC = () => {
   const handleProtocolSelect = async (protocol: ProtocolDetails) => {
     setSelectedProtocol(protocol.name);
     try {
-      const details = await api.get(`/api/v1/protocols/protocol/${encodeURIComponent(protocol.path)}`);
-      setProtocolDetails(details.data);
+      const response = await api.get('/api/v1/protocols/details', {
+        params: { protocol_path: protocol.path }
+      });
+      setProtocolDetails(response.data);
     } catch (error) {
       console.error('Error fetching protocol details:', error);
+      toast({
+        title: 'Error fetching protocol details',
+        status: 'error',
+        duration: 3000,
+      });
     }
   };
 
@@ -307,13 +340,45 @@ export const RunProtocols: React.FC = () => {
     }))
   });
 
+  const handleSelectChange = (event: { value: string[] }) => {
+    const protocol = availableProtocols.find(p => p.path === event.value[0]);
+    if (protocol) {
+      handleProtocolSelect(protocol);
+      setIsSelectOpen(false);
+    }
+  };
+
+  const handleSearchClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSearchTerm(e.target.value);
+  };
+
+  const getStepProps = (index: number) => {
+    if (index === 0) return {}; // First step always enabled
+
+    return {
+      disabled: !selectedProtocol,
+      description: !selectedProtocol ? "Select a protocol first" : "Protocol selected"
+    };
+  };
+
   return (
     <VStack align="stretch" gap={6}>
       <Heading size="lg">Run Protocols</Heading>
 
       <StepsRoot
         step={step}
-        onStepChange={(e) => setStep(e.step)}
+        onStepChange={(e) => {
+          // Only allow step change if enabled
+          if (!selectedProtocol && e.step > 0) return;
+          setStep(e.step);
+        }}
         count={4}
         colorPalette="brand"
         size="lg"
@@ -329,19 +394,19 @@ export const RunProtocols: React.FC = () => {
             index={1}
             title="Configure Assets"
             icon={<LuSettings />}
-            description="Set up required resources"
+            {...getStepProps(1)}
           />
           <StepsItem
             index={2}
             title="Set Parameters"
             icon={<LuSettings />}
-            description="Configure protocol parameters"
+            {...getStepProps(2)}
           />
           <StepsItem
             index={3}
             title="Review & Start"
             icon={<LuPlay />}
-            description="Review and start protocol"
+            {...getStepProps(3)}
           />
         </StepsList>
 
@@ -350,33 +415,39 @@ export const RunProtocols: React.FC = () => {
             <CardBody>
               <VStack gap={4}>
                 <Field label="Select Protocol" required>
-                  <SelectRoot
-                    collection={createListCollection({
-                      items: availableProtocols.map(p => ({
-                        label: p.name,
-                        value: p.path
-                      }))
-                    })}
-                    value={[selectedProtocol]}
-                    onChange={(event) => {
-                      const protocol = availableProtocols.find(p => p.path === event.value[0]);
-                      if (protocol) handleProtocolSelect(protocol);
+                  <AutoComplete
+                    openOnFocus
+                    onChange={(value) => {
+                      const protocol = availableProtocols.find(p => p.path === value);
+                      if (protocol) {
+                        handleProtocolSelect(protocol);
+                      }
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValueText placeholder="Choose a protocol..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProtocols.map((protocol) => (
-                        <SelectItem
+                    <AutoCompleteInput
+                      variant="outline"
+                      placeholder="Choose a protocol..."
+                      disabled={isLoading}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <AutoCompleteList>
+                      {filterProtocols(availableProtocols, searchTerm).map((protocol) => (
+                        <AutoCompleteItem
                           key={protocol.path}
-                          item={{ value: protocol.path, label: protocol.name }}
+                          value={protocol.path}
+                          textTransform="capitalize"
                         >
-                          {protocol.name}
-                        </SelectItem>
+                          <Stack gap={0}>
+                            <Text>{protocol.name}</Text>
+                            <Text fontSize="xs" color="gray.500">
+                              {protocol.path}
+                            </Text>
+                          </Stack>
+                        </AutoCompleteItem>
                       ))}
-                    </SelectContent>
-                  </SelectRoot>
+                    </AutoCompleteList>
+                  </AutoComplete>
                 </Field>
 
                 <Field label="Configuration File (Optional)">
@@ -494,12 +565,13 @@ export const RunProtocols: React.FC = () => {
             <Button
               visual="solid"
               size="sm"
-              disabled={!canProceed()}
+              disabled={!canProceed() || (!selectedProtocol && step === 0)}
             >
               Next
             </Button>
           </StepsNextTrigger>
         </Group>
+
       </StepsRoot>
 
       <Card>

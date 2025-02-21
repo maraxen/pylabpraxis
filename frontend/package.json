@@ -12,6 +12,7 @@
   "dependencies": {
     "@chakra-ui/react": "^3.4.0",
     "@chakra-ui/toast": "^7.0.2",
+    "@choc-ui/chakra-autocomplete": "^6.1.0",
     "@emotion/react": "^11.14.0",
     "@keycloak/keycloak-account-ui": "^26.1.0",
     "@keycloak/keycloak-admin-ui": "^26.1.0",

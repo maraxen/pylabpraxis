@@ -3,7 +3,7 @@ import threading
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set, MutableMapping
+from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set, MutableMapping, TYPE_CHECKING
 from celery import Celery  # type: ignore
 from dataclasses import dataclass, field
 
@@ -17,14 +17,13 @@ from ..protocol import (
 )
 from ..configure import PraxisConfiguration
 from praxis.utils.state import State
-from praxis.utils.db import DatabaseManager
 from .deck import DeckManager
 from .workcell import Workcell, WorkcellView
-from .base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
-from typing import TYPE_CHECKING
+from ..interfaces import WorkcellInterface, WorkcellAssetsInterface, DatabaseInterface, ProtocolInterface
 
 if TYPE_CHECKING:
-    from ..protocol import Protocol, ProtocolConfiguration, WorkcellAssets
+    from ..protocol import Protocol
+    from ..utils.db import DatabaseManager
 
 P = TypeVar("P", bound=ProtocolInterface)
 
@@ -52,7 +51,7 @@ class Orchestrator:
         # Deck Manager
         self.deck_manager = DeckManager(self.config)
 
-        self.db = None
+        self.db: Optional[DatabaseInterface] = None
 
         self.state = State(
             redis_host=self.config.redis_host,

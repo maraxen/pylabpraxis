@@ -24,27 +24,75 @@ const { withProvider, withContext } = createSlotRecipeContext({
 interface SelectRootProps extends Omit<HTMLChakraProps<"div">, "onChange"> {
   value?: string[];
   onChange?: (event: { value: string[] }) => void;
-  collection: { items: Array<{ value: string; label: string }> };
+  collection: { items: Array<{ value: string; label: string; description?: string }> };
+  closeOnSelect?: boolean;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  variant?: 'outline' | 'filled';
+  colorPalette?: string;
+  disabled?: boolean;
+  required?: boolean;
+  deselectable?: boolean;
+  loopFocus?: boolean;
+  positioning?: {
+    placement?: string;
+    sameWidth?: boolean;
+    fitViewport?: boolean;
+    offset?: { mainAxis?: number };
+  };
+  onFocusOutside?: () => void;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 const BaseSelect = withProvider<HTMLDivElement, SelectRootProps>("div", "root")
 
 export const SelectRoot = React.forwardRef<HTMLDivElement, SelectRootProps>(
-  ({ value, onChange, children, ...props }, ref) => {
+  ({
+    value,
+    onChange,
+    children,
+    closeOnSelect = true,
+    positioning,
+    onFocusOutside,
+    onOpenChange,
+    ...props
+  }, ref) => {
     const [isOpen, setIsOpen] = React.useState(false)
+
+    const handleOpenChange = (nextOpen: boolean) => {
+      setIsOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    };
+
+    const handleChange = (event: { value: string[] }) => {
+      onChange?.(event);
+      if (closeOnSelect) {
+        handleOpenChange(false);
+      }
+    };
+
+    const handleFocusOutside = () => {
+      onFocusOutside?.();
+      handleOpenChange(false);
+    };
+
     const ctx = React.useMemo(
       () => ({
         value,
-        onChange,
+        onChange: handleChange,
         isOpen,
-        onToggle: () => setIsOpen(prev => !prev)
+        onToggle: () => handleOpenChange(!isOpen),
+        onFocusOutside: handleFocusOutside
       }),
-      [value, onChange, isOpen]
+      [value, handleChange, isOpen, handleOpenChange, handleFocusOutside]
     )
 
     return (
       <SelectContext.Provider value={ctx}>
-        <BaseSelect ref={ref} {...props}>
+        <BaseSelect
+          ref={ref}
+          data-state={isOpen ? "open" : "closed"}
+          {...props}
+        >
           {children}
         </BaseSelect>
       </SelectContext.Provider>

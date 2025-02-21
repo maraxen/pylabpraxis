@@ -25,7 +25,7 @@ from pylabrobot.serializer import serialize, deserialize
 from ..configure import PraxisConfiguration
 from ..utils import DatabaseManager, db
 
-from .base import WorkcellInterface, WorkcellAssetsInterface
+from ..interfaces import WorkcellInterface, WorkcellAssetsInterface
 from typing import Protocol as TypeProtocol, runtime_checkable
 
 
