@@ -1,0 +1,120 @@
+2025-02-21 12:56:55,367 - INFO - Starting application initialization...
+2025-02-21 12:56:55,367 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 12:56:55,639 - INFO - Successfully initialized dependencies
+2025-02-21 12:57:41,866 - INFO - Starting application shutdown...
+2025-02-21 12:57:41,892 - INFO - Successfully closed database connections
+2025-02-21 12:57:43,117 - INFO - Starting application initialization...
+2025-02-21 12:57:43,117 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 12:57:43,386 - INFO - Successfully initialized dependencies
+2025-02-21 12:58:22,997 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 12:58:23,000 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 12:58:23,000 - INFO - Found 2 files
+2025-02-21 12:58:23,001 - INFO - ['prance.py', '__init__.py']
+2025-02-21 12:58:23,001 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 12:58:23,001 - INFO - Skipping __pycache__ or __init__ file
+2025-02-21 12:58:23,001 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 12:58:23,001 - INFO - Skipping __pycache__ or __init__ file
+2025-02-21 12:58:23,001 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 12:58:23,001 - INFO - Found 2 files
+2025-02-21 12:58:23,001 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 12:58:23,096 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 12:58:23,097 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 12:58:23,097 - INFO - Found 2 files
+2025-02-21 12:58:23,097 - INFO - ['prance.py', '__init__.py']
+2025-02-21 12:58:23,097 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 12:58:23,097 - INFO - Skipping __pycache__ or __init__ file
+2025-02-21 12:58:23,097 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 12:58:23,097 - INFO - Skipping __pycache__ or __init__ file
+2025-02-21 12:58:23,097 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 12:58:23,097 - INFO - Found 2 files
+2025-02-21 12:58:23,097 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 12:59:45,030 - INFO - Starting application shutdown...
+2025-02-21 12:59:45,056 - INFO - Successfully closed database connections
+2025-02-21 12:59:47,868 - INFO - Starting application initialization...
+2025-02-21 12:59:47,869 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 12:59:48,448 - INFO - Successfully initialized dependencies
+2025-02-21 12:59:48,470 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 12:59:48,471 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 12:59:48,471 - INFO - Found 2 files
+2025-02-21 12:59:48,471 - INFO - ['prance.py', '__init__.py']
+2025-02-21 12:59:48,471 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 12:59:48,472 - INFO - Skipping __pycache__ or __init__ file {filepath}
+2025-02-21 12:59:48,472 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 12:59:48,472 - INFO - Skipping __pycache__ or __init__ file {filepath}
+2025-02-21 12:59:48,472 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 12:59:48,472 - INFO - Found 2 files
+2025-02-21 12:59:48,472 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 12:59:48,486 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 12:59:48,486 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 12:59:48,486 - INFO - Found 2 files
+2025-02-21 12:59:48,486 - INFO - ['prance.py', '__init__.py']
+2025-02-21 12:59:48,486 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 12:59:48,486 - INFO - Skipping __pycache__ or __init__ file {filepath}
+2025-02-21 12:59:48,486 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 12:59:48,486 - INFO - Skipping __pycache__ or __init__ file {filepath}
+2025-02-21 12:59:48,487 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 12:59:48,487 - INFO - Found 2 files
+2025-02-21 12:59:48,487 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 13:00:09,066 - INFO - Starting application shutdown...
+2025-02-21 13:00:09,105 - INFO - Successfully closed database connections
+2025-02-21 13:00:10,294 - INFO - Starting application initialization...
+2025-02-21 13:00:10,294 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 13:00:10,562 - INFO - Successfully initialized dependencies
+2025-02-21 13:00:14,221 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 13:00:14,221 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 13:00:14,221 - INFO - Found 2 files
+2025-02-21 13:00:14,221 - INFO - ['prance.py', '__init__.py']
+2025-02-21 13:00:14,221 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 13:00:14,221 - INFO - Skipping __pycache__ or __init__ file ./praxis/protocol/protocols/prance.py
+2025-02-21 13:00:14,221 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 13:00:14,221 - INFO - Skipping __pycache__ or __init__ file ./praxis/protocol/protocols/__init__.py
+2025-02-21 13:00:14,221 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 13:00:14,221 - INFO - Found 2 files
+2025-02-21 13:00:14,221 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 13:00:14,233 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 13:00:14,234 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 13:00:14,234 - INFO - Found 2 files
+2025-02-21 13:00:14,234 - INFO - ['prance.py', '__init__.py']
+2025-02-21 13:00:14,234 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 13:00:14,234 - INFO - Skipping __pycache__ or __init__ file ./praxis/protocol/protocols/prance.py
+2025-02-21 13:00:14,235 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 13:00:14,235 - INFO - Skipping __pycache__ or __init__ file ./praxis/protocol/protocols/__init__.py
+2025-02-21 13:00:14,235 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 13:00:14,235 - INFO - Found 2 files
+2025-02-21 13:00:14,235 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 15:03:12,927 - INFO - Starting application shutdown...
+2025-02-21 15:03:12,930 - INFO - Successfully closed database connections
+2025-02-21 15:03:21,745 - INFO - Starting application initialization...
+2025-02-21 15:03:21,745 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 15:03:21,986 - INFO - Successfully initialized dependencies
+2025-02-21 15:03:44,909 - INFO - Starting application shutdown...
+2025-02-21 15:03:44,940 - INFO - Successfully closed database connections
+2025-02-21 15:03:45,706 - INFO - Starting application initialization...
+2025-02-21 15:03:45,706 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-21 15:03:45,886 - INFO - Successfully initialized dependencies
+2025-02-21 15:03:58,490 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 15:03:58,490 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 15:03:58,490 - INFO - Found 2 files
+2025-02-21 15:03:58,490 - INFO - ['prance.py', '__init__.py']
+2025-02-21 15:03:58,490 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 15:03:58,490 - INFO - Spec: ModuleSpec(name='prance', loader=<_frozen_importlib_external.SourceFileLoader object at 0x123940b10>, origin='/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/./praxis/protocol/protocols/prance.py')
+2025-02-21 15:03:58,494 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 15:03:58,494 - INFO - Spec: ModuleSpec(name='__init__', loader=<_frozen_importlib_external.SourceFileLoader object at 0x123941990>, origin='/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/./praxis/protocol/protocols/__init__.py')
+2025-02-21 15:03:58,495 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 15:03:58,495 - INFO - Found 2 files
+2025-02-21 15:03:58,495 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 15:03:58,495 - INFO - Skipping non-Python file prance.cpython-311.pyc or init file
+2025-02-21 15:03:58,495 - INFO - Skipping non-Python file __init__.cpython-311.pyc or init file
+2025-02-21 15:03:58,507 - INFO - Searching in directory: ./praxis/protocol/protocols
+2025-02-21 15:03:58,507 - INFO - Searching in ./praxis/protocol/protocols
+2025-02-21 15:03:58,507 - INFO - Found 2 files
+2025-02-21 15:03:58,507 - INFO - ['prance.py', '__init__.py']
+2025-02-21 15:03:58,507 - INFO - Loading protocol from ./praxis/protocol/protocols/prance.py
+2025-02-21 15:03:58,507 - INFO - Spec: ModuleSpec(name='prance', loader=<_frozen_importlib_external.SourceFileLoader object at 0x12395a410>, origin='/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/./praxis/protocol/protocols/prance.py')
+2025-02-21 15:03:58,508 - INFO - Loading protocol from ./praxis/protocol/protocols/__init__.py
+2025-02-21 15:03:58,508 - INFO - Spec: ModuleSpec(name='__init__', loader=<_frozen_importlib_external.SourceFileLoader object at 0x12395ac50>, origin='/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/./praxis/protocol/protocols/__init__.py')
+2025-02-21 15:03:58,511 - INFO - Searching in ./praxis/protocol/protocols/__pycache__
+2025-02-21 15:03:58,511 - INFO - Found 2 files
+2025-02-21 15:03:58,512 - INFO - ['prance.cpython-311.pyc', '__init__.cpython-311.pyc']
+2025-02-21 15:03:58,512 - INFO - Skipping non-Python file prance.cpython-311.pyc or init file
+2025-02-21 15:03:58,512 - INFO - Skipping non-Python file __init__.cpython-311.pyc or init file

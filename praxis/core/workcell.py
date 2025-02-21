@@ -114,6 +114,10 @@ class Workcell(WorkcellInterface):
         ]
         return self._asset_ids
 
+    @property
+    def asset_states(self) -> dict[str, dict[str, Any]]:
+        return self._asset_states.copy()
+
     async def setup(self):
         for machine_id, machine in self.all_machines.items():
             await self._load_machine(machine_id=machine_id, machine=machine)
@@ -610,6 +614,11 @@ class WorkcellView(
     def active_assets(self) -> Set[str]:
         """Get the set of currently active assets."""
         return self._active_assets.copy()
+
+    @property
+    def asset_states(self) -> Dict[str, Dict[str, Any]]:
+        """Get the current state of all assets."""
+        return self._asset_states.copy()
 
     def is_asset_active(self, asset_name: str) -> bool:
         """Check if a asset is currently active."""

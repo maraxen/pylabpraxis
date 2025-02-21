@@ -5,11 +5,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
 import os
+import logging  # Import logging.config
+
 
 from praxis.api import protocols, assets, workcell_api
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
 from praxis.utils.db import db
+
+
+# Create a Configuration instance
+config_file = "praxis.ini"
+praxis_config = PraxisConfiguration(config_file)
+
+# Configure logging from config file
+logging.basicConfig(
+    filename=praxis_config.log_file,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)  # Get a logger for main.py
 
 # Global instances
 config = PraxisConfiguration("praxis.ini")
@@ -21,29 +37,29 @@ async def lifespan(app: FastAPI):
     """Lifecycle manager for application startup/shutdown."""
     try:
         # Startup
-        print("Starting application initialization...")
-        print(f"Default protocol directory: {config.default_protocol_dir}")
+        logger.info("Starting application initialization...")
+        logger.info(f"Default protocol directory: {config.default_protocol_dir}")
 
         # Initialize orchestrator and attach to app state
         await orchestrator.initialize_dependencies()
         app.state.orchestrator = orchestrator
-        print("Successfully initialized dependencies")
+        logger.info("Successfully initialized dependencies")
 
         yield
 
     except Exception as e:
-        print(f"Error during startup: {str(e)}")
+        logger.error(f"Error during startup: {str(e)}")
         raise
 
     finally:
         # Shutdown
-        print("Starting application shutdown...")
+        logger.info("Starting application shutdown...")
         try:
             if orchestrator.db:
                 await orchestrator.db.close()
-            print("Successfully closed database connections")
+            logger.info("Successfully closed database connections")
         except Exception as e:
-            print(f"Error during shutdown: {str(e)}")
+            logger.error(f"Error during shutdown: {str(e)}")
 
 
 app = FastAPI(lifespan=lifespan)

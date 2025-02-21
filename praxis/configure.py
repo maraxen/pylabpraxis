@@ -34,7 +34,7 @@ class PraxisConfiguration:
         self.deck_directory = self.deck_management.get("deck_directory", "decks")
         self.baseline_decks = cast(dict[str, str], self.baseline_decks) or {}
         self.logging_level = self.logging.get("level", "INFO")
-        self.log_file = self.logging.get("file", "/var/log/praxis/praxis.log")
+        self.log_file = self.logging.get("logfile", "/var/log/praxis/praxis.log")
         self.admin_credentials = self.get_section("admin")
         self.protocol_directories = self.get_section("protocol_directories")
         self.default_protocol_dir = self.protocol_directories.get(

@@ -9,6 +9,8 @@ from pydantic import BaseModel
 import json
 import importlib.util
 
+import logging
+
 from ..configure import PraxisConfiguration
 from ..core.orchestrator import Orchestrator
 from ..protocol.protocol import Protocol
@@ -18,6 +20,14 @@ from .dependencies import get_orchestrator
 config = PraxisConfiguration("praxis.ini")
 router = APIRouter()
 P = TypeVar("P", bound=Protocol)
+
+logging.basicConfig(
+    filename=config.log_file,
+    level=config.logging_level,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ProtocolStartRequest(BaseModel, Generic[P]):
@@ -123,23 +133,34 @@ async def discover_protocols():
     try:
         # Use config directory as default
         directory = config.default_protocol_dir
-        print(f"Searching in directory: {directory}")
+        logger.info(f"Searching in directory: {directory}")
         if not os.path.exists(directory):
-            print(f"Protocol directory not found: {directory}")
+            logger.info(f"Protocol directory not found: {directory}")
             return []
 
         protocols = []
         for root, _, files in os.walk(directory):
+            logger.info(f"Searching in {root}")
+            logger.info(f"Found {len(files)} files")
+            logger.info(files)
+
             for file in files:
-                if not file.endswith(".py"):
+                if not file.endswith(".py") and file != "__init__.py":
+                    logger.info(f"Skipping non-Python file {file} or init file")
                     continue
 
                 try:
                     filepath = os.path.join(root, file)
+                    logger.info(f"Loading protocol from {filepath}")
+
                     if "__pycache__" in filepath:
+                        logger.info(f"Skipping __pycache__ file {filepath}")
                         continue
 
                     spec = importlib.util.spec_from_file_location(file[:-3], filepath)
+
+                    logger.info(f"Spec: {spec}")
+
                     if spec is None or spec.loader is None:
                         continue
 
