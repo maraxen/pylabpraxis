@@ -137,27 +137,10 @@ class Prance(Protocol):
     to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.
     """
 
-    def __init__(
-        self,
-        protocol_configuration: ProtocolConfiguration,
-        state: State,
-        manual_check_list: list[str],
-        orchestrator: Orchestrator,
-        deck: Optional[Deck] = None,
-        user_info: Optional[Dict[str, Dict[str, Any]]] = None,
-        baseline_parameters: ProtocolParameters = baseline_parameters,
-        **kwargs,
-    ):
+    def __init__(self, config: ProtocolConfiguration):
         """Initialize the Prance protocol."""
         super().__init__(
-            protocol_configuration=protocol_configuration,
-            state=state,
-            manual_check_list=manual_check_list,
-            orchestrator=orchestrator,
-            baseline_parameters=baseline_parameters,
-            deck=deck,
-            user_info=user_info,
-            **kwargs,
+            config,
         )
         self.baseline_parameters = baseline_parameters
         # Initialize instance attributes
@@ -166,7 +149,7 @@ class Prance(Protocol):
         self.reader_plate_stack_in_use: Optional[str] = None
 
         # Validate and get parameters from configuration
-        params = protocol_configuration.parameters
+        params = config.parameters
         params.validate_parameters(self.baseline_parameters._values)
 
         # Store parameters as instance attributes with proper type hints

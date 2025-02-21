@@ -147,14 +147,19 @@ export const RunProtocols: React.FC = () => {
   const fetchAvailableProtocols = async () => {
     try {
       const response = await api.get<ProtocolDetails[]>('/api/v1/protocols/discover');
+      if (!response?.data) {
+        throw new Error('No data received from server');
+      }
       setAvailableProtocols(response.data);
     } catch (error) {
       console.error('Error fetching protocols:', error);
       toast({
         title: 'Error fetching available protocols',
+        description: error instanceof Error ? error.message : 'Failed to load protocols',
         status: 'error',
         duration: 3000,
       });
+      setAvailableProtocols([]);
     }
   };
 

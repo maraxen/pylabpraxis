@@ -73,6 +73,10 @@ class WorkcellInterface(AsyncContextManager, TypeProtocol):
         self, asset_name: str, protocol_name: str
     ) -> None: ...
 
+    @property
+    @abstractmethod
+    def _asset_states(self) -> Dict[str, Dict[str, Any]]: ...
+
 
 class WorkcellAssetsInterface(TypeProtocol):
     """Interface for WorkcellAssets functionality."""

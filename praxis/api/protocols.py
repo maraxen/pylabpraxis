@@ -41,6 +41,14 @@ class ProtocolPrepareRequest(BaseModel):
     asset_assignments: Optional[Dict[str, str]] = None
 
 
+class ProtocolInfo(BaseModel):
+    name: str
+    path: str
+    description: str
+    has_assets: Optional[bool] = False
+    has_parameters: Optional[bool] = False
+
+
 @router.post("/upload_config_file")
 async def upload_config_file(file: UploadFile = File(...)):
     """
@@ -107,6 +115,66 @@ async def upload_deck_file(file: UploadFile = File(...)):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
+
+
+@router.get("/discover")  # Move this route up, before any path parameters
+async def discover_protocols():
+    """Discover available protocol files."""
+    try:
+        # Use config directory as default
+        directory = config.default_protocol_dir
+        print(f"Searching in directory: {directory}")
+        if not os.path.exists(directory):
+            print(f"Protocol directory not found: {directory}")
+            return []
+
+        protocols = []
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if not file.endswith(".py"):
+                    continue
+
+                try:
+                    filepath = os.path.join(root, file)
+                    if "__pycache__" in filepath:
+                        continue
+
+                    spec = importlib.util.spec_from_file_location(file[:-3], filepath)
+                    if spec is None or spec.loader is None:
+                        continue
+
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+
+                    # Look for Protocol subclasses
+                    for item in dir(module):
+                        obj = getattr(module, item)
+                        if (
+                            isinstance(obj, type)
+                            and issubclass(obj, Protocol)
+                            and obj != Protocol
+                            and not obj.__name__.startswith("_")
+                        ):
+                            protocols.append(
+                                ProtocolInfo(
+                                    name=obj.__name__,
+                                    path=filepath,
+                                    description=obj.__doc__
+                                    or "No description available",
+                                    has_assets=hasattr(obj, "required_assets"),
+                                    has_parameters=hasattr(obj, "parameters"),
+                                )
+                            )
+                except Exception as e:
+                    print(f"Error loading protocol from {file}: {e}")
+                    continue
+
+        print(f"Found {len(protocols)} protocols")
+        return protocols
+
+    except Exception as e:
+        print(f"Error discovering protocols: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/deck_layouts", response_model=List[str])
@@ -251,57 +319,6 @@ async def send_command(
         return {"message": f"Command '{command}' sent to protocol '{protocol_name}'"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/discover")
-async def discover_protocols(
-    dirs: ProtocolDirectories,
-):
-    protocols = []
-
-    # Add default directory to the list if not already included
-    directories = list(dirs.directories)
-    if (
-        config.default_protocol_dir not in directories
-    ):  # Use config instead of imported constant
-        directories.append(config.default_protocol_dir)
-
-    for directory in directories:
-        for root, _, files in os.walk(directory):
-            for file in files:
-                if file.endswith(".py"):
-                    try:
-                        filepath = os.path.join(root, file)
-                        spec = importlib.util.spec_from_file_location(
-                            file[:-3], filepath
-                        )
-                        if spec is None:
-                            continue
-                        module = importlib.util.module_from_spec(spec)
-                        if spec.loader is None:
-                            continue
-                        spec.loader.exec_module(module)
-
-                        # Look for Protocol subclasses
-                        for item in dir(module):
-                            obj = getattr(module, item)
-                            if (
-                                isinstance(obj, type)
-                                and issubclass(obj, Protocol)
-                                and obj != Protocol
-                            ):
-                                protocols.append(
-                                    {
-                                        "name": obj.__name__,
-                                        "file": filepath,
-                                        "description": obj.__doc__
-                                        or "No description available",
-                                    }
-                                )
-                    except Exception as e:
-                        print(f"Error loading protocol from {file}: {e}")
-
-    return protocols
 
 
 """@router.get("/settings")

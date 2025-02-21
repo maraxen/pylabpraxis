@@ -16,8 +16,7 @@ from ..utils import Notifier, DEFAULT_NOTIFIER, State, db
 from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
 
 if TYPE_CHECKING:
-    from .. import Workcell
-    from ..core import DeckManager
+    from ..core import DeckManager, Workcell
 
 import warnings
 from ..core.base import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
@@ -182,7 +181,9 @@ class Protocol(ProtocolInterface):
             # Create standalone workcell if no orchestrator
             self._workcell = await self._create_workcell_from_config()
 
-    async def _load_workcell_from_file(self, filepath: str) -> WorkcellInterface:
+    async def _load_workcell_from_file(
+        self, filepath: str
+    ) -> WorkcellInterface:  # TODO: figure out how to coordinate with orchestrator
         """Load workcell from a saved state file."""
         if self.praxis_config is None:
             raise RuntimeError("Protocol configuration not initialized")

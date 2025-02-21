@@ -2,8 +2,9 @@ import os
 import json
 from typing import Dict, List
 from pylabrobot.resources import Deck
-from praxis.configure import PraxisConfiguration
+from ..configure import PraxisConfiguration
 import aiofiles
+
 
 class DeckManager:
     def __init__(self, config: str | PraxisConfiguration):
@@ -22,14 +23,18 @@ class DeckManager:
         if self.config.baseline_decks:
             for liquid_handler_name, deck_file in self.config.baseline_decks.items():
                 if not os.path.exists(deck_file):
-                    raise FileNotFoundError(f"Baseline deck file not found: {deck_file}")
+                    raise FileNotFoundError(
+                        f"Baseline deck file not found: {deck_file}"
+                    )
                 try:
                     async with aiofiles.open(deck_file, mode="r") as f:
                         deck_data = json.loads(await f.read())
                         deck = Deck.deserialize(deck_data)
                     baseline_decks[liquid_handler_name] = deck
                 except Exception as e:
-                    raise ValueError(f"Error loading baseline deck from {deck_file}: {e}")
+                    raise ValueError(
+                        f"Error loading baseline deck from {deck_file}: {e}"
+                    )
         else:
             print("Warning: No baseline_decks section found in config file.")
         return baseline_decks
@@ -55,5 +60,7 @@ class DeckManager:
         """Returns the baseline deck for the specified liquid handler."""
         baseline_deck = self.baseline_decks.get(liquid_handler_name)
         if not baseline_deck:
-            raise ValueError(f"Liquid handler '{liquid_handler_name}' not found in baseline decks.")
+            raise ValueError(
+                f"Liquid handler '{liquid_handler_name}' not found in baseline decks."
+            )
         return baseline_deck
