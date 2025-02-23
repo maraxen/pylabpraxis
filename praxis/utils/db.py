@@ -11,6 +11,8 @@ import importlib.util
 from pathlib import Path
 import asyncio
 import os
+from ..interfaces import WorkcellAssetsInterface
+from ..protocol.parameter import ProtocolParameters
 
 if TYPE_CHECKING:
     from ..interfaces import ProtocolInterface
@@ -895,6 +897,7 @@ class DatabaseManager:
                             and hasattr(item, "initialize")
                             and hasattr(item, "required_assets")
                             and not item.__name__.startswith("_")
+                            and not item.__name__ == "Protocol"
                         ):
 
                             # Get WorkcellAssets and ProtocolParameters if they exist
@@ -918,55 +921,140 @@ class DatabaseManager:
 
         return protocols
 
-    async def get_protocol_details(self, protocol_path: str) -> Dict[str, Any]:
-        """Load and return protocol details from a Python file."""
+    async def get_protocol_details(
+        self, protocol_path: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get details about a protocol including its assets and parameters."""
         try:
-            # Convert to absolute path
-            abs_path = os.path.abspath(protocol_path)
-            if not os.path.exists(abs_path):
-                raise ValueError(f"Protocol file not found: {abs_path}")
+            # Import protocol module
+            protocol_module = await self.import_protocol_module(protocol_path)
+            if not protocol_module:
+                return None
 
-            # Load module
-            spec = importlib.util.spec_from_file_location(
-                os.path.basename(abs_path)[:-3], abs_path
-            )
-            if spec is None or spec.loader is None:
-                raise ValueError(f"Could not load module from {abs_path}")
+            logger.info(f"=== Protocol Details Request ===")
+            logger.info(f"Protocol path: {protocol_path}")
+            logger.info(f"Protocol module attributes: {dir(protocol_module)}")
 
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+            # Get baseline parameters and assets
+            baseline_parameters = getattr(protocol_module, "baseline_parameters", {})
+            required_assets = getattr(protocol_module, "required_assets", {})
 
-            # Find protocol class
-            protocol_class = None
-            for item in dir(module):
-                obj = getattr(module, item)
-                if (
-                    isinstance(obj, type)
-                    and hasattr(obj, "execute")  # Check for ProtocolInterface methods
-                    and hasattr(obj, "initialize")
-                    and hasattr(obj, "required_assets")
-                    and not obj.__name__.startswith("_")
-                ):
-                    protocol_class = obj
-                    break
+            # Log raw data for debugging
+            logger.info(f"Protocol module baseline_parameters: {baseline_parameters}")
+            logger.info(f"Protocol module required_assets: {required_assets}")
 
-            if not protocol_class:
-                raise ValueError(f"No Protocol class found in {abs_path}")
+            # Handle serialization if needed
+            if isinstance(baseline_parameters, ProtocolParameters):
+                baseline_parameters = baseline_parameters.serialize()
+            if isinstance(required_assets, WorkcellAssetsInterface):
+                required_assets = required_assets.serialize()
 
-            # Extract protocol details
-            return {
-                "name": protocol_class.__name__,
-                "path": abs_path,
-                "description": protocol_class.__doc__ or "No description available",
-                "has_assets": hasattr(protocol_class, "required_assets"),
-                "has_parameters": hasattr(protocol_class, "parameters"),
-                "assets": getattr(protocol_class, "required_assets", None),
-                "parameters": getattr(protocol_class, "parameters", None),
+            # Ensure we have dictionaries
+            if not isinstance(baseline_parameters, dict):
+                baseline_parameters = {}
+            if not isinstance(required_assets, dict):
+                required_assets = {}
+
+            # Convert parameters to frontend format
+            parameters = {}
+            for name, config in baseline_parameters.items():
+                param_type = config.get("type", str)
+                param_type_name = (
+                    param_type.__name__
+                    if hasattr(param_type, "__name__")
+                    else str(param_type)
+                )
+
+                parameters[name] = {
+                    "type": self._map_python_type_to_frontend(param_type_name),
+                    "required": config.get("required", False),
+                    "default": config.get("default"),
+                    "description": config.get("description", ""),
+                    "constraints": config.get("constraints", {}),
+                }
+
+            # Convert assets to list format
+            assets = []
+            for name, config in required_assets.items():
+                asset_type = config.get("type", str)
+                assets.append(
+                    {
+                        "name": name,
+                        "type": (
+                            asset_type.__name__
+                            if hasattr(asset_type, "__name__")
+                            else str(asset_type)
+                        ),
+                        "description": config.get("description", ""),
+                        "required": config.get("required", True),
+                    }
+                )
+
+            details: Dict[str, Any] = {
+                "name": getattr(protocol_module, "__name__", ""),
+                "path": protocol_path,
+                "description": getattr(
+                    protocol_module, "__doc__", "No documentation found"
+                ),
+                "parameters": parameters,  # Using frontend-expected key name
+                "assets": assets,
+                "has_assets": bool(assets),
+                "has_parameters": bool(parameters),
+                "requires_config": not (bool(parameters) or bool(assets)),
             }
 
+            logger.info(f"Returning serialized details: {details}")
+            return details
+
         except Exception as e:
-            logger.error(f"Error loading protocol details: {e}")
-            raise ValueError(f"Failed to load protocol: {str(e)}")
+            logger.error(f"Error getting protocol details: {e}", exc_info=True)
+            return None
+
+    def _map_python_type_to_frontend(self, python_type: str) -> str:
+        """Map Python type names to frontend type names."""
+        type_mapping = {
+            "str": "string",
+            "int": "number",
+            "float": "number",
+            "bool": "boolean",
+            "list": "enum",  # Assuming lists are used for enum choices
+        }
+        return type_mapping.get(python_type, "string")
+
+    async def import_protocol_module(self, protocol_path: str) -> Optional[Any]:
+        """Import a protocol module from its file path."""
+        try:
+            logger.info("=== Protocol Details Request ===")
+            logger.info(f"Raw protocol path: {protocol_path}")
+
+            # Get absolute path relative to project root
+            project_root = str(Path(__file__).parent.parent.parent)
+            logger.info(f"Project root: {project_root}")
+
+            full_path = os.path.join(project_root, protocol_path)
+            full_path = os.path.abspath(full_path)
+            logger.info(f"Trying path: {full_path}")
+
+            if os.path.exists(full_path):
+                logger.info(f"Found protocol at: {full_path}")
+                spec = importlib.util.spec_from_file_location(
+                    Path(protocol_path).stem, full_path
+                )
+                if spec is None or spec.loader is None:
+                    logger.error(f"Could not create spec for {full_path}")
+                    return None
+
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                return module
+
+            else:
+                logger.error(f"Protocol file not found at {full_path}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error importing protocol module: {e}", exc_info=True)
+            return None
 
     async def update_asset_state(self, asset_name: str, state: Dict[str, Any]) -> None:
         """Update the state of an asset in the database."""

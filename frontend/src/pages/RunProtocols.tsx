@@ -1,4 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  setSelectedProtocol,
+  setProtocolDetails,
+  setAssetConfig,
+  updateAssetConfig,
+  updateParameterValue,
+  setConfigFile,
+  setIsConfigValid,
+  setStep,
+  setCurrentStep,
+  setConfigPath,
+} from '@/store/protocolForm/slice';
+import { RootState } from '@/store';
 import {
   Box,
   Heading,
@@ -6,28 +20,16 @@ import {
   Input,
   createListCollection,
   Group,
-  Stack,
   Text,
 } from '@chakra-ui/react';
 import { useToast } from '@chakra-ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
-import {
-  SelectRoot,
-  SelectItem,
-  SelectContent,
-  SelectTrigger,
-  SelectValueText
-} from "@/components/ui/select";
-import { Fieldset, FieldsetContent, FieldsetLegend } from '@/components/ui/fieldset';
 import { Field } from '@/components/ui/field';
-import { Checkbox } from '@/components/ui/checkbox';
-import { LuPlay, LuRefreshCw, LuUpload, LuSettings, LuList } from "react-icons/lu";
-import { api } from '@/services/api';
-import { useOidc } from '@/oidc';
-import { inputStyles, checkboxStyles } from '@/styles/form';
+import { LuPlay, LuRefreshCw, LuList, LuSettings } from "react-icons/lu";
+import { api } from '@/services/api';  // Add this import
+import { inputStyles } from '@/styles/form';
 import {
-  StepsCompletedContent,
   StepsContent,
   StepsItem,
   StepsList,
@@ -35,6 +37,8 @@ import {
   StepsPrevTrigger,
   StepsRoot,
 } from "@/components/ui/steps";
+import { AssetConfigurationForm } from '@/components/AssetConfigurationForm';
+import { ParameterConfigurationForm } from '@/components/ParameterConfigurationForm';
 import {
   AutoComplete,
   AutoCompleteInput,
@@ -56,6 +60,25 @@ interface ProtocolDetails {
   name: string;
   path: string;
   description: string;
+  requires_config: boolean;
+  parameters: Record<string, {
+    type: 'string' | 'number' | 'boolean' | 'enum';
+    required?: boolean;
+    default?: any;
+    description?: string;
+    constraints?: {
+      min?: number;
+      max?: number;
+      step?: number;
+      options?: string[];
+    };
+  }>;
+  assets: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    description?: string;
+  }>;
   has_assets: boolean;
   has_parameters: boolean;
 }
@@ -83,40 +106,50 @@ interface AssetConfig {
 type ConfigurationPath = 'upload' | 'specify';
 type SetupStep = 'select' | 'configure' | 'assets' | 'parameters';
 
-// Add new helper function
-const filterProtocols = (protocols: ProtocolDetails[], searchTerm: string) => {
-  const term = searchTerm.toLowerCase();
-  return protocols.filter(p =>
-    p.name.toLowerCase().includes(term) ||
-    p.description.toLowerCase().includes(term)
-  );
-};
+interface ProtocolListItem extends Protocol {
+  label: string;
+  value: string;
+}
+
+interface DeckFileItem {
+  label: string;
+  value: string;
+}
+
+interface ParameterConfig {
+  type: 'string' | 'number' | 'boolean' | 'enum';
+  required?: boolean;
+  default?: any;
+  description?: string;
+  constraints?: {
+    min?: number;
+    max?: number;
+    step?: number;
+    options?: string[];
+  };
+}
 
 export const RunProtocols: React.FC = () => {
+  const dispatch = useDispatch();
+  const {
+    selectedProtocol,
+    protocolDetails,
+    assetConfig,
+    parameterValues,
+    configFile,
+    isConfigValid,
+    step,
+  } = useSelector((state: RootState) => state.protocolForm);
+
+  const toast = useToast();
+
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [runningProtocols, setRunningProtocols] = useState<RunningProtocol[]>([]);
-  const [selectedProtocol, setSelectedProtocol] = useState<string>('');
-  const [configFile, setConfigFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableProtocols, setAvailableProtocols] = useState<ProtocolDetails[]>([]);
+  const [availableAssets, setAvailableAssets] = useState<{ [key: string]: AssetOption[] }>({});
   const [deckFiles, setDeckFiles] = useState<string[]>([]);
   const [selectedDeckFile, setSelectedDeckFile] = useState<string>('');
-  const [liquidHandler, setLiquidHandler] = useState('');
-  const [manualCheck, setManualCheck] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const toast = useToast();
-  const { oidcTokens } = useOidc();
-  const [availableProtocols, setAvailableProtocols] = useState<ProtocolDetails[]>([]);
-  const [configPath, setConfigPath] = useState<ConfigurationPath | null>(null);
-  const [currentStep, setCurrentStep] = useState<SetupStep>('select');
-  const [protocolDetails, setProtocolDetails] = useState<any>(null);
-  const [step, setStep] = useState(0);
-  const [isConfigValid, setIsConfigValid] = useState(false);
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [assetConfig, setAssetConfig] = useState<AssetConfig>({});
-  const [availableAssets, setAvailableAssets] = useState<{ [key: string]: AssetOption[] }>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
-  const searchContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchProtocols();
@@ -130,13 +163,6 @@ export const RunProtocols: React.FC = () => {
       fetchAvailableAssets();
     }
   }, [selectedProtocol, protocolDetails]);
-
-  // Add this effect to maintain focus
-  useEffect(() => {
-    if (isSelectOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isSelectOpen]);
 
   const fetchProtocols = async () => {
     try {
@@ -173,19 +199,14 @@ export const RunProtocols: React.FC = () => {
   const fetchAvailableProtocols = async () => {
     try {
       const response = await api.get<ProtocolDetails[]>('/api/v1/protocols/discover');
-      if (!response?.data) {
-        throw new Error('No data received from server');
-      }
       setAvailableProtocols(response.data);
     } catch (error) {
       console.error('Error fetching protocols:', error);
       toast({
         title: 'Error fetching available protocols',
-        description: error instanceof Error ? error.message : 'Failed to load protocols',
         status: 'error',
         duration: 3000,
       });
-      setAvailableProtocols([]);
     }
   };
 
@@ -233,10 +254,7 @@ export const RunProtocols: React.FC = () => {
       // Start protocol
       await api.post('/api/v1/protocols/start', {
         protocol_name: selectedProtocol,
-        config_file: configFilePath,
-        deck_file: `./protocol/deck_layouts/${selectedDeckFile}`,
-        liquid_handler_name: liquidHandler,
-        manual_check_list: manualCheck ? ['Manual check required'] : []
+        config_file: configFilePath
       });
 
       toast({
@@ -260,43 +278,58 @@ export const RunProtocols: React.FC = () => {
   };
 
   const handleProtocolSelect = async (protocol: ProtocolDetails) => {
-    setSelectedProtocol(protocol.name);
+    dispatch(setSelectedProtocol(protocol.name));
     try {
-      const response = await api.get('/api/v1/protocols/details', {
-        params: { protocol_path: protocol.path }
+      console.log('Fetching details for protocol:', protocol.path);
+
+      const response = await api.get<ProtocolDetails>('/api/v1/protocols/details', {
+        params: {
+          protocol_path: protocol.path
+        }
       });
-      setProtocolDetails(response.data);
+
+      if (response.data) {
+        console.log('Received protocol details:', response.data);
+        dispatch(setProtocolDetails(response.data));
+
+        // Initialize asset config if needed
+        if (response.data.assets) {
+          const initialAssetConfig = {} as AssetConfig;
+          response.data.assets.forEach(asset => {
+            if (asset.required) {
+              initialAssetConfig[asset.name] = '';
+            }
+          });
+          dispatch(setAssetConfig(initialAssetConfig));
+        }
+      }
     } catch (error) {
       console.error('Error fetching protocol details:', error);
       toast({
         title: 'Error fetching protocol details',
+        description: error instanceof Error ? error.message : 'Failed to load protocol details',
         status: 'error',
         duration: 3000,
       });
     }
   };
 
-  const handleConfigPathSelect = (path: ConfigurationPath) => {
-    setConfigPath(path);
-    setCurrentStep(path === 'upload' ? 'configure' : 'assets');
-  };
-
   const handleConfigFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setConfigFile(file);
+    dispatch(setConfigFile(file.name));
     try {
       const formData = new FormData();
       formData.append('file', file);
       const response = await api.post('/protocols/upload_config_file', formData);
 
       // If we have a valid config, we can skip asset and parameter configuration
-      setIsConfigValid(true);
-      setConfigPath('upload');
+      dispatch(setIsConfigValid(true));
+      dispatch(setConfigPath('upload'));
     } catch (error) {
       console.error('Error uploading config:', error);
-      setIsConfigValid(false);
+      dispatch(setIsConfigValid(false));
       toast({
         title: 'Error uploading configuration file',
         status: 'error',
@@ -306,66 +339,55 @@ export const RunProtocols: React.FC = () => {
   };
 
   const handleAssetChange = (assetName: string, value: string) => {
-    setAssetConfig(prev => ({
-      ...prev,
-      [assetName]: value
-    }));
+    dispatch(updateAssetConfig({ name: assetName, value }));
   };
 
-  const canProceed = () => {
-    if (step === 0) return selectedProtocol;
-    if (step === 1) {
-      if (isConfigValid) return true;
-      if (!protocolDetails?.assets) return true;
-      return protocolDetails.assets.every((asset: Asset) =>
-        !asset.required || assetConfig[asset.name]
-      );
-    }
-    if (step === 2) return isConfigValid || (configPath === 'specify' && protocolDetails?.parameters);
-    return true;
+  const handleParameterChange = (name: string, value: any) => {
+    dispatch(updateParameterValue({ name, value }));
   };
 
-  // Create collections for select components
-  const protocolsCollection = createListCollection({
-    items: protocols.map(protocol => ({
-      label: protocol.name,
-      value: protocol.name
-    }))
-  });
+  const isStepValid = (stepIndex: number): boolean => {
+    switch (stepIndex) {
+      case 0: // Protocol Selection
+        if (!selectedProtocol) return false;
+        if (protocolDetails?.requires_config) return !!configFile;
+        return true;
 
-  const deckFilesCollection = createListCollection({
-    items: deckFiles.map(file => ({
-      label: file,
-      value: file
-    }))
-  });
+      case 1: // Asset Configuration
+        if (isConfigValid) return true;
+        if (!protocolDetails?.assets) return true;
+        const hasRequiredAssets = protocolDetails.assets
+          .filter((asset: Asset) => asset.required)
+          .every((asset: Asset) => assetConfig[asset.name]);
+        return hasRequiredAssets && !!selectedDeckFile;
 
-  const handleSelectChange = (event: { value: string[] }) => {
-    const protocol = availableProtocols.find(p => p.path === event.value[0]);
-    if (protocol) {
-      handleProtocolSelect(protocol);
-      setIsSelectOpen(false);
+      case 2: // Parameter Configuration
+        if (isConfigValid) return true;
+        if (!protocolDetails?.parameters) return true;
+        return Object.entries<ParameterConfig>(protocolDetails.parameters)
+          .filter(([_, config]) => config.required)
+          .every(([name]) => parameterValues[name] !== undefined);
+
+      case 3: // Review
+        return isStepValid(0) && isStepValid(1) && isStepValid(2);
+
+      default:
+        return false;
     }
   };
 
-  const handleSearchClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSearchTerm(e.target.value);
-  };
-
-  const getStepProps = (index: number) => {
-    if (index === 0) return {}; // First step always enabled
-
-    return {
-      disabled: !selectedProtocol,
-      description: !selectedProtocol ? "Select a protocol first" : "Protocol selected"
-    };
+  const handleStepChange = (details: { step: number }) => {
+    // Only allow moving to next step if current step is valid
+    if (details.step > step && !isStepValid(step)) {
+      toast({
+        title: 'Invalid Step',
+        description: 'Please complete all required fields before proceeding',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
+    dispatch(setStep(details.step));
   };
 
   return (
@@ -374,11 +396,7 @@ export const RunProtocols: React.FC = () => {
 
       <StepsRoot
         step={step}
-        onStepChange={(e) => {
-          // Only allow step change if enabled
-          if (!selectedProtocol && e.step > 0) return;
-          setStep(e.step);
-        }}
+        onStepChange={handleStepChange}
         count={4}
         colorPalette="brand"
         size="lg"
@@ -394,19 +412,19 @@ export const RunProtocols: React.FC = () => {
             index={1}
             title="Configure Assets"
             icon={<LuSettings />}
-            {...getStepProps(1)}
+            description="Set up required resources"
           />
           <StepsItem
             index={2}
             title="Set Parameters"
             icon={<LuSettings />}
-            {...getStepProps(2)}
+            description="Configure protocol parameters"
           />
           <StepsItem
             index={3}
             title="Review & Start"
             icon={<LuPlay />}
-            {...getStepProps(3)}
+            description="Review and start protocol"
           />
         </StepsList>
 
@@ -416,51 +434,65 @@ export const RunProtocols: React.FC = () => {
               <VStack gap={4}>
                 <Field label="Select Protocol" required>
                   <AutoComplete
-                    openOnFocus
+                    value={selectedProtocol}
                     onChange={(value) => {
-                      const protocol = availableProtocols.find(p => p.path === value);
-                      if (protocol) {
-                        handleProtocolSelect(protocol);
-                      }
+                      const protocol = availableProtocols.find(p => p.name === value);
+                      if (protocol) handleProtocolSelect(protocol);
                     }}
                   >
-                    <AutoCompleteInput
-                      variant="outline"
-                      placeholder="Choose a protocol..."
-                      disabled={isLoading}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                    <AutoCompleteInput placeholder="Choose a protocol..." />
                     <AutoCompleteList>
-                      {filterProtocols(availableProtocols, searchTerm).map((protocol) => (
+                      {availableProtocols.map((protocol) => (
                         <AutoCompleteItem
-                          key={protocol.path}
-                          value={protocol.path}
+                          key={`${protocol.path}::${protocol.name}`}
+                          value={protocol.name}
                           textTransform="capitalize"
                         >
-                          <Stack gap={0}>
-                            <Text>{protocol.name}</Text>
-                            <Text fontSize="xs" color="gray.500">
-                              {protocol.path}
-                            </Text>
-                          </Stack>
+                          {protocol.name}
                         </AutoCompleteItem>
                       ))}
                     </AutoCompleteList>
                   </AutoComplete>
                 </Field>
 
-                <Field label="Configuration File (Optional)">
-                  <Input
-                    type="file"
-                    onChange={handleConfigFileUpload}
-                    accept=".json,.yaml,.yml"
-                    {...inputStyles}
-                  />
-                  <Text fontSize="sm" color="gray.500">
-                    Upload a configuration file to skip manual setup
-                  </Text>
-                </Field>
+                {protocolDetails?.requires_config ? (
+                  <Field label="Configuration File" required>
+                    <Input
+                      type="file"
+                      onChange={handleConfigFileUpload}
+                      accept=".json,.yaml,.yml"
+                      {...inputStyles}
+                    />
+                    <Text fontSize="sm" color="gray.500">
+                      This protocol requires a configuration file
+                    </Text>
+                  </Field>
+                ) : (
+                  <Field label="Configuration File (Optional)">
+                    <Input
+                      type="file"
+                      onChange={handleConfigFileUpload}
+                      accept=".json,.yaml,.yml"
+                      {...inputStyles}
+                    />
+                    <Text fontSize="sm" color="gray.500">
+                      Upload a configuration file or configure manually
+                    </Text>
+                  </Field>
+                )}
+
+                {protocolDetails && (
+                  <Box>
+                    <Text fontWeight="bold">Protocol Details:</Text>
+                    <Text>{protocolDetails.description}</Text>
+                    {protocolDetails.has_assets && (
+                      <Text color="green.500">✓ Configurable assets available</Text>
+                    )}
+                    {protocolDetails.has_parameters && (
+                      <Text color="green.500">✓ Configurable parameters available</Text>
+                    )}
+                  </Box>
+                )}
               </VStack>
             </CardBody>
           </Card>
@@ -474,50 +506,15 @@ export const RunProtocols: React.FC = () => {
           ) : (
             <Card>
               <CardBody>
-                <VStack gap={4}>
-                  {protocolDetails?.assets?.map((asset: Asset) => (
-                    <Field
-                      key={asset.name}
-                      label={asset.name}
-                      required={asset.required}
-                      helperText={asset.description}
-                    >
-                      <SelectRoot
-                        collection={createListCollection({
-                          items: (availableAssets[asset.type] || []).map(item => ({
-                            label: `${item.name}${item.description ? ` - ${item.description}` : ''}`,
-                            value: item.name,
-                            disabled: !item.is_available
-                          }))
-                        })}
-                        value={[assetConfig[asset.name] as string]}
-                        onChange={(event) => handleAssetChange(asset.name, event.value[0])}
-                      >
-                        <SelectTrigger>
-                          <SelectValueText placeholder={`Select ${asset.name}...`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(availableAssets[asset.type] || []).map((item) => (
-                            <SelectItem
-                              key={item.name}
-                              item={{
-                                value: item.name,
-                                label: `${item.name}${item.description ? ` - ${item.description}` : ''}`
-                              }}
-                            >
-                              <Group gap={2}>
-                                <Text>{item.name}</Text>
-                                {!item.is_available && (
-                                  <Text textStyle="sm" color="gray.500">(In use)</Text>
-                                )}
-                              </Group>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </SelectRoot>
-                    </Field>
-                  ))}
-                </VStack>
+                <AssetConfigurationForm
+                  assets={protocolDetails?.assets || []}
+                  availableAssets={availableAssets}
+                  assetConfig={assetConfig}
+                  onAssetChange={handleAssetChange}
+                  deckFiles={deckFiles}
+                  selectedDeckFile={selectedDeckFile}
+                  onDeckFileChange={setSelectedDeckFile}
+                />
               </CardBody>
             </Card>
           )}
@@ -531,8 +528,11 @@ export const RunProtocols: React.FC = () => {
           ) : (
             <Card>
               <CardBody>
-                {/* Parameter configuration form - to be implemented */}
-                <Text>Parameter configuration coming soon</Text>
+                <ParameterConfigurationForm
+                  parameters={protocolDetails?.parameters || {}}
+                  parameterValues={parameterValues}
+                  onParameterChange={handleParameterChange}
+                />
               </CardBody>
             </Card>
           )}
@@ -559,19 +559,24 @@ export const RunProtocols: React.FC = () => {
 
         <Group justify="space-between" mt={4}>
           <StepsPrevTrigger asChild>
-            <Button visual="outline" size="sm">Previous</Button>
+            <Button
+              visual="outline"
+              size="sm"
+              disabled={step === 0}
+            >
+              Previous
+            </Button>
           </StepsPrevTrigger>
           <StepsNextTrigger asChild>
             <Button
               visual="solid"
               size="sm"
-              disabled={!canProceed() || (!selectedProtocol && step === 0)}
+              disabled={!isStepValid(step)}
             >
-              Next
+              {step === 3 ? 'Start' : 'Next'}
             </Button>
           </StepsNextTrigger>
         </Group>
-
       </StepsRoot>
 
       <Card>

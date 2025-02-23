@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import json
 import importlib.util
+from urllib.parse import unquote
 
 import logging
 
@@ -145,6 +146,100 @@ async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator
     """
     deck_files = await orchestrator.deck_manager.get_available_deck_files()
     return deck_files
+
+
+@router.get("/details")
+async def get_protocol_details(protocol_path: str) -> Dict:
+    """Get details about a specific protocol using query parameter."""
+    logger.info("=== Protocol Details Request ===")
+    logger.info(f"Raw protocol path: {protocol_path}")
+
+    try:
+        if not protocol_path:
+            raise HTTPException(status_code=400, detail="Protocol path is required")
+
+        # Get project root directory (parent of praxis)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        logger.info(f"Project root: {project_root}")
+
+        # Try to find the file in a few different ways
+        possible_paths = [
+            protocol_path,  # As-is
+            os.path.join(project_root, protocol_path),  # Relative to project root
+            os.path.join(
+                project_root, protocol_path.lstrip("/")
+            ),  # Strip leading slash
+            os.path.join(
+                config.default_protocol_dir, os.path.basename(protocol_path)
+            ),  # Just filename in default dir
+        ]
+
+        protocol_path = ""
+        for path in possible_paths:
+            abs_path = os.path.abspath(path)
+            logger.info(f"Trying path: {abs_path}")
+            if os.path.exists(abs_path):
+                protocol_path = abs_path
+                break
+
+        if not protocol_path:
+            logger.error("Protocol file not found in any of these locations:")
+            for path in possible_paths:
+                logger.error(f"- {os.path.abspath(path)}")
+            raise HTTPException(
+                status_code=404,
+                detail="Protocol file not found in any of the expected locations",
+            )
+
+        logger.info(f"Found protocol at: {protocol_path}")
+
+        # Verify it's within project directory
+        if not os.path.commonpath([protocol_path, project_root]) == project_root:
+            raise HTTPException(
+                status_code=403, detail="Protocol path must be within project directory"
+            )
+
+        # Get protocol details from database
+        details = await db.get_protocol_details(protocol_path)
+        if not details:
+            raise HTTPException(status_code=404, detail="Protocol not found")
+
+        # Type safety checks
+        expected_fields = {
+            "name": str,
+            "path": str,
+            "description": str,
+            "requires_config": bool,
+            "parameters": dict,
+            "assets": list,
+            "has_assets": bool,
+            "has_parameters": bool,
+        }
+
+        # Validate fields and types
+        for field, expected_type in expected_fields.items():
+            if field not in details:
+                logger.error(f"Missing required field: {field}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Protocol details missing required field: {field}",
+                )
+            if not isinstance(details[field], expected_type):
+                logger.error(
+                    f"Invalid type for {field}: expected {expected_type}, got {type(details[field])}"
+                )
+                raise HTTPException(
+                    status_code=500, detail=f"Invalid type for field {field}"
+                )
+
+        logger.info(f"Returning validated details: {details}")
+        return details
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting protocol details: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/", response_model=List[str])
@@ -344,31 +439,3 @@ async def remove_protocol_directory(
             status_code=400, detail=f"Failed to remove directory: {str(e)}"
         )
 """
-
-
-@router.get("/details")
-async def get_protocol_details(protocol_path: str) -> Dict:
-    """Get details about a specific protocol using query parameter."""
-    try:
-        # Convert to absolute path if needed
-        if not os.path.isabs(protocol_path):
-            protocol_path = os.path.join(config.default_protocol_dir, protocol_path)
-
-        protocol_path = os.path.normpath(protocol_path)
-
-        # Verify path is within allowed directories
-        if not protocol_path.startswith(config.default_protocol_dir):
-            raise HTTPException(
-                status_code=403,
-                detail="Protocol path must be within allowed directories",
-            )
-
-        details = await db.get_protocol_details(protocol_path)
-        if not details:
-            raise HTTPException(status_code=404, detail="Protocol not found")
-
-        return details
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

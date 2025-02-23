@@ -3,7 +3,18 @@ import threading
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional, Type, TypeVar, cast, Set, MutableMapping, TYPE_CHECKING
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+    Set,
+    MutableMapping,
+    TYPE_CHECKING,
+)
 from celery import Celery  # type: ignore
 from dataclasses import dataclass, field
 
@@ -16,14 +27,21 @@ from ..protocol import (
     WorkcellAssets,
 )
 from ..configure import PraxisConfiguration
-from praxis.utils.state import State
+from ..utils.state import State
 from .deck import DeckManager
 from .workcell import Workcell, WorkcellView
-from ..interfaces import WorkcellInterface, WorkcellAssetsInterface, DatabaseInterface, ProtocolInterface
+from ..interfaces import (
+    WorkcellInterface,
+    WorkcellAssetsInterface,
+    DatabaseInterface,
+    ProtocolInterface,
+)
 
 if TYPE_CHECKING:
     from ..protocol import Protocol
     from ..utils.db import DatabaseManager
+
+from ..utils.db import db
 
 P = TypeVar("P", bound=ProtocolInterface)
 
@@ -75,7 +93,7 @@ class Orchestrator:
 
     async def initialize_dependencies(self):
         print(self.config.database["praxis_dsn"])
-        self.db = await DatabaseManager.initialize(
+        self.db = await db.initialize(
             praxis_dsn=self.config.database["praxis_dsn"],
             keycloak_dsn=self.config.database["keycloak_dsn"],
         )
@@ -185,7 +203,10 @@ class Orchestrator:
                 await protocol._cleanup()
 
     async def create_workcell_view(
-        self, protocol_name: str, required_assets: WorkcellAssetsInterface
+        self,
+        protocol_name: str,
+        required_assets: WorkcellAssetsInterface,
+        deck: Optional[Deck] = None,  # TODO: implement deck
     ) -> WorkcellView:
         """Creates a view of the main workcell for a specific protocol."""
         if not self._main_workcell:

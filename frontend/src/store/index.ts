@@ -1,13 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './authSlice';
-import userReducer from './userSlice';
-import settingsReducer from './settingsSlice';
+import settingsReducer from '@/store/settingsSlice';
+import userReducer from '@/store/userSlice';
+import protocolFormReducer from './protocolForm/slice';
 
 export const store = configureStore({
   reducer: {
-    auth: authReducer,
-    user: userReducer,
     settings: settingsReducer,
+    protocolForm: protocolFormReducer,
+    user: userReducer,
   },
 });
 

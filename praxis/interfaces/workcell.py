@@ -7,6 +7,7 @@ from typing import (
     Union,
     Mapping,
     Type,
+    runtime_checkable,
 )
 from dataclasses import dataclass
 
@@ -36,6 +37,7 @@ class WorkcellAssetSpec:
     required: bool = True
 
 
+@runtime_checkable
 class WorkcellInterface(AsyncContextManager, TypeProtocol):
     """Interface for Workcell functionality."""
 
@@ -78,6 +80,7 @@ class WorkcellInterface(AsyncContextManager, TypeProtocol):
     def asset_states(self) -> Dict[str, Dict[str, Any]]: ...
 
 
+@runtime_checkable
 class WorkcellAssetsInterface(TypeProtocol):
     """Interface for WorkcellAssets functionality."""
 
@@ -106,3 +109,6 @@ class WorkcellAssetsInterface(TypeProtocol):
 
     @abstractmethod
     def validate(self, workcell: WorkcellInterface) -> None: ...
+
+    @abstractmethod
+    def serialize(self) -> Dict[str, Any]: ...

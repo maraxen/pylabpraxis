@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -85,6 +85,16 @@ app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
 async def redirect_to_index():
     """Redirect root to frontend."""
     return RedirectResponse(url="/static/index.html")
+
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    logger.info(f"Query parameters: {dict(request.query_params)}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 
 if __name__ == "__main__":

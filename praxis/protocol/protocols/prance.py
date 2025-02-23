@@ -1,3 +1,12 @@
+"""
+This module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.
+It uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.
+
+Attributes:
+
+
+"""
+
 from typing import Any, Dict, Optional, cast, Union, Type, List
 from datetime import datetime as dt, timedelta
 from itertools import product

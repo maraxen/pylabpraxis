@@ -8,6 +8,7 @@ from ..interfaces import (
     WorkcellAssetSpec,
     AssetType,
 )
+import dataclasses
 
 
 class WorkcellAssets(WorkcellAssetsInterface):
@@ -100,6 +101,10 @@ class WorkcellAssets(WorkcellAssetsInterface):
     def get_spec(self, id: str) -> WorkcellAssetSpec:
         """Get the specification for an asset by name."""
         return self._assets[id]
+
+    def serialize(self) -> Dict[str, Any]:
+        """Serialize the workcell assets to a dictionary."""
+        return {id: dataclasses.asdict(spec) for id, spec in self._assets.items()}
 
     def __iter__(self):
         return iter(self._assets.values())

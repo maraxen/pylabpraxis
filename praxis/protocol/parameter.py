@@ -58,7 +58,7 @@ class Parameter:
         return True
 
 
-class ProtocolParameters:
+class ProtocolParameters:  # TODO: name safety
     def __init__(
         self, parameters: Optional[Union[List[Parameter], Dict[str, Any]]] = None
     ):
@@ -138,6 +138,11 @@ class ProtocolParameters:
         if param_name not in self._parameters:
             return None
 
+        return self._param_info(param_name)
+
+    def _param_info(self, param_name: str) -> Dict[str, Any]:
+        """Get information about a parameter."""
+
         param = self._parameters[param_name]
         return {
             "name": param.name,
@@ -149,21 +154,6 @@ class ProtocolParameters:
             "current_value": self._values.get(param_name),
         }
 
-    def get_parameters_for_ui(self) -> List[Dict[str, Any]]:
+    def serialize(self) -> Dict[str, Dict[str, Any]]:
         """Get parameter information formatted for UI display."""
-        ui_parameters = []
-        for name, param in self._parameters.items():
-            param_info = {
-                "name": param.name,
-                "type": (
-                    param.datatype.__name__
-                    if hasattr(param.datatype, "__name__")
-                    else str(param.datatype)
-                ),
-                "description": param.description or "",
-                "default": param.default,
-                "required": param.required,
-                "constraints": param.constraints,
-            }
-            ui_parameters.append(param_info)
-        return ui_parameters
+        return {name: self._param_info(name) for name in self._parameters}
