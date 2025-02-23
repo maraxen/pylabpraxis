@@ -876,16 +876,21 @@ class DatabaseManager:
 
             for file in path.rglob("*.py"):
                 try:
+                    logger.info(f"Loading protocol from {file}")
                     # Skip __init__.py files
                     if file.name == "__init__.py":
+                        logger.info("Skipping __init__.py file")
                         continue
 
                     spec = importlib.util.spec_from_file_location(file.stem, str(file))
                     if spec is None or spec.loader is None:
+                        logger.error(f"Could not create spec for {file}")
                         continue
 
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
+                    logger.info(f"Loaded module: {module.__name__}")
+                    logger.info(f"Module attributes: {dir(module)}")
 
                     for item_name in dir(module):
                         item = getattr(module, item_name)
@@ -917,7 +922,7 @@ class DatabaseManager:
                             )
 
                 except Exception as e:
-                    print(f"Error loading protocol from {file}: {e}")
+                    logger.error(f"Error loading protocol from {file}: {e}")
 
         return protocols
 
@@ -965,12 +970,28 @@ class DatabaseManager:
                     else str(param_type)
                 )
 
+                # Create a copy of constraints and convert Python types to strings recursively
+                constraints = config.get("constraints", {}).copy()
+                for key, value in constraints.items():
+                    if key in ["key_type", "value_type"]:
+                        # Convert type constraints using the same mapping function
+                        if hasattr(value, "__name__"):
+                            constraints[key] = self._map_python_type_to_frontend(
+                                value.__name__
+                            )
+                        else:
+                            constraints[key] = self._map_python_type_to_frontend(
+                                str(value)
+                            )
+                    elif isinstance(value, type):  # Handle other type references
+                        constraints[key] = value.__name__.lower()
+
                 parameters[name] = {
                     "type": self._map_python_type_to_frontend(param_type_name),
                     "required": config.get("required", False),
                     "default": config.get("default"),
                     "description": config.get("description", ""),
-                    "constraints": config.get("constraints", {}),
+                    "constraints": constraints,
                 }
 
             # Convert assets to list format
@@ -1012,14 +1033,34 @@ class DatabaseManager:
 
     def _map_python_type_to_frontend(self, python_type: str) -> str:
         """Map Python type names to frontend type names."""
+        # First normalize the type name
+        type_name = python_type.lower()
+
+        # Handle class references
+        if type_name == "<class 'str'>":
+            type_name = "str"
+        elif type_name == "<class 'int'>":
+            type_name = "int"
+        elif type_name == "<class 'float'>":
+            type_name = "float"
+        elif type_name == "<class 'bool'>":
+            type_name = "bool"
+        elif type_name == "<class 'list'>":
+            type_name = "list"
+        elif type_name == "<class 'dict'>":
+            type_name = "dict"
+
+        # Map normalized types to frontend types
         type_mapping = {
             "str": "string",
             "int": "number",
             "float": "number",
             "bool": "boolean",
-            "list": "enum",  # Assuming lists are used for enum choices
+            "list": "array",  # Changed from 'enum' to 'array'
+            "dict": "dict",
         }
-        return type_mapping.get(python_type, "string")
+
+        return type_mapping.get(type_name, "string")
 
     async def import_protocol_module(self, protocol_path: str) -> Optional[Any]:
         """Import a protocol module from its file path."""

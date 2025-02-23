@@ -3296,3 +3296,979 @@ Attributes:
 2025-02-23 16:14:20,888 - INFO - Starting application initialization...
 2025-02-23 16:14:20,888 - INFO - Default protocol directory: ./praxis/protocol/protocols
 2025-02-23 16:14:21,092 - INFO - Successfully initialized dependencies
+2025-02-23 16:14:58,468 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:14:58,469 - INFO - Query parameters: {}
+2025-02-23 16:14:58,469 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:14:58,469 - INFO - Query parameters: {}
+2025-02-23 16:14:58,473 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:14:58,473 - INFO - Query parameters: {}
+2025-02-23 16:14:58,473 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:14:58,474 - INFO - Query parameters: {}
+2025-02-23 16:14:58,547 - INFO - Response status: 200
+2025-02-23 16:14:58,549 - INFO - Response status: 200
+2025-02-23 16:14:58,549 - INFO - Response status: 404
+2025-02-23 16:14:58,550 - INFO - Response status: 200
+2025-02-23 16:14:58,552 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:14:58,552 - INFO - Query parameters: {}
+2025-02-23 16:14:58,552 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:14:58,552 - INFO - Query parameters: {}
+2025-02-23 16:14:58,557 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:14:58,557 - INFO - Query parameters: {}
+2025-02-23 16:14:58,559 - INFO - Response status: 200
+2025-02-23 16:14:58,559 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:14:58,559 - INFO - Query parameters: {}
+2025-02-23 16:14:58,562 - INFO - Response status: 200
+2025-02-23 16:14:58,563 - INFO - Response status: 200
+2025-02-23 16:14:58,567 - INFO - Response status: 404
+2025-02-23 16:15:00,341 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fprance.py
+2025-02-23 16:15:00,341 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/prance.py'}
+2025-02-23 16:15:00,341 - INFO - === Protocol Details Request ===
+2025-02-23 16:15:00,341 - INFO - Raw protocol path: praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,341 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:15:00,341 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,341 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,341 - INFO - === Protocol Details Request ===
+2025-02-23 16:15:00,341 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,341 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:15:00,341 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,341 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,342 - INFO - === Protocol Details Request ===
+2025-02-23 16:15:00,342 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:15:00,342 - INFO - Protocol module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:15:00,342 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x136a4a550>
+2025-02-23 16:15:00,342 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x136a48350>
+2025-02-23 16:15:00,342 - INFO - Returning serialized details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:15:00,342 - INFO - Returning validated details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:15:00,343 - INFO - Response status: 200
+2025-02-23 16:15:00,462 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:15:00,462 - INFO - Query parameters: {}
+2025-02-23 16:15:00,464 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:15:00,464 - INFO - Query parameters: {}
+2025-02-23 16:15:00,464 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:15:00,464 - INFO - Query parameters: {}
+2025-02-23 16:15:00,465 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:15:00,465 - INFO - Query parameters: {}
+2025-02-23 16:15:00,465 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:15:00,465 - INFO - Query parameters: {}
+2025-02-23 16:15:00,491 - INFO - Response status: 500
+2025-02-23 16:15:00,492 - INFO - Response status: 500
+2025-02-23 16:15:00,492 - INFO - Response status: 500
+2025-02-23 16:15:00,494 - INFO - Response status: 500
+2025-02-23 16:15:00,494 - INFO - Response status: 500
+2025-02-23 16:16:38,076 - INFO - Starting application shutdown...
+2025-02-23 16:16:38,109 - INFO - Successfully closed database connections
+2025-02-23 16:16:38,888 - INFO - Starting application initialization...
+2025-02-23 16:16:38,888 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:16:39,079 - INFO - Successfully initialized dependencies
+2025-02-23 16:18:02,291 - INFO - Starting application shutdown...
+2025-02-23 16:18:02,323 - INFO - Successfully closed database connections
+2025-02-23 16:18:03,068 - INFO - Starting application initialization...
+2025-02-23 16:18:03,068 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:18:03,270 - INFO - Successfully initialized dependencies
+2025-02-23 16:18:32,021 - INFO - Starting application shutdown...
+2025-02-23 16:18:32,047 - INFO - Successfully closed database connections
+2025-02-23 16:18:33,129 - INFO - Starting application initialization...
+2025-02-23 16:18:33,130 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:18:33,313 - INFO - Successfully initialized dependencies
+2025-02-23 16:21:03,262 - INFO - Starting application shutdown...
+2025-02-23 16:21:03,315 - INFO - Successfully closed database connections
+2025-02-23 16:21:04,274 - INFO - Starting application initialization...
+2025-02-23 16:21:04,274 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:21:04,455 - INFO - Successfully initialized dependencies
+2025-02-23 16:22:00,708 - INFO - Starting application shutdown...
+2025-02-23 16:22:00,739 - INFO - Successfully closed database connections
+2025-02-23 16:22:01,589 - INFO - Starting application initialization...
+2025-02-23 16:22:01,589 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:22:01,801 - INFO - Successfully initialized dependencies
+2025-02-23 16:22:22,906 - INFO - Starting application shutdown...
+2025-02-23 16:22:22,957 - INFO - Successfully closed database connections
+2025-02-23 16:22:24,167 - INFO - Starting application initialization...
+2025-02-23 16:22:24,167 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:22:24,377 - INFO - Successfully initialized dependencies
+2025-02-23 16:22:24,381 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:22:24,381 - INFO - Query parameters: {}
+2025-02-23 16:22:24,382 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:22:24,382 - INFO - Query parameters: {}
+2025-02-23 16:22:24,382 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:22:24,383 - INFO - Query parameters: {}
+2025-02-23 16:22:24,383 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:22:24,383 - INFO - Query parameters: {}
+2025-02-23 16:22:24,420 - INFO - Response status: 200
+2025-02-23 16:22:24,421 - INFO - Response status: 200
+2025-02-23 16:22:24,421 - INFO - Response status: 404
+2025-02-23 16:22:24,422 - INFO - Response status: 200
+2025-02-23 16:22:24,429 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:22:24,429 - INFO - Query parameters: {}
+2025-02-23 16:22:24,429 - INFO - Response status: 200
+2025-02-23 16:22:24,432 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:22:24,432 - INFO - Query parameters: {}
+2025-02-23 16:22:24,433 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:22:24,433 - INFO - Query parameters: {}
+2025-02-23 16:22:24,433 - INFO - Response status: 200
+2025-02-23 16:22:24,433 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:22:24,433 - INFO - Query parameters: {}
+2025-02-23 16:22:24,433 - INFO - Response status: 404
+2025-02-23 16:22:24,434 - INFO - Response status: 200
+2025-02-23 16:22:31,704 - INFO - Starting application shutdown...
+2025-02-23 16:22:31,756 - INFO - Successfully closed database connections
+2025-02-23 16:22:32,712 - INFO - Starting application initialization...
+2025-02-23 16:22:32,712 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:22:33,021 - INFO - Successfully initialized dependencies
+2025-02-23 16:22:43,126 - INFO - Starting application shutdown...
+2025-02-23 16:22:43,163 - INFO - Successfully closed database connections
+2025-02-23 16:22:43,972 - INFO - Starting application initialization...
+2025-02-23 16:22:43,973 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:22:44,156 - INFO - Successfully initialized dependencies
+2025-02-23 16:23:31,907 - INFO - Starting application shutdown...
+2025-02-23 16:23:31,954 - INFO - Successfully closed database connections
+2025-02-23 16:23:33,066 - INFO - Starting application initialization...
+2025-02-23 16:23:33,066 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:23:33,302 - INFO - Successfully initialized dependencies
+2025-02-23 16:23:55,255 - INFO - Starting application shutdown...
+2025-02-23 16:23:55,292 - INFO - Successfully closed database connections
+2025-02-23 16:23:56,134 - INFO - Starting application initialization...
+2025-02-23 16:23:56,134 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:23:56,301 - INFO - Successfully initialized dependencies
+2025-02-23 16:26:13,936 - INFO - Starting application shutdown...
+2025-02-23 16:26:13,974 - INFO - Successfully closed database connections
+2025-02-23 16:26:15,120 - INFO - Starting application initialization...
+2025-02-23 16:26:15,120 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:26:15,339 - INFO - Successfully initialized dependencies
+2025-02-23 16:27:27,929 - INFO - Starting application shutdown...
+2025-02-23 16:27:27,971 - INFO - Successfully closed database connections
+2025-02-23 16:27:28,828 - INFO - Starting application initialization...
+2025-02-23 16:27:28,828 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:27:29,018 - INFO - Successfully initialized dependencies
+2025-02-23 16:27:51,854 - INFO - Starting application shutdown...
+2025-02-23 16:27:51,885 - INFO - Successfully closed database connections
+2025-02-23 16:27:52,709 - INFO - Starting application initialization...
+2025-02-23 16:27:52,709 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:27:52,897 - INFO - Successfully initialized dependencies
+2025-02-23 16:28:39,596 - INFO - Starting application shutdown...
+2025-02-23 16:28:39,647 - INFO - Successfully closed database connections
+2025-02-23 16:28:40,503 - INFO - Starting application initialization...
+2025-02-23 16:28:40,503 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:28:40,771 - INFO - Successfully initialized dependencies
+2025-02-23 16:28:53,143 - INFO - Starting application shutdown...
+2025-02-23 16:28:53,182 - INFO - Successfully closed database connections
+2025-02-23 16:28:53,850 - INFO - Starting application initialization...
+2025-02-23 16:28:53,850 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:28:54,041 - INFO - Successfully initialized dependencies
+2025-02-23 16:36:05,651 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:05,652 - INFO - Query parameters: {}
+2025-02-23 16:36:05,652 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:05,652 - INFO - Query parameters: {}
+2025-02-23 16:36:05,652 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:05,652 - INFO - Query parameters: {}
+2025-02-23 16:36:05,652 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:05,652 - INFO - Query parameters: {}
+2025-02-23 16:36:05,711 - INFO - Response status: 200
+2025-02-23 16:36:05,713 - INFO - Response status: 200
+2025-02-23 16:36:05,713 - INFO - Response status: 404
+2025-02-23 16:36:05,715 - INFO - Response status: 200
+2025-02-23 16:36:05,719 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:05,719 - INFO - Query parameters: {}
+2025-02-23 16:36:05,720 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:05,720 - INFO - Query parameters: {}
+2025-02-23 16:36:05,725 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:05,725 - INFO - Query parameters: {}
+2025-02-23 16:36:05,725 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:05,725 - INFO - Query parameters: {}
+2025-02-23 16:36:05,727 - INFO - Response status: 200
+2025-02-23 16:36:05,731 - INFO - Response status: 200
+2025-02-23 16:36:05,732 - INFO - Response status: 200
+2025-02-23 16:36:05,732 - INFO - Response status: 404
+2025-02-23 16:36:07,447 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fprance.py
+2025-02-23 16:36:07,447 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/prance.py'}
+2025-02-23 16:36:07,447 - INFO - === Protocol Details Request ===
+2025-02-23 16:36:07,447 - INFO - Raw protocol path: praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,447 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:36:07,447 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,447 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,447 - INFO - === Protocol Details Request ===
+2025-02-23 16:36:07,447 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,447 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:36:07,447 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,448 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,448 - INFO - === Protocol Details Request ===
+2025-02-23 16:36:07,448 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:36:07,448 - INFO - Protocol module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:36:07,448 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x119c3f2d0>
+2025-02-23 16:36:07,448 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x119c3fa10>
+2025-02-23 16:36:07,448 - INFO - Returning serialized details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:36:07,448 - INFO - Returning validated details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:36:07,449 - INFO - Response status: 200
+2025-02-23 16:36:07,557 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:36:07,557 - INFO - Query parameters: {}
+2025-02-23 16:36:07,558 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:36:07,559 - INFO - Query parameters: {}
+2025-02-23 16:36:07,559 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:36:07,559 - INFO - Query parameters: {}
+2025-02-23 16:36:07,559 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:36:07,559 - INFO - Query parameters: {}
+2025-02-23 16:36:07,560 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:36:07,560 - INFO - Query parameters: {}
+2025-02-23 16:36:07,678 - INFO - Response status: 500
+2025-02-23 16:36:07,678 - INFO - Response status: 500
+2025-02-23 16:36:07,679 - INFO - Response status: 500
+2025-02-23 16:36:07,679 - INFO - Response status: 500
+2025-02-23 16:36:07,682 - INFO - Response status: 500
+2025-02-23 16:36:10,225 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:10,225 - INFO - Query parameters: {}
+2025-02-23 16:36:10,227 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:10,227 - INFO - Query parameters: {}
+2025-02-23 16:36:10,227 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:10,227 - INFO - Query parameters: {}
+2025-02-23 16:36:10,227 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:10,227 - INFO - Query parameters: {}
+2025-02-23 16:36:10,229 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:36:10,229 - INFO - Query parameters: {}
+2025-02-23 16:36:10,229 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:36:10,229 - INFO - Query parameters: {}
+2025-02-23 16:36:10,230 - INFO - Response status: 200
+2025-02-23 16:36:10,231 - INFO - Response status: 200
+2025-02-23 16:36:10,232 - INFO - Response status: 404
+2025-02-23 16:36:10,232 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:36:10,233 - INFO - Query parameters: {}
+2025-02-23 16:36:10,233 - INFO - Response status: 200
+2025-02-23 16:36:10,234 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:36:10,234 - INFO - Query parameters: {}
+2025-02-23 16:36:10,234 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:36:10,234 - INFO - Query parameters: {}
+2025-02-23 16:36:10,234 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:10,234 - INFO - Query parameters: {}
+2025-02-23 16:36:10,238 - INFO - Response status: 200
+2025-02-23 16:36:10,245 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:10,246 - INFO - Query parameters: {}
+2025-02-23 16:36:10,247 - INFO - Response status: 200
+2025-02-23 16:36:10,249 - INFO - Response status: 500
+2025-02-23 16:36:10,250 - INFO - Response status: 500
+2025-02-23 16:36:10,250 - INFO - Response status: 500
+2025-02-23 16:36:10,252 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:10,252 - INFO - Query parameters: {}
+2025-02-23 16:36:10,254 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:10,254 - INFO - Query parameters: {}
+2025-02-23 16:36:10,256 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:36:10,256 - INFO - Query parameters: {}
+2025-02-23 16:36:10,257 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:36:10,257 - INFO - Query parameters: {}
+2025-02-23 16:36:10,258 - INFO - Response status: 500
+2025-02-23 16:36:10,258 - INFO - Response status: 500
+2025-02-23 16:36:10,259 - INFO - Response status: 404
+2025-02-23 16:36:10,261 - INFO - Response status: 200
+2025-02-23 16:36:10,261 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:36:10,261 - INFO - Query parameters: {}
+2025-02-23 16:36:10,262 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:36:10,262 - INFO - Query parameters: {}
+2025-02-23 16:36:10,262 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:36:10,262 - INFO - Query parameters: {}
+2025-02-23 16:36:10,265 - INFO - Response status: 500
+2025-02-23 16:36:10,266 - INFO - Response status: 500
+2025-02-23 16:36:10,268 - INFO - Response status: 500
+2025-02-23 16:36:10,268 - INFO - Response status: 500
+2025-02-23 16:36:10,270 - INFO - Response status: 500
+2025-02-23 16:36:23,095 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:23,102 - INFO - Query parameters: {}
+2025-02-23 16:36:23,103 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:23,104 - INFO - Query parameters: {}
+2025-02-23 16:36:23,104 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:23,104 - INFO - Query parameters: {}
+2025-02-23 16:36:23,104 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:23,104 - INFO - Query parameters: {}
+2025-02-23 16:36:23,114 - INFO - Response status: 200
+2025-02-23 16:36:23,116 - INFO - Response status: 404
+2025-02-23 16:36:23,117 - INFO - Response status: 200
+2025-02-23 16:36:23,117 - INFO - Response status: 200
+2025-02-23 16:36:23,125 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:36:23,125 - INFO - Query parameters: {}
+2025-02-23 16:36:23,132 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:36:23,132 - INFO - Query parameters: {}
+2025-02-23 16:36:23,132 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:36:23,132 - INFO - Query parameters: {}
+2025-02-23 16:36:23,134 - INFO - Response status: 200
+2025-02-23 16:36:23,135 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:36:23,135 - INFO - Query parameters: {}
+2025-02-23 16:36:23,150 - INFO - Response status: 200
+2025-02-23 16:36:23,151 - INFO - Response status: 404
+2025-02-23 16:36:23,154 - INFO - Response status: 200
+2025-02-23 16:39:11,922 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:39:11,922 - INFO - Query parameters: {}
+2025-02-23 16:39:11,923 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:39:11,923 - INFO - Query parameters: {}
+2025-02-23 16:39:11,923 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:39:11,923 - INFO - Query parameters: {}
+2025-02-23 16:39:11,923 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:39:11,923 - INFO - Query parameters: {}
+2025-02-23 16:39:11,930 - INFO - Response status: 200
+2025-02-23 16:39:11,937 - INFO - Response status: 200
+2025-02-23 16:39:11,938 - INFO - Response status: 404
+2025-02-23 16:39:11,940 - INFO - Response status: 200
+2025-02-23 16:39:15,678 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:39:15,678 - INFO - Query parameters: {}
+2025-02-23 16:39:15,679 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:39:15,679 - INFO - Query parameters: {}
+2025-02-23 16:39:15,679 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:39:15,679 - INFO - Query parameters: {}
+2025-02-23 16:39:15,679 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:39:15,680 - INFO - Query parameters: {}
+2025-02-23 16:39:15,687 - INFO - Response status: 200
+2025-02-23 16:39:15,691 - INFO - Response status: 200
+2025-02-23 16:39:15,691 - INFO - Response status: 404
+2025-02-23 16:39:15,693 - INFO - Response status: 200
+2025-02-23 16:39:15,696 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:39:15,696 - INFO - Query parameters: {}
+2025-02-23 16:39:15,697 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:39:15,697 - INFO - Query parameters: {}
+2025-02-23 16:39:15,700 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:39:15,701 - INFO - Query parameters: {}
+2025-02-23 16:39:15,703 - INFO - Response status: 200
+2025-02-23 16:39:15,707 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:39:15,707 - INFO - Query parameters: {}
+2025-02-23 16:39:15,713 - INFO - Response status: 200
+2025-02-23 16:39:15,714 - INFO - Response status: 200
+2025-02-23 16:39:15,717 - INFO - Response status: 404
+2025-02-23 16:40:21,767 - INFO - Starting application shutdown...
+2025-02-23 16:40:21,787 - INFO - Successfully closed database connections
+2025-02-23 16:40:22,650 - INFO - Starting application initialization...
+2025-02-23 16:40:22,650 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:40:23,047 - INFO - Successfully initialized dependencies
+2025-02-23 16:40:29,326 - INFO - Starting application shutdown...
+2025-02-23 16:40:29,365 - INFO - Successfully closed database connections
+2025-02-23 16:40:30,287 - INFO - Starting application initialization...
+2025-02-23 16:40:30,287 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:40:30,473 - INFO - Successfully initialized dependencies
+2025-02-23 16:42:32,423 - INFO - Starting application shutdown...
+2025-02-23 16:42:32,462 - INFO - Successfully closed database connections
+2025-02-23 16:42:33,306 - INFO - Starting application initialization...
+2025-02-23 16:42:33,306 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:42:33,527 - INFO - Successfully initialized dependencies
+2025-02-23 16:42:37,066 - INFO - Starting application shutdown...
+2025-02-23 16:42:37,079 - INFO - Successfully closed database connections
+2025-02-23 16:42:37,911 - INFO - Starting application initialization...
+2025-02-23 16:42:37,912 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:42:38,128 - INFO - Successfully initialized dependencies
+2025-02-23 16:42:43,110 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:42:43,111 - INFO - Query parameters: {}
+2025-02-23 16:42:43,111 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:42:43,112 - INFO - Query parameters: {}
+2025-02-23 16:42:43,115 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:42:43,115 - INFO - Query parameters: {}
+2025-02-23 16:42:43,116 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:42:43,116 - INFO - Query parameters: {}
+2025-02-23 16:42:43,118 - INFO - Loaded module: prance
+2025-02-23 16:42:43,194 - INFO - Response status: 200
+2025-02-23 16:42:43,196 - INFO - Response status: 200
+2025-02-23 16:42:43,196 - INFO - Response status: 404
+2025-02-23 16:42:43,197 - INFO - Response status: 200
+2025-02-23 16:42:43,202 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:42:43,202 - INFO - Query parameters: {}
+2025-02-23 16:42:43,203 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:42:43,203 - INFO - Query parameters: {}
+2025-02-23 16:42:43,205 - INFO - Loaded module: prance
+2025-02-23 16:42:43,206 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:42:43,206 - INFO - Query parameters: {}
+2025-02-23 16:42:43,207 - INFO - Response status: 200
+2025-02-23 16:42:43,208 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:42:43,208 - INFO - Query parameters: {}
+2025-02-23 16:42:43,211 - INFO - Response status: 200
+2025-02-23 16:42:43,212 - INFO - Response status: 200
+2025-02-23 16:42:43,213 - INFO - Response status: 404
+2025-02-23 16:42:46,489 - INFO - Starting application shutdown...
+2025-02-23 16:42:46,525 - INFO - Successfully closed database connections
+2025-02-23 16:42:47,403 - INFO - Starting application initialization...
+2025-02-23 16:42:47,403 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:42:47,571 - INFO - Successfully initialized dependencies
+2025-02-23 16:43:08,010 - INFO - Starting application shutdown...
+2025-02-23 16:43:08,057 - INFO - Successfully closed database connections
+2025-02-23 16:43:09,171 - INFO - Starting application initialization...
+2025-02-23 16:43:09,171 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:43:09,364 - INFO - Successfully initialized dependencies
+2025-02-23 16:43:11,561 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:43:11,561 - INFO - Query parameters: {}
+2025-02-23 16:43:11,561 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:43:11,561 - INFO - Query parameters: {}
+2025-02-23 16:43:11,561 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:43:11,561 - INFO - Query parameters: {}
+2025-02-23 16:43:11,563 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:43:11,563 - INFO - Query parameters: {}
+2025-02-23 16:43:11,563 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:43:11,564 - INFO - Loaded module: prance
+2025-02-23 16:43:11,564 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:43:11,564 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:43:11,564 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:43:11,627 - INFO - Response status: 200
+2025-02-23 16:43:11,630 - INFO - Response status: 200
+2025-02-23 16:43:11,630 - INFO - Response status: 404
+2025-02-23 16:43:11,631 - INFO - Response status: 200
+2025-02-23 16:43:11,634 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:43:11,634 - INFO - Query parameters: {}
+2025-02-23 16:43:11,635 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:43:11,635 - INFO - Query parameters: {}
+2025-02-23 16:43:11,637 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:43:11,637 - INFO - Loaded module: prance
+2025-02-23 16:43:11,638 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:43:11,638 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:43:11,638 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:43:11,638 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:43:11,638 - INFO - Query parameters: {}
+2025-02-23 16:43:11,639 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:43:11,639 - INFO - Query parameters: {}
+2025-02-23 16:43:11,640 - INFO - Response status: 200
+2025-02-23 16:43:11,642 - INFO - Response status: 200
+2025-02-23 16:43:11,642 - INFO - Response status: 404
+2025-02-23 16:43:11,643 - INFO - Response status: 200
+2025-02-23 16:43:20,039 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:43:20,040 - INFO - Query parameters: {}
+2025-02-23 16:43:20,041 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:43:20,041 - INFO - Query parameters: {}
+2025-02-23 16:43:20,042 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:43:20,042 - INFO - Query parameters: {}
+2025-02-23 16:43:20,043 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:43:20,043 - INFO - Query parameters: {}
+2025-02-23 16:43:20,047 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:43:20,048 - INFO - Loaded module: prance
+2025-02-23 16:43:20,048 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:43:20,048 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:43:20,048 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:43:20,051 - INFO - Response status: 200
+2025-02-23 16:43:20,054 - INFO - Response status: 200
+2025-02-23 16:43:20,057 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:43:20,058 - INFO - Query parameters: {}
+2025-02-23 16:43:20,058 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:43:20,058 - INFO - Query parameters: {}
+2025-02-23 16:43:20,058 - INFO - Response status: 200
+2025-02-23 16:43:20,059 - INFO - Response status: 404
+2025-02-23 16:43:20,061 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:43:20,062 - INFO - Loaded module: prance
+2025-02-23 16:43:20,062 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:43:20,062 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:43:20,062 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:43:20,064 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:43:20,064 - INFO - Query parameters: {}
+2025-02-23 16:43:20,064 - INFO - Response status: 200
+2025-02-23 16:43:20,067 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:43:20,067 - INFO - Query parameters: {}
+2025-02-23 16:43:20,069 - INFO - Response status: 200
+2025-02-23 16:43:20,071 - INFO - Response status: 200
+2025-02-23 16:43:20,072 - INFO - Response status: 404
+2025-02-23 16:45:34,858 - INFO - Starting application shutdown...
+2025-02-23 16:45:34,933 - INFO - Successfully closed database connections
+2025-02-23 16:45:35,954 - INFO - Starting application initialization...
+2025-02-23 16:45:35,954 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:45:36,138 - INFO - Successfully initialized dependencies
+2025-02-23 16:45:44,174 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:45:44,175 - INFO - Query parameters: {}
+2025-02-23 16:45:44,176 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:45:44,176 - INFO - Query parameters: {}
+2025-02-23 16:45:44,176 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:45:44,178 - INFO - Query parameters: {}
+2025-02-23 16:45:44,179 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:45:44,179 - INFO - Query parameters: {}
+2025-02-23 16:45:44,180 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:45:44,189 - INFO - Loaded module: prance
+2025-02-23 16:45:44,189 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:45:44,190 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:45:44,190 - INFO - Skipping __init__.py file
+2025-02-23 16:45:44,190 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:45:44,191 - ERROR - Error loading protocol from praxis/protocol/protocols/example.py: attempted relative import with no known parent package
+2025-02-23 16:45:44,264 - INFO - Response status: 200
+2025-02-23 16:45:44,267 - INFO - Response status: 404
+2025-02-23 16:45:44,268 - INFO - Response status: 200
+2025-02-23 16:45:44,336 - INFO - Response status: 200
+2025-02-23 16:45:44,337 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:45:44,338 - INFO - Query parameters: {}
+2025-02-23 16:45:44,338 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:45:44,338 - INFO - Query parameters: {}
+2025-02-23 16:45:44,339 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:45:44,340 - INFO - Loaded module: prance
+2025-02-23 16:45:44,340 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:45:44,340 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:45:44,340 - INFO - Skipping __init__.py file
+2025-02-23 16:45:44,340 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:45:44,340 - ERROR - Error loading protocol from praxis/protocol/protocols/example.py: attempted relative import with no known parent package
+2025-02-23 16:45:44,341 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:45:44,341 - INFO - Query parameters: {}
+2025-02-23 16:45:44,374 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:45:44,374 - INFO - Query parameters: {}
+2025-02-23 16:45:44,374 - INFO - Response status: 200
+2025-02-23 16:45:44,377 - INFO - Response status: 404
+2025-02-23 16:45:44,383 - INFO - Response status: 200
+2025-02-23 16:45:44,392 - INFO - Response status: 200
+2025-02-23 16:47:55,472 - INFO - Starting application shutdown...
+2025-02-23 16:47:55,500 - INFO - Successfully closed database connections
+2025-02-23 16:47:56,556 - INFO - Starting application initialization...
+2025-02-23 16:47:56,556 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:47:56,753 - INFO - Successfully initialized dependencies
+2025-02-23 16:48:02,206 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:48:02,206 - INFO - Query parameters: {}
+2025-02-23 16:48:02,206 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:48:02,207 - INFO - Query parameters: {}
+2025-02-23 16:48:02,209 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:48:02,209 - INFO - Query parameters: {}
+2025-02-23 16:48:02,209 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:48:02,209 - INFO - Query parameters: {}
+2025-02-23 16:48:02,210 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:48:02,210 - INFO - Loaded module: prance
+2025-02-23 16:48:02,210 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:48:02,211 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:48:02,211 - INFO - Skipping __init__.py file
+2025-02-23 16:48:02,211 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:48:02,246 - INFO - Loaded module: example
+2025-02-23 16:48:02,246 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:48:02,247 - INFO - Response status: 200
+2025-02-23 16:48:02,248 - INFO - Response status: 200
+2025-02-23 16:48:02,248 - INFO - Response status: 404
+2025-02-23 16:48:02,248 - INFO - Response status: 200
+2025-02-23 16:48:02,251 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:48:02,251 - INFO - Query parameters: {}
+2025-02-23 16:48:02,251 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:48:02,251 - INFO - Query parameters: {}
+2025-02-23 16:48:02,251 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:48:02,251 - INFO - Query parameters: {}
+2025-02-23 16:48:02,252 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:48:02,252 - INFO - Loaded module: prance
+2025-02-23 16:48:02,252 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:48:02,252 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:48:02,252 - INFO - Skipping __init__.py file
+2025-02-23 16:48:02,252 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:48:02,253 - INFO - Loaded module: example
+2025-02-23 16:48:02,253 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:48:02,254 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:48:02,254 - INFO - Query parameters: {}
+2025-02-23 16:48:02,254 - INFO - Response status: 200
+2025-02-23 16:48:02,256 - INFO - Response status: 200
+2025-02-23 16:48:02,257 - INFO - Response status: 200
+2025-02-23 16:48:02,258 - INFO - Response status: 404
+2025-02-23 16:48:03,617 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fexample.py
+2025-02-23 16:48:03,617 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/example.py'}
+2025-02-23 16:48:03,617 - INFO - === Protocol Details Request ===
+2025-02-23 16:48:03,617 - INFO - Raw protocol path: praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,618 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:48:03,618 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,618 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,618 - INFO - === Protocol Details Request ===
+2025-02-23 16:48:03,618 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,618 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:48:03,618 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,618 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,619 - INFO - === Protocol Details Request ===
+2025-02-23 16:48:03,619 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:48:03,619 - INFO - Protocol module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:48:03,620 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x12c16c390>
+2025-02-23 16:48:03,620 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x12c16e310>
+2025-02-23 16:48:03,621 - INFO - Returning serialized details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'string', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'enum', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:48:03,621 - INFO - Returning validated details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'string', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'enum', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:49:43,070 - INFO - Starting application shutdown...
+2025-02-23 16:49:43,102 - INFO - Successfully closed database connections
+2025-02-23 16:49:43,927 - INFO - Starting application initialization...
+2025-02-23 16:49:43,927 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:49:44,109 - INFO - Successfully initialized dependencies
+2025-02-23 16:50:17,206 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:50:17,207 - INFO - Query parameters: {}
+2025-02-23 16:50:17,207 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:50:17,207 - INFO - Query parameters: {}
+2025-02-23 16:50:17,207 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:50:17,207 - INFO - Query parameters: {}
+2025-02-23 16:50:17,212 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:50:17,212 - INFO - Query parameters: {}
+2025-02-23 16:50:17,213 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:50:17,289 - INFO - Loaded module: prance
+2025-02-23 16:50:17,289 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:50:17,289 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:50:17,289 - INFO - Skipping __init__.py file
+2025-02-23 16:50:17,289 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:50:17,291 - INFO - Loaded module: example
+2025-02-23 16:50:17,291 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:50:17,292 - INFO - Response status: 200
+2025-02-23 16:50:17,293 - INFO - Response status: 200
+2025-02-23 16:50:17,294 - INFO - Response status: 404
+2025-02-23 16:50:17,294 - INFO - Response status: 200
+2025-02-23 16:50:17,297 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:50:17,298 - INFO - Query parameters: {}
+2025-02-23 16:50:17,304 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:50:17,305 - INFO - Query parameters: {}
+2025-02-23 16:50:17,305 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:50:17,305 - INFO - Query parameters: {}
+2025-02-23 16:50:17,305 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:50:17,306 - INFO - Query parameters: {}
+2025-02-23 16:50:17,307 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:50:17,309 - INFO - Loaded module: prance
+2025-02-23 16:50:17,309 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:50:17,309 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:50:17,309 - INFO - Skipping __init__.py file
+2025-02-23 16:50:17,309 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:50:17,310 - INFO - Loaded module: example
+2025-02-23 16:50:17,310 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:50:17,314 - INFO - Response status: 200
+2025-02-23 16:50:17,317 - INFO - Response status: 200
+2025-02-23 16:50:17,318 - INFO - Response status: 404
+2025-02-23 16:50:17,319 - INFO - Response status: 200
+2025-02-23 16:50:27,468 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:50:27,469 - INFO - Query parameters: {}
+2025-02-23 16:50:27,470 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:50:27,470 - INFO - Query parameters: {}
+2025-02-23 16:50:27,470 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:50:27,470 - INFO - Query parameters: {}
+2025-02-23 16:50:27,470 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:50:27,470 - INFO - Query parameters: {}
+2025-02-23 16:50:27,473 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:50:27,474 - INFO - Loaded module: prance
+2025-02-23 16:50:27,474 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:50:27,474 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:50:27,474 - INFO - Skipping __init__.py file
+2025-02-23 16:50:27,474 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:50:27,474 - INFO - Loaded module: example
+2025-02-23 16:50:27,474 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:50:27,476 - INFO - Response status: 200
+2025-02-23 16:50:27,479 - INFO - Response status: 200
+2025-02-23 16:50:27,480 - INFO - Response status: 404
+2025-02-23 16:50:27,481 - INFO - Response status: 200
+2025-02-23 16:50:27,484 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 16:50:27,484 - INFO - Query parameters: {}
+2025-02-23 16:50:27,485 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 16:50:27,485 - INFO - Query parameters: {}
+2025-02-23 16:50:27,486 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 16:50:27,487 - INFO - Loaded module: prance
+2025-02-23 16:50:27,487 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:50:27,487 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 16:50:27,487 - INFO - Skipping __init__.py file
+2025-02-23 16:50:27,487 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 16:50:27,488 - INFO - Loaded module: example
+2025-02-23 16:50:27,488 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:50:27,489 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 16:50:27,489 - INFO - Query parameters: {}
+2025-02-23 16:50:27,490 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 16:50:27,490 - INFO - Query parameters: {}
+2025-02-23 16:50:27,490 - INFO - Response status: 200
+2025-02-23 16:50:27,491 - INFO - Response status: 200
+2025-02-23 16:50:27,493 - INFO - Response status: 404
+2025-02-23 16:50:27,494 - INFO - Response status: 200
+2025-02-23 16:50:31,065 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fprance.py
+2025-02-23 16:50:31,065 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/prance.py'}
+2025-02-23 16:50:31,065 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:31,065 - INFO - Raw protocol path: praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,065 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:50:31,065 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,065 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,065 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:31,065 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,065 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:50:31,066 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,066 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,066 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:31,066 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 16:50:31,066 - INFO - Protocol module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 16:50:31,066 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x12d9790d0>
+2025-02-23 16:50:31,066 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x12d97b950>
+2025-02-23 16:50:31,066 - INFO - Returning serialized details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:50:31,066 - INFO - Returning validated details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'enum', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:50:31,067 - INFO - Response status: 200
+2025-02-23 16:50:31,171 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:50:31,171 - INFO - Query parameters: {}
+2025-02-23 16:50:31,173 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:50:31,173 - INFO - Query parameters: {}
+2025-02-23 16:50:31,173 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:50:31,173 - INFO - Query parameters: {}
+2025-02-23 16:50:31,173 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:50:31,174 - INFO - Query parameters: {}
+2025-02-23 16:50:31,174 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:50:31,174 - INFO - Query parameters: {}
+2025-02-23 16:50:31,190 - INFO - Response status: 500
+2025-02-23 16:50:31,191 - INFO - Response status: 500
+2025-02-23 16:50:31,191 - INFO - Response status: 500
+2025-02-23 16:50:31,192 - INFO - Response status: 500
+2025-02-23 16:50:31,194 - INFO - Response status: 500
+2025-02-23 16:50:33,015 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fexample.py
+2025-02-23 16:50:33,015 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/example.py'}
+2025-02-23 16:50:33,017 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:33,017 - INFO - Raw protocol path: praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:50:33,017 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:33,017 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 16:50:33,017 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - === Protocol Details Request ===
+2025-02-23 16:50:33,017 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 16:50:33,017 - INFO - Protocol module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 16:50:33,017 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x12d7e2810>
+2025-02-23 16:50:33,017 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x12d9798d0>
+2025-02-23 16:50:33,017 - INFO - Returning serialized details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'string', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'enum', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:50:33,017 - INFO - Returning validated details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'enum', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'string', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'enum', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'enum', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 16:50:33,018 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 16:50:33,018 - INFO - Query parameters: {}
+2025-02-23 16:50:33,018 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 16:50:33,018 - INFO - Query parameters: {}
+2025-02-23 16:50:33,018 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 16:50:33,018 - INFO - Query parameters: {}
+2025-02-23 16:50:33,018 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 16:50:33,018 - INFO - Query parameters: {}
+2025-02-23 16:50:33,026 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 16:50:33,027 - INFO - Query parameters: {}
+2025-02-23 16:50:33,029 - INFO - Response status: 500
+2025-02-23 16:50:33,030 - INFO - Response status: 500
+2025-02-23 16:50:33,031 - INFO - Response status: 500
+2025-02-23 16:50:33,031 - INFO - Response status: 500
+2025-02-23 16:50:33,034 - INFO - Response status: 500
+2025-02-23 16:57:44,469 - INFO - Starting application shutdown...
+2025-02-23 16:57:44,470 - INFO - Successfully closed database connections
+2025-02-23 16:57:45,628 - INFO - Starting application initialization...
+2025-02-23 16:57:45,628 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:57:45,820 - INFO - Successfully initialized dependencies
+2025-02-23 16:58:35,302 - INFO - Starting application shutdown...
+2025-02-23 16:58:35,339 - INFO - Successfully closed database connections
+2025-02-23 16:58:36,165 - INFO - Starting application initialization...
+2025-02-23 16:58:36,165 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 16:58:36,376 - INFO - Successfully initialized dependencies
+2025-02-23 17:00:02,267 - INFO - Starting application shutdown...
+2025-02-23 17:00:02,312 - INFO - Successfully closed database connections
+2025-02-23 17:00:03,074 - INFO - Starting application initialization...
+2025-02-23 17:00:03,074 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:00:03,271 - INFO - Successfully initialized dependencies
+2025-02-23 17:02:31,517 - INFO - Starting application shutdown...
+2025-02-23 17:02:31,548 - INFO - Successfully closed database connections
+2025-02-23 17:02:32,666 - INFO - Starting application initialization...
+2025-02-23 17:02:32,666 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:02:32,859 - INFO - Successfully initialized dependencies
+2025-02-23 17:15:54,842 - INFO - Starting application shutdown...
+2025-02-23 17:15:54,848 - INFO - Successfully closed database connections
+2025-02-23 17:15:55,808 - INFO - Starting application initialization...
+2025-02-23 17:15:55,808 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:15:56,013 - INFO - Successfully initialized dependencies
+2025-02-23 17:28:32,157 - INFO - Starting application shutdown...
+2025-02-23 17:28:32,162 - INFO - Successfully closed database connections
+2025-02-23 17:28:33,747 - INFO - Starting application initialization...
+2025-02-23 17:28:33,748 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:28:34,530 - INFO - Successfully initialized dependencies
+2025-02-23 17:32:12,909 - INFO - Starting application shutdown...
+2025-02-23 17:32:12,962 - INFO - Successfully closed database connections
+2025-02-23 17:32:13,772 - INFO - Starting application initialization...
+2025-02-23 17:32:13,772 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:32:13,980 - INFO - Successfully initialized dependencies
+2025-02-23 17:42:40,450 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 17:42:40,451 - INFO - Query parameters: {}
+2025-02-23 17:42:40,451 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 17:42:40,451 - INFO - Query parameters: {}
+2025-02-23 17:42:40,451 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 17:42:40,451 - INFO - Query parameters: {}
+2025-02-23 17:42:40,451 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 17:42:40,451 - INFO - Query parameters: {}
+2025-02-23 17:42:40,456 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 17:42:40,457 - INFO - Loaded module: prance
+2025-02-23 17:42:40,457 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 17:42:40,457 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 17:42:40,458 - INFO - Skipping __init__.py file
+2025-02-23 17:42:40,458 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 17:42:40,460 - INFO - Loaded module: example
+2025-02-23 17:42:40,460 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:42:40,588 - INFO - Response status: 200
+2025-02-23 17:42:40,592 - INFO - Response status: 200
+2025-02-23 17:42:40,593 - INFO - Response status: 404
+2025-02-23 17:42:40,602 - INFO - Response status: 200
+2025-02-23 17:42:40,605 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 17:42:40,605 - INFO - Query parameters: {}
+2025-02-23 17:42:40,606 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 17:42:40,606 - INFO - Query parameters: {}
+2025-02-23 17:42:40,606 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 17:42:40,608 - INFO - Loaded module: prance
+2025-02-23 17:42:40,608 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 17:42:40,608 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 17:42:40,608 - INFO - Skipping __init__.py file
+2025-02-23 17:42:40,608 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 17:42:40,609 - INFO - Loaded module: example
+2025-02-23 17:42:40,609 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:42:40,610 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 17:42:40,610 - INFO - Query parameters: {}
+2025-02-23 17:42:40,611 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 17:42:40,611 - INFO - Query parameters: {}
+2025-02-23 17:42:40,611 - INFO - Response status: 200
+2025-02-23 17:42:40,614 - INFO - Response status: 200
+2025-02-23 17:42:40,616 - INFO - Response status: 200
+2025-02-23 17:42:40,618 - INFO - Response status: 404
+2025-02-23 17:42:42,175 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fexample.py
+2025-02-23 17:42:42,177 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/example.py'}
+2025-02-23 17:42:42,179 - INFO - === Protocol Details Request ===
+2025-02-23 17:42:42,179 - INFO - Raw protocol path: praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,179 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:42:42,179 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,179 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,179 - INFO - === Protocol Details Request ===
+2025-02-23 17:42:42,180 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,180 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:42:42,180 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,180 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,182 - INFO - === Protocol Details Request ===
+2025-02-23 17:42:42,182 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:42:42,182 - INFO - Protocol module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:42:42,182 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x11f322210>
+2025-02-23 17:42:42,182 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x11f35c650>
+2025-02-23 17:42:42,182 - INFO - Returning serialized details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'dict', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'array', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'array_mapping_example': {'type': 'dict', 'required': True, 'default': {}, 'description': 'A mapping where each key maps to an array of values', 'constraints': {'key_type': 'string', 'value_type': 'array', 'key_enum': ['group1', 'group2', 'group3'], 'value_enum': ['option1', 'option2', 'option3', 'option4'], 'key_enum_len': 3, 'value_enum_len': 2}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:42:42,183 - INFO - Returning validated details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'dict', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': <class 'str'>, 'value_type': <class 'int'>, 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'array', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'array_mapping_example': {'type': 'dict', 'required': True, 'default': {}, 'description': 'A mapping where each key maps to an array of values', 'constraints': {'key_type': 'string', 'value_type': 'array', 'key_enum': ['group1', 'group2', 'group3'], 'value_enum': ['option1', 'option2', 'option3', 'option4'], 'key_enum_len': 3, 'value_enum_len': 2}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:44:33,486 - INFO - Starting application shutdown...
+2025-02-23 17:44:33,486 - INFO - Successfully closed database connections
+2025-02-23 17:44:34,582 - INFO - Starting application initialization...
+2025-02-23 17:44:34,582 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:44:34,896 - INFO - Successfully initialized dependencies
+2025-02-23 17:44:55,409 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fprance.py
+2025-02-23 17:44:55,409 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/prance.py'}
+2025-02-23 17:44:55,410 - INFO - === Protocol Details Request ===
+2025-02-23 17:44:55,410 - INFO - Raw protocol path: praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,410 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:44:55,410 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,410 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,410 - INFO - === Protocol Details Request ===
+2025-02-23 17:44:55,410 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,410 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:44:55,410 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,410 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,412 - INFO - === Protocol Details Request ===
+2025-02-23 17:44:55,412 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py
+2025-02-23 17:44:55,412 - INFO - Protocol module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 17:44:55,412 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x11ed31d50>
+2025-02-23 17:44:55,412 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x11ed32510>
+2025-02-23 17:44:55,412 - INFO - Returning serialized details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'array', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'array', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:44:55,412 - INFO - Returning validated details: {'name': 'prance', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/prance.py', 'description': '\nThis module is the PRANCE protocol. It is a complex protocol that requires a lot of setup and teardown.\nIt uses the liquid handler to move liquids around, pumps to pump bacteria, water, and bleach onto the robot and more.\n\nAttributes:\n\n\n', 'parameters': {'tips_staged': {'type': 'boolean', 'required': True, 'default': False, 'description': 'Whether tips have been staged on the deck', 'constraints': {}}, 'bacteria_ids': {'type': 'array', 'required': True, 'default': [], 'description': 'List of bacteria IDs to use', 'constraints': {}}, 'phage_ids': {'type': 'array', 'required': True, 'default': [], 'description': 'List of phage IDs to use', 'constraints': {}}, 'no_phage_control': {'type': 'number', 'required': True, 'default': 0, 'description': 'Number of no-phage control wells', 'constraints': {}}, 'cycle_time': {'type': 'number', 'required': True, 'default': 60, 'description': 'Time between cycles in minutes', 'constraints': {'min_value': 1}}, 'sampling_interval': {'type': 'number', 'required': True, 'default': 30, 'description': 'Time between samples in minutes', 'constraints': {'min_value': 1}}, 'mixing': {'type': 'boolean', 'required': True, 'default': True, 'description': 'Whether to mix samples', 'constraints': {}}, 'mixing_volume': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Volume to use for mixing in µL', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_speed': {'type': 'number', 'required': True, 'default': 100.0, 'description': 'Speed to use for mixing in µL/s', 'constraints': {'min_value': 10.0, 'max_value': 1000.0}}, 'mixing_cycles': {'type': 'number', 'required': True, 'default': 3, 'description': 'Number of mixing cycles', 'constraints': {'min_value': 1, 'max_value': 10}}, 'lagoon_flow_rate': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'Flow rate for lagoon operations in mL/min', 'constraints': {'min_value': 0.1, 'max_value': 5.0}}, 'washer_volume': {'type': 'number', 'required': True, 'default': 1000.0, 'description': 'Volume to use for washing in µL', 'constraints': {'min_value': 100.0, 'max_value': 5000.0}}, 'basin_refill_frequency': {'type': 'number', 'required': True, 'default': 24, 'description': 'How often to refill the basin in hours', 'constraints': {'min_value': 1, 'max_value': 72}}, 'inducer_volume': {'type': 'number', 'required': True, 'default': 50.0, 'description': 'Volume of inducer to add in µL', 'constraints': {'min_value': 1.0, 'max_value': 1000.0}}}, 'assets': [{'name': 'pumps1', 'type': 'PumpArray', 'description': 'Fluidic pump 1', 'required': True}, {'name': 'pumps2', 'type': 'PumpArray', 'description': 'Fluidic pump 2', 'required': True}, {'name': 'tip_washer', 'type': 'Resource', 'description': 'Washer for tip cleaning', 'required': True}, {'name': 'sample_reservoir', 'type': 'Resource', 'description': 'Reservoir for samples', 'required': True}, {'name': 'holding', 'type': 'Plate', 'description': 'Plate for holding samples', 'required': True}, {'name': 'induced', 'type': 'Plate', 'description': 'Plate for induced samples', 'required': True}, {'name': 'lagoons', 'type': 'Plate', 'description': 'Plate for lagoon samples', 'required': True}, {'name': 'holding_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for holding operations', 'required': True}, {'name': 'induced_tip_rack', 'type': 'TipRack', 'description': 'Tip rack for induction operations', 'required': True}, {'name': 'lagoon_tip_rack_1', 'type': 'TipRack', 'description': 'First tip rack for lagoon operations', 'required': True}, {'name': 'plate_reader', 'type': 'PlateReader', 'description': 'Reader for plate measurements', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:44:55,414 - INFO - Response status: 200
+2025-02-23 17:44:55,539 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 17:44:55,539 - INFO - Query parameters: {}
+2025-02-23 17:44:55,540 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 17:44:55,540 - INFO - Query parameters: {}
+2025-02-23 17:44:55,541 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 17:44:55,541 - INFO - Query parameters: {}
+2025-02-23 17:44:55,541 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 17:44:55,541 - INFO - Query parameters: {}
+2025-02-23 17:44:55,541 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 17:44:55,611 - INFO - Query parameters: {}
+2025-02-23 17:44:55,620 - INFO - Response status: 500
+2025-02-23 17:44:55,622 - INFO - Response status: 500
+2025-02-23 17:44:55,623 - INFO - Response status: 500
+2025-02-23 17:44:55,623 - INFO - Response status: 500
+2025-02-23 17:44:55,624 - INFO - Response status: 500
+2025-02-23 17:47:09,761 - INFO - Starting application shutdown...
+2025-02-23 17:47:09,845 - INFO - Successfully closed database connections
+2025-02-23 17:47:10,764 - INFO - Starting application initialization...
+2025-02-23 17:47:10,765 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:47:11,004 - INFO - Successfully initialized dependencies
+2025-02-23 17:47:33,143 - INFO - Starting application shutdown...
+2025-02-23 17:47:33,168 - INFO - Successfully closed database connections
+2025-02-23 17:47:33,983 - INFO - Starting application initialization...
+2025-02-23 17:47:33,983 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:47:34,182 - INFO - Successfully initialized dependencies
+2025-02-23 17:49:25,732 - INFO - Starting application shutdown...
+2025-02-23 17:49:26,185 - INFO - Successfully closed database connections
+2025-02-23 17:49:27,582 - INFO - Starting application initialization...
+2025-02-23 17:49:27,582 - INFO - Default protocol directory: ./praxis/protocol/protocols
+2025-02-23 17:49:27,800 - INFO - Successfully initialized dependencies
+2025-02-23 17:49:27,803 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 17:49:27,803 - INFO - Query parameters: {}
+2025-02-23 17:49:27,804 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 17:49:27,804 - INFO - Query parameters: {}
+2025-02-23 17:49:27,804 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 17:49:27,804 - INFO - Query parameters: {}
+2025-02-23 17:49:27,804 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 17:49:27,804 - INFO - Query parameters: {}
+2025-02-23 17:49:27,804 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 17:49:27,804 - INFO - Query parameters: {}
+2025-02-23 17:49:27,804 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 17:49:27,804 - INFO - Query parameters: {}
+2025-02-23 17:49:27,838 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 17:49:27,839 - INFO - Loaded module: prance
+2025-02-23 17:49:27,839 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 17:49:27,839 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 17:49:27,839 - INFO - Skipping __init__.py file
+2025-02-23 17:49:27,839 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 17:49:27,840 - INFO - Loaded module: example
+2025-02-23 17:49:27,840 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:49:27,841 - INFO - Response status: 200
+2025-02-23 17:49:27,844 - INFO - Response status: 200
+2025-02-23 17:49:27,847 - INFO - Response status: 404
+2025-02-23 17:49:27,850 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 17:49:27,850 - INFO - Query parameters: {}
+2025-02-23 17:49:27,852 - INFO - Response status: 200
+2025-02-23 17:49:27,855 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 17:49:27,855 - INFO - Query parameters: {}
+2025-02-23 17:49:27,855 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 17:49:27,856 - INFO - Query parameters: {}
+2025-02-23 17:49:27,859 - INFO - Request: GET http://localhost:8000/api/v1/protocols/discover
+2025-02-23 17:49:27,859 - INFO - Query parameters: {}
+2025-02-23 17:49:27,859 - INFO - Loading protocol from praxis/protocol/protocols/prance.py
+2025-02-23 17:49:27,861 - INFO - Loaded module: prance
+2025-02-23 17:49:27,861 - INFO - Module attributes: ['Any', 'Deck', 'Dict', 'Lid', 'LiquidHandler', 'List', 'Optional', 'Orchestrator', 'Parameter', 'Plate', 'PlateReader', 'Prance', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'PumpArray', 'Resource', 'State', 'TipRack', 'TipSpot', 'Type', 'Union', 'Well', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'asyncio', 'baseline_parameters', 'cast', 'dt', 'product', 'required_assets', 'timedelta']
+2025-02-23 17:49:27,861 - INFO - Loading protocol from praxis/protocol/protocols/__init__.py
+2025-02-23 17:49:27,861 - INFO - Skipping __init__.py file
+2025-02-23 17:49:27,861 - INFO - Loading protocol from praxis/protocol/protocols/example.py
+2025-02-23 17:49:27,882 - INFO - Loaded module: example
+2025-02-23 17:49:27,883 - INFO - Module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:49:27,889 - INFO - Response status: 200
+2025-02-23 17:49:27,894 - INFO - Request: GET http://localhost:8000/api/v1/protocols/
+2025-02-23 17:49:27,894 - INFO - Query parameters: {}
+2025-02-23 17:49:27,896 - INFO - Response status: 500
+2025-02-23 17:49:27,897 - INFO - Response status: 500
+2025-02-23 17:49:27,902 - INFO - Response status: 500
+2025-02-23 17:49:27,903 - INFO - Response status: 500
+2025-02-23 17:49:27,904 - INFO - Response status: 500
+2025-02-23 17:49:27,907 - INFO - Response status: 200
+2025-02-23 17:49:27,908 - INFO - Request: GET http://localhost:8000/api/v1/protocols/running
+2025-02-23 17:49:27,908 - INFO - Query parameters: {}
+2025-02-23 17:49:27,908 - INFO - Request: GET http://localhost:8000/api/v1/protocols/deck_layouts
+2025-02-23 17:49:27,908 - INFO - Query parameters: {}
+2025-02-23 17:49:27,912 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 17:49:27,912 - INFO - Query parameters: {}
+2025-02-23 17:49:27,912 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 17:49:27,912 - INFO - Query parameters: {}
+2025-02-23 17:49:27,913 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 17:49:27,913 - INFO - Query parameters: {}
+2025-02-23 17:49:27,915 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 17:49:27,915 - INFO - Query parameters: {}
+2025-02-23 17:49:27,919 - INFO - Response status: 404
+2025-02-23 17:49:27,921 - INFO - Response status: 200
+2025-02-23 17:49:27,925 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 17:49:27,926 - INFO - Query parameters: {}
+2025-02-23 17:49:27,930 - INFO - Response status: 500
+2025-02-23 17:49:27,930 - INFO - Response status: 500
+2025-02-23 17:49:27,931 - INFO - Response status: 500
+2025-02-23 17:49:27,932 - INFO - Response status: 500
+2025-02-23 17:49:27,940 - INFO - Response status: 500
+2025-02-23 17:49:29,281 - INFO - Request: GET http://localhost:8000/api/v1/protocols/details?protocol_path=praxis%2Fprotocol%2Fprotocols%2Fexample.py
+2025-02-23 17:49:29,282 - INFO - Query parameters: {'protocol_path': 'praxis/protocol/protocols/example.py'}
+2025-02-23 17:49:29,283 - INFO - === Protocol Details Request ===
+2025-02-23 17:49:29,283 - INFO - Raw protocol path: praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,283 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:49:29,283 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,283 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,283 - INFO - === Protocol Details Request ===
+2025-02-23 17:49:29,283 - INFO - Raw protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,283 - INFO - Project root: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis
+2025-02-23 17:49:29,283 - INFO - Trying path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,283 - INFO - Found protocol at: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,284 - INFO - === Protocol Details Request ===
+2025-02-23 17:49:29,284 - INFO - Protocol path: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py
+2025-02-23 17:49:29,284 - INFO - Protocol module attributes: ['Any', 'Example', 'Machine', 'Protocol', 'ProtocolConfiguration', 'ProtocolParameters', 'Resource', 'WorkcellAssets', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', 'baseline_parameters', 'required_assets']
+2025-02-23 17:49:29,284 - INFO - Protocol module baseline_parameters: <praxis.protocol.parameter.ProtocolParameters object at 0x138780550>
+2025-02-23 17:49:29,284 - INFO - Protocol module required_assets: <praxis.protocol.required_assets.WorkcellAssets object at 0x138780f90>
+2025-02-23 17:49:29,284 - INFO - Returning serialized details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'dict', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': 'string', 'value_type': 'number', 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'array', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'array_mapping_example': {'type': 'dict', 'required': True, 'default': {}, 'description': 'A mapping where each key maps to an array of values', 'constraints': {'key_type': 'string', 'value_type': 'string', 'key_enum': ['group1', 'group2', 'group3'], 'value_enum': ['option1', 'option2', 'option3', 'option4'], 'key_enum_len': 3, 'value_enum_len': 2}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:49:29,284 - INFO - Returning validated details: {'name': 'example', 'path': '/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/protocol/protocols/example.py', 'description': '\nExample protocol for testing purposes\n', 'parameters': {'boolean_example': {'type': 'boolean', 'required': True, 'default': False, 'description': 'An example of a boolean parameter', 'constraints': {}}, 'unconstrained_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {}}, 'constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'A list of enumerated values', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_number_custom_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3}}, 'constrained_number_constrained_options_enumerated_example': {'type': 'array', 'required': True, 'default': 0, 'description': 'An example of a custom enumerated parameter', 'constraints': {'enum_len': 3, 'enum': ['a', 'b', 'c', 'd']}}, 'single_choice_example': {'type': 'string', 'required': True, 'default': 'a', 'description': 'An example of a single choice parameter', 'constraints': {'enum': ['a', 'b', 'c']}}, 'constrained_range_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of a range-constrained parameter', 'constraints': {'min_value': 0, 'max_value': 10}}, 'integer_example': {'type': 'number', 'required': True, 'default': 0, 'description': 'An example of an integer parameter', 'constraints': {}}, 'float_example': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter', 'constraints': {}}, 'constrained_float_example': {'type': 'number', 'required': True, 'default': 0.5, 'description': 'An example of a constrained float parameter', 'constraints': {'min_value': 0.0, 'max_value': 1.0}}, 'tiny_step_float': {'type': 'number', 'required': True, 'default': 0.0, 'description': 'An example of a float parameter with a tiny step', 'constraints': {'step': 0.01}}, 'mapping_example_general': {'type': 'dict', 'required': True, 'default': {}, 'description': 'An example of a mapping parameter', 'constraints': {'key_type': 'string', 'value_type': 'number', 'key_enum': ['a', 'b', 'c'], 'value_enum': [1, 2, 3], 'key_enum_len': 3, 'value_enum_len': 3, 'key_min_len': 1, 'key_max_len': 10, 'value_min_len': 1, 'value_max_len': 10, 'key_param': 'mapping_key_example', 'value_param': 'mapping_value_example'}}, 'mapping_key_example': {'type': 'array', 'required': True, 'default': ['a', 'b'], 'description': 'An example of a mapping key parameter', 'constraints': {'enum': ['a', 'b', 'c'], 'enum_len': 3}}, 'mapping_value_example': {'type': 'array', 'required': True, 'default': [1, 2], 'description': 'An example of a mapping value parameter', 'constraints': {'enum': [1, 2, 3], 'enum_len': 3}}, 'array_mapping_example': {'type': 'dict', 'required': True, 'default': {}, 'description': 'A mapping where each key maps to an array of values', 'constraints': {'key_type': 'string', 'value_type': 'string', 'key_enum': ['group1', 'group2', 'group3'], 'value_enum': ['option1', 'option2', 'option3', 'option4'], 'key_enum_len': 3, 'value_enum_len': 2}}, 'string_example': {'type': 'string', 'required': True, 'default': '', 'description': 'An example of a string parameter', 'constraints': {}}}, 'assets': [{'name': 'example_resource', 'type': 'Resource', 'description': 'Example resource', 'required': True}, {'name': 'example_machine', 'type': 'Machine', 'description': 'Example machine', 'required': True}], 'has_assets': True, 'has_parameters': True, 'requires_config': False}
+2025-02-23 17:49:29,285 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PumpArray
+2025-02-23 17:49:29,285 - INFO - Query parameters: {}
+2025-02-23 17:49:29,285 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 17:49:29,285 - INFO - Query parameters: {}
+2025-02-23 17:49:29,285 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Plate
+2025-02-23 17:49:29,285 - INFO - Query parameters: {}
+2025-02-23 17:49:29,285 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/TipRack
+2025-02-23 17:49:29,285 - INFO - Query parameters: {}
+2025-02-23 17:49:29,285 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/PlateReader
+2025-02-23 17:49:29,285 - INFO - Query parameters: {}
+2025-02-23 17:49:29,285 - INFO - Response status: 200
+2025-02-23 17:49:29,292 - INFO - Response status: 500
+2025-02-23 17:49:29,292 - INFO - Response status: 500
+2025-02-23 17:49:29,293 - INFO - Response status: 500
+2025-02-23 17:49:29,294 - INFO - Response status: 500
+2025-02-23 17:49:29,295 - INFO - Response status: 500
+2025-02-23 17:49:29,450 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Resource
+2025-02-23 17:49:29,450 - INFO - Query parameters: {}
+2025-02-23 17:49:29,452 - INFO - Request: GET http://localhost:8000/api/v1/assets/available/Machine
+2025-02-23 17:49:29,452 - INFO - Query parameters: {}
+2025-02-23 17:49:29,457 - INFO - Response status: 500
+2025-02-23 17:49:29,458 - INFO - Response status: 500

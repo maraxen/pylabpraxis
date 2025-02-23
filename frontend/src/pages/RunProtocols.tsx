@@ -353,20 +353,20 @@ export const RunProtocols: React.FC = () => {
         if (protocolDetails?.requires_config) return !!configFile;
         return true;
 
-      case 1: // Asset Configuration
+      case 1: // Parameter Configuration
+        if (isConfigValid) return true;
+        if (!protocolDetails?.parameters) return true;
+        return Object.entries<ParameterConfig>(protocolDetails.parameters)
+          .filter(([_, config]) => config.required)
+          .every(([name]) => parameterValues[name] !== undefined);
+
+      case 2: // Asset Configuration
         if (isConfigValid) return true;
         if (!protocolDetails?.assets) return true;
         const hasRequiredAssets = protocolDetails.assets
           .filter((asset: Asset) => asset.required)
           .every((asset: Asset) => assetConfig[asset.name]);
         return hasRequiredAssets && !!selectedDeckFile;
-
-      case 2: // Parameter Configuration
-        if (isConfigValid) return true;
-        if (!protocolDetails?.parameters) return true;
-        return Object.entries<ParameterConfig>(protocolDetails.parameters)
-          .filter(([_, config]) => config.required)
-          .every(([name]) => parameterValues[name] !== undefined);
 
       case 3: // Review
         return isStepValid(0) && isStepValid(1) && isStepValid(2);
@@ -410,15 +410,15 @@ export const RunProtocols: React.FC = () => {
           />
           <StepsItem
             index={1}
-            title="Configure Assets"
-            icon={<LuSettings />}
-            description="Set up required resources"
-          />
-          <StepsItem
-            index={2}
             title="Set Parameters"
             icon={<LuSettings />}
             description="Configure protocol parameters"
+          />
+          <StepsItem
+            index={2}
+            title="Configure Assets"
+            icon={<LuSettings />}
+            description="Set up required resources"
           />
           <StepsItem
             index={3}
@@ -501,6 +501,24 @@ export const RunProtocols: React.FC = () => {
         <StepsContent index={1}>
           {isConfigValid ? (
             <Box p={4}>
+              <Text>Parameters configured from uploaded file</Text>
+            </Box>
+          ) : (
+            <Card>
+              <CardBody>
+                <ParameterConfigurationForm
+                  parameters={protocolDetails?.parameters || {}}
+                  parameterValues={parameterValues}
+                  onParameterChange={handleParameterChange}
+                />
+              </CardBody>
+            </Card>
+          )}
+        </StepsContent>
+
+        <StepsContent index={2}>
+          {isConfigValid ? (
+            <Box p={4}>
               <Text>Assets configured from uploaded file</Text>
             </Box>
           ) : (
@@ -514,24 +532,6 @@ export const RunProtocols: React.FC = () => {
                   deckFiles={deckFiles}
                   selectedDeckFile={selectedDeckFile}
                   onDeckFileChange={setSelectedDeckFile}
-                />
-              </CardBody>
-            </Card>
-          )}
-        </StepsContent>
-
-        <StepsContent index={2}>
-          {isConfigValid ? (
-            <Box p={4}>
-              <Text>Parameters configured from uploaded file</Text>
-            </Box>
-          ) : (
-            <Card>
-              <CardBody>
-                <ParameterConfigurationForm
-                  parameters={protocolDetails?.parameters || {}}
-                  parameterValues={parameterValues}
-                  onParameterChange={handleParameterChange}
                 />
               </CardBody>
             </Card>
