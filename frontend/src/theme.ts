@@ -6,6 +6,7 @@ import { fieldsetRecipe } from './recipes/fieldset.recipe';
 import { fieldRecipe } from './recipes/field.recipe';
 import { selectRecipe } from './recipes/select.recipe';
 import { inputRecipe } from './recipes/input.recipe';
+import { containerRecipe } from './recipes/container.recipe';
 
 const customConfig = defineConfig({
   conditions: {
@@ -16,59 +17,172 @@ const customConfig = defineConfig({
     tokens: {
       colors: {
         brand: {
-          50: { value: '#EFCFE3' },  // Mimi Pink
-          100: { value: '#EA9AB2' }, // Amaranth pink
+          50: { value: '#F7EDF2' },  // Lightest pink
+          100: { value: '#EFCFE3' }, // Light pink
+          200: { value: '#EA9AB2' }, // Medium pink
           300: { value: '#E27396' }, // Rose Pompadour
-          500: { value: '#E27396' }, // Rose Pompadour - Primary
-          600: { value: '#779FA1' }, // Moonstone
-          700: { value: '#B3DEE2' }, // Light blue
-          900: { value: '#779FA1' }, // Moonstone
+          400: { value: '#DC5880' }, // Darker rose
+          500: { value: '#CB2A5D' }, // Deep rose
+          600: { value: '#B33860' }, // Darker
+          700: { value: '#A9234D' }, // Even darker
+          800: { value: '#771836' }, // Very dark
+          900: { value: '#440E1F' }, // Darkest
         },
         accent: {
-          50: { value: '#F0F7F7' },  // Lightest
+          50: { value: '#F0F7F7' },  // Lightest blue
           100: { value: '#B3DEE2' }, // Light blue
-          200: { value: '#9FD5DA' }, // Light blue darker
-          300: { value: '#8BCCD2' }, // Between
+          200: { value: '#9FD5DA' }, // Medium light blue
+          300: { value: '#8BCCD2' }, // Medium blue
           400: { value: '#779FA1' }, // Moonstone
-          500: { value: '#779FA1' }, // Moonstone - Primary
-          600: { value: '#688C8E' }, // Darker Moonstone
-          700: { value: '#59797B' }, // Even darker
-          800: { value: '#4A6668' }, // Much darker
-          900: { value: '#3B5355' }, // Darkest
+          500: { value: '#638D8F' }, // Deeper moonstone
+          600: { value: '#4F7B7D' }, // Dark moonstone
+          700: { value: '#3B696B' }, // Darker moonstone
+          800: { value: '#275759' }, // Very dark moonstone
+          900: { value: '#134547' }, // Darkest moonstone
         },
       },
     },
     semanticTokens: {
       colors: {
-        "app.bg": { value: { _light: "white", _dark: "gray.900" } },
-        "app.text": { value: { _light: "{colors.brand.300}", _dark: "{colors.brand.700}" } },
+        "app.bg": {
+          value: {
+            _light: "white",
+            _dark: "gray.900"
+          }
+        },
+        "app.text": {
+          value: {
+            _light: "{colors.brand.700}",
+            _dark: "{colors.brand.200}"
+          }
+        },
         brand: {
-          solid: { value: '{colors.brand.500}' },
-          contrast: { value: 'white' },
-          fg: { value: '{colors.brand.700}' },
-          muted: { value: '{colors.brand.100}' },
-          subtle: { value: '{colors.brand.50}' },
-          emphasized: { value: '{colors.brand.300}' },
-          focusRing: { value: '{colors.brand.500}' },
+          solid: {
+            value: {
+              _light: '{colors.brand.500}',
+              _dark: '{colors.brand.300}'
+            }
+          },
+          contrast: {
+            value: {
+              _light: 'white',
+              _dark: '{colors.brand.900}'
+            }
+          },
+          fg: {
+            value: {
+              _light: '{colors.brand.700}',
+              _dark: '{colors.brand.200}'
+            }
+          },
+          muted: {
+            value: {
+              _light: '{colors.brand.100}',
+              _dark: '{colors.brand.800}'
+            }
+          },
+          subtle: {
+            value: {
+              _light: '{colors.brand.50}',
+              _dark: '{colors.brand.900}'
+            }
+          },
+          emphasized: {
+            value: {
+              _light: '{colors.brand.600}',
+              _dark: '{colors.brand.300}'
+            }
+          },
+          focusRing: {
+            value: {
+              _light: '{colors.brand.500}',
+              _dark: '{colors.brand.400}'
+            }
+          },
         },
         accent: {
-          solid: { value: '{colors.accent.500}' },
-          contrast: { value: 'white' },
-          fg: { value: '{colors.accent.700}' },
-          muted: { value: '{colors.accent.100}' },
-          subtle: { value: '{colors.accent.50}' },
-          emphasized: { value: '{colors.accent.300}' },
-          focusRing: { value: '{colors.accent.500}' },
+          solid: {
+            value: {
+              _light: '{colors.accent.500}',
+              _dark: '{colors.accent.300}'
+            }
+          },
+          contrast: {
+            value: {
+              _light: 'white',
+              _dark: '{colors.accent.900}'
+            }
+          },
+          fg: {
+            value: {
+              _light: '{colors.accent.700}',
+              _dark: '{colors.accent.200}'
+            }
+          },
+          muted: {
+            value: {
+              _light: '{colors.accent.100}',
+              _dark: '{colors.accent.800}'
+            }
+          },
+          subtle: {
+            value: {
+              _light: '{colors.accent.50}',
+              _dark: '{colors.accent.900}'
+            }
+          },
+          emphasized: {
+            value: {
+              _light: '{colors.accent.600}',
+              _dark: '{colors.accent.300}'
+            }
+          },
+          focusRing: {
+            value: {
+              _light: '{colors.accent.500}',
+              _dark: '{colors.accent.400}'
+            }
+          },
         },
         default: {
-          color: { value: "{colors.brand.300}" },
-          background: { value: "white" },
-          border: { value: "{colors.brand.100}" },
+          color: {
+            value: {
+              _light: "{colors.brand.700}",
+              _dark: "{colors.brand.200}"
+            }
+          },
+          background: {
+            value: {
+              _light: "white",
+              _dark: "{colors.gray.800}"
+            }
+          },
+          border: {
+            value: {
+              _light: "{colors.brand.200}",
+              _dark: "{colors.brand.700}"
+            }
+          },
         },
         button: {
-          background: { value: "{colors.brand.300}" },
-          color: { value: "white" },
-          hover: { value: "{colors.brand.500}" },
+          background: {
+            value: {
+              _light: "{colors.brand.500}",
+              _dark: "{colors.brand.300}"
+            }
+          },
+          color: {
+            value: {
+              _light: "white",
+              _dark: "{colors.brand.900}"
+            }
+          },
+          hover: {
+            value: {
+              _light: "{colors.brand.600}",
+              _dark: "{colors.brand.400}"
+            }
+          },
         }
       },
     },
@@ -83,6 +197,8 @@ const customConfig = defineConfig({
     recipes: {
       button: buttonRecipe,
       input: inputRecipe,
+      container: containerRecipe
+
     },
   },
 });

@@ -1,5 +1,34 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+interface ParameterState {
+  definition: {
+    type: string;
+    required?: boolean;
+    default?: any;
+    description?: string;
+    constraints?: Record<string, any>;
+  };
+  currentValue: any;
+}
+
+interface AssetState {
+  definition: {
+    name: string;
+    type: string;
+    required: boolean;
+    description?: string;
+  };
+  currentValue: string;
+  availableOptions: Array<{
+    name: string;
+    type: string;
+    is_available: boolean;
+    description?: string;
+    metadata?: Record<string, any>;
+    last_used?: string;
+  }>;
+}
+
 interface ProtocolFormState {
   selectedProtocol: string;
   protocolDetails: any;
@@ -10,6 +39,8 @@ interface ProtocolFormState {
   step: number;
   currentStep: 'select' | 'configure' | 'assets' | 'parameters';
   configPath: 'upload' | 'specify' | null;
+  parameters: Record<string, ParameterState>;
+  assets: Record<string, AssetState>;
 }
 
 const initialState: ProtocolFormState = {
@@ -21,7 +52,9 @@ const initialState: ProtocolFormState = {
   isConfigValid: false,
   step: 0,
   currentStep: 'select',
-  configPath: null
+  configPath: null,
+  parameters: {},
+  assets: {},
 };
 
 export const protocolFormSlice = createSlice({
@@ -63,7 +96,65 @@ export const protocolFormSlice = createSlice({
     },
     resetForm: (state) => {
       return initialState;
-    }
+    },
+    resetParameters: (state) => {
+      state.parameters = {};
+      state.parameterValues = {};
+    },
+    initializeParameters: (state, action: PayloadAction<Record<string, any>>) => {
+      // First reset any existing parameters
+      state.parameters = {};
+      state.parameterValues = {};
+
+      // Then initialize new ones
+      state.parameters = Object.entries(action.payload).reduce((acc, [name, def]) => {
+        acc[name] = {
+          definition: def,
+          currentValue: def.default || (def.type === 'array' ? [] : null)
+        };
+        return acc;
+      }, {} as Record<string, ParameterState>);
+    },
+    removeParameterValue: (state, action: PayloadAction<{ name: string, index: number }>) => {
+      const { name, index } = action.payload;
+      if (state.parameters[name] && Array.isArray(state.parameters[name].currentValue)) {
+        state.parameters[name].currentValue = state.parameters[name].currentValue.filter((_, i) => i !== index);
+      }
+    },
+    initializeAssets: (state, action: PayloadAction<Array<{
+      name: string;
+      type: string;
+      required: boolean;
+      description?: string;
+    }>>) => {
+      state.assets = {};
+      state.assetConfig = {};
+
+      state.assets = action.payload.reduce((acc, asset) => {
+        acc[asset.name] = {
+          definition: asset,
+          currentValue: '',
+          availableOptions: []
+        };
+        return acc;
+      }, {} as Record<string, AssetState>);
+    },
+
+    updateAssetOptions: (state, action: PayloadAction<{
+      type: string;
+      options: Array<any>;
+    }>) => {
+      Object.values(state.assets).forEach(asset => {
+        if (asset.definition.type === action.payload.type) {
+          asset.availableOptions = action.payload.options;
+        }
+      });
+    },
+
+    resetAssets: (state) => {
+      state.assets = {};
+      state.assetConfig = {};
+    },
   }
 });
 
@@ -79,7 +170,13 @@ export const {
   setStep,
   setCurrentStep,
   setConfigPath,
-  resetForm
+  resetForm,
+  initializeParameters,
+  removeParameterValue,
+  resetParameters,
+  initializeAssets,
+  updateAssetOptions,
+  resetAssets,
 } = protocolFormSlice.actions;
 
 export default protocolFormSlice.reducer;

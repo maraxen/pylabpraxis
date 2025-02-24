@@ -23,9 +23,9 @@ const navItems = [
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
-  const { oidcTokens, logout, goToAuthServer } = useOidc({ assertUserLoggedIn: true });
+  const { decodedIdToken, tokens, logout, goToAuthServer } = useOidc({ assert: "user logged in" });
   const currentPath = window.location.pathname;
-  const userProfile = selectUserProfile(oidcTokens?.decodedIdToken);
+  const userProfile = selectUserProfile(decodedIdToken);
 
   const handleLogout = () => {
     logout({ redirectTo: "current page" });

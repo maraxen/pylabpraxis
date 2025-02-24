@@ -1,6 +1,5 @@
 import React from 'react';
 import { VStack, Group, Badge, Box, Text, Switch } from '@chakra-ui/react';
-import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { NumberInputField, NumberInputRoot } from "@/components/ui/number-input";
@@ -12,6 +11,10 @@ import {
   AutoCompleteTag,
   AutoCompleteCreatable,
 } from "@choc-ui/chakra-autocomplete";
+import { Container } from '@/components/ui/container';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { updateParameterValue, removeParameterValue } from '@/store/protocolForm/slice';
 
 interface ParameterConstraints {
   min_value?: number;
@@ -43,17 +46,26 @@ interface ParameterConfig {
 
 interface Props {
   parameters: Record<string, ParameterConfig>;
-  parameterValues: Record<string, any>;
-  onParameterChange: (name: string, value: any) => void;
 }
 
 export const ParameterConfigurationForm: React.FC<Props> = ({
   parameters,
-  parameterValues,
-  onParameterChange,
+
 }) => {
+  const dispatch = useDispatch();
+  const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
+
+  const handleParameterChange = (name: string, value: any) => {
+    dispatch(updateParameterValue({ name, value }));
+  };
+
+  const handleTagRemove = (name: string, index: number) => {
+    dispatch(removeParameterValue({ name, index }));
+  };
+
   const renderParameterInput = (name: string, config: ParameterConfig) => {
-    const value = parameterValues[name] ?? config.default;
+    const paramState = parameterStates[name];
+    const value = paramState?.currentValue ?? config.default;
     const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
 
     // Helper function to get referenced parameter constraints
@@ -71,11 +83,13 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
         return (
           <Switch.Root
             checked={!!value}
-            onCheckedChange={(checked) => onParameterChange(name, checked)}
+            onCheckedChange={({ checked }) => handleParameterChange(name, checked)}
           >
+            <Switch.HiddenInput />
             <Switch.Control>
               <Switch.Thumb />
             </Switch.Control>
+            <Switch.Label>{name}</Switch.Label>
           </Switch.Root>
         );
 
@@ -83,34 +97,52 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
         const options = config.constraints?.enum || [];
         const maxLen = config.constraints?.enum_len;
         const isConstrained = options.length > 0;
+        const currentValues = Array.isArray(value) ? value : value ? [value] : [];
 
         return (
-          <AutoComplete
-            multiple
-            value={Array.isArray(value) ? value : [value].filter(Boolean)}
-            onChange={(values) => {
-              const finalValues = Array.isArray(values) ? values : [values];
-              if (maxLen && finalValues.length > maxLen) {
-                return; // Don't update if exceeding max length
-              }
-              onParameterChange(name, finalValues);
-            }}
-          >
-            <AutoCompleteInput placeholder={`Enter values${maxLen ? ` (max ${maxLen})` : ''}`} />
-            <AutoCompleteList>
-              {isConstrained ? (
-                options.map((opt) => (
-                  <AutoCompleteItem key={String(opt)} value={String(opt)}>
-                    {String(opt)}
-                  </AutoCompleteItem>
-                ))
-              ) : (
-                <AutoCompleteCreatable>
-                  {({ value }) => `Add "${value}"`}
-                </AutoCompleteCreatable>
-              )}
-            </AutoCompleteList>
-          </AutoComplete>
+          <Box width="100%">
+            <AutoComplete
+              multiple
+              creatable={!isConstrained}
+              value={currentValues}
+              onChange={(values) => {
+                // Ensure values is always an array
+                const finalValues = Array.isArray(values) ? values : values ? [values] : [];
+                if (maxLen && finalValues.length > maxLen) {
+                  return;
+                }
+                handleParameterChange(name, finalValues);
+              }}
+            >
+              <AutoCompleteInput
+                placeholder={`Enter values${maxLen ? ` (max ${maxLen})` : ''}`}
+              />
+              <AutoCompleteList>
+                {isConstrained ? (
+                  options.map((opt) => (
+                    <AutoCompleteItem key={String(opt)} value={String(opt)}>
+                      {String(opt)}
+                    </AutoCompleteItem>
+                  ))
+                ) : (
+                  <AutoCompleteCreatable>
+                    {({ value }) => `Add "${value}"`}
+                  </AutoCompleteCreatable>
+                )}
+              </AutoCompleteList>
+            </AutoComplete>
+            <Box mt={2} display="flex" flexWrap="wrap" gap={2}>
+              {currentValues.map((val, index) => (
+                <AutoCompleteTag
+                  key={`${val}-${index}`}
+                  label={String(val)}
+                  variant="solid"
+                  colorScheme="brand"
+                  onRemove={() => handleTagRemove(name, index)}
+                />
+              ))}
+            </Box>
+          </Box>
         );
 
       case 'dict':
@@ -140,7 +172,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
                     const newDict = { ...currentDict };
                     delete newDict[dictKey];
                     newDict[newKey] = dictVal;
-                    onParameterChange(name, newDict);
+                    handleParameterChange(name, newDict);
                   }}
                 >
                   <AutoCompleteInput placeholder="Key" />
@@ -162,7 +194,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
                       if (effectiveValueEnumLen && finalValues.length > effectiveValueEnumLen) {
                         return;
                       }
-                      onParameterChange(name, {
+                      handleParameterChange(name, {
                         ...currentDict,
                         [dictKey]: finalValues
                       });
@@ -182,7 +214,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
                 ) : (
                   <Input
                     value={String(dictVal)}
-                    onChange={(e) => onParameterChange(name, {
+                    onChange={(e) => handleParameterChange(name, {
                       ...currentDict,
                       [dictKey]: e.target.value
                     })}
@@ -197,7 +229,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
                 if (effectiveKeyEnumLen && Object.keys(currentDict).length >= effectiveKeyEnumLen) {
                   return;
                 }
-                onParameterChange(name, {
+                handleParameterChange(name, {
                   ...currentDict,
                   '': isArrayValue ? [] : ''
                 });
@@ -218,7 +250,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
         return (
           <NumberInputRoot
             value={value}
-            onChange={(val) => onParameterChange(name, Number(val))}
+            onChange={(val) => handleParameterChange(name, Number(val))}
             min={min}
             max={max}
             step={step}
@@ -234,7 +266,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
           return (
             <AutoComplete
               value={value}
-              onChange={(val) => onParameterChange(name, val)}
+              onChange={(val) => handleParameterChange(name, val)}
             >
               <AutoCompleteInput placeholder="Select value..." />
               <AutoCompleteList>
@@ -250,7 +282,7 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
         return (
           <Input
             value={value}
-            onChange={(e) => onParameterChange(name, e.target.value)}
+            onChange={(e) => handleParameterChange(name, e.target.value)}
           />
         );
 
@@ -258,32 +290,57 @@ export const ParameterConfigurationForm: React.FC<Props> = ({
         return (
           <Input
             value={value}
-            onChange={(e) => onParameterChange(name, e.target.value)}
+            onChange={(e) => handleParameterChange(name, e.target.value)}
           />
         );
     }
   };
 
   return (
-    <VStack gap={4} width="100%">
+    <VStack gap={6} width="100%">
       {Object.entries(parameters).map(([name, config]) => (
-        <Field
+        <Container
           key={`param-field-${name}`}
-          label={
-            <Group gap={2}>
-              {name}
-              {config.required && <Badge colorPalette="red">Required</Badge>}
-              <Badge colorPalette="gray">{String(config.type)}</Badge>
-              {config.constraints?.enum_len && (
-                <Badge colorPalette="blue">Max {config.constraints.enum_len}</Badge>
-              )}
-            </Group>
-          }
-          required={config.required}
-          helperText={config.description}
+          solid
+          maxW="container.md"
+          p={4}
+          role="group"
+          _hover={{
+            transform: 'translateY(-1px)',
+            boxShadow: 'sm',
+          }}
         >
-          {renderParameterInput(name, config)}
-        </Field>
+          <VStack align="stretch" gap={2}>
+            <Box>
+              <Text
+                fontSize="lg"
+                fontWeight="semibold"
+                color={{ base: "brand.500", _dark: "brand.200" }}
+                mb={1}
+              >
+                {name}
+                {config.required && (
+                  <Badge ml={2} colorScheme="brand" variant="outline">Required</Badge>
+                )}
+                <Badge ml={2} colorScheme="brand" variant="outline">
+                  {String(config.type)}
+                </Badge>
+              </Text>
+              {config.description && (
+                <Text
+                  fontSize="sm"
+                  color={{ base: "brand.500", _dark: "brand.200" }}
+                  mb={3}
+                >
+                  {config.description}
+                </Text>
+              )}
+            </Box>
+            <Box width="100%">
+              {renderParameterInput(name, config)}
+            </Box>
+          </VStack>
+        </Container>
       ))}
     </VStack>
   );

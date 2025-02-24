@@ -13,9 +13,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <OidcProvider
       ErrorFallback={({ initializationError }) => (
         <h1 style={{ color: "red" }}>
-          An error occurred while initializing the OIDC client:
-          {initializationError.message}
-          {initializationError.type} /* "server down" | "bad configuration" | "unknown"; */
+          {initializationError.isAuthServerLikelyDown ? (
+            <>Sorry our authentication server is currently down, please try again later</>
+          ) : (
+            // NOTE: Check initializationError.message for debug information.
+            // It's an error on your end no need to show it to the user.
+            <>Unexpected authentication error </>
+          )}
         </h1>
       )}
     >

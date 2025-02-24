@@ -11,6 +11,11 @@ import {
   setStep,
   setCurrentStep,
   setConfigPath,
+  initializeParameters,
+  resetParameters,
+  resetAssets,
+  initializeAssets,
+  updateAssetOptions,
 } from '@/store/protocolForm/slice';
 import { RootState } from '@/store';
 import {
@@ -213,9 +218,10 @@ export const RunProtocols: React.FC = () => {
   const fetchAvailableAssets = async () => {
     try {
       const assetTypes = new Set(protocolDetails.assets.map((asset: Asset) => asset.type));
-      const assetPromises = Array.from(assetTypes).map(async (type) => {
-        const response = await api.get<AssetOption[]>(`/api/v1/assets/available/${type}`);
-        return [type, response.data];
+      // Fix the map typing by explicitly typing the array
+      const assetPromises = Array.from(assetTypes).map((type) => {
+        return api.get<AssetOption[]>(`/api/v1/assets/available/${type}`)
+          .then(response => [type, response.data] as [string, AssetOption[]]);
       });
 
       const results = await Promise.all(assetPromises);
@@ -278,36 +284,33 @@ export const RunProtocols: React.FC = () => {
   };
 
   const handleProtocolSelect = async (protocol: ProtocolDetails) => {
-    dispatch(setSelectedProtocol(protocol.name));
-    try {
-      console.log('Fetching details for protocol:', protocol.path);
+    // Reset all state
+    dispatch(resetParameters());
+    dispatch(resetAssets());
+    dispatch(setConfigFile(null));
+    dispatch(setIsConfigValid(false));
+    dispatch(setStep(0));
 
+    dispatch(setSelectedProtocol(protocol.name));
+
+    try {
       const response = await api.get<ProtocolDetails>('/api/v1/protocols/details', {
-        params: {
-          protocol_path: protocol.path
-        }
+        params: { protocol_path: protocol.path }
       });
 
       if (response.data) {
-        console.log('Received protocol details:', response.data);
         dispatch(setProtocolDetails(response.data));
-
-        // Initialize asset config if needed
+        if (response.data.parameters) {
+          dispatch(initializeParameters(response.data.parameters));
+        }
         if (response.data.assets) {
-          const initialAssetConfig = {} as AssetConfig;
-          response.data.assets.forEach(asset => {
-            if (asset.required) {
-              initialAssetConfig[asset.name] = '';
-            }
-          });
-          dispatch(setAssetConfig(initialAssetConfig));
+          dispatch(initializeAssets(response.data.assets));
         }
       }
     } catch (error) {
       console.error('Error fetching protocol details:', error);
       toast({
         title: 'Error fetching protocol details',
-        description: error instanceof Error ? error.message : 'Failed to load protocol details',
         status: 'error',
         duration: 3000,
       });
@@ -508,8 +511,6 @@ export const RunProtocols: React.FC = () => {
               <CardBody>
                 <ParameterConfigurationForm
                   parameters={protocolDetails?.parameters || {}}
-                  parameterValues={parameterValues}
-                  onParameterChange={handleParameterChange}
                 />
               </CardBody>
             </Card>
@@ -526,9 +527,6 @@ export const RunProtocols: React.FC = () => {
               <CardBody>
                 <AssetConfigurationForm
                   assets={protocolDetails?.assets || []}
-                  availableAssets={availableAssets}
-                  assetConfig={assetConfig}
-                  onAssetChange={handleAssetChange}
                   deckFiles={deckFiles}
                   selectedDeckFile={selectedDeckFile}
                   onDeckFileChange={setSelectedDeckFile}
