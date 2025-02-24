@@ -67,7 +67,7 @@ interface ProtocolDetails {
   description: string;
   requires_config: boolean;
   parameters: Record<string, {
-    type: 'string' | 'number' | 'boolean' | 'enum';
+    type: 'string' | 'number' | 'boolean' | 'array' | 'integer' | 'float';
     required?: boolean;
     default?: any;
     description?: string;
@@ -75,7 +75,7 @@ interface ProtocolDetails {
       min?: number;
       max?: number;
       step?: number;
-      options?: string[];
+      options?: string[]; // TODO: update constraint
     };
   }>;
   assets: Array<{
@@ -122,7 +122,7 @@ interface DeckFileItem {
 }
 
 interface ParameterConfig {
-  type: 'string' | 'number' | 'boolean' | 'enum';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'integer' | 'float';
   required?: boolean;
   default?: any;
   description?: string;

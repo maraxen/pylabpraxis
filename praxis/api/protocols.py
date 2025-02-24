@@ -266,7 +266,11 @@ async def prepare_protocol(
             # Add type coercion for numbers based on constraints
             for param_name, param_config in details["parameters"].items():
                 if param_name in parameters:
-                    if param_config["type"] == "number":
+                    if (
+                        param_config["type"]
+                        == "number" | param_config["type"]
+                        == "integer"
+                    ):
                         try:
                             value = float(parameters[param_name])
                             # If integer_only is specified, round the value

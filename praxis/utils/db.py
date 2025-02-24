@@ -1053,8 +1053,8 @@ class DatabaseManager:
         # Map normalized types to frontend types
         type_mapping = {
             "str": "string",
-            "int": "number",
-            "float": "number",
+            "int": "integer",
+            "float": "float",
             "bool": "boolean",
             "list": "array",
             "dict": "dict",

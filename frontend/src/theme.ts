@@ -14,6 +14,15 @@ const customConfig = defineConfig({
     dark: '[data-color-mode=dark] &',
   },
   theme: {
+    keyframes: {
+      shakeX: {
+        "0%": { transform: "translateX(0)" },
+        "25%": { transform: "translateX(5px)" },
+        "50%": { transform: "translateX(-5px)" },
+        "75%": { transform: "translateX(5px)" },
+        "100%": { transform: "translateX(0)" },
+      },
+    },
     tokens: {
       colors: {
         brand: {
@@ -40,6 +49,9 @@ const customConfig = defineConfig({
           800: { value: '#275759' }, // Very dark moonstone
           900: { value: '#134547' }, // Darkest moonstone
         },
+      },
+      animations: {
+        shake: { value: "shakeX 0.3s" },
       },
     },
     semanticTokens: {

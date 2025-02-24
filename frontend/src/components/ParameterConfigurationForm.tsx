@@ -43,7 +43,7 @@ interface ParameterConstraints {
 }
 
 interface ParameterConfig {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'dict';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'dict' | 'integer' | 'float';
   required?: boolean;
   default?: any;
   description?: string;
@@ -263,7 +263,7 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
         }
 
         case 'float':
-        case 'int':
+        case 'integer':
         case 'number': {
           const min = config.constraints?.min_value ?? -Infinity;
           const max = config.constraints?.max_value ?? Infinity;
@@ -283,7 +283,7 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
             if (numValue > max) numValue = max;
 
             // For integers, round the value
-            if (type === 'int') {
+            if (type === 'integer') {
               numValue = Math.round(numValue);
             }
 
@@ -293,8 +293,8 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
 
           return (
             <NumberInputRoot
-              value={value}
-              onValueChange={(val) => handleParameterChange(name, String(val))}
+              value={String(value)}
+              onValueChange={({ value }) => handleNumberChange(value)}
               min={min}
               max={max}
               step={step}
@@ -356,6 +356,10 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
               transform: 'translateY(-1px)',
               boxShadow: 'sm',
             }}
+            {...(errorState[name] ? {
+              border: "2px solid #E53E3E",
+              animation: `shake` // Reference the animation token
+            } : {})}
           >
             <VStack align="stretch" gap={2}>
               <Box>
