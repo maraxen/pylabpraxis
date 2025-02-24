@@ -77,8 +77,43 @@ export const protocolFormSlice = createSlice({
       state.parameterValues = action.payload;
     },
     updateParameterValue: (state, action: PayloadAction<{ name: string, value: any }>) => {
-      state.parameterValues[action.payload.name] = action.payload.value;
+      const { name, value } = action.payload;
+      // Create new references at every level
+      return {
+        ...state,
+        parameters: {
+          ...state.parameters,
+          [name]: {
+            ...state.parameters[name],
+            currentValue: value
+          }
+        }
+      };
     },
+
+    // Optimized removeParameterValue
+    removeParameterValue: (state, action: PayloadAction<{ name: string, index: number }>) => {
+      const { name, index } = action.payload;
+      const parameter = state.parameters[name];
+
+      if (parameter && Array.isArray(parameter.currentValue)) {
+        // Create completely new objects and arrays to ensure immutability
+        return {
+          ...state,
+          parameters: {
+            ...state.parameters,
+            [name]: {
+              ...parameter,
+              currentValue: [
+                ...parameter.currentValue.slice(0, index),
+                ...parameter.currentValue.slice(index + 1)
+              ]
+            }
+          }
+        }
+      };
+    },
+
     setConfigFile: (state, action: PayloadAction<string | null>) => {
       state.configFile = action.payload;
     },
@@ -102,24 +137,17 @@ export const protocolFormSlice = createSlice({
       state.parameterValues = {};
     },
     initializeParameters: (state, action: PayloadAction<Record<string, any>>) => {
-      // First reset any existing parameters
-      state.parameters = {};
-      state.parameterValues = {};
-
-      // Then initialize new ones
-      state.parameters = Object.entries(action.payload).reduce((acc, [name, def]) => {
+      // Create entirely new object instead of modifying existing
+      const newParameters = Object.entries(action.payload).reduce((acc, [name, def]) => {
         acc[name] = {
           definition: def,
           currentValue: def.default || (def.type === 'array' ? [] : null)
         };
         return acc;
       }, {} as Record<string, ParameterState>);
-    },
-    removeParameterValue: (state, action: PayloadAction<{ name: string, index: number }>) => {
-      const { name, index } = action.payload;
-      if (state.parameters[name] && Array.isArray(state.parameters[name].currentValue)) {
-        state.parameters[name].currentValue = state.parameters[name].currentValue.filter((_, i) => i !== index);
-      }
+
+      state.parameters = newParameters;
+      state.parameterValues = {};
     },
     initializeAssets: (state, action: PayloadAction<Array<{
       name: string;

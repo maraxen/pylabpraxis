@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setSelectedProtocol,
@@ -43,7 +43,7 @@ import {
   StepsRoot,
 } from "@/components/ui/steps";
 import { AssetConfigurationForm } from '@/components/AssetConfigurationForm';
-import { ParameterConfigurationForm } from '@/components/ParameterConfigurationForm';
+import { ParameterConfigurationForm, ParameterConfigurationFormRef } from '@/components/ParameterConfigurationForm';
 import {
   AutoComplete,
   AutoCompleteInput,
@@ -155,6 +155,8 @@ export const RunProtocols: React.FC = () => {
   const [availableAssets, setAvailableAssets] = useState<{ [key: string]: AssetOption[] }>({});
   const [deckFiles, setDeckFiles] = useState<string[]>([]);
   const [selectedDeckFile, setSelectedDeckFile] = useState<string>('');
+
+  const parameterFormRef = useRef<ParameterConfigurationFormRef>(null);
 
   useEffect(() => {
     fetchProtocols();
@@ -380,7 +382,6 @@ export const RunProtocols: React.FC = () => {
   };
 
   const handleStepChange = (details: { step: number }) => {
-    // Only allow moving to next step if current step is valid
     if (details.step > step && !isStepValid(step)) {
       toast({
         title: 'Invalid Step',
@@ -390,6 +391,12 @@ export const RunProtocols: React.FC = () => {
       });
       return;
     }
+
+    // Save parameter changes when leaving the parameters step
+    if (step === 1 && parameterFormRef.current) {
+      parameterFormRef.current.saveChanges();
+    }
+
     dispatch(setStep(details.step));
   };
 
@@ -510,6 +517,7 @@ export const RunProtocols: React.FC = () => {
             <Card>
               <CardBody>
                 <ParameterConfigurationForm
+                  ref={parameterFormRef}
                   parameters={protocolDetails?.parameters || {}}
                 />
               </CardBody>

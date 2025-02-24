@@ -263,13 +263,24 @@ async def prepare_protocol(
         # Load and validate parameters
         parameters = request.parameters or {}
         if details["parameters"]:
-            # Validate against schema
-            try:
-                validated_params = details["parameters"].validate(parameters)
-            except ValueError as e:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid parameters: {str(e)}"
-                )
+            # Add type coercion for numbers based on constraints
+            for param_name, param_config in details["parameters"].items():
+                if param_name in parameters:
+                    if param_config["type"] == "number":
+                        try:
+                            value = float(parameters[param_name])
+                            # If integer_only is specified, round the value
+                            if param_config.get("constraints", {}).get("integer_only"):
+                                value = round(value)
+                            parameters[param_name] = value
+                        except (ValueError, TypeError):
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Invalid number format for parameter: {param_name}",
+                            )
+
+        # Validate parameters
+        validated_params = details["parameters"]  # TODO: validate parameters
 
         # Match assets
         required_assets = details["assets"]
