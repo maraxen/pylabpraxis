@@ -17,6 +17,8 @@ import { RootState } from '@/store';
 import { updateParameterValue, removeParameterValue } from '@/store/protocolForm/slice';
 import { OneToOneMapping } from './mappings/OneToOneMapping';
 import { HierarchicalMapping } from './mappings/HierarchicalMapping';
+import { useToast } from '@chakra-ui/toast';
+import { CssKeyframes } from '@chakra-ui/react';
 
 interface ParameterConstraints {
   min_value?: number;
@@ -59,8 +61,10 @@ export interface ParameterConfigurationFormRef {
 export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormRef, Props>(
   ({ parameters }, ref) => {
     const dispatch = useDispatch();
+    const toast = useToast();
     const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
     const [localValues, setLocalValues] = useState<Record<string, any>>({});
+    const [errorState, setErrorState] = useState<Record<string, boolean>>({}); // Track error state per parameter
 
     // Save changes to Redux store
     const saveChanges = () => {
@@ -131,8 +135,41 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
           const currentValues = Array.isArray(value) ? value : value ? [value] : [];
           const isAtMaxLength = maxLen ? currentValues.length >= maxLen : false;
 
+          const handleSelectOption = ({ item }: { item: { value: string } }) => {
+            if (currentValues.includes(item.value)) {
+              toast({
+                title: 'Duplicate value',
+                description: 'This value is already selected.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+              });
+              setErrorState(prev => ({ ...prev, [name]: true }));
+              return;
+            }
+
+            const newValues = [...currentValues, item.value];
+            if (!maxLen || newValues.length <= maxLen) {
+              handleParameterChange(name, newValues);
+              setErrorState(prev => ({ ...prev, [name]: false })); // Clear error on success
+            }
+          };
+
           return (
-            <Box width="100%">
+            <Box>
+              {/* Show selected values as tags */}
+              <Box mb={2} display="flex" flexWrap="wrap" gap={2}>
+                {currentValues.map((val, index) => (
+                  <AutoCompleteTag
+                    key={`${val}-${index}`}
+                    label={String(val)}
+                    variant="solid"
+                    colorScheme="brand"
+                    onRemove={() => handleTagRemove(name, index)}
+                  />
+                ))}
+              </Box>
+
               <AutoComplete
                 multiple
                 freeSolo={!isConstrained}
@@ -142,13 +179,7 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
                 openOnFocus
                 isReadOnly={isAtMaxLength}
                 suggestWhenEmpty={isConstrained && !isAtMaxLength}
-                onSelectOption={({ item }) => {
-                  console.log('onSelectOption:', item);
-                  const newValues = [...currentValues, item.value];
-                  if (!maxLen || newValues.length <= maxLen) {
-                    handleParameterChange(name, newValues);
-                  }
-                }}
+                onSelectOption={handleSelectOption}
                 onChange={(value) => {
                   console.log('onChange:', value);
                   handleParameterChange(name, value);
@@ -180,19 +211,6 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
                   )}
                 </AutoCompleteList>
               </AutoComplete>
-
-              {/* Show selected values as tags */}
-              <Box mt={2} display="flex" flexWrap="wrap" gap={2}>
-                {currentValues.map((val, index) => (
-                  <AutoCompleteTag
-                    key={`${val}-${index}`}
-                    label={String(val)}
-                    variant="solid"
-                    colorScheme="brand"
-                    onRemove={() => handleTagRemove(name, index)}
-                  />
-                ))}
-              </Box>
             </Box>
           );
         }
