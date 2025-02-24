@@ -961,7 +961,7 @@ class DatabaseManager:
                 required_assets = {}
 
             # Convert parameters to frontend format
-            parameters = {}
+            parameters: dict[str, Any] = {}
             for name, config in baseline_parameters.items():
                 param_type = config.get("type", str)
                 param_type_name = (
@@ -1056,7 +1056,7 @@ class DatabaseManager:
             "int": "number",
             "float": "number",
             "bool": "boolean",
-            "list": "array",  # Changed from 'enum' to 'array'
+            "list": "array",
             "dict": "dict",
         }
 

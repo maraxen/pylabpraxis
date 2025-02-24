@@ -220,10 +220,10 @@ export const RunProtocols: React.FC = () => {
   const fetchAvailableAssets = async () => {
     try {
       const assetTypes = new Set(protocolDetails.assets.map((asset: Asset) => asset.type));
-      // Fix the map typing by explicitly typing the array
-      const assetPromises = Array.from(assetTypes).map((type) => {
-        return api.get<AssetOption[]>(`/api/v1/assets/available/${type}`)
-          .then(response => [type, response.data] as [string, AssetOption[]]);
+      const assetPromises = Array.from(assetTypes).map(async (type: string) => {  // Add type annotation here
+        const response = await api.get<AssetOption[]>(`/api/v1/assets/available/${type}`);
+        dispatch(updateAssetOptions({ type, options: response.data }));
+        return [type, response.data];
       });
 
       const results = await Promise.all(assetPromises);
@@ -382,6 +382,7 @@ export const RunProtocols: React.FC = () => {
   };
 
   const handleStepChange = (details: { step: number }) => {
+    // Only allow moving to next step if current step is valid
     if (details.step > step && !isStepValid(step)) {
       toast({
         title: 'Invalid Step',
@@ -535,6 +536,7 @@ export const RunProtocols: React.FC = () => {
               <CardBody>
                 <AssetConfigurationForm
                   assets={protocolDetails?.assets || []}
+                  availableAssets={availableAssets}
                   deckFiles={deckFiles}
                   selectedDeckFile={selectedDeckFile}
                   onDeckFileChange={setSelectedDeckFile}

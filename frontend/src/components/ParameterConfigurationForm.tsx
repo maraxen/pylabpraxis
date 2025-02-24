@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { VStack, Group, Badge, Box, Text, Switch } from '@chakra-ui/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,29 +15,33 @@ import { Container } from '@/components/ui/container';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { updateParameterValue, removeParameterValue } from '@/store/protocolForm/slice';
+import { OneToOneMapping } from './mappings/OneToOneMapping';
+import { HierarchicalMapping } from './mappings/HierarchicalMapping';
 
 interface ParameterConstraints {
   min_value?: number;
   max_value?: number;
   step?: number;
-  enum?: (string | number)[];
-  enum_len?: number;
+  array?: Array<string | number>;  // Keep array instead of enum
+  array_len?: number;  // Keep array_len instead of enum_len
   key_type?: string;
   value_type?: string;
-  key_enum?: string[];
-  value_enum?: Array<string | number>;
-  key_enum_len?: number;
-  value_enum_len?: number;
+  key_array?: Array<string | number>;
+  value_array?: Array<string | number>;
+  key_array_len?: number;
+  value_array_len?: number;
   key_min_len?: number;
   key_max_len?: number;
   value_min_len?: number;
   value_max_len?: number;
   key_param?: string;
   value_param?: string;
+  hierarchical?: boolean;
+  parent?: 'key' | 'value';
 }
 
 interface ParameterConfig {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'dict';  // Updated to match backend mapping
+  type: 'string' | 'number' | 'boolean' | 'array' | 'dict';
   required?: boolean;
   default?: any;
   description?: string;
@@ -48,300 +52,328 @@ interface Props {
   parameters: Record<string, ParameterConfig>;
 }
 
-export const ParameterConfigurationForm: React.FC<Props> = ({
-  parameters,
+export interface ParameterConfigurationFormRef {
+  saveChanges: () => void;
+}
 
-}) => {
-  const dispatch = useDispatch();
-  const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
+export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormRef, Props>(
+  ({ parameters }, ref) => {
+    const dispatch = useDispatch();
+    const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
+    const [localValues, setLocalValues] = useState<Record<string, any>>({});
 
-  const handleParameterChange = (name: string, value: any) => {
-    dispatch(updateParameterValue({ name, value }));
-  };
-
-  const handleTagRemove = (name: string, index: number) => {
-    dispatch(removeParameterValue({ name, index }));
-  };
-
-  const renderParameterInput = (name: string, config: ParameterConfig) => {
-    const paramState = parameterStates[name];
-    const value = paramState?.currentValue ?? config.default;
-    const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
-
-    // Helper function to get referenced parameter constraints
-    const getReferencedParams = (config: ParameterConfig) => {
-      const { key_param, value_param } = config.constraints || {};
-      return {
-        keyConfig: key_param ? parameters[key_param] : null,
-        valueConfig: value_param ? parameters[value_param] : null
-      };
+    // Save changes to Redux store
+    const saveChanges = () => {
+      Object.entries(localValues).forEach(([name, value]) => {
+        dispatch(updateParameterValue({ name, value }));
+      });
     };
 
-    switch (type) {
-      case 'bool':
-      case 'boolean':
-        return (
-          <Switch.Root
-            checked={!!value}
-            onCheckedChange={({ checked }) => handleParameterChange(name, checked)}
-          >
-            <Switch.HiddenInput />
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-            <Switch.Label>{name}</Switch.Label>
-          </Switch.Root>
-        );
+    useImperativeHandle(ref, () => ({
+      saveChanges
+    }));
 
-      case 'array':  // Handle array type (previously 'enum')
-        const options = config.constraints?.enum || [];
-        const maxLen = config.constraints?.enum_len;
-        const isConstrained = options.length > 0;
-        const currentValues = Array.isArray(value) ? value : value ? [value] : [];
+    const handleParameterChange = (name: string, value: any) => {
+      setLocalValues(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    };
 
-        return (
-          <Box width="100%">
-            <AutoComplete
-              multiple
-              creatable={!isConstrained}
-              value={currentValues}
-              onChange={(values) => {
-                // Ensure values is always an array
-                const finalValues = Array.isArray(values) ? values : values ? [values] : [];
-                if (maxLen && finalValues.length > maxLen) {
-                  return;
-                }
-                handleParameterChange(name, finalValues);
-              }}
+    const handleTagRemove = (name: string, index: number) => {
+      const currentValue = localValues[name] || parameterStates[name]?.currentValue;
+      if (Array.isArray(currentValue)) {
+        setLocalValues(prev => ({
+          ...prev,
+          [name]: [...currentValue.slice(0, index), ...currentValue.slice(index + 1)]
+        }));
+      }
+    };
+
+    const getValue = (name: string) => {
+      return localValues[name] !== undefined
+        ? localValues[name]
+        : (parameterStates[name]?.currentValue ?? parameters[name]?.default);
+    };
+
+    const renderParameterInput = (name: string, config: ParameterConfig) => {
+      const value = getValue(name);
+      const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
+
+      // Helper function to get referenced parameter constraints
+      const getReferencedParams = (config: ParameterConfig) => {
+        const { key_param, value_param } = config.constraints || {};
+        return {
+          keyConfig: key_param ? parameters[key_param] : null,
+          valueConfig: value_param ? parameters[value_param] : null
+        };
+      };
+
+      switch (type) {
+        case 'bool':
+        case 'boolean':
+          return (
+            <Switch.Root
+              checked={!!value}
+              onCheckedChange={({ checked }) => handleParameterChange(name, checked)}
             >
-              <AutoCompleteInput
-                placeholder={`Enter values${maxLen ? ` (max ${maxLen})` : ''}`}
+              <Switch.HiddenInput />
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+              <Switch.Label>{name}</Switch.Label>
+            </Switch.Root>
+          );
+
+        case 'array': {
+          const { array: options = [], array_len: maxLen } = config.constraints || {};
+          const isConstrained = options.length > 0;
+          const currentValues = Array.isArray(value) ? value : value ? [value] : [];
+          const isAtMaxLength = maxLen ? currentValues.length >= maxLen : false;
+
+          return (
+            <Box width="100%">
+              <AutoComplete
+                multiple
+                freeSolo={!isConstrained}
+                creatable={!isConstrained}
+                value={currentValues}
+                maxSelections={maxLen}
+                openOnFocus
+                isReadOnly={isAtMaxLength}
+                suggestWhenEmpty={isConstrained && !isAtMaxLength}
+                onSelectOption={({ item }) => {
+                  console.log('onSelectOption:', item);
+                  const newValues = [...currentValues, item.value];
+                  if (!maxLen || newValues.length <= maxLen) {
+                    handleParameterChange(name, newValues);
+                  }
+                }}
+                onChange={(value) => {
+                  console.log('onChange:', value);
+                  handleParameterChange(name, value);
+                }}
+              >
+                <AutoCompleteInput
+                  placeholder={isAtMaxLength ?
+                    `Maximum ${maxLen} values reached` :
+                    `Enter values${maxLen ? ` (max ${maxLen})` : ''}`
+                  }
+                  readOnly={isAtMaxLength}
+                />
+                <AutoCompleteList>
+                  {isConstrained ? (
+                    options.map((opt) => (
+                      <AutoCompleteItem
+                        key={String(opt)}
+                        value={String(opt)}
+                        label={String(opt)}
+                        disabled={isAtMaxLength}
+                      >
+                        {String(opt)}
+                      </AutoCompleteItem>
+                    ))
+                  ) : (
+                    <AutoCompleteCreatable>
+                      {({ value }) => `Add "${value}"`}
+                    </AutoCompleteCreatable>
+                  )}
+                </AutoCompleteList>
+              </AutoComplete>
+
+              {/* Show selected values as tags */}
+              <Box mt={2} display="flex" flexWrap="wrap" gap={2}>
+                {currentValues.map((val, index) => (
+                  <AutoCompleteTag
+                    key={`${val}-${index}`}
+                    label={String(val)}
+                    variant="solid"
+                    colorScheme="brand"
+                    onRemove={() => handleTagRemove(name, index)}
+                  />
+                ))}
+              </Box>
+            </Box>
+          );
+        }
+
+        case 'dict': {
+          const {
+            hierarchical,
+            parent,
+            key_array,
+            value_array,
+            key_param,
+            value_param,
+            value_array_len
+          } = config.constraints || {};
+
+          const currentValue = value || {};
+
+          if (hierarchical && parent) {
+            return (
+              <HierarchicalMapping
+                name={name}
+                value={currentValue}
+                constraints={{
+                  hierarchical,
+                  parent,
+                  key_array,
+                  value_array,
+                  key_param,
+                  value_param,
+                  value_array_len
+                }}
+                onChange={(newValue) => handleParameterChange(name, newValue)}
               />
-              <AutoCompleteList>
-                {isConstrained ? (
-                  options.map((opt) => (
+            );
+          }
+
+          return (
+            <OneToOneMapping
+              name={name}
+              value={currentValue}
+              constraints={{
+                key_array,
+                value_array,
+                key_param,
+                value_param
+              }}
+              onChange={(newValue) => handleParameterChange(name, newValue)}
+            />
+          );
+        }
+
+        case 'float':
+        case 'int':
+        case 'number': {
+          const min = config.constraints?.min_value ?? -Infinity;
+          const max = config.constraints?.max_value ?? Infinity;
+          const step = config.constraints?.step ?? (type === 'float' ? 0.1 : 1);
+
+          const handleNumberChange = (val: string | number) => {
+            if (val === '') {
+              handleParameterChange(name, '');
+              return;
+            }
+
+            let numValue = typeof val === 'string' ? parseFloat(val) : val;
+
+            // Validate the number
+            if (isNaN(numValue)) return;
+            if (numValue < min) numValue = min;
+            if (numValue > max) numValue = max;
+
+            // For integers, round the value
+            if (type === 'int') {
+              numValue = Math.round(numValue);
+            }
+
+            console.log('Number change:', { name, value: numValue, type });
+            handleParameterChange(name, numValue);
+          };
+
+          return (
+            <NumberInputRoot
+              value={value}
+              onValueChange={(val) => handleParameterChange(name, String(val))}
+              min={min}
+              max={max}
+              step={step}
+              width="full"
+            >
+              <NumberInputField />
+            </NumberInputRoot>
+          );
+        }
+
+        case 'str':
+        case 'string': {
+          const { array: options } = config.constraints || {};
+          if (options) {
+            return (
+              <AutoComplete
+                value={value}
+                onChange={(val) => handleParameterChange(name, val)}
+              >
+                <AutoCompleteInput placeholder="Select value..." />
+                <AutoCompleteList>
+                  {options.map((opt) => (
                     <AutoCompleteItem key={String(opt)} value={String(opt)}>
                       {String(opt)}
                     </AutoCompleteItem>
-                  ))
-                ) : (
-                  <AutoCompleteCreatable>
-                    {({ value }) => `Add "${value}"`}
-                  </AutoCompleteCreatable>
-                )}
-              </AutoCompleteList>
-            </AutoComplete>
-            <Box mt={2} display="flex" flexWrap="wrap" gap={2}>
-              {currentValues.map((val, index) => (
-                <AutoCompleteTag
-                  key={`${val}-${index}`}
-                  label={String(val)}
-                  variant="solid"
-                  colorScheme="brand"
-                  onRemove={() => handleTagRemove(name, index)}
-                />
-              ))}
-            </Box>
-          </Box>
-        );
-
-      case 'dict':
-        const { key_enum, value_enum, key_enum_len, value_enum_len, key_param, value_param } = config.constraints || {};
-        const currentDict = (value || {}) as Record<string, any>;
-
-        // Get referenced parameter configurations if they exist
-        const { keyConfig, valueConfig } = getReferencedParams(config);
-
-        // Use constraints from referenced parameters if available
-        const effectiveKeyEnum = keyConfig?.constraints?.enum || key_enum || [];
-        const effectiveValueEnum = valueConfig?.constraints?.enum || value_enum || [];
-        const effectiveKeyEnumLen = keyConfig?.constraints?.enum_len || key_enum_len;
-        const effectiveValueEnumLen = valueConfig?.constraints?.enum_len || value_enum_len;
-
-        // Determine if values should be arrays based on referenced value parameter type
-        const isArrayValue = valueConfig?.type === 'array' ||  // Check referenced param type
-          config.constraints?.value_type === 'array';  // Check direct constraint
-
-        return (
-          <VStack gap={2} width="100%">
-            {Object.entries(currentDict).map(([dictKey, dictVal], idx) => (
-              <Group key={idx} gap={2} width="100%" alignItems="flex-start">
-                <AutoComplete
-                  value={dictKey}
-                  onChange={(newKey) => {
-                    const newDict = { ...currentDict };
-                    delete newDict[dictKey];
-                    newDict[newKey] = dictVal;
-                    handleParameterChange(name, newDict);
-                  }}
-                >
-                  <AutoCompleteInput placeholder="Key" />
-                  <AutoCompleteList>
-                    {effectiveKeyEnum?.map((k) => (
-                      <AutoCompleteItem key={k} value={k}>
-                        {k}
-                      </AutoCompleteItem>
-                    ))}
-                  </AutoCompleteList>
-                </AutoComplete>
-
-                {isArrayValue ? (
-                  <AutoComplete
-                    multiple
-                    value={Array.isArray(dictVal) ? dictVal : [dictVal].filter(Boolean)}
-                    onChange={(newVals) => {
-                      const finalValues = Array.isArray(newVals) ? newVals : [newVals];
-                      if (effectiveValueEnumLen && finalValues.length > effectiveValueEnumLen) {
-                        return;
-                      }
-                      handleParameterChange(name, {
-                        ...currentDict,
-                        [dictKey]: finalValues
-                      });
-                    }}
-                  >
-                    <AutoCompleteInput placeholder={`Values (max ${effectiveValueEnumLen || '∞'})`} />
-                    <AutoCompleteList>
-                      {(effectiveValueEnum?.length > 0) && (
-                        effectiveValueEnum.map((v: string | number) => (
-                          <AutoCompleteItem key={String(v)} value={String(v)}>
-                            {String(v)}
-                          </AutoCompleteItem>
-                        ))
-                      )}
-                    </AutoCompleteList>
-                  </AutoComplete>
-                ) : (
-                  <Input
-                    value={String(dictVal)}
-                    onChange={(e) => handleParameterChange(name, {
-                      ...currentDict,
-                      [dictKey]: e.target.value
-                    })}
-                    placeholder="Value"
-                  />
-                )}
-              </Group>
-            ))}
-            <Button
-              size="sm"
-              onClick={() => {
-                if (effectiveKeyEnumLen && Object.keys(currentDict).length >= effectiveKeyEnumLen) {
-                  return;
-                }
-                handleParameterChange(name, {
-                  ...currentDict,
-                  '': isArrayValue ? [] : ''
-                });
-              }}
-            >
-              Add Key-Value Pair
-            </Button>
-          </VStack>
-        );
-
-      case 'float':
-      case 'int':
-      case 'number':
-        const min = config.constraints?.min_value ?? -Infinity;
-        const max = config.constraints?.max_value ?? Infinity;
-        const step = config.constraints?.step ?? (type === 'float' ? 0.1 : 1);
-
-        return (
-          <NumberInputRoot
-            value={value}
-            onChange={(val) => handleParameterChange(name, Number(val))}
-            min={min}
-            max={max}
-            step={step}
-            width="full"
-          >
-            <NumberInputField />
-          </NumberInputRoot>
-        );
-
-      case 'str':
-      case 'string':
-        if (config.constraints?.enum) {
+                  ))}
+                </AutoCompleteList>
+              </AutoComplete>
+            );
+          }
           return (
-            <AutoComplete
+            <Input
               value={value}
-              onChange={(val) => handleParameterChange(name, val)}
-            >
-              <AutoCompleteInput placeholder="Select value..." />
-              <AutoCompleteList>
-                {config.constraints.enum.map((opt) => (
-                  <AutoCompleteItem key={String(opt)} value={String(opt)}>
-                    {String(opt)}
-                  </AutoCompleteItem>
-                ))}
-              </AutoCompleteList>
-            </AutoComplete>
+              onChange={(e) => handleParameterChange(name, e.target.value)}
+            />
           );
         }
-        return (
-          <Input
-            value={value}
-            onChange={(e) => handleParameterChange(name, e.target.value)}
-          />
-        );
 
-      default:
-        return (
-          <Input
-            value={value}
-            onChange={(e) => handleParameterChange(name, e.target.value)}
-          />
-        );
-    }
-  };
+        default:
+          return (
+            <Input
+              value={value}
+              onChange={(e) => handleParameterChange(name, e.target.value)}
+            />
+          );
+      }
+    };
 
-  return (
-    <VStack gap={6} width="100%">
-      {Object.entries(parameters).map(([name, config]) => (
-        <Container
-          key={`param-field-${name}`}
-          solid
-          maxW="container.md"
-          p={4}
-          role="group"
-          _hover={{
-            transform: 'translateY(-1px)',
-            boxShadow: 'sm',
-          }}
-        >
-          <VStack align="stretch" gap={2}>
-            <Box>
-              <Text
-                fontSize="lg"
-                fontWeight="semibold"
-                color={{ base: "brand.500", _dark: "brand.200" }}
-                mb={1}
-              >
-                {name}
-                {config.required && (
-                  <Badge ml={2} colorScheme="brand" variant="outline">Required</Badge>
-                )}
-                <Badge ml={2} colorScheme="brand" variant="outline">
-                  {String(config.type)}
-                </Badge>
-              </Text>
-              {config.description && (
+    return (
+      <VStack gap={6} width="100%">
+        {Object.entries(parameters).map(([name, config]) => (
+          <Container
+            key={`param-field-${name}`}
+            solid
+            maxW="container.md"
+            p={4}
+            role="group"
+            _hover={{
+              transform: 'translateY(-1px)',
+              boxShadow: 'sm',
+            }}
+          >
+            <VStack align="stretch" gap={2}>
+              <Box>
                 <Text
-                  fontSize="sm"
+                  fontSize="lg"
+                  fontWeight="semibold"
                   color={{ base: "brand.500", _dark: "brand.200" }}
-                  mb={3}
+                  mb={1}
                 >
-                  {config.description}
+                  {name}
+                  {config.required && (
+                    <Badge ml={2} colorScheme="brand" variant="outline">Required</Badge>
+                  )}
+                  <Badge ml={2} colorScheme="brand" variant="outline">
+                    {String(config.type)}
+                  </Badge>
                 </Text>
-              )}
-            </Box>
-            <Box width="100%">
-              {renderParameterInput(name, config)}
-            </Box>
-          </VStack>
-        </Container>
-      ))}
-    </VStack>
-  );
-};
+                {config.description && (
+                  <Text
+                    fontSize="sm"
+                    color={{ base: "brand.500", _dark: "brand.200" }}
+                    mb={3}
+                  >
+                    {config.description}
+                  </Text>
+                )}
+              </Box>
+              <Box width="100%">
+                {renderParameterInput(name, config)}
+              </Box>
+            </VStack>
+          </Container>
+        ))}
+      </VStack>
+    );
+  }
+);
+
+ParameterConfigurationForm.displayName = 'ParameterConfigurationForm';
