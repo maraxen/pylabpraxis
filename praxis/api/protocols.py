@@ -1,5 +1,6 @@
 import os
 import asyncio
+from pathlib import Path
 from typing import List, Dict, Any, Optional, TypeVar, Type, Generic
 
 import aiofiles
@@ -16,6 +17,8 @@ from ..configure import PraxisConfiguration
 from ..core.orchestrator import Orchestrator
 from ..protocol.protocol import Protocol
 from ..utils import db
+from ..interfaces import WorkcellAssetsInterface
+from ..protocol.parameter import ProtocolParameters
 from .dependencies import get_orchestrator
 
 config = PraxisConfiguration("praxis.ini")
@@ -149,7 +152,9 @@ async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator
 
 
 @router.get("/details")
-async def get_protocol_details(protocol_path: str) -> Dict:
+async def get_protocol_details(
+    protocol_path: str, orchestrator: Orchestrator = Depends(get_orchestrator)
+) -> Dict:
     """Get details about a specific protocol using query parameter."""
     logger.info("=== Protocol Details Request ===")
     logger.info(f"Raw protocol path: {protocol_path}")
@@ -199,10 +204,11 @@ async def get_protocol_details(protocol_path: str) -> Dict:
                 status_code=403, detail="Protocol path must be within project directory"
             )
 
-        # Get protocol details from database
-        details = await db.get_protocol_details(protocol_path)
-        if not details:
+        protocol_module = await import_protocol_module(protocol_path)
+        if not protocol_module:
             raise HTTPException(status_code=404, detail="Protocol not found")
+
+        details = await get_protocol_details_from_module(protocol_module, protocol_path)
 
         # Type safety checks
         expected_fields = {
@@ -235,11 +241,165 @@ async def get_protocol_details(protocol_path: str) -> Dict:
         logger.info(f"Returning validated details: {details}")
         return details
 
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error getting protocol details: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_protocol_details_from_module(
+    protocol_module: Any, protocol_path: str
+) -> Dict:
+    """Extract protocol details from a loaded module."""
+    baseline_parameters = getattr(protocol_module, "baseline_parameters", {})
+    required_assets = getattr(protocol_module, "required_assets", {})
+
+    # Handle serialization if needed
+    if isinstance(baseline_parameters, ProtocolParameters):
+        baseline_parameters = baseline_parameters.serialize()
+    if isinstance(required_assets, WorkcellAssetsInterface):
+        required_assets = required_assets.serialize()
+
+    # Ensure we have dictionaries
+    if not isinstance(baseline_parameters, dict):
+        baseline_parameters = {}
+    if not isinstance(required_assets, dict):
+        required_assets = {}
+
+    # Convert parameters to frontend format
+    parameters: dict[str, Any] = {}
+    for name, config in baseline_parameters.items():
+        param_type = config.get("type", str)
+        param_type_name = (
+            param_type.__name__ if hasattr(param_type, "__name__") else str(param_type)
+        )
+
+        # Create a copy of constraints and convert Python types to strings recursively
+        constraints = config.get("constraints", {}).copy()
+        for key, value in constraints.items():
+            if key in ["key_type", "value_type"]:
+                # Convert type constraints using the same mapping function
+                if hasattr(value, "__name__"):
+                    constraints[key] = _map_python_type_to_frontend(value.__name__)
+                else:
+                    constraints[key] = _map_python_type_to_frontend(str(value))
+            elif isinstance(value, type):  # Handle other type references
+                constraints[key] = value.__name__.lower()
+            elif key == "subvariables" and isinstance(value, dict):
+                # Iterate through subvariables and convert their types to strings
+                for subvar_name, subvar_config in value.items():
+                    if "type" in subvar_config:
+                        subvar_type = subvar_config["type"]
+                        if hasattr(subvar_type, "__name__"):
+                            subvar_config["type"] = subvar_type.__name__
+                        else:
+                            subvar_config["type"] = str(subvar_type)
+
+        parameters[name] = {
+            "type": _map_python_type_to_frontend(param_type_name),
+            "required": config.get("required", False),
+            "default": config.get("default"),
+            "description": config.get("description", ""),
+            "constraints": constraints,
+        }
+
+    # Convert assets to list format
+    assets = []
+    for name, config in required_assets.items():
+        asset_type = config.get("type", str)
+        assets.append(
+            {
+                "name": name,
+                "type": (
+                    asset_type.__name__
+                    if hasattr(asset_type, "__name__")
+                    else str(asset_type)
+                ),
+                "description": config.get("description", ""),
+                "required": config.get("required", True),
+            }
+        )
+
+    details: Dict[str, Any] = {
+        "name": getattr(protocol_module, "__name__", ""),
+        "path": protocol_path,
+        "description": getattr(protocol_module, "__doc__", "No documentation found"),
+        "parameters": parameters,  # Using frontend-expected key name
+        "assets": assets,
+        "has_assets": bool(assets),
+        "has_parameters": bool(parameters),
+        "requires_config": not (bool(parameters) or bool(assets)),
+    }
+    return details
+
+
+def _map_python_type_to_frontend(python_type: str) -> str:
+    """Map Python type names to frontend type names."""
+    # First normalize the type name
+    type_name = python_type.lower()
+
+    # Handle class references
+    if type_name == "<class 'str'>":
+        type_name = "str"
+    elif type_name == "<class 'int'>":
+        type_name = "int"
+    elif type_name == "<class 'float'>":
+        type_name = "float"
+    elif type_name == "<class 'bool'>":
+        type_name = "bool"
+    elif type_name == "<class 'list'>":
+        type_name = "list"
+    elif type_name == "<class 'dict'>":
+        type_name = "dict"
+
+    # Map normalized types to frontend types
+    type_mapping = {
+        "str": "string",
+        "int": "integer",
+        "float": "float",
+        "bool": "boolean",
+        "list": "array",
+        "dict": "dict",
+    }
+
+    return type_mapping.get(type_name, "string")
+
+
+async def import_protocol_module(protocol_path: str) -> Optional[Any]:
+    """Import a protocol module from its file path."""
+    try:
+        logger.info("=== Protocol Details Request ===")
+        logger.info(f"Raw protocol path: {protocol_path}")
+
+        # Get absolute path relative to project root
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        logger.info(f"Project root: {project_root}")
+
+        full_path = os.path.join(project_root, protocol_path)
+        full_path = os.path.abspath(full_path)
+        logger.info(f"Trying path: {full_path}")
+
+        if os.path.exists(full_path):
+            logger.info(f"Found protocol at: {full_path}")
+            spec = importlib.util.spec_from_file_location(
+                Path(protocol_path).stem, full_path
+            )
+            if spec is None or spec.loader is None:
+                logger.error(f"Could not create spec for {full_path}")
+                return None
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        else:
+            logger.error(f"Protocol file not found at {full_path}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error importing protocol module: {e}", exc_info=True)
+        return None
 
 
 @router.get("/", response_model=List[str])
@@ -256,7 +416,9 @@ async def prepare_protocol(
     """Prepare a protocol by loading its requirements and matching assets."""
     try:
         # Get protocol details
-        details = await db.get_protocol_details(request.protocol_path)
+        details = await get_protocol_details_from_module(
+            await import_protocol_module(request.protocol_path), request.protocol_path
+        )
         if not details:
             raise HTTPException(status_code=404, detail="Protocol not found")
 
@@ -267,9 +429,8 @@ async def prepare_protocol(
             for param_name, param_config in details["parameters"].items():
                 if param_name in parameters:
                     if (
-                        param_config["type"]
-                        == "number" | param_config["type"]
-                        == "integer"
+                        param_config["type"] == "number"
+                        or param_config["type"] == "integer"
                     ):
                         try:
                             value = float(parameters[param_name])
@@ -390,67 +551,3 @@ async def send_command(
         return {"message": f"Command '{command}' sent to protocol '{protocol_name}'"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-"""@router.get("/settings")
-async def get_settings() -> Dict[str, Any]:
-    """ "Get application settings." """
-    try:
-        # Get protocol directories
-        directories = []
-        if os.path.exists(config.default_protocol_dir):
-            directories.append(config.default_protocol_dir)
-
-        additional_dirs = [d for d in config.get_protocol_directories() if d]
-        directories.extend(additional_dirs)
-
-        return {
-            "default_protocol_dir": config.default_protocol_dir,
-            "protocol_directories": directories,
-            "user_settings": {
-                "username": current_user["username"],
-                "is_admin": current_user.get("is_admin", False),
-            },
-        }
-    except Exception as e:
-        print(f"Error in get_settings: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")"""
-
-
-"""@router.get("/directories")
-async def get_protocol_directories() -> Dict:
-    """ "Get list of directories where protocols are searched for." """
-    try:
-        directories = []
-        if os.path.exists(config.default_protocol_dir):
-            directories.append(config.default_protocol_dir)
-
-        for directory in await orchestrator.get_protocol_directories():
-            if directory and os.path.exists(directory):
-                directories.append(directory)
-
-        return directories
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get directories: {str(e)}"
-        )
-""
-
-@router.delete("/directories/{directory_path:path}")
-async def remove_protocol_directory(
-    directory_path: str,
-):
-    """ "Remove a protocol directory from the search paths." """
-    if directory_path == config.default_protocol_dir:
-        raise HTTPException(
-            status_code=400, detail="Cannot remove default protocol directory"
-        )
-
-    try:
-        config.remove_protocol_directory(directory_path)
-        return {"status": "success", "message": f"Removed directory: {directory_path}"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Failed to remove directory: {str(e)}"
-        )
-"""

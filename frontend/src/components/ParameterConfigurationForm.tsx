@@ -2,6 +2,7 @@ import React, { useRef, useState, useImperativeHandle, forwardRef } from 'react'
 import { VStack, Group, Badge, Box, Text, Switch } from '@chakra-ui/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { NumberInputField, NumberInputRoot } from "@/components/ui/number-input";
 import {
   AutoComplete,
@@ -15,10 +16,13 @@ import { Container } from '@/components/ui/container';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { updateParameterValue, removeParameterValue } from '@/store/protocolForm/slice';
-import { OneToOneMapping } from './mappings/OneToOneMapping';
-import { HierarchicalMapping } from './mappings/HierarchicalMapping';
+import { HierarchicalMapping } from './configParams/HierarchicalMapping';
 import { useToast } from '@chakra-ui/toast';
-import { CssKeyframes } from '@chakra-ui/react';
+import { VisualMappingModal } from './VisualMappingDrawer'; // new file
+import { StringInput } from './configParams/strings';
+import { NumberInput } from './configParams/numbers';
+import { BooleanInput } from './configParams/booleans';
+import { ArrayInput } from './configParams/arrays';
 
 interface ParameterConstraints {
   min_value?: number;
@@ -40,6 +44,7 @@ interface ParameterConstraints {
   value_param?: string;
   hierarchical?: boolean;
   parent?: 'key' | 'value';
+  creatable?: boolean; // Add creatable property
 }
 
 interface ParameterConfig {
@@ -60,11 +65,14 @@ export interface ParameterConfigurationFormRef {
 
 export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormRef, Props>(
   ({ parameters }, ref) => {
+    console.log("ParameterConfigurationForm: parameters", parameters); // ADDED
+
     const dispatch = useDispatch();
     const toast = useToast();
     const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
     const [localValues, setLocalValues] = useState<Record<string, any>>({});
     const [errorState, setErrorState] = useState<Record<string, boolean>>({}); // Track error state per parameter
+    const [isVisualMappingOpen, setIsVisualMappingOpen] = useState(false);
 
     // Save changes to Redux store
     const saveChanges = () => {
@@ -101,6 +109,7 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
     };
 
     const renderParameterInput = (name: string, config: ParameterConfig) => {
+      console.log(`Rendering input for ${name} with config:`, config); // ADDED
       const value = getValue(name);
       const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
 
@@ -117,221 +126,66 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
         case 'bool':
         case 'boolean':
           return (
-            <Switch.Root
-              checked={!!value}
-              onCheckedChange={({ checked }) => handleParameterChange(name, checked)}
-            >
-              <Switch.HiddenInput />
-              <Switch.Control>
-                <Switch.Thumb />
-              </Switch.Control>
-              <Switch.Label>{name}</Switch.Label>
-            </Switch.Root>
+            <BooleanInput
+              name={name}
+              value={value}
+              config={config}
+              onChange={handleParameterChange}
+            />
           );
 
-        case 'array': {
-          const { array: options = [], array_len: maxLen } = config.constraints || {};
-          const isConstrained = options.length > 0;
-          const currentValues = Array.isArray(value) ? value : value ? [value] : [];
-          const isAtMaxLength = maxLen ? currentValues.length >= maxLen : false;
-
-          const handleSelectOption = ({ item }: { item: { value: string } }) => {
-            if (currentValues.includes(item.value)) {
-              toast({
-                title: 'Duplicate value',
-                description: 'This value is already selected.',
-                status: 'warning',
-                duration: 3000,
-                isClosable: true,
-              });
-              setErrorState(prev => ({ ...prev, [name]: true }));
-              return;
-            }
-
-            const newValues = [...currentValues, item.value];
-            if (!maxLen || newValues.length <= maxLen) {
-              handleParameterChange(name, newValues);
-              setErrorState(prev => ({ ...prev, [name]: false })); // Clear error on success
-            }
-          };
-
+        case 'array':
           return (
-            <Box>
-              {/* Show selected values as tags */}
-              <Box mb={2} display="flex" flexWrap="wrap" gap={2}>
-                {currentValues.map((val, index) => (
-                  <AutoCompleteTag
-                    key={`${val}-${index}`}
-                    label={String(val)}
-                    variant="solid"
-                    colorScheme="brand"
-                    onRemove={() => handleTagRemove(name, index)}
-                  />
-                ))}
-              </Box>
-
-              <AutoComplete
-                multiple
-                freeSolo={!isConstrained}
-                creatable={!isConstrained}
-                value={currentValues}
-                maxSelections={maxLen}
-                openOnFocus
-                isReadOnly={isAtMaxLength}
-                suggestWhenEmpty={isConstrained && !isAtMaxLength}
-                onSelectOption={handleSelectOption}
-                onChange={(value) => {
-                  console.log('onChange:', value);
-                  handleParameterChange(name, value);
-                }}
-              >
-                <AutoCompleteInput
-                  placeholder={isAtMaxLength ?
-                    `Maximum ${maxLen} values reached` :
-                    `Enter values${maxLen ? ` (max ${maxLen})` : ''}`
-                  }
-                  readOnly={isAtMaxLength}
-                />
-                <AutoCompleteList>
-                  {isConstrained ? (
-                    options.map((opt) => (
-                      <AutoCompleteItem
-                        key={String(opt)}
-                        value={String(opt)}
-                        label={String(opt)}
-                        disabled={isAtMaxLength}
-                      >
-                        {String(opt)}
-                      </AutoCompleteItem>
-                    ))
-                  ) : (
-                    <AutoCompleteCreatable>
-                      {({ value }) => `Add "${value}"`}
-                    </AutoCompleteCreatable>
-                  )}
-                </AutoCompleteList>
-              </AutoComplete>
-            </Box>
+            <ArrayInput
+              name={name}
+              value={value}
+              config={config}
+              onChange={handleParameterChange}
+            />
           );
-        }
 
         case 'dict': {
-          const {
-            hierarchical,
-            parent,
-            key_array,
-            value_array,
-            key_param,
-            value_param,
-            value_array_len
-          } = config.constraints || {};
-
           const currentValue = value || {};
 
-          if (hierarchical && parent) {
-            return (
-              <HierarchicalMapping
-                name={name}
-                value={currentValue}
-                constraints={{
-                  hierarchical,
-                  parent,
-                  key_array,
-                  value_array,
-                  key_param,
-                  value_param,
-                  value_array_len
-                }}
-                onChange={(newValue) => handleParameterChange(name, newValue)}
-              />
-            );
-          }
-
           return (
-            <OneToOneMapping
-              name={name}
-              value={currentValue}
-              constraints={{
-                key_array,
-                value_array,
-                key_param,
-                value_param
-              }}
-              onChange={(newValue) => handleParameterChange(name, newValue)}
-            />
+            <Tooltip
+              showArrow
+              content='Mapping parameter.'
+            >
+              <Box>
+                <HierarchicalMapping
+                  name={name}
+                  value={currentValue}
+                  config={config} // Pass the entire config
+                  onChange={(newValue) => handleParameterChange(name, newValue)}
+                />
+              </Box>
+            </Tooltip>
           );
         }
 
         case 'float':
         case 'integer':
-        case 'number': {
-          const min = config.constraints?.min_value ?? -Infinity;
-          const max = config.constraints?.max_value ?? Infinity;
-          const step = config.constraints?.step ?? (type === 'float' ? 0.1 : 1);
-
-          const handleNumberChange = (val: string | number) => {
-            if (val === '') {
-              handleParameterChange(name, '');
-              return;
-            }
-
-            let numValue = typeof val === 'string' ? parseFloat(val) : val;
-
-            // Validate the number
-            if (isNaN(numValue)) return;
-            if (numValue < min) numValue = min;
-            if (numValue > max) numValue = max;
-
-            // For integers, round the value
-            if (type === 'integer') {
-              numValue = Math.round(numValue);
-            }
-
-            console.log('Number change:', { name, value: numValue, type });
-            handleParameterChange(name, numValue);
-          };
-
+        case 'number':
           return (
-            <NumberInputRoot
-              value={String(value)}
-              onValueChange={({ value }) => handleNumberChange(value)}
-              min={min}
-              max={max}
-              step={step}
-              width="full"
-            >
-              <NumberInputField />
-            </NumberInputRoot>
-          );
-        }
-
-        case 'str':
-        case 'string': {
-          const { array: options } = config.constraints || {};
-          if (options) {
-            return (
-              <AutoComplete
-                value={value}
-                onChange={(val) => handleParameterChange(name, val)}
-              >
-                <AutoCompleteInput placeholder="Select value..." />
-                <AutoCompleteList>
-                  {options.map((opt) => (
-                    <AutoCompleteItem key={String(opt)} value={String(opt)}>
-                      {String(opt)}
-                    </AutoCompleteItem>
-                  ))}
-                </AutoCompleteList>
-              </AutoComplete>
-            );
-          }
-          return (
-            <Input
+            <NumberInput
+              name={name}
               value={value}
-              onChange={(e) => handleParameterChange(name, e.target.value)}
+              config={config}
+              onChange={handleParameterChange}
             />
           );
-        }
+
+        case 'str':
+        case 'string':
+          return (
+            <StringInput
+              name={name}
+              value={value}
+              config={config}
+              onChange={handleParameterChange}
+            />
+          );
 
         default:
           return (
@@ -393,6 +247,26 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
             </VStack>
           </Container>
         ))}
+        <Button
+          onClick={() => setIsVisualMappingOpen(true)}
+          className="outline"
+          colorScheme="brand"
+        >
+          Open Visual Mapping
+        </Button>
+
+        {isVisualMappingOpen && (
+          <VisualMappingModal
+            isOpen={isVisualMappingOpen}
+            onClose={() => setIsVisualMappingOpen(false)}
+            parameters={parameters}
+            localValues={localValues}
+            onSubmit={(updatedValues) => {
+              setLocalValues(updatedValues);
+              setIsVisualMappingOpen(false);
+            }}
+          />
+        )}
       </VStack>
     );
   }

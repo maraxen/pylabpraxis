@@ -8,17 +8,16 @@ import { LuGripVertical } from "react-icons/lu";
 
 interface SortableItemProps {
   id: string;
-  keyValue: string;
   value: string;
+  keyValue: string;
   keyOptions?: string[];
   valueOptions?: string[];
-  onKeyChange: (newKey: string) => void;
+  onKeyChange?: (newKey: string) => void;
   onValueChange: (newValue: string) => void;
 }
 
 export const SortableItem: React.FC<SortableItemProps> = ({
   id,
-  keyValue,
   value,
   keyOptions,
   valueOptions,
@@ -45,8 +44,8 @@ export const SortableItem: React.FC<SortableItemProps> = ({
           <LuGripVertical />
         </Box>
 
-        <AutoComplete
-          value={keyValue}
+        {onKeyChange && <AutoComplete
+          value={""}
           openOnFocus
           suggestWhenEmpty
           onSelectOption={({ item }) => onKeyChange(item.value)}
@@ -59,7 +58,7 @@ export const SortableItem: React.FC<SortableItemProps> = ({
               </AutoCompleteItem>
             ))}
           </AutoCompleteList>
-        </AutoComplete>
+        </AutoComplete>}
 
         <AutoComplete
           value={value}
