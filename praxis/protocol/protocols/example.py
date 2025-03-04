@@ -102,8 +102,6 @@ baseline_parameters = ProtocolParameters(
             "constraints": {
                 "key_type": str,  # Use actual Python type
                 "value_type": int,  # Use actual Python type
-                "key_array": ["a", "b", "c"],
-                "value_array": [1, 2, 3],
                 "key_array_len": 3,
                 "value_array_len": 3,
                 "key_min_len": 1,
@@ -112,8 +110,6 @@ baseline_parameters = ProtocolParameters(
                 "value_max_len": 10,
                 "key_param": "mapping_key_example",
                 "value_param": "mapping_value_example",
-                "hierarchical": True,
-                "parent": "key",
             },
         },
         "mapping_example": {
@@ -138,6 +134,8 @@ baseline_parameters = ProtocolParameters(
                 "value_array": ["option1", "option2", "option3", "option4"],
                 "key_array_len": 3,
                 "value_array_len": 2,  # Max 2 values per key
+                "creatable_key": True,
+                "creatable_value": True,
                 "creatable": True,
             },
         },

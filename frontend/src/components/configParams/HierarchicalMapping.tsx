@@ -1,504 +1,436 @@
-import React, { useState, useRef } from 'react';
-import { VStack, Box, Button, IconButton, SimpleGrid, Heading } from '@chakra-ui/react';
-import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList, AutoCompleteCreatable } from "@choc-ui/chakra-autocomplete";
-import { LuX } from "react-icons/lu";
+import React, { useState, useEffect } from 'react';
+import { Box, SimpleGrid } from '@chakra-ui/react';
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+  DragOverlay,
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { StringInput } from '../configParams/strings';
-import { NumberInput } from '../configParams/numbers';
-import { BooleanInput } from '../configParams/booleans';
-import { ArrayInput } from '../configParams/arrays';
+import { snapCenterToCursor } from '@dnd-kit/modifiers';
 
-interface SubvariableConfig {
-  type: string;
-  default?: any;
-  constraints: Record<string, any>;
-  // Add other config properties as needed
-}
+// Import the context provider
+import { NestedMappingProvider } from './contexts/nestedMappingContext';
 
-interface SubvariablesData {
-  [key: string]: any;
-  values: string[];
-}
+// Import the section components
+import { GroupsSection } from './sections/GroupsSection';
+import { AvailableValuesSection } from './sections/AvailableValuesSection';
 
-interface HierarchicalMappingProps {
-  name: string;
-  value: Record<string, string[] | SubvariablesData>;
-  config: {
-    constraints: {
-      parent: string;
-      creatable?: boolean;
-      key_param?: boolean;
-      value_param?: boolean;
-      key_array?: string[];
-      value_array?: string[];
-      subvariables?: Record<string, SubvariableConfig>;
-      key_type?: string;
-      value_type?: string;
-      value_array_len?: number;
-    };
-  };
-  onChange: (value: Record<string, string[] | SubvariablesData>) => void;
-}
+// Import the managers
+import { MetadataManager } from './managers/MetadataManager';
+import { EditingManager } from './managers/EditingManager';
 
-interface SortableItemProps {
-  id: string;
-  value: string;
-  onValueChange: (newValue: string) => void;
-  type: string;
-}
+// Import the value display for drag overlay
+import { ValueDisplay } from './subcomponents/valueDisplay';
 
-const SortableItem: React.FC<SortableItemProps> = ({ id, value, onValueChange, type }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+// Import utilities
+import { useDndSensors, addDragStyles, removeDragStyles } from './utils/dndUtils';
+import { NestedMappingProps, GroupData, SubvariablesData, ValueData, BaseValueProps, SubvariableValue } from './utils/parameterUtils';
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const renderInput = () => {
-    switch (type) {
-      case 'string':
-        return <StringInput name={id} value={value} config={{ type }} onChange={(name, newValue) => onValueChange(newValue)} />;
-      case 'number':
-      case 'integer':
-      case 'float':
-        return <NumberInput name={id} value={value} config={{ type }} onChange={(name, newValue) => onValueChange(newValue)} />;
-      case 'boolean':
-        return <BooleanInput name={id} value={value} config={{ type }} onChange={(name, newValue) => onValueChange(newValue)} />;
-      case 'array':
-        return <ArrayInput name={id} value={value} config={{ type }} onChange={(name, newValue) => onValueChange(newValue)} />;
-      default:
-        return <Box>{`Unsupported type: ${type}`}</Box>;
-    }
-  };
-
-  return (
-    <Box ref={setNodeRef} style={style} display="flex" alignItems="center" gap={2} p={2} borderWidth="1px" borderRadius="md">
-      <Box cursor="grab" {...attributes} {...listeners}>
-        ☰
-      </Box>
-      {renderInput()}
-    </Box>
-  );
+// Helper functions for working with IDs
+const generateUniqueId = (): string => {
+  return crypto.randomUUID();
 };
 
-const NestedMapping: React.FC<HierarchicalMappingProps> = ({
+// Find a value by its content across all groups
+const findValueByContent = (
+  groups: Record<string, GroupData>,
+  valueToFind: any
+): { valueId: string, groupId: string } | null => {
+  for (const [groupId, group] of Object.entries(groups)) {
+    for (const valueData of group.values) {
+      if (valueData.value === valueToFind) {
+        return { valueId: valueData.id, groupId };
+      }
+    }
+  }
+  return null;
+};
+
+// Find a group by its name
+const findGroupByName = (
+  groups: Record<string, GroupData>,
+  nameToFind: string
+): string | null => {
+  for (const [groupId, group] of Object.entries(groups)) {
+    if (group.name === nameToFind) {
+      return groupId;
+    }
+  }
+  return null;
+};
+
+/**
+ * HierarchicalMapping is a component that allows users to organize values into groups
+ * with drag-and-drop functionality and editing capabilities.
+ */
+const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   name,
   value,
   config,
   onChange,
+  parameters,
 }) => {
-  console.log("HierarchicalMapping: name, value, config", name, value, config); // ADDED
-  const { constraints } = config;
-  const isParentKey = constraints.parent === 'key';
-  const creatableKey = !!(constraints.creatable || (constraints.key_param && !constraints.key_array));
-  const creatableValue = !!(constraints.creatable || (constraints.value_param && !constraints.value_array));
-  const parentOptions = isParentKey ? constraints.key_array : constraints.value_array;
-  const childOptions = isParentKey ? constraints.value_array : constraints.key_array;
-  const subvariables = constraints.subvariables || {};
-  const keyType = constraints.key_type || 'string';
-  const valueType = constraints.value_type || 'string';
+  // Extract constraints with defaults
+  const constraints = config?.constraints || {};
+  const isParentKey = constraints?.parent === 'key';
+  const valueType = constraints?.value_type || 'string';
 
-  console.log("HierarchicalMapping: subvariables", subvariables); // ADDED
+  // Fix the creatable flags to check both creatable and specific flags
+  const creatable = !!constraints?.creatable;
+  const creatableKey = creatable || !!constraints?.creatable_key;
+  const creatableValue = creatable || !!constraints?.creatable_value;
 
-  const [newParentKey, setNewParentKey] = useState<string | null>(null);
-  const [newValue, setNewValue] = useState<string | null>(null);
-  const autoCompleteRef = useRef<any>(null);
+  // Configure sensors for drag and drop
+  const sensors = useDndSensors();
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Track active drag overlay item
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeData, setActiveData] = useState<any>(null);
+  const [overDroppableId, setOverDroppableId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleDragEnd = (event: any, parentVal: string) => {
+  // Add state for tracking value locations
+  const [valueLocations, setValueLocations] = useState<Record<string, string | null>>({});
+
+  // Initial setup to ensure all values and groups have IDs
+  useEffect(() => {
+    let requiresUpdate = false;
+    const updatedValue = { ...value };
+
+    // Ensure all groups have IDs and proper structure
+    Object.entries(updatedValue).forEach(([key, groupData]) => {
+      // Handle case where groupData is not an object
+      if (typeof groupData !== 'object' || groupData === null) {
+        requiresUpdate = true;
+        updatedValue[key] = {
+          id: generateUniqueId(),
+          name: key,
+          values: [],
+          isEditable: true
+        };
+        return;
+      }
+
+      if (!groupData.id) {
+        requiresUpdate = true;
+        groupData.id = generateUniqueId();
+      }
+
+      if (!groupData.name) {
+        requiresUpdate = true;
+        groupData.name = key;
+      }
+
+      // Initialize or convert values array
+      if (!groupData.values || !Array.isArray(groupData.values)) {
+        requiresUpdate = true;
+        // Handle different formats of input data
+        let oldValues: any[] = [];
+
+        if (Array.isArray(groupData)) {
+          oldValues = groupData;
+        } else if (Array.isArray(groupData.values)) {
+          oldValues = groupData.values;
+        } else if (groupData.values) {
+          // Handle case where values exists but isn't an array
+          oldValues = [groupData.values];
+        }
+
+        groupData.values = oldValues.map(val => {
+          if (typeof val === 'object' && val !== null && val.id && val.value !== undefined) {
+            return val; // Already in correct format
+          } else {
+            // Convert to ValueData format with ID
+            return {
+              id: generateUniqueId(),
+              value: val,
+              type: valueType,
+              isEditable: true
+            };
+          }
+        });
+      }
+    });
+
+    if (requiresUpdate) {
+      onChange(updatedValue);
+    }
+  }, []);
+
+  // Initialize value locations mapping
+  useEffect(() => {
+    // Track locations of all values
+    const locations: Record<string, string | null> = {};
+
+    // Map each value ID to its group ID
+    Object.entries(value).forEach(([groupId, groupData]) => {
+      if (groupData && Array.isArray(groupData.values)) {
+        groupData.values.forEach((valueData: ValueData) => {
+          locations[valueData.id] = groupId;
+        });
+      }
+    });
+
+    setValueLocations(locations);
+  }, [value]);
+
+  // Create a new value
+  const createValue = (newVal: any): string => {
+    const valueData: ValueData = {
+      id: generateUniqueId(),
+      value: newVal,
+      type: valueType,
+      isEditable: true
+    };
+    return valueData.id;
+  };
+
+  // Create a new group
+  const createGroup = (groupName: string): string => {
+    const groupId = generateUniqueId();
+    const newGroup: GroupData = {
+      id: groupId,
+      name: groupName,
+      values: [],
+      isEditable: true
+    };
+
+    onChange({
+      ...value,
+      [groupId]: newGroup
+    });
+
+    return groupId;
+  };
+
+  // Handle drag start
+  const handleDragStart = (event: any) => {
+    setActiveId(String(event.active.id));
+    setIsDragging(true);
+
+    // Capture metadata for the drag overlay
+    const metadata = event.active.data.current || {};
+    setActiveData(metadata);
+
+    addDragStyles();
+  };
+
+  // Handle drag over for highlighting
+  const handleDragOver = (event: any) => {
+    const overId = event.over?.id || null;
+    setOverDroppableId(overId);
+  };
+
+  // Handle drag end with direct value manipulation
+  const handleDragEnd = (event: any) => {
+    setIsDragging(false);
+    setOverDroppableId(null);
+
+    // If no active or over elements, just clean up
+    if (!event.active || !event.over) {
+      setActiveId(null);
+      setActiveData(null);
+      removeDragStyles();
+      return;
+    }
+
     const { active, over } = event;
+    const draggedId = String(active.id);
+    const targetId = String(over.id);
 
-    if (active.id !== over.id) {
-      const currentData = value[parentVal];
-      const currentValues = Array.isArray(currentData) ? currentData : (currentData as SubvariablesData).values;
-      const oldIndex = currentValues.indexOf(active.id);
-      const newIndex = currentValues.indexOf(over.id);
+    // Find the value and which group it's currently in
+    let sourceGroupId = valueLocations[draggedId] || null;
 
-      const newValues = arrayMove(currentValues, oldIndex, newIndex);
+    // Handle dropping to available values (removing from a group)
+    if (targetId === 'available-values' && sourceGroupId) {
+      const sourceGroup = value[sourceGroupId];
 
+      // Remove from source group
+      const updatedValues = sourceGroup.values.filter(v => v.id !== draggedId);
+
+      // Create updated group
+      const updatedGroup: GroupData = {
+        ...sourceGroup,
+        values: updatedValues
+      };
+
+      // Update value
       onChange({
         ...value,
-        [parentVal]: Object.keys(subvariables).length > 0
-          ? { ...(currentData as SubvariablesData), values: newValues }
-          : newValues
+        [sourceGroupId]: updatedGroup
       });
+
+      // Update local tracking
+      setValueLocations(prev => ({
+        ...prev,
+        [draggedId]: null // Set to available
+      }));
     }
-  };
+    // Handle dropping to a group
+    else if (value[targetId] && targetId !== sourceGroupId) {
+      const targetGroup = value[targetId];
+      const draggedValueData = sourceGroupId ?
+        value[sourceGroupId].values.find(v => v.id === draggedId) :
+        null;
 
-  const handleRemoveGroup = (parentVal: string) => {
-    const newValue = { ...value };
-    delete newValue[parentVal];
-    onChange(newValue);
-  };
+      if (!draggedValueData) {
+        // Clean up and exit if we can't find the dragged value
+        setActiveId(null);
+        setActiveData(null);
+        removeDragStyles();
+        return;
+      }
 
-  const handleRemoveChild = (parentVal: string, childToRemove: string) => {
-    const currentData = value[parentVal];
-    const currentValues = Array.isArray(currentData) ? currentData : (currentData as SubvariablesData).values;
-    const newValues = currentValues.filter(child => child !== childToRemove);
+      let updatedValue = { ...value };
 
-    onChange({
-      ...value,
-      [parentVal]: Object.keys(subvariables).length > 0
-        ? { ...(currentData as SubvariablesData), values: newValues }
-        : newValues
-    });
-  };
+      // Remove from source group if it exists
+      if (sourceGroupId) {
+        const sourceGroup = value[sourceGroupId];
+        const updatedSourceValues = sourceGroup.values.filter(v => v.id !== draggedId);
 
-  const handleAddGroup = () => {
-    setNewParentKey(''); // Clear any previous new key
-    setNewParentKey('new'); // Set a temporary key to trigger the new input
-    setTimeout(() => {
-      autoCompleteRef.current?.focus();
-    }, 0);
-  };
+        updatedValue = {
+          ...updatedValue,
+          [sourceGroupId]: {
+            ...sourceGroup,
+            values: updatedSourceValues
+          }
+        };
+      }
 
-  const handleAddValue = () => {
-    setNewValue(''); // Clear any previous new value
-    setNewValue('new'); // Set a temporary value to trigger the new input
-    setTimeout(() => {
-      autoCompleteRef.current?.focus();
-    }, 0);
-  };
+      // Add to target group
+      updatedValue = {
+        ...updatedValue,
+        [targetId]: {
+          ...targetGroup,
+          values: [...targetGroup.values, draggedValueData]
+        }
+      };
 
-  const handleEditChild = (parentVal: string, oldChild: string, newChild: string) => {
-    const currentData = value[parentVal];
-    const currentValues = Array.isArray(currentData) ? currentData : (currentData as SubvariablesData).values;
-    const newValues = currentValues.map((child: string) => (child === oldChild ? newChild : child));
+      // Update value
+      onChange(updatedValue);
 
-    onChange({
-      ...value,
-      [parentVal]: Object.keys(subvariables).length > 0
-        ? { ...(currentData as SubvariablesData), values: newValues }
-        : newValues
-    });
-  };
-
-  const handleSelectNewParent = (item: any) => {
-    const newParentVal = item.value;
-    onChange({
-      ...value,
-      [newParentVal]: [],
-    });
-    setNewParentKey(null); // Reset newParentKey after selection
-  };
-
-  const handleSelectParent = (item: any, parentVal: string) => {
-    const newParentVal = item.value;
-    const currentData = value[parentVal];
-    const currentValues = Array.isArray(currentData) ? currentData : (currentData as SubvariablesData).values;
-    const newValue = { ...value };
-    delete newValue[parentVal];
-
-    newValue[newParentVal] = Object.keys(subvariables).length > 0
-      ? { ...(currentData as SubvariablesData), values: currentValues }
-      : currentValues;
-
-    onChange(newValue);
-  };
-
-  const handleSelectNewValue = (item: any) => {
-    const newValueVal = item.value;
-    onChange({
-      ...value,
-      [newValueVal]: [],
-    });
-    setNewValue(null); // Reset newValue after selection
-  };
-
-  const renderSubvariableInput = (subVarName: string, subVarConfig: any, parentVal: string) => {
-    console.log("HierarchicalMapping: renderSubvariableInput", subVarName, subVarConfig, parentVal); // ADDED
-    const subVarValue = (value[parentVal] as any)?.[subVarName] ?? subVarConfig.default;
-
-    const handleSubvariableChange = (newValue: any) => {
-      onChange({
-        ...value,
-        [parentVal]: {
-          ...(value[parentVal] as any),
-          [subVarName]: newValue,
-        },
-      });
-    };
-
-    switch (subVarConfig.type) {
-      case 'string':
-        return <StringInput name={subVarName} value={subVarValue} config={subVarConfig} onChange={handleSubvariableChange} />;
-      case 'number':
-      case 'integer':
-      case 'float':
-        return <NumberInput name={subVarName} value={subVarValue} config={subVarConfig} onChange={handleSubvariableChange} />;
-      case 'boolean':
-        return <BooleanInput name={subVarName} value={subVarValue} config={subVarConfig} onChange={handleSubvariableChange} />;
-      case 'array':
-        return <ArrayInput name={subVarName} value={subVarValue} config={subVarConfig} onChange={handleSubvariableChange} />;
-      default:
-        return <Box>{`Unsupported type: ${subVarConfig.type}`}</Box>;
+      // Update local tracking
+      setValueLocations(prev => ({
+        ...prev,
+        [draggedId]: targetId
+      }));
     }
+
+    // Clean up
+    setActiveId(null);
+    setActiveData(null);
+    removeDragStyles();
+  };
+
+  // Prepare parent and child options based on constraints
+  const parentOptions = isParentKey
+    ? (constraints?.key_array || [])
+    : (constraints?.value_array || []);
+
+  const childOptions = isParentKey
+    ? (constraints?.value_array || [])
+    : (constraints?.key_array || []);
+
+  // Extract parameter references from constraints
+  const keyParam = constraints?.key_param;
+  const valueParam = constraints?.value_param;
+
+  // Extract parameter values with fallbacks
+  const keyParamValues = keyParam && parameters?.[keyParam]?.default
+    ? Array.isArray(parameters[keyParam].default)
+      ? parameters[keyParam].default
+      : [parameters[keyParam].default]
+    : [];
+
+  const valueParamValues = valueParam && parameters?.[valueParam]?.default
+    ? Array.isArray(parameters[valueParam].default)
+      ? parameters[valueParam].default
+      : [parameters[valueParam].default]
+    : [];
+
+  // Get effective options based on references with fallbacks
+  const effectiveParentOptions = isParentKey
+    ? (parentOptions.length > 0 ? parentOptions : keyParamValues)
+    : (parentOptions.length > 0 ? parentOptions : valueParamValues);
+
+  const effectiveChildOptions = isParentKey
+    ? (childOptions.length > 0 ? childOptions : valueParamValues)
+    : (childOptions.length > 0 ? childOptions : keyParamValues);
+
+  const dragInfo = {
+    activeId,
+    activeData,
+    overDroppableId,
+    isDragging
   };
 
   return (
-    <Box width="100%">
-      <SimpleGrid columns={2} gap={4} width="100%">
-        {/* Keys/Groups Section */}
-        <Box borderWidth={1} borderRadius="md" p={4}>
-          <Heading size="sm" mb={4}>Groups</Heading>
-          <VStack gap={2}>
-            {Object.entries(value).map(([parentVal, parentData]) => {
-              const children = Array.isArray(parentData)
-                ? parentData
-                : (parentData?.values || []);
-
-              return (
-                <Box key={parentVal} width="100%" p={4} borderWidth={1} borderRadius="md">
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <AutoComplete
-                      value={parentVal}
-                      openOnFocus
-                      suggestWhenEmpty
-                      creatable={creatableKey}
-                      onSelectOption={(item) => handleSelectParent(item, parentVal)}
-                    >
-                      <AutoCompleteInput placeholder="Select parent..." />
-                      <AutoCompleteList>
-                        {parentOptions?.map((opt: any) => (
-                          <AutoCompleteItem key={opt} value={opt}>
-                            {opt}
-                          </AutoCompleteItem>
-                        ))}
-                        {creatableKey && (
-                          <AutoCompleteCreatable>
-                            {({ value }) => `Add "${value}"`}
-                          </AutoCompleteCreatable>
-                        )}
-                      </AutoCompleteList>
-                    </AutoComplete>
-                    <IconButton
-                      aria-label="Remove Group"
-                      size="sm"
-                      onClick={() => handleRemoveGroup(parentVal)}
-                    >
-                      <LuX />
-                    </IconButton>
-                  </Box>
-
-                  {/* Values Container */}
-                  <Box mt={2} borderWidth={1} borderRadius="md" p={2} bg="gray.50">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(event) => handleDragEnd(event, parentVal)}
-                    >
-                      <SortableContext
-                        items={children}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <VStack gap={2} minHeight="100px">
-                          {children.map((child) => (
-                            <Box key={child} display="flex" alignItems="center" gap={2} p={2} borderWidth="1px" borderRadius="md" bg="white">
-                              <SortableItem
-                                id={child}
-                                value={child}
-                                type={valueType}
-                                onValueChange={(newChild) => handleEditChild(parentVal, child, newChild)}
-                              />
-                              <IconButton
-                                aria-label="Remove Child"
-                                size="sm"
-                                onClick={() => handleRemoveChild(parentVal, child)}
-                              >
-                                <LuX />
-                              </IconButton>
-                            </Box>
-                          ))}
-                        </VStack>
-                      </SortableContext>
-                    </DndContext>
-
-                    {/* Value Selection */}
-                    <Box mt={2}>
-                      <AutoComplete
-                        multiple
-                        value={children}
-                        maxSelections={constraints.value_array_len}
-                        openOnFocus
-                        suggestWhenEmpty
-                        creatable={creatableValue}
-                        onSelectOption={({ item }) => {
-                          if (children.includes(item.value)) return;
-                          const newChildren = [...children, item.value];
-                          if (!constraints.value_array_len ||
-                            newChildren.length <= constraints.value_array_len) {
-                            onChange({
-                              ...value,
-                              [parentVal]: newChildren
-                            });
-                          }
-                        }}
-                      >
-                        <AutoCompleteInput
-                          placeholder={`Add values (max ${constraints.value_array_len || '∞'})`}
-                        />
-                        <AutoCompleteList>
-                          {childOptions?.map((opt: any) => (
-                            <AutoCompleteItem key={opt} value={opt}>
-                              {opt}
-                            </AutoCompleteItem>
-                          ))}
-                          {creatableValue && (
-                            <AutoCompleteCreatable>
-                              {({ value }) => `Add "${value}"`}
-                            </AutoCompleteCreatable>
-                          )}
-                        </AutoCompleteList>
-                      </AutoComplete>
-                    </Box>
-
-                    {/* Subvariables */}
-                    {Object.entries(subvariables).map(([subVarName, subVarConfig]) => (
-                      <Box key={subVarName} mt={4}>
-                        <Heading size="xs" mb={2}>{subVarName}</Heading>
-                        {renderSubvariableInput(subVarName, subVarConfig, parentVal)}
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-              );
-            })}
-          </VStack>
-
-          {/* Add New Group Button */}
-          {(!parentOptions || creatableKey) && (
-            <Button onClick={handleAddGroup} disabled={newParentKey !== null} mt={4}>
-              Add New Group
-            </Button>
-          )}
-        </Box>
-
-        {/* Available Values Section */}
-        <Box borderWidth={1} borderRadius="md" p={4}>
-          <Heading size="sm" mb={4}>Available Values</Heading>
-          <VStack gap={2}>
-            {childOptions?.filter((opt: any) =>
-              !Object.values(value).some(children =>
-                children.includes(String(opt))
-              )
-            ).map((opt: React.Key | null | undefined) => (
-              <Box
-                key={opt}
-                p={2}
-                borderWidth={1}
-                borderRadius="md"
-                width="100%"
-                cursor="grab"
-              >
-                {String(opt)}
-              </Box>
-            ))}
-          </VStack>
-
-          {/* Add New Value Button */}
-          {creatableValue && (
-            <Button onClick={handleAddValue} disabled={newValue !== null} mt={4}>
-              Add New Value
-            </Button>
-          )}
-        </Box>
-      </SimpleGrid>
-
-      {/* New Group Input */}
-      {newParentKey !== null && (
-        <Box width="100%" p={4} borderWidth={1} borderRadius="md">
-          <AutoComplete
-            ref={autoCompleteRef}
-            openOnFocus
-            suggestWhenEmpty
-            creatable={creatableKey}
-            onSelectOption={handleSelectNewParent}
+    <NestedMappingProvider
+      config={config}
+      parameters={parameters}
+      value={value}
+      onChange={onChange}
+      effectiveChildOptions={effectiveChildOptions}
+      effectiveParentOptions={effectiveParentOptions}
+      dragInfo={dragInfo}
+      createValue={createValue}
+      createGroup={createGroup}
+    >
+      <MetadataManager>
+        <EditingManager>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            modifiers={[snapCenterToCursor]}
           >
-            <AutoCompleteInput
-              onBlur={() => setNewParentKey(null)}
-              placeholder="Enter new group name..." />
-            <AutoCompleteList>
-              {parentOptions?.map((opt: any) => (
-                <AutoCompleteItem key={opt} value={opt}>
-                  {opt}
-                </AutoCompleteItem>
-              ))}
-              {creatableKey && (
-                <AutoCompleteCreatable>
-                  {({ value }) => `Add "${value}"`}
-                </AutoCompleteCreatable>
-              )}
-            </AutoCompleteList>
-          </AutoComplete>
-        </Box>
-      )}
+            <Box width="100%">
+              <SimpleGrid columns={2} gap={4} width="100%">
+                {/* Groups Section */}
+                <GroupsSection value={value} onChange={onChange} />
 
-      {/* New Value Input */}
-      {newValue !== null && (
-        <Box width="100%" p={4} borderWidth={1} borderRadius="md">
-          <AutoComplete
-            ref={autoCompleteRef}
-            openOnFocus
-            suggestWhenEmpty
-            creatable={creatableValue}
-            onSelectOption={handleSelectNewValue}
-          >
-            <AutoCompleteInput
-              onBlur={() => setNewValue(null)}
-              placeholder="Enter new value..." />
-            <AutoCompleteList>
-              {childOptions?.map((opt: any) => (
-                <AutoCompleteItem key={opt} value={opt}>
-                  {opt}
-                </AutoCompleteItem>
-              ))}
-              {creatableValue && (
-                <AutoCompleteCreatable>
-                  {({ value }) => `Add "${value}"`}
-                </AutoCompleteCreatable>
-              )}
-            </AutoCompleteList>
-          </AutoComplete>
-        </Box>
-      )}
-    </Box>
+                {/* Available Values Section */}
+                <AvailableValuesSection value={value} />
+              </SimpleGrid>
+            </Box>
+
+            {/* Drag Overlay */}
+            <DragOverlay
+              dropAnimation={{
+                duration: 200,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+              }}
+              modifiers={[snapCenterToCursor]}
+            >
+              {activeId ? (
+                <ValueDisplay
+                  value={activeData?.value || activeId}
+                  type={activeData?.metadata?.type || valueType}
+                  isFromParam={activeData?.metadata?.isFromParam}
+                  paramSource={activeData?.metadata?.paramSource}
+                  isEditable={activeData?.metadata?.isEditable}
+                />
+              ) : null}
+            </DragOverlay>
+
+            {/* Global styles for drag cursor */}
+            <style>{`
+              body.dragging {
+                cursor: grabbing !important;
+              }
+              body.dragging * {
+                cursor: grabbing !important;
+              }
+            `}</style>
+          </DndContext>
+        </EditingManager>
+      </MetadataManager>
+    </NestedMappingProvider>
   );
 };
 
-export const HierarchicalMapping: React.FC<HierarchicalMappingProps> = ({
-  name,
-  value,
-  config,
-  onChange,
-}) => {
-  return (
-    <NestedMapping
-      name={name}
-      value={value}
-      config={config}
-      onChange={onChange}
-    />
-  );
+// Export the public API component
+export const HierarchicalMapping: React.FC<NestedMappingProps> = (props) => {
+  return <HierarchicalMappingImpl {...props} />;
 };

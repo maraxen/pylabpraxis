@@ -14,9 +14,18 @@ interface ArrayInputProps {
   value: any;
   config: any;
   onChange: (name: string, value: any) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-export const ArrayInput: React.FC<ArrayInputProps> = ({ name, value, config, onChange }) => {
+export const ArrayInput: React.FC<ArrayInputProps> = ({
+  name,
+  value,
+  config,
+  onChange,
+  onFocus,
+  onBlur
+}) => {
   const { array: options = [], array_len: maxLen } = config.constraints || {};
   const isConstrained = options.length > 0;
   const currentValues = Array.isArray(value) ? value : value ? [value] : [];
@@ -75,6 +84,8 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({ name, value, config, onC
             `Enter values${maxLen ? ` (max ${maxLen})` : ''}`
           }
           readOnly={isAtMaxLength}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
         <AutoCompleteList>
           {isConstrained ? (

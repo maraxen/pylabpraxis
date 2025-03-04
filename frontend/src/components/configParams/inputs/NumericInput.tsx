@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { NumberInputField, NumberInputRoot } from "@/components/ui/number-input";
 
 interface NumberInputProps {
@@ -6,13 +6,18 @@ interface NumberInputProps {
   value: any;
   config: any;
   onChange: (name: string, value: any) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-export const NumberInput: React.FC<NumberInputProps> = ({ name, value, config, onChange }) => {
+export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>((props, ref) => {
+  const { name, value, config, onChange, onFocus, onBlur } = props;
   const type = config.type;
   const min = config.constraints?.min_value ?? -Infinity;
   const max = config.constraints?.max_value ?? Infinity;
   const step = config.constraints?.step ?? (type === 'float' ? 0.1 : 1);
+  const inputMode = type === 'integer' ? 'numeric' : 'decimal';
+  const formatOptions = {};
 
   const handleNumberChange = (val: string | number) => {
     if (val === '') {
@@ -42,9 +47,16 @@ export const NumberInput: React.FC<NumberInputProps> = ({ name, value, config, o
       min={min}
       max={max}
       step={step}
+      inputMode={inputMode}
       width="full"
     >
-      <NumberInputField />
+      <NumberInputField
+        onFocus={onFocus}
+        onBlur={onBlur}
+        ref={ref}
+      />
     </NumberInputRoot>
   );
-};
+});
+
+NumberInput.displayName = 'NumberInput';

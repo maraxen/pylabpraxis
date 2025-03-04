@@ -1,17 +1,8 @@
-import React, { useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { VStack, Group, Badge, Box, Text, Switch } from '@chakra-ui/react';
+import React, { useState, useImperativeHandle, forwardRef } from 'react';
+import { VStack, Badge, Box, Text, Switch } from '@chakra-ui/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
-import { NumberInputField, NumberInputRoot } from "@/components/ui/number-input";
-import {
-  AutoComplete,
-  AutoCompleteInput,
-  AutoCompleteItem,
-  AutoCompleteList,
-  AutoCompleteTag,
-  AutoCompleteCreatable,
-} from "@choc-ui/chakra-autocomplete";
 import { Container } from '@/components/ui/container';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -19,41 +10,11 @@ import { updateParameterValue, removeParameterValue } from '@/store/protocolForm
 import { HierarchicalMapping } from './configParams/HierarchicalMapping';
 import { useToast } from '@chakra-ui/toast';
 import { VisualMappingModal } from './VisualMappingDrawer'; // new file
-import { StringInput } from './configParams/strings';
-import { NumberInput } from './configParams/numbers';
-import { BooleanInput } from './configParams/booleans';
-import { ArrayInput } from './configParams/arrays';
-
-interface ParameterConstraints {
-  min_value?: number;
-  max_value?: number;
-  step?: number;
-  array?: Array<string | number>;  // Keep array instead of enum
-  array_len?: number;  // Keep array_len instead of enum_len
-  key_type?: string;
-  value_type?: string;
-  key_array?: Array<string | number>;
-  value_array?: Array<string | number>;
-  key_array_len?: number;
-  value_array_len?: number;
-  key_min_len?: number;
-  key_max_len?: number;
-  value_min_len?: number;
-  value_max_len?: number;
-  key_param?: string;
-  value_param?: string;
-  hierarchical?: boolean;
-  parent?: 'key' | 'value';
-  creatable?: boolean; // Add creatable property
-}
-
-interface ParameterConfig {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'dict' | 'integer' | 'float';
-  required?: boolean;
-  default?: any;
-  description?: string;
-  constraints?: ParameterConstraints;
-}
+import { StringInput } from './configParams/inputs/StringInput';
+import { NumberInput } from './configParams/inputs/NumericInput';
+import { BooleanInput } from './configParams/inputs/BooleanInput';
+import { ArrayInput } from './configParams/inputs/ArrayInput';
+import { ParameterConfig, ParameterConstraints } from './configParams/utils/parameterUtils';
 
 interface Props {
   parameters: Record<string, ParameterConfig>;
@@ -157,7 +118,9 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
                   name={name}
                   value={currentValue}
                   config={config} // Pass the entire config
-                  onChange={(newValue) => handleParameterChange(name, newValue)}
+                  onChange={(newValue) => {
+                    handleParameterChange(name, newValue);
+                  }}
                 />
               </Box>
             </Tooltip>

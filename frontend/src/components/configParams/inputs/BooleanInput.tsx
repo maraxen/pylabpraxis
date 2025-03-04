@@ -6,13 +6,24 @@ interface BooleanInputProps {
   value: any;
   config: any;
   onChange: (name: string, value: any) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-export const BooleanInput: React.FC<BooleanInputProps> = ({ name, value, config, onChange }) => {
+export const BooleanInput: React.FC<BooleanInputProps> = ({
+  name,
+  value,
+  config,
+  onChange,
+  onFocus,
+  onBlur
+}) => {
   return (
     <Switch.Root
       checked={!!value}
       onCheckedChange={({ checked }) => onChange(name, checked)}
+      onFocus={onFocus}
+      onBlur={onBlur}
     >
       <Switch.HiddenInput />
       <Switch.Control>
