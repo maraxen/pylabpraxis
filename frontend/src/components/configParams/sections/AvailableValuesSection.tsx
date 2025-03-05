@@ -16,7 +16,8 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
     effectiveChildOptions,
     valueType,
     getValueMetadata,
-    dragInfo
+    dragInfo,
+    createdValues // Add this line to get createdValues from context
   } = useNestedMapping();
 
   const {
@@ -31,31 +32,47 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
     id: 'available-values',
   });
 
-  // Filter out values that are already used in groups
-  const usedValues = useMemo(() => {
-    const used = new Set<string>();
+  // Update the availableValues memo to properly track and display values
+  const availableValues = useMemo(() => {
+    // Start with options from constraints
+    const allOptions = [...effectiveChildOptions];
 
+    // Track all values that are in groups to avoid duplicates
+    const usedValues = new Set<string>();
+
+    // Track value IDs to their display values for lookups
+    const valueIdMap = new Map<string, string>();
+
+    // Collect all values that are in groups
     Object.values(value).forEach(group => {
       if (group?.values && Array.isArray(group.values)) {
         group.values.forEach((valueData: ValueData) => {
           if (valueData?.value !== undefined) {
-            used.add(String(valueData.value));
+            usedValues.add(String(valueData.value));
+            valueIdMap.set(valueData.id, String(valueData.value));
           }
         });
       }
     });
 
-    return used;
-  }, [value]);
+    // Add created values that aren't assigned to groups
+    const createdValuesList: any[] = [];
+    Object.values(createdValues).forEach(valueData => {
+      if (!valueIdMap.has(valueData.id) && !usedValues.has(String(valueData.value))) {
+        createdValuesList.push(valueData.value);
+      }
+    });
 
-  // Available values are those in the options that aren't used in groups
-  const availableValues = useMemo(() => {
-    return effectiveChildOptions.filter(option => !usedValues.has(String(option)));
-  }, [effectiveChildOptions, usedValues]);
+    // Combine all available options into one list, deduplicating and filtering
+    const uniqueOptions = new Set([...allOptions, ...createdValuesList]);
+    const combined = Array.from(uniqueOptions).filter(option => !usedValues.has(String(option)));
+
+    return combined;
+  }, [effectiveChildOptions, createdValues, value]);
 
   return (
     <Box>
-      <VStack align="stretch" spacing={4}>
+      <VStack align="stretch" gap={4}>
         <Box px={1}>
           <Heading size="sm" mb={2}>Available Values</Heading>
           <ValueCreator value={value} />
@@ -75,7 +92,7 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
           minHeight="100px"
         >
           {availableValues.length > 0 ? (
-            <SimpleGrid columns={1} spacing={2}>
+            <SimpleGrid columns={1} gap={2}>
               {availableValues.map((availableValue, index) => {
                 const valueStr = String(availableValue);
                 const metadata = getValueMetadata(valueStr);

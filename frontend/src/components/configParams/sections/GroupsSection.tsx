@@ -1,9 +1,10 @@
 import React from 'react';
-import { Box, VStack, SimpleGrid, Text, Heading } from '@chakra-ui/react';
+import { Box, VStack, SimpleGrid, Text, Heading, HStack } from '@chakra-ui/react';
 import { GroupItem } from '../subcomponents/GroupItem';
-import { GroupCreator } from '../creators/GroupCreator';
+import { GroupCreator } from '../creators/groupCreator';
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { GroupData } from '../utils/parameterUtils';
+import { GroupLimit, ValueLimit } from '../subcomponents/LimitCounter';
 
 interface GroupsSectionProps {
   value: Record<string, GroupData>;
@@ -28,15 +29,22 @@ export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange })
 
   return (
     <Box>
-      <VStack align="stretch" spacing={4}>
+      <VStack align="stretch" gap={4}>
         <Box px={1}>
-          <Heading size="sm" mb={2}>Groups</Heading>
+          <HStack justifyContent="space-between" mb={2}>
+            <Heading size="sm">Groups</Heading>
+
+            <HStack gap={2}>
+              <GroupLimit />
+              <ValueLimit />
+            </HStack>
+          </HStack>
 
           <GroupCreator value={value} />
         </Box>
 
         {sortedGroups.length > 0 ? (
-          <SimpleGrid columns={1} spacing={4}>
+          <SimpleGrid columns={1} gap={4}>
             {sortedGroups.map(([groupId, group]) => (
               <GroupItem
                 key={groupId}

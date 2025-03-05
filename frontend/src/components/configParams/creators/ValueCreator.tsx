@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Box, Text } from '@chakra-ui/react';
 import { Button } from '@/components/ui/button'
 import { LuPlus } from "react-icons/lu";
@@ -7,12 +7,14 @@ import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { StringInput } from '../inputs/StringInput';
 import { NumberInput } from '../inputs/NumericInput';
 import { BooleanInput } from '../inputs/BooleanInput';
+import { createMemoComponent } from '../utils/memoUtils';
+import { clearExcessStorage } from '../utils/storageUtils';
 
 interface ValueCreatorProps {
   value: Record<string, any>;
 }
 
-export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
+const ValueCreatorComponent: React.FC<ValueCreatorProps> = ({ value }) => {
   // Extract context values including creatable flags
   const {
     localChildOptions,
@@ -24,15 +26,8 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
     config
   } = useNestedMapping();
 
-  // Debug logs to check creatable status
-  const constraints = config?.constraints;
-  const isCreatable = !!constraints?.creatable || !!constraints?.creatable_value;
-  console.log("ValueCreator creatable status:", {
-    creatableValue,
-    constraints_creatable: constraints?.creatable,
-    constraints_creatable_value: constraints?.creatable_value,
-    isCreatable
-  });
+  // Debug logs should be disabled in production
+  const DEBUG_ENABLED = false;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [newValue, setNewValue] = useState<any>('');
@@ -42,22 +37,22 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
     valueType?.toLowerCase() || 'string',
     [valueType]);
 
-  // Memoize the helper function
-  const isValueInAnyGroup = useMemo(() => {
-    return (opt: string) => {
-      return Object.values(value || {}).some((groupValues: any) => {
-        if (!groupValues) return false;
-        const values = Array.isArray(groupValues)
-          ? groupValues
-          : (groupValues.values || []);
-        return values?.includes(opt);
-      });
-    };
+  // Memoize the helper function to check if a value is in any group
+  const isValueInAnyGroup = useCallback((opt: string) => {
+    return Object.values(value || {}).some((groupValues: any) => {
+      if (!groupValues) return false;
+      const values = Array.isArray(groupValues)
+        ? groupValues
+        : (groupValues.values || []);
+      return values?.some((v: any) =>
+        typeof v === 'object' && v !== null ? String(v.value) === opt : String(v) === opt
+      );
+    });
   }, [value]);
 
   // Available options that aren't already in a group
   const availableOptions = useMemo(() => {
-    return localChildOptions.filter(opt => !isValueInAnyGroup(opt));
+    return localChildOptions.filter(opt => !isValueInAnyGroup(String(opt)));
   }, [localChildOptions, isValueInAnyGroup]);
 
   // Input config for the specific input components
@@ -78,23 +73,55 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
     }
   }, [creationMode]);
 
-  const handleCreateValue = () => {
+  const handleSetCreationMode = useCallback((mode: string | null) => {
+    console.log("Setting creation mode for value:", mode);
+    setCreationMode(mode);
+  }, [setCreationMode]);
+
+  const handleCreateValue = useCallback(() => {
     if (newValue !== '' && newValue !== undefined && newValue !== null) {
-      console.log("Creating value:", newValue);
-      createValue(newValue);
-      setCreationMode(null);
-      setNewValue('');
+      try {
+        if (DEBUG_ENABLED) {
+          console.log("Creating value:", newValue);
+        }
+
+        // Try to clear excessive storage first
+        clearExcessStorage();
+
+        const id = createValue(newValue);
+        if (id) {
+          setCreationMode(null);
+          setNewValue('');
+        } else {
+          console.error("Failed to create value - empty ID returned");
+          // Show user-friendly error
+          alert("Unable to create value. Storage quota may be exceeded.");
+        }
+      } catch (error) {
+        console.error("Error in value creation:", error);
+        alert("An error occurred while creating the value. Please try again.");
+      }
     }
-  };
+  }, [newValue, createValue, setCreationMode, DEBUG_ENABLED]);
+
+  const handleInputChange = useCallback((_: string, val: any) => {
+    setNewValue(val);
+  }, []);
 
   // If not in creation mode, check creatable status and show button if allowed
   if (creationMode !== 'value') {
-    const canCreate = creatableValue || isCreatable;
-    console.log("Can create value:", canCreate);
+    const canCreate = creatableValue || !!config?.constraints?.creatable || !!config?.constraints?.creatable_value;
+
+    if (DEBUG_ENABLED) {
+      console.log("ValueCreator status:", { creationMode, canCreate, creatableValue });
+    }
 
     return (
       <Button
-        onClick={() => setCreationMode('value')}
+        onClick={() => {
+          console.log("Value button clicked, setting mode to value");
+          setCreationMode('value');
+        }}
         disabled={!canCreate}
         _disabled={{ opacity: 0.5, cursor: 'not-allowed' }}
       >
@@ -118,14 +145,14 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
           onSelectOption={(item) => {
             if (!item?.item?.value) return;
             createValue(item.item.value.trim());
-            setCreationMode(null);
+            handleSetCreationMode(null);
           }}
         >
           <AutoCompleteInput
             placeholder="Enter value name..."
             autoFocus
             ref={inputRef}
-            onBlur={() => setTimeout(() => setCreationMode(null), 200)}
+            onBlur={() => setTimeout(() => handleSetCreationMode(null), 200)}
           />
           <AutoCompleteList>
             {availableOptions.map((opt: string) => (
@@ -143,7 +170,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
         <Button
           visual="outline"
           mt={3}
-          onClick={() => setCreationMode(null)}
+          onClick={() => handleSetCreationMode(null)}
         >
           Cancel
         </Button>
@@ -160,7 +187,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
           name="newValue"
           value={newValue}
           config={inputConfig}
-          onChange={(_, val) => setNewValue(val)}
+          onChange={handleInputChange}
           onBlur={() => { }}
         />
         <Box mt={3} display="flex" gap={2}>
@@ -169,7 +196,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
           </Button>
           <Button
             visual="outline"
-            onClick={() => setCreationMode(null)}
+            onClick={() => handleSetCreationMode(null)}
           >
             Cancel
           </Button>
@@ -189,7 +216,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
           name="newValue"
           value={newValue}
           config={inputConfig}
-          onChange={(_, val) => setNewValue(val)}
+          onChange={handleInputChange}
           onBlur={() => { }}
           ref={inputRef}
         />
@@ -199,7 +226,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
           </Button>
           <Button
             visual="outline"
-            onClick={() => setCreationMode(null)}
+            onClick={() => handleSetCreationMode(null)}
           >
             Cancel
           </Button>
@@ -216,7 +243,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
         name="newValue"
         value={newValue}
         config={inputConfig}
-        onChange={(_, val) => setNewValue(val)}
+        onChange={handleInputChange}
         onBlur={() => { }}
         ref={inputRef}
       />
@@ -226,7 +253,7 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
         </Button>
         <Button
           visual="outline"
-          onClick={() => setCreationMode(null)}
+          onClick={() => handleSetCreationMode(null)}
         >
           Cancel
         </Button>
@@ -234,3 +261,10 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
     </Box>
   );
 };
+
+// Use memoization to prevent unnecessary re-renders
+export const ValueCreator = createMemoComponent(
+  ValueCreatorComponent,
+  'ValueCreator',
+  false // Set to true for debugging re-renders
+);

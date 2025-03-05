@@ -7,60 +7,24 @@ import {
 } from '@dnd-kit/core';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
 
-// Import the context provider
+// Import the context provider and other components
 import { NestedMappingProvider } from './contexts/nestedMappingContext';
-
-// Import the section components
 import { GroupsSection } from './sections/GroupsSection';
 import { AvailableValuesSection } from './sections/AvailableValuesSection';
-
-// Import the managers
 import { MetadataManager } from './managers/MetadataManager';
-import { EditingManager } from './managers/EditingManager';
-
-// Import the value display for drag overlay
+import { EditingManager } from './managers/editingManager';
+import { DebugManager } from './managers/debugManager';
 import { ValueDisplay } from './subcomponents/valueDisplay';
 
 // Import utilities
 import { useDndSensors, addDragStyles, removeDragStyles } from './utils/dndUtils';
-import { NestedMappingProps, GroupData, SubvariablesData, ValueData, BaseValueProps, SubvariableValue } from './utils/parameterUtils';
-
-// Helper functions for working with IDs
-const generateUniqueId = (): string => {
-  return crypto.randomUUID();
-};
-
-// Find a value by its content across all groups
-const findValueByContent = (
-  groups: Record<string, GroupData>,
-  valueToFind: any
-): { valueId: string, groupId: string } | null => {
-  for (const [groupId, group] of Object.entries(groups)) {
-    for (const valueData of group.values) {
-      if (valueData.value === valueToFind) {
-        return { valueId: valueData.id, groupId };
-      }
-    }
-  }
-  return null;
-};
-
-// Find a group by its name
-const findGroupByName = (
-  groups: Record<string, GroupData>,
-  nameToFind: string
-): string | null => {
-  for (const [groupId, group] of Object.entries(groups)) {
-    if (group.name === nameToFind) {
-      return groupId;
-    }
-  }
-  return null;
-};
+import { NestedMappingProps, GroupData, ValueData } from './utils/parameterUtils';
+import { clearExcessStorage, generateCompactId } from './utils/storageUtils';
 
 /**
- * HierarchicalMapping is a component that allows users to organize values into groups
- * with drag-and-drop functionality and editing capabilities.
+ * HierarchicalMapping component that renders a mapping interface with groups and values
+ * Uses the new nested constraint structure (key_constraints/value_constraints)
+ * while maintaining backward compatibility with legacy constraints
  */
 const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   name,
@@ -71,48 +35,86 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
 }) => {
   // Extract constraints with defaults
   const constraints = config?.constraints || {};
-  const isParentKey = constraints?.parent === 'key';
-  const valueType = constraints?.value_type || 'string';
 
-  // Fix the creatable flags to check both creatable and specific flags
-  const creatable = !!constraints?.creatable;
-  const creatableKey = creatable || !!constraints?.creatable_key;
-  const creatableValue = creatable || !!constraints?.creatable_value;
+  // Get nested constraints with better typing
+  const keyConstraints = constraints.key_constraints || {};
+  const valueConstraints = constraints.value_constraints || {};
+
+  // Determine the parent-child relationship
+  const isParentKey = constraints?.parent === 'key';
+
+  // Extract type information with proper fallbacks
+  // First try the nested constraints, then fall back to legacy format
+  const keyType = keyConstraints.type || constraints.key_type || 'string';
+  const valueType = valueConstraints.type || constraints.value_type || 'string';
+
+  // Extract editability flags with inheritance and priority order
+  // A value is editable if it's marked as such at any level
+  const isKeyEditable =
+    !!keyConstraints.editable ||
+    !!constraints.editable ||
+    !!constraints.editable_key;
+
+  const isValueEditable =
+    !!valueConstraints.editable ||
+    !!constraints.editable ||
+    !!constraints.editable_value;
+
+  // Extract creatability flags with inheritance and priority order
+  // Creatable flag enables both key and value creation unless specifically disabled
+  const creatable = !!constraints.creatable;
+  const creatableKey =
+    !!keyConstraints.creatable ||
+    creatable ||
+    !!constraints.creatable_key;
+
+  const creatableValue =
+    !!valueConstraints.creatable ||
+    creatable ||
+    !!constraints.creatable_value;
 
   // Configure sensors for drag and drop
   const sensors = useDndSensors();
 
-  // Track active drag overlay item
+  // UI and drag state
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeData, setActiveData] = useState<any>(null);
   const [overDroppableId, setOverDroppableId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-
-  // Add state for tracking value locations
   const [valueLocations, setValueLocations] = useState<Record<string, string | null>>({});
+  const [createdValues, setCreatedValues] = useState<Record<string, ValueData>>({});
 
-  // Initial setup to ensure all values and groups have IDs
+  // Clear excess storage on component mount to prevent storage quota issues
+  useEffect(() => {
+    try {
+      clearExcessStorage();
+    } catch (e) {
+      console.warn("Error clearing storage:", e);
+    }
+  }, []);
+
+  // Initialize structure with proper IDs and formatting
   useEffect(() => {
     let requiresUpdate = false;
     const updatedValue = { ...value };
 
-    // Ensure all groups have IDs and proper structure
+    // Ensure all groups have proper structure
     Object.entries(updatedValue).forEach(([key, groupData]) => {
-      // Handle case where groupData is not an object
+      // Handle case where groupData is not properly structured
       if (typeof groupData !== 'object' || groupData === null) {
         requiresUpdate = true;
         updatedValue[key] = {
-          id: generateUniqueId(),
+          id: generateCompactId(),
           name: key,
           values: [],
-          isEditable: true
+          isEditable: isKeyEditable // Use constraint-based editability
         };
         return;
       }
 
       if (!groupData.id) {
         requiresUpdate = true;
-        groupData.id = generateUniqueId();
+        groupData.id = generateCompactId();
       }
 
       if (!groupData.name) {
@@ -120,10 +122,10 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
         groupData.name = key;
       }
 
-      // Initialize or convert values array
+      // Initialize values array with proper structure
       if (!groupData.values || !Array.isArray(groupData.values)) {
         requiresUpdate = true;
-        // Handle different formats of input data
+        // Handle different input formats
         let oldValues: any[] = [];
 
         if (Array.isArray(groupData)) {
@@ -131,20 +133,20 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
         } else if (Array.isArray(groupData.values)) {
           oldValues = groupData.values;
         } else if (groupData.values) {
-          // Handle case where values exists but isn't an array
           oldValues = [groupData.values];
         }
 
+        // Convert all values to proper ValueData format
         groupData.values = oldValues.map(val => {
           if (typeof val === 'object' && val !== null && val.id && val.value !== undefined) {
             return val; // Already in correct format
           } else {
-            // Convert to ValueData format with ID
+            // Convert to ValueData format with proper types from constraints
             return {
-              id: generateUniqueId(),
+              id: generateCompactId(),
               value: val,
-              type: valueType,
-              isEditable: true
+              type: isParentKey ? valueType : keyType, // Use appropriate type based on parent-child relationship
+              isEditable: isValueEditable // Use constraint-based editability
             };
           }
         });
@@ -156,12 +158,11 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     }
   }, []);
 
-  // Initialize value locations mapping
+  // Track value locations for drag and drop operations
   useEffect(() => {
-    // Track locations of all values
     const locations: Record<string, string | null> = {};
 
-    // Map each value ID to its group ID
+    // Map each value ID to its containing group ID
     Object.entries(value).forEach(([groupId, groupData]) => {
       if (groupData && Array.isArray(groupData.values)) {
         groupData.values.forEach((valueData: ValueData) => {
@@ -173,59 +174,80 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     setValueLocations(locations);
   }, [value]);
 
-  // Create a new value
+  // Create a new value with proper typing from constraints
   const createValue = (newVal: any): string => {
-    const valueData: ValueData = {
-      id: generateUniqueId(),
-      value: newVal,
-      type: valueType,
-      isEditable: true
-    };
-    return valueData.id;
+    try {
+      const valueId = generateCompactId('val_');
+
+      // Create value data with constraint-based type and editability
+      const valueData: ValueData = {
+        id: valueId,
+        value: newVal,
+        type: isParentKey ? valueType : keyType, // Type depends on parent-child relationship
+        isEditable: isValueEditable // Use constraint-based editability
+      };
+
+      setCreatedValues(prev => ({
+        ...prev,
+        [valueId]: valueData
+      }));
+
+      return valueId;
+    } catch (error) {
+      console.error("Error creating value:", error);
+      return "";
+    }
   };
 
-  // Create a new group
+  // Create a new group with proper typing from constraints
   const createGroup = (groupName: string): string => {
-    const groupId = generateUniqueId();
-    const newGroup: GroupData = {
-      id: groupId,
-      name: groupName,
-      values: [],
-      isEditable: true
-    };
+    try {
+      const groupId = generateCompactId('group_');
 
-    onChange({
-      ...value,
-      [groupId]: newGroup
-    });
+      // Create group with constraint-based editability
+      const newGroup: GroupData = {
+        id: groupId,
+        name: groupName,
+        values: [],
+        isEditable: isKeyEditable // Use constraint-based editability
+      };
 
-    return groupId;
+      onChange({
+        ...value,
+        [groupId]: newGroup
+      });
+
+      return groupId;
+    } catch (error) {
+      console.error("Error creating group:", error);
+      try {
+        clearExcessStorage();
+      } catch {
+        // Ignore nested error
+      }
+      return "";
+    }
   };
 
-  // Handle drag start
+  // Drag and drop handlers
   const handleDragStart = (event: any) => {
     setActiveId(String(event.active.id));
     setIsDragging(true);
-
-    // Capture metadata for the drag overlay
-    const metadata = event.active.data.current || {};
-    setActiveData(metadata);
-
+    setActiveData(event.active.data.current || {});
     addDragStyles();
   };
 
-  // Handle drag over for highlighting
   const handleDragOver = (event: any) => {
     const overId = event.over?.id || null;
-    setOverDroppableId(overId);
+    if (overDroppableId !== overId) {
+      setOverDroppableId(overId);
+    }
   };
 
-  // Handle drag end with direct value manipulation
   const handleDragEnd = (event: any) => {
     setIsDragging(false);
     setOverDroppableId(null);
 
-    // If no active or over elements, just clean up
     if (!event.active || !event.over) {
       setActiveId(null);
       setActiveData(null);
@@ -233,86 +255,90 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       return;
     }
 
-    const { active, over } = event;
-    const draggedId = String(active.id);
-    const targetId = String(over.id);
+    try {
+      const { active, over } = event;
+      const draggedId = String(active.id);
+      const targetId = String(over.id);
 
-    // Find the value and which group it's currently in
-    let sourceGroupId = valueLocations[draggedId] || null;
+      // Get source group of the dragged item
+      let sourceGroupId = valueLocations[draggedId] || null;
 
-    // Handle dropping to available values (removing from a group)
-    if (targetId === 'available-values' && sourceGroupId) {
-      const sourceGroup = value[sourceGroupId];
-
-      // Remove from source group
-      const updatedValues = sourceGroup.values.filter(v => v.id !== draggedId);
-
-      // Create updated group
-      const updatedGroup: GroupData = {
-        ...sourceGroup,
-        values: updatedValues
-      };
-
-      // Update value
-      onChange({
-        ...value,
-        [sourceGroupId]: updatedGroup
-      });
-
-      // Update local tracking
-      setValueLocations(prev => ({
-        ...prev,
-        [draggedId]: null // Set to available
-      }));
-    }
-    // Handle dropping to a group
-    else if (value[targetId] && targetId !== sourceGroupId) {
-      const targetGroup = value[targetId];
-      const draggedValueData = sourceGroupId ?
-        value[sourceGroupId].values.find(v => v.id === draggedId) :
-        null;
-
-      if (!draggedValueData) {
-        // Clean up and exit if we can't find the dragged value
-        setActiveId(null);
-        setActiveData(null);
-        removeDragStyles();
-        return;
-      }
-
-      let updatedValue = { ...value };
-
-      // Remove from source group if it exists
-      if (sourceGroupId) {
+      // Handle dropping to "available values" (removing from group)
+      if (targetId === 'available-values' && sourceGroupId) {
         const sourceGroup = value[sourceGroupId];
-        const updatedSourceValues = sourceGroup.values.filter(v => v.id !== draggedId);
+        const updatedValues = sourceGroup.values.filter(v => v.id !== draggedId);
 
-        updatedValue = {
-          ...updatedValue,
+        // Update the value state
+        onChange({
+          ...value,
           [sourceGroupId]: {
             ...sourceGroup,
-            values: updatedSourceValues
+            values: updatedValues
           }
-        };
-      }
+        });
 
-      // Add to target group
-      updatedValue = {
-        ...updatedValue,
-        [targetId]: {
+        // Update tracking
+        setValueLocations(prev => ({
+          ...prev,
+          [draggedId]: null
+        }));
+      }
+      // Handle dropping to a group
+      else if (value[targetId] && targetId !== sourceGroupId) {
+        const targetGroup = value[targetId];
+
+        // Find value data based on where it's coming from
+        let draggedValueData;
+        if (!sourceGroupId) {
+          // From available values
+          const draggedValue = active.data.current?.value;
+          if (draggedValue !== undefined) {
+            draggedValueData = {
+              id: draggedId,
+              value: draggedValue,
+              type: isParentKey ? valueType : keyType, // Use constraint-based type
+              isEditable: isValueEditable // Use constraint-based editability
+            };
+          }
+        } else {
+          // From another group
+          draggedValueData = value[sourceGroupId].values.find(v => v.id === draggedId);
+        }
+
+        // Safety check
+        if (!draggedValueData) {
+          setActiveId(null);
+          setActiveData(null);
+          removeDragStyles();
+          return;
+        }
+
+        let updatedValue = { ...value };
+
+        // Remove from source group if needed
+        if (sourceGroupId) {
+          const sourceGroup = value[sourceGroupId];
+          updatedValue[sourceGroupId] = {
+            ...sourceGroup,
+            values: sourceGroup.values.filter(v => v.id !== draggedId)
+          };
+        }
+
+        // Add to target group
+        updatedValue[targetId] = {
           ...targetGroup,
           values: [...targetGroup.values, draggedValueData]
-        }
-      };
+        };
 
-      // Update value
-      onChange(updatedValue);
-
-      // Update local tracking
-      setValueLocations(prev => ({
-        ...prev,
-        [draggedId]: targetId
-      }));
+        // Update state
+        onChange(updatedValue);
+        setValueLocations(prev => ({
+          ...prev,
+          [draggedId]: targetId
+        }));
+      }
+    } catch (error) {
+      console.error("Error during drag operation:", error);
     }
 
     // Clean up
@@ -321,20 +347,21 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     removeDragStyles();
   };
 
-  // Prepare parent and child options based on constraints
-  const parentOptions = isParentKey
-    ? (constraints?.key_array || [])
-    : (constraints?.value_array || []);
+  // Get array options from nested constraints or fall back to legacy constraints
+  // Apply parent/child relationship based on isParentKey
+  const parentArray = isParentKey
+    ? (keyConstraints.array || constraints.key_array || [])
+    : (valueConstraints.array || constraints.value_array || []);
 
-  const childOptions = isParentKey
-    ? (constraints?.value_array || [])
-    : (constraints?.key_array || []);
+  const childArray = isParentKey
+    ? (valueConstraints.array || constraints.value_array || [])
+    : (keyConstraints.array || constraints.key_array || []);
 
-  // Extract parameter references from constraints
-  const keyParam = constraints?.key_param;
-  const valueParam = constraints?.value_param;
+  // Get parameter references from nested constraints or fall back to legacy
+  const keyParam = keyConstraints.param || constraints.key_param;
+  const valueParam = valueConstraints.param || constraints.value_param;
 
-  // Extract parameter values with fallbacks
+  // Get parameter values if they exist
   const keyParamValues = keyParam && parameters?.[keyParam]?.default
     ? Array.isArray(parameters[keyParam].default)
       ? parameters[keyParam].default
@@ -347,15 +374,16 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       : [parameters[valueParam].default]
     : [];
 
-  // Get effective options based on references with fallbacks
+  // Determine effective options based on parent/child relationship
   const effectiveParentOptions = isParentKey
-    ? (parentOptions.length > 0 ? parentOptions : keyParamValues)
-    : (parentOptions.length > 0 ? parentOptions : valueParamValues);
+    ? (parentArray.length > 0 ? parentArray : keyParamValues)
+    : (parentArray.length > 0 ? parentArray : valueParamValues);
 
   const effectiveChildOptions = isParentKey
-    ? (childOptions.length > 0 ? childOptions : valueParamValues)
-    : (childOptions.length > 0 ? childOptions : keyParamValues);
+    ? (childArray.length > 0 ? childArray : valueParamValues)
+    : (childArray.length > 0 ? childArray : keyParamValues);
 
+  // Pack drag info for context
   const dragInfo = {
     activeId,
     activeData,
@@ -374,56 +402,57 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       dragInfo={dragInfo}
       createValue={createValue}
       createGroup={createGroup}
+      createdValues={createdValues}
+      setCreatedValues={setCreatedValues}
     >
       <MetadataManager>
         <EditingManager>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-            modifiers={[snapCenterToCursor]}
-          >
-            <Box width="100%">
-              <SimpleGrid columns={2} gap={4} width="100%">
-                {/* Groups Section */}
-                <GroupsSection value={value} onChange={onChange} />
-
-                {/* Available Values Section */}
-                <AvailableValuesSection value={value} />
-              </SimpleGrid>
-            </Box>
-
-            {/* Drag Overlay */}
-            <DragOverlay
-              dropAnimation={{
-                duration: 200,
-                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-              }}
+          <DebugManager>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
               modifiers={[snapCenterToCursor]}
             >
-              {activeId ? (
-                <ValueDisplay
-                  value={activeData?.value || activeId}
-                  type={activeData?.metadata?.type || valueType}
-                  isFromParam={activeData?.metadata?.isFromParam}
-                  paramSource={activeData?.metadata?.paramSource}
-                  isEditable={activeData?.metadata?.isEditable}
-                />
-              ) : null}
-            </DragOverlay>
+              <Box width="100%">
+                <SimpleGrid columns={2} gap={4} width="100%">
+                  <GroupsSection value={value} onChange={onChange} />
+                  <AvailableValuesSection value={value} />
+                </SimpleGrid>
+              </Box>
 
-            {/* Global styles for drag cursor */}
-            <style>{`
-              body.dragging {
-                cursor: grabbing !important;
-              }
-              body.dragging * {
-                cursor: grabbing !important;
-              }
-            `}</style>
-          </DndContext>
+              {/* Drag Overlay */}
+              <DragOverlay
+                dropAnimation={{
+                  duration: 250,
+                  easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+                }}
+                modifiers={[snapCenterToCursor]}
+              >
+                {activeId ? (
+                  <ValueDisplay
+                    value={activeData?.value || activeId}
+                    type={activeData?.metadata?.type || (isParentKey ? valueType : keyType)}
+                    isFromParam={activeData?.metadata?.isFromParam}
+                    paramSource={activeData?.metadata?.paramSource}
+                    isEditable={activeData?.metadata?.isEditable ?? isValueEditable}
+                  />
+                ) : null}
+              </DragOverlay>
+
+              {/* Drag cursor styles */}
+              <style>{`
+                body.dragging {
+                  cursor: grabbing !important;
+                }
+                body.dragging * {
+                  cursor: grabbing !important;
+                }
+              `}</style>
+            </DndContext>
+          </DebugManager>
         </EditingManager>
       </MetadataManager>
     </NestedMappingProvider>

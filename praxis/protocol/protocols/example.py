@@ -81,7 +81,11 @@ baseline_parameters = ProtocolParameters(
             "type": dict,
             "description": "An example of a mapping parameter",
             "default": {},
-            "constraints": {"key_type": str, "value_type": int, "creatable": True},
+            "constraints": {
+                "creatable": True,
+                "key_constraints": {"type": str},
+                "value_constraints": {"type": int},
+            },
         },
         "mapping_key_example": {
             "type": list,
@@ -100,16 +104,20 @@ baseline_parameters = ProtocolParameters(
             "description": "An example of a mapping parameter",
             "default": {},
             "constraints": {
-                "key_type": str,  # Use actual Python type
-                "value_type": int,  # Use actual Python type
-                "key_array_len": 3,
-                "value_array_len": 3,
-                "key_min_len": 1,
-                "key_max_len": 10,
-                "value_min_len": 1,
-                "value_max_len": 10,
-                "key_param": "mapping_key_example",
-                "value_param": "mapping_value_example",
+                "key_constraints": {
+                    "type": str,
+                    "min_len": 1,
+                    "max_len": 10,
+                    "param": "mapping_key_example",
+                    "array_len": 3,
+                },
+                "value_constraints": {
+                    "type": int,
+                    "min_len": 1,
+                    "max_len": 10,
+                    "param": "mapping_value_example",
+                    "array_len": 3,
+                },
             },
         },
         "mapping_example": {
@@ -117,10 +125,68 @@ baseline_parameters = ProtocolParameters(
             "description": "An example of a one-to-one mapping parameter",
             "default": {"key1": "value1", "key2": "value2"},
             "constraints": {
-                "key_type": "string",
-                "value_type": "string",
-                "key_array": ["key1", "key2", "key3"],
-                "value_array": ["value1", "value2", "value3"],
+                "key_constraints": {
+                    "type": str,
+                    "array": ["key1", "key2", "key3"],
+                },
+                "value_constraints": {
+                    "type": str,
+                    "array": ["value1", "value2", "value3"],
+                },
+            },
+        },
+        "editable_mapping_example": {
+            "type": dict,
+            "description": "An example of a one-to-one mapping parameter",
+            "default": {"key1": "value1", "key2": "value2"},
+            "constraints": {
+                "editable": True,  # Common constraint
+                "key_constraints": {
+                    "type": str,
+                    "array": ["key1", "key2", "key3"],
+                    "array_len": 3,
+                },
+                "value_constraints": {
+                    "type": str,
+                    "array": ["value1", "value2", "value3"],
+                    "array_len": 1,
+                },
+            },
+        },
+        "editable_key_mapping_example": {
+            "type": dict,
+            "description": "An example of a one-to-one mapping parameter",
+            "default": {"key1": "value1", "key2": "value2"},
+            "constraints": {
+                "key_constraints": {
+                    "type": str,
+                    "array": ["key1", "key2", "key3"],
+                    "array_len": 3,
+                    "editable": True,  # Key-specific edit permission
+                },
+                "value_constraints": {
+                    "type": str,
+                    "array": ["value1", "value2", "value3"],
+                    "array_len": 1,
+                },
+            },
+        },
+        "editable_value_mapping_example": {
+            "type": dict,
+            "description": "An example of a one-to-one mapping parameter",
+            "default": {"key1": "value1", "key2": "value2"},
+            "constraints": {
+                "key_constraints": {
+                    "type": str,
+                    "array": ["key1", "key2", "key3"],
+                    "array_len": 3,
+                },
+                "value_constraints": {
+                    "type": str,
+                    "array": ["value1", "value2", "value3"],
+                    "array_len": 1,
+                    "editable": True,  # Value-specific edit permission
+                },
             },
         },
         "array_mapping_example": {
@@ -128,15 +194,19 @@ baseline_parameters = ProtocolParameters(
             "description": "A mapping where each key maps to an array of values",
             "default": {},
             "constraints": {
-                "key_type": "string",
-                "value_type": "array",
-                "key_array": ["group1", "group2", "group3"],
-                "value_array": ["option1", "option2", "option3", "option4"],
-                "key_array_len": 3,
-                "value_array_len": 2,  # Max 2 values per key
-                "creatable_key": True,
-                "creatable_value": True,
-                "creatable": True,
+                "creatable": True,  # Common constraint
+                "key_constraints": {
+                    "type": str,
+                    "array": ["group1", "group2", "group3"],
+                    "array_len": 3,
+                    "creatable": True,
+                },
+                "value_constraints": {
+                    "type": str,
+                    "array": ["option1", "option2", "option3", "option4"],
+                    "array_len": 2,  # Max 2 values per key
+                    "creatable": True,
+                },
             },
         },
         "string_example": {
@@ -149,32 +219,36 @@ baseline_parameters = ProtocolParameters(
             "description": "An example of a mapping parameter with subvariables",
             "default": {},
             "constraints": {
-                "key_type": str,
-                "value_type": dict,
-                "key_array": ["key1", "key2", "key3"],
-                "subvariables": {
-                    "subvar1": {
-                        "type": str,
-                        "description": "Subvariable 1",
-                        "default": "default1",
-                        "constraints": {"array": ["option1", "option2"]},
-                    },
-                    "subvar2": {
-                        "type": int,
-                        "description": "Subvariable 2",
-                        "default": 2,
-                        "constraints": {"min_value": 1, "max_value": 10},
-                    },
-                    "subvar3": {
-                        "type": float,
-                        "description": "Subvariable 3",
-                        "default": 3.0,
-                        "constraints": {"min_value": 0.0, "max_value": 5.0},
-                    },
-                    "subvar4": {
-                        "type": bool,
-                        "description": "Subvariable 4",
-                        "default": True,
+                "key_constraints": {
+                    "type": str,
+                    "array": ["key1", "key2", "key3"],
+                },
+                "value_constraints": {
+                    "type": dict,
+                    "subvariables": {
+                        "subvar1": {
+                            "type": str,
+                            "description": "Subvariable 1",
+                            "default": "default1",
+                            "constraints": {"array": ["option1", "option2"]},
+                        },
+                        "subvar2": {
+                            "type": int,
+                            "description": "Subvariable 2",
+                            "default": 2,
+                            "constraints": {"min_value": 1, "max_value": 10},
+                        },
+                        "subvar3": {
+                            "type": float,
+                            "description": "Subvariable 3",
+                            "default": 3.0,
+                            "constraints": {"min_value": 0.0, "max_value": 5.0},
+                        },
+                        "subvar4": {
+                            "type": bool,
+                            "description": "Subvariable 4",
+                            "default": True,
+                        },
                     },
                 },
             },

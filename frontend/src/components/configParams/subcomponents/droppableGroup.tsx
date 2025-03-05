@@ -10,6 +10,7 @@ interface DroppableGroupProps {
   isDragging?: boolean;
 }
 
+// Update the DroppableGroup component to respect group limits
 export const DroppableGroup: React.FC<DroppableGroupProps> = ({
   children,
   id,
@@ -20,13 +21,14 @@ export const DroppableGroup: React.FC<DroppableGroupProps> = ({
     id,
   });
 
-  // Use isGroupEditable to check if the group is read-only
-  const { isGroupEditable } = useNestedMapping();
-  const editable = isGroupEditable(id);
+  // Use context for checking editability and limits
+  const { isEditable, isGroupFull } = useNestedMapping();
 
-  // Always allow dropping into a group, even if it's read-only
-  // This is because we want to allow moving values between groups, including read-only ones
-  // We just don't want to allow deleting groups or removing values back to available values
+  const editable = isEditable(id);
+  const isFull = isGroupFull(id);
+
+  // Determine if we can accept drops into this group
+  const canReceiveDrops = editable && !isFull;
 
   return (
     <Box
@@ -34,26 +36,42 @@ export const DroppableGroup: React.FC<DroppableGroupProps> = ({
       borderWidth={1}
       borderRadius="md"
       p={2}
-      bg={isOver ? "brand.100" : "transparent"}
+      bg={isOver && canReceiveDrops ? "brand.100" : "transparent"}
       borderStyle="dashed"
-      borderColor={isOver ? "brand.500" : isDragging ? "brand.400" : "gray.200"}
+      borderColor={
+        isOver && canReceiveDrops
+          ? "brand.500"
+          : isDragging && canReceiveDrops
+            ? "brand.400"
+            : isFull
+              ? "red.200"
+              : "gray.200"
+      }
       _hover={{
-        borderColor: !isOver && isDragging ? "brand.400" : undefined,
+        borderColor: !isOver && isDragging && canReceiveDrops ? "brand.400" : undefined,
       }}
       _dark={{
-        borderColor: isOver ? "brand.500" : isDragging ? "brand.400" : "gray.600",
+        borderColor: isOver && canReceiveDrops
+          ? "brand.500"
+          : isDragging && canReceiveDrops
+            ? "brand.400"
+            : isFull
+              ? "red.500"
+              : "gray.600",
         _hover: {
-          borderColor: !isOver && isDragging ? "brand.400" : undefined,
+          borderColor: !isOver && isDragging && canReceiveDrops ? "brand.400" : undefined,
         }
       }}
       minHeight="50px"
       transition="all 0.2s"
       position="relative"
       data-droppable-id={id}
+      data-editable={editable}
+      data-full={isFull}
     >
       {children}
 
-      {/* Show a "read-only" badge in a subtle way */}
+      {/* Show a status indicator as needed */}
       {!editable && (
         <Box
           position="absolute"
@@ -75,8 +93,29 @@ export const DroppableGroup: React.FC<DroppableGroupProps> = ({
         </Box>
       )}
 
+      {editable && isFull && (
+        <Box
+          position="absolute"
+          top={1}
+          right={1}
+          px={1}
+          py={0}
+          fontSize="xs"
+          background="red.100"
+          color="red.600"
+          borderRadius="sm"
+          opacity={0.7}
+          _dark={{
+            background: "red.900",
+            color: "red.300"
+          }}
+        >
+          full
+        </Box>
+      )}
+
       {/* Empty state hint */}
-      {!children || React.Children.count(children) === 0 ? (
+      {(!children || React.Children.count(children) === 0) && (
         <Box
           color="gray.400"
           _dark={{ color: "gray.500" }}
@@ -84,9 +123,14 @@ export const DroppableGroup: React.FC<DroppableGroupProps> = ({
           fontSize="sm"
           py={4}
         >
-          Drop values here
+          {editable
+            ? isFull
+              ? "Group is full"
+              : "Drop values here"
+            : "Read-only group"
+          }
         </Box>
-      ) : null}
+      )}
     </Box>
   );
 };

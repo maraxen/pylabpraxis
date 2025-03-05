@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Box, Text } from '@chakra-ui/react';
 import { Button } from '@/components/ui/button'
 import { LuPlus } from "react-icons/lu";
@@ -6,12 +6,13 @@ import { AutoComplete, AutoCompleteInput, AutoCompleteItem, AutoCompleteList, Au
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { StringInput } from '../inputs/StringInput';
 import { NumberInput } from '../inputs/NumericInput';
+import { createMemoComponent } from '../utils/memoUtils';
 
 interface GroupCreatorProps {
   value: Record<string, any>;
 }
 
-export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
+const GroupCreatorComponent: React.FC<GroupCreatorProps> = ({ value }) => {
   // Extract context values including creatable flags
   const {
     localParentOptions,
@@ -24,15 +25,8 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
     config
   } = useNestedMapping();
 
-  // Debug logs to check creatable status
-  const constraints = config?.constraints;
-  const isCreatable = !!constraints?.creatable || !!constraints?.creatable_key;
-  console.log("GroupCreator creatable status:", {
-    creatableKey,
-    constraints_creatable: constraints?.creatable,
-    constraints_creatable_key: constraints?.creatable_key,
-    isCreatable
-  });
+  // Debug logs should be disabled in production
+  const DEBUG_ENABLED = false;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [newValue, setNewValue] = useState<any>('');
@@ -74,14 +68,37 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
     }
   }, [creationMode]);
 
+  const handleSetCreationMode = useCallback((mode: string | null) => {
+    console.log("Setting creation mode for group:", mode);
+    setCreationMode(mode);
+  }, [setCreationMode]);
+
+  const handleCreateGroup = useCallback(() => {
+    if (newValue !== '' && newValue !== undefined && newValue !== null && !value[newValue]) {
+      createGroup(newValue);
+      setCreationMode(null);
+      setNewValue('');
+    }
+  }, [newValue, value, createGroup, setCreationMode]);
+
+  const handleInputChange = useCallback((_: string, val: any) => {
+    setNewValue(val);
+  }, []);
+
   // If not in creation mode, check creatable status and show button if allowed
   if (creationMode !== 'group') {
-    const canCreate = creatableKey || isCreatable;
-    console.log("Can create group:", canCreate);
+    const canCreate = creatableKey || !!config?.constraints?.creatable || !!config?.constraints?.creatable_key;
+
+    if (DEBUG_ENABLED) {
+      console.log("GroupCreator status:", { creationMode, canCreate, creatableKey });
+    }
 
     return (
       <Button
-        onClick={() => setCreationMode('group')}
+        onClick={() => {
+          console.log("Group button clicked, setting mode to group");
+          setCreationMode('group');
+        }}
         disabled={!canCreate || isUnsupportedType}
         _disabled={{ opacity: 0.5, cursor: 'not-allowed' }}
       >
@@ -101,7 +118,7 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
         <Box mt={3} display="flex" gap={2} justifyContent="flex-end">
           <Button
             visual="outline"
-            onClick={() => setCreationMode(null)}
+            onClick={() => handleSetCreationMode(null)}
           >
             Close
           </Button>
@@ -110,18 +127,13 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
     );
   }
 
-  const handleCreateGroup = () => {
-    if (newValue !== '' && newValue !== undefined && newValue !== null && !value[newValue]) {
-      createGroup(newValue);
-      setCreationMode(null);
-      setNewValue('');
-    }
-  };
-
   // Check if we should use the AutoComplete component
-  const shouldUseAutocomplete = keyType === 'string' && availableOptions.length > 0;
+  const shouldUseAutocomplete = keyType === 'string' && (availableOptions.length > 0 || creatableKey);
 
   if (shouldUseAutocomplete) {
+    console.log("Using autocomplete for group creation");
+    console.log("Available options:", availableOptions);
+    console.log("Creatable key:", creatableKey);
     return (
       <Box width="100%" borderWidth={1} borderRadius="md" p={4} bg="white" _dark={{ bg: "gray.700" }}>
         <Text fontWeight="medium" mb={1}>Select or create group</Text>
@@ -134,14 +146,14 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
             const groupName = item.item.value.trim();
             if (!groupName || value[groupName]) return;
             createGroup(groupName);
-            setCreationMode(null);
+            handleSetCreationMode(null);
           }}
         >
           <AutoCompleteInput
             placeholder="Enter group name..."
             autoFocus
             ref={inputRef}
-            onBlur={() => setTimeout(() => setCreationMode(null), 200)}
+            onBlur={() => setTimeout(() => handleSetCreationMode(null), 200)}
           />
           <AutoCompleteList>
             {availableOptions.map((opt: string) => (
@@ -159,7 +171,7 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
         <Button
           visual="outline"
           mt={3}
-          onClick={() => setCreationMode(null)}
+          onClick={() => handleSetCreationMode(null)}
         >
           Cancel
         </Button>
@@ -176,7 +188,7 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
           name="newGroup"
           value={newValue}
           config={inputConfig}
-          onChange={(_, val) => setNewValue(val)}
+          onChange={handleInputChange}
           onBlur={() => { }}
           ref={inputRef}
         />
@@ -185,7 +197,7 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
           name="newGroup"
           value={newValue}
           config={inputConfig}
-          onChange={(_, val) => setNewValue(val)}
+          onChange={handleInputChange}
           onBlur={() => { }}
           ref={inputRef}
         />
@@ -196,7 +208,7 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
         </Button>
         <Button
           visual="outline"
-          onClick={() => setCreationMode(null)}
+          onClick={() => handleSetCreationMode(null)}
         >
           Cancel
         </Button>
@@ -204,3 +216,10 @@ export const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
     </Box>
   );
 };
+
+// Use memoization to prevent unnecessary re-renders
+export const GroupCreator = createMemoComponent(
+  GroupCreatorComponent,
+  'GroupCreator',
+  false // Set to true for debugging re-renders
+);

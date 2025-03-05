@@ -139,6 +139,9 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
     }
   };
 
+  // Only show delete button if the value is editable and not from a parameter
+  const canDelete = isEditable && !isFromParam && onDelete;
+
   return (
     <Box
       ref={setNodeRef}
@@ -182,7 +185,7 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
         </HStack>
 
         {/* Action buttons */}
-        {(onEdit || onDelete) && isHovering && !isDragging && (
+        {(onEdit || canDelete) && isHovering && !isDragging && (
           <HStack gap={1}>
             {onEdit && isEditable && !isEditing && (
               <IconButton
@@ -197,7 +200,7 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
                 <LuPencil size="1em" />
               </IconButton>
             )}
-            {onDelete && isEditable && !isEditing && (
+            {canDelete && !isEditing && (
               <IconButton
                 aria-label="Delete value"
                 size="xs"

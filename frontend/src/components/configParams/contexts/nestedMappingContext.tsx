@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useMemo, useCallback } from 'react';
 import { ParameterConfig, GroupData, ValueData, ValueMetadata } from '../utils/parameterUtils';
 
 // Editing state interface
@@ -46,6 +46,9 @@ interface NestedMappingContextType {
   setValueMetadataMap: (metadata: Record<string, ValueMetadata>) => void;
   getValueMetadata: (value: string | ValueData) => ValueMetadata;
 
+  // Group editability check
+  isEditable: (groupId: string) => boolean;
+
   // Drag and drop info
   dragInfo: {
     activeId: string | null;
@@ -62,6 +65,16 @@ interface NestedMappingContextType {
   cancelEditing: () => void;
   isEditingItem: (id: string, group: string | null) => boolean;
   inputRef: React.RefObject<HTMLInputElement>;
+
+  // Value limits
+  getMaxTotalValues: () => number;
+  getMaxValuesPerGroup: () => number;
+  isGroupFull: (groupId: string) => boolean;
+  hasReachedMaxValues: () => boolean;
+
+  // Track created but unassigned values
+  createdValues: Record<string, ValueData>;
+  setCreatedValues: React.Dispatch<React.SetStateAction<Record<string, ValueData>>>;
 }
 
 // Create the context with default values
@@ -84,6 +97,7 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
   valueMetadataMap: {},
   setValueMetadataMap: () => { },
   getValueMetadata: () => ({ isFromParam: false, isEditable: true, type: 'string' }),
+  isEditable: () => true,
   dragInfo: {
     activeId: null,
     activeData: null,
@@ -103,6 +117,14 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
   cancelEditing: () => { },
   isEditingItem: () => false,
   inputRef: { current: null },
+  // Value limits
+  getMaxTotalValues: () => Infinity,
+  getMaxValuesPerGroup: () => Infinity,
+  isGroupFull: () => false,
+  hasReachedMaxValues: () => false,
+  // Track created but unassigned values
+  createdValues: {},
+  setCreatedValues: () => { },
 });
 
 // Provider component
@@ -122,6 +144,8 @@ interface NestedMappingProviderProps {
   };
   createValue: (value: any) => string;
   createGroup: (name: string) => string;
+  createdValues: Record<string, ValueData>;
+  setCreatedValues: React.Dispatch<React.SetStateAction<Record<string, ValueData>>>;
 }
 
 export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
@@ -133,8 +157,10 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   effectiveChildOptions,
   effectiveParentOptions,
   dragInfo,
-  createValue,
-  createGroup
+  createValue: createValueProp,
+  createGroup: createGroupProp,
+  createdValues,
+  setCreatedValues
 }) => {
   const constraints = config?.constraints || {};
   const isParentKey = constraints?.parent === 'key';
@@ -146,8 +172,24 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   // Share a ref to the input field for focus management
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get value metadata helper
-  const getValueMetadata = (val: string | ValueData): ValueMetadata => {
+  // Add this ref to track pending metadata updates
+  const pendingMetadataUpdatesRef = useRef<Record<string, ValueMetadata>>({});
+
+  // Apply pending metadata updates using useEffect
+  useEffect(() => {
+    const pendingUpdates = pendingMetadataUpdatesRef.current;
+    if (Object.keys(pendingUpdates).length > 0) {
+      setValueMetadataMap(prev => ({
+        ...prev,
+        ...pendingUpdates
+      }));
+      // Clear the pending updates
+      pendingMetadataUpdatesRef.current = {};
+    }
+  });
+
+  // Memoize functions to prevent unnecessary re-renders
+  const getValueMetadata = useCallback((val: string | ValueData): ValueMetadata => {
     // If ValueData object is passed, extract the value
     const value = typeof val === 'object' && val !== null ? val.value : val;
     const stringValue = value !== null && value !== undefined ? String(value) : '';
@@ -186,11 +228,11 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
       type: valueType
     };
 
-    // Store the metadata for future use
-    setValueMetadataMap(prev => ({ ...prev, [stringValue]: metadata }));
+    // Instead of updating state directly during render, store in pending updates
+    pendingMetadataUpdatesRef.current[stringValue] = metadata;
 
     return metadata;
-  };
+  }, [valueMetadataMap, constraints?.key_param, constraints?.value_param, parameters, valueType]);
 
   // Fix the creatable flags to check both creatable and specific flags
   const creatable = !!constraints?.creatable;
@@ -200,29 +242,68 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   // Local state for creation mode
   const [creationMode, setCreationMode] = useState<string | null>(null);
 
-  // Add additional child and parent options from the existing values and groups
-  const localParentOptions = [...effectiveParentOptions];
-  const localChildOptions = [...effectiveChildOptions];
+  // Memoize derived values
+  const localParentOptions = useMemo(() => {
+    const options = [...effectiveParentOptions];
 
-  // Add existing group names to parent options if not already there
-  if (value && typeof value === 'object') {
-    Object.values(value).forEach(group => {
-      if (group && group.name && !localParentOptions.includes(group.name)) {
-        localParentOptions.push(group.name);
-      }
-    });
-
-    // Add existing values to child options if not already there
-    Object.values(value).forEach(group => {
-      if (group && group.values && Array.isArray(group.values)) {
-        group.values.forEach(valueData => {
-          if (valueData && valueData.value !== undefined && !localChildOptions.includes(valueData.value)) {
-            localChildOptions.push(valueData.value);
+    // Add values from key_param if specified
+    if (constraints?.key_param && parameters?.[constraints.key_param]?.default) {
+      const paramValues = parameters[constraints.key_param].default;
+      if (Array.isArray(paramValues)) {
+        paramValues.forEach(val => {
+          if (!options.includes(val)) {
+            options.push(val);
           }
         });
+      } else if (paramValues !== undefined && !options.includes(paramValues)) {
+        options.push(paramValues);
       }
-    });
-  }
+    }
+
+    // Add existing group names to parent options if not already there
+    if (value && typeof value === 'object') {
+      Object.values(value).forEach(group => {
+        if (group && group.name && !options.includes(group.name)) {
+          options.push(group.name);
+        }
+      });
+    }
+
+    return options;
+  }, [effectiveParentOptions, constraints?.key_param, parameters, value]);
+
+  const localChildOptions = useMemo(() => {
+    const options = [...effectiveChildOptions];
+
+    // Add values from value_param if specified
+    if (constraints?.value_param && parameters?.[constraints.value_param]?.default) {
+      const paramValues = parameters[constraints.value_param].default;
+      if (Array.isArray(paramValues)) {
+        paramValues.forEach(val => {
+          if (!options.includes(val)) {
+            options.push(val);
+          }
+        });
+      } else if (paramValues !== undefined && !options.includes(paramValues)) {
+        options.push(paramValues);
+      }
+    }
+
+    // Add existing values to child options if not already there
+    if (value && typeof value === 'object') {
+      Object.values(value).forEach(group => {
+        if (group && group.values && Array.isArray(group.values)) {
+          group.values.forEach(valueData => {
+            if (valueData && valueData.value !== undefined && !options.includes(valueData.value)) {
+              options.push(valueData.value);
+            }
+          });
+        }
+      });
+    }
+
+    return options;
+  }, [effectiveChildOptions, constraints?.value_param, parameters, value]);
 
   // Editing state
   const [editingState, setEditingState] = useState<EditingState>({
@@ -237,10 +318,10 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     if (dragInfo.isDragging && editingState.id) {
       cancelEditing();
     }
-  }, [dragInfo.isDragging]);
+  }, [dragInfo.isDragging, editingState.id]);
 
-  // Start editing a value
-  const startEditing = (id: string, currentValue: string, group: string | null) => {
+  // Memoize editing functions
+  const startEditing = useCallback((id: string, currentValue: string, group: string | null) => {
     // Check if the value is editable
     const metadata = valueMetadataMap[id] || valueMetadataMap[currentValue];
     if (metadata && !metadata.isEditable) {
@@ -258,38 +339,29 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
       group,
       originalValue: currentValue
     });
-  };
+  }, [valueMetadataMap, dragInfo.isDragging]);
 
-  // Update the value being edited
-  const updateEditingValue = (newValue: string) => {
+  const updateEditingValue = useCallback((newValue: string) => {
     setEditingState(prev => ({
       ...prev,
       value: newValue
     }));
-  };
+  }, []);
 
-  // Cancel editing
-  const cancelEditing = () => {
+  const cancelEditing = useCallback(() => {
     setEditingState({
       id: null,
       value: '',
       group: null,
       originalValue: ''
     });
-  };
+  }, []);
 
-  // Finish editing and apply changes
-  const finishEditing = () => {
+  const finishEditing = useCallback(() => {
     const { id, value: newValue, group, originalValue } = editingState;
 
     // If no changes or no ID, just cancel
-    if (!id) {
-      cancelEditing();
-      return;
-    }
-
-    // If no changes, just cancel
-    if (newValue === originalValue) {
+    if (!id || newValue === originalValue) {
       cancelEditing();
       return;
     }
@@ -316,7 +388,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
         }
       });
 
-      // Update metadata
+      // Update metadata - retain the ID but update the value
       setValueMetadataMap(prev => {
         const metadata = { ...(prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false }) };
         const newMap = { ...prev };
@@ -330,49 +402,198 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
         return newMap;
       });
     }
+    // Handle editing available values
+    else if (!group) {
+      // Find if this is a created value that we're editing
+      const createdValueEntry = Object.entries(createdValues).find(([_, valueData]) => valueData.id === id);
+
+      if (createdValueEntry) {
+        const [createdValueId, createdValueData] = createdValueEntry;
+
+        // Update the created value in our state
+        setCreatedValues(prev => {
+          const updated = { ...prev };
+          updated[createdValueId] = {
+            ...createdValueData,
+            value: newValue
+          };
+          return updated;
+        });
+
+        // Also update metadata
+        setValueMetadataMap(prev => {
+          const metadata = { ...(prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false }) };
+          const newMap = { ...prev };
+
+          if (originalValue !== newValue) {
+            delete newMap[originalValue];
+          }
+
+          newMap[newValue] = metadata;
+          return newMap;
+        });
+      }
+    }
 
     // Reset editing state
     cancelEditing();
-  };
+  }, [editingState, value, onChange, valueType, cancelEditing, createdValues, setCreatedValues]);
 
-  // Check if a specific item is currently being edited
-  const isEditingItem = (id: string, group: string | null) => {
+  const isEditingItem = useCallback((id: string, group: string | null) => {
     return editingState.id === id && editingState.group === group;
-  };
+  }, [editingState.id, editingState.group]);
+
+  // Update isEditable function to check for editability flags in constraints
+  const isEditable = useCallback((groupId: string): boolean => {
+    // First check if the group exists and has explicit editability flag
+    if (value && value[groupId]) {
+      const group = value[groupId];
+      // If explicitly set to false, respect that
+      if (group.isEditable === false) return false;
+      // If explicitly set to true, allow editing
+      if (group.isEditable === true) return true;
+    }
+
+    // Check constraints for editability flags
+    const editableByConstraint =
+      !!constraints?.editable ||
+      !!constraints?.editable_key ||
+      !!constraints?.editable_value ||
+      !!constraints?.creatable ||
+      !!constraints?.creatable_key ||
+      !!constraints?.creatable_value;
+
+    return editableByConstraint;
+  }, [value, constraints]);
+
+  // Wrap the creation methods to ensure they work in the optimized context
+  const createValue = useCallback((newVal: any): string => {
+    try {
+      console.log("Creating value in context:", newVal);
+      return createValueProp(newVal);
+    } catch (error) {
+      console.error("Error in context while creating value:", error);
+      return "";
+    }
+  }, [createValueProp]);
+
+  const createGroup = useCallback((groupName: string): string => {
+    try {
+      console.log("Creating group in context:", groupName);
+      return createGroupProp(groupName);
+    } catch (error) {
+      console.error("Error in context while creating group:", error);
+      return "";
+    }
+  }, [createGroupProp]);
+
+  // Fix the setCreationMode function to ensure proper updates
+  const wrappedSetCreationMode = useCallback((mode: string | null) => {
+    console.log("Setting creation mode:", mode);
+    setCreationMode(mode);
+  }, []);
+
+  // Calculate the maximum total values based on constraints
+  const getMaxTotalValues = useCallback((): number => {
+    const keyArrayLen = constraints?.key_array_len;
+    const valueArrayLen = constraints?.value_array_len;
+
+    // If both are specified, multiply them to get total max values
+    if (keyArrayLen && valueArrayLen) {
+      return keyArrayLen * valueArrayLen;
+    }
+
+    // If only one is specified
+    if (keyArrayLen) return keyArrayLen;
+    if (valueArrayLen) return valueArrayLen;
+
+    // Default: no limit
+    return Infinity;
+  }, [constraints]);
+
+  // Calculate the maximum values per group
+  const getMaxValuesPerGroup = useCallback((): number => {
+    // Use value_array_len as the limit for values per key
+    return constraints?.value_array_len || Infinity;
+  }, [constraints]);
+
+  // Check if a group has reached its maximum values
+  const isGroupFull = useCallback((groupId: string): boolean => {
+    if (!value || !value[groupId]) return false;
+
+    const maxPerGroup = getMaxValuesPerGroup();
+    const currentCount = value[groupId].values?.length || 0;
+
+    return currentCount >= maxPerGroup;
+  }, [value, getMaxValuesPerGroup]);
+
+  // Check if we've reached the total maximum values
+  const hasReachedMaxValues = useCallback((): boolean => {
+    const maxTotal = getMaxTotalValues();
+    let currentTotal = 0;
+
+    // Count all values across all groups
+    Object.values(value || {}).forEach(group => {
+      currentTotal += group.values?.length || 0;
+    });
+
+    return currentTotal >= maxTotal;
+  }, [value, getMaxTotalValues]);
+
+  // Memoize the context value to avoid unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    config,
+    parameters,
+    value,
+    onChange,
+    effectiveChildOptions,
+    effectiveParentOptions,
+    localChildOptions,
+    localParentOptions,
+    isParentKey,
+    valueType,
+    creatableKey,
+    creatableValue,
+    creationMode,
+    setCreationMode: wrappedSetCreationMode,
+    createValue,
+    createGroup,
+    valueMetadataMap,
+    setValueMetadataMap,
+    getValueMetadata,
+    isEditable,
+    dragInfo,
+    // Editing functionality
+    editingState,
+    startEditing,
+    updateEditingValue,
+    finishEditing,
+    cancelEditing,
+    isEditingItem,
+    inputRef,
+    // Value limits
+    getMaxTotalValues,
+    getMaxValuesPerGroup,
+    isGroupFull,
+    hasReachedMaxValues,
+    // Track created but unassigned values
+    createdValues,
+    setCreatedValues,
+  }), [
+    config, parameters, value, onChange,
+    effectiveChildOptions, effectiveParentOptions,
+    localChildOptions, localParentOptions,
+    isParentKey, valueType, creatableKey, creatableValue,
+    creationMode, wrappedSetCreationMode, createValue, createGroup,
+    valueMetadataMap, setValueMetadataMap, getValueMetadata, isEditable,
+    dragInfo, editingState,
+    startEditing, updateEditingValue, finishEditing, cancelEditing, isEditingItem,
+    getMaxTotalValues, getMaxValuesPerGroup, isGroupFull, hasReachedMaxValues,
+    createdValues, setCreatedValues
+  ]);
 
   return (
-    <NestedMappingContext.Provider
-      value={{
-        config,
-        parameters,
-        value,
-        onChange,
-        effectiveChildOptions,
-        effectiveParentOptions,
-        localChildOptions,
-        localParentOptions,
-        isParentKey,
-        valueType,
-        creatableKey,
-        creatableValue,
-        creationMode,
-        setCreationMode,
-        createValue,
-        createGroup,
-        valueMetadataMap,
-        setValueMetadataMap,
-        getValueMetadata,
-        dragInfo,
-        // Editing functionality
-        editingState,
-        startEditing,
-        updateEditingValue,
-        finishEditing,
-        cancelEditing,
-        isEditingItem,
-        inputRef,
-      }}
-    >
+    <NestedMappingContext.Provider value={contextValue}>
       {children}
     </NestedMappingContext.Provider>
   );
