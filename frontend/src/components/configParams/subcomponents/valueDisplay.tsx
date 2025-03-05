@@ -43,24 +43,21 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
     // Get parent constraints
     const parentConstraints = config?.constraints || {};
 
-    // Determine which nested constraints to use based on parent and build value constraints
-    const isParentKey = parentConstraints?.parent === 'key';
+    // Build value constraints object to hold applicable constraints
     const valueConstraints: ParameterConstraints = {};
 
-    // Get the appropriate nested constraints based on parent context
+    // Determine which nested constraints to use based on parent context
+    const isParentKey = parentConstraints?.parent === 'key';
     const nestedConstraints = isParentKey
       ? parentConstraints.key_constraints
       : parentConstraints.value_constraints;
 
+    // Apply constraints from the nested structure
     if (nestedConstraints) {
-      // Use nested constraints (new format)
-      applyNestedConstraints(nestedConstraints, valueConstraints, type);
-    } else {
-      // Fall back to legacy constraints
-      applyLegacyConstraints(parentConstraints, valueConstraints, isParentKey, type);
+      applyConstraints(nestedConstraints, valueConstraints, type);
     }
 
-    // Create a proper config object for our inputs
+    // Create a proper config object for input components
     const inputConfig = {
       type: type?.toLowerCase(),
       constraints: valueConstraints
@@ -174,7 +171,7 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
             </Badge>
           )}
 
-          {/* Editability Badge - new */}
+          {/* Editability Badge */}
           <Badge
             size="sm"
             colorScheme={isEditable ? "green" : "gray"}
@@ -188,8 +185,10 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
   );
 };
 
-// Helper function to apply nested constraints based on type
-function applyNestedConstraints(
+/**
+ * Apply constraints from the nested constraint structure based on value type
+ */
+function applyConstraints(
   nestedConstraints: NestedConstraint | undefined,
   valueConstraints: ParameterConstraints,
   type: string
@@ -198,7 +197,7 @@ function applyNestedConstraints(
 
   // Always copy over common constraints that apply to all types
   if (nestedConstraints.array) valueConstraints.array = nestedConstraints.array;
-  if (nestedConstraints.array_len) valueConstraints.array_len = nestedConstraints.array_len;
+  if (nestedConstraints.array_len !== undefined) valueConstraints.array_len = nestedConstraints.array_len;
 
   // Apply type-specific constraints
   switch (type?.toLowerCase()) {
@@ -225,69 +224,6 @@ function applyNestedConstraints(
         valueConstraints.max_len = nestedConstraints.max_len;
       if (nestedConstraints.regex !== undefined)
         valueConstraints.regex = nestedConstraints.regex;
-      break;
-  }
-}
-
-// Helper function to apply legacy constraints
-function applyLegacyConstraints(
-  parentConstraints: ParameterConstraints,
-  valueConstraints: ParameterConstraints,
-  isParentKey: boolean,
-  type: string
-) {
-  // Apply common array constraints first
-  if (parentConstraints.array) {
-    valueConstraints.array = isParentKey
-      ? parentConstraints.key_array || parentConstraints.array
-      : parentConstraints.value_array || parentConstraints.array;
-  }
-
-  // Apply type-specific constraints
-  switch (type?.toLowerCase()) {
-    case 'number':
-    case 'int':
-    case 'integer':
-    case 'float':
-    case 'double':
-      // Apply numeric constraints with key/value prefixes
-      const minValueKey = isParentKey ? 'key_min_value' : 'value_min_value';
-      const maxValueKey = isParentKey ? 'key_max_value' : 'value_max_value';
-      const stepKey = isParentKey ? 'key_step' : 'value_step';
-
-      // First try with prefix, fall back to common constraint
-      valueConstraints.min_value = parentConstraints[minValueKey] !== undefined
-        ? (parentConstraints[minValueKey] as number)
-        : parentConstraints.min_value;
-
-      valueConstraints.max_value = parentConstraints[maxValueKey] !== undefined
-        ? (parentConstraints[maxValueKey] as number)
-        : parentConstraints.max_value;
-
-      valueConstraints.step = parentConstraints[stepKey] !== undefined
-        ? (parentConstraints[stepKey] as number)
-        : parentConstraints.step;
-      break;
-
-    case 'string':
-    case 'str':
-      // Apply string constraints with key/value prefixes
-      const minLenKey = isParentKey ? 'key_min_len' : 'value_min_len';
-      const maxLenKey = isParentKey ? 'key_max_len' : 'value_max_len';
-      const regexKey = isParentKey ? 'key_regex' : 'value_regex';
-
-      // First try with prefix, fall back to common constraint
-      valueConstraints.min_len = parentConstraints[minLenKey] !== undefined
-        ? (parentConstraints[minLenKey] as number)
-        : parentConstraints.min_len;
-
-      valueConstraints.max_len = parentConstraints[maxLenKey] !== undefined
-        ? (parentConstraints[maxLenKey] as number)
-        : parentConstraints.max_len;
-
-      valueConstraints.regex = parentConstraints[regexKey] !== undefined
-        ? (parentConstraints[regexKey] as string)
-        : parentConstraints.regex;
       break;
   }
 }

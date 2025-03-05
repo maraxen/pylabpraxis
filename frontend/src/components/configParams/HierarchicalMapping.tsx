@@ -23,8 +23,7 @@ import { clearExcessStorage, generateCompactId } from './utils/storageUtils';
 
 /**
  * HierarchicalMapping component that renders a mapping interface with groups and values
- * Uses the new nested constraint structure (key_constraints/value_constraints)
- * while maintaining backward compatibility with legacy constraints
+ * This version only supports the new nested constraint structure (key_constraints/value_constraints)
  */
 const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   name,
@@ -36,42 +35,25 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   // Extract constraints with defaults
   const constraints = config?.constraints || {};
 
-  // Get nested constraints with better typing
+  // Get nested constraints
   const keyConstraints = constraints.key_constraints || {};
   const valueConstraints = constraints.value_constraints || {};
 
   // Determine the parent-child relationship
   const isParentKey = constraints?.parent === 'key';
 
-  // Extract type information with proper fallbacks
-  // First try the nested constraints, then fall back to legacy format
-  const keyType = keyConstraints.type || constraints.key_type || 'string';
-  const valueType = valueConstraints.type || constraints.value_type || 'string';
+  // Extract type information directly from nested constraints
+  const keyType = keyConstraints.type || 'string';
+  const valueType = valueConstraints.type || 'string';
 
-  // Extract editability flags with inheritance and priority order
-  // A value is editable if it's marked as such at any level
-  const isKeyEditable =
-    !!keyConstraints.editable ||
-    !!constraints.editable ||
-    !!constraints.editable_key;
+  // Extract editability flags from nested constraints
+  const isKeyEditable = !!keyConstraints.editable || !!constraints.editable;
+  const isValueEditable = !!valueConstraints.editable || !!constraints.editable;
 
-  const isValueEditable =
-    !!valueConstraints.editable ||
-    !!constraints.editable ||
-    !!constraints.editable_value;
-
-  // Extract creatability flags with inheritance and priority order
-  // Creatable flag enables both key and value creation unless specifically disabled
+  // Extract creatability flags from nested constraints
   const creatable = !!constraints.creatable;
-  const creatableKey =
-    !!keyConstraints.creatable ||
-    creatable ||
-    !!constraints.creatable_key;
-
-  const creatableValue =
-    !!valueConstraints.creatable ||
-    creatable ||
-    !!constraints.creatable_value;
+  const creatableKey = !!keyConstraints.creatable || creatable;
+  const creatableValue = !!valueConstraints.creatable || creatable;
 
   // Configure sensors for drag and drop
   const sensors = useDndSensors();
@@ -107,7 +89,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
           id: generateCompactId(),
           name: key,
           values: [],
-          isEditable: isKeyEditable // Use constraint-based editability
+          isEditable: isKeyEditable
         };
         return;
       }
@@ -145,8 +127,8 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
             return {
               id: generateCompactId(),
               value: val,
-              type: isParentKey ? valueType : keyType, // Use appropriate type based on parent-child relationship
-              isEditable: isValueEditable // Use constraint-based editability
+              type: isParentKey ? valueType : keyType,
+              isEditable: isValueEditable
             };
           }
         });
@@ -183,8 +165,8 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       const valueData: ValueData = {
         id: valueId,
         value: newVal,
-        type: isParentKey ? valueType : keyType, // Type depends on parent-child relationship
-        isEditable: isValueEditable // Use constraint-based editability
+        type: isParentKey ? valueType : keyType,
+        isEditable: isValueEditable
       };
 
       setCreatedValues(prev => ({
@@ -209,7 +191,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
         id: groupId,
         name: groupName,
         values: [],
-        isEditable: isKeyEditable // Use constraint-based editability
+        isEditable: isKeyEditable
       };
 
       onChange({
@@ -347,19 +329,18 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     removeDragStyles();
   };
 
-  // Get array options from nested constraints or fall back to legacy constraints
-  // Apply parent/child relationship based on isParentKey
+  // Get array options directly from nested constraints
   const parentArray = isParentKey
-    ? (keyConstraints.array || constraints.key_array || [])
-    : (valueConstraints.array || constraints.value_array || []);
+    ? (keyConstraints.array || [])
+    : (valueConstraints.array || []);
 
   const childArray = isParentKey
-    ? (valueConstraints.array || constraints.value_array || [])
-    : (keyConstraints.array || constraints.key_array || []);
+    ? (valueConstraints.array || [])
+    : (keyConstraints.array || []);
 
-  // Get parameter references from nested constraints or fall back to legacy
-  const keyParam = keyConstraints.param || constraints.key_param;
-  const valueParam = valueConstraints.param || constraints.value_param;
+  // Get parameter references from nested constraints
+  const keyParam = keyConstraints.param;
+  const valueParam = valueConstraints.param;
 
   // Get parameter values if they exist
   const keyParamValues = keyParam && parameters?.[keyParam]?.default

@@ -42,46 +42,36 @@ export const GroupItem: React.FC<GroupItemProps> = ({
   const [editedName, setEditedName] = useState(group.name);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Extract constraints - both root level and nested
+  // Extract constraints from config
   const constraints = config?.constraints || {};
   const keyConstraints = constraints.key_constraints || {};
   const valueConstraints = constraints.value_constraints || {};
 
-  // Determine if this group's name/structure is editable using the nested constraint structure
-  // Check editability in order of precedence:
-  // 1. Group's own isEditable property (if explicitly set)
-  // 2. Nested key_constraints.editable
-  // 3. Common editable flag
-  // 4. Legacy editable_key flag
+  // Determine group editability - simplified to use only nested constraints
   const groupExplicitlyEditable = group.isEditable === true;
   const groupExplicitlyReadOnly = group.isEditable === false;
 
-  // Calculate editability based on constraints
+  // Group is editable if:
+  // 1. Explicitly marked as editable, OR
+  // 2. Not explicitly read-only AND has editable or creatable flag in key_constraints or global constraints
   const keyEditableByConstraints =
     !!keyConstraints.editable ||
-    !!constraints.editable ||
-    !!constraints.editable_key;
+    !!constraints.editable;
 
-  // Calculate creatability based on constraints
   const keyCreatableByConstraints =
     !!keyConstraints.creatable ||
-    !!constraints.creatable ||
-    !!constraints.creatable_key;
+    !!constraints.creatable;
 
-  // A group is editable if:
-  // 1. It's explicitly marked as editable, OR
-  // 2. It's NOT explicitly marked as read-only AND either editability or creatability flags are enabled
   const groupEditable =
     groupExplicitlyEditable ||
     (!groupExplicitlyReadOnly && (keyEditableByConstraints || keyCreatableByConstraints));
 
-  // Check if group contains parameter-derived values (these groups shouldn't be deletable)
+  // Group should not be deletable if it contains parameter values or is not editable
   const hasParameterValues = group.values?.some(valueData => {
     const metadata = getValueMetadata(valueData);
     return metadata.isFromParam;
   });
 
-  // Group should not be deletable if it contains parameter values or is not editable
   const allowDelete = groupEditable && !hasParameterValues;
 
   // Handle starting group name edit
@@ -132,32 +122,23 @@ export const GroupItem: React.FC<GroupItemProps> = ({
 
   const values = group.values || [];
 
-  // Enhanced value editability check with improved constraint handling
+  // Simplified value editability check using only nested constraints
   const isValueEditable = useCallback((valueItem: ValueData, metadata: ValueMetadata) => {
-    // First check if value is from a parameter - these are never editable
+    // Values from parameters are never editable
     if (metadata.isFromParam) return false;
 
-    // Then check if the value itself has an explicit editability flag
+    // Check value item's own editability flag if set
     if (valueItem.isEditable === false) return false;
     if (valueItem.isEditable === true) return true;
 
-    // Determine value editability from constraints in order of precedence:
-    // 1. Nested value_constraints.editable
-    // 2. Common editable flag
-    // 3. Legacy editable_value flag
+    // Determine value editability from nested constraints only
     const valueEditableByConstraints =
       !!valueConstraints.editable ||
-      !!constraints.editable ||
-      !!constraints.editable_value;
+      !!constraints.editable;
 
-    // Determine value creatability from constraints in order of precedence:
-    // 1. Nested value_constraints.creatable
-    // 2. Common creatable flag
-    // 3. Legacy creatable_value flag
     const valueCreatableByConstraints =
       !!valueConstraints.creatable ||
-      !!constraints.creatable ||
-      !!constraints.creatable_value;
+      !!constraints.creatable;
 
     // Value is editable if any editability or creatability flag is enabled
     return valueEditableByConstraints || valueCreatableByConstraints;
@@ -172,7 +153,7 @@ export const GroupItem: React.FC<GroupItemProps> = ({
       _dark={{ bg: "gray.700" }}
       position="relative"
     >
-      {/* Group Header with enhanced constraint-based display */}
+      {/* Group Header with nested constraint-based metadata */}
       <HStack justify="space-between" mb={2}>
         <HStack>
           {/* Group name with inline editing */}
@@ -207,7 +188,7 @@ export const GroupItem: React.FC<GroupItemProps> = ({
           {/* Group value limit */}
           <GroupValueLimit groupId={groupId} />
 
-          {/* Group metadata badges with constraint-aware display */}
+          {/* Group metadata badges with simplified constraint info */}
           <Badge
             colorScheme={groupEditable ? "green" : "gray"}
             variant="outline"
@@ -215,17 +196,15 @@ export const GroupItem: React.FC<GroupItemProps> = ({
               !groupEditable ? "This group cannot be modified" :
                 keyConstraints.editable ? "Editable via key_constraints" :
                   constraints.editable ? "Editable via global constraints" :
-                    constraints.editable_key ? "Editable via legacy constraints" :
-                      keyConstraints.creatable ? "Creatable via key_constraints" :
-                        constraints.creatable ? "Creatable via global constraints" :
-                          constraints.creatable_key ? "Creatable via legacy constraints" :
-                            "Editable"
+                    keyConstraints.creatable ? "Creatable via key_constraints" :
+                      constraints.creatable ? "Creatable via global constraints" :
+                        "Editable"
             }
           >
             {groupEditable ? "editable" : "read-only"}
           </Badge>
 
-          {/* Show parameter badge if group has parameter values */}
+          {/* Parameter values badge */}
           {hasParameterValues && (
             <Badge colorScheme="blue" variant="outline" title="Contains parameter values">
               parameter values
