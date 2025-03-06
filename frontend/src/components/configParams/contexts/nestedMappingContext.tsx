@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ParameterConfig, GroupData, ValueData, ValueMetadata } from '../utils/parameterUtils';
+import { ParameterConfig, GroupData, ValueData, ValueMetadata, NestedConstraint } from '../utils/parameterUtils';
 
 // Editing state interface
 interface EditingState {
@@ -26,7 +26,6 @@ interface NestedMappingContextType {
   localParentOptions: any[];
 
   // Type information
-  isParentKey: boolean;
   valueType: string;
 
   // Creation flags
@@ -86,7 +85,6 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
   effectiveParentOptions: [],
   localChildOptions: [],
   localParentOptions: [],
-  isParentKey: true,
   valueType: 'string',
   creatableKey: false,
   creatableValue: false,
@@ -163,8 +161,9 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   setCreatedValues
 }) => {
   const constraints = config?.constraints || {};
-  const isParentKey = constraints?.parent === 'key';
-  const valueType = constraints?.value_type || 'string';
+  const keyConstraints = constraints.key_constraints || {};
+  const valueConstraints = constraints.value_constraints || {};
+  const valueType = valueConstraints?.type || 'string';
 
   // Metadata state
   const [valueMetadataMap, setValueMetadataMap] = useState<Record<string, ValueMetadata>>({});
@@ -200,8 +199,8 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     }
 
     // Check if the value comes from parameters
-    const keyParam = constraints?.key_param;
-    const valueParam = constraints?.value_param;
+    const keyParam = keyConstraints?.param;
+    const valueParam = valueConstraints?.param;
 
     const isFromKeyParam = keyParam && parameters?.[keyParam]?.default &&
       (Array.isArray(parameters[keyParam].default)
@@ -232,12 +231,12 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     pendingMetadataUpdatesRef.current[stringValue] = metadata;
 
     return metadata;
-  }, [valueMetadataMap, constraints?.key_param, constraints?.value_param, parameters, valueType]);
+  }, [valueMetadataMap, constraints, parameters, valueType]);
 
   // Fix the creatable flags to check both creatable and specific flags
   const creatable = !!constraints?.creatable;
-  const creatableKey = creatable || !!constraints?.creatable_key;
-  const creatableValue = creatable || !!constraints?.creatable_value;
+  const creatableKey = !!keyConstraints?.creatable || creatable;
+  const creatableValue = !!valueConstraints?.creatable || creatable;
 
   // Local state for creation mode
   const [creationMode, setCreationMode] = useState<string | null>(null);
@@ -247,8 +246,8 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     const options = [...effectiveParentOptions];
 
     // Add values from key_param if specified
-    if (constraints?.key_param && parameters?.[constraints.key_param]?.default) {
-      const paramValues = parameters[constraints.key_param].default;
+    if (keyConstraints?.param && parameters?.[keyConstraints.param]?.default) {
+      const paramValues = parameters[keyConstraints.param].default;
       if (Array.isArray(paramValues)) {
         paramValues.forEach(val => {
           if (!options.includes(val)) {
@@ -270,14 +269,14 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     }
 
     return options;
-  }, [effectiveParentOptions, constraints?.key_param, parameters, value]);
+  }, [effectiveParentOptions, keyConstraints, parameters, value]);
 
   const localChildOptions = useMemo(() => {
     const options = [...effectiveChildOptions];
 
     // Add values from value_param if specified
-    if (constraints?.value_param && parameters?.[constraints.value_param]?.default) {
-      const paramValues = parameters[constraints.value_param].default;
+    if (valueConstraints?.param && parameters?.[valueConstraints.param]?.default) {
+      const paramValues = parameters[valueConstraints.param].default;
       if (Array.isArray(paramValues)) {
         paramValues.forEach(val => {
           if (!options.includes(val)) {
@@ -303,7 +302,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     }
 
     return options;
-  }, [effectiveChildOptions, constraints?.value_param, parameters, value]);
+  }, [effectiveChildOptions, valueConstraints, parameters, value]);
 
   // Editing state
   const [editingState, setEditingState] = useState<EditingState>({
@@ -456,12 +455,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
     // Check constraints for editability flags
     const editableByConstraint =
-      !!constraints?.editable ||
-      !!constraints?.editable_key ||
-      !!constraints?.editable_value ||
-      !!constraints?.creatable ||
-      !!constraints?.creatable_key ||
-      !!constraints?.creatable_value;
+      !!constraints?.editable;
 
     return editableByConstraint;
   }, [value, constraints]);
@@ -495,8 +489,8 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
   // Calculate the maximum total values based on constraints
   const getMaxTotalValues = useCallback((): number => {
-    const keyArrayLen = constraints?.key_array_len;
-    const valueArrayLen = constraints?.value_array_len;
+    const keyArrayLen = constraints?.key_constraints?.array_len;
+    const valueArrayLen = constraints?.value_constraints?.array_len;
 
     // If both are specified, multiply them to get total max values
     if (keyArrayLen && valueArrayLen) {
@@ -514,7 +508,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   // Calculate the maximum values per group
   const getMaxValuesPerGroup = useCallback((): number => {
     // Use value_array_len as the limit for values per key
-    return constraints?.value_array_len || Infinity;
+    return constraints?.value_constraints?.array_len || Infinity;
   }, [constraints]);
 
   // Check if a group has reached its maximum values
@@ -550,7 +544,6 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     effectiveParentOptions,
     localChildOptions,
     localParentOptions,
-    isParentKey,
     valueType,
     creatableKey,
     creatableValue,
@@ -582,8 +575,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   }), [
     config, parameters, value, onChange,
     effectiveChildOptions, effectiveParentOptions,
-    localChildOptions, localParentOptions,
-    isParentKey, valueType, creatableKey, creatableValue,
+    localChildOptions, localParentOptions, valueType, creatableKey, creatableValue,
     creationMode, wrappedSetCreationMode, createValue, createGroup,
     valueMetadataMap, setValueMetadataMap, getValueMetadata, isEditable,
     dragInfo, editingState,

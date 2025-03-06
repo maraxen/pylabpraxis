@@ -37,8 +37,7 @@ export interface GroupData {
 
 // Parameter configuration types
 
-// Constraint structure for key and value specific constraints
-export interface NestedConstraint {
+export interface BaseConstraintProps {
   // Type specification
   type?: string;                         // Data type (string, number, etc.)
 
@@ -67,30 +66,15 @@ export interface NestedConstraint {
   subvariables?: Record<string, ParameterConfig>; // For object/dict types with subfields
 }
 
-export interface ParameterConstraints {
-  // Common constraints (apply to both keys and values)
-  min_value?: number;                    // Minimum numeric value
-  max_value?: number;                    // Maximum numeric value
-  step?: number;                         // Step increment for numbers
-  regex?: string;                        // Regular expression pattern
-  min_len?: number;                      // Minimum string length
-  max_len?: number;                      // Maximum string length
-  array?: any[];                         // Common array of allowed values
-  array_len?: number;                    // Common array length limit
+// Constraint structure for key and value specific constraints
+export interface NestedConstraint extends BaseConstraintProps {
+  parent?: BaseConstraintProps;          // Parent constraint structure
+}
 
-  // Mapping structure specification
-  parent?: string;                       // Indicates if this is a 'key' or 'value' parameter
-
+export interface ParameterConstraints extends BaseConstraintProps {
   // New nested constraints structure (preferred)
   key_constraints?: NestedConstraint;    // Constraints specific to keys
   value_constraints?: NestedConstraint;  // Constraints specific to values
-
-  // Common flags
-  creatable?: boolean;                   // Whether new items can be created (applies to both keys and values)
-  editable?: boolean;                    // Whether items can be edited (applies to both keys and values)
-
-  // Subvariables for legacy support
-  subvariables?: Record<string, ParameterConfig>; // For object types with subfields
 }
 
 export interface ParameterConfig {

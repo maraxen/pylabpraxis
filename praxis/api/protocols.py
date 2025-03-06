@@ -300,52 +300,6 @@ async def get_protocol_details_from_module(
                                     subvar_config["type"] = str(subvar_type)
                 constraints[constraint_key] = nested_constraints
 
-        # Process top-level constraints
-        for key, value in list(constraints.items()):
-            if key in ["key_type", "value_type"]:
-                # Convert type constraints using the same mapping function
-                if hasattr(value, "__name__"):
-                    constraints[key] = _map_python_type_to_frontend(value.__name__)
-                else:
-                    constraints[key] = _map_python_type_to_frontend(str(value))
-            elif isinstance(value, type) and key not in [
-                "key_constraints",
-                "value_constraints",
-            ]:
-                constraints[key] = value.__name__.lower()
-
-            # Support migration: If we have legacy key_type/value_type but no nested constraints,
-            # create the nested structure automatically
-            if key == "key_type" and "key_constraints" not in constraints:
-                key_type = constraints[key]
-                # Find other key-specific constraints
-                key_constraints = {"type": key_type}
-                for constraint_key in list(constraints.keys()):
-                    if (
-                        constraint_key.startswith("key_")
-                        and constraint_key != "key_type"
-                    ):
-                        # Remove the "key_" prefix from constraint name
-                        new_key = constraint_key[4:]
-                        key_constraints[new_key] = constraints[constraint_key]
-                        # Consider removing from top level
-                constraints["key_constraints"] = key_constraints
-
-            if key == "value_type" and "value_constraints" not in constraints:
-                value_type = constraints[key]
-                # Find other value-specific constraints
-                value_constraints = {"type": value_type}
-                for constraint_key in list(constraints.keys()):
-                    if (
-                        constraint_key.startswith("value_")
-                        and constraint_key != "value_type"
-                    ):
-                        # Remove the "value_" prefix from constraint name
-                        new_key = constraint_key[6:]
-                        value_constraints[new_key] = constraints[constraint_key]
-                        # Consider removing from top level
-                constraints["value_constraints"] = value_constraints
-
         parameters[name] = {
             "type": _map_python_type_to_frontend(param_type_name),
             "required": config.get("required", False),
