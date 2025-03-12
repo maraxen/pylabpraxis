@@ -448,7 +448,7 @@ export const RunProtocols: React.FC = () => {
                     value={selectedProtocol}
                     onChange={(value) => {
                       const protocol = availableProtocols.find(p => p.name === value);
-                      if (protocol) handleProtocolSelect(protocol);
+                      if (protocol) handleProtocolSelect(protocol); // TODO: disable autofill
                     }}
                   >
                     <AutoCompleteInput placeholder="Choose a protocol..." />

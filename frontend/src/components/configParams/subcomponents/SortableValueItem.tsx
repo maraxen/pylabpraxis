@@ -48,7 +48,7 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
   onValueChange
 }) => {
   const [isHovering, setIsHovering] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
+  const [localValue, setLocalValue] = useState<any>(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Use the provided ID or fallback to the value's ID
@@ -128,9 +128,31 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
     zIndex: isDragging ? 1000 : undefined,
   };
 
+  // Handle value changes with type conversion
   const handleValueChange = (newValue: any) => {
-    setLocalValue(newValue);
-    onValueChange?.(newValue);
+    // Properly convert value based on type
+    let typedValue = newValue;
+
+    // Only do conversion if we have a definitive type
+    switch (type?.toLowerCase()) {
+      case 'number':
+      case 'int':
+      case 'integer':
+      case 'float':
+      case 'double':
+        typedValue = Number(newValue);
+        // Check for NaN and reset to 0 if necessary
+        if (isNaN(typedValue)) typedValue = 0;
+        break;
+      case 'boolean':
+      case 'bool':
+        // Convert to actual boolean
+        typedValue = typeof newValue === 'boolean' ? newValue : String(newValue).toLowerCase() === 'true';
+        break;
+    }
+
+    setLocalValue(typedValue);
+    onValueChange?.(typedValue);
   };
 
   const handleFocus = () => {
@@ -141,6 +163,9 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
 
   // Only show delete button if the value is editable and not from a parameter
   const canDelete = isEditable && !isFromParam && onDelete;
+
+  // Only show edit button if the value is editable
+  const canEdit = isEditable && onEdit;
 
   return (
     <Box
@@ -172,22 +197,23 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
 
           {/* Value display */}
           <ValueDisplay
-            value={isEditing ? localValue : value}
+            value={localValue}
             type={type}
             isFromParam={isFromParam}
             paramSource={paramSource}
-            isEditable={isEditable}
+            isEditable={isEditable && !isFromParam}
             isEditing={isEditing}
             onFocus={handleFocus}
             onBlur={onBlur}
             onValueChange={handleValueChange}
+            inputRef={inputRef}
           />
         </HStack>
 
         {/* Action buttons */}
-        {(onEdit || canDelete) && isHovering && !isDragging && (
+        {(canEdit || canDelete) && isHovering && !isDragging && (
           <HStack gap={1}>
-            {onEdit && isEditable && !isEditing && (
+            {canEdit && !isEditing && (
               <IconButton
                 aria-label="Edit value"
                 size="xs"

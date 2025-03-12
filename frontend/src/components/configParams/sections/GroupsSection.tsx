@@ -21,11 +21,7 @@ export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange })
   };
 
   // Sort groups by name
-  const sortedGroups = Object.entries(value).sort((a, b) => {
-    const nameA = a[1].name?.toLowerCase() || '';
-    const nameB = b[1].name?.toLowerCase() || '';
-    return nameA.localeCompare(nameB);
-  });
+  const sortedGroups = Object.entries(value);
 
   return (
     <Box>

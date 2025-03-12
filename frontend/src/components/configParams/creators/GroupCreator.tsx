@@ -20,7 +20,6 @@ const GroupCreatorComponent: React.FC<GroupCreatorProps> = ({ value }) => {
     setCreationMode,
     creatableKey,
     createGroup,
-    isParentKey,
     valueType,
     config
   } = useNestedMapping();
@@ -34,12 +33,10 @@ const GroupCreatorComponent: React.FC<GroupCreatorProps> = ({ value }) => {
   // Use useMemo to calculate derived values and prevent re-renders
   const keyType = useMemo(() => {
     const constraints = config?.constraints;
-    return constraints?.key_type
-      ? String(constraints.key_type).toLowerCase()
-      : isParentKey
-        ? 'string' // Default for keys if not specified
-        : valueType?.toLowerCase() || 'string';
-  }, [config?.constraints?.key_type, isParentKey, valueType]);
+    return constraints?.key_constraints?.type
+      ? String(constraints.key_constraints.type).toLowerCase()
+      : valueType?.toLowerCase() || 'string';
+  }, [config?.constraints, valueType]);
 
   const isUnsupportedType = useMemo(() => {
     return keyType === 'boolean' || keyType === 'bool';
@@ -87,7 +84,7 @@ const GroupCreatorComponent: React.FC<GroupCreatorProps> = ({ value }) => {
 
   // If not in creation mode, check creatable status and show button if allowed
   if (creationMode !== 'group') {
-    const canCreate = creatableKey || !!config?.constraints?.creatable || !!config?.constraints?.creatable_key;
+    const canCreate = creatableKey || !!config?.constraints?.creatable;
 
     if (DEBUG_ENABLED) {
       console.log("GroupCreator status:", { creationMode, canCreate, creatableKey });

@@ -356,86 +356,107 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     });
   }, []);
 
-  const finishEditing = useCallback(() => {
-    const { id, value: newValue, group, originalValue } = editingState;
+  // Add local parseValue function
+  const parseValue = (val: any, type: string): any => {
+    if (val === null || val === undefined) return val;
+    const normalizedType = type?.toLowerCase();
+    switch (normalizedType) {
+      case 'boolean':
+      case 'bool':
+        return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
+      case 'number':
+      case 'int':
+      case 'integer':
+      case 'float':
+      case 'double': {
+        const parsed = Number(val);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      case 'string':
+      case 'str':
+      default:
+        return String(val);
+    }
+  };
 
-    // If no changes or no ID, just cancel
-    if (!id || newValue === originalValue) {
+  const finishEditingInProgressRef = useRef(false);
+
+  const finishEditing = useCallback(() => {
+    if (finishEditingInProgressRef.current) {
+      console.log("finishEditing already in progress, skipping duplicate call.");
+      return;
+    }
+    finishEditingInProgressRef.current = true;
+
+    const { id, value: newValue, group, originalValue } = editingState;
+    console.log(`finishEditing called for id=${id} in group=${group} with newValue="${newValue}" (original: "${originalValue}")`);
+
+    if (!id) {
       cancelEditing();
+      finishEditingInProgressRef.current = false;
       return;
     }
 
-    // If editing a value in a group
-    if (group && value[group]) {
-      const groupData = value[group];
-      const updatedValues = groupData.values.map((valueData: ValueData) => {
-        if (valueData.id === id) {
-          return {
-            ...valueData,
-            value: newValue
-          };
-        }
-        return valueData;
-      });
+    // Parse values using the context's valueType for consistency
+    const parsedNew = parseValue(newValue, valueType);
+    const parsedOriginal = parseValue(originalValue, valueType);
 
-      // Update the group
-      onChange({
-        ...value,
-        [group]: {
-          ...groupData,
-          values: updatedValues
-        }
-      });
-
-      // Update metadata - retain the ID but update the value
-      setValueMetadataMap(prev => {
-        const metadata = { ...(prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false }) };
-        const newMap = { ...prev };
-
-        // If value text changed, update the key in metadata map
-        if (originalValue !== newValue) {
-          delete newMap[originalValue];
-        }
-
-        newMap[newValue] = metadata;
-        return newMap;
-      });
+    if (parsedNew === parsedOriginal) {
+      console.log("No change detected after parsing. Skipping update.");
+      cancelEditing();
+      finishEditingInProgressRef.current = false;
+      return;
     }
-    // Handle editing available values
-    else if (!group) {
-      // Find if this is a created value that we're editing
-      const createdValueEntry = Object.entries(createdValues).find(([_, valueData]) => valueData.id === id);
 
-      if (createdValueEntry) {
-        const [createdValueId, createdValueData] = createdValueEntry;
-
-        // Update the created value in our state
-        setCreatedValues(prev => {
-          const updated = { ...prev };
-          updated[createdValueId] = {
-            ...createdValueData,
-            value: newValue
-          };
-          return updated;
+    try {
+      if (group && value[group]) {
+        const groupData = value[group];
+        const updatedValues = groupData.values.map((valueData: ValueData) => {
+          if (valueData.id === id) {
+            return { ...valueData, value: parsedNew };
+          }
+          return valueData;
         });
+        const updatedMapping = {
+          ...value,
+          [group]: { ...groupData, values: updatedValues }
+        };
+        onChange(updatedMapping);
+        console.log("Updated mapping after finishEditing:", updatedMapping);
 
-        // Also update metadata
         setValueMetadataMap(prev => {
-          const metadata = { ...(prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false }) };
           const newMap = { ...prev };
-
-          if (originalValue !== newValue) {
+          if (parsedOriginal !== parsedNew) {
             delete newMap[originalValue];
           }
-
-          newMap[newValue] = metadata;
+          newMap[parsedNew] = prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false };
           return newMap;
         });
+      } else if (!group) {
+        const createdValueEntry = Object.entries(createdValues).find(([_, valueData]) => valueData.id === id);
+        if (createdValueEntry) {
+          const [createdId, createdValueData] = createdValueEntry;
+          setCreatedValues(prev => {
+            const updated = { ...prev };
+            updated[createdId] = { ...createdValueData, value: parsedNew };
+            return updated;
+          });
+          setValueMetadataMap(prev => {
+            const newMap = { ...prev };
+            if (originalValue !== parsedNew) {
+              delete newMap[originalValue];
+            }
+            newMap[parsedNew] = prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false };
+            return newMap;
+          });
+        }
       }
+    } catch (err) {
+      console.error("Error during finishEditing onChange update:", err);
+    } finally {
+      cancelEditing();
+      finishEditingInProgressRef.current = false;
     }
-
-    // Reset editing state
-    cancelEditing();
   }, [editingState, value, onChange, valueType, cancelEditing, createdValues, setCreatedValues]);
 
   const isEditingItem = useCallback((id: string, group: string | null) => {
@@ -444,21 +465,19 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
   // Update isEditable function to check for editability flags in constraints
   const isEditable = useCallback((groupId: string): boolean => {
-    // First check if the group exists and has explicit editability flag
     if (value && value[groupId]) {
       const group = value[groupId];
-      // If explicitly set to false, respect that
+      // Respect an explicitly set isEditable flag
       if (group.isEditable === false) return false;
-      // If explicitly set to true, allow editing
       if (group.isEditable === true) return true;
     }
-
-    // Check constraints for editability flags
-    const editableByConstraint =
-      !!constraints?.editable;
-
-    return editableByConstraint;
-  }, [value, constraints]);
+    // Fall back on nested constraints.
+    // If a creatable flag is present on keys, force groups to be editable.
+    const keyConstraints = config?.constraints?.key_constraints || {};
+    const creatableKey = keyConstraints.creatable || config?.constraints?.creatable;
+    // Otherwise, use the editable flag from constraints (default true if not false).
+    return creatableKey ? true : (config?.constraints?.editable !== false);
+  }, [value, config]);
 
   // Wrap the creation methods to ensure they work in the optimized context
   const createValue = useCallback((newVal: any): string => {

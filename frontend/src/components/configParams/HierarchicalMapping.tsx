@@ -21,6 +21,13 @@ import { useDndSensors, addDragStyles, removeDragStyles } from './utils/dndUtils
 import { NestedMappingProps, GroupData, ValueData } from './utils/parameterUtils';
 import { clearExcessStorage, generateCompactId } from './utils/storageUtils';
 
+type HierarchicalMappingProps = {
+  name: string;
+  value: any;
+  config: any; // ParameterConfig with optional methods isEditable/getEditable and defaultValues
+  onChange: (newValue: any) => void;
+};
+
 /**
  * HierarchicalMapping component that renders a mapping interface with groups and values
  * This version only supports the new nested constraint structure (key_constraints/value_constraints)
@@ -39,8 +46,9 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   const keyConstraints = constraints.key_constraints || {};
   const valueConstraints = constraints.value_constraints || {};
 
-  // Determine the parent-child relationship
-  const isParentKey = constraints?.parent === 'key';
+  // We're removing the parent property and using a simpler approach:
+  // Just assume keys are in groups and values go in groups
+  // We can infer relationships from the structure
 
   // Extract type information directly from nested constraints
   const keyType = keyConstraints.type || 'string';
@@ -65,6 +73,36 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [valueLocations, setValueLocations] = useState<Record<string, string | null>>({});
   const [createdValues, setCreatedValues] = useState<Record<string, ValueData>>({});
+
+  // Initialize mapping with each node having an _editable flag from config if provided.
+  const [mapping, setMapping] = React.useState(() => {
+    // Deep-clone function that also sets _editable flags
+    const cloneMapping = (obj: any): any => {
+      if (typeof obj !== 'object' || obj === null) return obj;
+      // Force newObj to be a Record<string, any>
+      const newObj = {} as Record<string, any>;
+      Object.keys(obj).forEach((key: string) => {
+        const defaultEditable = config?.constraints?.editable !== false;
+        if (typeof obj[key] === 'object' && obj[key] !== null) {
+          newObj[key] = {
+            ...cloneMapping(obj[key]),
+            _editable: ((config as any).isEditable && typeof (config as any).isEditable === 'function'
+              ? (config as any).isEditable(key)
+              : defaultEditable)
+          };
+        } else {
+          newObj[key] = {
+            value: obj[key],
+            _editable: ((config as any).isEditable && typeof (config as any).isEditable === 'function'
+              ? (config as any).isEditable(key)
+              : defaultEditable)
+          };
+        }
+      });
+      return newObj;
+    };
+    return cloneMapping(value || {});
+  });
 
   // Clear excess storage on component mount to prevent storage quota issues
   useEffect(() => {
@@ -127,7 +165,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
             return {
               id: generateCompactId(),
               value: val,
-              type: isParentKey ? valueType : keyType,
+              type: valueType,
               isEditable: isValueEditable
             };
           }
@@ -165,7 +203,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       const valueData: ValueData = {
         id: valueId,
         value: newVal,
-        type: isParentKey ? valueType : keyType,
+        type: valueType, // Simplified - always use valueType for values
         isEditable: isValueEditable
       };
 
@@ -191,7 +229,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
         id: groupId,
         name: groupName,
         values: [],
-        isEditable: isKeyEditable
+        isEditable: creatableKey ? true : isKeyEditable  // Force editable if creatableKey is true
       };
 
       onChange({
@@ -278,8 +316,8 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
             draggedValueData = {
               id: draggedId,
               value: draggedValue,
-              type: isParentKey ? valueType : keyType, // Use constraint-based type
-              isEditable: isValueEditable // Use constraint-based editability
+              type: valueType, // Simplified - always use valueType for values
+              isEditable: isValueEditable
             };
           }
         } else {
@@ -329,14 +367,9 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     removeDragStyles();
   };
 
-  // Get array options directly from nested constraints
-  const parentArray = isParentKey
-    ? (keyConstraints.array || [])
-    : (valueConstraints.array || []);
-
-  const childArray = isParentKey
-    ? (valueConstraints.array || [])
-    : (keyConstraints.array || []);
+  // Get array options directly from nested constraints - simplified
+  const keyArray = keyConstraints.array || [];
+  const valueArray = valueConstraints.array || [];
 
   // Get parameter references from nested constraints
   const keyParam = keyConstraints.param;
@@ -355,14 +388,9 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       : [parameters[valueParam].default]
     : [];
 
-  // Determine effective options based on parent/child relationship
-  const effectiveParentOptions = isParentKey
-    ? (parentArray.length > 0 ? parentArray : keyParamValues)
-    : (parentArray.length > 0 ? parentArray : valueParamValues);
-
-  const effectiveChildOptions = isParentKey
-    ? (childArray.length > 0 ? childArray : valueParamValues)
-    : (childArray.length > 0 ? childArray : keyParamValues);
+  // Determine effective options based on structure
+  const effectiveParentOptions = keyArray.length > 0 ? keyArray : keyParamValues;
+  const effectiveChildOptions = valueArray.length > 0 ? valueArray : valueParamValues;
 
   // Pack drag info for context
   const dragInfo = {
@@ -370,6 +398,40 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     activeData,
     overDroppableId,
     isDragging
+  };
+
+  // Update a specific key’s value without affecting its _editable state.
+  const updateValueAtKey = (key: string, newVal: any) => {
+    setMapping((prev: Record<string, any>) => {
+      const newMapping = { ...prev, [key]: { ...prev[key], value: newVal } };
+      onChange(newMapping);
+      return newMapping;
+    });
+  };
+
+  // Fix drop handling to preserve dropped item’s _editable state.
+  const handleDrop = (droppedItem: any, targetKey: string) => {
+    setMapping((prev: Record<string, any>) => {
+      const newMapping = { ...prev };
+      if (!newMapping[targetKey])
+        newMapping[targetKey] = { id: targetKey, name: targetKey, values: [], isEditable: true };
+      // Determine if target group is editable
+      const targetEditable = newMapping[targetKey].isEditable !== false;
+      console.log(`Dropping value into group "${targetKey}" (editable: ${targetEditable}). Dropped item _editable: ${droppedItem._editable}`);
+      newMapping[targetKey] = {
+        ...newMapping[targetKey],
+        ...droppedItem,
+        // Force dropped values to be editable if the group is editable
+        _editable: targetEditable ? true : (droppedItem._editable !== undefined ? droppedItem._editable : false)
+      };
+      onChange(newMapping);
+      return newMapping;
+    });
+  };
+
+  // Helper to get current value; if missing, uses config.defaultValues.
+  const getKeyValue = (key: string) => {
+    return mapping[key]?.name ?? (config?.default ? config.default[key] : '');
   };
 
   return (
@@ -415,7 +477,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
                 {activeId ? (
                   <ValueDisplay
                     value={activeData?.value || activeId}
-                    type={activeData?.metadata?.type || (isParentKey ? valueType : keyType)}
+                    type={activeData?.metadata?.type || valueType} // Simplified
                     isFromParam={activeData?.metadata?.isFromParam}
                     paramSource={activeData?.metadata?.paramSource}
                     isEditable={activeData?.metadata?.isEditable ?? isValueEditable}
@@ -441,6 +503,6 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
 };
 
 // Export the public API component
-export const HierarchicalMapping: React.FC<NestedMappingProps> = (props) => {
+export const HierarchicalMapping: React.FC<HierarchicalMappingProps> = (props) => {
   return <HierarchicalMappingImpl {...props} />;
 };

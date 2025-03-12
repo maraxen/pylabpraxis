@@ -74,15 +74,6 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
       const value = getValue(name);
       const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
 
-      // Helper function to get referenced parameter constraints
-      const getReferencedParams = (config: ParameterConfig) => {
-        const { key_param, value_param } = config.constraints || {};
-        return {
-          keyConfig: key_param ? parameters[key_param] : null,
-          valueConfig: value_param ? parameters[value_param] : null
-        };
-      };
-
       switch (type) {
         case 'bool':
         case 'boolean':

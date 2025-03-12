@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HStack, Text, Badge, Box } from '@chakra-ui/react';
 import { BooleanInput } from '../inputs/BooleanInput';
 import { NumberInput } from '../inputs/NumericInput';
@@ -8,7 +8,7 @@ import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { ParameterConstraints, NestedConstraint } from '../utils/parameterUtils';
 
 interface ValueDisplayProps {
-  value: string;
+  value: any;
   type?: string;
   isFromParam?: boolean;
   paramSource?: string;
@@ -16,7 +16,7 @@ interface ValueDisplayProps {
   isEditing?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
-  onValueChange?: (newValue: string) => void;
+  onValueChange?: (newValue: any) => void;
   inputRef?: React.RefObject<HTMLInputElement>;
 }
 
@@ -35,24 +35,69 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
   // Get the context input ref and config from context
   const { inputRef: contextInputRef, config } = useNestedMapping();
 
+  // Keep track of the internal value state while editing
+  const [internalValue, setInternalValue] = useState<any>(value);
+
   // Use prop inputRef if provided, otherwise use the one from context
   const inputRef = propInputRef || contextInputRef;
 
+  // Update internal value when prop value changes
+  useEffect(() => {
+    if (!isEditing) {
+      setInternalValue(value);
+    }
+  }, [value, isEditing]);
+
+  // Convert value to appropriate type
+  const parseValue = (val: any, valueType: string): any => {
+    if (val === null || val === undefined) return val;
+
+    const normalizedType = valueType?.toLowerCase();
+
+    switch (normalizedType) {
+      case 'boolean':
+      case 'bool':
+        return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
+
+      case 'number':
+      case 'int':
+      case 'integer':
+      case 'float':
+      case 'double':
+        const parsed = Number(val);
+        return isNaN(parsed) ? 0 : parsed;
+
+      case 'string':
+      case 'str':
+      default:
+        return String(val);
+    }
+  };
+
+  // Handle internal value change (only update local state)
+  const handleInternalChange = (_name: string, newValue: any) => {
+    // Immediately propagate change rather than waiting for blur
+    setInternalValue(newValue);
+    if (onValueChange) {
+      onValueChange(parseValue(newValue, type));
+    }
+  };
+
+  // Handle blur event to commit changes for all types
+  const handleBlur = () => {
+    if (onValueChange && internalValue !== value) {
+      onValueChange(parseValue(internalValue, type));
+    }
+    onBlur?.();
+  };
+
   // Render an input field when in editing mode
   if (isEditing && isEditable) {
-    // Get parent constraints
-    const parentConstraints = config?.constraints || {};
-
     // Build value constraints object to hold applicable constraints
     const valueConstraints: ParameterConstraints = {};
 
-    // Determine which nested constraints to use based on parent context
-    const isParentKey = parentConstraints?.parent === 'key';
-    const nestedConstraints = isParentKey
-      ? parentConstraints.key_constraints
-      : parentConstraints.value_constraints;
-
     // Apply constraints from the nested structure
+    const nestedConstraints = config?.constraints?.value_constraints;
     if (nestedConstraints) {
       applyConstraints(nestedConstraints, valueConstraints, type);
     }
@@ -63,23 +108,21 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
       constraints: valueConstraints
     };
 
-    // Handle input change consistently
-    const handleChange = (_name: string, newValue: any) => {
-      onValueChange?.(String(newValue));
-    };
+    // Normalize the type for component selection
+    const normalizedType = type?.toLowerCase();
 
     // Render different input types based on the data type
-    switch (type?.toLowerCase()) {
+    switch (normalizedType) {
       case 'boolean':
       case 'bool':
         return (
           <Box width="100%">
             <BooleanInput
               name="value"
-              value={value}
+              value={internalValue}
               config={inputConfig}
-              onChange={handleChange}
-              onBlur={onBlur}
+              onChange={handleInternalChange}
+              onBlur={handleBlur}
             />
           </Box>
         );
@@ -89,14 +132,15 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
       case 'integer':
       case 'float':
       case 'double':
+        // Pass the raw internalValue (not parsed) for NumberInput
         return (
           <Box width="100%">
             <NumberInput
               name="value"
-              value={Number(value) || 0}
+              value={internalValue}
               config={inputConfig}
-              onChange={handleChange}
-              onBlur={onBlur}
+              onChange={handleInternalChange}
+              onBlur={handleBlur}
               ref={inputRef}
             />
           </Box>
@@ -107,12 +151,14 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
       default:
         return (
           <Box width="100%">
+            {/* Pass disableAutocomplete to force plain input */}
             <StringInput
+              disableAutocomplete
               name="value"
-              value={value || ''}
+              value={internalValue || ''}
               config={inputConfig}
-              onChange={handleChange}
-              onBlur={onBlur}
+              onChange={handleInternalChange}
+              onBlur={handleBlur}
               ref={inputRef}
             />
           </Box>
@@ -126,21 +172,25 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
       return <Text color="gray.400">(empty)</Text>;
     }
 
-    switch (type?.toLowerCase()) {
+    const normalizedType = type?.toLowerCase();
+
+    switch (normalizedType) {
       case 'boolean':
       case 'bool':
-        return <Text>{String(value) === 'true' ? 'True' : 'False'}</Text>;
+        const boolValue = typeof value === 'boolean' ? value : String(value).toLowerCase() === 'true';
+        return <Text fontWeight="medium">{boolValue ? 'True' : 'False'}</Text>;
 
       case 'number':
       case 'int':
       case 'integer':
       case 'float':
       case 'double':
-        return <Text>{value}</Text>;
+        return <Text fontWeight="medium">{value}</Text>;
 
       case 'string':
+      case 'str':
       default:
-        return <Text>{value}</Text>;
+        return <Text fontWeight="medium">{String(value)}</Text>;
     }
   };
 
@@ -148,10 +198,10 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
     <Tooltip content={isEditable ? "Click to edit" : "Read-only value"}>
       <HStack
         gap={2}
-        onClick={isEditable ? onFocus : undefined}
+        onClick={isEditable && !isFromParam ? onFocus : undefined}
         width="100%"
-        cursor={isEditable ? "pointer" : "default"}
-        _hover={isEditable ? { bg: "gray.50", _dark: { bg: "gray.700" } } : {}}
+        cursor={isEditable && !isFromParam ? "pointer" : "default"}
+        _hover={isEditable && !isFromParam ? { bg: "gray.50", _dark: { bg: "gray.700" } } : {}}
         padding={1}
         borderRadius="md"
         justify="space-between"
@@ -160,7 +210,7 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
 
         <HStack gap={1}>
           {/* Type Badge */}
-          <Badge size="sm" colorScheme="gray" variant="subtle">
+          <Badge size="sm" colorScheme={getTypeColorScheme(type)} variant="subtle">
             {type || 'string'}
           </Badge>
 
@@ -172,18 +222,46 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
           )}
 
           {/* Editability Badge */}
-          <Badge
-            size="sm"
-            colorScheme={isEditable ? "green" : "gray"}
-            variant="subtle"
-          >
-            {isEditable ? "editable" : "read-only"}
-          </Badge>
+          {isEditable !== undefined && (
+            <Badge
+              size="sm"
+              colorScheme={isEditable ? "green" : "gray"}
+              variant="subtle"
+            >
+              {isEditable ? "editable" : "read-only"}
+            </Badge>
+          )}
         </HStack>
       </HStack>
     </Tooltip>
   );
 };
+
+/**
+ * Get appropriate color scheme based on value type
+ */
+function getTypeColorScheme(type?: string): string {
+  if (!type) return 'gray';
+
+  const normalizedType = type.toLowerCase();
+
+  switch (normalizedType) {
+    case 'boolean':
+    case 'bool':
+      return 'purple';
+    case 'number':
+    case 'int':
+    case 'integer':
+    case 'float':
+    case 'double':
+      return 'orange';
+    case 'string':
+    case 'str':
+      return 'blue';
+    default:
+      return 'gray';
+  }
+}
 
 /**
  * Apply constraints from the nested constraint structure based on value type

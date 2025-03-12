@@ -84,17 +84,18 @@ const ValueCreatorComponent: React.FC<ValueCreatorProps> = ({ value }) => {
         if (DEBUG_ENABLED) {
           console.log("Creating value:", newValue);
         }
-
-        // Try to clear excessive storage first
+        // Clear excessive storage as before
         clearExcessStorage();
 
-        const id = createValue(newValue);
+        // Force the created value to be treated as a string
+        const typedValue = String(newValue);
+
+        const id = createValue(typedValue);
         if (id) {
           setCreationMode(null);
           setNewValue('');
         } else {
           console.error("Failed to create value - empty ID returned");
-          // Show user-friendly error
           alert("Unable to create value. Storage quota may be exceeded.");
         }
       } catch (error) {
@@ -110,7 +111,7 @@ const ValueCreatorComponent: React.FC<ValueCreatorProps> = ({ value }) => {
 
   // If not in creation mode, check creatable status and show button if allowed
   if (creationMode !== 'value') {
-    const canCreate = creatableValue || !!config?.constraints?.creatable || !!config?.constraints?.creatable_value;
+    const canCreate = creatableValue || !!config?.constraints?.creatable;
 
     if (DEBUG_ENABLED) {
       console.log("ValueCreator status:", { creationMode, canCreate, creatableValue });

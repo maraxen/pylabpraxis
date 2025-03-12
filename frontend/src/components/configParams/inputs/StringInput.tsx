@@ -6,16 +6,18 @@ interface StringInputProps {
   name: string;
   value: any;
   config: any;
+  disableAutocomplete?: boolean;  // <-- new prop
   onChange: (name: string, value: any) => void;
   onFocus?: () => void;
   onBlur?: () => void;
 }
 
 export const StringInput = forwardRef<HTMLInputElement, StringInputProps>((props, ref) => {
-  const { name, value, config, onChange, onFocus, onBlur } = props;
+  const { name, value, config, disableAutocomplete, onChange, onFocus, onBlur } = props;
   const { array: options } = config.constraints || {};
 
-  if (options) {
+  // If disableAutocomplete is true, always use plain Input
+  if (!disableAutocomplete && options) {
     return (
       <AutoComplete
         value={value}
