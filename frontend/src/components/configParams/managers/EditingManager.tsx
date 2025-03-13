@@ -65,22 +65,66 @@ export const useEditing = () => {
     cancelEditing,
     valueMetadataMap,
     inputRef,
+    createdValues,
     value,
-    onChange,
-    valueType,
-    setValueMetadataMap
+    config,
+    creatableValue
   } = useNestedMapping();
 
   const handleStartEditing = useCallback((id: string, currentValue: string, group: string | null) => {
-    // Check if value is editable from metadata
-    const metadata = valueMetadataMap[id] || valueMetadataMap[currentValue];
-    if (metadata && !metadata.isEditable) {
-      return false;
+    // 1. If values are creatable, always allow editing
+    if (creatableValue) {
+      startEditing(id, currentValue, group);
+      return true;
     }
 
+    // 2. For unassigned values, check if they're in createdValues
+    if (!group) {
+      if (!createdValues[id]) {
+        // Check if this value exists in valueMetadataMap
+        const metadata = valueMetadataMap[currentValue];
+        if (!metadata) {
+          return false;
+        }
+
+        // Check if it's marked as not editable
+        if (metadata.isEditable === false) {
+          return false;
+        }
+      } else if (createdValues[id].isEditable === false) {
+        // If in createdValues but marked as not editable
+        return false;
+      }
+    } else if (group && value[group]) {
+      // 3. For values in groups, check their editability
+      const valueData = value[group].values.find((v: ValueData) => v.id === id);
+
+      if (valueData) {
+        // Never allow editing of parameter values
+        if (valueData.isFromParam) {
+          return false;
+        }
+
+        // Check explicit editability flag
+        if (valueData.isEditable === false) {
+          return false;
+        }
+      }
+
+      // Check constraint-based editability
+      const constraints = config?.constraints || {};
+      const valueConstraints = constraints.value_constraints || {};
+
+      // If explicitly not editable in constraints
+      if (valueConstraints.editable === false && constraints.editable === false) {
+        return false;
+      }
+    }
+
+    // If we reach here, allow editing
     startEditing(id, currentValue, group);
     return true;
-  }, [valueMetadataMap, startEditing]);
+  }, [valueMetadataMap, startEditing, createdValues, value, config, creatableValue]);
 
   const handleEditingChange = useCallback((newValue: string) => {
     updateEditingValue(newValue);

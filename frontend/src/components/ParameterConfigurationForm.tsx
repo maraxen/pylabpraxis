@@ -15,6 +15,7 @@ import { NumberInput } from './configParams/inputs/NumericInput';
 import { BooleanInput } from './configParams/inputs/BooleanInput';
 import { ArrayInput } from './configParams/inputs/ArrayInput';
 import { ParameterConfig, ParameterConstraints } from './configParams/utils/parameterUtils';
+import { ParameterField } from './configParams/ParameterField';
 
 interface Props {
   parameters: Record<string, ParameterConfig>;
@@ -69,137 +70,16 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
         : (parameterStates[name]?.currentValue ?? parameters[name]?.default);
     };
 
-    const renderParameterInput = (name: string, config: ParameterConfig) => {
-      console.log(`Rendering input for ${name} with config:`, config); // ADDED
-      const value = getValue(name);
-      const type = typeof config.type === 'function' ? (config.type as Function).name.toLowerCase() : config.type;
-
-      switch (type) {
-        case 'bool':
-        case 'boolean':
-          return (
-            <BooleanInput
-              name={name}
-              value={value}
-              config={config}
-              onChange={handleParameterChange}
-            />
-          );
-
-        case 'array':
-          return (
-            <ArrayInput
-              name={name}
-              value={value}
-              config={config}
-              onChange={handleParameterChange}
-            />
-          );
-
-        case 'dict': {
-          const currentValue = value || {};
-
-          return (
-            <Tooltip
-              showArrow
-              content='Mapping parameter.'
-            >
-              <Box>
-                <HierarchicalMapping
-                  name={name}
-                  value={currentValue}
-                  config={config} // Pass the entire config
-                  onChange={(newValue) => {
-                    handleParameterChange(name, newValue);
-                  }}
-                />
-              </Box>
-            </Tooltip>
-          );
-        }
-
-        case 'float':
-        case 'integer':
-        case 'number':
-          return (
-            <NumberInput
-              name={name}
-              value={value}
-              config={config}
-              onChange={handleParameterChange}
-            />
-          );
-
-        case 'str':
-        case 'string':
-          return (
-            <StringInput
-              name={name}
-              value={value}
-              config={config}
-              onChange={handleParameterChange}
-            />
-          );
-
-        default:
-          return (
-            <Input
-              value={value}
-              onChange={(e) => handleParameterChange(name, e.target.value)}
-            />
-          );
-      }
-    };
-
     return (
       <VStack gap={6} width="100%">
         {Object.entries(parameters).map(([name, config]) => (
-          <Container
-            key={`param-field-${name}`}
-            solid
-            maxW="container.md"
-            p={4}
-            role="group"
-            _hover={{
-              transform: 'translateY(-1px)',
-              boxShadow: 'sm',
-            }}
-            {...(errorState[name] ? {
-              border: "2px solid #E53E3E",
-              animation: `shake` // Reference the animation token
-            } : {})}
-          >
-            <VStack align="stretch" gap={2}>
-              <Box>
-                <Text
-                  fontSize="lg"
-                  fontWeight="semibold"
-                  color={{ base: "brand.500", _dark: "brand.200" }}
-                  mb={1}
-                >
-                  {name}
-                  {config.required && (
-                    <Badge ml={2} colorScheme="brand" variant="outline">Required</Badge>
-                  )}
-                  <Badge ml={2} colorScheme="brand" variant="outline">
-                    {String(config.type)}
-                  </Badge>
-                </Text>
-                {config.description && (
-                  <Text
-                    fontSize="sm"
-                    color={{ base: "brand.500", _dark: "brand.200" }}
-                    mb={3}
-                  >
-                    {config.description}
-                  </Text>
-                )}
-              </Box>
-              <Box width="100%">
-                {renderParameterInput(name, config)}
-              </Box>
-            </VStack>
-          </Container>
+          <ParameterField
+            key={name}
+            name={name}
+            config={config}
+            value={getValue(name)}
+            onChange={handleParameterChange}
+          />
         ))}
         <Button
           onClick={() => setIsVisualMappingOpen(true)}

@@ -7,6 +7,8 @@ import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { useEditing } from '../managers/editingManager';
 import { GroupData, ValueData, ValueMetadata } from '../utils/parameterUtils';
 import { GroupValueLimit } from './LimitCounter';
+import { DelayedField } from '../delayedField';
+import { StringInput } from '../inputs/StringInput';
 
 interface GroupItemProps {
   groupId: string;
@@ -122,27 +124,52 @@ export const GroupItem: React.FC<GroupItemProps> = ({
 
   const values = group.values || [];
 
-  // Simplified value editability check using only nested constraints
+  // Refined value editability check with clearer precedence
   const isValueEditable = useCallback((valueItem: ValueData, metadata: ValueMetadata) => {
-    // Values from parameters are never editable
-    if (metadata.isFromParam) return false;
+    const {
+      creatableValue,
+      valueType,
+      config
+    } = useNestedMapping();
 
-    // Check value item's own editability flag if set
-    if (valueItem.isEditable === false) return false;
-    if (valueItem.isEditable === true) return true;
+    // 1. Parameter values are never editable
+    if (metadata.isFromParam || valueItem.isFromParam) {
+      return false;
+    }
 
-    // Determine value editability from nested constraints only
-    const valueEditableByConstraints =
-      !!valueConstraints.editable ||
-      !!constraints.editable;
+    // 2. Explicit flag on the value item has highest precedence
+    if (valueItem.isEditable === false) {
+      return false;
+    }
+    if (valueItem.isEditable === true) {
+      return true;
+    }
 
-    const valueCreatableByConstraints =
-      !!valueConstraints.creatable ||
-      !!constraints.creatable;
+    // 3. If values are creatable (at any level), make them editable
+    const constraints = config?.constraints || {};
+    const valueConstraints = constraints.value_constraints || {};
+    if (creatableValue || valueConstraints.creatable || constraints.creatable) {
+      return true;
+    }
 
-    // Value is editable if any editability or creatability flag is enabled
-    return valueEditableByConstraints || valueCreatableByConstraints;
-  }, [constraints, valueConstraints]);
+    // 4. If the group is not editable, values inherit that restriction
+    if (!groupEditable) {
+      return false;
+    }
+
+    // 5. Get explicit editable flags from constraints
+    const valueExplicitEditable = valueConstraints?.editable;
+    const globalExplicitEditable = constraints?.editable;
+
+    // If both are undefined, default to true
+    // If either is explicitly false, use false
+    // Otherwise use true
+    if (valueExplicitEditable === false || globalExplicitEditable === false) {
+      return false;
+    }
+
+    return true;
+  }, [groupEditable, useNestedMapping]);
 
   return (
     <Box
@@ -158,22 +185,42 @@ export const GroupItem: React.FC<GroupItemProps> = ({
         <HStack>
           {/* Group name with inline editing */}
           {isEditingName ? (
-            <Input
-              ref={nameInputRef}
-              size="sm"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={saveGroupName}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  saveGroupName();
-                } else if (e.key === 'Escape') {
-                  cancelEditName();
+            <DelayedField
+              value={group.name}
+              onBlur={(finalValue) => {
+                setEditedName(finalValue);
+                if (finalValue.trim() !== '' && finalValue !== group.name) {
+                  onChange({
+                    ...value,
+                    [groupId]: {
+                      ...group,
+                      name: finalValue.trim()
+                    }
+                  });
                 }
+                setIsEditingName(false);
               }}
-              autoFocus
-              maxWidth="200px"
-            />
+            >
+              {(localValue, handleChange, handleBlur) => (
+                <StringInput
+                  disableAutocomplete
+                  name="groupName"
+                  value={localValue}
+                  config={{ type: 'string' }} // Using a simple config; adjust as needed.
+                  onChange={(_, val) => handleChange(val)}
+                  onBlur={handleBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleBlur();
+                    } else if (e.key === 'Escape') {
+                      setEditedName(group.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  ref={nameInputRef}
+                />
+              )}
+            </DelayedField>
           ) : (
             <Text
               fontWeight="medium"
@@ -245,7 +292,17 @@ export const GroupItem: React.FC<GroupItemProps> = ({
         {values.length > 0 ? (
           <Box display="flex" flexDirection="column" gap={2}>
             {values.map((valueItem: ValueData) => {
-              const metadata = getValueMetadata(valueItem);
+              // Get metadata but prioritize explicit flags from the value item
+              const baseMetadata = getValueMetadata(valueItem.value);
+              const metadata = {
+                ...baseMetadata,
+                isFromParam: valueItem.isFromParam !== undefined ? valueItem.isFromParam : baseMetadata.isFromParam,
+                paramSource: valueItem.paramSource || baseMetadata.paramSource,
+                type: valueItem.type || baseMetadata.type || valueType
+              };
+
+              // Determine if this specific value is editable
+              const valueIsEditable = isValueEditable(valueItem, metadata);
 
               return (
                 <SortableValueItem
@@ -255,12 +312,12 @@ export const GroupItem: React.FC<GroupItemProps> = ({
                   type={valueItem.type || metadata.type || valueType}
                   isFromParam={metadata.isFromParam}
                   paramSource={metadata.paramSource}
-                  isEditable={isValueEditable(valueItem, metadata)}
+                  isEditable={valueIsEditable}
                   isEditing={isEditing(valueItem.id, groupId)}
                   onFocus={() => handleStartEditing(valueItem.id, valueItem.value, groupId)}
                   onBlur={handleFinishEditing}
                   onValueChange={handleEditingChange}
-                  onDelete={() => handleDeleteValue(valueItem.id)}
+                  onDelete={valueIsEditable ? () => handleDeleteValue(valueItem.id) : undefined}
                 />
               );
             })}

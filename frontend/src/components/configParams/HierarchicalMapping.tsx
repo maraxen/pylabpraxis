@@ -26,6 +26,7 @@ type HierarchicalMappingProps = {
   value: any;
   config: any; // ParameterConfig with optional methods isEditable/getEditable and defaultValues
   onChange: (newValue: any) => void;
+  parameters?: Record<string, ParameterConfig>;
 };
 
 /**
@@ -286,6 +287,22 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       // Handle dropping to "available values" (removing from group)
       if (targetId === 'available-values' && sourceGroupId) {
         const sourceGroup = value[sourceGroupId];
+
+        // Find the value being moved to preserve its properties
+        const draggedValueData = sourceGroup.values.find(v => v.id === draggedId);
+        if (!draggedValueData) {
+          setActiveId(null);
+          setActiveData(null);
+          removeDragStyles();
+          return;
+        }
+
+        // Update createdValues to include this value for the available section
+        setCreatedValues(prev => ({
+          ...prev,
+          [draggedId]: draggedValueData
+        }));
+
         const updatedValues = sourceGroup.values.filter(v => v.id !== draggedId);
 
         // Update the value state
@@ -310,18 +327,25 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
         // Find value data based on where it's coming from
         let draggedValueData;
         if (!sourceGroupId) {
-          // From available values
-          const draggedValue = active.data.current?.value;
-          if (draggedValue !== undefined) {
-            draggedValueData = {
-              id: draggedId,
-              value: draggedValue,
-              type: valueType, // Simplified - always use valueType for values
-              isEditable: isValueEditable
-            };
+          // From available values - use existing data in createdValues to preserve properties
+          draggedValueData = createdValues[draggedId];
+
+          // If not in createdValues, create from active data but preserve metadata
+          if (!draggedValueData) {
+            const draggedValue = active.data.current?.value;
+            const metadata = active.data.current?.metadata || {};
+
+            if (draggedValue !== undefined) {
+              draggedValueData = {
+                id: draggedId,
+                value: draggedValue,
+                type: metadata.type || valueType,
+                isEditable: metadata.isEditable !== undefined ? metadata.isEditable : isValueEditable
+              };
+            }
           }
         } else {
-          // From another group
+          // From another group - find original value to preserve properties
           draggedValueData = value[sourceGroupId].values.find(v => v.id === draggedId);
         }
 
@@ -342,9 +366,15 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
             ...sourceGroup,
             values: sourceGroup.values.filter(v => v.id !== draggedId)
           };
+        } else {
+          // If from available values, remove from createdValues
+          setCreatedValues(prev => {
+            const { [draggedId]: _, ...rest } = prev;
+            return rest;
+          });
         }
 
-        // Add to target group
+        // Add to target group - preserve all original properties
         updatedValue[targetId] = {
           ...targetGroup,
           values: [...targetGroup.values, draggedValueData]

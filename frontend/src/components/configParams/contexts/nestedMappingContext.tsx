@@ -126,7 +126,7 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
 });
 
 // Provider component
-interface NestedMappingProviderProps {
+export interface NestedMappingProviderProps {
   children: ReactNode;
   config: ParameterConfig;
   parameters?: Record<string, ParameterConfig>;
@@ -144,6 +144,7 @@ interface NestedMappingProviderProps {
   createGroup: (name: string) => string;
   createdValues: Record<string, ValueData>;
   setCreatedValues: React.Dispatch<React.SetStateAction<Record<string, ValueData>>>;
+  valueType?: string;
 }
 
 export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
@@ -160,21 +161,34 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   createdValues,
   setCreatedValues
 }) => {
+  // Extract constraints from config
   const constraints = config?.constraints || {};
   const keyConstraints = constraints.key_constraints || {};
   const valueConstraints = constraints.value_constraints || {};
   const valueType = valueConstraints?.type || 'string';
 
-  // Metadata state
+  // State for metadata tracking
   const [valueMetadataMap, setValueMetadataMap] = useState<Record<string, ValueMetadata>>({});
-
-  // Share a ref to the input field for focus management
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Add this ref to track pending metadata updates
   const pendingMetadataUpdatesRef = useRef<Record<string, ValueMetadata>>({});
 
-  // Apply pending metadata updates using useEffect
+  // Input reference for focus management
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Creation mode state
+  const [creationMode, setCreationMode] = useState<string | null>(null);
+
+  // Editing state
+  const [editingState, setEditingState] = useState<EditingState>({
+    id: null,
+    value: '',
+    group: null,
+    originalValue: ''
+  });
+
+  // Helper refs
+  const finishEditingInProgressRef = useRef(false);
+
+  // Apply pending metadata updates
   useEffect(() => {
     const pendingUpdates = pendingMetadataUpdatesRef.current;
     if (Object.keys(pendingUpdates).length > 0) {
@@ -185,16 +199,27 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
       // Clear the pending updates
       pendingMetadataUpdatesRef.current = {};
     }
-  });
+  }, []);
 
-  // Memoize functions to prevent unnecessary re-renders
+  // Cancel editing when dragging starts
+  useEffect(() => {
+    if (dragInfo.isDragging && editingState.id) {
+      cancelEditing();
+    }
+  }, [dragInfo.isDragging, editingState.id]);
+
+  // Get value metadata with proper typing and parameter awareness
   const getValueMetadata = useCallback((val: string | ValueData): ValueMetadata => {
-    // If ValueData object is passed, extract the value
-    const value = typeof val === 'object' && val !== null ? val.value : val;
+    // Extract value and flags from input
+    const isValueDataObject = typeof val === 'object' && val !== null;
+    const value = isValueDataObject ? val.value : val;
+    const explicitIsEditable = isValueDataObject ? val.isEditable : undefined;
+    const explicitIsFromParam = isValueDataObject ? val.isFromParam : undefined;
+    const explicitParamSource = isValueDataObject ? val.paramSource : undefined;
     const stringValue = value !== null && value !== undefined ? String(value) : '';
 
-    // Return existing metadata if available
-    if (valueMetadataMap[stringValue]) {
+    // Return existing metadata if available and we don't have explicit flags that differ
+    if (valueMetadataMap[stringValue] && explicitIsEditable === undefined) {
       return valueMetadataMap[stringValue];
     }
 
@@ -212,36 +237,62 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
         ? parameters[valueParam].default.some((v: any) => String(v) === stringValue)
         : String(parameters[valueParam].default) === stringValue);
 
-    let paramSource: string | undefined = undefined;
-    if (isFromKeyParam && keyParam) {
-      paramSource = keyParam;
-    } else if (isFromValueParam && valueParam) {
-      paramSource = valueParam;
+    let paramSource: string | undefined = explicitParamSource;
+    if (!paramSource) {
+      if (isFromKeyParam && keyParam) {
+        paramSource = keyParam;
+      } else if (isFromValueParam && valueParam) {
+        paramSource = valueParam;
+      }
     }
 
-    // Create new metadata if not found
+    // Determine if value is from a parameter
+    const isFromParam = explicitIsFromParam !== undefined
+      ? explicitIsFromParam
+      : (isFromKeyParam || isFromValueParam);
+
+    // Determine editability with proper nested constraint handling
+    // Get direct creatable flags from different levels in the constraint hierarchy
+    const valueCreatable = !!valueConstraints?.creatable;
+    const globalCreatable = !!constraints?.creatable;
+
+    // Get direct editable flags from different levels
+    const valueEditable = valueConstraints?.editable !== undefined ? !!valueConstraints.editable : true;
+    const globalEditable = constraints?.editable !== undefined ? !!constraints.editable : true;
+
+    // Determine final isEditable flag with proper precedence:
+    // 1. Explicit value takes highest precedence
+    // 2. Parameter values are never editable
+    // 3. Creatable flag makes values editable
+    // 4. Otherwise use explicit editable flags from constraints
+    const isEditable =
+      explicitIsEditable !== undefined ? explicitIsEditable :
+        isFromParam ? false :
+          valueCreatable || globalCreatable ? true :
+            valueEditable && globalEditable; // Both must be true (or undefined/default)
+
+    // Create new metadata
     const metadata: ValueMetadata = {
-      isFromParam: isFromKeyParam || isFromValueParam,
+      isFromParam,
       paramSource,
-      isEditable: true, // Default to editable
+      isEditable,
       type: valueType
     };
 
-    // Instead of updating state directly during render, store in pending updates
-    pendingMetadataUpdatesRef.current[stringValue] = metadata;
+    // Store in pending updates if this is a string value (not an object)
+    if (!isValueDataObject) {
+      pendingMetadataUpdatesRef.current[stringValue] = metadata;
+    }
 
     return metadata;
-  }, [valueMetadataMap, constraints, parameters, valueType]);
+  }, [valueMetadataMap, keyConstraints, valueConstraints, constraints, parameters, valueType]);
 
-  // Fix the creatable flags to check both creatable and specific flags
+  // Determine creatable flags with clearer logic
   const creatable = !!constraints?.creatable;
   const creatableKey = !!keyConstraints?.creatable || creatable;
   const creatableValue = !!valueConstraints?.creatable || creatable;
 
-  // Local state for creation mode
-  const [creationMode, setCreationMode] = useState<string | null>(null);
-
-  // Memoize derived values
+  // Compute derived options for parents (groups)
   const localParentOptions = useMemo(() => {
     const options = [...effectiveParentOptions];
 
@@ -271,6 +322,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     return options;
   }, [effectiveParentOptions, keyConstraints, parameters, value]);
 
+  // Compute derived options for children (values)
   const localChildOptions = useMemo(() => {
     const options = [...effectiveChildOptions];
 
@@ -304,22 +356,46 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     return options;
   }, [effectiveChildOptions, valueConstraints, parameters, value]);
 
-  // Editing state
-  const [editingState, setEditingState] = useState<EditingState>({
-    id: null,
-    value: '',
-    group: null,
-    originalValue: ''
-  });
-
-  // Prevent editing during dragging
-  useEffect(() => {
-    if (dragInfo.isDragging && editingState.id) {
-      cancelEditing();
+  // Value type conversion helper
+  const parseValue = useCallback((val: any, type: string): any => {
+    if (val === null || val === undefined) return val;
+    const normalizedType = type?.toLowerCase();
+    switch (normalizedType) {
+      case 'boolean':
+      case 'bool':
+        return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
+      case 'number':
+      case 'int':
+      case 'integer':
+      case 'float':
+      case 'double': {
+        const parsed = Number(val);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      case 'string':
+      case 'str':
+      default:
+        return String(val);
     }
-  }, [dragInfo.isDragging, editingState.id]);
+  }, []);
 
-  // Memoize editing functions
+  // Simple debounce helper
+  function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
+    let timeout: number | undefined;
+    return (...args: Parameters<T>) => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      timeout = window.setTimeout(() => {
+        func(...args);
+      }, wait);
+    };
+  }
+
+  // Debounced onChange function
+  const debouncedOnChange = useRef(debounce((updatedMapping: any) => {
+    onChange(updatedMapping);
+  }, 500)).current;
+
+  // Editing functions
   const startEditing = useCallback((id: string, currentValue: string, group: string | null) => {
     // Check if the value is editable
     const metadata = valueMetadataMap[id] || valueMetadataMap[currentValue];
@@ -356,32 +432,8 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     });
   }, []);
 
-  // Add local parseValue function
-  const parseValue = (val: any, type: string): any => {
-    if (val === null || val === undefined) return val;
-    const normalizedType = type?.toLowerCase();
-    switch (normalizedType) {
-      case 'boolean':
-      case 'bool':
-        return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
-      case 'number':
-      case 'int':
-      case 'integer':
-      case 'float':
-      case 'double': {
-        const parsed = Number(val);
-        return isNaN(parsed) ? 0 : parsed;
-      }
-      case 'string':
-      case 'str':
-      default:
-        return String(val);
-    }
-  };
-
-  const finishEditingInProgressRef = useRef(false);
-
   const finishEditing = useCallback(() => {
+    // Prevent concurrent editing operations
     if (finishEditingInProgressRef.current) {
       console.log("finishEditing already in progress, skipping duplicate call.");
       return;
@@ -397,12 +449,11 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
       return;
     }
 
-    // Parse values using the context's valueType for consistency
     const parsedNew = parseValue(newValue, valueType);
     const parsedOriginal = parseValue(originalValue, valueType);
 
     if (parsedNew === parsedOriginal) {
-      console.log("No change detected after parsing. Skipping update.");
+      console.log("No change detected after parsing. Aborting update.");
       cancelEditing();
       finishEditingInProgressRef.current = false;
       return;
@@ -410,76 +461,130 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
     try {
       if (group && value[group]) {
+        // Update value in group
         const groupData = value[group];
+        const existingValueData = groupData.values.find((v: ValueData) => v.id === id);
+
+        if (!existingValueData) {
+          console.log("Value not found in group, aborting update");
+          cancelEditing();
+          finishEditingInProgressRef.current = false;
+          return;
+        }
+
+        // Check if another value with the same content already exists in this group
+        const valueAlreadyExists = groupData.values.some(v =>
+          v.id !== id && // Not the same item
+          String(v.value) === String(parsedNew) // Same value content
+        );
+
+        if (valueAlreadyExists) {
+          console.log(`Value "${parsedNew}" already exists in this group, aborting update`);
+          cancelEditing();
+          finishEditingInProgressRef.current = false;
+          return;
+        }
+
+        // Update the value in the group
         const updatedValues = groupData.values.map((valueData: ValueData) => {
           if (valueData.id === id) {
             return { ...valueData, value: parsedNew };
           }
           return valueData;
         });
+
+        // Create updated mapping
         const updatedMapping = {
           ...value,
           [group]: { ...groupData, values: updatedValues }
         };
-        onChange(updatedMapping);
-        console.log("Updated mapping after finishEditing:", updatedMapping);
 
+        // Update the Redux store
+        onChange(updatedMapping);
+
+        // Update metadata map to include the new value while preserving metadata
         setValueMetadataMap(prev => {
           const newMap = { ...prev };
-          if (parsedOriginal !== parsedNew) {
-            delete newMap[originalValue];
+
+          // Copy metadata from original to new value
+          if (prev[originalValue]) {
+            newMap[parsedNew] = { ...prev[originalValue] };
+            // Keep original metadata for now (may be used elsewhere)
           }
-          newMap[parsedNew] = prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false };
+
           return newMap;
         });
       } else if (!group) {
-        const createdValueEntry = Object.entries(createdValues).find(([_, valueData]) => valueData.id === id);
-        if (createdValueEntry) {
-          const [createdId, createdValueData] = createdValueEntry;
-          setCreatedValues(prev => {
-            const updated = { ...prev };
-            updated[createdId] = { ...createdValueData, value: parsedNew };
-            return updated;
-          });
+        // Update value in available values section
+        if (createdValues[id]) {
+          // Check if another value with the same content already exists
+          const valueAlreadyExists = Object.entries(createdValues).some(([valueId, data]) =>
+            valueId !== id && // Not the same item
+            String(data.value) === String(parsedNew) // Same value content
+          );
+
+          if (valueAlreadyExists) {
+            console.log(`Value "${parsedNew}" already exists in available values, aborting update`);
+            cancelEditing();
+            finishEditingInProgressRef.current = false;
+            return;
+          }
+
+          // Preserve ALL existing properties!
+          const updatedCreatedValues = { ...createdValues };
+          updatedCreatedValues[id] = {
+            ...updatedCreatedValues[id],
+            value: parsedNew
+          };
+
+          setCreatedValues(updatedCreatedValues);
+
+          // Update metadata map to include the new value
           setValueMetadataMap(prev => {
             const newMap = { ...prev };
-            if (originalValue !== parsedNew) {
-              delete newMap[originalValue];
+
+            // Copy metadata from original to new value
+            if (prev[originalValue]) {
+              newMap[parsedNew] = { ...prev[originalValue] };
             }
-            newMap[parsedNew] = prev[originalValue] || { type: valueType, isEditable: true, isFromParam: false };
+
             return newMap;
           });
+
+          console.log("Updated created value for", id);
+        } else {
+          console.log("No existing created value found for", id);
         }
       }
     } catch (err) {
-      console.error("Error during finishEditing onChange update:", err);
+      console.error("Error during finishEditing:", err);
     } finally {
       cancelEditing();
       finishEditingInProgressRef.current = false;
     }
-  }, [editingState, value, onChange, valueType, cancelEditing, createdValues, setCreatedValues]);
+  }, [editingState, value, onChange, valueType, cancelEditing, createdValues, setCreatedValues, parseValue]);
 
   const isEditingItem = useCallback((id: string, group: string | null) => {
     return editingState.id === id && editingState.group === group;
   }, [editingState.id, editingState.group]);
 
-  // Update isEditable function to check for editability flags in constraints
+  // Group editability check
   const isEditable = useCallback((groupId: string): boolean => {
+    // First check for explicit flags on the group
     if (value && value[groupId]) {
       const group = value[groupId];
-      // Respect an explicitly set isEditable flag
       if (group.isEditable === false) return false;
       if (group.isEditable === true) return true;
     }
-    // Fall back on nested constraints.
-    // If a creatable flag is present on keys, force groups to be editable.
-    const keyConstraints = config?.constraints?.key_constraints || {};
-    const creatableKey = keyConstraints.creatable || config?.constraints?.creatable;
-    // Otherwise, use the editable flag from constraints (default true if not false).
-    return creatableKey ? true : (config?.constraints?.editable !== false);
-  }, [value, config]);
 
-  // Wrap the creation methods to ensure they work in the optimized context
+    // Then check if keys are creatable (makes groups editable)
+    const creatableKey = keyConstraints.creatable || constraints.creatable;
+
+    // Default to constraints-based editability
+    return creatableKey ? true : (constraints?.editable !== false);
+  }, [value, keyConstraints, constraints]);
+
+  // Wrapper for creation methods
   const createValue = useCallback((newVal: any): string => {
     try {
       console.log("Creating value in context:", newVal);
@@ -500,16 +605,16 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     }
   }, [createGroupProp]);
 
-  // Fix the setCreationMode function to ensure proper updates
+  // Wrapped setCreationMode for proper logging
   const wrappedSetCreationMode = useCallback((mode: string | null) => {
     console.log("Setting creation mode:", mode);
     setCreationMode(mode);
   }, []);
 
-  // Calculate the maximum total values based on constraints
+  // Value limit calculations
   const getMaxTotalValues = useCallback((): number => {
-    const keyArrayLen = constraints?.key_constraints?.array_len;
-    const valueArrayLen = constraints?.value_constraints?.array_len;
+    const keyArrayLen = keyConstraints?.array_len;
+    const valueArrayLen = valueConstraints?.array_len;
 
     // If both are specified, multiply them to get total max values
     if (keyArrayLen && valueArrayLen) {
@@ -522,15 +627,13 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
     // Default: no limit
     return Infinity;
-  }, [constraints]);
+  }, [keyConstraints, valueConstraints]);
 
-  // Calculate the maximum values per group
   const getMaxValuesPerGroup = useCallback((): number => {
     // Use value_array_len as the limit for values per key
-    return constraints?.value_constraints?.array_len || Infinity;
-  }, [constraints]);
+    return valueConstraints?.array_len || Infinity;
+  }, [valueConstraints]);
 
-  // Check if a group has reached its maximum values
   const isGroupFull = useCallback((groupId: string): boolean => {
     if (!value || !value[groupId]) return false;
 
@@ -540,7 +643,6 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     return currentCount >= maxPerGroup;
   }, [value, getMaxValuesPerGroup]);
 
-  // Check if we've reached the total maximum values
   const hasReachedMaxValues = useCallback((): boolean => {
     const maxTotal = getMaxTotalValues();
     let currentTotal = 0;
@@ -553,7 +655,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     return currentTotal >= maxTotal;
   }, [value, getMaxTotalValues]);
 
-  // Memoize the context value to avoid unnecessary re-renders
+  // Create the context value with all required properties
   const contextValue = useMemo(() => ({
     config,
     parameters,

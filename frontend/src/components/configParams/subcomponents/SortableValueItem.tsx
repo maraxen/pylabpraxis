@@ -5,8 +5,10 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { LuX, LuPencil } from 'react-icons/lu';
 import { ValueDisplay } from './valueDisplay';
+import { VStack, Text } from '@chakra-ui/react'
 
-interface SortableValueItemProps {
+// Export the interface so tests can use it
+export interface SortableValueItemProps {
   id: string;
   value: string | any;
   availableId?: string;  // Optional ID for available values section
@@ -132,6 +134,7 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
   const handleValueChange = (newValue: any) => {
     // Properly convert value based on type
     let typedValue = newValue;
+    console.log("Handling value change:", newValue, type);
 
     // Only do conversion if we have a definitive type
     switch (type?.toLowerCase()) {
@@ -148,6 +151,11 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
       case 'bool':
         // Convert to actual boolean
         typedValue = typeof newValue === 'boolean' ? newValue : String(newValue).toLowerCase() === 'true';
+        break;
+      case 'string':
+      case 'str':
+      default:
+        typedValue = String(newValue);
         break;
     }
 
@@ -195,19 +203,36 @@ export const SortableValueItem: React.FC<SortableValueItemProps> = ({
             ☰
           </Box>
 
-          {/* Value display */}
-          <ValueDisplay
-            value={localValue}
-            type={type}
-            isFromParam={isFromParam}
-            paramSource={paramSource}
-            isEditable={isEditable && !isFromParam}
-            isEditing={isEditing}
-            onFocus={handleFocus}
-            onBlur={onBlur}
-            onValueChange={handleValueChange}
-            inputRef={inputRef}
-          />
+          {/* Value display with special handling for dict/object types */}
+          {type?.toLowerCase() === 'dict' && typeof value === 'object' && value !== null && !isEditing ? (
+            <Box width="100%">
+              <Text fontWeight="medium" mb={1}>
+                {value.name || 'Nested Object'}
+              </Text>
+              <VStack align="start" gap={1} pl={2}>
+                {Array.isArray(value.values) && value.values.map((subValue: any, index: number) => (
+                  <Text key={index} fontSize="sm">
+                    • {typeof subValue === 'object' && subValue !== null ?
+                      (subValue.value !== undefined ? String(subValue.value) : JSON.stringify(subValue))
+                      : String(subValue)}
+                  </Text>
+                ))}
+              </VStack>
+            </Box>
+          ) : (
+            <ValueDisplay
+              value={localValue}
+              type={type}
+              isFromParam={isFromParam}
+              paramSource={paramSource}
+              isEditable={isEditable && !isFromParam}
+              isEditing={isEditing}
+              onFocus={handleFocus}
+              onBlur={onBlur}
+              onValueChange={handleValueChange}
+              inputRef={inputRef}
+            />
+          )}
         </HStack>
 
         {/* Action buttons */}

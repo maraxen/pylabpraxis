@@ -7,7 +7,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { ParameterConstraints, NestedConstraint } from '../utils/parameterUtils';
 
-interface ValueDisplayProps {
+// Export the interface so tests can use it
+export interface ValueDisplayProps {
   value: any;
   type?: string;
   isFromParam?: boolean;
@@ -32,41 +33,34 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
   onValueChange,
   inputRef: propInputRef
 }) => {
-  // Get the context input ref and config from context
   const { inputRef: contextInputRef, config } = useNestedMapping();
-
-  // Keep track of the internal value state while editing
   const [internalValue, setInternalValue] = useState<any>(value);
-
-  // Use prop inputRef if provided, otherwise use the one from context
   const inputRef = propInputRef || contextInputRef;
 
-  // Update internal value when prop value changes
   useEffect(() => {
     if (!isEditing) {
+      console.log("Syncing internal value from prop:", value);
       setInternalValue(value);
+    } else {
+      console.log("Currently editing, internal value remains:", internalValue);
     }
   }, [value, isEditing]);
 
-  // Convert value to appropriate type
   const parseValue = (val: any, valueType: string): any => {
     if (val === null || val === undefined) return val;
-
     const normalizedType = valueType?.toLowerCase();
-
     switch (normalizedType) {
       case 'boolean':
       case 'bool':
         return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
-
       case 'number':
       case 'int':
       case 'integer':
       case 'float':
-      case 'double':
+      case 'double': {
         const parsed = Number(val);
         return isNaN(parsed) ? 0 : parsed;
-
+      }
       case 'string':
       case 'str':
       default:
@@ -74,84 +68,80 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
     }
   };
 
-  // Handle internal value change (only update local state)
   const handleInternalChange = (_name: string, newValue: any) => {
-    // Immediately propagate change rather than waiting for blur
+    // Update local state immediately.
     setInternalValue(newValue);
+    // Also update editing state immediately.
     if (onValueChange) {
       onValueChange(parseValue(newValue, type));
     }
   };
 
-  // Handle blur event to commit changes for all types
   const handleBlur = () => {
-    if (onValueChange && internalValue !== value) {
+    // Always trigger onValueChange so editingState is updated
+    if (onValueChange) {
       onValueChange(parseValue(internalValue, type));
     }
     onBlur?.();
   };
 
-  // Render an input field when in editing mode
+  // Modified editing branch: Wrap input field and badges in HStack
   if (isEditing && isEditable) {
-    // Build value constraints object to hold applicable constraints
     const valueConstraints: ParameterConstraints = {};
-
-    // Apply constraints from the nested structure
     const nestedConstraints = config?.constraints?.value_constraints;
     if (nestedConstraints) {
       applyConstraints(nestedConstraints, valueConstraints, type);
     }
-
-    // Create a proper config object for input components
     const inputConfig = {
       type: type?.toLowerCase(),
       constraints: valueConstraints
     };
 
-    // Normalize the type for component selection
-    const normalizedType = type?.toLowerCase();
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        handleBlur();
+      } else if (e.key === 'Escape') {
+        setInternalValue(value);
+        onBlur?.();
+      }
+    };
 
-    // Render different input types based on the data type
-    switch (normalizedType) {
-      case 'boolean':
-      case 'bool':
-        return (
-          <Box width="100%">
+    const inputElement = (() => {
+      const normalizedType = type?.toLowerCase();
+      switch (normalizedType) {
+        case 'boolean':
+        case 'bool':
+          return (
             <BooleanInput
               name="value"
               value={internalValue}
               config={inputConfig}
               onChange={handleInternalChange}
               onBlur={handleBlur}
+              onFocus={onFocus}
             />
-          </Box>
-        );
-
-      case 'number':
-      case 'int':
-      case 'integer':
-      case 'float':
-      case 'double':
-        // Pass the raw internalValue (not parsed) for NumberInput
-        return (
-          <Box width="100%">
+          );
+        case 'number':
+        case 'int':
+        case 'integer':
+        case 'float':
+        case 'double':
+          return (
             <NumberInput
               name="value"
               value={internalValue}
               config={inputConfig}
               onChange={handleInternalChange}
               onBlur={handleBlur}
+              onFocus={onFocus}
+              onKeyDown={handleKeyDown}
               ref={inputRef}
             />
-          </Box>
-        );
-
-      case 'string':
-      case 'str':
-      default:
-        return (
-          <Box width="100%">
-            {/* Pass disableAutocomplete to force plain input */}
+          );
+        case 'string':
+        case 'str':
+        default:
+          return (
             <StringInput
               disableAutocomplete
               name="value"
@@ -159,40 +149,161 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
               config={inputConfig}
               onChange={handleInternalChange}
               onBlur={handleBlur}
+              onFocus={onFocus}
+              onKeyDown={handleKeyDown}
               ref={inputRef}
             />
+          );
+      }
+    })();
+
+    return (
+      <Tooltip content={isEditable ? "Editing value" : "Read-only value"}>
+        <HStack
+          gap={2}
+          width="100%"
+          padding={1}
+          borderRadius="md"
+          justify="space-between"
+          _hover={isEditable ? { bg: "gray.50", _dark: { bg: "gray.700" } } : {}}
+        >
+          <Box flex="1">
+            {inputElement}
           </Box>
-        );
-    }
+          <HStack gap={1}>
+            <Badge size="sm" colorScheme={getTypeColorScheme(type)} variant="subtle">
+              {type || "string"}
+            </Badge>
+            {isFromParam && (
+              <Badge size="sm" colorScheme="blue" variant="subtle" title={`From parameter: ${paramSource}`}>
+                {paramSource || "param"}
+              </Badge>
+            )}
+            <Badge size="sm" colorScheme={isEditable ? "green" : "gray"} variant="subtle">
+              {isEditable ? "editable" : "read-only"}
+            </Badge>
+          </HStack>
+        </HStack>
+      </Tooltip>
+    );
   }
 
-  // Format value display based on type
   const displayValue = () => {
     if (value === undefined || value === null) {
       return <Text color="gray.400">(empty)</Text>;
     }
-
     const normalizedType = type?.toLowerCase();
-
     switch (normalizedType) {
       case 'boolean':
       case 'bool':
         const boolValue = typeof value === 'boolean' ? value : String(value).toLowerCase() === 'true';
         return <Text fontWeight="medium">{boolValue ? 'True' : 'False'}</Text>;
-
       case 'number':
       case 'int':
       case 'integer':
       case 'float':
       case 'double':
         return <Text fontWeight="medium">{value}</Text>;
-
+      case 'dict':
+      case 'object':
+        // Format dictionary preview with first few keys
+        return formatDictPreview(value);
+      case 'array':
+        // Format array preview
+        return formatArrayPreview(value);
       case 'string':
       case 'str':
       default:
+        // Handle case where value is actually an object but type says string
+        if (typeof value === 'object' && value !== null) {
+          return formatObjectPreview(value);
+        }
         return <Text fontWeight="medium">{String(value)}</Text>;
     }
   };
+
+  // Helper function to format dictionary preview
+  function formatDictPreview(dict: Record<string, any>) {
+    if (!dict || typeof dict !== 'object') {
+      return <Text fontWeight="medium">{String(dict)}</Text>;
+    }
+
+    const keys = Object.keys(dict);
+    if (keys.length === 0) {
+      return <Text fontWeight="medium">{'{}'}</Text>;
+    }
+
+    // Show first few keys
+    const previewKeys = keys.slice(0, 2);
+    const hasMore = keys.length > 2;
+
+    return (
+      <Text fontWeight="medium" truncate>
+        {'{'}
+        {previewKeys.map(key => `${key}: ${formatPreviewValue(dict[key])}`).join(', ')}
+        {hasMore ? ', ...' : ''}
+        {'}'}
+      </Text>
+    );
+  }
+
+  // Helper function to format array preview
+  function formatArrayPreview(arr: any[]) {
+    if (!Array.isArray(arr)) {
+      return <Text fontWeight="medium">{String(arr)}</Text>;
+    }
+
+    if (arr.length === 0) {
+      return <Text fontWeight="medium">[]</Text>;
+    }
+
+    // Show first few items
+    const previewItems = arr.slice(0, 3);
+    const hasMore = arr.length > 3;
+
+    return (
+      <Text fontWeight="medium" truncate>
+        {'['}
+        {previewItems.map(item => formatPreviewValue(item)).join(', ')}
+        {hasMore ? ', ...' : ''}
+        {']'}
+      </Text>
+    );
+  }
+
+  // Generic object preview - fallback
+  function formatObjectPreview(obj: any) {
+    if (!obj || typeof obj !== 'object') {
+      return <Text fontWeight="medium">{String(obj)}</Text>;
+    }
+
+    // Special case for value objects
+    if (obj.id && obj.value !== undefined) {
+      return <Text fontWeight="medium">{String(obj.value)}</Text>;
+    }
+
+    return <Text fontWeight="medium">{'{...}'}</Text>;
+  }
+
+  // Format value for preview display
+  function formatPreviewValue(val: any): string {
+    if (val === null || val === undefined) {
+      return 'null';
+    }
+
+    if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        return '[...]';
+      }
+      return '{...}';
+    }
+
+    if (typeof val === 'string') {
+      return val.length > 10 ? `"${val.substring(0, 10)}..."` : `"${val}"`;
+    }
+
+    return String(val);
+  }
 
   return (
     <Tooltip content={isEditable ? "Click to edit" : "Read-only value"}>
@@ -207,44 +318,27 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
         justify="space-between"
       >
         <Box>{displayValue()}</Box>
-
         <HStack gap={1}>
-          {/* Type Badge */}
           <Badge size="sm" colorScheme={getTypeColorScheme(type)} variant="subtle">
-            {type || 'string'}
+            {type || "string"}
           </Badge>
-
-          {/* Parameter Source Badge */}
           {isFromParam && (
-            <Badge size="sm" colorScheme="blue" title={`From parameter: ${paramSource}`}>
-              {paramSource || 'param'}
+            <Badge size="sm" colorScheme="blue" variant="subtle" title={`From parameter: ${paramSource}`}>
+              {paramSource || "param"}
             </Badge>
           )}
-
-          {/* Editability Badge */}
-          {isEditable !== undefined && (
-            <Badge
-              size="sm"
-              colorScheme={isEditable ? "green" : "gray"}
-              variant="subtle"
-            >
-              {isEditable ? "editable" : "read-only"}
-            </Badge>
-          )}
+          <Badge size="sm" colorScheme={isEditable ? "green" : "gray"} variant="subtle">
+            {isEditable ? "editable" : "read-only"}
+          </Badge>
         </HStack>
       </HStack>
     </Tooltip>
   );
 };
 
-/**
- * Get appropriate color scheme based on value type
- */
 function getTypeColorScheme(type?: string): string {
   if (!type) return 'gray';
-
   const normalizedType = type.toLowerCase();
-
   switch (normalizedType) {
     case 'boolean':
     case 'bool':
@@ -263,28 +357,20 @@ function getTypeColorScheme(type?: string): string {
   }
 }
 
-/**
- * Apply constraints from the nested constraint structure based on value type
- */
 function applyConstraints(
   nestedConstraints: NestedConstraint | undefined,
   valueConstraints: ParameterConstraints,
   type: string
 ) {
   if (!nestedConstraints) return;
-
-  // Always copy over common constraints that apply to all types
   if (nestedConstraints.array) valueConstraints.array = nestedConstraints.array;
   if (nestedConstraints.array_len !== undefined) valueConstraints.array_len = nestedConstraints.array_len;
-
-  // Apply type-specific constraints
   switch (type?.toLowerCase()) {
     case 'number':
     case 'int':
     case 'integer':
     case 'float':
     case 'double':
-      // Numeric constraints
       if (nestedConstraints.min_value !== undefined)
         valueConstraints.min_value = nestedConstraints.min_value;
       if (nestedConstraints.max_value !== undefined)
@@ -292,10 +378,8 @@ function applyConstraints(
       if (nestedConstraints.step !== undefined)
         valueConstraints.step = nestedConstraints.step;
       break;
-
     case 'string':
     case 'str':
-      // String constraints
       if (nestedConstraints.min_len !== undefined)
         valueConstraints.min_len = nestedConstraints.min_len;
       if (nestedConstraints.max_len !== undefined)

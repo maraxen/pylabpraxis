@@ -10,10 +10,11 @@ interface StringInputProps {
   onChange: (name: string, value: any) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void; // new prop
 }
 
 export const StringInput = forwardRef<HTMLInputElement, StringInputProps>((props, ref) => {
-  const { name, value, config, disableAutocomplete, onChange, onFocus, onBlur } = props;
+  const { name, value, config, disableAutocomplete, onChange, onFocus, onBlur, onKeyDown } = props;
   const { array: options } = config.constraints || {};
 
   // If disableAutocomplete is true, always use plain Input
@@ -27,6 +28,7 @@ export const StringInput = forwardRef<HTMLInputElement, StringInputProps>((props
           placeholder="Select value..."
           onFocus={onFocus}
           onBlur={onBlur}
+          onKeyDown={onKeyDown} // added onKeyDown
           ref={ref as any}
         />
         <AutoCompleteList>
@@ -46,6 +48,7 @@ export const StringInput = forwardRef<HTMLInputElement, StringInputProps>((props
       onChange={(e) => onChange(name, e.target.value)}
       onFocus={onFocus}
       onBlur={onBlur}
+      onKeyDown={onKeyDown} // added onKeyDown
       ref={ref}
     />
   );

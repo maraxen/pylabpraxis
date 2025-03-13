@@ -16,6 +16,7 @@ interface ArrayInputProps {
   onChange: (name: string, value: any) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void; // new prop
 }
 
 export const ArrayInput: React.FC<ArrayInputProps> = ({
@@ -24,7 +25,8 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
   config,
   onChange,
   onFocus,
-  onBlur
+  onBlur,
+  onKeyDown
 }) => {
   const { array: options = [], array_len: maxLen } = config.constraints || {};
   const isConstrained = options.length > 0;
@@ -86,6 +88,7 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
           readOnly={isAtMaxLength}
           onFocus={onFocus}
           onBlur={onBlur}
+          onKeyDown={onKeyDown} // added onKeyDown
         />
         <AutoCompleteList>
           {isConstrained ? (

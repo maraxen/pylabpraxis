@@ -7,13 +7,13 @@
  */
 export const clearExcessStorage = (): boolean => {
   try {
-    // Switch from localStorage to sessionStorage for temporary storage.
-    const keys = Object.keys(sessionStorage);
-    keys.forEach(key => {
-      // Custom logic can be applied here to only remove certain keys.
-      sessionStorage.removeItem(key);
+    // Remove only keys matching our application prefix.
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('pylabpraxis_temp_')) {
+        sessionStorage.removeItem(key);
+      }
     });
-    console.log("SessionStorage cleared.");
+    console.log("Filtered sessionStorage keys cleared.");
   } catch (e) {
     console.warn("Error clearing sessionStorage:", e);
   }

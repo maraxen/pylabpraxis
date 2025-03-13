@@ -3,7 +3,8 @@ import { Badge } from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 
-interface BaseLimitCounterProps {
+// Export the interface so tests can use it
+export interface BaseLimitCounterProps {
   current: number;
   max: number | typeof Infinity;
   label?: string;

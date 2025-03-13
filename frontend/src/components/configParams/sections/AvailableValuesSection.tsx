@@ -6,8 +6,10 @@ import { ValueCreator } from '../creators/ValueCreator';
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { GroupData, ValueData } from '../utils/parameterUtils';
 import { useEditing } from '../managers/editingManager';
+import { nanoid } from 'nanoid';
 
-interface AvailableValuesSectionProps {
+// Export the interface so tests can use it
+export interface AvailableValuesSectionProps {
   value: Record<string, GroupData>;
 }
 
@@ -17,7 +19,9 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
     valueType,
     getValueMetadata,
     dragInfo,
-    createdValues // Add this line to get createdValues from context
+    createdValues,
+    setCreatedValues,
+    creatableValue
   } = useNestedMapping();
 
   const {
@@ -32,43 +36,117 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
     id: 'available-values',
   });
 
-  // Update the availableValues memo to properly track and display values
-  const availableValues = useMemo(() => {
-    // Start with options from constraints
-    const allOptions = [...effectiveChildOptions];
+  // Create a ref to persist generated IDs per available value
+  const availableIdMap = React.useRef<Record<string, string>>({});
 
-    // Track all values that are in groups to avoid duplicates
-    const usedValues = new Set<string>();
+  // Track values currently in use in any group
+  const usedValues = useMemo(() => {
+    const values = new Set<string>();
+    const ids = new Set<string>();
 
-    // Track value IDs to their display values for lookups
-    const valueIdMap = new Map<string, string>();
-
-    // Collect all values that are in groups
     Object.values(value).forEach(group => {
       if (group?.values && Array.isArray(group.values)) {
         group.values.forEach((valueData: ValueData) => {
           if (valueData?.value !== undefined) {
-            usedValues.add(String(valueData.value));
-            valueIdMap.set(valueData.id, String(valueData.value));
+            values.add(String(valueData.value));
+            ids.add(valueData.id);
           }
         });
       }
     });
 
-    // Add created values that aren't assigned to groups
-    const createdValuesList: any[] = [];
+    return { values, ids };
+  }, [value]);
+
+  // Get available values for display - solving the duplicate key issue
+  const availableValues = useMemo(() => {
+    const result: ValueData[] = [];
+    const valuesSeen = new Set<string>();
+    const idsSeen = new Set<string>(); // Track IDs to avoid duplicates
+
+    // First, add created values that aren't in groups
     Object.values(createdValues).forEach(valueData => {
-      if (!valueIdMap.has(valueData.id) && !usedValues.has(String(valueData.value))) {
-        createdValuesList.push(valueData.value);
+      const valueStr = String(valueData.value);
+      const valueId = valueData.id;
+
+      // Only add if not in a group and we haven't seen this ID yet
+      if (!usedValues.ids.has(valueId) && !idsSeen.has(valueId)) {
+        result.push(valueData);
+        valuesSeen.add(valueStr);
+        idsSeen.add(valueId);
       }
     });
 
-    // Combine all available options into one list, deduplicating and filtering
-    const uniqueOptions = new Set([...allOptions, ...createdValuesList]);
-    const combined = Array.from(uniqueOptions).filter(option => !usedValues.has(String(option)));
+    // Then add options from constraints that aren't used
+    effectiveChildOptions.forEach(option => {
+      // Skip null/undefined values and objects
+      if (option === null || option === undefined || typeof option === 'object') return;
 
-    return combined;
-  }, [effectiveChildOptions, createdValues, value]);
+      const optionStr = String(option);
+      if (!usedValues.values.has(optionStr) && !valuesSeen.has(optionStr)) {
+        // Generate a persistent ID if needed
+        if (!availableIdMap.current[optionStr]) {
+          availableIdMap.current[optionStr] = nanoid();
+        }
+
+        const id = availableIdMap.current[optionStr];
+
+        // Crucial check: avoid duplicate IDs
+        if (idsSeen.has(id)) {
+          return; // Skip this option if ID is already used
+        }
+
+        const metadata = getValueMetadata(optionStr);
+
+        // Check if this value already exists in createdValues
+        let valueData: ValueData;
+        if (createdValues[id]) {
+          valueData = createdValues[id];
+        } else {
+          valueData = {
+            id,
+            value: option,
+            type: metadata.type || valueType,
+            isFromParam: metadata.isFromParam,
+            paramSource: metadata.paramSource,
+            isEditable: creatableValue ? true : metadata.isEditable
+          };
+        }
+
+        result.push(valueData);
+        valuesSeen.add(optionStr);
+        idsSeen.add(id);
+      }
+    });
+
+    return result;
+  }, [effectiveChildOptions, createdValues, usedValues, getValueMetadata, valueType, creatableValue]);
+
+  // Handle deleting a value from available values
+  const handleDeleteValue = (valueId: string) => {
+    setCreatedValues(prev => {
+      const { [valueId]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  // Sync available values to createdValues for persistence
+  React.useEffect(() => {
+    const updates: Record<string, ValueData> = {};
+    let hasUpdates = false;
+
+    availableValues.forEach(valueData => {
+      const id = valueData.id;
+      if (!createdValues[id]) {
+        updates[id] = valueData;
+        hasUpdates = true;
+      }
+    });
+
+    if (hasUpdates) {
+      setCreatedValues(prev => ({ ...prev, ...updates }));
+    }
+  }, [availableValues, createdValues, setCreatedValues]);
 
   return (
     <Box>
@@ -93,26 +171,34 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
         >
           {availableValues.length > 0 ? (
             <SimpleGrid columns={1} gap={2}>
-              {availableValues.map((availableValue, index) => {
-                const valueStr = String(availableValue);
-                const metadata = getValueMetadata(valueStr);
-                const availableId = `available-${index}-${valueStr}`;
+              {availableValues.map((valueData) => {
+                // Convert value to string for display
+                const valueStr = String(valueData.value);
+
+                // Get metadata but prioritize explicit flags from the value item
+                const baseMetadata = getValueMetadata(valueData.value);
+                const isFromParam = valueData.isFromParam !== undefined ? valueData.isFromParam : baseMetadata.isFromParam;
+
+                // Determine editability based on both creatable flag and metadata
+                const isValueEditable = creatableValue ? true :
+                  valueData.isEditable !== undefined ? valueData.isEditable : baseMetadata.isEditable;
 
                 return (
                   <SortableValueItem
-                    key={availableId}
-                    id={valueStr}
-                    availableId={availableId}
+                    key={valueData.id}
+                    id={valueData.id}
+                    availableId={valueData.id}
                     value={valueStr}
-                    type={metadata.type || valueType}
-                    isFromParam={metadata.isFromParam}
-                    paramSource={metadata.paramSource}
-                    isEditable={metadata.isEditable}
+                    type={valueData.type || valueType}
+                    isFromParam={isFromParam}
+                    paramSource={valueData.paramSource}
+                    isEditable={isValueEditable}
                     dragMode="draggable"
-                    isEditing={isEditing(availableId, null)}
-                    onFocus={() => handleStartEditing(availableId, valueStr, null)}
+                    isEditing={isEditing(valueData.id, null)}
+                    onFocus={() => handleStartEditing(valueData.id, valueStr, null)}
                     onBlur={handleFinishEditing}
                     onValueChange={handleEditingChange}
+                    onDelete={isValueEditable && !isFromParam ? () => handleDeleteValue(valueData.id) : undefined}
                   />
                 );
               })}

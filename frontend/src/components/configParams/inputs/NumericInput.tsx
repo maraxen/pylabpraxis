@@ -8,16 +8,16 @@ interface NumberInputProps {
   onChange: (name: string, value: any) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void; // new prop
 }
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>((props, ref) => {
-  const { name, value, config, onChange, onFocus, onBlur } = props;
+  const { name, value, config, onChange, onFocus, onBlur, onKeyDown } = props;
   const type = config.type;
   const min = config.constraints?.min_value ?? -Infinity;
   const max = config.constraints?.max_value ?? Infinity;
   const step = config.constraints?.step ?? (type === 'float' ? 0.1 : 1);
   const inputMode = type === 'integer' ? 'numeric' : 'decimal';
-  const formatOptions = {};
 
   const handleNumberChange = (val: string | number) => {
     if (val === '') {
@@ -53,6 +53,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>((props
       <NumberInputField
         onFocus={onFocus}
         onBlur={onBlur}
+        onKeyDown={onKeyDown} // added onKeyDown
         ref={ref}
       />
     </NumberInputRoot>
