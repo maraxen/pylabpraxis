@@ -1,0 +1,1 @@
+export { ManageAssets } from './pages/ManageAssets';

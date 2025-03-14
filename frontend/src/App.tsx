@@ -1,8 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Dashboard } from './pages/Dashboard';
-import { Settings } from './pages/Settings';
-import { RunProtocols } from '@/pages/RunProtocols';
-import { ManageDatabases } from '@/pages/ManageDatabases';
+import { Dashboard } from '@homeDashboard/index';
+import { Settings } from './features/settings/pages/Settings';
+import { RunProtocols } from '@protocols/index';
 import { Vixn } from '@/pages/Vixn';
 import { Documentation } from '@/pages/Documentation';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -25,11 +24,6 @@ export const App = () => {
       <Route path="/protocols" element={
         <ProtectedRoute>
           <RunProtocols />
-        </ProtectedRoute>
-      } />
-      <Route path="/databases" element={
-        <ProtectedRoute>
-          <ManageDatabases />
         </ProtectedRoute>
       } />
       <Route path="/vixn" element={

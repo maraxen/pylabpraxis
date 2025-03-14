@@ -2,8 +2,14 @@ import redis
 import time
 import contextlib
 
+
 @contextlib.contextmanager
-def acquire_lock(redis_client: redis.Redis, resource_name: str, lock_timeout: int = 60, acquire_timeout: int = 10):
+def acquire_lock(
+    redis_client: redis.Redis,
+    resource_name: str,
+    lock_timeout: int = 60,
+    acquire_timeout: int = 10,
+):
     """
     Acquires a lock on a resource using Redis.
 
@@ -39,11 +45,9 @@ def acquire_lock(redis_client: redis.Redis, resource_name: str, lock_timeout: in
         raise
     finally:
         # Only release the lock if it was acquired and the identifier matches
-        if acquired and redis_client.get(lock_name).decode('utf-8') == identifier:
+        if acquired and redis_client.get(lock_name).decode("utf-8") == identifier:
             try:
                 redis_client.delete(lock_name)
             except Exception as e:
                 print(f"Error releasing lock: {e}")
                 raise
-
-

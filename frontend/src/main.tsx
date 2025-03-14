@@ -5,7 +5,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { store } from './store';
 import { App } from './App';
-import { system } from './theme';
+import { system } from '@/styles/theme';
 import { OidcProvider } from "./oidc";
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

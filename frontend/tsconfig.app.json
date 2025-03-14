@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
@@ -22,6 +23,78 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "@features/*": [
+        "./src/features/*"
+      ],
+      "@features": [
+        "./src/features"
+      ],
+      "@shared/*": [
+        "./src/shared/*"
+      ],
+      "@store/*": [
+        "./src/store/*"
+      ],
+      "@config/*": [
+        "./src/config/*"
+      ],
+      "@assets/*": [
+        "./src/shared/assets/*"
+      ],
+      "@styles/*": [
+        "./src/styles/*"
+      ],
+      "@types/*": [
+        "./src/shared/types/*"
+      ],
+      "@services/*": [
+        "./src/services/*"
+      ],
+      "@hooks/*": [
+        "./src/shared/hooks/*"
+      ],
+      "@recipes/*": [
+        "./src/shared/recipes/*"
+      ],
+      "@praxis-ui/*": [
+        "./src/shared/components/ui/*"
+      ],
+      "@praxis-ui": [
+        "./src/shared/components/ui"
+      ],
+      "@templates/*": [
+        "./src/shared/components/ui/templates/*"
+      ],
+      "@layouts/*": [
+        "./src/shared/components/ui/layouts/*"
+      ],
+      "@pages/*": [
+        "./src/shared/components/ui/pages/*"
+      ],
+      "@shared-styles/*": [
+        "./src/shared/styles/*"
+      ],
+      "@utils/*": [
+        "./src/shared/utils/*"
+      ],
+      "@protocols/*": [
+        "./src/features/protocols/*"
+      ],
+      "@homeDashboard/*": [
+        "./src/features/homeDashboard/*",
+      ],
+      "@settings/*": [
+        "./src/features/settings/*"
+      ],
+      "@users/*": [
+        "./src/features/users/*"
+      ],
+      "@vixn/*": [
+        "./src/features/vixn/*"
+      ],
+      "@labAssets/*": [
+        "./src/features/labassets/*"
       ]
     },
     /* Linting */
