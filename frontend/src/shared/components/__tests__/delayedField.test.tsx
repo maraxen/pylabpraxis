@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DelayedField } from '../ui/delayedField';
 import '@testing-library/jest-dom/extend-expect'; // Add this import for jest-dom matchers
@@ -116,7 +115,7 @@ describe('DelayedField Component', () => {
       const onBlur = jest.fn();
       const { rerender } = render(
         <DelayedField value="test value" onBlur={onBlur}>
-          {(value, onChange, onBlur) => (
+          {(value, _onChange, _onBlur) => (
             <div data-testid="test-component">
               <span data-testid="value-display">{value}</span>
             </div>
@@ -130,7 +129,7 @@ describe('DelayedField Component', () => {
       // Rerender with a new value prop
       rerender(
         <DelayedField value="updated value" onBlur={onBlur}>
-          {(value, onChange, onBlur) => (
+          {(value, _onChange, _onBlur) => (
             <div data-testid="test-component">
               <span data-testid="value-display">{value}</span>
             </div>

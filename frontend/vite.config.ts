@@ -40,6 +40,7 @@ export default defineConfig({
       '@vixn': path.resolve(__dirname, './src/features/vixn'),
       '@labAssets': path.resolve(__dirname, './src/features/labassets'),
       '@docs': path.resolve(__dirname, './src/features/docs'),
+      '@test-utils': path.resolve(__dirname, './src/utils/test-utils'),
     }
   }
 })

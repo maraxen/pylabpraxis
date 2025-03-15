@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HStack, Text, Badge, Box } from '@chakra-ui/react';
 import { Tooltip } from "@praxis-ui";
 import { useNestedMapping } from '@protocols/contexts/nestedMappingContext';
@@ -41,45 +41,6 @@ export const ValueDisplay: React.FC<ValueDisplayProps> = ({
     }
   }, [value, isEditing]);
 
-  const parseValue = (val: any, valueType: string): any => {
-    if (val === null || val === undefined) return val;
-
-    const normalizedType = valueType?.toLowerCase();
-    switch (normalizedType) {
-      case 'boolean':
-      case 'bool':
-        return typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
-      case 'number':
-      case 'int':
-      case 'integer':
-      case 'float':
-      case 'double': {
-        const parsed = Number(val);
-        return isNaN(parsed) ? 0 : parsed;
-      }
-      case 'string':
-      case 'str':
-      default:
-        return String(val);
-    }
-  };
-
-  const handleInternalChange = (_name: string, newValue: any) => {
-    // Update local state immediately.
-    setInternalValue(newValue);
-    // Also update editing state immediately.
-    if (onValueChange) {
-      onValueChange(parseValue(newValue, type));
-    }
-  };
-
-  const handleBlur = () => {
-    // Always trigger onValueChange so editingState is updated
-    if (onValueChange) {
-      onValueChange(parseValue(internalValue, type));
-    }
-    onBlur?.();
-  };
 
   if (isEditing && isEditable) {
     // Prepare value constraints

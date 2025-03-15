@@ -1,16 +1,14 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ChakraProvider } from '@chakra-ui/react';
+import { render, screen, fireEvent, waitFor } from '@utils/test_utils';
 import { EditableLabel } from '../ui/EditableLabel';
-import { system } from '../../../styles/theme';
 
 // Mock the DelayedField component
-jest.mock('../../../../shared/components/ui/delayedField', () => ({
+jest.mock('@praxis-ui/delayedField', () => ({
   DelayedField: ({ children, value, onBlur }: any) => {
     // Call the children render prop with helpers
     const renderedChildren = children(
       value,
-      (newValue: any) => { /* This would update the internal value */ },
+      (_newValue: any) => { /* This would update the internal value */ },
       () => onBlur(value)
     );
     return (
@@ -22,7 +20,7 @@ jest.mock('../../../../shared/components/ui/delayedField', () => ({
 }));
 
 // Mock StringInput
-jest.mock('../../../../shared/components/ui/StringInput', () => ({
+jest.mock('@praxis-ui/StringInput', () => ({
   StringInput: React.forwardRef(
     ({ name, value, onChange, onBlur, onKeyDown }: any, ref: any) => (
       <input
@@ -37,13 +35,6 @@ jest.mock('../../../../shared/components/ui/StringInput', () => ({
     )
   )
 }));
-
-// Helper to render with providers
-const renderWithChakra = (ui: React.ReactElement) => {
-  return render(
-    <ChakraProvider theme={system}>{ui}</ChakraProvider>
-  );
-};
 
 describe('EditableLabel Component', () => {
   const defaultProps = {
@@ -62,27 +53,21 @@ describe('EditableLabel Component', () => {
   // Basic rendering tests
   describe('Rendering', () => {
     test('renders text in display mode', () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} />
-      );
+      render(<EditableLabel {...defaultProps} />);
 
       expect(screen.getByTestId('editable-label-text')).toBeInTheDocument();
       expect(screen.getByText('Test Value')).toBeInTheDocument();
     });
 
     test('renders input in edit mode', () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} isEditing={true} />
-      );
+      render(<EditableLabel {...defaultProps} isEditing={true} />);
 
       expect(screen.getByTestId('delayed-field')).toBeInTheDocument();
       expect(screen.getByTestId('string-input')).toBeInTheDocument();
     });
 
     test('uses placeholder when value is empty', () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} value="" placeholder="Enter value" />
-      );
+      render(<EditableLabel {...defaultProps} value="" placeholder="Enter value" />);
 
       expect(screen.getByText('Enter value')).toBeInTheDocument();
     });
@@ -91,27 +76,21 @@ describe('EditableLabel Component', () => {
   // Interaction tests
   describe('Interactions', () => {
     test('calls onEdit when clicked in editable mode', () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} />
-      );
+      render(<EditableLabel {...defaultProps} />);
 
       fireEvent.click(screen.getByTestId('editable-label-text'));
       expect(defaultProps.onEdit).toHaveBeenCalled();
     });
 
     test('does not call onEdit when clicked in non-editable mode', () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} isEditable={false} />
-      );
+      render(<EditableLabel {...defaultProps} isEditable={false} />);
 
       fireEvent.click(screen.getByTestId('editable-label-text'));
       expect(defaultProps.onEdit).not.toHaveBeenCalled();
     });
 
     test('calls onBlur when input is blurred', async () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} isEditing={true} />
-      );
+      render(<EditableLabel {...defaultProps} isEditing={true} />);
 
       const input = screen.getByTestId('string-input');
       fireEvent.blur(input);
@@ -123,9 +102,7 @@ describe('EditableLabel Component', () => {
     });
 
     test('handles empty value edge case correctly', async () => {
-      renderWithChakra(
-        <EditableLabel {...defaultProps} value="" isEditing={true} />
-      );
+      render(<EditableLabel {...defaultProps} value="" isEditing={true} />);
 
       const input = screen.getByTestId('string-input');
       fireEvent.blur(input);
@@ -140,19 +117,14 @@ describe('EditableLabel Component', () => {
   // Appearance tests
   describe('Appearance', () => {
     test('applies correct cursor when editable', () => {
-      const { container } = renderWithChakra(
-        <EditableLabel {...defaultProps} />
-      );
+      render(<EditableLabel {...defaultProps} />);
 
       const textElement = screen.getByTestId('editable-label-text');
-      const styles = window.getComputedStyle(textElement);
       expect(textElement).toHaveStyle('cursor: pointer');
     });
 
     test('applies correct cursor when not editable', () => {
-      const { container } = renderWithChakra(
-        <EditableLabel {...defaultProps} isEditable={false} />
-      );
+      render(<EditableLabel {...defaultProps} isEditable={false} />);
 
       const textElement = screen.getByTestId('editable-label-text');
       expect(textElement).toHaveStyle('cursor: default');
