@@ -1,4 +1,4 @@
-import React, { ReactElement, ReactNode } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import system from '@styles/theme'; // Your system import path

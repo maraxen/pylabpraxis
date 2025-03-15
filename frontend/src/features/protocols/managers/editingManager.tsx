@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { useNestedMapping } from '../contexts/nestedMappingContext';
 import { ValueData } from '../utils/parameterUtils';
 
+// This centralized EditingManager is the exclusive version to be used for all editing logic.
 interface EditingManagerProps {
   children: React.ReactNode;
 }

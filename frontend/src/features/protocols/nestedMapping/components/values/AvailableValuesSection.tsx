@@ -4,7 +4,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { ValueItem } from './ValueItem';
 import { ValueCreator } from './ValueCreator';
 import { useNestedMapping } from '../../../contexts/nestedMappingContext';
-import { useEditing } from '../../../managers/editingManager';
+import { useEditing } from '@protocols/managers/editingManager';
 import { nanoid } from 'nanoid';
 import { ValueData, GroupData } from '@/shared/types/protocol';
 
