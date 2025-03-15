@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { NumberInputField, NumberInputRoot } from "@praxis-ui";
 
-interface NumberInputProps {
+interface NumericInputProps {
   name: string;
   value: any;
   onChange: (name: string, value: any) => void;
@@ -14,7 +14,7 @@ interface NumberInputProps {
   numeric_type?: 'integer' | 'float';
 }
 
-export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>((props, ref) => {
+export const NumericInput = forwardRef<HTMLInputElement, NumericInputProps>((props, ref) => {
   const { name, value, onChange, onFocus, onBlur, onKeyDown, minimum, maximum, step_size, numeric_type } = props;
   const min = minimum || -Infinity;
   const max = maximum || Infinity;
@@ -65,4 +65,4 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>((props
   );
 });
 
-NumberInput.displayName = 'NumberInput';
+NumericInput.displayName = 'NumericInput';

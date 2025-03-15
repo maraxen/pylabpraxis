@@ -20,7 +20,6 @@ export * from './input-group';
 export * from './input';
 export * from './number-input';
 export * from './popover';
-export * from './provider';
 export * from './radio';
 export * from './select';
 export * from './slider';
@@ -28,4 +27,11 @@ export * from './steps';
 export * from './tabs';
 export * from './tooltip';
 export * from './droppable';
+export * from './LimitCounter';
+export * from './EditableLabel';
+export * from './StatusBadge';
+export * from './TabRenderer';
+export * from './ActionButton';
+export * from './DraggableSortableItem';
+
 

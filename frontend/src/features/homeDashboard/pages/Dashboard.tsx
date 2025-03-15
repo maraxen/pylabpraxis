@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, VStack, Heading, HStack, Text } from '@chakra-ui/react';
-import { Button } from '@atoms';
+import { Button } from '@praxis-ui';
 import { useNavigate } from 'react-router-dom';
 import { useOidc } from '@/oidc';
 import { selectUserProfile } from '@users/store/userSlice';

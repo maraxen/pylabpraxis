@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ParameterConfig, GroupData, ValueData, ValueMetadata, NestedConstraint } from '../utils/parameterUtils';
+import {
+  ParameterConfig,
+  ValueMetadata,
+  ValueData,
+  GroupData,
+  BaseValueProps
+} from '@/shared/types/protocol';
 
 // Editing state interface
 interface EditingState {
@@ -14,40 +20,31 @@ interface NestedMappingContextType {
   // Configuration
   config: ParameterConfig;
   parameters?: Record<string, ParameterConfig>;
-
   // Values
   value: Record<string, GroupData>;
   onChange: (value: any) => void;
-
   // Options for groups and values
   effectiveChildOptions: any[];
   effectiveParentOptions: any[];
   localChildOptions: any[];
   localParentOptions: any[];
-
   // Type information
   valueType: string;
-
   // Creation flags
   creatableKey: boolean;
   creatableValue: boolean;
-
   // Creation mode
   creationMode: string | null;
   setCreationMode: (mode: string | null) => void;
-
   // Creation methods
   createValue: (value: any) => string;
   createGroup: (name: string) => string;
-
   // Metadata for values
   valueMetadataMap: Record<string, ValueMetadata>;
   setValueMetadataMap: (metadata: Record<string, ValueMetadata>) => void;
   getValueMetadata: (value: string | ValueData) => ValueMetadata;
-
   // Group editability check
   isEditable: (groupId: string) => boolean;
-
   // Drag and drop info
   dragInfo: {
     activeId: string | null;
@@ -55,7 +52,6 @@ interface NestedMappingContextType {
     overDroppableId: string | null;
     isDragging: boolean;
   };
-
   // Editing functionality
   editingState: EditingState;
   startEditing: (id: string, value: string, group: string | null) => void;
@@ -64,13 +60,11 @@ interface NestedMappingContextType {
   cancelEditing: () => void;
   isEditingItem: (id: string, group: string | null) => boolean;
   inputRef: React.RefObject<HTMLInputElement>;
-
   // Value limits
   getMaxTotalValues: () => number;
   getMaxValuesPerGroup: () => number;
   isGroupFull: (groupId: string) => boolean;
   hasReachedMaxValues: () => boolean;
-
   // Track created but unassigned values
   createdValues: Record<string, ValueData>;
   setCreatedValues: React.Dispatch<React.SetStateAction<Record<string, ValueData>>>;
@@ -102,7 +96,6 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
     overDroppableId: null,
     isDragging: false
   },
-  // Default editing state
   editingState: {
     id: null,
     value: '',
@@ -115,17 +108,15 @@ const NestedMappingContext = createContext<NestedMappingContextType>({
   cancelEditing: () => { },
   isEditingItem: () => false,
   inputRef: { current: null },
-  // Value limits
   getMaxTotalValues: () => Infinity,
   getMaxValuesPerGroup: () => Infinity,
   isGroupFull: () => false,
   hasReachedMaxValues: () => false,
-  // Track created but unassigned values
   createdValues: {},
   setCreatedValues: () => { },
 });
 
-// Provider component
+// Provider props interface
 export interface NestedMappingProviderProps {
   children: ReactNode;
   config: ParameterConfig;
@@ -147,6 +138,7 @@ export interface NestedMappingProviderProps {
   valueType?: string;
 }
 
+// Provider component
 export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
   children,
   config,
@@ -226,12 +218,10 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     // Check if the value comes from parameters
     const keyParam = keyConstraints?.param;
     const valueParam = valueConstraints?.param;
-
     const isFromKeyParam = keyParam && parameters?.[keyParam]?.default &&
       (Array.isArray(parameters[keyParam].default)
         ? parameters[keyParam].default.some((v: any) => String(v) === stringValue)
         : String(parameters[keyParam].default) === stringValue);
-
     const isFromValueParam = valueParam && parameters?.[valueParam]?.default &&
       (Array.isArray(parameters[valueParam].default)
         ? parameters[valueParam].default.some((v: any) => String(v) === stringValue)
@@ -298,7 +288,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
     // Add values from key_param if specified
     if (keyConstraints?.param && parameters?.[keyConstraints.param]?.default) {
-      const paramValues = parameters[keyConstraints.param].default;
+      const paramValues = parameters[keyConstraints.param]?.default;
       if (Array.isArray(paramValues)) {
         paramValues.forEach(val => {
           if (!options.includes(val)) {
@@ -328,7 +318,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
     // Add values from value_param if specified
     if (valueConstraints?.param && parameters?.[valueConstraints.param]?.default) {
-      const paramValues = parameters[valueConstraints.param].default;
+      const paramValues = parameters[valueConstraints.param]?.default;
       if (Array.isArray(paramValues)) {
         paramValues.forEach(val => {
           if (!options.includes(val)) {
@@ -379,22 +369,6 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     }
   }, []);
 
-  // Simple debounce helper
-  function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
-    let timeout: number | undefined;
-    return (...args: Parameters<T>) => {
-      if (timeout !== undefined) clearTimeout(timeout);
-      timeout = window.setTimeout(() => {
-        func(...args);
-      }, wait);
-    };
-  }
-
-  // Debounced onChange function
-  const debouncedOnChange = useRef(debounce((updatedMapping: any) => {
-    onChange(updatedMapping);
-  }, 500)).current;
-
   // Editing functions
   const startEditing = useCallback((id: string, currentValue: string, group: string | null) => {
     // Check if the value is editable
@@ -438,9 +412,10 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
       console.log("finishEditing already in progress, skipping duplicate call.");
       return;
     }
-    finishEditingInProgressRef.current = true;
 
+    finishEditingInProgressRef.current = true;
     const { id, value: newValue, group, originalValue } = editingState;
+
     console.log(`finishEditing called for id=${id} in group=${group} with newValue="${newValue}" (original: "${originalValue}")`);
 
     if (!id) {
@@ -505,15 +480,14 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
         // Update metadata map to include the new value while preserving metadata
         setValueMetadataMap(prev => {
           const newMap = { ...prev };
-
           // Copy metadata from original to new value
           if (prev[originalValue]) {
             newMap[parsedNew] = { ...prev[originalValue] };
             // Keep original metadata for now (may be used elsewhere)
           }
-
           return newMap;
         });
+
       } else if (!group) {
         // Update value in available values section
         if (createdValues[id]) {
@@ -542,12 +516,10 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
           // Update metadata map to include the new value
           setValueMetadataMap(prev => {
             const newMap = { ...prev };
-
             // Copy metadata from original to new value
             if (prev[originalValue]) {
               newMap[parsedNew] = { ...prev[originalValue] };
             }
-
             return newMap;
           });
 
@@ -556,6 +528,7 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
           console.log("No existing created value found for", id);
         }
       }
+
     } catch (err) {
       console.error("Error during finishEditing:", err);
     } finally {
@@ -636,10 +609,8 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
   const isGroupFull = useCallback((groupId: string): boolean => {
     if (!value || !value[groupId]) return false;
-
     const maxPerGroup = getMaxValuesPerGroup();
     const currentCount = value[groupId].values?.length || 0;
-
     return currentCount >= maxPerGroup;
   }, [value, getMaxValuesPerGroup]);
 

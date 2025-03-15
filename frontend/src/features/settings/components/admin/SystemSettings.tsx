@@ -1,6 +1,6 @@
 import React from 'react';
-import { VStack, Button } from '@chakra-ui/react';
-import { Fieldset, FieldsetContent, FieldsetLegend } from "@atoms";
+import { VStack } from '@chakra-ui/react';
+import { Fieldset, FieldsetContent, FieldsetLegend, Button } from "@praxis-ui";
 import { LuDatabase, LuActivity } from "react-icons/lu";
 
 const SystemSettings: React.FC = () => (

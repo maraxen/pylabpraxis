@@ -48,7 +48,6 @@ export const EditableLabel: React.FC<EditableLabelProps> = ({
           disableAutocomplete={disableAutocomplete}
           name="editableField"
           value={localValue}
-          config={{ type: 'string' }}
           onChange={(_, val) => handleChange(val)}
           onBlur={handleBlur}
           onKeyDown={(e) => {

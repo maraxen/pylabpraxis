@@ -1,6 +1,6 @@
 import React from 'react';
 import { VStack, Text } from '@chakra-ui/react';
-import { Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@atoms";
+import { Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@praxis-ui";
 import { useOidc } from '../../../../oidc';
 
 const SecurityTab: React.FC = () => {

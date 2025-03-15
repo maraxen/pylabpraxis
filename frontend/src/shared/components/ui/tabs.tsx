@@ -1,7 +1,7 @@
 "use client"
 
 import { createSlotRecipeContext, type HTMLChakraProps } from "@chakra-ui/react"
-import { tabsRecipe } from "@/recipes/tabs.recipe"
+import { tabsRecipe } from "@recipes/tabs.recipe"
 import * as React from "react"
 
 const TabsContext = React.createContext<{

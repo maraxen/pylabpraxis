@@ -16,93 +16,51 @@ import {
   resetAssets,
   initializeAssets,
   updateAssetOptions,
-} from '@/store/protocolForm/slice';
+} from '@protocols/store/slice';
 import { RootState } from '@/store';
 import {
   Box,
   Heading,
   VStack,
   Input,
-  createListCollection,
   Group,
   Text,
 } from '@chakra-ui/react';
 import { useToast } from '@chakra-ui/toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardBody } from '@/components/ui/card';
-import { Field } from '@/components/ui/field';
-import { LuPlay, LuRefreshCw, LuList, LuSettings } from "react-icons/lu";
-import { api } from '@/services/api';  // Add this import
-import { inputStyles } from '@/styles/form';
 import {
+  Button,
+  Card,
+  CardBody,
+  Field,
   StepsContent,
   StepsItem,
   StepsList,
   StepsNextTrigger,
   StepsPrevTrigger,
   StepsRoot,
-} from "@/components/ui/steps";
-import { AssetConfigurationForm } from '@/components/AssetConfigurationForm';
-import { ParameterConfigurationForm, ParameterConfigurationFormRef } from '@/components/ParameterConfigurationForm';
+} from '@praxis-ui';
+import { LuPlay, LuRefreshCw, LuList, LuSettings } from "react-icons/lu";
+import { api } from '@/services/api';
+import { inputStyles } from '@shared/styles/form';
+import {
+  AssetConfigurationForm,
+  ParameterConfigurationForm,
+  ParameterConfigurationFormRef
+} from '@protocols/components/form';
 import {
   AutoComplete,
   AutoCompleteInput,
   AutoCompleteItem,
   AutoCompleteList,
 } from "@choc-ui/chakra-autocomplete";
+import { ProtocolDetails, Protocol, AssetOption, Asset, ParameterConfig } from '@shared/types';
 
-interface Protocol {
-  name: string;
-  path: string;
-}
 
 interface RunningProtocol {
   name: string;
   status: string;
 }
 
-interface ProtocolDetails {
-  name: string;
-  path: string;
-  description: string;
-  requires_config: boolean;
-  parameters: Record<string, {
-    type: 'string' | 'number' | 'boolean' | 'array' | 'integer' | 'float';
-    required?: boolean;
-    default?: any;
-    description?: string;
-    constraints?: {
-      min?: number;
-      max?: number;
-      step?: number;
-      options?: string[]; // TODO: update constraint
-    };
-  }>;
-  assets: Array<{
-    name: string;
-    type: string;
-    required: boolean;
-    description?: string;
-  }>;
-  has_assets: boolean;
-  has_parameters: boolean;
-}
-
-interface Asset {
-  name: string;
-  type: string;
-  required: boolean;
-  description?: string;
-  is_available?: boolean;
-  options?: string[];
-}
-
-interface AssetOption {
-  name: string;
-  type: string;
-  is_available: boolean;
-  description?: string;
-}
 
 interface AssetConfig {
   [key: string]: string | number;
@@ -119,19 +77,6 @@ interface ProtocolListItem extends Protocol {
 interface DeckFileItem {
   label: string;
   value: string;
-}
-
-interface ParameterConfig {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'integer' | 'float';
-  required?: boolean;
-  default?: any;
-  description?: string;
-  constraints?: {
-    min?: number;
-    max?: number;
-    step?: number;
-    options?: string[];
-  };
 }
 
 export const RunProtocols: React.FC = () => {
@@ -219,8 +164,8 @@ export const RunProtocols: React.FC = () => {
 
   const fetchAvailableAssets = async () => {
     try {
-      const assetTypes = new Set(protocolDetails.assets.map((asset: Asset) => asset.type));
-      const assetPromises = Array.from(assetTypes).map(async (type: string) => {  // Add type annotation here
+      const assetTypes: Set<string> = new Set(protocolDetails.assets.map((asset: Asset) => asset.type));
+      const assetPromises = Array.from(assetTypes).map(async (type: string) => {
         const response = await api.get<AssetOption[]>(`/api/v1/assets/available/${type}`);
         dispatch(updateAssetOptions({ type, options: response.data }));
         return [type, response.data];

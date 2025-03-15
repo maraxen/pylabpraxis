@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from '@chakra-ui/react';
 import { Card, CardBody } from '@praxis-ui';
-import { AssetConfigurationForm } from '../components/assets/AssetConfigurationForm';
+import { AssetConfigurationForm } from '../components/form/AssetConfigurationForm';
 
 interface ProtocolAssetTemplateProps {
   assets: Array<{

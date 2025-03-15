@@ -1,16 +1,14 @@
-// filepath: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/frontend/src/features/protocols/components/form/ParameterConfigurationForm.tsx
 import React, { useState, useImperativeHandle, forwardRef } from 'react';
-import { VStack, Badge, Box, Text, Switch } from '@chakra-ui/react';
+import { VStack } from '@chakra-ui/react';
 import { useToast } from '@chakra-ui/toast';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Button } from '@praxis-ui';
 import { RootState } from '@/store';
-import { updateParameterValue } from '@/store/protocolForm/slice';
+import { updateParameterValue } from '@protocols/store/slice';
 
 import { ParameterField } from '../common/ParameterField';
 
-import { ParameterConfig } from '@/types/protocol';
+import { ParameterConfig } from '@shared/types';
 
 interface Props {
   parameters: Record<string, ParameterConfig>;
@@ -27,7 +25,6 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
     const parameterStates = useSelector((state: RootState) => state.protocolForm.parameters);
     const [localValues, setLocalValues] = useState<Record<string, any>>({});
     const [errorState, setErrorState] = useState<Record<string, boolean>>({}); // Track error state per parameter
-    const [isVisualMappingOpen, setIsVisualMappingOpen] = useState(false);
 
     // Save changes to Redux store
     const saveChanges = () => {
@@ -47,7 +44,7 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
       }));
     };
 
-    const handleTagRemove = (name: string, index: number) => {
+    const handleRemove = (name: string, index: number) => {
       const currentValue = localValues[name] || parameterStates[name]?.currentValue;
       if (Array.isArray(currentValue)) {
         setLocalValues(prev => ({
@@ -72,27 +69,9 @@ export const ParameterConfigurationForm = forwardRef<ParameterConfigurationFormR
             config={config}
             value={getValue(name)}
             onChange={handleParameterChange}
+            onRemove={handleRemove}
           />
         ))}
-        <Button
-          onClick={() => setIsVisualMappingOpen(true)}
-          className="outline"
-          colorScheme="brand"
-        >
-          Open Visual Mapping
-        </Button>
-        {isVisualMappingOpen && (
-          <VisualMappingModal
-            isOpen={isVisualMappingOpen}
-            onClose={() => setIsVisualMappingOpen(false)}
-            parameters={parameters}
-            localValues={localValues}
-            onSubmit={(updatedValues) => {
-              setLocalValues(updatedValues);
-              setIsVisualMappingOpen(false);
-            }}
-          />
-        )}
       </VStack>
     );
   }

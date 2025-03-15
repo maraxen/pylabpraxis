@@ -1,6 +1,6 @@
 import React from 'react';
 import { VStack, Text } from '@chakra-ui/react';
-import { Card, CardBody } from "@atoms";
+import { Card, CardBody } from "@praxis-ui";
 import { useOidc } from '../../../../oidc';
 import { selectIsAdmin } from '../../../users/store/userSlice';
 import UserManagement from './UserManagement';

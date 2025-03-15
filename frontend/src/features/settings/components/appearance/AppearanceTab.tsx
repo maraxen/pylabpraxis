@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text } from '@chakra-ui/react';
-import { Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@atoms";
+import { Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@praxis-ui";
 
 const AppearanceTab: React.FC = () => (
   <Card>

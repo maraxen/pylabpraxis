@@ -21,7 +21,7 @@ interface ArrayInputProps {
   onBlur?: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   valueRenderer?: (values: any[]) => React.ReactNode;
-  onRemove?: (index: number) => void;
+  onRemove?: (name: string, index: number) => void;
 }
 
 export const ArrayInput: React.FC<ArrayInputProps> = ({
@@ -43,12 +43,12 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
   const isAtMaxLength = maxLen ? currentValues.length >= maxLen : false;
 
 
-  const handleRemove = (index: number) => {
+  const handleRemove = (name: string, index: number) => {
     const currentValue = currentValues;
     if (Array.isArray(currentValue)) {
       onChange(name, [...currentValue.slice(0, index), ...currentValue.slice(index + 1)]);
       if (onRemove) {
-        onRemove(index);
+        onRemove(name, index);
       }
     }
   };
@@ -72,7 +72,7 @@ export const ArrayInput: React.FC<ArrayInputProps> = ({
         label={String(val)}
         variant="solid"
         colorScheme="brand"
-        onRemove={() => handleRemove(index)}
+        onRemove={() => handleRemove(val, index)}
       />
     ))
   );

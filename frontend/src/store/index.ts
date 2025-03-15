@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
-import settingsReducer from '@/store/settingsSlice';
-import userReducer from '@/store/userSlice';
-import protocolFormReducer from './protocolForm/slice';
+import settingsReducer from '@settings/store/settingsSlice';
+import userReducer from '@users/store/userSlice';
+import protocolFormReducer from '@protocols/store/slice';
 
 export const store = configureStore({
   reducer: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { VStack, HStack, Text } from '@chakra-ui/react';
-import { Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@atoms";
+import { Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@praxis-ui";
 
 interface ProtocolsTabProps {
   directories: string[];

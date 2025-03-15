@@ -2,7 +2,7 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Box } from '@chakra-ui/react';
 
-interface DroppableProps {
+interface DroppableAreaProps {
   children?: React.ReactNode;
   id: string;
   defaultFull: boolean;
@@ -12,7 +12,7 @@ interface DroppableProps {
 }
 
 
-export const DroppableGroup: React.FC<DroppableProps> = ({
+export const DroppableArea: React.FC<DroppableAreaProps> = ({
   children,
   id,
   defaultFull,

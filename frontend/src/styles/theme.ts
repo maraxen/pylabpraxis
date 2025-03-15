@@ -1,12 +1,15 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
-import { buttonRecipe } from './shared/recipes/button.recipe';
-import { tabsRecipe } from './shared/recipes/tabs.recipe';
-import { cardRecipe } from './shared/recipes/card.recipe';
-import { fieldsetRecipe } from './shared/recipes/fieldset.recipe';
-import { fieldRecipe } from './shared/recipes/field.recipe';
-import { selectRecipe } from './shared/recipes/select.recipe';
-import { inputRecipe } from './shared/recipes/input.recipe';
-import { containerRecipe } from './shared/recipes/container.recipe';
+import {
+  buttonRecipe,
+  tabsRecipe,
+  cardRecipe,
+  fieldsetRecipe,
+  fieldRecipe,
+  selectRecipe,
+  inputRecipe,
+  containerRecipe
+} from '@recipes/index';
+
 
 const customConfig = defineConfig({
   conditions: {

@@ -1,7 +1,7 @@
 "use client"
 
 import { createSlotRecipeContext, type HTMLChakraProps, Portal, mergeRefs } from "@chakra-ui/react"
-import { selectRecipe } from "@/recipes/select.recipe"
+import { selectRecipe } from "@recipes/select.recipe"
 import { LuChevronDown } from "react-icons/lu"
 import * as React from "react"
 

@@ -55,6 +55,7 @@ export const EditingManager: React.FC<EditingManagerProps> = ({ children }) => {
   return <>{children}</>;
 };
 
+
 // Custom hook to use editing functionality
 export const useEditing = () => {
   const {

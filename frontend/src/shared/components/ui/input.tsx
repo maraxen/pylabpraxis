@@ -1,7 +1,7 @@
 "use client"
 
 import { chakra, useRecipe, type RecipeVariantProps } from "@chakra-ui/react"
-import { inputRecipe } from "@/recipes/input.recipe"
+import { inputRecipe } from "@recipes/input.recipe"
 import * as React from "react"
 
 type InputVariantProps = RecipeVariantProps<typeof inputRecipe>

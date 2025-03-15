@@ -1,6 +1,6 @@
 import React from 'react';
 import { VStack, HStack, Text } from '@chakra-ui/react';
-import { Avatar, Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@atoms";
+import { Avatar, Button, Card, CardBody, Fieldset, FieldsetContent, FieldsetLegend } from "@praxis-ui";
 import { useOidc } from '../../../../oidc';
 import { selectUserProfile } from '../../../users/store/userSlice';
 

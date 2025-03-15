@@ -1,0 +1,125 @@
+import React, { useState } from 'react';
+import { Box } from '@chakra-ui/react';
+import { GroupHeader } from './GroupHeader';
+import { GroupDroppableArea } from './GroupDroppableArea';
+import { ValueItem } from '../values/ValueItem';
+import { ValueCreator } from '../values/ValueCreator';
+import { useNestedMapping } from '../../../contexts/nestedMappingContext';
+import { GroupData } from '../../../utils/parameterUtils';
+
+interface GroupItemProps {
+  groupId: string;
+  group: GroupData;
+  onDelete: () => void;
+  isHighlighted?: boolean;
+}
+
+export const GroupItem: React.FC<GroupItemProps> = ({
+  groupId,
+  group,
+  onDelete,
+  isHighlighted = false
+}) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const {
+    onChange,
+    value,
+    creationMode,
+    config,
+    isEditable
+  } = useNestedMapping();
+
+  // Get constraints from config
+  const keyConstraints = config?.constraints?.key_constraints || {};
+  const valueConstraints = config?.constraints?.value_constraints || {};
+
+  // Check if group is editable
+  const groupEditable = isEditable(groupId);
+
+  // Check if group contains parameter values
+  const groupHasParameterValues = group.values?.some(v => v.isFromParam) || false;
+
+  // Start editing the group name
+  const startEditingName = () => {
+    if (groupEditable) {
+      setIsEditingName(true);
+    }
+  };
+
+  // Save the group name
+  const saveGroupName = (newName: string) => {
+    const updatedValue = {
+      ...value,
+      [newName]: {
+        ...group,
+        name: newName
+      }
+    };
+    // Remove old key if name changed
+    if (newName !== groupId) {
+      delete updatedValue[groupId];
+    }
+    onChange(updatedValue);
+    setIsEditingName(false);
+  };
+
+  // Cancel editing the group name
+  const cancelEditName = () => {
+    setIsEditingName(false);
+  };
+
+  // Sort values if they exist
+  const sortedValues = group.values ? [...group.values].sort((a, b) => {
+    return a.id.localeCompare(b.id);
+  }) : [];
+
+  return (
+    <Box
+      borderWidth={1}
+      borderRadius="md"
+      borderColor={isHighlighted ? "brand.500" : "gray.200"}
+      _dark={{ borderColor: isHighlighted ? "brand.500" : "gray.600" }}
+      transition="border-color 0.2s"
+      bg="white"
+      overflow="hidden"
+    >
+      <Box px={4} py={2}>
+        <GroupHeader
+          groupId={groupId}
+          groupName={groupId}
+          isEditingName={isEditingName}
+          startEditingName={startEditingName}
+          saveGroupName={saveGroupName}
+          cancelEditName={cancelEditName}
+          groupEditable={groupEditable}
+          hasParameterValues={groupHasParameterValues}
+          allowDelete={sortedValues.length === 0}
+          onDelete={onDelete}
+          keyConstraints={keyConstraints}
+          constraints={valueConstraints}
+        />
+      </Box>
+
+      <Box p={4}>
+        <GroupDroppableArea groupId={groupId}>
+          {sortedValues.map((item) => (
+            <ValueItem
+              key={item.id}
+              id={item.id}
+              value={item.value}
+              type={item.type}
+              isFromParam={item.isFromParam}
+              paramSource={item.paramSource}
+              isEditable={item.isEditable}
+            />
+          ))}
+
+          {/* Value creator component */}
+          {creationMode === 'value' && (
+            <ValueCreator value={group.values || []} />
+          )}
+        </GroupDroppableArea>
+      </Box>
+    </Box>
+  );
+};

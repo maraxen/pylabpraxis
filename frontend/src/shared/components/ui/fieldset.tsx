@@ -1,7 +1,7 @@
 "use client"
 
 import { createSlotRecipeContext, type HTMLChakraProps } from "@chakra-ui/react"
-import { fieldsetRecipe } from "@/recipes/fieldset.recipe"
+import { fieldsetRecipe } from "@recipes/fieldset.recipe"
 import { LuChevronDown } from "react-icons/lu"
 import * as React from "react"
 

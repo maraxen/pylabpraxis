@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { useNestedMapping } from '../contexts/nestedMappingContext';
-import { ValueMetadata } from '../utils/parameterUtils';
+import { ValueMetadata } from '@shared/types';
 
 interface MetadataManagerProps {
   children: React.ReactNode;

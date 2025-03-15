@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
     "types": [
-      "@types/testing-library__jest-dom"
-    ]
+      "@types/testing-library__jest-dom",
+      "@types/node"
+    ],
+    "target": "esnext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react-jsx"
   },
   "files": [],
   "references": [

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Heading } from '@chakra-ui/react';
-import { Tabs, TabList, TabTrigger } from "@atoms";
-import { TabRenderer } from "@atoms/TabRenderer";
+import { Tabs, TabList, TabTrigger, TabRenderer } from "@praxis-ui";
 import {
   LuUser,
   LuPalette,

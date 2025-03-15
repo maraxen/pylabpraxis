@@ -19,82 +19,85 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": "/Users/mar/Dropbox (MIT)/PLR_workspace/pylabpraxis/frontend/",
+    "baseUrl": "./",
     "paths": {
       "@/*": [
         "src/*"
       ],
       "@features/*": [
-        "./src/features/*"
+        "src/features/*"
       ],
       "@features": [
-        "./src/features"
+        "src/features"
       ],
       "@shared/*": [
-        "./src/shared/*"
+        "src/shared/*"
       ],
       "@store/*": [
-        "./src/store/*"
+        "src/store/*"
       ],
       "@config/*": [
-        "./src/config/*"
+        "src/config/*"
       ],
       "@assets/*": [
-        "./src/shared/assets/*"
+        "src/shared/assets/*"
       ],
       "@styles/*": [
-        "./src/styles/*"
+        "src/styles/*"
       ],
       "@types/*": [
-        "./src/shared/types/*"
+        "src/shared/types/*"
       ],
       "@services/*": [
-        "./src/services/*"
+        "src/services/*"
       ],
       "@hooks/*": [
-        "./src/shared/hooks/*"
+        "src/shared/hooks/*"
       ],
       "@recipes/*": [
-        "./src/shared/recipes/*"
+        "src/shared/recipes/*"
       ],
       "@praxis-ui/*": [
-        "./src/shared/components/ui/*"
+        "src/shared/components/ui/*"
       ],
       "@praxis-ui": [
-        "./src/shared/components/ui"
+        "src/shared/components/ui"
       ],
       "@templates/*": [
-        "./src/shared/components/ui/templates/*"
+        "src/shared/components/ui/templates/*"
       ],
       "@layouts/*": [
-        "./src/shared/components/ui/layouts/*"
+        "src/shared/components/ui/layouts/*"
       ],
       "@pages/*": [
-        "./src/shared/components/ui/pages/*"
+        "src/shared/components/ui/pages/*"
       ],
       "@shared-styles/*": [
-        "./src/shared/styles/*"
+        "src/shared/styles/*"
       ],
       "@utils/*": [
-        "./src/shared/utils/*"
+        "src/shared/utils/*"
       ],
       "@protocols/*": [
-        "./src/features/protocols/*"
+        "src/features/protocols/*"
       ],
       "@homeDashboard/*": [
-        "./src/features/homeDashboard/*",
+        "src/features/homeDashboard/*"
       ],
       "@settings/*": [
-        "./src/features/settings/*"
+        "src/features/settings/*"
       ],
       "@users/*": [
-        "./src/features/users/*"
+        "src/features/users/*"
       ],
       "@vixn/*": [
-        "./src/features/vixn/*"
+        "src/features/vixn/*"
       ],
       "@labAssets/*": [
-        "./src/features/labassets/*"
+        "src/features/labassets/*"
+      ],
+      "@docs/*": [
+        "src/features/docs/*"
       ]
     },
     /* Linting */
