@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@utils/test_utils';
 import { DraggableSortableItem } from '../ui/DraggableSortableItem';
 
@@ -173,7 +172,7 @@ describe('DraggableSortableItem Component', () => {
 
   describe('Metadata', () => {
     it('includes metadata in the draggable data', () => {
-      const metadata = { test: 'value', nested: { prop: true } };
+      const metadata = { id: 'test-metadata-id', test: 'value', nested: { prop: true } };
       render(
         <DraggableSortableItem
           {...defaultProps}

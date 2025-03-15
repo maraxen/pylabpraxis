@@ -26,7 +26,7 @@ export * from './slider';
 export * from './steps';
 export * from './tabs';
 export * from './tooltip';
-export * from './droppable';
+export * from './DroppableArea';
 export * from './LimitCounter';
 export * from './EditableLabel';
 export * from './StatusBadge';

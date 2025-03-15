@@ -103,13 +103,13 @@ describe('ArrayInput Component', () => {
   describe('Interactions', () => {
     it('calls onChange when values change', () => {
       render(<ArrayInput {...defaultProps} />);
-      
+
       // Get the mock function from the component
       const onChangeHandler = defaultProps.onChange;
-      
+
       // Call the onChange handler with the new values
       const newValues = ['item1', 'item2', 'item3'];
-      
+
       // Use the mock directly to simulate the change
       onChangeHandler('testArray', newValues);
       expect(defaultProps.onChange).toHaveBeenCalledWith('testArray', newValues);
@@ -137,7 +137,7 @@ describe('ArrayInput Component', () => {
 
       // Get the onChange handler from defaultProps
       const onChangeHandler = defaultProps.onChange;
-      
+
       // Call onChange directly with the expected new values
       const newValues = [...defaultProps.value, 'item3'];
       onChangeHandler('testArray', newValues);
@@ -150,13 +150,13 @@ describe('ArrayInput Component', () => {
 
       // Original implementation tries to use element.props which doesn't exist
       // Instead, we'll simulate the behavior without trying to access props
-      
+
       // Reset the mock to ensure we can check if it's called
       defaultProps.onChange.mockClear();
-      
+
       // The component should prevent adding 'item1' since it's already in the array
       // Since we're testing "not called", we don't need to explicitly call anything
-      
+
       expect(defaultProps.onChange).not.toHaveBeenCalled();
     });
   });
@@ -189,10 +189,10 @@ describe('ArrayInput Component', () => {
 
       // Reset the mock to ensure we can check if it's called
       defaultProps.onChange.mockClear();
-      
+
       // Similar to the duplicate test, we're testing that onChange isn't called
       // so we don't need to explicitly simulate the action
-      
+
       expect(defaultProps.onChange).not.toHaveBeenCalled();
     });
   });
