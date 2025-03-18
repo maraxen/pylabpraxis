@@ -70,7 +70,7 @@ export const DroppableArea: React.FC<DroppableAreaProps> = ({
     >
       {children}
       {/* Show a status indicator as needed */}
-      {isFull && (
+      {isFullStatus && (
         <Box
           position="absolute"
           top={1}
@@ -99,7 +99,7 @@ export const DroppableArea: React.FC<DroppableAreaProps> = ({
           fontSize="sm"
           py={4}
         >
-          {isFull ? "Full" : "Drop here"}
+          {isFullStatus ? "Full" : "Drop here"}
         </Box>
       )}
     </Box>

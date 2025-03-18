@@ -5,6 +5,9 @@
 /**
  * Clears any storage related to the application that may be causing quota issues
  */
+
+import { nanoid } from 'nanoid';
+
 export const clearExcessStorage = (): boolean => {
   try {
     // Remove only keys matching our application prefix.
@@ -21,14 +24,13 @@ export const clearExcessStorage = (): boolean => {
 };
 
 /**
- * Generate a compact ID that doesn't rely on UUID or other storage-intensive methods
+ * Generate a compact ID using nanoid for efficiency
+ *
+ * @param prefix Optional prefix to add to the ID
+ * @param length Optional length of the nanoid (default: 8)
+ * @returns A unique compact ID string
  */
-export const generateCompactId = (prefix: string = ''): string => {
-  if (crypto && typeof crypto.randomUUID === 'function') {
-    return `${prefix}${crypto.randomUUID()}`;
-  }
-  // Fallback to timestamp + random number if crypto.randomUUID is unavailable
-  const timestamp = Date.now().toString(36);
-  const randomPart = Math.floor(Math.random() * 1000000).toString(36);
-  return `${prefix}${timestamp}${randomPart}`;
+export const generateCompactId = (prefix: string = '', length: number = 8): string => {
+  // Use nanoid for efficient ID generation
+  return `${prefix}${nanoid(length)}`;
 };

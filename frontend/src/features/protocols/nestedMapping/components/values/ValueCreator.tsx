@@ -4,9 +4,10 @@ import { Button } from '@praxis-ui';
 import { InputRenderer } from '@/features/protocols/components/common/InputRenderer';
 import { useNestedMapping } from '@protocols/contexts/nestedMappingContext';
 import { LuPlus } from 'react-icons/lu';
+import { ValueData } from '@shared/types/protocol';
 
 interface ValueCreatorProps {
-  value: Record<string, any>;
+  value: ValueData[];
 }
 
 export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
@@ -23,19 +24,17 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
 
   const DEBUG_ENABLED = false;
   const inputRef = useRef<HTMLInputElement>(null);
-  const [newValue, setNewValue] = useState<any>('');
+  const [newValue, setNewValue] = useState<string | number | boolean>('');
 
-  // Memoize the check function
-  const isValueInAnyGroup = useCallback((opt: string) => {
-    return Object.values(value || {}).some((groupValues: any) => {
-      if (!groupValues) return false;
-      const values = Array.isArray(groupValues)
-        ? groupValues
-        : (groupValues.values || []);
-      return values?.some((v: any) =>
-        typeof v === 'object' && v !== null ? String(v.value) === opt : String(v) === opt
-      );
-    });
+  // Memoize the check function - properly type the values
+  const isValueInAnyGroup = useCallback((opt: string): boolean => {
+    if (!Array.isArray(value)) return false;
+
+    return value.some((item: ValueData) =>
+      typeof item.value === 'object' ?
+        String(item.value) === opt :
+        String(item.value) === opt
+    );
   }, [value]);
 
   // Available options that aren't already in a group
@@ -83,7 +82,6 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
     return (
       <Button
         onClick={() => {
-          console.log("Value button clicked, setting mode to value");
           setCreationMode('value');
         }}
         disabled={!canCreate}
@@ -93,7 +91,6 @@ export const ValueCreator: React.FC<ValueCreatorProps> = ({ value }) => {
       </Button>
     );
   }
-
 
   return (
     <Box width="100%" borderWidth={1} borderRadius="md" p={4} bg="white" _dark={{ bg: "gray.700" }}>

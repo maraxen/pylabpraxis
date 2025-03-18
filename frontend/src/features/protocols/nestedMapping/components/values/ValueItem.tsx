@@ -65,11 +65,13 @@ export const ValueItem: React.FC<ValueItemProps> = ({
   // Handle value changes
   const handleValueChange = (newValue: any) => {
     setLocalValue(newValue);
-    onValueChange?.(newValue);
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
   };
 
-  // Create action buttons if we have callbacks
-  const actionButtons = (isEditable || onDelete) ? (
+  // Create action buttons - Always create them but conditionally render
+  const actionButtons = (
     <HStack gap={1}>
       {isEditable && !isEditing && (
         <IconButton
@@ -78,7 +80,7 @@ export const ValueItem: React.FC<ValueItemProps> = ({
           variant="ghost"
           onClick={(e) => {
             e.stopPropagation();
-            onEdit?.();
+            if (onEdit) onEdit();
           }}
         >
           <LuPencil size="1em" />
@@ -99,7 +101,10 @@ export const ValueItem: React.FC<ValueItemProps> = ({
         </IconButton>
       )}
     </HStack>
-  ) : undefined;
+  );
+
+  // Only show action buttons if there are buttons to show
+  const showActionButtons = (isEditable || onDelete) ? actionButtons : undefined;
 
   return (
     <DraggableSortableItem
@@ -116,7 +121,7 @@ export const ValueItem: React.FC<ValueItemProps> = ({
       isEditing={isEditing}
       isDraggable={!isEditing && isEditable}
       dragMode={dragMode}
-      actionButtons={actionButtons}
+      actionButtons={showActionButtons}
       onFocus={onFocus}
       onBlur={onBlur}
     >

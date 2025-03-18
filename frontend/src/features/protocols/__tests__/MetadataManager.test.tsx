@@ -1,19 +1,18 @@
-import React from 'react';
-import { render, renderHook, act } from '@testing-library/react';
-import { MetadataManager, useValueMetadata } from '../managers/MetadataManager';
+import { render, renderHook, act, screen } from '@utils/test_utils';
+import { MetadataManager, useValueMetadata } from '@protocols/managers/MetadataManager';
 
 // Mock the context provider
 jest.mock('../contexts/nestedMappingContext', () => ({
   useNestedMapping: jest.fn().mockReturnValue({
-    localChildOptions: ['value1', 'value2', 42, true],
+    localChildOptions: ['a', 'b', 100],
     valueMetadataMap: {},
     setValueMetadataMap: jest.fn(),
     getValueMetadata: jest.fn().mockImplementation((value) => {
-      const valueType = typeof value;
       return {
-        type: valueType,
+        type: typeof value,
         isEditable: true,
-        isFromParam: false
+        isFromParam: false,
+        paramSource: undefined
       };
     })
   })
@@ -135,7 +134,7 @@ describe('MetadataManager Component', () => {
         localChildOptions: ['value1', 'value2'],
         valueMetadataMap: initialMetadata,
         setValueMetadataMap: mockSetMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => {
+        getValueMetadata: jest.fn().mockImplementation((_value) => {
           return {
             type: 'string',
             isEditable: true,
@@ -167,6 +166,29 @@ describe('MetadataManager Component', () => {
       const updatedMetadata = mockSetMetadata.mock.calls[0][0];
       expect(Object.keys(updatedMetadata)).toHaveLength(0);
     });
+  });
+
+  test('renders children and updates metadata based on localChildOptions', () => {
+    const mockSetValueMetadataMap = jest.fn();
+    require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
+      localChildOptions: ['a', 'b'],
+      valueMetadataMap: {},
+      setValueMetadataMap: mockSetValueMetadataMap,
+      getValueMetadata: jest.fn().mockImplementation((val) => ({
+        type: typeof val,
+        isEditable: true,
+        isFromParam: false,
+        paramSource: undefined
+      }))
+    });
+
+    render(
+      <TestComponent>
+        <div data-testid="content">Content</div>
+      </TestComponent>
+    );
+    expect(mockSetValueMetadataMap).toHaveBeenCalled();
+    expect(screen.getByText('Content')).toBeInTheDocument();
   });
 });
 
@@ -208,7 +230,7 @@ describe('useValueMetadata Hook', () => {
       };
       require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
         valueMetadataMap: mockMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => ({
+        getValueMetadata: jest.fn().mockImplementation((_value) => ({
           type: 'string',
           isEditable: false,
           isFromParam: false,
@@ -236,7 +258,7 @@ describe('useValueMetadata Hook', () => {
       };
       require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
         valueMetadataMap: mockMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => ({
+        getValueMetadata: jest.fn().mockImplementation((_value) => ({
           type: 'string',
           isEditable: false,
           isFromParam: false
@@ -256,7 +278,7 @@ describe('useValueMetadata Hook', () => {
       };
       require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
         valueMetadataMap: mockMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => ({
+        getValueMetadata: jest.fn().mockImplementation((_value) => ({
           type: 'unknown',
           isEditable: true,
           isFromParam: false
@@ -277,7 +299,7 @@ describe('useValueMetadata Hook', () => {
       };
       require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
         valueMetadataMap: mockMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => ({
+        getValueMetadata: jest.fn().mockImplementation((_value) => ({
           type: 'string',
           isEditable: true,
           isFromParam: false
@@ -296,7 +318,7 @@ describe('useValueMetadata Hook', () => {
       };
       require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
         valueMetadataMap: mockMetadata,
-        getValueMetadata: jest.fn().mockImplementation((value) => ({
+        getValueMetadata: jest.fn().mockImplementation((_value) => ({
           type: 'string',
           isEditable: true,
           isFromParam: false,
@@ -321,6 +343,34 @@ describe('useValueMetadata Hook', () => {
 
       const { result } = renderHook(() => useValueMetadata());
       expect(result.current.allMetadata).toEqual(mockMetadata);
+    });
+  });
+
+  test('returns correct metadata for existing and new values', () => {
+    const mockMetadata = {
+      'a': { type: 'string', isEditable: false, isFromParam: false, paramSource: 'custom' }
+    };
+    require('../contexts/nestedMappingContext').useNestedMapping.mockReturnValue({
+      localChildOptions: ['a', 'c'],
+      valueMetadataMap: mockMetadata,
+      setValueMetadataMap: jest.fn(),
+      getValueMetadata: jest.fn().mockImplementation((value) => ({
+        type: typeof value,
+        isEditable: true,
+        isFromParam: false,
+        paramSource: undefined
+      }))
+    });
+
+    const { result } = renderHook(() => useValueMetadata());
+    // existing metadata is preserved
+    expect(result.current.getMetadata('a')).toEqual(mockMetadata['a']);
+    // for new value, hook returns value from getValueMetadata
+    expect(result.current.getMetadata('c')).toEqual({
+      type: 'string',
+      isEditable: true,
+      isFromParam: false,
+      paramSource: undefined
     });
   });
 });

@@ -29,7 +29,7 @@ export const GroupDroppableArea: React.FC<GroupDroppableAreaProps> = ({
   return (
     <DroppableArea
       id={groupId}
-      defaultFull={isFull}
+      defaultFull={false}
       isOver={isOver}
       isDragging={isDragging}
       isFull={() => isFull}

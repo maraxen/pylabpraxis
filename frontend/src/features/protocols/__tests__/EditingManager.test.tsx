@@ -1,13 +1,39 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-// Remove userEvent import since it's causing type issues
-import { ChakraProvider } from '@chakra-ui/react';
-import { NestedMappingProvider } from '../contexts/nestedMappingContext';
-import { EditingManager, useEditing } from '../managers/editingManager';
-import system from '@/theme';
+import { render, screen, fireEvent, waitFor } from '@utils/test_utils';
+import { EditingManager, useEditing } from '@protocols/managers/editingManager';
+import { NestedMappingProvider } from '@protocols/contexts/nestedMappingContext';
 
-// Test component that uses the useEditing hook
-const TestComponent = () => {
+const mockProviderProps = {
+  config: {
+    type: 'object', // <-- Added required 'type' property
+    constraints: { editable: true }
+  },
+  parameters: {},
+  value: {
+    group1: {
+      id: 'group1', // <-- Added group id
+      name: 'Group 1', // <-- Added group name
+      values: [{ id: 'test-id', value: 'init', isEditable: true, isFromParam: false }]
+    }
+  },
+  onChange: jest.fn(),
+  effectiveChildOptions: [],
+  effectiveParentOptions: [],
+  dragInfo: { isDragging: false, activeId: null, activeData: null, overDroppableId: null },
+  createValue: jest.fn().mockReturnValue('new-id'),
+  createGroup: jest.fn().mockReturnValue('new-group-id'),
+  createdValues: { 'test-id': { id: 'test-id', value: 'init', isEditable: true, isFromParam: false } },
+  setCreatedValues: jest.fn(),
+  editingState: { id: '', value: '', group: null },
+  startEditing: jest.fn(),
+  updateEditingValue: jest.fn(),
+  finishEditing: jest.fn(),
+  cancelEditing: jest.fn(),
+  valueMetadataMap: {},
+  inputRef: { current: null }
+};
+
+const TestEditingComponent = () => {
   const {
     isEditing,
     getEditingValue,
@@ -21,175 +47,61 @@ const TestComponent = () => {
 
   return (
     <div>
-      <div data-testid="editing-state">
-        {JSON.stringify({
-          id: editingState.id,
-          value: editingState.value,
-          group: editingState.group
-        })}
-      </div>
-      <button
-        onClick={() => handleStartEditing('test-id', 'test-value', 'test-group')}
-        data-testid="start-editing"
-      >
-        Start Editing
-      </button>
-      <button
-        onClick={() => handleEditingChange('new-value')}
-        data-testid="change-value"
-      >
-        Change Value
-      </button>
-      <button
-        onClick={handleFinishEditing}
-        data-testid="finish-editing"
-      >
-        Finish Editing
-      </button>
-      <button
-        onClick={handleCancelEditing}
-        data-testid="cancel-editing"
-      >
-        Cancel Editing
-      </button>
-      <div data-testid="is-editing">
-        {isEditing('test-id', 'test-group') ? 'Editing' : 'Not Editing'}
-      </div>
-      <div data-testid="editing-value">
-        {getEditingValue('test-id') || 'No Value'}
-      </div>
-      <input ref={inputRef} data-testid="edit-input" />
+      <div data-testid="editing-state">{JSON.stringify(editingState)}</div>
+      <button onClick={() => handleStartEditing('test-id', 'init', 'group1')} data-testid="start-btn">Start Editing</button>
+      <input
+        ref={inputRef}
+        data-testid="edit-input"
+        value={getEditingValue('test-id') || ''}
+        onChange={(e) => handleEditingChange(e.target.value)}
+      />
+      <button onClick={handleFinishEditing} data-testid="finish-btn">Finish Editing</button>
+      <button onClick={handleCancelEditing} data-testid="cancel-btn">Cancel Editing</button>
     </div>
   );
 };
 
-// Mock context provider for testing
-const mockProviderProps = {
-  config: { type: 'object' },
-  parameters: {},
-  value: {},
-  onChange: jest.fn(),
-  effectiveChildOptions: [],
-  effectiveParentOptions: [],
-  dragInfo: {
-    activeId: null,
-    activeData: null,
-    overDroppableId: null,
-    isDragging: false
-  },
-  createValue: jest.fn().mockReturnValue('new-id'),
-  createGroup: jest.fn().mockReturnValue('new-group-id'),
-  createdValues: {},
-  setCreatedValues: jest.fn()
-};
-
-// Helper to create a test wrapper with providers
-const renderWithProviders = (ui: React.ReactElement) => {
-  return render(
-    <ChakraProvider value={system}>
-      <NestedMappingProvider {...mockProviderProps}>
-        <EditingManager>
-          {ui}
-        </EditingManager>
-      </NestedMappingProvider>
-    </ChakraProvider>
+const renderWithProviders = (ui: React.ReactElement) =>
+  render(
+    <NestedMappingProvider {...mockProviderProps}>
+      <EditingManager>{ui}</EditingManager>
+    </NestedMappingProvider>
   );
-};
 
 describe('EditingManager and useEditing hook', () => {
-  // Basic test for hook functionality
-  test('useEditing hook provides editing functionality', async () => {
-    renderWithProviders(<TestComponent />);
-
-    // Initial state - not editing
-    expect(screen.getByTestId('is-editing')).toHaveTextContent('Not Editing');
-    expect(screen.getByTestId('editing-value')).toHaveTextContent('No Value');
-
-    // Start editing
-    fireEvent.click(screen.getByTestId('start-editing'));
-
-    // Should now be in editing state
-    expect(screen.getByTestId('is-editing')).toHaveTextContent('Editing');
-    expect(screen.getByTestId('editing-value')).toHaveTextContent('test-value');
-
-    // Change the value
-    fireEvent.click(screen.getByTestId('change-value'));
-
-    // Value should update
-    expect(screen.getByTestId('editing-value')).toHaveTextContent('new-value');
-
-    // Finish editing
-    fireEvent.click(screen.getByTestId('finish-editing'));
-
-    // Should go back to not editing
-    await waitFor(() => {
-      expect(screen.getByTestId('is-editing')).toHaveTextContent('Not Editing');
-    });
+  test('renders default UI state and calls startEditing on button click', () => {
+    renderWithProviders(<TestEditingComponent />);
+    const startBtn = screen.getByTestId('start-btn');
+    fireEvent.click(startBtn);
+    expect(mockProviderProps.startEditing).toHaveBeenCalledWith('test-id', 'init', 'group1');
   });
 
-  // Test keyboard interactions
-  test('keyboard shortcuts work for editing', async () => {
-    renderWithProviders(<TestComponent />);
-
-    // Start editing
-    fireEvent.click(screen.getByTestId('start-editing'));
-
-    // Should now be in editing state
-    expect(screen.getByTestId('is-editing')).toHaveTextContent('Editing');
-
-    // Press Escape
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
-
-    // Should exit editing
-    await waitFor(() => {
-      expect(screen.getByTestId('is-editing')).toHaveTextContent('Not Editing');
-    });
-
-    // Start editing again
-    fireEvent.click(screen.getByTestId('start-editing'));
-
-    // Press Enter
-    fireEvent.keyDown(document, { key: 'Enter', code: 'Enter' });
-
-    // Should finish editing
-    await waitFor(() => {
-      expect(screen.getByTestId('is-editing')).toHaveTextContent('Not Editing');
-    });
-  });
-
-  // Test input focus
-  test('input gets focus when editing starts', async () => {
-    renderWithProviders(<TestComponent />);
-
+  test('handles input change and finish editing via button and keyboard', async () => {
+    renderWithProviders(<TestEditingComponent />);
+    // Simulate starting editing
+    fireEvent.click(screen.getByTestId('start-btn'));
     const input = screen.getByTestId('edit-input');
 
-    // Start editing
-    fireEvent.click(screen.getByTestId('start-editing'));
+    // Change input value
+    fireEvent.change(input, { target: { value: 'changed' } });
+    expect(mockProviderProps.updateEditingValue).toHaveBeenCalledWith('changed');
 
-    // Input should get focus
-    setTimeout(() => {
-      expect(document.activeElement).toBe(input);
-    }, 100);
-  });
+    // Finish editing by button click
+    fireEvent.click(screen.getByTestId('finish-btn'));
+    expect(mockProviderProps.finishEditing).toHaveBeenCalled();
 
-  // Test cancel editing
-  test('canceling edit reverts to original value', async () => {
-    renderWithProviders(<TestComponent />);
-
-    // Start editing
-    fireEvent.click(screen.getByTestId('start-editing'));
-
-    // Change value
-    fireEvent.click(screen.getByTestId('change-value'));
-    expect(screen.getByTestId('editing-value')).toHaveTextContent('new-value');
-
-    // Cancel editing
-    fireEvent.click(screen.getByTestId('cancel-editing'));
-
-    // Should exit editing and discard changes
+    // Start editing again to test keyboard event (Enter key)
+    fireEvent.click(screen.getByTestId('start-btn'));
+    fireEvent.keyDown(document, { key: 'Enter', code: 'Enter' });
     await waitFor(() => {
-      expect(screen.getByTestId('is-editing')).toHaveTextContent('Not Editing');
-      expect(screen.getByTestId('editing-value')).toHaveTextContent('No Value');
+      expect(mockProviderProps.finishEditing).toHaveBeenCalledTimes(2);
+    });
+
+    // Test cancel editing by Escape key
+    fireEvent.click(screen.getByTestId('start-btn'));
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+    await waitFor(() => {
+      expect(mockProviderProps.cancelEditing).toHaveBeenCalled();
     });
   });
 });

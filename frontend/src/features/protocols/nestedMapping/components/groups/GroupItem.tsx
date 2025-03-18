@@ -3,9 +3,8 @@ import { Box } from '@chakra-ui/react';
 import { GroupHeader } from './GroupHeader';
 import { GroupDroppableArea } from './GroupDroppableArea';
 import { ValueItem } from '../values/ValueItem';
-import { ValueCreator } from '../values/ValueCreator';
 import { useNestedMapping } from '../../../contexts/nestedMappingContext';
-import { GroupData } from '../../../utils/parameterUtils';
+import { GroupData } from '@shared/types/protocol';
 
 interface GroupItemProps {
   groupId: string;
@@ -24,7 +23,6 @@ export const GroupItem: React.FC<GroupItemProps> = ({
   const {
     onChange,
     value,
-    creationMode,
     config,
     isEditable
   } = useNestedMapping();
@@ -48,17 +46,15 @@ export const GroupItem: React.FC<GroupItemProps> = ({
 
   // Save the group name
   const saveGroupName = (newName: string) => {
+    // Update the group with the new name
     const updatedValue = {
       ...value,
-      [newName]: {
+      [groupId]: {
         ...group,
-        name: newName
+        name: newName // Update the name property, not the object key
       }
     };
-    // Remove old key if name changed
-    if (newName !== groupId) {
-      delete updatedValue[groupId];
-    }
+
     onChange(updatedValue);
     setIsEditingName(false);
   };
@@ -73,6 +69,9 @@ export const GroupItem: React.FC<GroupItemProps> = ({
     return a.id.localeCompare(b.id);
   }) : [];
 
+  // Make sure we always have a name to display
+  const displayName = group.name || groupId;
+
   return (
     <Box
       borderWidth={1}
@@ -86,7 +85,7 @@ export const GroupItem: React.FC<GroupItemProps> = ({
       <Box px={4} py={2}>
         <GroupHeader
           groupId={groupId}
-          groupName={groupId}
+          groupName={displayName} // Always use the name from group.name with fallback
           isEditingName={isEditingName}
           startEditingName={startEditingName}
           saveGroupName={saveGroupName}
@@ -113,11 +112,6 @@ export const GroupItem: React.FC<GroupItemProps> = ({
               isEditable={item.isEditable}
             />
           ))}
-
-          {/* Value creator component */}
-          {creationMode === 'value' && (
-            <ValueCreator value={group.values || []} />
-          )}
         </GroupDroppableArea>
       </Box>
     </Box>

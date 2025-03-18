@@ -6,6 +6,7 @@ import {
   GroupData,
   BaseValueProps
 } from '@/shared/types/protocol';
+import { generateCompactId } from '../utils/storageUtils';
 
 // Editing state interface
 interface EditingState {
@@ -570,13 +571,31 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
 
   const createGroup = useCallback((groupName: string): string => {
     try {
-      console.log("Creating group in context:", groupName);
-      return createGroupProp(groupName);
+      // Generate a unique ID for internal tracking
+      const groupId = generateCompactId('group_');
+
+      // Create group with the name that was input by the user
+      const newGroup: GroupData = {
+        id: groupId,
+        name: groupName, // Use the provided name for display
+        values: [],
+        isEditable: creatableKey ? true : isEditable(groupId)
+      };
+
+      // Add the new group to the value map, using the ID as the key
+      // but storing the display name in the group object
+      onChange({
+        ...value,
+        [groupId]: newGroup
+      });
+
+      return groupId;
     } catch (error) {
-      console.error("Error in context while creating group:", error);
+      console.error("Error creating group:", error);
+      // ...error handling...
       return "";
     }
-  }, [createGroupProp]);
+  }, [creatableKey, isEditable, onChange, value]);
 
   // Wrapped setCreationMode for proper logging
   const wrappedSetCreationMode = useCallback((mode: string | null) => {
@@ -675,6 +694,11 @@ export const NestedMappingProvider: React.FC<NestedMappingProviderProps> = ({
     getMaxTotalValues, getMaxValuesPerGroup, isGroupFull, hasReachedMaxValues,
     createdValues, setCreatedValues
   ]);
+
+  // Add to window for debugging (optional)
+  if (typeof window !== 'undefined') {
+    (window as any).nestedMappingContext = contextValue;
+  }
 
   return (
     <NestedMappingContext.Provider value={contextValue}>

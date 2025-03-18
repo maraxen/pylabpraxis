@@ -1,10 +1,15 @@
-import React from 'react';
-import { render } from '@testing-library/react';
-import { DebugManager } from '../managers/debugManager';
+import { render, screen } from '@utils/test_utils';
+import { DebugManager } from '@protocols/managers/debugManager';
 
 // Spy on console.log
 const originalConsoleLog = console.log;
-jest.spyOn(console, 'log').mockImplementation(() => { });
+beforeEach(() => {
+  jest.clearAllMocks();
+  console.log = jest.fn();
+});
+afterAll(() => {
+  console.log = originalConsoleLog;
+});
 
 // Mock the context provider
 jest.mock('../contexts/nestedMappingContext', () => ({
@@ -152,5 +157,73 @@ describe('DebugManager Component', () => {
         );
       }).not.toThrow();
     });
+  });
+
+  test('renders children with default props', () => {
+    render(
+      <DebugManager>
+        <div data-testid="child">Test Content</div>
+      </DebugManager>
+    );
+    expect(screen.getByTestId('child')).toHaveTextContent('Test Content');
+  });
+
+  test('logs creationMode changes on prop update', () => {
+    const mockUseNestedMapping = require('../contexts/nestedMappingContext').useNestedMapping;
+    // initial render with null creationMode
+    mockUseNestedMapping.mockReturnValue({
+      creationMode: null,
+      value: {},
+      dragInfo: { isDragging: false, activeId: null, activeData: null, overDroppableId: null }
+    });
+    const { rerender } = render(
+      <DebugManager>
+        <div>Initial</div>
+      </DebugManager>
+    );
+    expect(console.log).toHaveBeenCalledWith("Creation mode changed:", null);
+
+    // re-render with updated creationMode
+    mockUseNestedMapping.mockReturnValue({
+      creationMode: 'value',
+      value: {},
+      dragInfo: { isDragging: false, activeId: null, activeData: null, overDroppableId: null }
+    });
+    rerender(
+      <DebugManager>
+        <div>Updated</div>
+      </DebugManager>
+    );
+    expect(console.log).toHaveBeenCalledWith("Creation mode changed:", "value");
+  });
+
+  test('logs dragInfo when dragging and does not log when not dragging', () => {
+    const mockUseNestedMapping = require('../contexts/nestedMappingContext').useNestedMapping;
+    const dragInfo = { isDragging: true, activeId: 'id-1', activeData: { value: 'test' }, overDroppableId: 'drop-1' };
+    mockUseNestedMapping.mockReturnValue({
+      creationMode: null,
+      value: {},
+      dragInfo
+    });
+    render(
+      <DebugManager>
+        <div>DragTest</div>
+      </DebugManager>
+    );
+    expect(console.log).toHaveBeenCalledWith("Drag info updated:", dragInfo);
+
+    // test that when not dragging, no additional drag log is made
+    jest.clearAllMocks();
+    mockUseNestedMapping.mockReturnValue({
+      creationMode: null,
+      value: {},
+      dragInfo: { isDragging: false, activeId: null, activeData: null, overDroppableId: null }
+    });
+    render(
+      <DebugManager>
+        <div>NoDrag</div>
+      </DebugManager>
+    );
+    expect(console.log).toHaveBeenCalledTimes(1);
   });
 });
