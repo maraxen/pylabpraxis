@@ -33,5 +33,6 @@ export * from './StatusBadge';
 export * from './TabRenderer';
 export * from './ActionButton';
 export * from './DraggableSortableItem';
+export * from './CardContainer';
 
 

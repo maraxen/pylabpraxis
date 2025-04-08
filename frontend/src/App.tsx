@@ -4,8 +4,8 @@ import { Settings } from './features/settings/pages/Settings';
 import { RunProtocols } from '@protocols/index';
 import { Vixn } from '@vixn/index';
 import { Documentation } from '@docs/index';
+import { AssetManagement } from '@labAssets/index';
 import ProtectedRoute from '@shared/utils/ProtectedRoute';
-
 
 export const App = () => {
 
@@ -24,6 +24,11 @@ export const App = () => {
       <Route path="/protocols" element={
         <ProtectedRoute>
           <RunProtocols />
+        </ProtectedRoute>
+      } />
+      <Route path="/assets" element={
+        <ProtectedRoute>
+          <AssetManagement />
         </ProtectedRoute>
       } />
       <Route path="/vixn" element={

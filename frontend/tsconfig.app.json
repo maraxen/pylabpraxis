@@ -94,7 +94,7 @@
         "src/features/vixn/*"
       ],
       "@labAssets/*": [
-        "src/features/labassets/*"
+        "src/features/labAssets/*"
       ],
       "@docs/*": [
         "src/features/docs/*"

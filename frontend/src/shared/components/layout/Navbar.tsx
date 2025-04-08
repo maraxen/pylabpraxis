@@ -8,12 +8,14 @@ import {
   LuChartArea,
   LuBook,
   LuSettings,
+  LuFlaskConical,
 } from "react-icons/lu";
 import { useOidc } from '../../../oidc';
 import { selectUserProfile } from '../../../features/users/store/userSlice';
 
 const navItems = [
   { path: '/protocols', label: 'Run Protocols', icon: LuPlay },
+  { path: '/assets', label: 'Manage Assets', icon: LuFlaskConical },
   { path: '/databases', label: 'Manage Databases', icon: LuDatabase },
   { path: '/vixn', label: 'Vixn', icon: LuChartArea },
   { path: '/docs', label: 'Documentation', icon: LuBook },

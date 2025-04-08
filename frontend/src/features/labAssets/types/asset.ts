@@ -24,12 +24,25 @@ export interface Resource {
   children?: Resource[];
 }
 
+/**
+ * Represents an asset in the system, such as a lab resource or machine
+ */
 export interface Asset {
-  id: string;
+  id?: string;
   name: string;
-  type: AssetType;
-  description: string;
-  resource?: Resource;  // For deck resources
-  status?: 'available' | 'in_use' | 'offline';
-  metadata?: Record<string, any>;
+  type: string;
+  is_available: boolean;
+  description?: string;
+  metadata: Record<string, any>;
+}
+
+/**
+ * Asset with additional information such as detailed configuration
+ */
+export interface DetailedAsset extends Asset {
+  configuration?: Record<string, any>;
+  lock_expires_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  plr_serialized?: Record<string, any>;
 }

@@ -38,7 +38,7 @@ export default defineConfig({
       '@settings': path.resolve(__dirname, './src/features/settings'),
       '@users': path.resolve(__dirname, './src/features/users'),
       '@vixn': path.resolve(__dirname, './src/features/vixn'),
-      '@labAssets': path.resolve(__dirname, './src/features/labassets'),
+      '@labAssets': path.resolve(__dirname, './src/features/labAssets'),
       '@docs': path.resolve(__dirname, './src/features/docs'),
       '@test-utils': path.resolve(__dirname, './src/utils/test-utils'),
     }
