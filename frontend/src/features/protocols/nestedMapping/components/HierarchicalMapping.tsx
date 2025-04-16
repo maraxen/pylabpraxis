@@ -20,23 +20,7 @@ import { ValueDisplay } from './values/ValueDisplay';
 import { useDndSensors, addDragStyles, removeDragStyles } from '../utils/dndUtils';
 import { generateCompactId } from '../utils/storageUtils';
 
-// Temporary fix: robust clearExcessStorage implementation here
-function clearExcessStorage() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
-    }
-  } catch (e) {
-    console.warn('Error clearing localStorage:', e);
-  }
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.clear();
-    }
-  } catch (e) {
-    console.warn('Error clearing sessionStorage:', e);
-  }
-}
+// Removed problematic clearExcessStorage function
 import { ValueData, GroupData, ParameterConfig } from '@protocols/types/protocol';
 
 
@@ -60,12 +44,12 @@ type HierarchicalMappingProps = {
  * HierarchicalMapping component that renders a mapping interface with groups and values
  * This version only supports the new nested constraint structure (key_constraints/value_constraints)
  */
-const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
+const HierarchicalMappingImpl = React.memo(({
   value,
   config,
   onChange,
   parameters,
-}) => {
+}: NestedMappingProps) => {
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   // Extract constraints with defaults
   const constraints = config?.constraints || {};
@@ -189,7 +173,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
           id: groupId,
           name: parentKey,
           values: childValues,
-          isEditable: true,
+          isEditable: isKeyEditable, // Use derived key editability
         };
       });
 
@@ -199,14 +183,9 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
     return {};
   });
 
-  // Clear excess storage on component mount to prevent storage quota issues
-  useEffect(() => {
-    try {
-      clearExcessStorage();
-    } catch (e) {
-      console.warn("Error clearing storage:", e);
-    }
-  }, []);
+  // useEffect(() => {
+  //   // Removed call to clearExcessStorage
+  // }, []);
 
   // Initialize structure with proper IDs and formatting
   useEffect(() => {
@@ -337,11 +316,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       return groupId;
     } catch (error) {
       console.error("Error creating group:", error);
-      try {
-        clearExcessStorage();
-      } catch {
-        // Ignore nested error
-      }
+      // Removed call to clearExcessStorage
       return "";
     }
   };
@@ -602,7 +577,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
       </MetadataManager>
     </NestedMappingProvider>
   );
-};
+});
 
 // Export the public API component
 export const HierarchicalMapping: React.FC<HierarchicalMappingProps> = (props) => {

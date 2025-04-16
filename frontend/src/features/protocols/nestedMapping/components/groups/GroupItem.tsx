@@ -15,7 +15,7 @@ interface GroupItemProps {
   setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export const GroupItem: React.FC<GroupItemProps> = ({
+export const GroupItem = React.memo<GroupItemProps>(({
   groupId,
   group,
   onDelete,
@@ -127,6 +127,7 @@ export const GroupItem: React.FC<GroupItemProps> = ({
               paramSource={item.paramSource}
               isEditable={item.isEditable}
               isEditing={editingValueId === item.id}
+              dragMode="draggable" // Explicitly set dragMode
               onEdit={() => setEditingValueId(item.id)}
               onBlur={() => setEditingValueId(null)}
               onValueChange={(newVal) => {
@@ -148,4 +149,4 @@ export const GroupItem: React.FC<GroupItemProps> = ({
       </Box>
     </Box>
   );
-};
+});

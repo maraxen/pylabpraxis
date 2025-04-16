@@ -25,7 +25,7 @@ interface GroupsSectionProps {
   setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange, editingValueId, setEditingValueId }) => {
+export const GroupsSection = React.memo<GroupsSectionProps>(({ value, onChange, editingValueId, setEditingValueId }) => {
   const { dragInfo } = useNestedMapping();
 
   // Handle deleting a group
@@ -77,4 +77,4 @@ export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange, e
       </VStack>
     </Box>
   );
-};
+});

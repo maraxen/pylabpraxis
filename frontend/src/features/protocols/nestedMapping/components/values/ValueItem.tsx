@@ -29,7 +29,7 @@ export interface ValueItemProps {
  * A versatile draggable/sortable value component that can be used throughout the app.
  * Supports both useSortable and useDraggable modes from dnd-kit.
  */
-export const ValueItem: React.FC<ValueItemProps> = ({
+export const ValueItem = React.memo<ValueItemProps>(({
   id,
   value,
   availableId,
@@ -123,7 +123,7 @@ export const ValueItem: React.FC<ValueItemProps> = ({
         value: localValue
       }}
       isEditing={isEditing}
-      isDraggable={!isEditing && (isEditable || alwaysDraggable)}
+      isDraggable={!isEditing} // Allow dragging regardless of editable status when not editing
       dragMode={dragMode}
       actionButtons={showActionButtons}
       onFocus={onFocus}
@@ -143,4 +143,4 @@ export const ValueItem: React.FC<ValueItemProps> = ({
       />
     </DraggableSortableItem>
   );
-};
+});

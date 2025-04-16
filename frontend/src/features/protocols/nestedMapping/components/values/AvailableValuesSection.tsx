@@ -12,7 +12,7 @@ interface AvailableValuesSectionProps {
   setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ value, editingValueId, setEditingValueId }) => {
+export const AvailableValuesSection = React.memo<AvailableValuesSectionProps>(({ value, editingValueId, setEditingValueId }) => {
   const {
     dragInfo,
     createdValues,
@@ -102,4 +102,4 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
       </VStack>
     </Box>
   );
-};
+});
