@@ -1,34 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Heading,
-  Tabs,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Divider,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Flex,
   Text,
-  Button,
-  useDisclosure,
-  SimpleGrid,
   Spinner,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
   Grid,
   GridItem,
+  Input,
 } from '@chakra-ui/react';
 import { Container } from '@shared/components/ui/container';
+import {
+  Tabs,
+  TabList,
+  TabTrigger,
+  TabContent,
+  Button as CustomButton,
+} from '@shared/components/ui';
+import { Alert as ChakraAlert } from '@chakra-ui/react';
+import { InputGroup } from '@shared/components/ui/input-group';
 import { FiSearch, FiPlus } from 'react-icons/fi';
 import { ResourceForm } from '../components/ResourceForm';
 import { MachineForm } from '../components/MachineForm';
-import { AssetCard } from '../AssetCard';
 import { AssetList } from '../AssetList';
 import { AssetDetails } from '../components/AssetDetails';
 import { Asset } from '../types/asset';
@@ -43,9 +36,9 @@ import {
 } from '../api/assets-api';
 
 enum AssetTabType {
-  SEARCH = 0,
-  ADD_RESOURCE = 1,
-  ADD_MACHINE = 2,
+  SEARCH = 'search',
+  ADD_RESOURCE = 'add_resource',
+  ADD_MACHINE = 'add_machine',
 }
 
 export const AssetManagement: React.FC = () => {
@@ -65,9 +58,8 @@ export const AssetManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(AssetTabType.SEARCH);
+  const [activeTab, setActiveTab] = useState<AssetTabType>(AssetTabType.SEARCH);
 
-  // Load initial data
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
@@ -83,7 +75,6 @@ export const AssetManagement: React.FC = () => {
         setMachineTypes(machineTypesData);
         setResourceCategories(categoriesData);
 
-        // Load initial assets
         const initialAssets = await fetchAssetsByType('');
         setSearchResults(initialAssets);
       } catch (err) {
@@ -96,7 +87,6 @@ export const AssetManagement: React.FC = () => {
     loadData();
   }, []);
 
-  // Fetch asset details when selection changes
   useEffect(() => {
     async function fetchDetails() {
       if (selectedAsset) {
@@ -106,7 +96,7 @@ export const AssetManagement: React.FC = () => {
           setSelectedAssetDetails(details);
         } catch (err) {
           setError(`Failed to fetch asset details: ${err instanceof Error ? err.message : String(err)}`);
-          setSelectedAssetDetails(selectedAsset); // Fall back to basic info
+          setSelectedAssetDetails(selectedAsset);
         } finally {
           setIsLoadingDetails(false);
         }
@@ -118,7 +108,6 @@ export const AssetManagement: React.FC = () => {
     fetchDetails();
   }, [selectedAsset]);
 
-  // Handle search
   const handleSearch = async () => {
     setIsLoading(true);
     setError(null);
@@ -138,23 +127,19 @@ export const AssetManagement: React.FC = () => {
     }
   };
 
-  // Handle enter key in search input
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // Handle asset creation success
   const handleAssetCreated = async (name: string) => {
-    // Reset search and update results
     setSearchQuery('');
     try {
       const allAssets = await fetchAssetsByType('');
       setSearchResults(allAssets);
-      setActiveTab(AssetTabType.SEARCH); // Switch back to search tab
+      setActiveTab(AssetTabType.SEARCH);
 
-      // Find and select the newly created asset
       const newAsset = allAssets.find(asset => asset.name === name);
       if (newAsset) {
         setSelectedAsset(newAsset);
@@ -164,9 +149,7 @@ export const AssetManagement: React.FC = () => {
     }
   };
 
-  // Handle asset deletion
   const handleAssetDelete = async (asset: Asset) => {
-    // TODO: Implement asset deletion functionality
     alert(`Delete functionality for asset ${asset.name} will be implemented in a future update.`);
   };
 
@@ -174,44 +157,46 @@ export const AssetManagement: React.FC = () => {
     <Container maxWidth="container.xl">
       <Heading size="lg" mb={6}>Asset Management</Heading>
 
-      <Tabs index={activeTab} onChange={(index) => setActiveTab(index)}>
+      <Tabs value={activeTab} onChange={({ value }) => setActiveTab(value as AssetTabType)}>
         <TabList>
-          <Tab>Search Assets</Tab>
-          <Tab>Add Resource</Tab>
-          <Tab>Add Machine</Tab>
+          <TabTrigger value={AssetTabType.SEARCH}>Search Assets</TabTrigger>
+          <TabTrigger value={AssetTabType.ADD_RESOURCE}>Add Resource</TabTrigger>
+          <TabTrigger value={AssetTabType.ADD_MACHINE}>Add Machine</TabTrigger>
         </TabList>
 
-        <TabPanels>
-          {/* Search Assets Tab */}
-          <TabPanel>
-            {error && (
-              <Alert status="error" mb={4}>
-                <AlertIcon />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+        <TabContent value={AssetTabType.SEARCH}>
+          {error && (
+            <ChakraAlert.Root status="error" style={{ marginBottom: '1rem' }}>
+              <ChakraAlert.Indicator />
+              <ChakraAlert.Content>
+                <ChakraAlert.Title>Error</ChakraAlert.Title>
+                <ChakraAlert.Description>{error}</ChakraAlert.Description>
+              </ChakraAlert.Content>
+            </ChakraAlert.Root>
+          )}
 
-            {isLoading ? (
-              <Flex justify="center" align="center" my={8}>
-                <Spinner size="lg" />
-              </Flex>
-            ) : (
-              <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={6}>
-                {/* Asset List */}
-                <GridItem>
-                  <Box mb={6}>
-                    <InputGroup>
-                      <InputLeftElement pointerEvents='none'>
-                        <FiSearch color='gray.300' />
-                      </InputLeftElement>
-                      <Input
-                        placeholder='Search assets...'
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyUp={handleSearchKeyPress}
-                      />
-                      <Button ml={2} onClick={handleSearch}>Search</Button>
-                  </Box>
+          {isLoading ? (
+            <Flex justify="center" align="center" my={8}>
+              <Spinner size="lg" />
+            </Flex>
+          ) : (
+            <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={6}>
+              <GridItem>
+                <Box mb={6} display="flex" alignItems="center">
+                  <InputGroup
+                    flex="1"
+                    startElement={<FiSearch color="gray.300" />}
+                  >
+                    <Input
+                      placeholder="Search assets..."
+                      value={searchQuery}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                      onKeyUp={handleSearchKeyPress}
+                    />
+                  </InputGroup>
+                  <CustomButton ml={2} onClick={handleSearch}>
+                    Search
+                  </CustomButton>
                 </Box>
 
                 {searchResults.length > 0 ? (
@@ -223,61 +208,53 @@ export const AssetManagement: React.FC = () => {
                 ) : (
                   <Box textAlign="center" py={10}>
                     <Text fontSize="lg" color="gray.500">No assets found</Text>
-                    <Button
-                      mt={4}
-                      leftIcon={<FiPlus />}
-                      onClick={() => setActiveTab(AssetTabType.ADD_RESOURCE)}
-                    >
+                    <CustomButton mt={4} onClick={() => setActiveTab(AssetTabType.ADD_RESOURCE)}>
+                      <FiPlus style={{ marginRight: '0.5rem' }} />
                       Add New Asset
-                    </Button>
+                    </CustomButton>
                   </Box>
                 )}
               </GridItem>
 
-                {/* Asset Details */}
-            <GridItem display={{ base: selectedAsset ? 'block' : 'none', lg: 'block' }}>
-              {selectedAssetDetails ? (
-                <AssetDetails
-                  asset={selectedAssetDetails}
-                  onDelete={handleAssetDelete}
-                />
-              ) : (
-                <Box
-                  borderWidth="1px"
-                  borderRadius="lg"
-                  p={6}
-                  bg="gray.50"
-                  height="100%"
-                  display="flex"
-                  flexDirection="column"
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  {isLoadingDetails ? (
-                    <Spinner size="lg" />
-                  ) : (
-                    <>
-                      <Text fontSize="lg" color="gray.500" textAlign="center">
-                        Select an asset to view its details
-                      </Text>
-                      <Button
-                        mt={4}
-                        leftIcon={<FiPlus />}
-                        onClick={() => setActiveTab(AssetTabType.ADD_RESOURCE)}
-                      >
-                        Add New Asset
-                      </Button>
-                    </>
-                  )}
-                </Box>
-              )}
-            </GridItem>
-          </Grid>
-            )}
-        </TabPanel>
+              <GridItem display={{ base: selectedAsset ? 'block' : 'none', lg: 'block' }}>
+                {selectedAssetDetails ? (
+                  <AssetDetails
+                    asset={selectedAssetDetails}
+                    onDelete={handleAssetDelete}
+                  />
+                ) : (
+                  <Box
+                    borderWidth="1px"
+                    borderRadius="lg"
+                    p={6}
+                    bg="gray.50"
+                    height="100%"
+                    display="flex"
+                    flexDirection="column"
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    {isLoadingDetails ? (
+                      <Spinner size="lg" />
+                    ) : (
+                      <>
+                        <Text fontSize="lg" color="gray.500" textAlign="center">
+                          Select an asset to view its details
+                        </Text>
+                        <CustomButton mt={4} onClick={() => setActiveTab(AssetTabType.ADD_RESOURCE)}>
+                          <FiPlus style={{ marginRight: '0.5rem' }} />
+                          Add New Asset
+                        </CustomButton>
+                      </>
+                    )}
+                  </Box>
+                )}
+              </GridItem>
+            </Grid>
+          )}
+        </TabContent>
 
-        {/* Add Resource Tab */}
-        <TabPanel>
+        <TabContent value={AssetTabType.ADD_RESOURCE}>
           {isLoading ? (
             <Flex justify="center" align="center" my={8}>
               <Spinner size="lg" />
@@ -289,10 +266,9 @@ export const AssetManagement: React.FC = () => {
               onSuccess={handleAssetCreated}
             />
           )}
-        </TabPanel>
+        </TabContent>
 
-        {/* Add Machine Tab */}
-        <TabPanel>
+        <TabContent value={AssetTabType.ADD_MACHINE}>
           {isLoading ? (
             <Flex justify="center" align="center" my={8}>
               <Spinner size="lg" />
@@ -303,9 +279,8 @@ export const AssetManagement: React.FC = () => {
               onSuccess={handleAssetCreated}
             />
           )}
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
-    </Container >
+        </TabContent>
+      </Tabs>
+    </Container>
   );
 };

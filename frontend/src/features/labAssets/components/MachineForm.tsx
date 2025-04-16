@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Heading,
-  Button,
-  Input,
   Stack,
   Text,
   Textarea,
-  Alert,
-  AlertIcon,
-  Select,
-  useToast,
 } from '@chakra-ui/react';
-import { Fieldset, FieldsetContent, FieldsetLegend } from '@shared/components/ui/fieldset';
-import { Field } from '@shared/components/ui/field';
+import { useToast } from '@chakra-ui/toast';
+import {
+  Field,
+  Fieldset,
+  FieldsetContent,
+  FieldsetLegend,
+  SelectRoot,
+  SelectValueText,
+  Button as CustomButton,
+} from '@shared/components/ui';
+import { Alert as ChakraAlert } from '@chakra-ui/react';
 import { DynamicParamForm } from './DynamicParamForm';
 import { MachineTypeInfo, MachineFormData, FormValues } from '../types/plr-resources';
 import { createMachine } from '../api/assets-api';
@@ -36,14 +39,12 @@ export const MachineForm: React.FC<MachineFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset params and backend when machine type changes
   useEffect(() => {
     if (machineType) {
       const defaultParams: FormValues = {};
       const typeInfo = machineTypes[machineType];
 
       if (typeInfo) {
-        // Initialize with default values
         Object.entries(typeInfo.constructor_params).forEach(([name, param]) => {
           if (param.default !== null) {
             defaultParams[name] = param.default;
@@ -52,7 +53,7 @@ export const MachineForm: React.FC<MachineFormProps> = ({
       }
 
       setParams(defaultParams);
-      setBackend(''); // Reset backend when machine type changes
+      setBackend('');
     } else {
       setParams({});
     }
@@ -79,11 +80,10 @@ export const MachineForm: React.FC<MachineFormProps> = ({
       return;
     }
 
-    // Check if all required params are provided
     if (selectedTypeInfo) {
       const missingParams = Object.entries(selectedTypeInfo.constructor_params)
-        .filter(([name, param]) => param.required && !params[name])
-        .map(([name]) => name);
+        .filter(([key, param]) => param.required && !params[key])
+        .map(([key]) => key);
 
       if (missingParams.length > 0) {
         setError(`Missing required parameters: ${missingParams.join(', ')}`);
@@ -91,7 +91,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
       }
     }
 
-    // Prepare form data
     const formData: MachineFormData = {
       name,
       machineType,
@@ -112,7 +111,6 @@ export const MachineForm: React.FC<MachineFormProps> = ({
         isClosable: true,
       });
 
-      // Clear form
       setName('');
       setDescription('');
       setMachineType('');
@@ -131,21 +129,24 @@ export const MachineForm: React.FC<MachineFormProps> = ({
 
   return (
     <Box as="form" onSubmit={handleSubmit}>
-      <Stack spacing={6}>
+      <Stack gap={6}>
         <Heading size="md">Add New Machine</Heading>
 
         {error && (
-          <Alert status="error">
-            <AlertIcon />
-            {error}
-          </Alert>
+          <ChakraAlert.Root status="error">
+            <ChakraAlert.Indicator />
+            <ChakraAlert.Content>
+              <ChakraAlert.Title>Error</ChakraAlert.Title>
+              <ChakraAlert.Description>{error}</ChakraAlert.Description>
+            </ChakraAlert.Content>
+          </ChakraAlert.Root>
         )}
 
-        <Stack spacing={4}>
-          <Field label="Machine Name" isRequired>
-            <Input
+        <Stack gap={4}>
+          <Field label="Machine Name" required>
+            <input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               placeholder="Enter a unique name for the machine"
             />
           </Field>
@@ -153,38 +154,40 @@ export const MachineForm: React.FC<MachineFormProps> = ({
           <Field label="Description">
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Enter a description for this machine"
             />
           </Field>
 
-          <Field label="Machine Type" isRequired>
-            <Select
-              value={machineType}
-              onChange={(e) => setMachineType(e.target.value)}
-              placeholder="Select a machine type"
+          <Field label="Machine Type" required>
+            <SelectRoot
+              value={machineType ? [machineType] : []}
+              onChange={({ value }) => setMachineType(value[0] || '')}
+              collection={{
+                items: Object.values(machineTypes).map(type => ({
+                  value: type.name,
+                  label: type.name
+                }))
+              }}
             >
-              {Object.values(machineTypes).map(type => (
-                <option key={type.name} value={type.name}>
-                  {type.name}
-                </option>
-              ))}
-            </Select>
+              <SelectValueText placeholder="Select a machine type" />
+            </SelectRoot>
           </Field>
 
           {selectedTypeInfo?.backends && selectedTypeInfo.backends.length > 0 && (
-            <Field label="Backend" isRequired>
-              <Select
-                value={backend}
-                onChange={(e) => setBackend(e.target.value)}
-                placeholder="Select a backend"
+            <Field label="Backend" required>
+              <SelectRoot
+                value={backend ? [backend] : []}
+                onChange={({ value }) => setBackend(value[0] || '')}
+                collection={{
+                  items: selectedTypeInfo.backends.map(b => ({
+                    value: b,
+                    label: b
+                  }))
+                }}
               >
-                {selectedTypeInfo.backends.map(backendType => (
-                  <option key={backendType} value={backendType}>
-                    {backendType}
-                  </option>
-                ))}
-              </Select>
+                <SelectValueText placeholder="Select a backend" />
+              </SelectRoot>
             </Field>
           )}
         </Stack>
@@ -207,14 +210,14 @@ export const MachineForm: React.FC<MachineFormProps> = ({
           </Fieldset>
         )}
 
-        <Button
+        <CustomButton
           colorScheme="blue"
           type="submit"
-          isLoading={isLoading}
-          isDisabled={!name || !machineType || (selectedTypeInfo?.backends && selectedTypeInfo.backends.length > 0 && !backend)}
+          loading={isLoading}
+          disabled={!name || !machineType || (selectedTypeInfo?.backends && selectedTypeInfo.backends.length > 0 && !backend)}
         >
           Create Machine
-        </Button>
+        </CustomButton>
       </Stack>
     </Box>
   );

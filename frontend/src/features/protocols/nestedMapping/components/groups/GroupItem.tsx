@@ -11,6 +11,8 @@ interface GroupItemProps {
   group: GroupData;
   onDelete: () => void;
   isHighlighted?: boolean;
+  editingValueId: string | null;
+  setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export const GroupItem: React.FC<GroupItemProps> = ({
@@ -20,6 +22,8 @@ export const GroupItem: React.FC<GroupItemProps> = ({
   isHighlighted = false
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
+  const [editingValueId, setEditingValueId] = useState<string | null>(null);
+
   const {
     onChange,
     value,
@@ -46,12 +50,24 @@ export const GroupItem: React.FC<GroupItemProps> = ({
 
   // Save the group name
   const saveGroupName = (newName: string) => {
+    const trimmedName = newName.trim();
+
+    // Check for duplicate group name (excluding current group)
+    const duplicate = Object.entries(value).some(
+      ([id, g]) => id !== groupId && g.name === trimmedName
+    );
+
+    if (duplicate) {
+      alert(`Group name "${trimmedName}" already exists. Please choose a unique name.`);
+      return;
+    }
+
     // Update the group with the new name
     const updatedValue = {
       ...value,
       [groupId]: {
         ...group,
-        name: newName // Update the name property, not the object key
+        name: trimmedName // Update the name property, not the object key
       }
     };
 
@@ -110,6 +126,22 @@ export const GroupItem: React.FC<GroupItemProps> = ({
               isFromParam={item.isFromParam}
               paramSource={item.paramSource}
               isEditable={item.isEditable}
+              isEditing={editingValueId === item.id}
+              onEdit={() => setEditingValueId(item.id)}
+              onBlur={() => setEditingValueId(null)}
+              onValueChange={(newVal) => {
+                // Update the value in the group
+                const updatedGroup = {
+                  ...group,
+                  values: group.values.map((v) =>
+                    v.id === item.id ? { ...v, value: newVal } : v
+                  ),
+                };
+                onChange({
+                  ...value,
+                  [groupId]: updatedGroup,
+                });
+              }}
             />
           ))}
         </GroupDroppableArea>

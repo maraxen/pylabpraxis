@@ -7,7 +7,7 @@ import {
   ArrayInput
 } from '@praxis-ui';
 import { HierarchicalMapping } from '@protocols/nestedMapping/components/HierarchicalMapping';
-import { BaseConstraintProps } from '@protocols/types/protocol'
+import { BaseConstraintProps, ParameterConfig } from '@protocols/types/protocol'
 
 export interface InputConfig {
   type?: string;
@@ -28,6 +28,7 @@ export interface InputRendererProps {
   useDelayed?: boolean;
   valueRenderer?: (values: any[]) => React.ReactNode;
   onRemove?: (name: string, index: number) => void;
+  parameters?: Record<string, ParameterConfig>; // <-- add this prop for option propagation
 }
 
 export const InputRenderer: React.FC<InputRendererProps> = ({
@@ -41,7 +42,8 @@ export const InputRenderer: React.FC<InputRendererProps> = ({
   inputRef,
   useDelayed = false,
   valueRenderer,
-  onRemove
+  onRemove,
+  parameters
 }) => {
   // Normalize the type
   const normalizedType = typeof config.type === 'function'
@@ -51,10 +53,19 @@ export const InputRenderer: React.FC<InputRendererProps> = ({
   // Extract constraints for easier access
   const constraints = config.constraints || {};
 
-  // Check if we have options for array inputs
-  const options = constraints.array;
+  // Propagate options from referenced parameter if specified
+  let options = constraints.array;
+  if ((!options || options.length === 0) && constraints.param && parameters && parameters[constraints.param]) {
+    const refParam = parameters[constraints.param];
+    if (refParam.constraints && refParam.constraints.array) {
+      options = refParam.constraints.array;
+    }
+  }
+
   const maxLen = constraints.array_len;
-  const restrictedOptions = !constraints.creatable;
+
+  // Harmonize restrictedOptions: default to false unless explicitly false
+  const restrictedOptions = constraints.creatable === false;
 
   // The actual input component to render
   const renderInputComponent = (

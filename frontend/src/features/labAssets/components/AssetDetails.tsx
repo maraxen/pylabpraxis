@@ -5,12 +5,11 @@ import {
   Text,
   Flex,
   Icon,
-  Divider,
   Accordion,
   Grid,
-  Button,
 } from '@chakra-ui/react';
-import { LuFlaskConical, LuCpu, LuCircleCheck, LuCircleX, LuEdit, LuTrash2 } from 'react-icons/lu';
+import { Separator } from '@chakra-ui/react';
+import { LuFlaskConical, LuCpu, LuCircleCheck, LuCircleX } from 'react-icons/lu';
 import { ActionButton } from "@praxis-ui";
 import { StatusBadge } from '@shared/components/ui/StatusBadge';
 import { Asset, DetailedAsset } from '../types/asset';
@@ -133,7 +132,7 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
         )}
       </Grid>
 
-      <Divider my={5} />
+      <Separator my={5} />
 
       {/* Updated Accordion section following Chakra UI documentation */}
       <Accordion.Root collapsible defaultValue={["metadata"]}>

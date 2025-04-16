@@ -2,17 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Heading,
-  Button,
-  Input,
   Stack,
   Text,
   Textarea,
-  Alert,
-  Select
+  Alert
 } from '@chakra-ui/react';
-import { useToast } from ;
-import { Fieldset, FieldsetContent, FieldsetLegend } from '@shared/components/ui/fieldset';
-import { Field } from '@shared/components/ui/field';
+import { useToast } from '@chakra-ui/toast';
+import {
+  Field,
+  Fieldset,
+  FieldsetContent,
+  FieldsetLegend,
+  SelectRoot,
+  SelectValueText,
+  Button as CustomButton,
+} from '@shared/components/ui';
 import { DynamicParamForm } from './DynamicParamForm';
 import { ResourceTypeInfo, ResourceFormData, FormValues } from '../types/plr-resources';
 import { createResource } from '../api/assets-api';
@@ -43,14 +47,12 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset params when resource type changes
   useEffect(() => {
     if (resourceType) {
       const defaultParams: FormValues = {};
       const typeInfo = resourceTypes[resourceType];
 
       if (typeInfo) {
-        // Initialize with default values
         Object.entries(typeInfo.constructor_params).forEach(([name, param]) => {
           if (param.default !== null) {
             defaultParams[name] = param.default;
@@ -64,7 +66,6 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
     }
   }, [resourceType, resourceTypes]);
 
-  // Filter the list of resource types to only those that can be created directly
   const creatableResources = Object.values(resourceTypes)
     .filter(type => type.can_create_directly);
 
@@ -84,11 +85,10 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
       return;
     }
 
-    // Check if all required params are provided
     if (selectedTypeInfo) {
       const missingParams = Object.entries(selectedTypeInfo.constructor_params)
-        .filter(([name, param]) => param.required && !params[name])
-        .map(([name]) => name);
+        .filter(([key, param]) => param.required && !params[key])
+        .map(([key]) => key);
 
       if (missingParams.length > 0) {
         setError(`Missing required parameters: ${missingParams.join(', ')}`);
@@ -96,7 +96,6 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
       }
     }
 
-    // Prepare form data
     const formData: ResourceFormData = {
       name,
       resourceType,
@@ -116,7 +115,6 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
         isClosable: true,
       });
 
-      // Clear form
       setName('');
       setDescription('');
       setResourceType('');
@@ -134,21 +132,24 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
 
   return (
     <Box as="form" onSubmit={handleSubmit}>
-      <Stack spacing={6}>
+      <Stack gap={6}>
         <Heading size="md">Add New Resource</Heading>
 
         {error && (
-          <Alert status="error">
-            <AlertIcon />
-            {error}
-          </Alert>
+          <Alert.Root status="error">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Error</Alert.Title>
+              <Alert.Description>{error}</Alert.Description>
+            </Alert.Content>
+          </Alert.Root>
         )}
 
-        <Stack spacing={4}>
-          <Field label="Resource Name" isRequired>
-            <Input
+        <Stack gap={4}>
+          <Field label="Resource Name" required>
+            <input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               placeholder="Enter a unique name for the resource"
             />
           </Field>
@@ -156,45 +157,45 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
           <Field label="Description">
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Enter a description for this resource"
             />
           </Field>
 
-          <Field label="Resource Category" isRequired>
-            <Select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setResourceType(''); // Reset resource type when category changes
+          <Field label="Resource Category" required>
+            <SelectRoot
+              value={category ? [category] : []}
+              onChange={({ value }) => {
+                setCategory(value[0] || '');
+                setResourceType('');
               }}
-              placeholder="Select a category"
+              collection={{
+                items: Object.entries(categories).filter(([, types]) => types.length > 0).map(([cat, types]) => ({
+                  value: cat,
+                  label: `${cat} (${types.length})`
+                }))
+              }}
             >
-              {Object.entries(categories).map(([category, types]) => (
-                types.length > 0 && (
-                  <option key={category} value={category}>
-                    {category} ({types.length})
-                  </option>
-                )
-              ))}
-            </Select>
+              <SelectValueText placeholder="Select a category" />
+            </SelectRoot>
           </Field>
 
           {category && (
-            <Field label="Resource Type" isRequired>
-              <Select
-                value={resourceType}
-                onChange={(e) => setResourceType(e.target.value)}
-                placeholder="Select a resource type"
+            <Field label="Resource Type" required>
+              <SelectRoot
+                value={resourceType ? [resourceType] : []}
+                onChange={({ value }) => setResourceType(value[0] || '')}
+                collection={{
+                  items: categories[category as keyof typeof categories]
+                    .filter(type => resourceTypes[type]?.can_create_directly)
+                    .map(type => ({
+                      value: type,
+                      label: type
+                    }))
+                }}
               >
-                {categories[category as keyof typeof categories]
-                  .filter(type => resourceTypes[type]?.can_create_directly)
-                  .map(type => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-              </Select>
+                <SelectValueText placeholder="Select a resource type" />
+              </SelectRoot>
             </Field>
           )}
         </Stack>
@@ -212,20 +213,20 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
                 parameters={selectedTypeInfo.constructor_params}
                 values={params}
                 onChange={setParams}
-                filteredParams={['parent']} // Filter out parent parameter
+                filteredParams={['parent']}
               />
             </FieldsetContent>
           </Fieldset>
         )}
 
-        <Button
+        <CustomButton
           colorScheme="blue"
           type="submit"
-          isLoading={isLoading}
-          isDisabled={!name || !resourceType}
+          loading={isLoading}
+          disabled={!name || !resourceType}
         >
           Create Resource
-        </Button>
+        </CustomButton>
       </Stack>
     </Box>
   );

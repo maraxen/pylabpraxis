@@ -129,7 +129,17 @@ export const DraggableSortableItem: React.FC<DraggableSortableItemProps> = ({
   let transition: string | undefined = undefined;
   let isDragging = false;
 
-  // Use the appropriate drag hook based on dragMode
+  // Always call both hooks unconditionally to avoid hook order issues
+  const sortable = useSortable({
+    id: itemId,
+    data: dragData,
+  });
+
+  const draggable = useDraggable({
+    id: itemId,
+    data: dragData,
+  });
+
   if (!isDraggable || isEditing) {
     // No drag functionality when disabled or editing
     setNodeRef = (node) => {
@@ -137,12 +147,12 @@ export const DraggableSortableItem: React.FC<DraggableSortableItemProps> = ({
         itemRef.current = node as HTMLDivElement;
       }
     };
+    attributes = {};
+    listeners = undefined;
+    transform = null;
+    transition = undefined;
+    isDragging = false;
   } else if (dragMode === 'sortable') {
-    const sortable = useSortable({
-      id: itemId,
-      data: dragData,
-    });
-
     attributes = sortable.attributes || {};
     listeners = sortable.listeners;
     setNodeRef = sortable.setNodeRef;
@@ -150,17 +160,11 @@ export const DraggableSortableItem: React.FC<DraggableSortableItemProps> = ({
     transition = sortable.transition;
     isDragging = sortable.isDragging;
   } else {
-    const draggable = useDraggable({
-      id: itemId,
-      data: dragData,
-    });
-
     attributes = draggable.attributes || {};
     listeners = draggable.listeners;
     setNodeRef = draggable.setNodeRef;
     transform = draggable.transform;
     isDragging = draggable.isDragging;
-    // No transition from useDraggable, so use a default
     transition = 'transform 250ms ease';
   }
 

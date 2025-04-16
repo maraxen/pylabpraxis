@@ -45,7 +45,8 @@ import { inputStyles } from '@shared/styles/form';
 import {
   AssetConfigurationForm,
   ParameterConfigurationForm,
-  ParameterConfigurationFormRef
+  ParameterConfigurationFormRef,
+  AssetConfigurationFormRef
 } from '@protocols/components/form';
 import {
   AutoComplete,
@@ -102,6 +103,7 @@ export const RunProtocols: React.FC = () => {
   const [selectedDeckFile, setSelectedDeckFile] = useState<string>('');
 
   const parameterFormRef = useRef<ParameterConfigurationFormRef>(null);
+  const assetFormRef = useRef<AssetConfigurationFormRef>(null);
 
   useEffect(() => {
     fetchProtocols();
@@ -288,13 +290,7 @@ export const RunProtocols: React.FC = () => {
     }
   };
 
-  const handleAssetChange = (assetName: string, value: string) => {
-    dispatch(updateAssetConfig({ name: assetName, value }));
-  };
-
-  const handleParameterChange = (name: string, value: any) => {
-    dispatch(updateParameterValue({ name, value }));
-  };
+  // Removed per-field dispatches; handled via react-hook-form save
 
   const isStepValid = (stepIndex: number): boolean => {
     switch (stepIndex) {
@@ -338,9 +334,13 @@ export const RunProtocols: React.FC = () => {
       return;
     }
 
-    // Save parameter changes when leaving the parameters step
-    if (step === 1 && parameterFormRef.current) {
-      parameterFormRef.current.saveChanges();
+    // Save parameter form data
+    if (parameterFormRef.current) {
+      parameterFormRef.current.save();
+    }
+    // Save asset form data
+    if (assetFormRef.current) {
+      assetFormRef.current.save();
     }
 
     dispatch(setStep(details.step));
@@ -465,6 +465,12 @@ export const RunProtocols: React.FC = () => {
                 <ParameterConfigurationForm
                   ref={parameterFormRef}
                   parameters={protocolDetails?.parameters || {}}
+                  initialValues={parameterValues}
+                  onSave={(data) => {
+                    Object.entries(data).forEach(([name, value]) => {
+                      dispatch(updateParameterValue({ name, value }));
+                    });
+                  }}
                 />
               </CardBody>
             </Card>
@@ -480,11 +486,16 @@ export const RunProtocols: React.FC = () => {
             <Card>
               <CardBody>
                 <AssetConfigurationForm
+                  ref={assetFormRef}
                   assets={protocolDetails?.assets || []}
                   availableAssets={availableAssets}
                   deckFiles={deckFiles}
                   selectedDeckFile={selectedDeckFile}
                   onDeckFileChange={setSelectedDeckFile}
+                  initialValues={assetConfig}
+                  onSave={(data) => {
+                    dispatch(setAssetConfig(data));
+                  }}
                 />
               </CardBody>
             </Card>

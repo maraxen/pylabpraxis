@@ -18,7 +18,25 @@ import { ValueDisplay } from './values/ValueDisplay';
 
 // Import utilities
 import { useDndSensors, addDragStyles, removeDragStyles } from '../utils/dndUtils';
-import { clearExcessStorage, generateCompactId } from '../utils/storageUtils';
+import { generateCompactId } from '../utils/storageUtils';
+
+// Temporary fix: robust clearExcessStorage implementation here
+function clearExcessStorage() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+  } catch (e) {
+    console.warn('Error clearing localStorage:', e);
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+  } catch (e) {
+    console.warn('Error clearing sessionStorage:', e);
+  }
+}
 import { ValueData, GroupData, ParameterConfig } from '@protocols/types/protocol';
 
 
@@ -48,6 +66,7 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   onChange,
   parameters,
 }) => {
+  const [editingValueId, setEditingValueId] = useState<string | null>(null);
   // Extract constraints with defaults
   const constraints = config?.constraints || {};
 
@@ -59,8 +78,8 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
   const valueType = valueConstraints?.type || 'string';
 
   // Extract editability flags from nested constraints
-  const isKeyEditable = !!keyConstraints.editable || !!constraints.editable;
-  const isValueEditable = !!valueConstraints.editable || !!constraints.editable;
+  const isKeyEditable = keyConstraints.editable === false || constraints.editable === false ? false : true;
+  const isValueEditable = valueConstraints.editable === false || constraints.editable === false ? false : true;
 
   // Extract creatability flags from nested constraints
   const creatable = !!constraints.creatable;
@@ -79,32 +98,105 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
 
   // Initialize mapping with each node having an _editable flag from config if provided.
   const [mapping, setMapping] = React.useState(() => {
-    // Deep-clone function that also sets _editable flags
-    const cloneMapping = (obj: any): any => {
-      if (typeof obj !== 'object' || obj === null) return obj;
-      // Force newObj to be a Record<string, any>
-      const newObj = {} as Record<string, any>;
-      Object.keys(obj).forEach((key: string) => {
-        const defaultEditable = config?.constraints?.editable !== false;
-        if (typeof obj[key] === 'object' && obj[key] !== null) {
-          newObj[key] = {
-            ...cloneMapping(obj[key]),
-            _editable: ((config as any).isEditable && typeof (config as any).isEditable === 'function'
-              ? (config as any).isEditable(key)
-              : defaultEditable)
-          };
-        } else {
-          newObj[key] = {
-            value: obj[key],
-            _editable: ((config as any).isEditable && typeof (config as any).isEditable === 'function'
-              ? (config as any).isEditable(key)
-              : defaultEditable)
-          };
-        }
+    const transformDefaultsToGroups = (defaults: any) => {
+      if (typeof defaults !== 'object' || defaults === null || Array.isArray(defaults)) return {};
+
+      const groups: Record<string, any> = {};
+
+      Object.entries(defaults).forEach(([key, val]) => {
+        const groupId = crypto.randomUUID();
+        groups[groupId] = {
+          id: groupId,
+          name: key,
+          values: Array.isArray(val)
+            ? val.map((v: any) => ({
+              id: crypto.randomUUID(),
+              value: v,
+              type: typeof v,
+              isEditable: true,
+            }))
+            : [
+              {
+                id: crypto.randomUUID(),
+                value: val,
+                type: typeof val,
+                isEditable: true,
+              },
+            ],
+          isEditable: true,
+        };
       });
-      return newObj;
+
+      // If the parent's value is empty, but our initialized mapping has defaults, propagate it up
+      useEffect(() => {
+        if (
+          value && typeof value === 'object' && Object.keys(value).length === 0 &&
+          mapping && typeof mapping === 'object' && Object.keys(mapping).length > 0
+        ) {
+          onChange(mapping);
+        }
+      }, []);
+
+      return groups;
     };
-    return cloneMapping(value || {});
+
+    if (value && Object.keys(value).length > 0) {
+      return value;
+    }
+
+    // If no initial value, try to use defaults from config
+    if (config?.default && typeof config.default === 'object' && Object.keys(config.default).length > 0) {
+      return transformDefaultsToGroups(config.default);
+    }
+
+    // If no explicit default, try to build from referenced parameter defaults
+    const keyArray = config?.constraints?.key_constraints?.array || [];
+    const valueArray = config?.constraints?.value_constraints?.array || [];
+
+    const keyParam = config?.constraints?.key_constraints?.param;
+    const valueParam = config?.constraints?.value_constraints?.param;
+
+    const keyParamDefaults = keyParam && parameters?.[keyParam]?.default
+      ? Array.isArray(parameters[keyParam].default)
+        ? parameters[keyParam].default
+        : [parameters[keyParam].default]
+      : [];
+
+    const valueParamDefaults = valueParam && parameters?.[valueParam]?.default
+      ? Array.isArray(parameters[valueParam].default)
+        ? parameters[valueParam].default
+        : [parameters[valueParam].default]
+      : [];
+
+    const effectiveParentOptions = keyArray.length > 0 ? keyArray : keyParamDefaults;
+    const effectiveChildOptions = valueArray.length > 0 ? valueArray : valueParamDefaults;
+
+    if (effectiveParentOptions.length > 0) {
+      const groups: Record<string, any> = {};
+
+      effectiveParentOptions.forEach((parentKey: any) => {
+        const groupId = crypto.randomUUID();
+        const childValues = effectiveChildOptions.length > 0
+          ? effectiveChildOptions.map((childVal: any) => ({
+            id: crypto.randomUUID(),
+            value: childVal,
+            type: typeof childVal,
+            isEditable: true,
+          }))
+          : [];
+
+        groups[groupId] = {
+          id: groupId,
+          name: parentKey,
+          values: childValues,
+          isEditable: true,
+        };
+      });
+
+      return groups;
+    }
+
+    return {};
   });
 
   // Clear excess storage on component mount to prevent storage quota issues
@@ -464,8 +556,17 @@ const HierarchicalMappingImpl: React.FC<NestedMappingProps> = ({
             >
               <Box width="100%">
                 <SimpleGrid columns={2} gap={4} width="100%">
-                  <GroupsSection value={value} onChange={onChange} />
-                  <AvailableValuesSection value={value} />
+                  <GroupsSection
+                    value={value}
+                    onChange={onChange}
+                    editingValueId={editingValueId}
+                    setEditingValueId={setEditingValueId}
+                  />
+                  <AvailableValuesSection
+                    value={value}
+                    editingValueId={editingValueId}
+                    setEditingValueId={setEditingValueId}
+                  />
                 </SimpleGrid>
               </Box>
               {/* Drag Overlay */}

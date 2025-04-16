@@ -1,5 +1,4 @@
-// filepath: /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/frontend/src/features/protocols/components/assets/AssetConfigurationForm.tsx
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { VStack, Text, Badge, Group } from '@chakra-ui/react';
 import { Field } from '@praxis-ui';
 import {
@@ -8,11 +7,14 @@ import {
   AutoCompleteItem,
   AutoCompleteList,
 } from "@choc-ui/chakra-autocomplete";
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import { updateAssetConfig } from '@protocols/store/slice';
+import { useForm, Controller } from 'react-hook-form';
 
 import { Asset, AssetOption } from '@protocols/types/protocol';
+
+export interface AssetConfigurationFormRef {
+  save: () => void;
+  getValues: () => Record<string, any>;
+}
 
 interface Props {
   assets: Asset[];
@@ -20,29 +22,36 @@ interface Props {
   deckFiles?: string[];
   selectedDeckFile?: string;
   onDeckFileChange?: (value: string) => void;
+  initialValues?: Record<string, any>;
+  onSave?: (data: Record<string, any>) => void;
 }
 
-export const AssetConfigurationForm: React.FC<Props> = ({
+export const AssetConfigurationForm = forwardRef<AssetConfigurationFormRef, Props>(({
   assets,
   availableAssets = {},
   deckFiles = [],
   selectedDeckFile = '',
   onDeckFileChange,
-}) => {
-  const dispatch = useDispatch();
-  const assetStates = useSelector((state: RootState) => state.protocolForm.assets);
-  const assetConfig = useSelector((state: RootState) => state.protocolForm.assetConfig);
+  initialValues = {},
+  onSave,
+}, ref) => {
+  const { control, handleSubmit, getValues, reset } = useForm({
+    defaultValues: initialValues,
+  });
 
-  const handleAssetChange = (assetName: string, value: string) => {
-    dispatch(updateAssetConfig({ name: assetName, value }));
-  };
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      handleSubmit((data) => {
+        onSave?.(data);
+      })();
+    },
+    getValues: () => getValues(),
+  }));
 
   return (
     <VStack gap={4} width="100%">
       {assets.map((asset) => {
-        const assetState = assetStates[asset.name];
-        const availableOptions = assetState?.availableOptions || [];
-
+        const options = availableAssets[asset.type] || [];
         return (
           <Field
             key={`asset-field-${asset.name}`}
@@ -56,42 +65,48 @@ export const AssetConfigurationForm: React.FC<Props> = ({
             required={asset.required}
             helperText={asset.description}
           >
-            <AutoComplete
-              value={assetConfig[asset.name] || ''}
-              onChange={(value) => handleAssetChange(asset.name, value)}
-            >
-              <AutoCompleteInput
-                placeholder={`Select ${asset.name}...`}
-                variant="outline"
-              />
-              <AutoCompleteList>
-                {availableOptions.map((item) => (
-                  <AutoCompleteItem
-                    key={`${asset.type}::${item.name}`}
-                    value={item.name}
-                    disabled={!item.is_available}
-                    label={`${item.name}${item.description ? ` - ${item.description}` : ''}`}
-                  >
-                    <Group gap={2} width="100%" justify="space-between">
-                      <Text>{item.name}</Text>
-                      <Group gap={2}>
-                        {!item.is_available && (
-                          <Badge colorPalette="yellow">In Use</Badge>
-                        )}
-                        {item.metadata?.location && (
-                          <Badge colorPalette="blue">{item.metadata.location}</Badge>
-                        )}
-                        {item.last_used && (
-                          <Text fontSize="sm" color="gray.500">
-                            Last used: {new Date(item.last_used).toLocaleDateString()}
-                          </Text>
-                        )}
-                      </Group>
-                    </Group>
-                  </AutoCompleteItem>
-                ))}
-              </AutoCompleteList>
-            </AutoComplete>
+            <Controller
+              control={control}
+              name={asset.name}
+              render={({ field }) => (
+                <AutoComplete
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                >
+                  <AutoCompleteInput
+                    placeholder={`Select ${asset.name}...`}
+                    variant="outline"
+                  />
+                  <AutoCompleteList>
+                    {options.map((item) => (
+                      <AutoCompleteItem
+                        key={`${asset.type}::${item.name}`}
+                        value={item.name}
+                        disabled={!item.is_available}
+                        label={`${item.name}${item.description ? ` - ${item.description}` : ''}`}
+                      >
+                        <Group gap={2} width="100%" justify="space-between">
+                          <Text>{item.name}</Text>
+                          <Group gap={2}>
+                            {!item.is_available && (
+                              <Badge colorPalette="yellow">In Use</Badge>
+                            )}
+                            {item.metadata?.location && (
+                              <Badge colorPalette="blue">{item.metadata.location}</Badge>
+                            )}
+                            {item.last_used && (
+                              <Text fontSize="sm" color="gray.500">
+                                Last used: {new Date(item.last_used).toLocaleDateString()}
+                              </Text>
+                            )}
+                          </Group>
+                        </Group>
+                      </AutoCompleteItem>
+                    ))}
+                  </AutoCompleteList>
+                </AutoComplete>
+              )}
+            />
           </Field>
         );
       })}
@@ -129,4 +144,6 @@ export const AssetConfigurationForm: React.FC<Props> = ({
       </Field>
     </VStack>
   );
-};
+});
+
+AssetConfigurationForm.displayName = 'AssetConfigurationForm';

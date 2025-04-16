@@ -10,9 +10,10 @@ interface ParameterFieldProps {
   value: any;
   onChange: (name: string, value: any) => void;
   onRemove: (name: string, index: number) => void;
+  parameters?: Record<string, ParameterConfig>; // add this prop for option propagation
 }
 
-const ParameterFieldComponent: React.FC<ParameterFieldProps> = ({ name, config, value, onChange, onRemove }) => {
+const ParameterFieldComponent: React.FC<ParameterFieldProps> = ({ name, config, value, onChange, onRemove, parameters }) => {
   return (
     <Container solid maxW="container.md" p={4}>
       <Box mb={2}>
@@ -37,6 +38,7 @@ const ParameterFieldComponent: React.FC<ParameterFieldProps> = ({ name, config, 
           onChange={onChange}
           useDelayed={true}
           onRemove={onRemove}
+          parameters={parameters} // pass parameters down to InputRenderer
         />
       </Box>
     </Container>

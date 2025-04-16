@@ -20,7 +20,10 @@ export interface ValueItemProps {
   onFocus?: () => void;
   onBlur?: () => void;
   onValueChange?: (newValue: any) => void;
+  /** Force this item to be draggable even if isEditable is false */
+  alwaysDraggable?: boolean;
 }
+
 
 /**
  * A versatile draggable/sortable value component that can be used throughout the app.
@@ -40,7 +43,8 @@ export const ValueItem: React.FC<ValueItemProps> = ({
   onEdit,
   onFocus,
   onBlur,
-  onValueChange
+  onValueChange,
+  alwaysDraggable = false,
 }) => {
   const [localValue, setLocalValue] = useState<any>(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -119,7 +123,7 @@ export const ValueItem: React.FC<ValueItemProps> = ({
         value: localValue
       }}
       isEditing={isEditing}
-      isDraggable={!isEditing && isEditable}
+      isDraggable={!isEditing && (isEditable || alwaysDraggable)}
       dragMode={dragMode}
       actionButtons={showActionButtons}
       onFocus={onFocus}

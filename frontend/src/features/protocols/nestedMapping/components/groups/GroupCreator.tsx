@@ -24,11 +24,19 @@ const GroupCreator: React.FC<GroupCreatorProps> = ({ value }) => {
   // Handle creating a new group
   const handleCreateGroup = () => {
     if (groupName.trim()) {
-      // Generate a proper display name
       const displayName = groupName.trim();
 
+      // Check for duplicate group name
+      const duplicate = Object.values(value).some(
+        (group) => group.name === displayName
+      );
+
+      if (duplicate) {
+        alert(`Group name "${displayName}" already exists. Please choose a unique name.`);
+        return;
+      }
+
       // Create the group with the display name
-      // This will generate an ID but use our name for display
       createGroup(displayName);
 
       // Reset the state

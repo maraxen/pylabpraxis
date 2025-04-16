@@ -8,9 +8,11 @@ import { ValueData } from '@shared/types/protocol';
 
 interface AvailableValuesSectionProps {
   value: Record<string, any>;
+  editingValueId: string | null;
+  setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ value }) => {
+export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ value, editingValueId, setEditingValueId }) => {
   const {
     dragInfo,
     createdValues,
@@ -20,7 +22,25 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
   } = useNestedMapping();
 
   // Get available values as an array of ValueData objects
-  const availableValues: ValueData[] = Object.values(createdValues);
+  // Merge createdValues with constraint-defined options (effectiveChildOptions)
+  const createdValueList: ValueData[] = Object.values(createdValues);
+
+  // Build a Set of existing primitive values for quick deduplication
+  const existingValuesSet = new Set(
+    createdValueList.map((v) => (v?.value !== undefined && v?.value !== null ? JSON.stringify(v.value) : 'null'))
+  );
+
+  const constraintValues: ValueData[] = (effectiveChildOptions || []).map((val: any) => {
+    const key = val !== undefined && val !== null ? JSON.stringify(val) : 'null';
+    return {
+      id: `constraint_${key}`, // deterministic id for constraint values
+      value: val,
+      type: typeof val,
+      isEditable: false,
+    };
+  }).filter((v) => !existingValuesSet.has(JSON.stringify(v.value)));
+
+  const availableValues: ValueData[] = [...createdValueList, ...constraintValues];
 
   // Check if we're currently in value creation mode
   const isCreatingValue = creationMode === 'value';
@@ -56,6 +76,14 @@ export const AvailableValuesSection: React.FC<AvailableValuesSectionProps> = ({ 
                   type={item.type || 'string'}
                   dragMode="draggable"
                   isEditable={item.isEditable}
+                  alwaysDraggable={true}
+                  isEditing={editingValueId === item.id}
+                  onEdit={() => setEditingValueId(item.id)}
+                  onBlur={() => setEditingValueId(null)}
+                  onValueChange={(newVal) => {
+                    // Update createdValues directly
+                    createdValues[item.id].value = newVal;
+                  }}
                 />
               ))}
             </VStack>

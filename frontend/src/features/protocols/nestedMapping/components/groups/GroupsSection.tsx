@@ -21,9 +21,11 @@ interface GroupData {
 interface GroupsSectionProps {
   value: Record<string, GroupData>;
   onChange: (value: Record<string, GroupData>) => void;
+  editingValueId: string | null;
+  setEditingValueId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange }) => {
+export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange, editingValueId, setEditingValueId }) => {
   const { dragInfo } = useNestedMapping();
 
   // Handle deleting a group
@@ -60,6 +62,8 @@ export const GroupsSection: React.FC<GroupsSectionProps> = ({ value, onChange })
                 group={group}
                 onDelete={() => handleDeleteGroup(groupId)}
                 isHighlighted={dragInfo.overDroppableId === groupId}
+                editingValueId={editingValueId}
+                setEditingValueId={setEditingValueId}
               />
             ))}
           </SimpleGrid>
