@@ -4,7 +4,7 @@ import { DroppableArea } from '@praxis-ui';
 import { ValueItem } from './ValueItem';
 import { ValueCreator } from './ValueCreator';
 import { useNestedMapping } from '@features/protocols/contexts/nestedMappingContext';
-import { ValueData } from '@shared/types/protocol';
+import { ValueData, GroupData } from '@shared/types/protocol';
 
 interface AvailableValuesSectionProps {
   value: Record<string, any>;
@@ -25,20 +25,34 @@ export const AvailableValuesSection = React.memo<AvailableValuesSectionProps>(({
   // Merge createdValues with constraint-defined options (effectiveChildOptions)
   const createdValueList: ValueData[] = Object.values(createdValues);
 
-  // Build a Set of existing primitive values for quick deduplication
-  const existingValuesSet = new Set(
+  // Build Sets of existing values for quick deduplication
+  // 1. Values explicitly created by the user (and not yet assigned)
+  const createdValuesSet = new Set(
     createdValueList.map((v) => (v?.value !== undefined && v?.value !== null ? JSON.stringify(v.value) : 'null'))
   );
+  // 2. Values currently assigned to any group
+  const assignedValuesSet = new Set<string>();
+  Object.values(value as Record<string, GroupData>).forEach(group => {
+    if (group.values) {
+      group.values.forEach((v: ValueData) => {
+        assignedValuesSet.add(v?.value !== undefined && v?.value !== null ? JSON.stringify(v.value) : 'null');
+      });
+    }
+  });
 
+  // Filter constraint-derived values: exclude if already created OR already assigned to a group
   const constraintValues: ValueData[] = (effectiveChildOptions || []).map((val: any) => {
     const key = val !== undefined && val !== null ? JSON.stringify(val) : 'null';
     return {
       id: `constraint_${key}`, // deterministic id for constraint values
       value: val,
       type: typeof val,
-      isEditable: false,
+      isEditable: false, // Constraint values are read-only
     };
-  }).filter((v) => !existingValuesSet.has(JSON.stringify(v.value)));
+  }).filter((v) => {
+    const stringifiedValue = v?.value !== undefined && v?.value !== null ? JSON.stringify(v.value) : 'null';
+    return !createdValuesSet.has(stringifiedValue) && !assignedValuesSet.has(stringifiedValue);
+  });
 
   const availableValues: ValueData[] = [...createdValueList, ...constraintValues];
 

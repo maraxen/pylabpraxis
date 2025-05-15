@@ -75,16 +75,27 @@ class Protocol(ProtocolInterface):
 
     def __init__(
         self,
-        config: ProtocolConfiguration | dict[str, Any],
+        config: Union[ProtocolConfiguration, dict, str],
+        praxis_config: Optional[PraxisConfiguration] = None,
     ):
-        """Initialize Protocol with configuration.
+        """Initialize Protocol with flexible configuration inputs.
 
         Args:
-            config: Either a ProtocolConfiguration object or a dictionary containing configuration
+            config: Can be:
+              - ProtocolConfiguration object
+              - Configuration dictionary
+              - Path to JSON config file
+            praxis_config: Optional PraxisConfiguration (required if config is dict/path)
         """
-        # Parse configuration
+        if isinstance(config, str):
+            with open(config, "r") as f:
+                config = json.load(f)
+
         if isinstance(config, dict):
-            self.protocol_configuration = ProtocolConfiguration(config, None)
+            from .jsonschema_utils import validate_protocol_config
+
+            validate_protocol_config(config)
+            self.protocol_configuration = ProtocolConfiguration(config, praxis_config)
         else:
             self.protocol_configuration = config
 
@@ -103,6 +114,8 @@ class Protocol(ProtocolInterface):
 
         # Get required assets from configuration
         self._required_assets = self.protocol_configuration.required_assets
+        self._validate_and_setup_assets()
+        self._validate_and_setup_assets()
 
         # Initialize state management
         self._workcell: Optional[WorkcellInterface] = None
@@ -286,6 +299,84 @@ class Protocol(ProtocolInterface):
     @property
     def required_assets(self) -> WorkcellAssetsInterface:
         return self._required_assets
+
+    def _validate_and_setup_assets(self) -> None:
+        """Validate asset requirements and configure deck through workcell."""
+        if not self._required_assets:
+            return
+
+        # Check for 96-channel head requirement
+        if self._required_assets.get("needs_96_head"):
+            if not hasattr(self.workcell, 'has_96_channel_head') or \
+               not self.workcell.has_96_channel_head():
+                raise ValueError("Protocol requires 96-channel head but none available")
+            self._configure_96_head()
+
+        # Validate asset placement considering existing deck state
+        for asset_name, asset in self._required_assets.items():
+            # Check carrier compatibility if specified
+            if 'carrier_compatibility' in asset:
+                if not self._check_carrier_compatibility(asset_name, asset):
+                    raise ValueError(
+                        f"No compatible carrier available for {asset_name}"
+                    )
+
+            # Check stackable flag and slot requirements
+            if not asset.get('stackable', False):
+                if not self._check_single_slot_available(asset_name, asset):
+                    raise ValueError(
+                        f"No available slot for non-stackable asset {asset_name}"
+                    )
+
+    def _configure_96_head(self) -> None:
+        """Configure liquid handler for 96-channel head if possible."""
+        if hasattr(self.workcell, 'liquid_handler') and \
+           hasattr(self.workcell.liquid_handler, 'configure_for_96_head'):
+            self.workcell.liquid_handler.configure_for_96_head()
+
+    def _check_carrier_compatibility(self, asset_name: str, asset: dict) -> bool:
+        """Check if compatible carriers are available with enough slots."""
+        if not hasattr(self.workcell, 'deck'):
+            return True  # Skip check if no deck
+
+        required_slots = asset.get('min_slots', 1)
+        compatible_carriers = asset.get('carrier_compatibility', [])
+
+        # Check each compatible carrier type
+        for carrier_type in compatible_carriers:
+            # Get all carriers of this type on deck
+            carriers = [
+                r for r in self.workcell.deck.get_all_children()
+                if r.__class__.__name__ == carrier_type
+            ]
+
+            # Check each carrier for available slots
+            for carrier in carriers:
+                available_slots = len([
+                    s for s in carrier.get_all_children()
+                    if not s.has_children()  # Empty slot
+                ])
+                if available_slots >= required_slots:
+                    return True
+        return False
+
+    def _check_single_slot_available(self, asset_name: str, asset: dict) -> bool:
+        """Check if at least one slot is available for non-stackable assets."""
+        if not hasattr(self.workcell, 'deck'):
+            return True  # Skip check if no deck
+
+        # Check deck position if specified
+        if 'deck_position' in asset:
+            position = asset['deck_position']
+            if not self.workcell.deck.is_position_available(position):
+                return False
+
+        # Count available slots
+        available_slots = len([
+            r for r in self.workcell.deck.get_all_children()
+            if not r.has_children()  # Empty slot
+        ])
+        return available_slots > 0
 
     def __getitem__(self, key: str) -> Any:
         return self.state[self.name][key]

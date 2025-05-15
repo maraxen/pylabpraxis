@@ -431,6 +431,74 @@ class Workcell(WorkcellInterface):
             return True
         return asset_name in self._in_use_by
 
+    async def validate_asset_requirements(self, assets: dict) -> None:
+        """Validate all asset requirements including deck layout."""
+        if not hasattr(self, 'deck'):
+            return
+
+        for asset_name, asset_spec in assets.items():
+            if not await self.validate_asset_placement(asset_name, asset_spec):
+                raise ValueError(f"Asset placement validation failed for {asset_name}")
+
+    async def validate_asset_placement(self, asset_name: str, asset_spec: dict) -> bool:
+        """Validate if an asset can be placed according to its specifications."""
+        if not hasattr(self, "deck"):
+            return True
+
+        # Check carrier compatibility if specified
+        if "carrier_compatibility" in asset_spec:
+            if not await self._check_carrier_compatibility(asset_spec):
+                return False
+
+        # Check stackable flag and slot requirements
+        if not asset_spec.get("stackable", False):
+            if not await self._check_single_slot_available(asset_spec):
+                return False
+
+        return True
+
+    async def _check_carrier_compatibility(self, asset_spec: dict) -> bool:
+        """Check if compatible carriers are available with enough slots."""
+        required_slots = asset_spec.get("min_slots", 1)
+        compatible_carriers = asset_spec.get("carrier_compatibility", [])
+
+        for carrier_type in compatible_carriers:
+            carriers = [
+                r
+                for r in self.deck.get_all_children()
+                if r.__class__.__name__ == carrier_type
+            ]
+
+            for carrier in carriers:
+                available_slots = len(
+                    [
+                        s
+                        for s in carrier.get_all_children()
+                        if not s.has_children()  # Empty slot
+                    ]
+                )
+                if available_slots >= required_slots:
+                    return True
+        return False
+
+    async def _check_single_slot_available(self, asset_spec: dict) -> bool:
+        """Check if at least one slot is available for non-stackable assets."""
+        # Check deck position if specified
+        if "deck_position" in asset_spec:
+            position = asset_spec["deck_position"]
+            if not self.deck.is_position_available(position):
+                return False
+
+        # Count available slots
+        available_slots = len(
+            [
+                r
+                for r in self.deck.get_all_children()
+                if not r.has_children()  # Empty slot
+            ]
+        )
+        return available_slots > 0
+
     async def mark_asset_in_use(self, asset_name: str, protocol_name: str) -> None:
         """Mark a asset as being used by a protocol."""
         if self.db is not None:

@@ -19,6 +19,7 @@ from ..protocol.protocol import Protocol
 from ..utils import db
 from ..interfaces import WorkcellAssetsInterface
 from ..protocol.parameter import ProtocolParameters
+from ..protocol.jsonschema_utils import parameters_to_jsonschema
 from .dependencies import get_orchestrator
 
 config = PraxisConfiguration("praxis.ini")
@@ -404,6 +405,50 @@ async def import_protocol_module(protocol_path: str) -> Optional[Any]:
     except Exception as e:
         logger.error(f"Error importing protocol module: {e}", exc_info=True)
         return None
+
+
+@router.get("/schema")
+async def get_protocol_schema(
+    protocol_path: str, orchestrator: Orchestrator = Depends(get_orchestrator)
+) -> Dict[str, Any]:
+    """Get JSONSchema for a protocol's parameters.
+
+    Args:
+        protocol_path: Path to the protocol file
+    Returns:
+        JSONSchema dictionary for the protocol's parameters
+    """
+    try:
+        # Get protocol details (reusing existing function)
+        details = await get_protocol_details(protocol_path, orchestrator)
+        if not details:
+            raise HTTPException(status_code=404, detail="Protocol not found")
+
+        # Get the ProtocolParameters from the module
+        protocol_module = await import_protocol_module(protocol_path)
+        if not protocol_module:
+            raise HTTPException(status_code=404, detail="Protocol module not found")
+
+        parameters = getattr(protocol_module, "baseline_parameters", None)
+        if not parameters or not isinstance(parameters, ProtocolParameters):
+            parameters = ProtocolParameters()
+
+        # Generate JSONSchema
+        schema = parameters_to_jsonschema(
+            parameters,
+            protocol_name=details["name"],
+            protocol_description=details["description"],
+        )
+
+        return schema
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating protocol schema: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error generating protocol schema: {str(e)}"
+        )
 
 
 @router.get("/", response_model=List[str])

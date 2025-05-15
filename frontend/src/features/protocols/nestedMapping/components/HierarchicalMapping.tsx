@@ -270,6 +270,11 @@ const HierarchicalMappingImpl = React.memo(({
     setValueLocations(locations);
   }, [value]);
 
+  // Helper to get max values per group from constraints
+  const getMaxValuesPerGroup = (): number => {
+    return valueConstraints?.array_len ?? Infinity;
+  };
+
   // Create a new value with proper typing from constraints
   const createValue = (newVal: any): string => {
     try {
@@ -404,15 +409,18 @@ const HierarchicalMappingImpl = React.memo(({
 
           // If not in createdValues, create from active data but preserve metadata
           if (!draggedValueData) {
-            const draggedValue = active.data.current?.value;
             const metadata = active.data.current?.metadata || {};
+            const draggedValue = metadata?.value; // Get value from metadata
 
             if (draggedValue !== undefined) {
               draggedValueData = {
-                id: draggedId,
+                id: metadata.id || draggedId, // Use original ID from metadata if available
                 value: draggedValue,
                 type: metadata.type || valueType,
-                isEditable: metadata.isEditable !== undefined ? metadata.isEditable : isValueEditable
+                isEditable: metadata.isEditable !== undefined ? metadata.isEditable : isValueEditable,
+                // Preserve other potential metadata properties if needed
+                isFromParam: metadata.isFromParam,
+                paramSource: metadata.paramSource,
               };
             }
           }
@@ -421,12 +429,23 @@ const HierarchicalMappingImpl = React.memo(({
           draggedValueData = value[sourceGroupId].values.find((v: ValueData) => v.id === draggedId);
         }
 
-        // Safety check
+        // Safety check for dragged data
         if (!draggedValueData) {
           setActiveId(null);
           setActiveData(null);
           removeDragStyles();
-          return;
+          return; // Exit if no valid data found
+        }
+
+        // Check if target group is full
+        const maxValues = getMaxValuesPerGroup();
+        if (maxValues !== Infinity && targetGroup.values.length >= maxValues) {
+          // Target group is full, do not add the item
+          console.warn(`Group ${targetId} is full (max: ${maxValues}). Cannot add item ${draggedId}.`);
+          setActiveId(null);
+          setActiveData(null);
+          removeDragStyles();
+          return; // Exit without modifying state
         }
 
         let updatedValue = { ...value };
