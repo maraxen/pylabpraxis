@@ -4,13 +4,13 @@ import { CommonModule } from '@angular/common'; // Import CommonModule for async
 import { Subscription } from 'rxjs'; // Import Subscription
 
 // Angular Material Modules
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; // For loading indicator
 
 // OIDC Client
 import { OidcSecurityService, LoginResponse } from 'angular-auth-oidc-client';
+
+// Import NavbarComponent
+import { NavbarComponent } from './core/layout/navbar/navbar.component';
 
 @Component({
   selector: 'app-root',
@@ -18,10 +18,8 @@ import { OidcSecurityService, LoginResponse } from 'angular-auth-oidc-client';
   imports: [
     CommonModule, // Add CommonModule
     RouterOutlet,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule, // Add MatProgressSpinnerModule
+    NavbarComponent
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']

@@ -1,92 +1,72 @@
-import { ApplicationConfig, importProvidersFrom, provideAppInitializer } from '@angular/core';
+import { ApplicationConfig, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { routes } from './app.routes';
 
 // OIDC Client and RxJS operators
-
-import { provideAuth, LogLevel, OidcSecurityService, LoginResponse } from 'angular-auth-oidc-client';
+import { LogLevel, OidcSecurityService, LoginResponse, provideAuth, UserDataResult } from 'angular-auth-oidc-client'; // Added UserDataResult
 import { switchMap, take, tap } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { of, firstValueFrom } from 'rxjs'; // Corrected: firstValueFrom is a top-level import from 'rxjs'
 
-export function initializeAuth(oidcSecurityService: OidcSecurityService): () => Promise<any> {
-  return () =>
-    oidcSecurityService.checkAuth() // checkAuth() processes the auth result after redirect
+// New provideAppInitializer function
+import { provideAppInitializer } from '@angular/core';
+
+// Initializer function that will be passed to provideAppInitializer
+// This function itself is the initializer.
+const initializeAuthFunction = () => { // Renamed and restructured
+  const oidcSecurityService = inject(OidcSecurityService);
+
+  return firstValueFrom(
+    oidcSecurityService.checkAuth()
       .pipe(
-        take(1), // Ensure the observable completes after the first emission
+        take(1),
         tap((loginResponse: LoginResponse) => {
-          console.log('provideAppInitializer: checkAuth() response. IsAuthenticated:', loginResponse.isAuthenticated);
-          // If authenticated, userData will be available via oidcSecurityService.userData$
+          console.log('APP_INITIALIZER (via provideAppInitializer): checkAuth() response. IsAuthenticated:', loginResponse.isAuthenticated);
         }),
-        // Optional: If you need to ensure userData is loaded before app proceeds after login
         switchMap((loginResponse: LoginResponse) => {
           if (loginResponse.isAuthenticated) {
             return oidcSecurityService.userData$.pipe(
-              take(1), // Take the first emission of userData
-              tap(userData => console.log('provideAppInitializer: UserData loaded:', userData ? userData.preferred_username : 'no user data'))
+              take(1),
+              // Correctly access preferred_username from result.userData
+              tap((userDataResult: UserDataResult) => console.log('APP_INITIALIZER (via provideAppInitializer): UserData loaded:', userDataResult.userData ? userDataResult.userData.preferred_username : 'no user data'))
             );
           }
-          return of(null); // If not authenticated, or no further action needed, just complete
+          return of(null);
         })
       )
-      .lastValueFrom() // APP_INITIALIZER expects a Promise
-      .catch(error => {
-        console.error('provideAppInitializer: Error during auth initialization:', error);
-        // Allow app to continue even if auth init fails, guards will handle access
-        return Promise.resolve();
-      });
-}
-
+  ).catch((error: any) => { // Added type for error
+    console.error('APP_INITIALIZER (via provideAppInitializer): Error during auth initialization:', error);
+    return Promise.resolve(); // Allow app to continue
+  });
+};
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes), // Provide the router configuration
-    provideAnimations(), // Enable animations
-    provideHttpClient(withInterceptorsFromDi()), // Provide HttpClient with interceptor support
+    provideRouter(routes),
+    provideAnimations(),
+    provideHttpClient(withInterceptorsFromDi()),
 
-    // Import providers from AuthModule.forRoot()
-    // IMPORTANT: Replace the authority, redirectUrl, postLogoutRedirectUri, and clientId
-    // with your actual Keycloak configuration.
-    provideAuth({
+    // Use provideAuth for OIDC configuration
+    provideAuth({ // Replace importProvidersFrom(AuthModule.forRoot(...))
       config: {
-        // URL of the Identity Provider (Keycloak)
         authority: 'http://localhost:8080/realms/praxis-realm',
-
-        // URL of the SPA to redirect to after login
-        redirectUrl: window.location.origin + '/home',
-
-        // URL of the SPA to redirect to after logout
-        postLogoutRedirectUri: window.location.origin,
-
-        // The Client ID of your SPA application in Keycloak
-        clientId: 'praxis-client',
-
-        // Scopes being requested from the Identity Provider
+        redirectUrl: "http://localhost:4200/auth-callback",// window.location.origin + '/auth-callback',
+        postLoginRoute: '/home', // Optional: Route to navigate to after login and callback processing
+        clientId: 'praxis-client', // *** REPLACE WITH YOUR ACTUAL CLIENT ID ***
         scope: 'openid profile email offline_access',
-
-        // Type of response expected from the OIDC provider
-        responseType: 'code', // PKCE flow
-
-        // Enables silent token refresh
+        responseType: 'code',
         silentRenew: true,
         useRefreshToken: true,
-
-        logLevel: LogLevel.Debug, // Change to LogLevel.Warn or LogLevel.Error for production
-
-        // Ensure history cleanup is enabled
+        logLevel: LogLevel.Debug,
         historyCleanupOff: false,
-
-        triggerAuthorizationResultEvent: true, // Trigger events for authorization result
+        triggerAuthorizationResultEvent: true,
+        postLogoutRedirectUri: window.location.origin,
+        // Ensure this is false if using autoLoginPartialRoutesGuard
+        // autoLoginAllRoutes: false, (default is false)
       },
     }),
 
-    // Add APP_INITIALIZER to handle auth check before app starts
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeAuth,
-      deps: [OidcSecurityService], // Dependencies for the factory function
-      multi: true,
-    },
+    provideAppInitializer(initializeAuthFunction),
   ],
 };

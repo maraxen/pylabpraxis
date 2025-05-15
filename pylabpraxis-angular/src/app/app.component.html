@@ -1,20 +1,8 @@
-<mat-toolbar color="primary">
-  <span>PylabPraxis Angular</span>
-  <span class="spacer"></span>
-  <mat-spinner *ngIf="isLoading" diameter="24" style="margin-right: 10px;"></mat-spinner>
-
-  <ng-container *ngIf="!isLoading && isAuthenticated">
-    <span style="margin-right: 10px;">Welcome, {{ userData?.name || userData?.preferred_username || 'User' }}</span>
-    <button mat-button (click)="logout()">Logout</button>
-  </ng-container>
-
-  <button *ngIf="!isLoading && !isAuthenticated" mat-button (click)="login()">Login</button>
-</mat-toolbar>
-
+<app-navbar></app-navbar>
 <div class="content-container">
   <router-outlet *ngIf="!isLoading"></router-outlet>
-  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; height: 80vh;">
+  <div *ngIf="isLoading" class="loading-shade">
     <mat-spinner diameter="50"></mat-spinner>
-    <p style="margin-left: 10px;">Loading application...</p>
+    <p>Loading application...</p>
   </div>
 </div>

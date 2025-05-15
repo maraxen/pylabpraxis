@@ -1,0 +1,35 @@
+<mat-toolbar color="primary" class="app-navbar">
+  <a routerLink="/home" class="app-navbar-brand">
+    <mat-icon aria-hidden="false" aria-label="PylabPraxis logo" class="logo-icon">science</mat-icon>
+    <span>PylabPraxis</span>
+  </a>
+
+  <div class="nav-links">
+    <a *ngFor="let link of navLinks" mat-button [routerLink]="link.path" routerLinkActive="active-nav-link"
+      [routerLinkActiveOptions]="{exact: link.path === '/home'}">
+      <mat-icon *ngIf="link.icon">{{ link.icon }}</mat-icon>
+      <span>{{ link.label }}</span>
+    </a>
+  </div>
+
+  <span class="spacer"></span>
+
+  <div *ngIf="isAuthenticated && userData" class="user-section">
+    <button mat-button [matMenuTriggerFor]="userMenu">
+      <mat-icon>account_circle</mat-icon>
+      <span>{{ userDisplayName }}</span>
+      <mat-icon>arrow_drop_down</mat-icon>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  </div>
+
+  <button *ngIf="!isAuthenticated" mat-stroked-button (click)="login()" class="login-button">
+    <mat-icon>login</mat-icon>
+    <span>Login</span>
+  </button>
+</mat-toolbar>

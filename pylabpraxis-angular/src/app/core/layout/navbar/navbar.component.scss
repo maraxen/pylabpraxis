@@ -1,0 +1,84 @@
+    .app-navbar {
+      display: flex;
+      align-items: center;
+      padding: 0 16px; // Default Material toolbar padding
+    }
+
+    .app-navbar-brand {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: inherit; // Inherit color from toolbar (usually white or contrasting color)
+      font-size: 1.25rem; // Slightly larger for brand
+      font-weight: 500;
+
+      .logo-icon {
+        margin-right: 8px;
+        // Optional: if you have a custom SVG icon and want to size it
+        // width: 24px;
+        // height: 24px;
+      }
+    }
+
+    .nav-links {
+      margin-left: 24px;
+      display: flex;
+      gap: 8px; // Space between nav buttons
+
+      a.mat-mdc-button {
+        // Targeting Material 15+ buttons
+        min-width: auto; // Allow buttons to shrink to content size
+        padding: 0 12px;
+        font-weight: 400;
+
+        mat-icon {
+          margin-right: 6px;
+        }
+      }
+
+      .active-nav-link {
+        // Style for the active link - choose one or combine
+        // Option 1: Subtle background
+        // background-color: rgba(255, 255, 255, 0.1);
+        // border-radius: 4px;
+
+        // Option 2: Underline (more common for text links)
+        // border-bottom: 2px solid currentColor; // Use currentcolor to match text
+        // padding-bottom: 2px; // Adjust for underline position
+
+        // Option 3: Different text weight or color (if theme allows)
+        font-weight: 500; // Make active link slightly bolder
+        // color: var(--mat-toolbar-standard-text-color); // Example if you have a specific variable
+      }
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .user-section {
+      display: flex;
+      align-items: center;
+
+      button.mat-mdc-button {
+        mat-icon {
+          margin-right: 4px;
+        }
+
+        span+mat-icon {
+          // For the dropdown arrow
+          margin-left: 4px;
+        }
+      }
+    }
+
+    .login-button.mat-mdc-stroked-button {
+      // Targeting Material 15+ stroked button
+      // Ensure good contrast if your primary toolbar is dark
+      // color: white;
+      // border-color: rgba(255, 255, 255, 0.7);
+
+      // &:hover {
+      //   background-color: rgba(255, 255, 255, 0.1);
+      // }
+    }

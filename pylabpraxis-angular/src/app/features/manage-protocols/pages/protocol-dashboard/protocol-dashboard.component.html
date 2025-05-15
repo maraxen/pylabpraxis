@@ -1,0 +1,32 @@
+<div class="protocol-dashboard-container">
+  <header class="page-header">
+    <h1>Protocol Management</h1>
+    <div class="actions-group">
+      <button mat-raised-button color="accent" (click)="navigateToRunNewProtocol()"
+        matTooltip="Start a new protocol run">
+        <mat-icon>play_circle_outline</mat-icon>
+        Run New Protocol
+      </button>
+      <button mat-stroked-button color="primary" (click)="navigateToRunHistory()" matTooltip="View past protocol runs">
+        <mat-icon>history</mat-icon>
+        View Run History
+      </button>
+    </div>
+  </header>
+
+  <mat-divider></mat-divider>
+
+  <section class="dashboard-section">
+    <h2>Currently Running / Scheduled Protocols</h2>
+    <mat-card class="placeholder-card">
+      <mat-card-content>
+        <div class="placeholder-content">
+          <mat-icon>hourglass_empty</mat-icon>
+          <p>Live view of running and scheduled protocols will be displayed here.</p>
+          <p>(Feature under development)</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+</div>

@@ -1,0 +1,63 @@
+<div class="home-container">
+  <header class="hero-section">
+    <h1>Welcome to PylabPraxis!</h1>
+    <p class="subtitle">Your modern laboratory protocol and asset management platform.</p>
+    <button mat-raised-button color="accent" routerLink="/protocols">
+      <mat-icon>biotech</mat-icon>
+      Get Started with Protocols
+    </button>
+  </header>
+
+  <section class="features-section">
+    <h2>Key Features</h2>
+    <div class="features-grid">
+      <mat-card class="feature-card">
+        <mat-card-header>
+          <mat-card-title-group>
+            <mat-icon mat-card-avatar svgIcon="lab-flask"></mat-icon> <mat-card-title>Protocol
+              Management</mat-card-title>
+            <mat-card-subtitle>Design, execute, and track lab protocols with ease.</mat-card-subtitle>
+          </mat-card-title-group>
+        </mat-card-header>
+        <mat-card-content>
+          <p>Intuitive drag-and-drop interface, version control, and parameterization.</p>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button routerLink="/protocols">Explore Protocols</button>
+        </mat-card-actions>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-card-header>
+          <mat-card-title-group>
+            <mat-icon mat-card-avatar>inventory_2</mat-icon>
+            <mat-card-title>Lab Asset Tracking</mat-card-title>
+            <mat-card-subtitle>Manage equipment, consumables, and their status.</mat-card-subtitle>
+          </mat-card-title-group>
+        </mat-card-header>
+        <mat-card-content>
+          <p>Keep track of inventory, maintenance schedules, and reservations.</p>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button routerLink="/lab-assets">Manage Assets</button>
+        </mat-card-actions>
+      </mat-card>
+
+      <mat-card class="feature-card">
+        <mat-card-header>
+          <mat-card-title-group>
+            <mat-icon mat-card-avatar>admin_panel_settings</mat-icon>
+            <mat-card-title>User & System Settings</mat-card-title>
+            <mat-card-subtitle>Customize your experience and manage the platform.</mat-card-subtitle>
+          </mat-card-title-group>
+        </mat-card-header>
+        <mat-card-content>
+          <p>Configure user roles, system parameters, and personal preferences.</p>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button routerLink="/settings">Go to Settings</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </section>
+</div>

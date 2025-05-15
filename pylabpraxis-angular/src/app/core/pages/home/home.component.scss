@@ -1,0 +1,87 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px; // Space between sections
+  padding-bottom: 40px; // Space at the bottom
+}
+
+.hero-section {
+  text-align: center;
+  padding: 40px 20px;
+  width: 100%;
+  // background-color: var(--mat-sys-surface-container-low); // Example using theme variable
+  // border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  h1 {
+    font-size: 2.5rem; // Adjust as needed
+    font-weight: 500;
+    // color: var(--mat-sys-on-surface);
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    font-size: 1.2rem;
+    // color: var(--mat-sys-on-surface-variant);
+    margin-bottom: 32px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .mat-mdc-raised-button {
+    // Target Material 15+ raised button
+    padding: 12px 24px;
+    font-size: 1rem;
+  }
+}
+
+.features-section {
+  width: 100%;
+  max-width: 1200px; // Max width for content
+  padding: 0 20px;
+
+  h2 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 500;
+    margin-bottom: 32px;
+    // color: var(--mat-sys-on-surface);
+  }
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.feature-card {
+  // background-color: var(--mat-sys-surface-container);
+  // color: var(--mat-sys-on-surface-container);
+
+  .mat-mdc-card-avatar {
+    // Target Material 15+ card avatar
+    font-size: 2.5rem; // Make avatar icon larger
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mat-mdc-card-title {
+    // Target Material 15+ card title
+    font-size: 1.25rem;
+  }
+
+  .mat-mdc-card-subtitle {
+    // Target Material 15+ card subtitle
+    // color: var(--mat-sys-on-surface-variant);
+  }
+}

@@ -1,0 +1,67 @@
+:host {
+  display: block;
+  padding: 24px;
+}
+
+.protocol-dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap; // Allow wrapping on smaller screens
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px; // Space between title and button group
+
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 500;
+  }
+
+  .actions-group {
+    display: flex;
+    gap: 16px; // Space between buttons
+  }
+}
+
+.dashboard-section {
+  margin-top: 32px;
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 16px;
+    // color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.placeholder-card {
+  // background-color: var(--mat-sys-surface-container-low);
+}
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  min-height: 200px; // Ensure placeholder has some height
+  // color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+}
