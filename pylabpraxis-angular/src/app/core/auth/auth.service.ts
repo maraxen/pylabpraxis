@@ -48,7 +48,7 @@ export class AuthService {
 
     try {
       const oidc = await createOidc({
-        issuerUri: 'http://localhost:8080/realms/test_realm',
+        issuerUri: 'http://localhost:8080/realms/praxis',
         clientId: 'praxis',
         homeUrl: '/',
         // Keycloak redirects here; oidc-spa processes OIDC params on this URL.
