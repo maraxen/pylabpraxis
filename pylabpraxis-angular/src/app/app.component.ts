@@ -1,91 +1,66 @@
-import { Component, OnInit, OnDestroy } from '@angular/core'; // Import OnInit, OnDestroy
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { CommonModule } from '@angular/common'; // Import CommonModule for async pipe
-import { Subscription } from 'rxjs'; // Import Subscription
-
-// Angular Material Modules
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; // For loading indicator
-
-// OIDC Client
-import { OidcSecurityService, LoginResponse } from 'angular-auth-oidc-client';
-
-// Import NavbarComponent
 import { NavbarComponent } from './core/layout/navbar/navbar.component';
+import { AuthService } from './core/auth/auth.service'; // Import your AuthService
+import { Subscription } from 'rxjs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; // For loading indicator
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, // Add CommonModule
+    CommonModule,
     RouterOutlet,
-    MatProgressSpinnerModule, // Add MatProgressSpinnerModule
-    NavbarComponent
+    NavbarComponent,
+    MatProgressSpinnerModule // Add MatProgressSpinnerModule for the loading indicator
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'pylabpraxis-angular';
-  isAuthenticated = false; // To track authentication status
-  userData: any = null; // To store user data
-  isLoading = true; // To show a loading spinner initially
+  title = 'PylabPraxis Angular Frontend';
 
-  private authSubscription: Subscription | undefined;
-  private userDataSubscription: Subscription | undefined;
+  // Inject AuthService using the inject function (or constructor injection)
+  private authService = inject(AuthService);
 
-  // Inject OidcSecurityService
-  constructor(private oidcSecurityService: OidcSecurityService) { }
+  // Flag to track if OIDC setup is complete.
+  // This will be used in the template to show/hide a loading indicator.
+  isOidcSetupDone = false;
+  private oidcSetupSubscription: Subscription | undefined;
+
+  constructor() {
+    // Constructor can be kept empty if inject() is used for authService.
+    // If you prefer constructor injection:
+    // constructor(private authService: AuthService) {}
+  }
 
   ngOnInit() {
-    // checkAuth() processes the auth result and returns an observable.
-    // It's crucial to call this to complete the login flow after redirect.
-    this.authSubscription = this.oidcSecurityService
-      .checkAuth()
-      .subscribe((loginResponse: LoginResponse) => {
-        this.isAuthenticated = loginResponse.isAuthenticated;
-        this.userData = loginResponse.userData;
-        this.isLoading = false; // Hide spinner after auth check
-        console.log('AppComponent: Authentication status:', this.isAuthenticated);
-        console.log('AppComponent: User data:', this.userData);
-        // You can add further logic here, like navigating based on auth state,
-        // but the autoLoginPartialRoutesGuard will handle redirects for protected routes.
-      });
+    // The OIDC initialization (AuthService.initializeOidc) is handled by APP_INITIALIZER
+    // as configured in app.config.ts.
 
-    // Optionally, subscribe to isAuthenticated stream for real-time updates
-    // This is more robust than just the checkAuth() result if state changes later (e.g. silent renew)
-    this.oidcSecurityService.isAuthenticated$.subscribe(({ isAuthenticated }) => {
-      this.isAuthenticated = isAuthenticated;
-      console.log('AppComponent: isAuthenticated$ changed to:', isAuthenticated);
-      if (isAuthenticated) {
-        this.oidcSecurityService.userData$.subscribe(({ userData }) => {
-          this.userData = userData;
-          console.log('AppComponent: userData$ updated:', userData);
-        });
-      } else {
-        this.userData = null;
+    // Subscribe to the isOidcSetupDone$ observable from AuthService.
+    // This allows the AppComponent to react once the OIDC client has finished its
+    // initial setup (e.g., checking for tokens, redirecting, etc.).
+    this.oidcSetupSubscription = this.authService.isOidcSetupDone$.subscribe(
+      (isDone) => {
+        this.isOidcSetupDone = isDone;
+        if (isDone) {
+          console.log('AppComponent: OIDC setup is complete. Application can now render.');
+          // At this point, AuthService.isAuthenticated$ and AuthService.userProfile$
+          // will have their initial values. The NavbarComponent will subscribe to these
+          // to update its display.
+        } else {
+          console.log('AppComponent: OIDC setup is in progress...');
+        }
       }
-    });
+    );
   }
 
-  ngOnDestroy() {
-    // Unsubscribe to prevent memory leaks
-    if (this.authSubscription) {
-      this.authSubscription.unsubscribe();
+  ngOnDestroy(): void {
+    // Unsubscribe from observables to prevent memory leaks
+    if (this.oidcSetupSubscription) {
+      this.oidcSetupSubscription.unsubscribe();
     }
-    if (this.userDataSubscription) {
-      this.userDataSubscription.unsubscribe();
-    }
-  }
-
-  login() {
-    // The autoLoginPartialRoutesGuard will handle login for protected routes.
-    // This manual login can be used for a login button if you have public pages.
-    this.oidcSecurityService.authorize();
-  }
-
-  logout() {
-    this.oidcSecurityService
-      .logoff()
-      .subscribe((result) => console.log('Logout result:', result));
   }
 }

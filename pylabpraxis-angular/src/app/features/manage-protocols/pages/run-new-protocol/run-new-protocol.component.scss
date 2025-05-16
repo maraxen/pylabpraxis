@@ -1,0 +1,168 @@
+// src/app/features/manage-protocols/pages/run-new-protocol.component.scss
+
+.run-protocol-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.page-title {
+  text-align: center;
+  color: #3f51b5; // Material primary color
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.step-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; // Space between form fields
+  padding: 1rem 0;
+}
+
+.dynamic-form {
+  .form-field-container {
+    margin-bottom: 1rem;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+
+.form-section-title {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #555;
+  font-size: 1.2em;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+
+.stepper-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem; // Space between buttons
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #777;
+  font-style: italic;
+}
+
+.no-content-message {
+  padding: 1.5rem;
+  text-align: center;
+  color: #757575;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.review-section {
+  padding: 1rem 0;
+
+  mat-card {
+    margin-bottom: 1.5rem;
+    background-color: #fcfcfc;
+  }
+
+  mat-card-title {
+    font-size: 1.1em;
+    color: #3f51b5;
+  }
+
+  .review-list {
+    list-style: none;
+    padding-left: 0;
+
+    li {
+      padding: 0.3rem 0;
+      border-bottom: 1px dashed #eee;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      strong {
+        color: #444;
+      }
+    }
+  }
+}
+
+.start-section {
+  padding: 1rem 0;
+
+  .config-preview {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap; // Ensures long lines wrap
+  }
+}
+
+
+.file-upload-section {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+
+  .file-upload-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #555;
+  }
+
+  input[type="file"] {
+    display: block; // Or inline-block, depending on desired layout
+    margin-bottom: 0.5rem;
+  }
+
+  .file-name {
+    font-style: italic;
+    color: #3f51b5;
+  }
+}
+
+// Snackbar custom styles (add to global styles.scss or here if component-specific)
+// Ensure ViewEncapsulation.None or ::ng-deep is used if in component SCSS for global snackbar styles.
+// For simplicity, these can go in your main styles.scss:
+/*
+.error-snackbar {
+  background-color: #f44336; // Material Red
+  color: white;
+}
+
+.success-snackbar {
+  background-color: #4caf50; // Material Green
+  color: white;
+}
+
+.info-snackbar {
+  background-color: #2196f3; // Material Blue
+  color: white;
+}
+*/

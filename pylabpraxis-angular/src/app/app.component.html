@@ -1,8 +1,14 @@
-<app-navbar></app-navbar>
-<div class="content-container">
-  <router-outlet *ngIf="!isLoading"></router-outlet>
-  <div *ngIf="isLoading" class="loading-shade">
-    <mat-spinner diameter="50"></mat-spinner>
-    <p>Loading application...</p>
+<ng-container *ngIf="isOidcSetupDone; else loadingOidc">
+  <app-navbar></app-navbar>
+  <div class="app-content">
+    <router-outlet></router-outlet>
   </div>
-</div>
+</ng-container>
+
+<ng-template #loadingOidc>
+  <div
+    style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5;">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p style="margin-top: 20px; font-size: 1.2em; color: #333;">Initializing authentication, please wait...</p>
+  </div>
+</ng-template>
