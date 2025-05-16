@@ -1,17 +1,14 @@
-import asyncio
-from fastapi import FastAPI, Depends, Request
-from fastapi.staticfiles import StaticFiles
+from typing import Awaitable
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.responses import RedirectResponse
-import os
 import logging  # Import logging.config
 
 
 from praxis.api import protocols, assets, workcell_api
 from praxis.core.orchestrator import Orchestrator
 from praxis.configure import PraxisConfiguration
-from praxis.utils.db import db
 
 
 # Create a Configuration instance
@@ -67,7 +64,7 @@ app = FastAPI(lifespan=lifespan)
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:4200"], # TODO: based on config
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,12 +86,13 @@ async def redirect_to_index():
 
 # Add request logging middleware
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next: Awaitable[Request]) -> Response:
+    """Log incoming requests and their parameters."""
     logger.info(f"Request: {request.method} {request.url}")
     logger.info(f"Query parameters: {dict(request.query_params)}")
-    response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
-    return response
+    response: Response = await call_next(request) # type: ignore TODO: Fix type hinting
+    logger.info(f"Response status: {response.status_code}") # type: ignore TODO: Fix type hinting
+    return response # type: ignore TODO: Fix type hinting
 
 
 if __name__ == "__main__":

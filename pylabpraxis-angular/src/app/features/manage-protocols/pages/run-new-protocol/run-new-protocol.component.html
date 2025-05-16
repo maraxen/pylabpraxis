@@ -33,11 +33,10 @@
 
     <mat-step [stepControl]="parameterForm" label="Configure Parameters"
       *ngIf="selectedProtocol && selectedProtocol.has_parameters">
-      <form [formGroup]="parameterForm" *ngIf="selectedProtocol" class="step-form dynamic-form">
+      <form [formGroup]="parameterForm"
+        *ngIf="selectedProtocol && selectedProtocol.parameters && objectKeys(selectedProtocol.parameters).length > 0"
+        class="step-form dynamic-form">
         <h3 class="form-section-title">Protocol Parameters for: {{ selectedProtocol.name }}</h3>
-        <p *ngIf="!getParameterKeys(selectedProtocol.parameters).length">This protocol has no configurable parameters.
-        </p>
-
         <div *ngFor="let paramName of getParameterKeys(selectedProtocol.parameters)" class="form-field-container">
           <ng-container [ngSwitch]="getParamConfig(paramName)?.type">
             <mat-form-field appearance="fill" *ngSwitchCase="'string'">
@@ -48,7 +47,6 @@
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-
             <mat-form-field appearance="fill" *ngSwitchCase="'integer'">
               <mat-label>{{ paramName }}</mat-label>
               <input matInput type="number" [formControlName]="paramName"
@@ -65,14 +63,14 @@
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'number'"> <mat-label>{{ paramName }}</mat-label>
+            <mat-form-field appearance="fill" *ngSwitchCase="'number'">
+              <mat-label>{{ paramName }}</mat-label>
               <input matInput type="number" step="any" [formControlName]="paramName"
                 [placeholder]="getParamConfig(paramName)?.description || ''">
               <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-
             <mat-form-field appearance="fill" *ngSwitchCase="'boolean'">
               <mat-label>{{ paramName }}</mat-label>
               <mat-select [formControlName]="paramName">
@@ -83,7 +81,6 @@
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-
             <mat-form-field appearance="fill" *ngSwitchCase="'array'">
               <mat-label>{{ paramName }} (comma-separated)</mat-label>
               <input matInput [formControlName]="paramName"
@@ -92,7 +89,6 @@
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-
             <mat-form-field appearance="fill" *ngSwitchCase="'dict'">
               <mat-label>{{ paramName }} (JSON string)</mat-label>
               <textarea matInput cdkTextareaAutosize #autosize="cdkTextareaAutosize" [formControlName]="paramName"
@@ -101,8 +97,6 @@
                 }}</mat-hint>
               <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
             </mat-form-field>
-
-
             <mat-form-field appearance="fill" *ngSwitchDefault>
               <mat-label>{{ paramName }} (Type: {{ getParamConfig(paramName)?.type }})</mat-label>
               <input matInput [formControlName]="paramName"
@@ -113,34 +107,32 @@
             </mat-form-field>
           </ng-container>
         </div>
-
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back</button>
           <button mat-raised-button color="primary" matStepperNext [disabled]="!parameterForm.valid">Next</button>
         </div>
       </form>
-      <div *ngIf="selectedProtocol && !selectedProtocol.has_parameters" class="no-content-message">
+      <div
+        *ngIf="selectedProtocol && (!selectedProtocol.parameters || objectKeys(selectedProtocol.parameters).length === 0)"
+        class="no-content-message">
         <p>This protocol does not require parameter configuration.</p>
-        <div class="stepper-buttons">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext>Next</button>
-        </div>
+        <div class="stepper-buttons"> <button mat-button matStepperPrevious>Back</button> <button mat-raised-button
+            color="primary" matStepperNext>Next</button> </div>
       </div>
     </mat-step>
 
     <mat-step [stepControl]="assetForm" label="Assign Assets" *ngIf="selectedProtocol && selectedProtocol.has_assets">
-      <form [formGroup]="assetForm" *ngIf="selectedProtocol" class="step-form dynamic-form">
+      <form [formGroup]="assetForm"
+        *ngIf="selectedProtocol && isArray(selectedProtocol.assets) && selectedProtocol.assets.length > 0"
+        class="step-form dynamic-form">
         <h3 class="form-section-title">Asset Assignments for: {{ selectedProtocol.name }}</h3>
-        <p *ngIf="!getAssetNames(selectedProtocol.assets).length">This protocol has no configurable assets.</p>
-
-        <div *ngFor="let assetName of getAssetNames(selectedProtocol.assets)" class="form-field-container">
+        <div *ngFor="let asset of selectedProtocol.assets" class="form-field-container">
           <mat-form-field appearance="fill">
-            <mat-label>{{ assetName }} (Type: {{ getAssetConfig(assetName)?.type }})</mat-label>
-            <input matInput [formControlName]="assetName"
-              [placeholder]="getAssetConfig(assetName)?.description || 'Enter assigned asset ID/Name'">
-            <mat-hint *ngIf="getAssetConfig(assetName)?.description">{{ getAssetConfig(assetName)?.description
-              }}</mat-hint>
-            <mat-error *ngIf="assetForm.get(assetName)?.hasError('required') && getAssetConfig(assetName)?.required">
+            <mat-label>{{ asset.name }} (Type: {{ asset.type }})</mat-label>
+            <input matInput [formControlName]="asset.name"
+              [placeholder]="asset.description || 'Enter assigned asset ID/Name'">
+            <mat-hint *ngIf="asset.description">{{ asset.description }}</mat-hint>
+            <mat-error *ngIf="assetForm.get(asset.name)?.hasError('required') && asset.required">
               This asset is required.
             </mat-error>
           </mat-form-field>
@@ -150,12 +142,11 @@
           <button mat-raised-button color="primary" matStepperNext [disabled]="!assetForm.valid">Next</button>
         </div>
       </form>
-      <div *ngIf="selectedProtocol && !selectedProtocol.has_assets" class="no-content-message">
-        <p>This protocol does not require asset configuration.</p>
-        <div class="stepper-buttons">
-          <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="primary" matStepperNext>Next</button>
-        </div>
+      <div *ngIf="selectedProtocol && (!isArray(selectedProtocol.assets) || selectedProtocol.assets.length === 0)"
+        class="no-content-message">
+        <p>This protocol does not require asset configuration or asset data is unavailable.</p>
+        <div class="stepper-buttons"> <button mat-button matStepperPrevious>Back</button> <button mat-raised-button
+            color="primary" matStepperNext>Next</button> </div>
       </div>
     </mat-step>
 
@@ -163,7 +154,6 @@
       <form [formGroup]="deckForm" class="step-form">
         <h3 class="form-section-title">Deck Layout</h3>
         <p>Select an existing deck layout or upload a new one.</p>
-
         <mat-form-field appearance="fill">
           <mat-label>Choose Existing Deck Layout</mat-label>
           <mat-select formControlName="selectedDeckLayout" (selectionChange)="onDeckSelectionChange($event)">
@@ -172,13 +162,11 @@
             </mat-option>
           </mat-select>
         </mat-form-field>
-
         <div class="file-upload-section">
           <label for="deck-file-input" class="file-upload-label">Or Upload New Deck File (JSON):</label>
           <input id="deck-file-input" type="file" (change)="onDeckFileSelected($event)" accept=".json">
           <span *ngIf="uploadedDeckFile" class="file-name">{{ uploadedDeckFile.name }}</span>
         </div>
-
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back</button>
           <button mat-raised-button color="primary" matStepperNext>Next</button>
@@ -186,14 +174,11 @@
       </form>
     </mat-step>
 
-
     <mat-step label="Review and Prepare">
       <div *ngIf="selectedProtocol" class="review-section">
         <h3 class="form-section-title">Review Configuration: {{ selectedProtocol.name }}</h3>
         <mat-card appearance="outlined">
-          <mat-card-header>
-            <mat-card-title>Selected Protocol</mat-card-title>
-          </mat-card-header>
+          <mat-card-header><mat-card-title>Selected Protocol</mat-card-title></mat-card-header>
           <mat-card-content>
             <p><strong>Name:</strong> {{ selectedProtocol.name }}</p>
             <p><strong>Path:</strong> {{ selectedProtocol.path }}</p>
@@ -202,47 +187,45 @@
         </mat-card>
 
         <mat-card appearance="outlined"
-          *ngIf="selectedProtocol.has_parameters && getParameterKeys(selectedProtocol.parameters).length > 0">
-          <mat-card-header>
-            <mat-card-title>Parameters</mat-card-title>
-          </mat-card-header>
+          *ngIf="selectedProtocol.has_parameters && objectKeys(parameterForm.controls).length > 0">
+          <mat-card-header><mat-card-title>Parameters</mat-card-title></mat-card-header>
           <mat-card-content>
             <ul class="review-list">
-              <li *ngFor="let paramName of getParameterKeys(parameterForm.value)">
-                <strong>{{ paramName }}:</strong> {{ parameterForm.value[paramName] }}
+              <li *ngFor="let paramName of objectKeys(parameterForm.value)">
+                <ng-container *ngIf="parameterForm.value[paramName] !== '' && parameterForm.value[paramName] !== null">
+                  <strong>{{ paramName }}:</strong> {{ parameterForm.value[paramName] }}
+                </ng-container>
               </li>
             </ul>
           </mat-card-content>
         </mat-card>
 
         <mat-card appearance="outlined"
-          *ngIf="selectedProtocol.has_assets && getAssetNames(selectedProtocol.assets).length > 0">
-          <mat-card-header>
-            <mat-card-title>Asset Assignments</mat-card-title>
-          </mat-card-header>
+          *ngIf="selectedProtocol.has_assets && objectKeys(assetForm.controls).length > 0">
+          <mat-card-header><mat-card-title>Asset Assignments</mat-card-title></mat-card-header>
           <mat-card-content>
             <ul class="review-list">
-              <li *ngFor="let assetName of getAssetNames(assetForm.value)">
-                <strong>{{ assetName }}:</strong> {{ assetForm.value[assetName] }}
+              <li *ngFor="let assetName of objectKeys(assetForm.value)">
+                <ng-container *ngIf="assetForm.value[assetName]">
+                  <strong>{{ assetName }}:</strong> {{ assetForm.value[assetName] }}
+                </ng-container>
               </li>
             </ul>
           </mat-card-content>
         </mat-card>
 
         <mat-card appearance="outlined" *ngIf="selectedDeckLayout || uploadedDeckFile">
-          <mat-card-header>
-            <mat-card-title>Deck Layout</mat-card-title>
-          </mat-card-header>
+          <mat-card-header><mat-card-title>Deck Layout</mat-card-title></mat-card-header>
           <mat-card-content>
             <p *ngIf="selectedDeckLayout"><strong>Selected:</strong> {{ selectedDeckLayout }}</p>
             <p *ngIf="uploadedDeckFile"><strong>Uploaded:</strong> {{ uploadedDeckFile.name }}</p>
           </mat-card-content>
         </mat-card>
 
-
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back</button>
-          <button mat-raised-button color="accent" (click)="prepareProtocol()" [disabled]="isPreparing">
+          <button mat-raised-button color="accent" (click)="prepareProtocol()"
+            [disabled]="isPreparing || !selectedProtocolPath">
             Prepare Protocol
             <mat-progress-spinner *ngIf="isPreparing" mode="indeterminate" diameter="20"
               style="margin-left: 8px;"></mat-progress-spinner>
@@ -259,7 +242,6 @@
         <h3 class="form-section-title">Protocol Prepared and Validated</h3>
         <p>Configuration is ready. Click below to start the protocol execution.</p>
         <pre class="config-preview">{{ preparedConfig | json }}</pre>
-
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back (to Review)</button>
           <button mat-raised-button color="primary" (click)="startProtocol()" [disabled]="isStarting">
@@ -270,15 +252,12 @@
         </div>
       </div>
       <div *ngIf="!preparedConfig && selectedProtocol" class="no-content-message">
-        <p>Protocol has not been prepared or preparation failed. Please go back and prepare the protocol.</p>
-        <div class="stepper-buttons">
-          <button mat-button matStepperPrevious>Back (to Review)</button>
-        </div>
+        <p>Protocol has not been prepared. Please go back and prepare.</p>
+        <div class="stepper-buttons"> <button mat-button matStepperPrevious>Back</button> </div>
       </div>
       <div *ngIf="!selectedProtocol" class="no-content-message">
         <p>Please select and configure a protocol first.</p>
       </div>
     </mat-step>
-
   </mat-stepper>
 </div>
