@@ -1,84 +1,221 @@
-    .app-navbar {
-      display: flex;
-      align-items: center;
-      padding: 0 16px; // Default Material toolbar padding
+// pylabpraxis-angular/src/app/core/layout/navbar/navbar.component.scss
+
+// Ensure this :host context targets the mat-toolbar if it's the root element of this component's template,
+// or use a more specific selector if the mat-toolbar is nested.
+// Since .app-navbar is directly on mat-toolbar, we can use that.
+
+.app-navbar {
+  // Apply navigation-specific font variation settings
+  font-variation-settings: var(--app-nav-font-variation-settings);
+  // Default (Light Mode) Navbar Styles
+  background-color: var(--app-background-color-light); // White background
+  color: var(--app-text-color-light); // #ED7A9B text
+  padding: 0 16px; // Standard toolbar padding, can be adjusted if more horizontal space is needed overall
+
+  // Brand/logo styling
+  .app-navbar-brand {
+    color: var(--app-text-color-light); // #ED7A9B text for the brand
+    text-decoration: none !important; // Ensure no underline
+    border-bottom: none !important; // Ensure no border from active states
+    display: flex; // Ensures icon and text are in a row
+    align-items: center; // Vertically aligns icon and text
+    padding: 8px 0; // Add some vertical padding around the brand
+    margin-right: 24px; // Add space to the right of the brand
+
+    &:hover,
+    &:focus,
+    &:active {
+      text-decoration: none !important; // Keep no underline on interaction
+      border-bottom: none !important;
     }
 
-    .app-navbar-brand {
-      display: flex;
+    .logo-icon {
+      color: var(--app-text-color-light); // #ED7A9B for the icon
+      margin-right: 10px; // Increased space between logo and text
+      font-size: 28px; // Slightly larger icon if needed
+      height: 28px;
+      width: 28px;
+      display: inline-flex; // Helps with vertical alignment
       align-items: center;
-      text-decoration: none;
-      color: inherit; // Inherit color from toolbar (usually white or contrasting color)
-      font-size: 1.25rem; // Slightly larger for brand
-      font-weight: 500;
+      justify-content: center;
+    }
 
-      .logo-icon {
-        margin-right: 8px;
-        // Optional: if you have a custom SVG icon and want to size it
-        // width: 24px;
-        // height: 24px;
+    span {
+      line-height: normal; // Ensure text aligns well with the icon
+    }
+  }
+
+  // Nav links styling
+  .nav-links {
+    display: flex; // Keep nav links in a row
+    align-items: center; // Vertically align nav links
+
+    a.mat-mdc-button,
+    button.mat-mdc-button {
+      // Targeting Material buttons
+      color: var(--app-text-color-light); // #ED7A9B text for nav links/buttons
+      font-variation-settings: var(--app-nav-font-variation-settings); // Ensure nav font settings apply here too
+      text-decoration: none; // Remove default underline from <a> tags styled as buttons
+      padding: 0 10px; // Adjust padding for nav links
+      min-width: auto;
+
+      mat-icon {
+        color: var(--app-text-color-light); // #ED7A9B for icons within links
+        margin-right: 6px; // Space between icon and text in a link
+      }
+
+      &.active-nav-link {
+        // Example active link style - you can customize this
+        // Using a slightly darker shade of the text color for emphasis, or an underline
+        // For an underline that matches the text color:
+        border-bottom: 2px solid var(--app-text-color-light);
+        border-radius: 0; // Remove button border-radius if only underline is desired
+        line-height: 1.4; // Adjust to prevent text from shifting too much
+        background-color: transparent; // Ensure no unwanted background on active
       }
     }
+  }
 
-    .nav-links {
-      margin-left: 24px;
-      display: flex;
-      gap: 8px; // Space between nav buttons
+  .spacer {
+    flex: 1 1 auto; // This pushes subsequent items to the right
+  }
 
-      a.mat-mdc-button {
-        // Targeting Material 15+ buttons
-        min-width: auto; // Allow buttons to shrink to content size
-        padding: 0 12px;
-        font-weight: 400;
+  // User section styling
+  .user-section {
+    display: flex;
+    align-items: center; // Vertically align items in user section
+    margin-left: 16px; // Add space to the left of the user section
 
-        mat-icon {
+    button.mat-mdc-button {
+      color: var(--app-text-color-light); // #ED7A9B text
+      font-variation-settings: var(--app-nav-font-variation-settings);
+      text-decoration: none;
+      padding: 0 8px; // Adjust padding
+      min-width: auto;
+
+      mat-icon {
+        color: var(--app-text-color-light); // #ED7A9B for icons
+
+        &:first-child {
+          // Icon before name
           margin-right: 6px;
         }
-      }
 
-      .active-nav-link {
-        // Style for the active link - choose one or combine
-        // Option 1: Subtle background
-        // background-color: rgba(255, 255, 255, 0.1);
-        // border-radius: 4px;
-
-        // Option 2: Underline (more common for text links)
-        // border-bottom: 2px solid currentColor; // Use currentcolor to match text
-        // padding-bottom: 2px; // Adjust for underline position
-
-        // Option 3: Different text weight or color (if theme allows)
-        font-weight: 500; // Make active link slightly bolder
-        // color: var(--mat-toolbar-standard-text-color); // Example if you have a specific variable
-      }
-    }
-
-    .spacer {
-      flex: 1 1 auto;
-    }
-
-    .user-section {
-      display: flex;
-      align-items: center;
-
-      button.mat-mdc-button {
-        mat-icon {
-          margin-right: 4px;
-        }
-
-        span+mat-icon {
-          // For the dropdown arrow
+        &:last-child:not(:first-child) {
+          // Dropdown arrow
           margin-left: 4px;
         }
       }
     }
+  }
 
-    .login-button.mat-mdc-stroked-button {
-      // Targeting Material 15+ stroked button
-      // Ensure good contrast if your primary toolbar is dark
-      // color: white;
-      // border-color: rgba(255, 255, 255, 0.7);
+  // Login button styling
+  .login-button.mat-mdc-stroked-button {
+    color: var(--app-text-color-light); // #ED7A9B text
+    border-color: var(--app-text-color-light); // #ED7A9B border
+    font-variation-settings: var(--app-nav-font-variation-settings);
+    text-decoration: none;
+    margin-left: 12px; // Space to the left of the login button
+    padding: 0 10px; // Adjust padding
+    min-width: auto;
 
-      // &:hover {
-      //   background-color: rgba(255, 255, 255, 0.1);
-      // }
+    mat-icon {
+      color: var(--app-text-color-light);
+      margin-right: 6px;
     }
+
+    &:hover {
+      // Example hover: slightly transparent version of the text color as background
+      background-color: rgba(237, 122, 155, 0.1);
+    }
+  }
+}
+
+// Dark Mode Navbar Styles
+// These styles will apply when the .dark-mode class is on the html or body element
+.dark-mode .app-navbar,
+:host-context(.dark-mode) .app-navbar {
+  // If .dark-mode is on a parent in the component tree
+  background-color: var(--app-background-color-dark); // Black background
+  color: var(--app-text-color-dark); // #ED7A9B text
+
+  .app-navbar-brand {
+    color: var(--app-text-color-dark);
+
+    .logo-icon {
+      color: var(--app-text-color-dark);
+    }
+  }
+
+  .nav-links {
+
+    a.mat-mdc-button,
+    button.mat-mdc-button {
+      color: var(--app-text-color-dark);
+
+      mat-icon {
+        color: var(--app-text-color-dark);
+      }
+
+      &.active-nav-link {
+        border-bottom-color: var(--app-text-color-dark);
+      }
+    }
+  }
+
+  .user-section {
+    button.mat-mdc-button {
+      color: var(--app-text-color-dark);
+
+      mat-icon {
+        color: var(--app-text-color-dark);
+      }
+    }
+  }
+
+  .login-button.mat-mdc-stroked-button {
+    color: var(--app-text-color-dark);
+    border-color: var(--app-text-color-dark);
+
+    mat-icon {
+      color: var(--app-text-color-dark);
+    }
+
+    &:hover {
+      background-color: rgba(237, 122, 155, 0.15); // Slightly more visible hover on dark
+    }
+  }
+}
+
+
+// Ensure that the icons within mat-menu-item also get themed if needed.
+// The mat-menu itself will be themed by the global Material theme.
+.dark-mode {
+  .mat-mdc-menu-item {
+
+    // Targeting MDC menu items
+    .mat-icon {
+      color: var(--app-text-color-dark);
+    }
+
+    .mdc-list-item__primary-text,
+    span:not(.mat-mdc-focus-indicator) {
+      // Target text within menu item
+      color: var(--app-text-color-dark);
+    }
+  }
+}
+
+.mat-mdc-menu-item {
+
+  // Targeting MDC menu items
+  .mat-icon {
+    color: var(--app-text-color-light);
+  }
+
+  .mdc-list-item__primary-text,
+  span:not(.mat-mdc-focus-indicator) {
+    // Target text within menu item
+    color: var(--app-text-color-light);
+  }
+}
