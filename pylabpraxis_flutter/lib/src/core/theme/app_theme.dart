@@ -60,20 +60,20 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surfaceContainer,
         indicatorColor: colorScheme.secondaryContainer,
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return IconThemeData(color: colorScheme.onSecondaryContainer);
           }
           return IconThemeData(color: colorScheme.onSurfaceVariant);
         }),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final baseStyle = GoogleFonts.robotoFlex(
             // Use GoogleFonts.robotoFlex here
             fontSize: 12,
           ).copyWith(
             fontVariations: _robotoFlexVariations,
           ); // Corrected application
-          if (states.contains(MaterialState.selected)) {
+          if (states.contains(WidgetState.selected)) {
             return baseStyle.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w500,
@@ -195,17 +195,17 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surfaceContainer,
         indicatorColor: colorScheme.secondaryContainer,
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return IconThemeData(color: colorScheme.onSecondaryContainer);
           }
           return IconThemeData(color: colorScheme.onSurfaceVariant);
         }),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final baseStyle = GoogleFonts.robotoFlex(
             fontSize: 12,
           ).copyWith(fontVariations: _robotoFlexVariations); // Corrected
-          if (states.contains(MaterialState.selected)) {
+          if (states.contains(WidgetState.selected)) {
             return baseStyle.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.w500,
