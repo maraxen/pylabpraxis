@@ -37,6 +37,7 @@ dependencies:
   google_fonts: ^6.2.1
   freezed_annotation: ^3.0.0
   flutter_bloc: ^9.1.1
+  equatable: ^2.0.7
 
 dev_dependencies:
   flutter_test:

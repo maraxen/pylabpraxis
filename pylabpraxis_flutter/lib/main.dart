@@ -1,52 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // For later BLoC integration
-// import 'package:provider/provider.dart'; // If using Provider for DI
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Core imports
 import 'src/core/theme/app_theme.dart';
 import 'src/core/routing/app_router.dart';
-import 'src/core/widgets/app_shell.dart'; // Import the AppShell
+import 'src/core/widgets/app_shell.dart';
 
-// TODO: Import services for DI (AuthService, ProtocolService, etc.)
-// import 'src/data/services/auth_service.dart';
-// import 'src/data/services/protocol_api_service.dart';
-// import 'src/repositories/auth_repository.dart';
-// import 'src/repositories/protocol_repository.dart';
+// Data Layer Imports (Services & Repositories)
+import 'src/data/services/auth_service.dart';
+import 'src/data/services/protocol_api_service.dart';
+import 'src/data/repositories/auth_repository.dart' as auth;
+import 'src/data/repositories/protocol_repository.dart' as protocol;
 
-// TODO: Import global BLoCs if any (e.g., AuthBloc)
-// import 'src/features/auth/application/auth_bloc.dart';
+// Feature Layer Imports (BLoCs)
+import 'src/features/auth/application/bloc/auth_bloc.dart';
+// TODO: Import other BLoCs as they are created
 
 void main() {
-  // TODO: Ensure Flutter bindings are initialized if using async operations before runApp
-  // WidgetsFlutterBinding.ensureInitialized();
+  // Ensure Flutter bindings are initialized, especially if using async operations before runApp
+  WidgetsFlutterBinding.ensureInitialized();
 
   // TODO: Set up logging, error reporting (e.g., Sentry), etc.
 
-  // TODO: Set up dependency injection (e.g., GetIt, Provider, or manual)
-  // Example with manual setup for now, replace with a proper DI solution
-  // final authService = AuthService(/* dio client, secure_storage */);
-  // final protocolApiService = ProtocolApiService(/* dio client */);
-  // final authRepository = AuthRepository(authService);
-  // final protocolRepository = ProtocolRepository(protocolApiService);
+  // Initialize services
+  // In a real app, these might take configurations or other dependencies
+  final AuthService authService = AuthServiceImpl();
+  final ProtocolApiService protocolApiService = ProtocolApiServiceImpl();
+
+  // Initialize repositories with their service dependencies
+  final auth.AuthRepository authRepository = auth.AuthRepositoryImpl(
+    authService: authService,
+  );
+  final protocol.ProtocolRepository protocolRepository =
+      protocol.ProtocolRepositoryImpl(protocolApiService: protocolApiService);
 
   runApp(
-    // TODO: Wrap with MultiRepositoryProvider if using BLoC for DI of repositories
-    // MultiRepositoryProvider(
-    //   providers: [
-    //     RepositoryProvider.value(value: authRepository),
-    //     RepositoryProvider.value(value: protocolRepository),
-    //   ],
-    //   child: MultiBlocProvider( // For providing global BLoCs
-    //     providers: [
-    //       // BlocProvider<AuthBloc>(
-    //       //   create: (context) => AuthBloc(authRepository: context.read<AuthRepository>())..add(AuthAppStarted()),
-    //       // ),
-    //       // Add other global BLoCs here
-    //     ],
-    //     child: const MyApp(),
-    //   ),
-    // ),
-    const MyApp(), // Simplified for now, will add providers later
+    // Provide repositories to the widget tree so BLoCs can access them
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<auth.AuthRepository>.value(value: authRepository),
+        RepositoryProvider<protocol.ProtocolRepository>.value(
+          value: protocolRepository,
+        ),
+        // Add other RepositoryProviders here
+      ],
+      child: MultiBlocProvider(
+        // Provide global BLoCs
+        providers: [
+          BlocProvider<AuthBloc>(
+            create:
+                (context) => AuthBloc(
+                  // BLoCs can read repositories provided above them in the tree
+                  authRepository: context.read<auth.AuthRepository>(),
+                )..add(AuthAppStarted()), // Initial event to check auth status
+          ),
+          // Add other global BlocProviders here
+          // e.g., BlocProvider<AppConfigBloc>(create: (_) => AppConfigBloc()..add(LoadConfig())),
+        ],
+        child: const MyApp(),
+      ),
+    ),
   );
 }
 
@@ -57,34 +70,48 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PyLabPraxis Flutter',
-      debugShowCheckedModeBanner: false, // Disable debug banner
-      // Theme configuration
-      theme: AppTheme.lightTheme,
-      // darkTheme: AppTheme.darkTheme, // Uncomment if dark theme is implemented
-      // themeMode: ThemeMode.system, // Or ThemeMode.light, ThemeMode.dark
+      debugShowCheckedModeBanner: false,
 
-      // Routing configuration
-      // initialRoute: AppRouter.home, // Or a splash/login screen if you have one
-      onGenerateRoute:
-          AppRouter
-              .generateRoute, // Use if you need to pass args or have complex logic
-      // The home will be our AppShell which handles the main navigation structure
+      theme: AppTheme.lightTheme,
+
+      // darkTheme: AppTheme.darkTheme,
+      // themeMode: ThemeMode.system,
+      onGenerateRoute: AppRouter.generateRoute,
       home: const AppShell(),
 
-      // For BLoC state observation (optional, good for debugging)
-      // builder: (context, child) {
-      //   return BlocListener<AuthBloc, AuthState>( // Example global BLoC listener
-      //     listener: (context, state) {
-      //       if (state is AuthUnauthenticated) {
-      //         // Navigate to login or handle unauthenticated state
-      //         // Navigator.of(context).pushNamedAndRemoveUntil(AppRouter.login, (route) => false);
-      //       } else if (state is AuthAuthenticated) {
-      //         // Potentially navigate to home or handle authenticated state
-      //       }
-      //     },
-      //     child: child!,
-      //   );
-      // },
+      // Example of a global BlocListener for auth state changes
+      builder: (context, child) {
+        return BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            print('AuthBloc state changed: $state'); // For debugging
+            if (state is AuthUnauthenticated) {
+              // Example: Navigate to a login screen if you had one
+              // This is a simple example; complex navigation might be handled differently
+              // For instance, AppShell itself could react to AuthState
+              // if (ModalRoute.of(context)?.settings.name != AppRouter.login) { // Avoid pushing if already there
+              //   Navigator.of(context).pushNamedAndRemoveUntil(AppRouter.login, (route) => false);
+              // }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('User is unauthenticated (Placeholder).'),
+                ),
+              );
+            } else if (state is AuthAuthenticated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('User is authenticated (Placeholder).'),
+                ),
+              );
+              // Potentially navigate away from login screen if user was on it
+            } else if (state is AuthFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Auth Error: ${state.message}')),
+              );
+            }
+          },
+          child: child!, // The rest of your app
+        );
+      },
     );
   }
 }
