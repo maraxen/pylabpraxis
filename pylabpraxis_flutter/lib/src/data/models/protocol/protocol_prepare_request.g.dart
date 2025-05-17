@@ -9,25 +9,26 @@ part of 'protocol_prepare_request.dart';
 _ProtocolPrepareRequest _$ProtocolPrepareRequestFromJson(
   Map<String, dynamic> json,
 ) => _ProtocolPrepareRequest(
-  protocolPath: json['protocolPath'] as String,
+  protocolPath: json['protocol_path'] as String,
   parameters: json['parameters'] as Map<String, dynamic>,
-  assets: (json['assets'] as Map<String, dynamic>?)?.map(
+  assignedAssets: (json['assigned_assets'] as Map<String, dynamic>?)?.map(
     (k, e) => MapEntry(k, e as String),
   ),
-  deckLayoutConfig: json['deck_layout_config'] as Map<String, dynamic>?,
-  userId: json['userId'] as String?,
-  runOptions: json['runOptions'] as Map<String, dynamic>?,
-  runLabel: json['runLabel'] as String?,
+  deckLayoutPath: json['deck_layout_path'] as String?,
+  deckLayoutContent:
+      json['deck_layout_content'] == null
+          ? null
+          : DeckLayout.fromJson(
+            json['deck_layout_content'] as Map<String, dynamic>,
+          ),
 );
 
 Map<String, dynamic> _$ProtocolPrepareRequestToJson(
   _ProtocolPrepareRequest instance,
 ) => <String, dynamic>{
-  'protocolPath': instance.protocolPath,
+  'protocol_path': instance.protocolPath,
   'parameters': instance.parameters,
-  'assets': instance.assets,
-  'deck_layout_config': instance.deckLayoutConfig,
-  'userId': instance.userId,
-  'runOptions': instance.runOptions,
-  'runLabel': instance.runLabel,
+  'assigned_assets': instance.assignedAssets,
+  'deck_layout_path': instance.deckLayoutPath,
+  'deck_layout_content': instance.deckLayoutContent,
 };

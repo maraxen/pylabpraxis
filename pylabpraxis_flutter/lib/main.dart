@@ -13,6 +13,7 @@ import 'src/core/widgets/app_shell.dart';
 // Data Layer Imports (Services & Repositories)
 import 'src/data/services/auth_service.dart';
 import 'src/data/services/protocol_api_service.dart';
+import 'src/data/services/protocol_api_service_impl.dart';
 import 'src/data/repositories/auth_repository.dart';
 import 'src/data/repositories/protocol_repository.dart';
 
@@ -116,7 +117,9 @@ void main() {
 
       // Initialize services
       final AuthService authService = AuthServiceImpl();
-      final ProtocolApiService protocolApiService = ProtocolApiServiceImpl();
+      final ProtocolApiService protocolApiService = ProtocolApiServiceImpl(
+        dioClient: null,
+      ); // TODO: Pass a valid DioClient instance
 
       // Initialize repositories
       final AuthRepository authRepository = AuthRepositoryImpl(

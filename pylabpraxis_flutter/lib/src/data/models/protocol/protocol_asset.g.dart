@@ -11,10 +11,18 @@ _ProtocolAsset _$ProtocolAssetFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       type: json['type'] as String,
       description: json['description'] as String?,
-      required: json['required'] as bool? ?? false,
-      constraints: json['constraints'],
-      defaultValue: json['default_value'] as String?,
-      value: json['value'] as String?,
+      required: json['required'] as bool? ?? true,
+      validationConfig:
+          json['validation_config'] == null
+              ? null
+              : ParameterConfig.fromJson(
+                json['validation_config'] as Map<String, dynamic>,
+              ),
+      allowedExtensions:
+          (json['allowed_extensions'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList(),
+      contentType: json['content_type'] as String?,
     );
 
 Map<String, dynamic> _$ProtocolAssetToJson(_ProtocolAsset instance) =>
@@ -23,7 +31,7 @@ Map<String, dynamic> _$ProtocolAssetToJson(_ProtocolAsset instance) =>
       'type': instance.type,
       'description': instance.description,
       'required': instance.required,
-      'constraints': instance.constraints,
-      'default_value': instance.defaultValue,
-      'value': instance.value,
+      'validation_config': instance.validationConfig,
+      'allowed_extensions': instance.allowedExtensions,
+      'content_type': instance.contentType,
     };

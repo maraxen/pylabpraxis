@@ -16,17 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProtocolAsset {
 
-// A unique name or identifier for the asset within the protocol.
- String get name;// The type of asset (e.g., 'labware', 'reagent', 'instrument_module').
- String get type;// A human-readable description of the asset and its role.
- String? get description;// Indicates if this asset must be assigned by the user.
- bool get required;// Optional: Specific constraints or accepted values for this asset.
-// This could be a list of IDs, a type pattern, etc.
-// For simplicity, keeping as dynamic or string for now.
-// Could be a more specific type if asset constraints become complex.
- dynamic get constraints;// Optional: The default value or assignment for this asset, if any.
-@JsonKey(name: 'default_value') String? get defaultValue;// Optional: Current value assigned by the user during configuration.
- String? get value;
+ String get name; String get type; String? get description; bool get required;@JsonKey(name: 'validation_config') ParameterConfig? get validationConfig;@JsonKey(name: 'allowed_extensions') List<String>? get allowedExtensions;@JsonKey(name: 'content_type') String? get contentType;
 /// Create a copy of ProtocolAsset
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -39,16 +29,16 @@ $ProtocolAssetCopyWith<ProtocolAsset> get copyWith => _$ProtocolAssetCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolAsset&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.required, required) || other.required == required)&&const DeepCollectionEquality().equals(other.constraints, constraints)&&(identical(other.defaultValue, defaultValue) || other.defaultValue == defaultValue)&&(identical(other.value, value) || other.value == value));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolAsset&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.required, required) || other.required == required)&&(identical(other.validationConfig, validationConfig) || other.validationConfig == validationConfig)&&const DeepCollectionEquality().equals(other.allowedExtensions, allowedExtensions)&&(identical(other.contentType, contentType) || other.contentType == contentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,type,description,required,const DeepCollectionEquality().hash(constraints),defaultValue,value);
+int get hashCode => Object.hash(runtimeType,name,type,description,required,validationConfig,const DeepCollectionEquality().hash(allowedExtensions),contentType);
 
 @override
 String toString() {
-  return 'ProtocolAsset(name: $name, type: $type, description: $description, required: $required, constraints: $constraints, defaultValue: $defaultValue, value: $value)';
+  return 'ProtocolAsset(name: $name, type: $type, description: $description, required: $required, validationConfig: $validationConfig, allowedExtensions: $allowedExtensions, contentType: $contentType)';
 }
 
 
@@ -59,11 +49,11 @@ abstract mixin class $ProtocolAssetCopyWith<$Res>  {
   factory $ProtocolAssetCopyWith(ProtocolAsset value, $Res Function(ProtocolAsset) _then) = _$ProtocolAssetCopyWithImpl;
 @useResult
 $Res call({
- String name, String type, String? description, bool required, dynamic constraints,@JsonKey(name: 'default_value') String? defaultValue, String? value
+ String name, String type, String? description, bool required,@JsonKey(name: 'validation_config') ParameterConfig? validationConfig,@JsonKey(name: 'allowed_extensions') List<String>? allowedExtensions,@JsonKey(name: 'content_type') String? contentType
 });
 
 
-
+$ParameterConfigCopyWith<$Res>? get validationConfig;
 
 }
 /// @nodoc
@@ -76,19 +66,31 @@ class _$ProtocolAssetCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolAsset
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? required = null,Object? constraints = freezed,Object? defaultValue = freezed,Object? value = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? required = null,Object? validationConfig = freezed,Object? allowedExtensions = freezed,Object? contentType = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,required: null == required ? _self.required : required // ignore: cast_nullable_to_non_nullable
-as bool,constraints: freezed == constraints ? _self.constraints : constraints // ignore: cast_nullable_to_non_nullable
-as dynamic,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
-as String?,value: freezed == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
+as bool,validationConfig: freezed == validationConfig ? _self.validationConfig : validationConfig // ignore: cast_nullable_to_non_nullable
+as ParameterConfig?,allowedExtensions: freezed == allowedExtensions ? _self.allowedExtensions : allowedExtensions // ignore: cast_nullable_to_non_nullable
+as List<String>?,contentType: freezed == contentType ? _self.contentType : contentType // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
+/// Create a copy of ProtocolAsset
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ParameterConfigCopyWith<$Res>? get validationConfig {
+    if (_self.validationConfig == null) {
+    return null;
+  }
 
+  return $ParameterConfigCopyWith<$Res>(_self.validationConfig!, (value) {
+    return _then(_self.copyWith(validationConfig: value));
+  });
+}
 }
 
 
@@ -96,26 +98,24 @@ as String?,
 @JsonSerializable()
 
 class _ProtocolAsset implements ProtocolAsset {
-  const _ProtocolAsset({required this.name, required this.type, this.description, this.required = false, this.constraints, @JsonKey(name: 'default_value') this.defaultValue, this.value});
+  const _ProtocolAsset({required this.name, required this.type, this.description, this.required = true, @JsonKey(name: 'validation_config') this.validationConfig, @JsonKey(name: 'allowed_extensions') final  List<String>? allowedExtensions, @JsonKey(name: 'content_type') this.contentType}): _allowedExtensions = allowedExtensions;
   factory _ProtocolAsset.fromJson(Map<String, dynamic> json) => _$ProtocolAssetFromJson(json);
 
-// A unique name or identifier for the asset within the protocol.
 @override final  String name;
-// The type of asset (e.g., 'labware', 'reagent', 'instrument_module').
 @override final  String type;
-// A human-readable description of the asset and its role.
 @override final  String? description;
-// Indicates if this asset must be assigned by the user.
 @override@JsonKey() final  bool required;
-// Optional: Specific constraints or accepted values for this asset.
-// This could be a list of IDs, a type pattern, etc.
-// For simplicity, keeping as dynamic or string for now.
-// Could be a more specific type if asset constraints become complex.
-@override final  dynamic constraints;
-// Optional: The default value or assignment for this asset, if any.
-@override@JsonKey(name: 'default_value') final  String? defaultValue;
-// Optional: Current value assigned by the user during configuration.
-@override final  String? value;
+@override@JsonKey(name: 'validation_config') final  ParameterConfig? validationConfig;
+ final  List<String>? _allowedExtensions;
+@override@JsonKey(name: 'allowed_extensions') List<String>? get allowedExtensions {
+  final value = _allowedExtensions;
+  if (value == null) return null;
+  if (_allowedExtensions is EqualUnmodifiableListView) return _allowedExtensions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override@JsonKey(name: 'content_type') final  String? contentType;
 
 /// Create a copy of ProtocolAsset
 /// with the given fields replaced by the non-null parameter values.
@@ -130,16 +130,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolAsset&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.required, required) || other.required == required)&&const DeepCollectionEquality().equals(other.constraints, constraints)&&(identical(other.defaultValue, defaultValue) || other.defaultValue == defaultValue)&&(identical(other.value, value) || other.value == value));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolAsset&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&(identical(other.required, required) || other.required == required)&&(identical(other.validationConfig, validationConfig) || other.validationConfig == validationConfig)&&const DeepCollectionEquality().equals(other._allowedExtensions, _allowedExtensions)&&(identical(other.contentType, contentType) || other.contentType == contentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,type,description,required,const DeepCollectionEquality().hash(constraints),defaultValue,value);
+int get hashCode => Object.hash(runtimeType,name,type,description,required,validationConfig,const DeepCollectionEquality().hash(_allowedExtensions),contentType);
 
 @override
 String toString() {
-  return 'ProtocolAsset(name: $name, type: $type, description: $description, required: $required, constraints: $constraints, defaultValue: $defaultValue, value: $value)';
+  return 'ProtocolAsset(name: $name, type: $type, description: $description, required: $required, validationConfig: $validationConfig, allowedExtensions: $allowedExtensions, contentType: $contentType)';
 }
 
 
@@ -150,11 +150,11 @@ abstract mixin class _$ProtocolAssetCopyWith<$Res> implements $ProtocolAssetCopy
   factory _$ProtocolAssetCopyWith(_ProtocolAsset value, $Res Function(_ProtocolAsset) _then) = __$ProtocolAssetCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String type, String? description, bool required, dynamic constraints,@JsonKey(name: 'default_value') String? defaultValue, String? value
+ String name, String type, String? description, bool required,@JsonKey(name: 'validation_config') ParameterConfig? validationConfig,@JsonKey(name: 'allowed_extensions') List<String>? allowedExtensions,@JsonKey(name: 'content_type') String? contentType
 });
 
 
-
+@override $ParameterConfigCopyWith<$Res>? get validationConfig;
 
 }
 /// @nodoc
@@ -167,20 +167,32 @@ class __$ProtocolAssetCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolAsset
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? required = null,Object? constraints = freezed,Object? defaultValue = freezed,Object? value = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? required = null,Object? validationConfig = freezed,Object? allowedExtensions = freezed,Object? contentType = freezed,}) {
   return _then(_ProtocolAsset(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,required: null == required ? _self.required : required // ignore: cast_nullable_to_non_nullable
-as bool,constraints: freezed == constraints ? _self.constraints : constraints // ignore: cast_nullable_to_non_nullable
-as dynamic,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
-as String?,value: freezed == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
+as bool,validationConfig: freezed == validationConfig ? _self.validationConfig : validationConfig // ignore: cast_nullable_to_non_nullable
+as ParameterConfig?,allowedExtensions: freezed == allowedExtensions ? _self._allowedExtensions : allowedExtensions // ignore: cast_nullable_to_non_nullable
+as List<String>?,contentType: freezed == contentType ? _self.contentType : contentType // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
 
+/// Create a copy of ProtocolAsset
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ParameterConfigCopyWith<$Res>? get validationConfig {
+    if (_self.validationConfig == null) {
+    return null;
+  }
 
+  return $ParameterConfigCopyWith<$Res>(_self.validationConfig!, (value) {
+    return _then(_self.copyWith(validationConfig: value));
+  });
+}
 }
 
 // dart format on
