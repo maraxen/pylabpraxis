@@ -37,76 +37,150 @@
         *ngIf="selectedProtocol && selectedProtocol.parameters && objectKeys(selectedProtocol.parameters).length > 0"
         class="step-form dynamic-form">
         <h3 class="form-section-title">Protocol Parameters for: {{ selectedProtocol.name }}</h3>
-        <div *ngFor="let paramName of getParameterKeys(selectedProtocol.parameters)" class="form-field-container">
-          <ng-container [ngSwitch]="getParamConfig(paramName)?.type">
-            <mat-form-field appearance="fill" *ngSwitchCase="'string'">
-              <mat-label>{{ paramName }}</mat-label>
-              <input matInput [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'integer'">
-              <mat-label>{{ paramName }}</mat-label>
-              <input matInput type="number" [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'float'">
-              <mat-label>{{ paramName }}</mat-label>
-              <input matInput type="number" step="any" [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'number'">
-              <mat-label>{{ paramName }}</mat-label>
-              <input matInput type="number" step="any" [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'boolean'">
-              <mat-label>{{ paramName }}</mat-label>
-              <mat-select [formControlName]="paramName">
-                <mat-option [value]="true">True</mat-option>
-                <mat-option [value]="false">False</mat-option>
-              </mat-select>
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'array'">
-              <mat-label>{{ paramName }} (comma-separated)</mat-label>
-              <input matInput [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || 'e.g., item1,item2,item3'">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchCase="'dict'">
-              <mat-label>{{ paramName }} (JSON string)</mat-label>
-              <textarea matInput cdkTextareaAutosize #autosize="cdkTextareaAutosize" [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''"></textarea>
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-            <mat-form-field appearance="fill" *ngSwitchDefault>
-              <mat-label>{{ paramName }} (Type: {{ getParamConfig(paramName)?.type }})</mat-label>
-              <input matInput [formControlName]="paramName"
-                [placeholder]="getParamConfig(paramName)?.description || ''">
-              <mat-hint *ngIf="getParamConfig(paramName)?.description">{{ getParamConfig(paramName)?.description
-                }}</mat-hint>
-              <mat-error *ngIf="parameterForm.get(paramName)?.hasError('required')">This field is required.</mat-error>
-            </mat-form-field>
-          </ng-container>
+
+        <div *ngFor="let group of groupedParameters" class="parameter-group">
+          <h4 class="parameter-group-title">{{ group.title }}</h4>
+          <div *ngFor="let param of group.parameters" class="form-field-container">
+            <ng-container [ngSwitch]="param.config.type">
+
+              <mat-form-field appearance="outline" *ngSwitchCase="'string'">
+                <mat-label>{{ param.name }}</mat-label>
+                <input matInput [formControlName]="param.name" [placeholder]="param.config.description || ''">
+                <mat-hint *ngIf="param.config.description">{{ param.config.description }}</mat-hint>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('required')">This field is
+                  required.</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" *ngSwitchCase="'integer'">
+                <mat-label>{{ param.name }}</mat-label>
+                <input matInput type="number" step="1" [formControlName]="param.name"
+                  [placeholder]="param.config.description || ''" [min]="param.config.constraints?.min_value ?? null"
+                  [max]="param.config.constraints?.max_value ?? null">
+                <mat-hint *ngIf="param.config.description">{{ param.config.description }}</mat-hint>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('required')">This field is
+                  required.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('min')">Must be at least
+                  {{param.config.constraints?.min_value}}.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('max')">Must be at most
+                  {{param.config.constraints?.max_value}}.</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" *ngSwitchCase="'float'">
+                <mat-label>{{ param.name }}</mat-label>
+                <input matInput type="number" step="any" [formControlName]="param.name"
+                  [placeholder]="param.config.description || ''" [min]="param.config.constraints?.min_value ?? null"
+                  [max]="param.config.constraints?.max_value ?? null" [step]="param.config.constraints?.step || 'any'">
+                <mat-hint *ngIf="param.config.description">{{ param.config.description }}</mat-hint>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('required')">This field is
+                  required.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('min')">Must be at least
+                  {{param.config.constraints?.min_value}}.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('max')">Must be at most
+                  {{param.config.constraints?.max_value}}.</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" *ngSwitchCase="'number'">
+                <mat-label>{{ param.name }}</mat-label>
+                <input matInput type="number" step="any" [formControlName]="param.name"
+                  [placeholder]="param.config.description || ''" [min]="param.config.constraints?.min_value ?? null"
+                  [max]="param.config.constraints?.max_value ?? null" [step]="param.config.constraints?.step || 'any'">
+                <mat-hint *ngIf="param.config.description">{{ param.config.description }}</mat-hint>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('required')">This field is
+                  required.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('min')">Must be at least
+                  {{param.config.constraints?.min_value}}.</mat-error>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('max')">Must be at most
+                  {{param.config.constraints?.max_value}}.</mat-error>
+              </mat-form-field>
+
+              <div class="boolean-checkbox-container" *ngSwitchCase="'boolean'">
+                <mat-checkbox [formControlName]="param.name" color="primary">
+                  {{ param.name }}
+                </mat-checkbox>
+                <mat-hint *ngIf="param.config.description" class="checkbox-hint">{{ param.config.description
+                  }}</mat-hint>
+                <mat-error
+                  *ngIf="parameterForm.get(param.name)?.hasError('required') && parameterForm.get(param.name)?.touched">This
+                  selection is required.</mat-error>
+              </div>
+
+
+              <div *ngSwitchCase="'array'" class="dynamic-array-container" [formArrayName]="param.name">
+                <div class="dynamic-list-header">
+                  <h5 class="dynamic-list-title">{{ param.name }}</h5>
+                  <button mat-mini-fab color="primary" type="button" (click)="addArrayItem(param.name, param.config)"
+                    matTooltip="Add Item">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                </div>
+                <mat-hint *ngIf="param.config.description" class="dynamic-list-description">{{ param.config.description
+                  }}</mat-hint>
+
+                <div *ngFor="let itemControl of getArrayControls(param.name); let i = index" class="dynamic-list-item">
+                  <mat-form-field appearance="outline" class="dynamic-list-item-field">
+                    <mat-label>Item {{ i + 1 }}</mat-label>
+                    <input matInput [formControlName]="i" [placeholder]="'Value for item ' + (i+1)"
+                      [type]="param.config.constraints?.subvariables?.['0']?.type === 'number' || param.config.constraints?.subvariables?.['0']?.type === 'integer' || param.config.constraints?.subvariables?.['0']?.type === 'float' ? 'number' : 'text'">
+                  </mat-form-field>
+                  <button mat-icon-button color="warn" type="button" (click)="removeArrayItem(param.name, i)"
+                    matTooltip="Remove Item">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+                <mat-error
+                  *ngIf="parameterForm.get(param.name)?.hasError('required') && parameterForm.get(param.name)?.touched">
+                  At least one item is required.
+                </mat-error>
+              </div>
+
+              <div *ngSwitchCase="'dict'" class="dynamic-dict-container" [formArrayName]="param.name">
+                <div class="dynamic-list-header">
+                  <h5 class="dynamic-list-title">{{ param.name }}</h5>
+                  <button mat-mini-fab color="primary" type="button" (click)="addDictItem(param.name, param.config)"
+                    matTooltip="Add Key-Value Pair">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                </div>
+                <mat-hint *ngIf="param.config.description" class="dynamic-list-description">{{ param.config.description
+                  }}</mat-hint>
+
+                <div *ngFor="let pairControl of getDictControls(param.name); let i = index" [formGroupName]="i"
+                  class="dynamic-dict-item">
+                  <mat-form-field appearance="outline" class="dynamic-dict-key-field">
+                    <mat-label>Key {{ i + 1 }}</mat-label>
+                    <input matInput formControlName="key" placeholder="Enter key">
+                    <mat-error *ngIf="toFormGroup(pairControl).get('key')?.hasError('required')">Key is
+                      required.</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="dynamic-dict-value-field">
+                    <mat-label>Value {{ i + 1 }}</mat-label>
+                    <input matInput formControlName="value" placeholder="Enter value"
+                      [type]="param.config.constraints?.value_constraints?.type === 'number' || param.config.constraints?.value_constraints?.type === 'integer' || param.config.constraints?.value_constraints?.type === 'float' ? 'number' : (param.config.constraints?.value_constraints?.type === 'boolean' ? 'text' : 'text')">
+                    <mat-error *ngIf="toFormGroup(pairControl).get('value')?.hasError('required')">Value is
+                      required.</mat-error>
+                  </mat-form-field>
+                  <button mat-icon-button color="warn" type="button" (click)="removeDictItem(param.name, i)"
+                    matTooltip="Remove Key-Value Pair">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+                <mat-error
+                  *ngIf="parameterForm.get(param.name)?.hasError('required') && parameterForm.get(param.name)?.touched">
+                  At least one key-value pair is required.
+                </mat-error>
+              </div>
+
+              <mat-form-field appearance="outline" *ngSwitchDefault>
+                <mat-label>{{ param.name }} (Type: {{ param.config.type }})</mat-label>
+                <input matInput [formControlName]="param.name" [placeholder]="param.config.description || ''">
+                <mat-hint *ngIf="param.config.description">{{ param.config.description }}</mat-hint>
+                <mat-error *ngIf="parameterForm.get(param.name)?.hasError('required')">This field is
+                  required.</mat-error>
+              </mat-form-field>
+            </ng-container>
+          </div>
         </div>
+
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back</button>
           <button mat-raised-button color="primary" matStepperNext [disabled]="!parameterForm.valid">Next</button>
@@ -127,7 +201,7 @@
         class="step-form dynamic-form">
         <h3 class="form-section-title">Asset Assignments for: {{ selectedProtocol.name }}</h3>
         <div *ngFor="let asset of selectedProtocol.assets" class="form-field-container">
-          <mat-form-field appearance="fill">
+          <mat-form-field appearance="outline">
             <mat-label>{{ asset.name }} (Type: {{ asset.type }})</mat-label>
             <input matInput [formControlName]="asset.name"
               [placeholder]="asset.description || 'Enter assigned asset ID/Name'">
@@ -154,7 +228,7 @@
       <form [formGroup]="deckForm" class="step-form">
         <h3 class="form-section-title">Deck Layout</h3>
         <p>Select an existing deck layout or upload a new one.</p>
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Choose Existing Deck Layout</mat-label>
           <mat-select formControlName="selectedDeckLayout" (selectionChange)="onDeckSelectionChange($event)">
             <mat-option *ngFor="let layout of deckLayouts" [value]="layout">
@@ -191,9 +265,18 @@
           <mat-card-header><mat-card-title>Parameters</mat-card-title></mat-card-header>
           <mat-card-content>
             <ul class="review-list">
-              <li *ngFor="let paramName of objectKeys(parameterForm.value)">
-                <ng-container *ngIf="parameterForm.value[paramName] !== '' && parameterForm.value[paramName] !== null">
-                  <strong>{{ paramName }}:</strong> {{ parameterForm.value[paramName] }}
+              <li *ngFor="let paramName of objectKeys(prepareProtocolFormValues())">
+                <ng-container
+                  *ngIf="prepareProtocolFormValues()[paramName] !== '' && prepareProtocolFormValues()[paramName] !== null && (!isArray(prepareProtocolFormValues()[paramName]) || prepareProtocolFormValues()[paramName].length > 0)">
+                  <strong>{{ paramName }}:</strong>
+                  <ng-container
+                    *ngIf="getParamConfig(paramName)?.type === 'dict' || getParamConfig(paramName)?.type === 'array'">
+                    <pre>{{ prepareProtocolFormValues()[paramName] | json }}</pre>
+                  </ng-container>
+                  <ng-container
+                    *ngIf="getParamConfig(paramName)?.type !== 'dict' && getParamConfig(paramName)?.type !== 'array'">
+                    {{ prepareProtocolFormValues()[paramName] }}
+                  </ng-container>
                 </ng-container>
               </li>
             </ul>
@@ -225,7 +308,7 @@
         <div class="stepper-buttons">
           <button mat-button matStepperPrevious>Back</button>
           <button mat-raised-button color="accent" (click)="prepareProtocol()"
-            [disabled]="isPreparing || !selectedProtocolPath">
+            [disabled]="isPreparing || !selectedProtocolPath || !parameterForm.valid">
             Prepare Protocol
             <mat-progress-spinner *ngIf="isPreparing" mode="indeterminate" diameter="20"
               style="margin-left: 8px;"></mat-progress-spinner>
