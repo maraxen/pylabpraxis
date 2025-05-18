@@ -30,7 +30,18 @@ class AuthAuthenticated extends AuthState {
 }
 
 /// State indicating that the user is not authenticated.
-class AuthUnauthenticated extends AuthState {}
+/// Can optionally include a message (e.g., reason for unauthentication if initiated by an error).
+class AuthUnauthenticated extends AuthState {
+  final String? message; // Optional message
+
+  const AuthUnauthenticated({this.message});
+
+  @override
+  List<Object?> get props => [message];
+
+  @override
+  String toString() => 'AuthUnauthenticated { message: $message }';
+}
 
 /// State indicating that an authentication process (e.g., sign-in, sign-out,
 /// checking status) is currently in progress.

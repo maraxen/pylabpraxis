@@ -14,46 +14,46 @@ import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
 abstract class AuthService {
   /// Initiates the sign-in process.
   ///
-  /// This typically involves redirecting the user to the authentication provider's
-  /// login page and handling the callback to obtain tokens.
-  ///
-  /// Returns [UserProfile] if sign-in is successful, otherwise throws [AuthException].
+  /// For mobile, this should complete the flow and return a [UserProfile] or throw.
+  /// For web, this initiates a redirect. The method might return `null` or throw
+  /// a specific exception to indicate a redirect has started. The actual
+  /// [UserProfile] is obtained after the redirect via [completeWebSignInOnRedirect].
   Future<UserProfile?> signIn();
+
+  /// For web platform, this method should be called when the app (re)loads
+  /// to check if the current URL is the result of an OIDC redirect.
+  /// If so, it processes the authentication response and returns [UserProfile].
+  /// Returns `null` if not a redirect or if processing fails.
+  /// On mobile, this method might do nothing or return null.
+  Future<UserProfile?> completeWebSignInOnRedirect();
 
   /// Signs the user out.
   ///
   /// This involves clearing local session data (tokens) and potentially
   /// invalidating the session with the authentication provider.
-  /// Throws [AuthException] if sign-out fails.
+  /// Throws [AuthException] if sign-out fails (though local clearing should always happen).
   Future<void> signOut();
 
-  /// Checks if a user is currently signed in.
-  ///
-  /// Returns `true` if a valid session (e.g., non-expired access token) exists,
-  /// `false` otherwise.
+  /// Checks if a user is currently signed in (e.g., has a valid, non-expired token).
+  /// May attempt a silent token refresh if applicable.
   Future<bool> isSignedIn();
 
-  /// Retrieves the current authenticated user's profile.
-  ///
-  /// Returns [UserProfile] if the user is signed in, `null` otherwise.
-  /// May attempt to fetch from a stored session or an OIDC userinfo endpoint.
+  /// Retrieves the current authenticated user's profile from local storage.
+  /// Does not typically make a network request unless essential for validation.
   Future<UserProfile?> getCurrentUser();
 
   /// Retrieves the current access token.
-  ///
-  /// Returns the access token string if available and valid, `null` otherwise.
+  /// Should ideally check [isSignedIn] first or be called after confirming sign-in.
   Future<String?> getAccessToken();
 
   /// Retrieves the current ID token.
-  ///
-  /// Returns the ID token string if available and valid, `null` otherwise.
+  /// Should ideally check [isSignedIn] first or be called after confirming sign-in.
   Future<String?> getIdToken();
 
   /// Attempts to refresh the access token using a stored refresh token.
   ///
-  /// Returns the new access token if successful, `null` otherwise.
-  /// This method should handle storing the new tokens securely.
-  /// Throws [AuthException] if refresh fails and user needs to re-authenticate.
+  /// Returns the new access token if successful, `null` or throws [AuthException] otherwise.
+  /// This method should handle storing the new tokens securely and updating user profile.
   Future<String?> refreshToken();
 
   /// A stream that emits the current [UserProfile] or `null` when auth state changes.

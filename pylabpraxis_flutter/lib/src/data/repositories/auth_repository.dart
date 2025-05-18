@@ -15,9 +15,17 @@ import 'package:pylabpraxis_flutter/src/data/services/auth_service.dart'; // Imp
 abstract class AuthRepository {
   /// Attempts to sign in the user.
   ///
-  /// Returns [UserProfile] on successful sign-in.
-  /// Throws [AuthException] or other [AppException] on failure.
-  Future<UserProfile> signIn();
+  /// For mobile, this should complete the flow and return a [UserProfile] or throw.
+  /// For web, this initiates a redirect. The method might return `null` or throw
+  /// a specific exception to indicate a redirect has started.
+  Future<UserProfile?> signIn();
+
+  /// For web platform, this method should be called when the app (re)loads
+  /// to check if the current URL is the result of an OIDC redirect.
+  /// If so, it processes the authentication response and returns [UserProfile].
+  /// Returns `null` if not a redirect or if processing fails.
+  /// On mobile, this method might do nothing or return null.
+  Future<UserProfile?> completeWebSignInOnRedirect();
 
   /// Signs out the current user.
   ///
@@ -35,6 +43,9 @@ abstract class AuthRepository {
 
   /// Provides a stream of the user's authentication state ([UserProfile] or `null`).
   Stream<UserProfile?> get userProfileStream;
+
+  /// Disposes of resources if any are held by the repository (e.g., streams from services).
+  void dispose();
 }
 
 /// Concrete implementation of [AuthRepository].
@@ -47,16 +58,21 @@ class AuthRepositoryImpl implements AuthRepository {
     : _authService = authService;
 
   @override
-  Future<UserProfile> signIn() async {
+  Future<UserProfile?> signIn() async {
     try {
-      final user = await _authService.signIn();
-      if (user == null) {
-        throw Exception('Failed to sign in: User profile is null');
-      }
-      return user;
+      return await _authService.signIn();
     } catch (e) {
       // Log or handle specific exceptions if needed before rethrowing
       rethrow; // Propagate the exception (already an AppException or similar)
+    }
+  }
+
+  @override
+  Future<UserProfile?> completeWebSignInOnRedirect() async {
+    try {
+      return await _authService.completeWebSignInOnRedirect();
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -90,4 +106,11 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<UserProfile?> get userProfileStream => _authService.userProfileStream;
+
+  @override
+  void dispose() {
+    // Call dispose on the AuthService if it has a dispose method.
+    // This is important for cleaning up resources like StreamControllers.
+    _authService.dispose();
+  }
 }

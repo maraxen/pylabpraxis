@@ -6,10 +6,10 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart'; // For debugPrint
+import 'package:flutter/foundation.dart'; // For kIsWeb, debugPrint
 import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
 import 'package:pylabpraxis_flutter/src/data/repositories/auth_repository.dart';
-import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart'; // For AuthException
+import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -26,16 +26,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignOutRequested>(_onAuthSignOutRequested);
     on<_AuthStatusChanged>(_onAuthStatusChanged);
 
-    // Subscribe to user profile changes from the repository
     _userProfileSubscription = _authRepository.userProfileStream.listen(
-      (userProfile) {
-        add(_AuthStatusChanged(userProfile));
-      },
+      (userProfile) => add(_AuthStatusChanged(userProfile)),
       onError: (error) {
-        // Handle errors from the stream if necessary, though AuthRepository should handle most
-        debugPrint('Error in userProfileStream: $error');
-        // Optionally, dispatch an error event to the BLoC
-        // add(AuthFailureEvent(message: 'Error listening to auth changes'));
+        debugPrint('Error in userProfileStream for AuthBloc: $error');
+        // Optionally dispatch an AuthFailure event if stream errors are critical
+        // add(AuthFailure(message: 'Auth stream error: ${error.toString()}'));
       },
     );
   }
@@ -46,26 +42,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final isSignedIn = await _authRepository.isSignedIn();
-      if (isSignedIn) {
-        final userProfile = await _authRepository.getCurrentUser();
+      UserProfile? userProfile;
+      if (kIsWeb) {
+        // On web, attempt to complete any pending sign-in from a redirect first.
+        debugPrint("AuthAppStarted: Checking for web redirect result...");
+        // This method now exists on AuthRepository and its implementation
+        userProfile = await _authRepository.completeWebSignInOnRedirect();
         if (userProfile != null) {
-          emit(AuthAuthenticated(userProfile: userProfile));
+          debugPrint("AuthAppStarted: Web redirect processed successfully.");
         } else {
-          // This case might indicate an issue (e.g., token exists but profile fetch failed)
-          // Or it could be that tokens are present but user info needs to be re-fetched via sign-in.
-          // For simplicity, treat as unauthenticated if profile is null despite isSignedIn being true.
-          // A more robust approach might try to refresh tokens or re-fetch profile here.
-          await _authRepository
-              .signOut(); // Clean up potentially inconsistent state
-          emit(AuthUnauthenticated());
+          debugPrint("AuthAppStarted: No user profile from web redirect.");
         }
+      }
+
+      // If not already authenticated via redirect (or not on web), check stored session.
+      if (userProfile == null) {
+        final isSignedIn = await _authRepository.isSignedIn();
+        if (isSignedIn) {
+          userProfile = await _authRepository.getCurrentUser();
+        }
+      }
+
+      if (userProfile != null) {
+        emit(AuthAuthenticated(userProfile: userProfile));
       } else {
-        emit(AuthUnauthenticated());
+        emit(
+          const AuthUnauthenticated(),
+        ); // No message needed here for initial check
       }
     } catch (e) {
+      debugPrint("Error during AuthAppStarted: ${e.toString()}");
       emit(
-        AuthFailure(message: 'Failed to check auth status: ${e.toString()}'),
+        AuthFailure(
+          message: 'Failed to initialize auth state: ${e.toString()}',
+        ),
       );
     }
   }
@@ -76,10 +86,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      // For OIDC, signIn() in the repository/service initiates the browser flow.
-      // It doesn't take username/password directly here.
       final userProfile = await _authRepository.signIn();
-      emit(AuthAuthenticated(userProfile: userProfile));
+      if (userProfile != null) {
+        emit(AuthAuthenticated(userProfile: userProfile));
+      } else if (kIsWeb) {
+        // On web, signIn initiated a redirect. The BLoC can remain in AuthLoading
+        // or go to a specific "Redirecting" state. AuthAppStarted will handle
+        // the state change after the app reloads post-redirect.
+        debugPrint(
+          "AuthSignInRequested: Web redirect initiated. Awaiting app reload/redirect handling.",
+        );
+        // Optionally: emit(AuthRedirecting());
+      } else {
+        // This case (null userProfile on mobile without an exception) would be unexpected.
+        emit(
+          const AuthFailure(
+            message: 'Sign-in process did not complete as expected on mobile.',
+          ),
+        );
+      }
     } on AuthException catch (e) {
       emit(AuthFailure(message: e.message));
     } catch (e) {
@@ -99,14 +124,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       await _authRepository.signOut();
-      emit(AuthUnauthenticated());
+      // AuthUnauthenticated will be emitted by _onAuthStatusChanged via the stream
+      // after the service clears the session. To be explicit or handle faster UI update:
+      emit(
+        const AuthUnauthenticated(),
+      ); // Corrected: No argument as per the state definition
     } on AuthException catch (e) {
       emit(AuthFailure(message: e.message));
     } catch (e) {
+      // Even if server logout fails, local session is cleared.
+      // AuthUnauthenticated now supports an optional message.
       emit(
-        AuthFailure(
+        AuthUnauthenticated(
           message:
-              'An unexpected error occurred during sign-out: ${e.toString()}',
+              'Local logout successful; server logout may have failed: ${e.toString()}',
         ),
       );
     }
@@ -114,15 +145,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onAuthStatusChanged(_AuthStatusChanged event, Emitter<AuthState> emit) {
     if (event.userProfile != null) {
-      emit(AuthAuthenticated(userProfile: event.userProfile!));
+      // Only emit if the state is actually different or user ID changes
+      if (state is! AuthAuthenticated ||
+          (state as AuthAuthenticated).userProfile.id !=
+              event.userProfile!.id) {
+        emit(AuthAuthenticated(userProfile: event.userProfile!));
+      }
     } else {
-      emit(AuthUnauthenticated());
+      // Only emit if not already unauthenticated
+      if (state is! AuthUnauthenticated) {
+        emit(const AuthUnauthenticated());
+      }
     }
   }
 
   @override
   Future<void> close() {
     _userProfileSubscription?.cancel();
+    _authRepository.dispose(); // Call dispose on repository
     return super.close();
   }
 }
