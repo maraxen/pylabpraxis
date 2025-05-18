@@ -11,7 +11,7 @@ import 'package:get_it/get_it.dart'; // For service locator (optional, but good 
 import 'src/core/network/dio_client.dart'; // For DioClient
 import 'src/core/theme/app_theme.dart';
 import 'src/core/routing/app_router.dart';
-import 'src/core/widgets/app_shell.dart';
+import 'src/core/widgets/app_shell.dart'; // Your main app UI after login
 
 // Data Layer Imports (Services & Repositories & Implementations)
 import 'src/data/services/auth_service.dart';
@@ -21,8 +21,11 @@ import 'src/data/services/protocol_api_service_impl.dart';
 import 'src/data/repositories/auth_repository.dart';
 import 'src/data/repositories/protocol_repository.dart';
 
-// Feature Layer Imports (BLoCs)
+// Feature Layer Imports (BLoCs & Screens)
 import 'src/features/auth/application/bloc/auth_bloc.dart';
+
+// Import the LoginScreen (adjust path if necessary)
+import 'src/features/auth/presentation/screens/login_screen.dart';
 
 // Simple BlocObserver for logging BLoC events and transitions
 class AppBlocObserver extends BlocObserver {
@@ -44,10 +47,10 @@ class AppBlocObserver extends BlocObserver {
   @override
   void onChange(BlocBase bloc, Change change) {
     super.onChange(bloc, change);
-    // Avoid logging overly verbose states if they are complex
-    // Consider logging only specific parts or using a custom toString if needed.
+    // To avoid overly verbose logs for complex states, consider logging selectively.
+    // For instance, log only the runtimeType of states or specific properties.
     // developer.log(
-    //   'Change in ${bloc.runtimeType}: ${change.currentState} -> ${change.nextState}',
+    //   'Change in ${bloc.runtimeType}: ${change.currentState.runtimeType} -> ${change.nextState.runtimeType}',
     //   name: 'AppBlocObserver',
     // );
   }
@@ -56,7 +59,7 @@ class AppBlocObserver extends BlocObserver {
   void onTransition(Bloc bloc, Transition transition) {
     super.onTransition(bloc, transition);
     // developer.log(
-    //   'Transition in ${bloc.runtimeType}: ${transition.event} -> ${transition.nextState}',
+    //   'Transition in ${bloc.runtimeType}: ${transition.event} -> Current: ${transition.currentState.runtimeType}, Next: ${transition.nextState.runtimeType}',
     //   name: 'AppBlocObserver',
     // );
   }
@@ -85,36 +88,47 @@ final GetIt sl = GetIt.instance;
 // Function to setup service locator
 Future<void> setupServiceLocator() async {
   // External Packages
-  sl.registerLazySingleton<FlutterSecureStorage>(
-    () => const FlutterSecureStorage(
-      // Optional: Configure AndroidOptions and IOSOptions for FlutterSecureStorage
-      // aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    ),
-  );
+  sl.registerLazySingleton<FlutterSecureStorage>(() {
+    // Configure FlutterSecureStorage with WebOptions if on web
+    if (kIsWeb) {
+      return const FlutterSecureStorage(
+        // IMPORTANT: Replace these placeholder values with your securely generated,
+        // unique, and persistent application-specific keys and IVs.
+        // These are used to wrap the encryption key for data stored in LocalStorage.
+        // wrapKey should be a Base64 encoded 256-bit (32-byte) key.
+        // wrapKeyIv should be a Base64 encoded 128-bit (16-byte) IV.
+        // Generate these once (e.g., using a crypto library) and store them securely.
+        // DO NOT USE THESE EXAMPLE VALUES IN PRODUCTION.
+        webOptions: WebOptions(
+          wrapKey:
+              'YOUR_APP_SPECIFIC_ENCRYPTION_KEY_BASE64_32BYTES', // REPLACE THIS
+          wrapKeyIv:
+              'YOUR_APP_SPECIFIC_ENCRYPTION_IV_BASE64_16BYTES', // REPLACE THIS
+        ),
+      );
+    } else {
+      // For mobile, default options or platform-specific options can be used.
+      return const FlutterSecureStorage(
+        // Example: aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+    }
+  });
 
   // Services
-  // Register AuthService (AuthServiceImpl depends on FlutterSecureStorage)
   sl.registerLazySingleton<AuthService>(
     () => AuthServiceImpl(secureStorage: sl<FlutterSecureStorage>()),
   );
-
-  // Register DioClient (DioClient depends on AuthService)
   sl.registerLazySingleton<DioClient>(
     () => DioClient(authService: sl<AuthService>()),
   );
-
-  // Register ProtocolApiService (ProtocolApiServiceImpl depends on DioClient)
   sl.registerLazySingleton<ProtocolApiService>(
     () => ProtocolApiServiceImpl(dioClient: sl<DioClient>()),
   );
 
   // Repositories
-  // Register AuthRepository (AuthRepositoryImpl depends on AuthService)
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(authService: sl<AuthService>()),
   );
-
-  // Register ProtocolRepository (ProtocolRepositoryImpl depends on ProtocolApiService)
   sl.registerLazySingleton<ProtocolRepository>(
     () => ProtocolRepositoryImpl(protocolApiService: sl<ProtocolApiService>()),
   );
@@ -123,16 +137,11 @@ Future<void> setupServiceLocator() async {
 }
 
 void main() {
-  // This function will run the app with error handling and logging.
   runZonedGuarded<Future<void>>(
     () async {
-      // Ensure Flutter bindings are initialized
       WidgetsFlutterBinding.ensureInitialized();
-
-      // Setup BlocObserver
       Bloc.observer = AppBlocObserver();
 
-      // Setup basic error handling for Flutter framework errors
       FlutterError.onError = (FlutterErrorDetails details) {
         developer.log(
           'Flutter error caught by FlutterError.onError:',
@@ -145,7 +154,6 @@ void main() {
         }
       };
 
-      // Setup basic error handling for other unhandled errors
       PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
         developer.log(
           'Unhandled error caught by PlatformDispatcher.instance.onError:',
@@ -153,10 +161,9 @@ void main() {
           error: error,
           stackTrace: stack,
         );
-        return true; // Mark as handled
+        return true;
       };
 
-      // Initialize Service Locator
       await setupServiceLocator();
 
       runApp(
@@ -168,19 +175,18 @@ void main() {
             RepositoryProvider<ProtocolRepository>.value(
               value: sl<ProtocolRepository>(),
             ),
-            // You can also provide services directly if needed by UI and not through a BLoC/Repo
-            // Provider<AuthService>.value(value: sl<AuthService>()),
           ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider<AuthBloc>(
                 create:
-                    (context) => AuthBloc(
-                      authRepository: context.read<AuthRepository>(),
-                      // Or: authRepository: sl<AuthRepository>(), if not using context.read
-                    )..add(AuthAppStarted()), // Dispatch initial event
+                    (context) =>
+                        AuthBloc(authRepository: context.read<AuthRepository>())
+                          ..add(
+                            AuthAppStarted(),
+                          ), // Dispatch initial event to check auth status
               ),
-              // Add other BLoCs here as needed
+              // Add other BLoCs here
             ],
             child: const MyApp(),
           ),
@@ -188,7 +194,6 @@ void main() {
       );
     },
     (Object error, StackTrace stack) {
-      // This is the zone error handler. Errors caught here are critical.
       developer.log(
         'Unhandled error caught by runZonedGuarded:',
         name: 'ZoneError',
@@ -208,31 +213,64 @@ class MyApp extends StatelessWidget {
       title: 'PyLabPraxis Flutter',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // darkTheme: AppTheme.darkTheme, // Optional: define a dark theme
-      // themeMode: ThemeMode.system, // Optional: follow system theme
+      // darkTheme: AppTheme.darkTheme,
+      // themeMode: ThemeMode.system,
+
+      // The onGenerateRoute might still be useful for named routes within AppShell
+      // but the initial screen (Login or AppShell) is determined by the BlocBuilder below.
       onGenerateRoute: AppRouter.generateRoute,
-      // Start with AppShell which handles initial auth state checking or splash screen
-      home: const AppShell(),
+
+      // Use BlocBuilder to determine the initial screen based on AuthState
+      home: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          developer.log(
+            'AuthBloc state changed in MyApp (home builder): ${state.runtimeType}',
+            name: 'MyAppHomeBuilder',
+          );
+          if (state is AuthAuthenticated) {
+            // User is signed in, show the main app shell
+            return const AppShell();
+          } else if (state is AuthUnauthenticated || state is AuthFailure) {
+            // User is not signed in, or an auth error occurred that led to unauthenticated state
+            // Show the login screen. AuthFailure might also be handled by the listener below
+            // to show a snackbar, but here we ensure LoginScreen is shown.
+            return const LoginScreen();
+          } else {
+            // AuthInitial, AuthLoading
+            // Show a loading indicator while checking auth status or processing login/logout
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+        },
+      ),
       builder: (context, child) {
-        // BlocListener for global Auth state changes (e.g., showing SnackBars)
+        // BlocListener for global Auth state changes (e.g., showing SnackBars for errors)
+        // This child will be the widget returned by 'home' (LoginScreen, AppShell, or Loading).
         return BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
             developer.log(
-              'AuthBloc state changed in UI (MyApp builder): $state',
-              name: 'AuthUIListener',
+              'AuthBloc state changed in MyApp (global listener): ${state.runtimeType}',
+              name: 'AuthGlobalListener',
             );
-            // Example: Show a snackbar on auth failure
             if (state is AuthFailure) {
+              // Only show snackbar if not already on LoginScreen or if it's a general auth error
+              // The LoginScreen itself might display more specific errors.
+              // This global listener is good for errors that occur outside the login flow.
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Authentication Error: ${state.message}'),
-                  backgroundColor: Colors.red,
+                  content: Text(
+                    'Authentication Process Error: ${state.message}',
+                  ),
+                  backgroundColor: Colors.redAccent,
+                  duration: const Duration(seconds: 5),
                 ),
               );
             }
-            // You might navigate or show other global UI feedback here
+            // Potentially handle other global notifications or side effects here
           },
-          child: child!,
+          child:
+              child!, // child is the widget determined by the `home` BlocBuilder
         );
       },
     );

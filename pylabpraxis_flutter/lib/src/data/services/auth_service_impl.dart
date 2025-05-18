@@ -20,7 +20,7 @@ import 'package:url_launcher/url_launcher.dart'; // Still needed for explicit lo
 // Keycloak Configuration
 const String _keycloakBaseUrl = 'http://localhost:8080';
 const String _keycloakRealm = 'praxis';
-const String _keycloakClientId = 'pylabpraxis-flutter';
+const String _keycloakClientId = 'praxis-flutter';
 
 // --- Redirect URI Configuration ---
 const String _mobileRedirectScheme = 'pylabpraxis';
@@ -46,30 +46,8 @@ class AuthServiceImpl implements AuthService {
   static const String _storageRefreshTokenKey = 'refresh_token';
   static const String _storageUserProfileKey = 'user_profile';
 
-  AuthServiceImpl({FlutterSecureStorage? secureStorage})
-    : _secureStorage =
-          secureStorage ??
-          (kIsWeb
-              ? const FlutterSecureStorage(
-                // Web specific options for flutter_secure_storage.
-                // IMPORTANT: Replace placeholder values with securely generated,
-                // unique, and persistent application-specific keys and IVs.
-                // These are used to wrap the encryption key for data stored in LocalStorage.
-                // wrapKey should be a Base64 encoded 256-bit (32-byte) key.
-                // wrapKeyIv should be a Base64 encoded 128-bit (16-byte) IV.
-                // Generate these once and store them securely as part of your build/config.
-                // Example generation (conceptual, use a proper crypto library):
-                // final key = List<int>.generate(32, (_) => Random.secure().nextInt(256));
-                // final iv = List<int>.generate(16, (_) => Random.secure().nextInt(256));
-                // print('wrapKey: ${base64UrlEncode(key)}');
-                // print('wrapKeyIv: ${base64UrlEncode(iv)}');
-                // DO NOT USE THESE EXAMPLE VALUES IN PRODUCTION.
-                webOptions: WebOptions(
-                  wrapKey: 'YOUR_APP_SPECIFIC_ENCRYPTION_KEY_BASE64_32BYTES',
-                  wrapKeyIv: 'YOUR_APP_SPECIFIC_ENCRYPTION_IV_BASE64_16BYTES',
-                ),
-              )
-              : const FlutterSecureStorage()) {
+  AuthServiceImpl({required FlutterSecureStorage secureStorage})
+    : _secureStorage = secureStorage {
     _initialize();
   }
 
