@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserProfile {
 
- String get id; String? get username; String? get email;@JsonKey(name: 'email_verified') bool? get emailVerified; String? get name;@JsonKey(name: 'given_name') String? get givenName;@JsonKey(name: 'family_name') String? get familyName; List<String> get roles;
+@JsonKey(name: 'sub') String get id;// Map 'sub' JSON key to 'id' field
+@JsonKey(name: 'preferred_username') String? get username;// Map 'preferred_username' to 'username'
+ String? get email;@JsonKey(name: 'email_verified') bool? get emailVerified; String? get name;@JsonKey(name: 'given_name') String? get givenName;@JsonKey(name: 'family_name') String? get familyName; List<String> get roles;
 /// Create a copy of UserProfile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +51,7 @@ abstract mixin class $UserProfileCopyWith<$Res>  {
   factory $UserProfileCopyWith(UserProfile value, $Res Function(UserProfile) _then) = _$UserProfileCopyWithImpl;
 @useResult
 $Res call({
- String id, String? username, String? email,@JsonKey(name: 'email_verified') bool? emailVerified, String? name,@JsonKey(name: 'given_name') String? givenName,@JsonKey(name: 'family_name') String? familyName, List<String> roles
+@JsonKey(name: 'sub') String id,@JsonKey(name: 'preferred_username') String? username, String? email,@JsonKey(name: 'email_verified') bool? emailVerified, String? name,@JsonKey(name: 'given_name') String? givenName,@JsonKey(name: 'family_name') String? familyName, List<String> roles
 });
 
 
@@ -87,11 +89,13 @@ as List<String>,
 @JsonSerializable()
 
 class _UserProfile implements UserProfile {
-  const _UserProfile({required this.id, this.username, this.email, @JsonKey(name: 'email_verified') this.emailVerified, this.name, @JsonKey(name: 'given_name') this.givenName, @JsonKey(name: 'family_name') this.familyName, final  List<String> roles = const []}): _roles = roles;
+  const _UserProfile({@JsonKey(name: 'sub') required this.id, @JsonKey(name: 'preferred_username') this.username, this.email, @JsonKey(name: 'email_verified') this.emailVerified, this.name, @JsonKey(name: 'given_name') this.givenName, @JsonKey(name: 'family_name') this.familyName, final  List<String> roles = const []}): _roles = roles;
   factory _UserProfile.fromJson(Map<String, dynamic> json) => _$UserProfileFromJson(json);
 
-@override final  String id;
-@override final  String? username;
+@override@JsonKey(name: 'sub') final  String id;
+// Map 'sub' JSON key to 'id' field
+@override@JsonKey(name: 'preferred_username') final  String? username;
+// Map 'preferred_username' to 'username'
 @override final  String? email;
 @override@JsonKey(name: 'email_verified') final  bool? emailVerified;
 @override final  String? name;
@@ -138,7 +142,7 @@ abstract mixin class _$UserProfileCopyWith<$Res> implements $UserProfileCopyWith
   factory _$UserProfileCopyWith(_UserProfile value, $Res Function(_UserProfile) _then) = __$UserProfileCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? username, String? email,@JsonKey(name: 'email_verified') bool? emailVerified, String? name,@JsonKey(name: 'given_name') String? givenName,@JsonKey(name: 'family_name') String? familyName, List<String> roles
+@JsonKey(name: 'sub') String id,@JsonKey(name: 'preferred_username') String? username, String? email,@JsonKey(name: 'email_verified') bool? emailVerified, String? name,@JsonKey(name: 'given_name') String? givenName,@JsonKey(name: 'family_name') String? familyName, List<String> roles
 });
 
 

@@ -101,9 +101,8 @@ Future<void> setupServiceLocator() async {
         // DO NOT USE THESE EXAMPLE VALUES IN PRODUCTION.
         webOptions: WebOptions(
           wrapKey:
-              'YOUR_APP_SPECIFIC_ENCRYPTION_KEY_BASE64_32BYTES', // REPLACE THIS
-          wrapKeyIv:
-              'YOUR_APP_SPECIFIC_ENCRYPTION_IV_BASE64_16BYTES', // REPLACE THIS
+              '5YQ_UR7CGYhd4S_pPB906yBQvbV7dh60g2L551bzGvM', // REPLACE THIS
+          wrapKeyIv: '7Kf_Evc-UKQilgFvO7Q74Q', // REPLACE THIS
         ),
       );
     } else {

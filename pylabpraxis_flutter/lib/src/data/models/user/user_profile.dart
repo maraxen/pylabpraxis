@@ -16,23 +16,27 @@ abstract class UserProfile with _$UserProfile {
   /// Default constructor for [UserProfile].
   ///
   /// Parameters:
-  ///   [id] - The unique identifier for the user (e.g., subject from ID token).
-  ///   [username] - The username, often `preferred_username` from OIDC.
+  ///   [id] - The unique identifier for the user (maps to 'sub' from OIDC).
+  ///   [username] - The username (maps to 'preferred_username' from OIDC).
   ///   [email] - The user's email address.
   ///   [emailVerified] - Whether the user's email address has been verified.
   ///   [name] - The user's full name.
   ///   [givenName] - The user's given (first) name.
   ///   [familyName] - The user's family (last) name.
-  ///   [roles] - A list of roles assigned to the user.
+  ///   [roles] - A list of roles assigned to the user (custom claim, ensure it's in your token/userinfo if needed).
   const factory UserProfile({
-    required String id,
-    String? username,
+    @JsonKey(name: 'sub')
+    required String id, // Map 'sub' JSON key to 'id' field
+    @JsonKey(name: 'preferred_username')
+    String? username, // Map 'preferred_username' to 'username'
     String? email,
     @JsonKey(name: 'email_verified') bool? emailVerified,
     String? name,
     @JsonKey(name: 'given_name') String? givenName,
     @JsonKey(name: 'family_name') String? familyName,
-    @Default([]) List<String> roles,
+    @Default([])
+    List<String>
+    roles, // Ensure 'roles' claim is configured in Keycloak if you expect it
     // Add any other fields you expect from your OIDC userinfo endpoint
   }) = _UserProfile;
 
