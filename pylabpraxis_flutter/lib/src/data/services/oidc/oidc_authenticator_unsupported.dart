@@ -24,3 +24,49 @@ class OidcAuthenticatorUnsupported implements OidcAuthenticatorWrapper {
     );
   }
 }
+
+class OidcAuthenticatorIo implements OidcAuthenticatorWrapper {
+  OidcAuthenticatorIo({
+    required oidc.Client client,
+    required List<String> scopes,
+    Uri? redirectUri,
+    int? port,
+  });
+
+  @override
+  Future<oidc.Credential?> authorize() async {
+    throw UnsupportedError(
+      'OIDC Authentication is not supported on this platform.',
+    );
+  }
+
+  @override
+  Future<oidc.Credential?> processRedirect() async {
+    throw UnsupportedError(
+      'OIDC Authentication is not supported on this platform.',
+    );
+  }
+}
+
+class OidcAuthenticatorBrowser implements OidcAuthenticatorWrapper {
+  OidcAuthenticatorBrowser({
+    required oidc.Client client,
+    required List<String> scopes,
+    Uri? redirectUri,
+    int? port,
+  });
+
+  @override
+  Future<oidc.Credential?> authorize() async {
+    throw UnsupportedError(
+      'OIDC Authentication is not supported on this platform.',
+    );
+  }
+
+  @override
+  Future<oidc.Credential?> processRedirect() async {
+    throw UnsupportedError(
+      'OIDC Authentication is not supported on this platform.',
+    );
+  }
+}
