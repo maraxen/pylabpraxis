@@ -49,7 +49,11 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<UserProfile> signIn() async {
     try {
-      return await _authService.signIn();
+      final user = await _authService.signIn();
+      if (user == null) {
+        throw Exception('Failed to sign in: User profile is null');
+      }
+      return user;
     } catch (e) {
       // Log or handle specific exceptions if needed before rethrowing
       rethrow; // Propagate the exception (already an AppException or similar)

@@ -1,43 +1,45 @@
 // Concrete implementation of the [AuthService] using openid_client and flutter_secure_storage.
 //
 // This class handles OIDC authentication with Keycloak, secure token storage,
-// token refresh, and user profile management.
+// token refresh, and user profile management, with platform-specific logic
+// for web and mobile OIDC flows.
 
 import 'dart:async';
 import 'dart:convert'; // For jsonDecode
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:flutter/foundation.dart'; // For kIsWeb, debugPrint
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:openid_client/openid_client.dart' as oidc;
-import 'package:openid_client/openid_client_io.dart'
-    if (dart.library.html) 'package:openid_client/openid_client_browser.dart'
-    as oidc_platform;
+// Conditional import for platform-specific Authenticator
+import 'package:openid_client/openid_client_io.dart' as io_authenticator;
+import 'package:openid_client/openid_client_browser.dart'
+    as browser_authenticator;
+
 import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
 import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
 import 'auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// Keycloak Configuration (Replace with your actual values)
-// These should ideally be sourced from a configuration file or environment variables.
-const String _keycloakBaseUrl =
-    'http://localhost:8080'; // Your Keycloak base URL
-const String _keycloakRealm = 'praxis'; // Your Keycloak realm
+// Keycloak Configuration
+const String _keycloakBaseUrl = 'http://localhost:8080';
+const String _keycloakRealm = 'praxis';
 const String _keycloakClientId =
-    'pylabpraxis-flutter'; // Your Keycloak client ID for Flutter
+    'pylabpraxis-flutter'; // Ensure this client ID exists in Keycloak
 
-// For mobile, this needs to be a custom scheme registered in your app.
-// For web, this is a standard HTTP URL.
-const String _keycloakRedirectScheme = kIsWeb ? 'http' : 'pylabpraxis';
-const String _keycloakRedirectHost =
-    kIsWeb ? 'localhost:3000' : 'auth'; // Or your web app's host/port
-const String _keycloakRedirectPath =
-    kIsWeb ? '/auth-callback.html' : '/callback';
+// --- Redirect URI Configuration ---
+
+const String _mobileRedirectScheme = 'pylabpraxis';
+
+const String _mobileRedirectHost = 'auth';
+
+const String _webRedirectPath =
+    '/auth-callback.html'; // Ensure this HTML file exists in web/
+const String _mobileRedirectPath = '/callback';
 
 class AuthServiceImpl implements AuthService {
   final FlutterSecureStorage _secureStorage;
   oidc.Issuer? _issuer;
   oidc.Client? _client;
 
-  // Stream controller for user profile changes
   final StreamController<UserProfile?> _userProfileController =
       StreamController<UserProfile?>.broadcast();
 
@@ -53,17 +55,26 @@ class AuthServiceImpl implements AuthService {
 
   Future<void> _initialize() async {
     try {
-      final uri = Uri.parse('$_keycloakBaseUrl/realms/$_keycloakRealm');
+      var uri = Uri.parse('$_keycloakBaseUrl/realms/$_keycloakRealm');
+      // For Android emulator to connect to localhost on host machine
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        uri = uri.replace(host: '10.0.2.2');
+      }
       _issuer = await oidc.Issuer.discover(uri);
-      _client = oidc.Client(
-        _issuer!,
-        _keycloakClientId,
-        // No client secret for public clients (PKCE is used)
-      );
-      await _loadUserProfileFromStorage(); // Ensure this await is here if it was missing
+      _client = oidc.Client(_issuer!, _keycloakClientId);
+      // Attempt to load user profile on initialization if tokens exist
+      // Also, for web, check if this load is due to a redirect
+      await _loadUserProfileFromStorage();
+      if (kIsWeb) {
+        // If on web, also try to complete any pending sign-in from a redirect
+        // This is typically called when the app first loads or reloads after redirect.
+        await completeWebSignInOnRedirect();
+      }
     } catch (e, s) {
       debugPrint('AuthService Initialization Error: $e\n$s');
-      // Handle initialization failure, maybe set a flag or notify
+      _userProfileController.addError(
+        AuthException('AuthService initialization failed: $e'),
+      );
     }
   }
 
@@ -75,151 +86,200 @@ class AuthServiceImpl implements AuthService {
         _userProfileController.add(UserProfile.fromJson(userMap));
       } catch (e) {
         debugPrint('Failed to load user profile from storage: $e');
-        await _clearSession(); // Clear potentially corrupt data
+        await _clearSession();
       }
     } else {
       _userProfileController.add(null);
     }
   }
 
-  Uri get _redirectUri {
+  Uri _getPlatformRedirectUri() {
     if (kIsWeb) {
-      // For web, ensure the port is included if not standard (80/443)
-      // This should match exactly what's configured in Keycloak
-      final currentUri = Uri.base;
-      // Use a fixed redirect URI for web to simplify Keycloak config
-      return Uri(
-        scheme: 'http',
-        host: 'localhost',
-        port: currentUri.port,
-        path: '/auth-callback.html',
-      );
+      // Use Uri.base to construct the redirect URI based on where the app is currently hosted
+      // This helps with dynamic ports during development.
+      // The path /auth-callback.html should be consistent.
+      return Uri.base.replace(path: _webRedirectPath);
     } else {
-      // For mobile
       return Uri(
-        scheme: _keycloakRedirectScheme,
-        host: _keycloakRedirectHost,
-        path: _keycloakRedirectPath,
+        scheme: _mobileRedirectScheme,
+        host: _mobileRedirectHost,
+        path: _mobileRedirectPath,
       );
     }
   }
 
-  @override
-  Future<UserProfile> signIn() async {
-    if (_issuer == null || _client == null) {
-      await _initialize(); // Ensure client is initialized
-      if (_issuer == null || _client == null) {
-        throw AuthException(
-          'Authentication service not initialized. Please try again.',
-        );
-      }
+  // Helper to launch URL, common for mobile
+  Future<void> _launchUrlForMobile(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw AuthException('Could not launch $url');
     }
+  }
+
+  /// Processes a credential to extract tokens and user info, then stores them.
+  Future<UserProfile> _processCredential(oidc.Credential credential) async {
+    final tokenResponse = await credential.getTokenResponse();
+    final accessToken = tokenResponse.accessToken;
+    final idTokenString =
+        credential.idToken.toCompactSerialization(); // Get compact JWT string
+    final refreshToken = tokenResponse.refreshToken;
+
+    if (accessToken == null || idTokenString.isEmpty) {
+      throw AuthException(
+        'Authentication failed: Missing tokens after processing credential.',
+      );
+    }
+
+    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
+    await _secureStorage.write(key: _idTokenKey, value: idTokenString);
+    if (refreshToken != null) {
+      await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    }
+
+    final userInfo = await credential.getUserInfo();
+    final userProfile = UserProfile.fromJson(userInfo.toJson());
+
+    await _secureStorage.write(
+      key: _userProfileKey,
+      value: jsonEncode(userProfile.toJson()),
+    );
+    _userProfileController.add(userProfile); // Notify listeners
+    return userProfile;
+  }
+
+  @override
+  Future<UserProfile?> signIn() async {
+    // Changed to UserProfile? to accommodate web
+    if (_client == null) {
+      await _initialize();
+      if (_client == null) throw AuthException('Auth client not initialized.');
+    }
+
+    if (kIsWeb) {
+      // For Web: Initiate redirect, result handled by completeWebSignInOnRedirect on app (re)load.
+      final webAuthenticator = browser_authenticator.Authenticator(
+        _client!,
+        scopes: ['openid', 'profile', 'email', 'roles'],
+        // redirectUri is not directly passed to browser.Authenticator;
+        // it uses the client's configured redirectUris and window.location.
+        // Ensure `_getPlatformRedirectUri()` for web is registered in Keycloak.
+      );
+      // This call navigates the browser away.
+      webAuthenticator.authorize();
+      // On web, signIn() initiates the redirect. It doesn't complete with UserProfile here.
+      // Return null or throw a specific "Redirecting" signal if needed by BLoC.
+      // For now, returning null implies the process isn't complete in this call.
+      return null;
+    } else {
+      // For Mobile: Full authentication flow in this call.
+      final mobileRedirectUri = _getPlatformRedirectUri();
+      final ioAuth = io_authenticator.Authenticator(
+        _client!,
+        scopes: ['openid', 'profile', 'email', 'roles'],
+        redirectUri: mobileRedirectUri,
+        port: 4000, // Port for the local redirect listener on mobile.
+        // Can be any available port. Keycloak redirects to `customScheme://host/path`
+        // and the local server listens on `http://localhost:port` for that.
+        urlLancher:
+            _launchUrlForMobile, // Corrected typo from library: urlLancher
+      );
+      final credential = await ioAuth.authorize();
+      // Close in-app browser if applicable (url_launcher usually handles return)
+      // if (defaultTargetPlatform == TargetPlatform.ios || defaultTargetPlatform == TargetPlatform.android) {
+      //   await closeInAppWebView(); // If using a package that needs manual closing
+      // }
+      return await _processCredential(credential);
+    }
+  }
+
+  @override
+  Future<UserProfile?> completeWebSignInOnRedirect() async {
+    if (!kIsWeb || _client == null) return null;
+    debugPrint("Attempting to complete web sign-in on redirect...");
+
+    final webAuthenticator = browser_authenticator.Authenticator(
+      _client!,
+      scopes: ['openid', 'profile', 'email', 'roles'],
+    );
 
     try {
-      final authenticator = oidc_platform.Authenticator(
-        _client!,
-        scopes: ['openid', 'profile', 'email', 'roles'], // Standard OIDC scopes
-        redirectUri: _redirectUri, // This is now a required named parameter
-        urlLancher: (String url) async {
-          // Corrected parameter name: urlLauncher
-          final uri = Uri.parse(url);
-          // For web, the library might handle the redirect itself.
-          // For mobile, url_launcher opens the system browser or an in-app browser tab.
-          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-            throw AuthException('Could not launch $url');
-          }
-        },
-      );
-
-      final oidc.Credential credential = await authenticator.authorize();
-      // Close the in-app browser if it was used (primarily for mobile)
-      if (kIsWeb == false) {
-        // On mobile, if using an in-app browser tab, it might need to be closed.
-        // `openid_client_io` with `url_launcher` usually handles this by returning to the app.
-        // If using a package like `flutter_custom_tabs` or `flutter_inappwebview`,
-        // you might need specific code here to close it.
-        // For now, assume url_launcher handles the return correctly.
-        // await closeInAppWebView(); // Example if using a custom webview
+      // .credential getter checks if the current URL contains auth response.
+      final credential = await webAuthenticator.credential;
+      if (credential != null) {
+        debugPrint("Web redirect: Credential found!");
+        return await _processCredential(credential);
+      } else {
+        debugPrint("Web redirect: No credential found in current URL.");
       }
-
-      // Extract tokens and user info
-      final oidc.TokenResponse tokenResponse =
-          await credential.getTokenResponse();
-      final String? accessToken = tokenResponse.accessToken;
-      final String idToken = credential.idToken.toCompactSerialization();
-      final String? refreshToken = tokenResponse.refreshToken;
-
-      if (accessToken == null || idToken.isEmpty) {
-        throw AuthException('Authentication failed: Missing tokens.');
-      }
-
-      await _secureStorage.write(key: _accessTokenKey, value: accessToken);
-      await _secureStorage.write(key: _idTokenKey, value: idToken);
-      if (refreshToken != null) {
-        await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
-      }
-
-      final oidc.UserInfo userInfo = await credential.getUserInfo();
-      final userProfile = UserProfile.fromJson(userInfo.toJson());
-
-      await _secureStorage.write(
-        key: _userProfileKey,
-        value: jsonEncode(userProfile.toJson()),
+    } on oidc.OpenIdException catch (e) {
+      debugPrint(
+        "OIDC error completing web sign-in: ${e.message} (Type: ${e.code})",
       );
-      _userProfileController.add(userProfile);
-
-      return userProfile;
-    } on oidc.OpenIdException catch (e, s) {
-      debugPrint('OIDC SignIn Error: ${e.toString()}\n$s');
-      throw AuthException(
-        'Authentication failed: ${e.message} (${e.runtimeType})',
-      );
+      // "interaction_required", "login_required", "access_denied" are common if not an actual callback.
+      if (e.code != "interaction_required" &&
+          e.code != "login_required" &&
+          e.code != "access_denied") {
+        _userProfileController.addError(
+          AuthException("Web redirect error: ${e.message}"),
+        );
+      }
     } catch (e, s) {
-      debugPrint('SignIn Error: $e\n$s');
-      throw AuthException(
-        'An unexpected error occurred during sign-in: ${e.toString()}',
+      debugPrint("Generic error completing web sign-in: $e\n$s");
+      _userProfileController.addError(
+        AuthException("Web redirect processing failed: $e"),
       );
     }
+    return null;
   }
 
   @override
   Future<void> signOut() async {
-    if (_issuer == null || _client == null) {
-      // Not much to do if not initialized, but ensure local is cleared.
-      await _clearSession();
+    final String? idTokenHint = await _secureStorage.read(key: _idTokenKey);
+    final currentPlatformRedirectUri = _getPlatformRedirectUri();
+
+    await _clearSession();
+
+    if (_issuer == null) {
+      debugPrint('Cannot perform server logout: OIDC issuer not initialized.');
       return;
     }
+
+    Uri? endSessionEndpoint = _issuer!.metadata.endSessionEndpoint;
+    if (endSessionEndpoint == null) {
+      debugPrint(
+        'end_session_endpoint not found. Using fallback logout URL construction.',
+      );
+      endSessionEndpoint = Uri.parse(
+        '$_keycloakBaseUrl/realms/$_keycloakRealm/protocol/openid-connect/logout',
+      );
+    }
+
+    // For web, post_logout_redirect_uri should be the app's main page or login page.
+    // For mobile, redirecting back to a custom scheme after logout might not always work
+    // or be desired, sometimes just closing the browser tab is enough.
+    // Keycloak needs a registered post_logout_redirect_uri.
+    final postLogoutRedirect =
+        kIsWeb ? currentPlatformRedirectUri.replace(path: '/') : null;
+
+    Map<String, String> queryParams = {};
+    if (idTokenHint != null) queryParams['id_token_hint'] = idTokenHint;
+    if (postLogoutRedirect != null)
+      queryParams['post_logout_redirect_uri'] = postLogoutRedirect.toString();
+    // For some Keycloak versions/configs, 'client_id' might be needed or 'redirect_uri' as post_logout_redirect_uri
+    // queryParams['client_id'] = _keycloakClientId;
+
+    final logoutUrl = endSessionEndpoint.replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+
     try {
-      final idTokenHint = await _secureStorage.read(key: _idTokenKey);
-      await _clearSession(); // Clear local tokens first
-
-      if (idTokenHint != null) {
-        // Check if issuer metadata contains end_session_endpoint
-        final metadata = _issuer!.metadata;
-        final endSessionEndpoint =
-            metadata.endSessionEndpoint ??
-            Uri.parse(
-              '$_keycloakBaseUrl/realms/$_keycloakRealm/protocol/openid-connect/logout',
-            );
-
-        // Construct the logout URL
-        final logoutUrl = endSessionEndpoint.replace(
-          queryParameters: {
-            'id_token_hint': idTokenHint,
-            'post_logout_redirect_uri': _redirectUri.toString(),
-          },
-        );
-
-        if (await canLaunchUrl(logoutUrl)) {
-          await launchUrl(logoutUrl, mode: LaunchMode.externalApplication);
-        } else {
-          debugPrint('Could not launch Keycloak logout URL');
-        }
+      if (await canLaunchUrl(logoutUrl)) {
+        await launchUrl(logoutUrl, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint('Could not launch Keycloak logout URL: $logoutUrl');
       }
     } catch (e, s) {
-      debugPrint('SignOut Error: $e\n$s');
-      // Don't throw an exception if logout fails, as local session is cleared.
-      // User will appear logged out in the app.
+      debugPrint('Error during server logout attempt: $e\n$s');
     }
   }
 
@@ -229,6 +289,7 @@ class AuthServiceImpl implements AuthService {
     await _secureStorage.delete(key: _refreshTokenKey);
     await _secureStorage.delete(key: _userProfileKey);
     _userProfileController.add(null);
+    debugPrint('Local session cleared.');
   }
 
   @override
@@ -236,23 +297,49 @@ class AuthServiceImpl implements AuthService {
     final accessToken = await _secureStorage.read(key: _accessTokenKey);
     if (accessToken == null) return false;
 
-    // Optionally, add token expiration check here if not handled by interceptor
-    // For simplicity, we assume a token means signed in for now.
-    // Proper check would involve decoding JWT and checking 'exp' claim.
-    // final idToken = await getIdToken();
-    // if (idToken != null) {
-    //   try {
-    //     final decoded = oidc.IdToken.parseJwt(idToken);
-    //     return decoded.isExpired == false;
-    //   } catch (e) {
-    //     return false; // Invalid token
-    //   }
-    // }
-    return true;
+    final idTokenString = await getIdToken();
+    if (idTokenString != null) {
+      try {
+        final idToken = oidc.IdToken.unverified(idTokenString);
+        final expiration = idToken.claims.expiry;
+        if (expiration.isBefore(
+          DateTime.now().toUtc().add(const Duration(seconds: 10)),
+        )) {
+          // 10s buffer
+          debugPrint('ID token is expired or about to expire.');
+          // Attempt a silent refresh if a refresh token exists
+          if (await _secureStorage.read(key: _refreshTokenKey) != null) {
+            try {
+              final newAccessToken = await refreshToken();
+              return newAccessToken != null; // Signed in if refresh succeeded
+            } catch (e) {
+              debugPrint("Silent refresh failed during isSignedIn check: $e");
+              await _clearSession();
+              return false;
+            }
+          }
+          await _clearSession(); // No refresh token, or refresh failed
+          return false;
+        }
+        return true;
+      } catch (e) {
+        debugPrint('Error parsing ID token for expiration check: $e');
+        await _clearSession();
+        return false;
+      }
+    }
+    // If only access token exists but no id token (should not happen in OIDC normally)
+    // or if id token check fails, consider not signed in.
+    await _clearSession();
+    return false;
   }
 
   @override
   Future<UserProfile?> getCurrentUser() async {
+    // Check if signed in first, this might trigger a refresh if token is near expiry
+    if (!await isSignedIn()) {
+      return null;
+    }
     final userJson = await _secureStorage.read(key: _userProfileKey);
     if (userJson != null) {
       try {
@@ -261,31 +348,38 @@ class AuthServiceImpl implements AuthService {
         );
       } catch (e) {
         debugPrint('Error decoding stored user profile: $e');
-        await _clearSession(); // Clear potentially corrupt data
+        await _clearSession();
         return null;
       }
     }
+    // If user profile is somehow missing but tokens are valid, try to refetch.
+    // This might happen if storage was cleared partially.
+    // For simplicity, current implementation relies on profile being stored during login/refresh.
     return null;
   }
 
   @override
-  Future<String?> getAccessToken() {
+  Future<String?> getAccessToken() async {
+    if (!await isSignedIn()) return null; // Check and refresh if needed
     return _secureStorage.read(key: _accessTokenKey);
   }
 
   @override
-  Future<String?> getIdToken() {
+  Future<String?> getIdToken() async {
+    if (!await isSignedIn()) return null; // Check and refresh if needed
     return _secureStorage.read(key: _idTokenKey);
   }
 
   @override
   Future<String?> refreshToken() async {
     if (_client == null) {
-      throw AuthException('Auth client not initialized for token refresh.');
+      await _initialize();
+      if (_client == null) {
+        throw AuthException('Auth client not initialized for token refresh.');
+      }
     }
     final storedRefreshToken = await _secureStorage.read(key: _refreshTokenKey);
     if (storedRefreshToken == null) {
-      // No refresh token, user needs to sign in again.
       await _clearSession();
       throw AuthException('No refresh token available. Please sign in again.');
     }
@@ -294,54 +388,55 @@ class AuthServiceImpl implements AuthService {
       final credential = _client!.createCredential(
         refreshToken: storedRefreshToken,
       );
-      final tokenResponse = await credential.getTokenResponse();
 
-      // Check if the new access token is valid
-      if (tokenResponse.accessToken == null) {
-        await _clearSession(); // Clear session if refresh fails
-        throw AuthException(
-          'Token refresh failed to provide a new access token.',
-        );
-      }
+      final refreshedTokenResponse = await credential.getTokenResponse();
 
-      final newAccessToken = tokenResponse.accessToken;
-      final newIdToken = tokenResponse.idToken.toCompactSerialization();
-      final newRefreshToken = tokenResponse.refreshToken;
+      final newAccessToken = refreshedTokenResponse.accessToken;
+      final newIdTokenString =
+          refreshedTokenResponse.idToken.toCompactSerialization();
+      final newRefreshToken =
+          refreshedTokenResponse
+              .refreshToken; // Keycloak might return a new one
 
       if (newAccessToken == null) {
-        await _clearSession(); // Clear session if refresh fails to get new access token
+        await _clearSession();
         throw AuthException(
           'Token refresh failed to provide a new access token.',
         );
       }
 
       await _secureStorage.write(key: _accessTokenKey, value: newAccessToken);
-      await _secureStorage.write(key: _idTokenKey, value: newIdToken);
-
+      await _secureStorage.write(key: _idTokenKey, value: newIdTokenString);
       if (newRefreshToken != null) {
         await _secureStorage.write(
           key: _refreshTokenKey,
           value: newRefreshToken,
         );
-      } else {
-        // If Keycloak doesn't return a new refresh token (e.g. "Refresh token reuse" is off)
-        // keep the old one, or clear it if your policy requires it.
-        // For simplicity, we assume a new one might be returned. If not, the old one remains.
       }
 
-      // Optionally, re-fetch user info if it might change or if needed
-      // final userInfo = await newCredential.getUserInfo();
-      // final userProfile = UserProfile.fromJson(userInfo.toJson());
-      // await _secureStorage.write(key: _userProfileKey, value: jsonEncode(userProfile.toJson()));
-      // _userProfileController.add(userProfile);
+      // Update user profile after successful refresh
+      final oidc.UserInfo userInfo = await credential.getUserInfo();
+      final userProfile = UserProfile.fromJson(userInfo.toJson());
+      await _secureStorage.write(
+        key: _userProfileKey,
+        value: jsonEncode(userProfile.toJson()),
+      );
+      _userProfileController.add(userProfile);
 
       debugPrint('Token refreshed successfully.');
       return newAccessToken;
     } on oidc.OpenIdException catch (e) {
-      debugPrint('OpenIdException during token refresh: ${e.message}');
-      await _clearSession(); // Critical failure, clear session
+      debugPrint(
+        'OpenIdException during token refresh: ${e.message} (Type: ${e.code})',
+      );
+      if (e.code == 'invalid_grant') {
+        await _clearSession(); // Refresh token is invalid or expired
+        throw AuthException('Session expired. Please sign in again.');
+      }
+      // For other OIDC errors during refresh, also clear session as it's likely unrecoverable
+      await _clearSession();
       throw AuthException(
-        'Session expired or invalid. Please sign in again. (Refresh Error: ${e.message})',
+        'Token refresh failed: ${e.message}. Please sign in again.',
       );
     } catch (e, s) {
       debugPrint('Unexpected error during token refresh: $e\n$s');

@@ -18,7 +18,7 @@ abstract class AuthService {
   /// login page and handling the callback to obtain tokens.
   ///
   /// Returns [UserProfile] if sign-in is successful, otherwise throws [AuthException].
-  Future<UserProfile> signIn();
+  Future<UserProfile?> signIn();
 
   /// Signs the user out.
   ///
