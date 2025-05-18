@@ -1,17 +1,21 @@
-import 'dart:async'; // For PlatformDispatcher.instance.onError
+import 'dart:async'; // For PlatformDispatcher.instance.onError & runZonedGuarded
 import 'dart:developer' as developer; // For developer.log
 
 import 'package:flutter/foundation.dart'; // For kDebugMode and PlatformDispatcher
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // For secure storage
+import 'package:get_it/get_it.dart'; // For service locator (optional, but good practice)
 
 // Core imports
+import 'src/core/network/dio_client.dart'; // For DioClient
 import 'src/core/theme/app_theme.dart';
 import 'src/core/routing/app_router.dart';
 import 'src/core/widgets/app_shell.dart';
 
-// Data Layer Imports (Services & Repositories)
+// Data Layer Imports (Services & Repositories & Implementations)
 import 'src/data/services/auth_service.dart';
+import 'src/data/services/auth_service_impl.dart';
 import 'src/data/services/protocol_api_service.dart';
 import 'src/data/services/protocol_api_service_impl.dart';
 import 'src/data/repositories/auth_repository.dart';
@@ -40,19 +44,21 @@ class AppBlocObserver extends BlocObserver {
   @override
   void onChange(BlocBase bloc, Change change) {
     super.onChange(bloc, change);
-    developer.log(
-      'Change in ${bloc.runtimeType}: ${change.currentState} -> ${change.nextState}',
-      name: 'AppBlocObserver',
-    );
+    // Avoid logging overly verbose states if they are complex
+    // Consider logging only specific parts or using a custom toString if needed.
+    // developer.log(
+    //   'Change in ${bloc.runtimeType}: ${change.currentState} -> ${change.nextState}',
+    //   name: 'AppBlocObserver',
+    // );
   }
 
   @override
   void onTransition(Bloc bloc, Transition transition) {
     super.onTransition(bloc, transition);
-    developer.log(
-      'Transition in ${bloc.runtimeType}: ${transition.event} -> ${transition.nextState}',
-      name: 'AppBlocObserver',
-    );
+    // developer.log(
+    //   'Transition in ${bloc.runtimeType}: ${transition.event} -> ${transition.nextState}',
+    //   name: 'AppBlocObserver',
+    // );
   }
 
   @override
@@ -73,6 +79,49 @@ class AppBlocObserver extends BlocObserver {
   }
 }
 
+// Initialize GetIt service locator instance
+final GetIt sl = GetIt.instance;
+
+// Function to setup service locator
+Future<void> setupServiceLocator() async {
+  // External Packages
+  sl.registerLazySingleton<FlutterSecureStorage>(
+    () => const FlutterSecureStorage(
+      // Optional: Configure AndroidOptions and IOSOptions for FlutterSecureStorage
+      // aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    ),
+  );
+
+  // Services
+  // Register AuthService (AuthServiceImpl depends on FlutterSecureStorage)
+  sl.registerLazySingleton<AuthService>(
+    () => AuthServiceImpl(secureStorage: sl<FlutterSecureStorage>()),
+  );
+
+  // Register DioClient (DioClient depends on AuthService)
+  sl.registerLazySingleton<DioClient>(
+    () => DioClient(authService: sl<AuthService>()),
+  );
+
+  // Register ProtocolApiService (ProtocolApiServiceImpl depends on DioClient)
+  sl.registerLazySingleton<ProtocolApiService>(
+    () => ProtocolApiServiceImpl(dioClient: sl<DioClient>()),
+  );
+
+  // Repositories
+  // Register AuthRepository (AuthRepositoryImpl depends on AuthService)
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(authService: sl<AuthService>()),
+  );
+
+  // Register ProtocolRepository (ProtocolRepositoryImpl depends on ProtocolApiService)
+  sl.registerLazySingleton<ProtocolRepository>(
+    () => ProtocolRepositoryImpl(protocolApiService: sl<ProtocolApiService>()),
+  );
+
+  developer.log('Service Locator Initialized', name: 'main');
+}
+
 void main() {
   // This function will run the app with error handling and logging.
   runZonedGuarded<Future<void>>(
@@ -85,21 +134,18 @@ void main() {
 
       // Setup basic error handling for Flutter framework errors
       FlutterError.onError = (FlutterErrorDetails details) {
-        // Log the error to the console.
-        // In a real app, you might send this to an error reporting service.
         developer.log(
           'Flutter error caught by FlutterError.onError:',
           name: 'FlutterError',
           error: details.exception,
           stackTrace: details.stack,
         );
-        // Optionally, display a user-friendly error message in debug mode.
         if (kDebugMode) {
           FlutterError.dumpErrorToConsole(details);
         }
       };
 
-      // Setup basic error handling for other unhandled errors (e.g., async errors)
+      // Setup basic error handling for other unhandled errors
       PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
         developer.log(
           'Unhandled error caught by PlatformDispatcher.instance.onError:',
@@ -107,44 +153,34 @@ void main() {
           error: error,
           stackTrace: stack,
         );
-        // In a real app, report to an error service.
-        // Returning true tells Flutter that the error has been handled.
-        return true;
+        return true; // Mark as handled
       };
 
-      // TODO: Set up more advanced logging (e.g., using the 'logging' package) if needed.
-      // TODO: Set up remote error reporting (e.g., Sentry, Firebase Crashlytics) for release builds.
-
-      // Initialize services
-      final AuthService authService = AuthServiceImpl();
-      final ProtocolApiService protocolApiService = ProtocolApiServiceImpl(
-        dioClient: null,
-      ); // TODO: Pass a valid DioClient instance
-
-      // Initialize repositories
-      final AuthRepository authRepository = AuthRepositoryImpl(
-        authService: authService,
-      );
-      final ProtocolRepository protocolRepository = ProtocolRepositoryImpl(
-        protocolApiService: protocolApiService,
-      );
+      // Initialize Service Locator
+      await setupServiceLocator();
 
       runApp(
         MultiRepositoryProvider(
           providers: [
-            RepositoryProvider<AuthRepository>.value(value: authRepository),
-            RepositoryProvider<ProtocolRepository>.value(
-              value: protocolRepository,
+            RepositoryProvider<AuthRepository>.value(
+              value: sl<AuthRepository>(),
             ),
+            RepositoryProvider<ProtocolRepository>.value(
+              value: sl<ProtocolRepository>(),
+            ),
+            // You can also provide services directly if needed by UI and not through a BLoC/Repo
+            // Provider<AuthService>.value(value: sl<AuthService>()),
           ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider<AuthBloc>(
                 create:
-                    (context) =>
-                        AuthBloc(authRepository: context.read<AuthRepository>())
-                          ..add(AuthAppStarted()),
+                    (context) => AuthBloc(
+                      authRepository: context.read<AuthRepository>(),
+                      // Or: authRepository: sl<AuthRepository>(), if not using context.read
+                    )..add(AuthAppStarted()), // Dispatch initial event
               ),
+              // Add other BLoCs here as needed
             ],
             child: const MyApp(),
           ),
@@ -159,7 +195,6 @@ void main() {
         error: error,
         stackTrace: stack,
       );
-      // In a real app, report to an error service.
     },
   );
 }
@@ -173,32 +208,29 @@ class MyApp extends StatelessWidget {
       title: 'PyLabPraxis Flutter',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      // darkTheme: AppTheme.darkTheme, // Optional: define a dark theme
+      // themeMode: ThemeMode.system, // Optional: follow system theme
       onGenerateRoute: AppRouter.generateRoute,
+      // Start with AppShell which handles initial auth state checking or splash screen
       home: const AppShell(),
       builder: (context, child) {
+        // BlocListener for global Auth state changes (e.g., showing SnackBars)
         return BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
             developer.log(
-              'AuthBloc state changed in UI: $state',
+              'AuthBloc state changed in UI (MyApp builder): $state',
               name: 'AuthUIListener',
             );
-            if (state is AuthUnauthenticated) {
+            // Example: Show a snackbar on auth failure
+            if (state is AuthFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('User is unauthenticated (Placeholder).'),
+                SnackBar(
+                  content: Text('Authentication Error: ${state.message}'),
+                  backgroundColor: Colors.red,
                 ),
-              );
-            } else if (state is AuthAuthenticated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('User is authenticated (Placeholder).'),
-                ),
-              );
-            } else if (state is AuthFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Auth Error: ${state.message}')),
               );
             }
+            // You might navigate or show other global UI feedback here
           },
           child: child!,
         );

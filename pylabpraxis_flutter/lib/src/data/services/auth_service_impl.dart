@@ -8,8 +8,8 @@ import 'dart:convert'; // For jsonDecode
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:openid_client/openid_client.dart' as oidc;
-import 'package:openid_client_io/openid_client_io.dart'
-    if (dart.library.html) 'package:openid_client_browser/openid_client_browser.dart'
+import 'package:openid_client/openid_client_io.dart'
+    if (dart.library.html) 'package:openid_client/openid_client_browser.dart'
     as oidc_platform;
 import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
 import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
@@ -60,8 +60,7 @@ class AuthServiceImpl implements AuthService {
         _keycloakClientId,
         // No client secret for public clients (PKCE is used)
       );
-      // Attempt to load user profile on initialization if tokens exist
-      _loadUserProfileFromStorage();
+      await _loadUserProfileFromStorage(); // Ensure this await is here if it was missing
     } catch (e, s) {
       debugPrint('AuthService Initialization Error: $e\n$s');
       // Handle initialization failure, maybe set a flag or notify
@@ -120,16 +119,13 @@ class AuthServiceImpl implements AuthService {
       final authenticator = oidc_platform.Authenticator(
         _client!,
         scopes: ['openid', 'profile', 'email', 'roles'], // Standard OIDC scopes
-        redirectUri: _redirectUri,
-        // For web, port might be needed if it's not standard (e.g. during dev)
-        port: kIsWeb ? _redirectUri.port : null,
-        urlLancher: (url) async {
-          // On mobile, url_launcher is used.
-          // On web, it might do a window.location redirect or similar.
+        redirectUri: _redirectUri, // This is now a required named parameter
+        urlLancher: (String url) async {
+          // Corrected parameter name: urlLauncher
           final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } else {
+          // For web, the library might handle the redirect itself.
+          // For mobile, url_launcher opens the system browser or an in-app browser tab.
+          if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
             throw AuthException('Could not launch $url');
           }
         },
@@ -146,11 +142,14 @@ class AuthServiceImpl implements AuthService {
         // await closeInAppWebView(); // Example if using a custom webview
       }
 
-      final accessToken = credential.accessToken;
-      final idToken = credential.idToken; // ID token JWT string
-      final refreshToken = credential.refreshToken;
+      // Extract tokens and user info
+      final oidc.TokenResponse tokenResponse =
+          await credential.getTokenResponse();
+      final String? accessToken = tokenResponse.accessToken;
+      final String idToken = credential.idToken.toCompactSerialization();
+      final String? refreshToken = tokenResponse.refreshToken;
 
-      if (accessToken == null || idToken == null) {
+      if (accessToken == null || idToken.isEmpty) {
         throw AuthException('Authentication failed: Missing tokens.');
       }
 
@@ -194,13 +193,20 @@ class AuthServiceImpl implements AuthService {
       final idTokenHint = await _secureStorage.read(key: _idTokenKey);
       await _clearSession(); // Clear local tokens first
 
-      if (idTokenHint != null && _issuer!.endSessionEndpoint != null) {
+      if (idTokenHint != null) {
+        // Check if issuer metadata contains end_session_endpoint
+        final metadata = _issuer!.metadata;
+        final endSessionEndpoint =
+            metadata.endSessionEndpoint ??
+            Uri.parse(
+              '$_keycloakBaseUrl/realms/$_keycloakRealm/protocol/openid-connect/logout',
+            );
+
         // Construct the logout URL
-        final logoutUrl = _issuer!.endSessionEndpoint!.replace(
+        final logoutUrl = endSessionEndpoint.replace(
           queryParameters: {
             'id_token_hint': idTokenHint,
-            'post_logout_redirect_uri':
-                _redirectUri.toString(), // Redirect back to app after logout
+            'post_logout_redirect_uri': _redirectUri.toString(),
           },
         );
 
@@ -285,14 +291,22 @@ class AuthServiceImpl implements AuthService {
     }
 
     try {
-      final credential = await _client!.createCredential(
+      final credential = _client!.createCredential(
         refreshToken: storedRefreshToken,
       );
-      final newCredential = await credential.refresh();
+      final tokenResponse = await credential.getTokenResponse();
 
-      final newAccessToken = newCredential.accessToken;
-      final newIdToken = newCredential.idToken;
-      final newRefreshToken = newCredential.refreshToken;
+      // Check if the new access token is valid
+      if (tokenResponse.accessToken == null) {
+        await _clearSession(); // Clear session if refresh fails
+        throw AuthException(
+          'Token refresh failed to provide a new access token.',
+        );
+      }
+
+      final newAccessToken = tokenResponse.accessToken;
+      final newIdToken = tokenResponse.idToken.toCompactSerialization();
+      final newRefreshToken = tokenResponse.refreshToken;
 
       if (newAccessToken == null) {
         await _clearSession(); // Clear session if refresh fails to get new access token
@@ -302,9 +316,8 @@ class AuthServiceImpl implements AuthService {
       }
 
       await _secureStorage.write(key: _accessTokenKey, value: newAccessToken);
-      if (newIdToken != null) {
-        await _secureStorage.write(key: _idTokenKey, value: newIdToken);
-      }
+      await _secureStorage.write(key: _idTokenKey, value: newIdToken);
+
       if (newRefreshToken != null) {
         await _secureStorage.write(
           key: _refreshTokenKey,

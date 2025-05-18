@@ -218,20 +218,7 @@ class ErrorInterceptor extends Interceptor {
       }
     }
     // If not handled, create a generic ApiException
-    super.onError(
-      err,
-      handler.reject(
-        DioException(
-          requestOptions: requestOptions,
-          error: ApiException(
-            message: err.message ?? 'An unexpected Dio error occurred',
-            stackTrace: err.stackTrace,
-          ),
-          type: err.type,
-          response: err.response,
-        ),
-      ),
-    );
+    super.onError(err, handler);
   }
 }
 
