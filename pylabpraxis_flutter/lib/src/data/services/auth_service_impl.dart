@@ -1,8 +1,9 @@
 // Concrete implementation of the [AuthService] using openid_client and flutter_secure_storage.
 //
-// This class handles OIDC authentication with Keycloak, secure token storage,
-// token refresh, and user profile management, using a platform-specific
-// OIDC authenticator wrapper.
+// This class handles OIDC authentication with Keycloak, and uses flutter_secure_storage
+// for token and user profile persistence across all platforms (mobile and web).
+// For web, it utilizes WebCrypto via flutter_secure_storage's experimental web implementation.
+// It uses a platform-specific OIDC authenticator wrapper.
 
 import 'dart:async';
 import 'dart:convert'; // For jsonDecode
@@ -31,6 +32,7 @@ const String _webRedirectPath =
 
 class AuthServiceImpl implements AuthService {
   final FlutterSecureStorage _secureStorage;
+
   oidc.Issuer? _issuer;
   oidc.Client? _client;
   OidcAuthenticatorWrapper? _authenticatorWrapper; // Instance of the wrapper
@@ -38,42 +40,82 @@ class AuthServiceImpl implements AuthService {
   final StreamController<UserProfile?> _userProfileController =
       StreamController<UserProfile?>.broadcast();
 
-  static const String _accessTokenKey = 'access_token';
-  static const String _idTokenKey = 'id_token';
-  static const String _refreshTokenKey = 'refresh_token';
-  static const String _userProfileKey = 'user_profile';
+  // Keys for FlutterSecureStorage (used for all platforms)
+  static const String _storageAccessTokenKey = 'access_token';
+  static const String _storageIdTokenKey = 'id_token';
+  static const String _storageRefreshTokenKey = 'refresh_token';
+  static const String _storageUserProfileKey = 'user_profile';
 
-  AuthServiceImpl({required FlutterSecureStorage secureStorage})
-    : _secureStorage = secureStorage {
+  AuthServiceImpl({FlutterSecureStorage? secureStorage})
+    : _secureStorage =
+          secureStorage ??
+          (kIsWeb
+              ? const FlutterSecureStorage(
+                // Web specific options for flutter_secure_storage.
+                // IMPORTANT: Replace placeholder values with securely generated,
+                // unique, and persistent application-specific keys and IVs.
+                // These are used to wrap the encryption key for data stored in LocalStorage.
+                // wrapKey should be a Base64 encoded 256-bit (32-byte) key.
+                // wrapKeyIv should be a Base64 encoded 128-bit (16-byte) IV.
+                // Generate these once and store them securely as part of your build/config.
+                // Example generation (conceptual, use a proper crypto library):
+                // final key = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+                // final iv = List<int>.generate(16, (_) => Random.secure().nextInt(256));
+                // print('wrapKey: ${base64UrlEncode(key)}');
+                // print('wrapKeyIv: ${base64UrlEncode(iv)}');
+                // DO NOT USE THESE EXAMPLE VALUES IN PRODUCTION.
+                webOptions: WebOptions(
+                  wrapKey: 'YOUR_APP_SPECIFIC_ENCRYPTION_KEY_BASE64_32BYTES',
+                  wrapKeyIv: 'YOUR_APP_SPECIFIC_ENCRYPTION_IV_BASE64_16BYTES',
+                ),
+              )
+              : const FlutterSecureStorage()) {
     _initialize();
   }
 
   Future<void> _initialize() async {
+    debugPrint("AuthService: Initializing...");
     try {
       var uri = Uri.parse('$_keycloakBaseUrl/realms/$_keycloakRealm');
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         uri = uri.replace(host: '10.0.2.2');
+        debugPrint(
+          "AuthService: Android emulator detected, using host 10.0.2.2 for Keycloak discovery.",
+        );
       }
       _issuer = await oidc.Issuer.discover(uri);
       _client = oidc.Client(_issuer!, _keycloakClientId);
+      debugPrint("AuthService: OIDC Issuer and Client initialized.");
 
-      // Instantiate the platform-specific wrapper using the factory constructor
       if (_client != null) {
         _authenticatorWrapper = OidcAuthenticatorWrapper(
           client: _client!,
           scopes: ['openid', 'profile', 'email', 'roles'],
-          redirectUri:
-              _getPlatformRedirectUri(), // Pass it always; IO impl will use it.
-          port: 4000, // Pass it always; IO impl will use it.
+          redirectUri: _getPlatformRedirectUri(),
+          port: 4000,
         );
+        debugPrint("AuthService: OIDC Authenticator Wrapper created.");
       } else {
+        debugPrint(
+          "AuthService: OIDC Client failed to initialize. Cannot create Authenticator Wrapper.",
+        );
         throw StateError("OIDC Client failed to initialize.");
       }
 
+      // Attempt to load user profile from storage on initialization.
+      // This will check if there's an existing session.
       await _loadUserProfileFromStorage();
+
+      // For web, explicitly check if the app is being loaded as a result of an OIDC redirect.
       if (kIsWeb) {
+        debugPrint(
+          "AuthService: Web platform detected. Checking for redirect result...",
+        );
         await completeWebSignInOnRedirect();
       }
+      debugPrint(
+        "AuthService: Initialization complete. Current user profile on stream: ${await _userProfileController.stream.firstWhere((element) => true, orElse: () => null)}",
+      );
     } catch (e, s) {
       debugPrint('AuthService Initialization Error: $e\n$s');
       _userProfileController.addError(
@@ -83,17 +125,30 @@ class AuthServiceImpl implements AuthService {
   }
 
   Future<void> _loadUserProfileFromStorage() async {
-    final userJson = await _secureStorage.read(key: _userProfileKey);
-    if (userJson != null) {
-      try {
+    debugPrint(
+      "AuthService: Attempting to load user profile from flutter_secure_storage...",
+    );
+    try {
+      final userJson = await _secureStorage.read(key: _storageUserProfileKey);
+      if (userJson != null) {
         final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-        _userProfileController.add(UserProfile.fromJson(userMap));
-      } catch (e) {
-        debugPrint('Failed to load user profile from storage: $e');
-        await _clearSession();
+        final userProfile = UserProfile.fromJson(userMap);
+        _userProfileController.add(userProfile);
+        debugPrint(
+          "AuthService: Loaded profile from storage: ${userProfile.name}",
+        );
+      } else {
+        _userProfileController.add(null);
+        debugPrint("AuthService: No user profile found in storage.");
       }
-    } else {
-      _userProfileController.add(null);
+    } catch (e, s) {
+      debugPrint(
+        'AuthService: Error loading user profile from storage: $e\n$s. Clearing potentially corrupted session.',
+      );
+      // If there's an error reading (e.g., corrupted data, or web crypto issue if keys changed),
+      // treat as no session and clear.
+      await _clearSession();
+      _userProfileController.add(null); // Ensure null is emitted
     }
   }
 
@@ -110,31 +165,51 @@ class AuthServiceImpl implements AuthService {
   }
 
   Future<UserProfile> _processCredential(oidc.Credential credential) async {
-    // This method remains largely the same
+    debugPrint("AuthService: Processing new credential...");
     final tokenResponse = await credential.getTokenResponse();
     final accessToken = tokenResponse.accessToken;
     final idTokenString = credential.idToken.toCompactSerialization();
     final refreshToken = tokenResponse.refreshToken;
 
     if (accessToken == null || idTokenString.isEmpty) {
+      debugPrint(
+        "AuthService: Authentication failed - missing tokens after processing credential.",
+      );
       throw AuthException(
         'Authentication failed: Missing tokens after processing credential.',
       );
     }
 
-    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
-    await _secureStorage.write(key: _idTokenKey, value: idTokenString);
-    if (refreshToken != null) {
-      await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
-    }
-
     final userInfo = await credential.getUserInfo();
     final userProfile = UserProfile.fromJson(userInfo.toJson());
+    debugPrint("AuthService: User profile obtained: ${userProfile.name}");
 
-    await _secureStorage.write(
-      key: _userProfileKey,
-      value: jsonEncode(userProfile.toJson()),
-    );
+    try {
+      await _secureStorage.write(
+        key: _storageAccessTokenKey,
+        value: accessToken,
+      );
+      await _secureStorage.write(key: _storageIdTokenKey, value: idTokenString);
+      if (refreshToken != null) {
+        await _secureStorage.write(
+          key: _storageRefreshTokenKey,
+          value: refreshToken,
+        );
+      }
+      await _secureStorage.write(
+        key: _storageUserProfileKey,
+        value: jsonEncode(userProfile.toJson()),
+      );
+      debugPrint(
+        "AuthService: Tokens and profile stored in flutter_secure_storage.",
+      );
+    } catch (e, s) {
+      debugPrint(
+        "AuthService: Error writing to flutter_secure_storage: $e\n$s",
+      );
+      throw AuthException("Failed to store session: $e");
+    }
+
     _userProfileController.add(userProfile);
     return userProfile;
   }
@@ -142,27 +217,37 @@ class AuthServiceImpl implements AuthService {
   @override
   Future<UserProfile?> signIn() async {
     if (_authenticatorWrapper == null) {
-      await _initialize(); // Ensure wrapper is created
+      debugPrint(
+        "AuthService: Authenticator wrapper not initialized. Re-initializing...",
+      );
+      await _initialize();
       if (_authenticatorWrapper == null) {
+        debugPrint(
+          "AuthService: FATAL - Auth service/wrapper still not initialized after re-attempt.",
+        );
         throw AuthException('Auth service/wrapper not initialized.');
       }
     }
-
+    debugPrint("AuthService: Initiating sign-in flow...");
     try {
       final credential = await _authenticatorWrapper!.authorize();
       if (credential != null) {
-        // Typically for mobile
+        debugPrint(
+          "AuthService: Credential received directly from authorize() (likely mobile). Processing...",
+        );
         return await _processCredential(credential);
       }
-      // For web, authorize() initiates redirect and credential will be null here.
-      // completeWebSignInOnRedirect will handle it.
+      debugPrint(
+        "AuthService: authorize() returned null (likely web redirect initiated). Waiting for redirect completion.",
+      );
       return null;
     } on oidc.OpenIdException catch (e, s) {
-      debugPrint('OIDC SignIn Error: ${e.toString()}\n$s');
-      String errorMessage = 'Authentication error';
+      debugPrint('AuthService: OIDC SignIn Error: ${e.toString()}\n$s');
+      String errorMessage = 'Authentication error: ${e.message}';
+      if (e.code != null) errorMessage += ' (Code: ${e.code})';
       throw AuthException(errorMessage);
     } catch (e, s) {
-      debugPrint('SignIn Error: $e\n$s');
+      debugPrint('AuthService: Generic SignIn Error: $e\n$s');
       throw AuthException(
         'An unexpected error occurred during sign-in: ${e.toString()}',
       );
@@ -171,59 +256,78 @@ class AuthServiceImpl implements AuthService {
 
   @override
   Future<UserProfile?> completeWebSignInOnRedirect() async {
-    if (!kIsWeb || _authenticatorWrapper == null) return null;
-    debugPrint("Attempting to complete web sign-in on redirect...");
+    if (!kIsWeb || _authenticatorWrapper == null) {
+      // This function should only run on web and if initialized
+      return null;
+    }
+    debugPrint(
+      "AuthService (Web): Attempting to complete web sign-in on redirect...",
+    );
 
     try {
       final credential = await _authenticatorWrapper!.processRedirect();
       if (credential != null) {
-        debugPrint("Web redirect: Credential found!");
+        debugPrint(
+          "AuthService (Web): Credential found from redirect! Processing...",
+        );
         return await _processCredential(credential);
       } else {
-        debugPrint("Web redirect: No credential found in current URL.");
+        debugPrint(
+          "AuthService (Web): No credential found in current URL from redirect. This is normal on initial load or if not an auth callback.",
+        );
       }
     } on oidc.OpenIdException catch (e) {
       debugPrint(
-        "OIDC error completing web sign-in: ${e.message} (Type: ${e.code})",
+        "AuthService (Web): OIDC error completing web sign-in: ${e.message} (Type: ${e.code})",
       );
       if (e.code != "interaction_required" &&
           e.code != "login_required" &&
-          e.code != "access_denied") {
+          e.code != "access_denied" &&
+          e.message?.contains("No authentication response found in query") ==
+              false &&
+          e.message?.contains("State mismatch") == false) {
         _userProfileController.addError(
           AuthException("Web redirect error: ${e.message}"),
         );
       }
     } catch (e, s) {
-      debugPrint("Generic error completing web sign-in: $e\n$s");
+      debugPrint(
+        "AuthService (Web): Generic error completing web sign-in: $e\n$s",
+      );
       _userProfileController.addError(
         AuthException("Web redirect processing failed: $e"),
       );
     }
-    return null;
+    return null; // Return null if no credential processed
   }
-
-  // signOut, _clearSession, isSignedIn, getCurrentUser, getAccessToken, getIdToken, refreshToken, userProfileStream, dispose
-  // methods remain largely the same as in the previous version of AuthServiceImpl,
-  // but ensure they use _client and _issuer which are initialized.
-  // Refresh token might also use _client.createCredential directly.
 
   @override
   Future<void> signOut() async {
-    final String? idTokenHint = await _secureStorage.read(key: _idTokenKey);
+    debugPrint("AuthService: Initiating sign-out...");
+    String? idTokenHint;
+    try {
+      idTokenHint = await _secureStorage.read(key: _storageIdTokenKey);
+    } catch (e, s) {
+      debugPrint(
+        "AuthService: Error reading id_token_hint from storage during signout: $e\n$s",
+      );
+    }
+
     final currentPlatformRedirectUri = _getPlatformRedirectUri();
     await _clearSession();
 
     if (_issuer == null) {
-      debugPrint('Cannot perform server logout: OIDC issuer not initialized.');
+      debugPrint(
+        'AuthService: Cannot perform server logout: OIDC issuer not initialized.',
+      );
       return;
     }
 
     Uri? endSessionEndpoint = _issuer!.metadata.endSessionEndpoint;
     if (endSessionEndpoint == null) {
       debugPrint(
-        'end_session_endpoint not found. Using fallback logout URL construction.',
+        'AuthService: end_session_endpoint not found. Using fallback logout URL construction.',
       );
-      // Construct a common logout URL if not in metadata
       endSessionEndpoint = Uri.parse(
         '$_keycloakBaseUrl/realms/$_keycloakRealm/protocol/openid-connect/logout',
       );
@@ -231,132 +335,220 @@ class AuthServiceImpl implements AuthService {
 
     final postLogoutRedirect =
         kIsWeb ? currentPlatformRedirectUri.replace(path: '/') : null;
-
     Map<String, String> queryParams = {};
     if (idTokenHint != null) queryParams['id_token_hint'] = idTokenHint;
-    // Keycloak requires post_logout_redirect_uri to be registered in the client settings if used.
     if (postLogoutRedirect != null) {
       queryParams['post_logout_redirect_uri'] = postLogoutRedirect.toString();
     }
-    // queryParams['client_id'] = _keycloakClientId; // Sometimes needed
 
     final logoutUrl = endSessionEndpoint.replace(
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
+    debugPrint("AuthService: Constructed logout URL: $logoutUrl");
 
     try {
       if (await canLaunchUrl(logoutUrl)) {
-        await launchUrl(logoutUrl, mode: LaunchMode.externalApplication);
+        await launchUrl(
+          logoutUrl,
+          mode:
+              kIsWeb
+                  ? LaunchMode.platformDefault
+                  : LaunchMode.externalApplication,
+          webOnlyWindowName: kIsWeb ? '_self' : null,
+        );
+        debugPrint("AuthService: Logout URL launched.");
       } else {
-        debugPrint('Could not launch Keycloak logout URL: $logoutUrl');
+        debugPrint(
+          'AuthService: Could not launch Keycloak logout URL: $logoutUrl',
+        );
       }
     } catch (e, s) {
-      debugPrint('Error during server logout attempt: $e\n$s');
+      debugPrint('AuthService: Error during server logout attempt: $e\n$s');
     }
   }
 
   Future<void> _clearSession() async {
-    await _secureStorage.delete(key: _accessTokenKey);
-    await _secureStorage.delete(key: _idTokenKey);
-    await _secureStorage.delete(key: _refreshTokenKey);
-    await _secureStorage.delete(key: _userProfileKey);
+    try {
+      await _secureStorage.delete(key: _storageAccessTokenKey);
+      await _secureStorage.delete(key: _storageIdTokenKey);
+      await _secureStorage.delete(key: _storageRefreshTokenKey);
+      await _secureStorage.delete(key: _storageUserProfileKey);
+      debugPrint('AuthService: Session cleared from flutter_secure_storage.');
+    } catch (e, s) {
+      debugPrint(
+        'AuthService: Error clearing session from flutter_secure_storage: $e\n$s',
+      );
+    }
     _userProfileController.add(null);
-    debugPrint('Local session cleared.');
   }
 
   @override
   Future<bool> isSignedIn() async {
-    final accessToken = await _secureStorage.read(key: _accessTokenKey);
-    if (accessToken == null) return false;
+    debugPrint("AuthService: Checking isSignedIn status...");
+    String? accessToken;
+    String? idTokenString;
+    String? refreshTokenString;
 
-    final idTokenString =
-        await getIdTokenFromStorage(); // Use a direct storage read
-    if (idTokenString != null) {
-      try {
-        final idToken = oidc.IdToken.unverified(
-          idTokenString,
-        ); // Parse without verification for exp check
-        final expiration = idToken.claims.expiry;
-        if (expiration.isBefore(
-          DateTime.now().toUtc().add(const Duration(seconds: 10)),
-        )) {
-          debugPrint(
-            'ID token is expired or about to expire. Attempting refresh.',
-          );
-          if (await _secureStorage.read(key: _refreshTokenKey) != null) {
-            try {
-              final newAccessToken = await refreshToken();
-              return newAccessToken != null;
-            } catch (e) {
-              debugPrint("Silent refresh failed during isSignedIn check: $e");
-              await _clearSession();
-              return false;
-            }
+    try {
+      accessToken = await _secureStorage.read(key: _storageAccessTokenKey);
+      idTokenString = await _secureStorage.read(key: _storageIdTokenKey);
+      refreshTokenString = await _secureStorage.read(
+        key: _storageRefreshTokenKey,
+      );
+    } catch (e, s) {
+      debugPrint(
+        "AuthService: Error reading tokens during isSignedIn check: $e\n$s. Assuming not signed in.",
+      );
+      await _clearSession(); // Clear potentially inconsistent state
+      return false;
+    }
+
+    if (accessToken == null || idTokenString == null) {
+      debugPrint(
+        "AuthService: No access or ID token found. User is not signed in.",
+      );
+      return false;
+    }
+
+    try {
+      final idToken = oidc.IdToken.unverified(idTokenString);
+      final expiration = idToken.claims.expiry;
+      if (expiration.isBefore(
+        DateTime.now().toUtc().add(const Duration(seconds: 30)),
+      )) {
+        debugPrint(
+          'AuthService: ID token is expired or about to expire. Attempting refresh.',
+        );
+        if (refreshTokenString != null) {
+          try {
+            final newAccessToken = await refreshToken();
+            final result = newAccessToken != null;
+            debugPrint(
+              "AuthService: Token refresh attempt during isSignedIn check result: $result",
+            );
+            return result;
+          } catch (e) {
+            debugPrint(
+              "AuthService: Silent refresh failed during isSignedIn check: $e. Clearing session.",
+            );
+            await _clearSession();
+            return false;
           }
+        } else {
+          debugPrint(
+            "AuthService: No refresh token available for expired session. Clearing session.",
+          );
           await _clearSession();
           return false;
         }
-        return true;
-      } catch (e) {
-        debugPrint('Error parsing ID token for expiration check: $e');
-        await _clearSession();
-        return false;
       }
+      debugPrint("AuthService: ID token is valid. User is signed in.");
+      return true;
+    } catch (e) {
+      debugPrint(
+        'AuthService: Error parsing ID token for expiration check: $e. Clearing session.',
+      );
+      await _clearSession();
+      return false;
     }
-    await _clearSession();
-    return false;
-  }
-
-  Future<String?> getIdTokenFromStorage() {
-    // Helper for direct storage access
-    return _secureStorage.read(key: _idTokenKey);
   }
 
   @override
   Future<UserProfile?> getCurrentUser() async {
+    debugPrint("AuthService: Getting current user...");
     if (!await isSignedIn()) {
-      // This now includes a potential refresh
+      debugPrint("AuthService: Not signed in, cannot get current user.");
       return null;
     }
-    final userJson = await _secureStorage.read(key: _userProfileKey);
-    if (userJson != null) {
-      try {
-        return UserProfile.fromJson(
+    try {
+      final userJson = await _secureStorage.read(key: _storageUserProfileKey);
+      if (userJson != null) {
+        final profile = UserProfile.fromJson(
           jsonDecode(userJson) as Map<String, dynamic>,
         );
-      } catch (e) {
-        debugPrint('Error decoding stored user profile: $e');
-        await _clearSession();
-        return null;
+        debugPrint(
+          "AuthService: Returning user profile from storage: ${profile.name}",
+        );
+        return profile;
       }
+      debugPrint(
+        "AuthService: User profile JSON not found in storage, though tokens might be valid.",
+      );
+      return null;
+    } catch (e, s) {
+      debugPrint(
+        'AuthService: Error reading/decoding stored user profile: $e\n$s. Clearing session.',
+      );
+      await _clearSession();
+      return null;
     }
-    // If profile is missing but tokens are valid (e.g. after refresh without profile re-fetch in some flows)
-    // one might try to fetch it here, but for now, rely on it being stored.
-    return null;
   }
 
   @override
   Future<String?> getAccessToken() async {
-    if (!await isSignedIn()) return null;
-    return _secureStorage.read(key: _accessTokenKey);
+    if (!await isSignedIn()) {
+      debugPrint(
+        "AuthService: Not signed in or token expired, cannot get access token.",
+      );
+      return null;
+    }
+    try {
+      return await _secureStorage.read(key: _storageAccessTokenKey);
+    } catch (e, s) {
+      debugPrint("AuthService: Error reading access token: $e\n$s");
+      return null;
+    }
   }
 
   @override
   Future<String?> getIdToken() async {
-    if (!await isSignedIn()) return null;
-    return _secureStorage.read(key: _idTokenKey);
+    if (!await isSignedIn()) {
+      debugPrint(
+        "AuthService: Not signed in or token expired, cannot get ID token.",
+      );
+      return null;
+    }
+    try {
+      return await _secureStorage.read(key: _storageIdTokenKey);
+    } catch (e, s) {
+      debugPrint("AuthService: Error reading ID token: $e\n$s");
+      return null;
+    }
   }
 
   @override
   Future<String?> refreshToken() async {
+    debugPrint("AuthService: Attempting to refresh token...");
     if (_client == null) {
+      debugPrint(
+        "AuthService: OIDC client not initialized. Attempting re-initialization for token refresh.",
+      );
       await _initialize();
       if (_client == null) {
+        debugPrint(
+          "AuthService: FATAL - OIDC client still not initialized. Cannot refresh token.",
+        );
         throw AuthException('Auth client not initialized for token refresh.');
       }
     }
-    final storedRefreshToken = await _secureStorage.read(key: _refreshTokenKey);
+
+    String? storedRefreshToken;
+    try {
+      storedRefreshToken = await _secureStorage.read(
+        key: _storageRefreshTokenKey,
+      );
+    } catch (e, s) {
+      debugPrint(
+        "AuthService: Error reading refresh token from storage: $e\n$s",
+      );
+      await _clearSession();
+      throw AuthException(
+        'Failed to read refresh token. Please sign in again.',
+      );
+    }
+
     if (storedRefreshToken == null) {
+      debugPrint("AuthService: No refresh token available. Clearing session.");
       await _clearSession();
       throw AuthException('No refresh token available. Please sign in again.');
     }
@@ -365,9 +557,7 @@ class AuthServiceImpl implements AuthService {
       final credential = _client!.createCredential(
         refreshToken: storedRefreshToken,
       );
-
-      final refreshedTokenResponse =
-          await credential.getTokenResponse(); // This might throw if invalid
+      final refreshedTokenResponse = await credential.getTokenResponse();
 
       final newAccessToken = refreshedTokenResponse.accessToken;
       final newIdTokenString =
@@ -375,48 +565,72 @@ class AuthServiceImpl implements AuthService {
       final newRefreshToken = refreshedTokenResponse.refreshToken;
 
       if (newAccessToken == null) {
+        debugPrint(
+          "AuthService: Token refresh failed to provide a new access token. Clearing session.",
+        );
         await _clearSession();
         throw AuthException(
           'Token refresh failed to provide a new access token.',
         );
       }
 
-      await _secureStorage.write(key: _accessTokenKey, value: newAccessToken);
-      await _secureStorage.write(key: _idTokenKey, value: newIdTokenString);
+      UserProfile? userProfileToStore;
+      // Attempt to get updated user info if a new ID token is available
+      // This part might need adjustment based on how your OIDC provider handles user info updates on refresh
+      final refreshedUserCredential = _client!.createCredential(
+        accessToken: newAccessToken,
+        idToken: newIdTokenString,
+        refreshToken: newRefreshToken ?? storedRefreshToken,
+      );
+      final userInfo = await refreshedUserCredential.getUserInfo();
+      userProfileToStore = UserProfile.fromJson(userInfo.toJson());
+      debugPrint(
+        "AuthService: User profile updated after token refresh: ${userProfileToStore.name}",
+      );
+
+      // Store the new tokens and potentially updated profile
+      await _secureStorage.write(
+        key: _storageAccessTokenKey,
+        value: newAccessToken,
+      );
+      await _secureStorage.write(
+        key: _storageIdTokenKey,
+        value: newIdTokenString,
+      );
       if (newRefreshToken != null) {
         await _secureStorage.write(
-          key: _refreshTokenKey,
+          key: _storageRefreshTokenKey,
           value: newRefreshToken,
         );
       }
-      final refreshedCredential = _client!.createCredential(
-        refreshToken: storedRefreshToken,
-      );
-
-      final userInfo = await refreshedCredential.getUserInfo();
-      final userProfile = UserProfile.fromJson(userInfo.toJson());
       await _secureStorage.write(
-        key: _userProfileKey,
-        value: jsonEncode(userProfile.toJson()),
+        key: _storageUserProfileKey,
+        value: jsonEncode(userProfileToStore.toJson()),
       );
-      _userProfileController.add(userProfile);
+      _userProfileController.add(userProfileToStore);
 
-      debugPrint('Token refreshed successfully.');
+      debugPrint('AuthService: Token refreshed successfully.');
       return newAccessToken;
     } on oidc.OpenIdException catch (e) {
       debugPrint(
-        'OpenIdException during token refresh: ${e.message} (Type: ${e.code})',
+        'AuthService: OpenIdException during token refresh: ${e.message} (Type: ${e.code})',
       );
-      if (e.code == 'invalid_grant') {
+      if (e.code == 'invalid_grant' ||
+          e.message?.toLowerCase().contains("token is expired") == true) {
+        debugPrint(
+          "AuthService: Refresh token is invalid or expired. Clearing session.",
+        );
         await _clearSession();
-        throw AuthException('Session expired. Please sign in again.');
+        throw AuthException(
+          'Session expired. Please sign in again. (Reason: ${e.message})',
+        );
       }
       await _clearSession();
       throw AuthException(
         'Token refresh failed: ${e.message}. Please sign in again.',
       );
     } catch (e, s) {
-      debugPrint('Unexpected error during token refresh: $e\n$s');
+      debugPrint('AuthService: Unexpected error during token refresh: $e\n$s');
       await _clearSession();
       throw AuthException(
         'An unexpected error occurred during token refresh. Please sign in again.',
@@ -429,6 +643,7 @@ class AuthServiceImpl implements AuthService {
 
   @override
   void dispose() {
+    debugPrint("AuthService: Disposing...");
     _userProfileController.close();
   }
 }
