@@ -32,8 +32,8 @@ mixin _$ProtocolDetails {
 // List<String>? tags,
 // ... other fields from ProtocolInfo
 // Parameters required by the protocol.
-// The key is the parameter name.
- Map<String, ParameterConfig> get parameters;// Assets (labware, reagents, etc.) required or used by the protocol.
+ Map<String, ParameterConfig> get parameters;// We don't add parameterGroups directly as it will be derived
+// Assets (labware, reagents, etc.) required or used by the protocol.
  List<ProtocolAsset>? get assets;// Steps involved in executing the protocol.
  List<ProtocolStep>? get steps;// Hardware requirements or configurations.
  List<ProtocolHardware>? get hardware;// Deck layout configuration for the protocol.
@@ -145,8 +145,8 @@ $DeckLayoutCopyWith<$Res>? get deckLayout {
 /// @nodoc
 @JsonSerializable()
 
-class _ProtocolDetails implements ProtocolDetails {
-  const _ProtocolDetails({required this.info, required final  Map<String, ParameterConfig> parameters, final  List<ProtocolAsset>? assets, final  List<ProtocolStep>? steps, final  List<ProtocolHardware>? hardware, this.deckLayout, this.schemaVersion, final  Map<String, dynamic>? metadata, final  Map<String, dynamic>? commands, this.author, this.email, this.organization, final  List<String>? publications, this.changelog}): _parameters = parameters,_assets = assets,_steps = steps,_hardware = hardware,_metadata = metadata,_commands = commands,_publications = publications;
+class _ProtocolDetails extends ProtocolDetails {
+  const _ProtocolDetails({required this.info, required final  Map<String, ParameterConfig> parameters, final  List<ProtocolAsset>? assets, final  List<ProtocolStep>? steps, final  List<ProtocolHardware>? hardware, this.deckLayout, this.schemaVersion, final  Map<String, dynamic>? metadata, final  Map<String, dynamic>? commands, this.author, this.email, this.organization, final  List<String>? publications, this.changelog}): _parameters = parameters,_assets = assets,_steps = steps,_hardware = hardware,_metadata = metadata,_commands = commands,_publications = publications,super._();
   factory _ProtocolDetails.fromJson(Map<String, dynamic> json) => _$ProtocolDetailsFromJson(json);
 
 // Basic information about the protocol, can be embedded or referenced.
@@ -166,7 +166,6 @@ class _ProtocolDetails implements ProtocolDetails {
 // List<String>? tags,
 // ... other fields from ProtocolInfo
 // Parameters required by the protocol.
-// The key is the parameter name.
  final  Map<String, ParameterConfig> _parameters;
 // Option 2: Flattened fields (if you prefer direct access, but less clean)
 // required String name,
@@ -177,15 +176,16 @@ class _ProtocolDetails implements ProtocolDetails {
 // List<String>? tags,
 // ... other fields from ProtocolInfo
 // Parameters required by the protocol.
-// The key is the parameter name.
 @override Map<String, ParameterConfig> get parameters {
   if (_parameters is EqualUnmodifiableMapView) return _parameters;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_parameters);
 }
 
+// We don't add parameterGroups directly as it will be derived
 // Assets (labware, reagents, etc.) required or used by the protocol.
  final  List<ProtocolAsset>? _assets;
+// We don't add parameterGroups directly as it will be derived
 // Assets (labware, reagents, etc.) required or used by the protocol.
 @override List<ProtocolAsset>? get assets {
   final value = _assets;

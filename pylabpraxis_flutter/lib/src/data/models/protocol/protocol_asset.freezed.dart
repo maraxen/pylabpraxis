@@ -97,8 +97,8 @@ $ParameterConfigCopyWith<$Res>? get validationConfig {
 /// @nodoc
 @JsonSerializable()
 
-class _ProtocolAsset implements ProtocolAsset {
-  const _ProtocolAsset({required this.name, required this.type, this.description, this.required = true, @JsonKey(name: 'validation_config') this.validationConfig, @JsonKey(name: 'allowed_extensions') final  List<String>? allowedExtensions, @JsonKey(name: 'content_type') this.contentType}): _allowedExtensions = allowedExtensions;
+class _ProtocolAsset extends ProtocolAsset {
+  const _ProtocolAsset({required this.name, required this.type, this.description, this.required = true, @JsonKey(name: 'validation_config') this.validationConfig, @JsonKey(name: 'allowed_extensions') final  List<String>? allowedExtensions, @JsonKey(name: 'content_type') this.contentType}): _allowedExtensions = allowedExtensions,super._();
   factory _ProtocolAsset.fromJson(Map<String, dynamic> json) => _$ProtocolAssetFromJson(json);
 
 @override final  String name;

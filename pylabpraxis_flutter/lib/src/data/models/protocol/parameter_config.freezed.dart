@@ -16,9 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ParameterConfig {
 
- String get name; String get type; String? get description;@JsonKey(name: 'default_value') dynamic get defaultValue;// The 'value' field has been removed as it represents runtime state,
-// not static configuration.
- Map<String, dynamic>? get constraints; bool get required; String? get group; String? get label; bool get hidden;
+ String get type; Map<String, dynamic>? get constraints; String? get displayName; String? get description; dynamic get defaultValue; String? get group;
 /// Create a copy of ParameterConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +29,16 @@ $ParameterConfigCopyWith<ParameterConfig> get copyWith => _$ParameterConfigCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ParameterConfig&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&const DeepCollectionEquality().equals(other.constraints, constraints)&&(identical(other.required, required) || other.required == required)&&(identical(other.group, group) || other.group == group)&&(identical(other.label, label) || other.label == label)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ParameterConfig&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other.constraints, constraints)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.group, group) || other.group == group));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,type,description,const DeepCollectionEquality().hash(defaultValue),const DeepCollectionEquality().hash(constraints),required,group,label,hidden);
+int get hashCode => Object.hash(runtimeType,type,const DeepCollectionEquality().hash(constraints),displayName,description,const DeepCollectionEquality().hash(defaultValue),group);
 
 @override
 String toString() {
-  return 'ParameterConfig(name: $name, type: $type, description: $description, defaultValue: $defaultValue, constraints: $constraints, required: $required, group: $group, label: $label, hidden: $hidden)';
+  return 'ParameterConfig(type: $type, constraints: $constraints, displayName: $displayName, description: $description, defaultValue: $defaultValue, group: $group)';
 }
 
 
@@ -51,7 +49,7 @@ abstract mixin class $ParameterConfigCopyWith<$Res>  {
   factory $ParameterConfigCopyWith(ParameterConfig value, $Res Function(ParameterConfig) _then) = _$ParameterConfigCopyWithImpl;
 @useResult
 $Res call({
- String name, String type, String? description,@JsonKey(name: 'default_value') dynamic defaultValue, Map<String, dynamic>? constraints, bool required, String? group, String? label, bool hidden
+ String type, Map<String, dynamic>? constraints, String? displayName, String? description, dynamic defaultValue, String? group
 });
 
 
@@ -68,18 +66,15 @@ class _$ParameterConfigCopyWithImpl<$Res>
 
 /// Create a copy of ParameterConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? defaultValue = freezed,Object? constraints = freezed,Object? required = null,Object? group = freezed,Object? label = freezed,Object? hidden = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? constraints = freezed,Object? displayName = freezed,Object? description = freezed,Object? defaultValue = freezed,Object? group = freezed,}) {
   return _then(_self.copyWith(
-name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,constraints: freezed == constraints ? _self.constraints : constraints // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
-as dynamic,constraints: freezed == constraints ? _self.constraints : constraints // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,required: null == required ? _self.required : required // ignore: cast_nullable_to_non_nullable
-as bool,group: freezed == group ? _self.group : group // ignore: cast_nullable_to_non_nullable
-as String?,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
-as String?,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
-as bool,
+as dynamic,group: freezed == group ? _self.group : group // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -90,18 +85,11 @@ as bool,
 @JsonSerializable()
 
 class _ParameterConfig implements ParameterConfig {
-  const _ParameterConfig({required this.name, required this.type, this.description, @JsonKey(name: 'default_value') this.defaultValue, final  Map<String, dynamic>? constraints, this.required = false, this.group, this.label, this.hidden = false}): _constraints = constraints;
+  const _ParameterConfig({required this.type, final  Map<String, dynamic>? constraints, this.displayName, this.description, this.defaultValue, this.group}): _constraints = constraints;
   factory _ParameterConfig.fromJson(Map<String, dynamic> json) => _$ParameterConfigFromJson(json);
 
-@override final  String name;
 @override final  String type;
-@override final  String? description;
-@override@JsonKey(name: 'default_value') final  dynamic defaultValue;
-// The 'value' field has been removed as it represents runtime state,
-// not static configuration.
  final  Map<String, dynamic>? _constraints;
-// The 'value' field has been removed as it represents runtime state,
-// not static configuration.
 @override Map<String, dynamic>? get constraints {
   final value = _constraints;
   if (value == null) return null;
@@ -110,10 +98,10 @@ class _ParameterConfig implements ParameterConfig {
   return EqualUnmodifiableMapView(value);
 }
 
-@override@JsonKey() final  bool required;
+@override final  String? displayName;
+@override final  String? description;
+@override final  dynamic defaultValue;
 @override final  String? group;
-@override final  String? label;
-@override@JsonKey() final  bool hidden;
 
 /// Create a copy of ParameterConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -128,16 +116,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ParameterConfig&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&const DeepCollectionEquality().equals(other._constraints, _constraints)&&(identical(other.required, required) || other.required == required)&&(identical(other.group, group) || other.group == group)&&(identical(other.label, label) || other.label == label)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ParameterConfig&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other._constraints, _constraints)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.group, group) || other.group == group));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,type,description,const DeepCollectionEquality().hash(defaultValue),const DeepCollectionEquality().hash(_constraints),required,group,label,hidden);
+int get hashCode => Object.hash(runtimeType,type,const DeepCollectionEquality().hash(_constraints),displayName,description,const DeepCollectionEquality().hash(defaultValue),group);
 
 @override
 String toString() {
-  return 'ParameterConfig(name: $name, type: $type, description: $description, defaultValue: $defaultValue, constraints: $constraints, required: $required, group: $group, label: $label, hidden: $hidden)';
+  return 'ParameterConfig(type: $type, constraints: $constraints, displayName: $displayName, description: $description, defaultValue: $defaultValue, group: $group)';
 }
 
 
@@ -148,7 +136,7 @@ abstract mixin class _$ParameterConfigCopyWith<$Res> implements $ParameterConfig
   factory _$ParameterConfigCopyWith(_ParameterConfig value, $Res Function(_ParameterConfig) _then) = __$ParameterConfigCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String type, String? description,@JsonKey(name: 'default_value') dynamic defaultValue, Map<String, dynamic>? constraints, bool required, String? group, String? label, bool hidden
+ String type, Map<String, dynamic>? constraints, String? displayName, String? description, dynamic defaultValue, String? group
 });
 
 
@@ -165,18 +153,15 @@ class __$ParameterConfigCopyWithImpl<$Res>
 
 /// Create a copy of ParameterConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? type = null,Object? description = freezed,Object? defaultValue = freezed,Object? constraints = freezed,Object? required = null,Object? group = freezed,Object? label = freezed,Object? hidden = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? constraints = freezed,Object? displayName = freezed,Object? description = freezed,Object? defaultValue = freezed,Object? group = freezed,}) {
   return _then(_ParameterConfig(
-name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,constraints: freezed == constraints ? _self._constraints : constraints // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
-as dynamic,constraints: freezed == constraints ? _self._constraints : constraints // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,required: null == required ? _self.required : required // ignore: cast_nullable_to_non_nullable
-as bool,group: freezed == group ? _self.group : group // ignore: cast_nullable_to_non_nullable
-as String?,label: freezed == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
-as String?,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
-as bool,
+as dynamic,group: freezed == group ? _self.group : group // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -185,88 +170,76 @@ as bool,
 
 
 /// @nodoc
-mixin _$DictionaryConstraints {
+mixin _$ParameterDefinition {
 
-@JsonKey(name: 'key_constraints') ParameterConfig? get keyConstraints;@JsonKey(name: 'value_constraints') ParameterConfig? get valueConstraints;
-/// Create a copy of DictionaryConstraints
+ String get name; String? get displayName; String? get description; dynamic get defaultValue; ParameterConfig get config;
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DictionaryConstraintsCopyWith<DictionaryConstraints> get copyWith => _$DictionaryConstraintsCopyWithImpl<DictionaryConstraints>(this as DictionaryConstraints, _$identity);
+$ParameterDefinitionCopyWith<ParameterDefinition> get copyWith => _$ParameterDefinitionCopyWithImpl<ParameterDefinition>(this as ParameterDefinition, _$identity);
 
-  /// Serializes this DictionaryConstraints to a JSON map.
+  /// Serializes this ParameterDefinition to a JSON map.
   Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DictionaryConstraints&&(identical(other.keyConstraints, keyConstraints) || other.keyConstraints == keyConstraints)&&(identical(other.valueConstraints, valueConstraints) || other.valueConstraints == valueConstraints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ParameterDefinition&&(identical(other.name, name) || other.name == name)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.config, config) || other.config == config));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,keyConstraints,valueConstraints);
+int get hashCode => Object.hash(runtimeType,name,displayName,description,const DeepCollectionEquality().hash(defaultValue),config);
 
 @override
 String toString() {
-  return 'DictionaryConstraints(keyConstraints: $keyConstraints, valueConstraints: $valueConstraints)';
+  return 'ParameterDefinition(name: $name, displayName: $displayName, description: $description, defaultValue: $defaultValue, config: $config)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DictionaryConstraintsCopyWith<$Res>  {
-  factory $DictionaryConstraintsCopyWith(DictionaryConstraints value, $Res Function(DictionaryConstraints) _then) = _$DictionaryConstraintsCopyWithImpl;
+abstract mixin class $ParameterDefinitionCopyWith<$Res>  {
+  factory $ParameterDefinitionCopyWith(ParameterDefinition value, $Res Function(ParameterDefinition) _then) = _$ParameterDefinitionCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'key_constraints') ParameterConfig? keyConstraints,@JsonKey(name: 'value_constraints') ParameterConfig? valueConstraints
+ String name, String? displayName, String? description, dynamic defaultValue, ParameterConfig config
 });
 
 
-$ParameterConfigCopyWith<$Res>? get keyConstraints;$ParameterConfigCopyWith<$Res>? get valueConstraints;
+$ParameterConfigCopyWith<$Res> get config;
 
 }
 /// @nodoc
-class _$DictionaryConstraintsCopyWithImpl<$Res>
-    implements $DictionaryConstraintsCopyWith<$Res> {
-  _$DictionaryConstraintsCopyWithImpl(this._self, this._then);
+class _$ParameterDefinitionCopyWithImpl<$Res>
+    implements $ParameterDefinitionCopyWith<$Res> {
+  _$ParameterDefinitionCopyWithImpl(this._self, this._then);
 
-  final DictionaryConstraints _self;
-  final $Res Function(DictionaryConstraints) _then;
+  final ParameterDefinition _self;
+  final $Res Function(ParameterDefinition) _then;
 
-/// Create a copy of DictionaryConstraints
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? keyConstraints = freezed,Object? valueConstraints = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? displayName = freezed,Object? description = freezed,Object? defaultValue = freezed,Object? config = null,}) {
   return _then(_self.copyWith(
-keyConstraints: freezed == keyConstraints ? _self.keyConstraints : keyConstraints // ignore: cast_nullable_to_non_nullable
-as ParameterConfig?,valueConstraints: freezed == valueConstraints ? _self.valueConstraints : valueConstraints // ignore: cast_nullable_to_non_nullable
-as ParameterConfig?,
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
+as dynamic,config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
+as ParameterConfig,
   ));
 }
-/// Create a copy of DictionaryConstraints
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$ParameterConfigCopyWith<$Res>? get keyConstraints {
-    if (_self.keyConstraints == null) {
-    return null;
-  }
-
-  return $ParameterConfigCopyWith<$Res>(_self.keyConstraints!, (value) {
-    return _then(_self.copyWith(keyConstraints: value));
-  });
-}/// Create a copy of DictionaryConstraints
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ParameterConfigCopyWith<$Res>? get valueConstraints {
-    if (_self.valueConstraints == null) {
-    return null;
-  }
-
-  return $ParameterConfigCopyWith<$Res>(_self.valueConstraints!, (value) {
-    return _then(_self.copyWith(valueConstraints: value));
+$ParameterConfigCopyWith<$Res> get config {
+  
+  return $ParameterConfigCopyWith<$Res>(_self.config, (value) {
+    return _then(_self.copyWith(config: value));
   });
 }
 }
@@ -275,229 +248,87 @@ $ParameterConfigCopyWith<$Res>? get valueConstraints {
 /// @nodoc
 @JsonSerializable()
 
-class _DictionaryConstraints implements DictionaryConstraints {
-  const _DictionaryConstraints({@JsonKey(name: 'key_constraints') this.keyConstraints, @JsonKey(name: 'value_constraints') this.valueConstraints});
-  factory _DictionaryConstraints.fromJson(Map<String, dynamic> json) => _$DictionaryConstraintsFromJson(json);
+class _ParameterDefinition implements ParameterDefinition {
+  const _ParameterDefinition({required this.name, this.displayName, this.description, this.defaultValue, required this.config});
+  factory _ParameterDefinition.fromJson(Map<String, dynamic> json) => _$ParameterDefinitionFromJson(json);
 
-@override@JsonKey(name: 'key_constraints') final  ParameterConfig? keyConstraints;
-@override@JsonKey(name: 'value_constraints') final  ParameterConfig? valueConstraints;
+@override final  String name;
+@override final  String? displayName;
+@override final  String? description;
+@override final  dynamic defaultValue;
+@override final  ParameterConfig config;
 
-/// Create a copy of DictionaryConstraints
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$DictionaryConstraintsCopyWith<_DictionaryConstraints> get copyWith => __$DictionaryConstraintsCopyWithImpl<_DictionaryConstraints>(this, _$identity);
+_$ParameterDefinitionCopyWith<_ParameterDefinition> get copyWith => __$ParameterDefinitionCopyWithImpl<_ParameterDefinition>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$DictionaryConstraintsToJson(this, );
+  return _$ParameterDefinitionToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DictionaryConstraints&&(identical(other.keyConstraints, keyConstraints) || other.keyConstraints == keyConstraints)&&(identical(other.valueConstraints, valueConstraints) || other.valueConstraints == valueConstraints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ParameterDefinition&&(identical(other.name, name) || other.name == name)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.config, config) || other.config == config));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,keyConstraints,valueConstraints);
+int get hashCode => Object.hash(runtimeType,name,displayName,description,const DeepCollectionEquality().hash(defaultValue),config);
 
 @override
 String toString() {
-  return 'DictionaryConstraints(keyConstraints: $keyConstraints, valueConstraints: $valueConstraints)';
+  return 'ParameterDefinition(name: $name, displayName: $displayName, description: $description, defaultValue: $defaultValue, config: $config)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$DictionaryConstraintsCopyWith<$Res> implements $DictionaryConstraintsCopyWith<$Res> {
-  factory _$DictionaryConstraintsCopyWith(_DictionaryConstraints value, $Res Function(_DictionaryConstraints) _then) = __$DictionaryConstraintsCopyWithImpl;
+abstract mixin class _$ParameterDefinitionCopyWith<$Res> implements $ParameterDefinitionCopyWith<$Res> {
+  factory _$ParameterDefinitionCopyWith(_ParameterDefinition value, $Res Function(_ParameterDefinition) _then) = __$ParameterDefinitionCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'key_constraints') ParameterConfig? keyConstraints,@JsonKey(name: 'value_constraints') ParameterConfig? valueConstraints
+ String name, String? displayName, String? description, dynamic defaultValue, ParameterConfig config
 });
 
 
-@override $ParameterConfigCopyWith<$Res>? get keyConstraints;@override $ParameterConfigCopyWith<$Res>? get valueConstraints;
+@override $ParameterConfigCopyWith<$Res> get config;
 
 }
 /// @nodoc
-class __$DictionaryConstraintsCopyWithImpl<$Res>
-    implements _$DictionaryConstraintsCopyWith<$Res> {
-  __$DictionaryConstraintsCopyWithImpl(this._self, this._then);
+class __$ParameterDefinitionCopyWithImpl<$Res>
+    implements _$ParameterDefinitionCopyWith<$Res> {
+  __$ParameterDefinitionCopyWithImpl(this._self, this._then);
 
-  final _DictionaryConstraints _self;
-  final $Res Function(_DictionaryConstraints) _then;
+  final _ParameterDefinition _self;
+  final $Res Function(_ParameterDefinition) _then;
 
-/// Create a copy of DictionaryConstraints
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? keyConstraints = freezed,Object? valueConstraints = freezed,}) {
-  return _then(_DictionaryConstraints(
-keyConstraints: freezed == keyConstraints ? _self.keyConstraints : keyConstraints // ignore: cast_nullable_to_non_nullable
-as ParameterConfig?,valueConstraints: freezed == valueConstraints ? _self.valueConstraints : valueConstraints // ignore: cast_nullable_to_non_nullable
-as ParameterConfig?,
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? displayName = freezed,Object? description = freezed,Object? defaultValue = freezed,Object? config = null,}) {
+  return _then(_ParameterDefinition(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
+as dynamic,config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
+as ParameterConfig,
   ));
 }
 
-/// Create a copy of DictionaryConstraints
+/// Create a copy of ParameterDefinition
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$ParameterConfigCopyWith<$Res>? get keyConstraints {
-    if (_self.keyConstraints == null) {
-    return null;
-  }
-
-  return $ParameterConfigCopyWith<$Res>(_self.keyConstraints!, (value) {
-    return _then(_self.copyWith(keyConstraints: value));
-  });
-}/// Create a copy of DictionaryConstraints
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ParameterConfigCopyWith<$Res>? get valueConstraints {
-    if (_self.valueConstraints == null) {
-    return null;
-  }
-
-  return $ParameterConfigCopyWith<$Res>(_self.valueConstraints!, (value) {
-    return _then(_self.copyWith(valueConstraints: value));
+$ParameterConfigCopyWith<$Res> get config {
+  
+  return $ParameterConfigCopyWith<$Res>(_self.config, (value) {
+    return _then(_self.copyWith(config: value));
   });
 }
-}
-
-
-/// @nodoc
-mixin _$ParamConstraint {
-
- String get param;
-/// Create a copy of ParamConstraint
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$ParamConstraintCopyWith<ParamConstraint> get copyWith => _$ParamConstraintCopyWithImpl<ParamConstraint>(this as ParamConstraint, _$identity);
-
-  /// Serializes this ParamConstraint to a JSON map.
-  Map<String, dynamic> toJson();
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ParamConstraint&&(identical(other.param, param) || other.param == param));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,param);
-
-@override
-String toString() {
-  return 'ParamConstraint(param: $param)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $ParamConstraintCopyWith<$Res>  {
-  factory $ParamConstraintCopyWith(ParamConstraint value, $Res Function(ParamConstraint) _then) = _$ParamConstraintCopyWithImpl;
-@useResult
-$Res call({
- String param
-});
-
-
-
-
-}
-/// @nodoc
-class _$ParamConstraintCopyWithImpl<$Res>
-    implements $ParamConstraintCopyWith<$Res> {
-  _$ParamConstraintCopyWithImpl(this._self, this._then);
-
-  final ParamConstraint _self;
-  final $Res Function(ParamConstraint) _then;
-
-/// Create a copy of ParamConstraint
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? param = null,}) {
-  return _then(_self.copyWith(
-param: null == param ? _self.param : param // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-}
-
-
-/// @nodoc
-@JsonSerializable()
-
-class _ParamConstraint implements ParamConstraint {
-  const _ParamConstraint({required this.param});
-  factory _ParamConstraint.fromJson(Map<String, dynamic> json) => _$ParamConstraintFromJson(json);
-
-@override final  String param;
-
-/// Create a copy of ParamConstraint
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$ParamConstraintCopyWith<_ParamConstraint> get copyWith => __$ParamConstraintCopyWithImpl<_ParamConstraint>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$ParamConstraintToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ParamConstraint&&(identical(other.param, param) || other.param == param));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,param);
-
-@override
-String toString() {
-  return 'ParamConstraint(param: $param)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$ParamConstraintCopyWith<$Res> implements $ParamConstraintCopyWith<$Res> {
-  factory _$ParamConstraintCopyWith(_ParamConstraint value, $Res Function(_ParamConstraint) _then) = __$ParamConstraintCopyWithImpl;
-@override @useResult
-$Res call({
- String param
-});
-
-
-
-
-}
-/// @nodoc
-class __$ParamConstraintCopyWithImpl<$Res>
-    implements _$ParamConstraintCopyWith<$Res> {
-  __$ParamConstraintCopyWithImpl(this._self, this._then);
-
-  final _ParamConstraint _self;
-  final $Res Function(_ParamConstraint) _then;
-
-/// Create a copy of ParamConstraint
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? param = null,}) {
-  return _then(_ParamConstraint(
-param: null == param ? _self.param : param // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
 }
 
 // dart format on

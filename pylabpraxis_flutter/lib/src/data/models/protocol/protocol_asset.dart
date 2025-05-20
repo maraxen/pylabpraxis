@@ -43,4 +43,8 @@ abstract class ProtocolAsset with _$ProtocolAsset {
   /// JSON data into a [ProtocolAsset] object.
   factory ProtocolAsset.fromJson(Map<String, dynamic> json) =>
       _$ProtocolAssetFromJson(json);
+
+  /// Get a display-friendly name for the asset
+  const ProtocolAsset._();
+  String? get displayName => name;
 }

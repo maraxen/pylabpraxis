@@ -10,12 +10,15 @@ import './protocol_asset.dart';
 import './protocol_step.dart';
 import './protocol_hardware.dart';
 import './deck_layout.dart'; // If you have a DeckLayout model
+import './parameter_group.dart';
 
 part 'protocol_details.freezed.dart';
 part 'protocol_details.g.dart';
 
 @freezed
 abstract class ProtocolDetails with _$ProtocolDetails {
+  const ProtocolDetails._(); // Add this line to allow methods in the class
+
   const factory ProtocolDetails({
     // Basic information about the protocol, can be embedded or referenced.
     // Embedding ProtocolInfo directly using a spread operator in Freezed
@@ -36,8 +39,9 @@ abstract class ProtocolDetails with _$ProtocolDetails {
     // ... other fields from ProtocolInfo
 
     // Parameters required by the protocol.
-    // The key is the parameter name.
     required Map<String, ParameterConfig> parameters,
+
+    // We don't add parameterGroups directly as it will be derived
 
     // Assets (labware, reagents, etc.) required or used by the protocol.
     List<ProtocolAsset>? assets,
@@ -77,4 +81,22 @@ abstract class ProtocolDetails with _$ProtocolDetails {
 
   factory ProtocolDetails.fromJson(Map<String, dynamic> json) =>
       _$ProtocolDetailsFromJson(json);
+
+  /// Converts parameters map to list of ParameterDefinition objects
+  List<ParameterDefinition> get parameterDefinitions {
+    return parameters.entries.map((entry) {
+      return ParameterDefinition(
+        name: entry.key,
+        displayName: entry.value.displayName,
+        description: entry.value.description,
+        defaultValue: entry.value.defaultValue,
+        config: entry.value,
+      );
+    }).toList();
+  }
+
+  /// Generates parameter groups from the individual parameters
+  List<ParameterGroup> get derivedParameterGroups {
+    return parameterDefinitions.organizeIntoGroups();
+  }
 }

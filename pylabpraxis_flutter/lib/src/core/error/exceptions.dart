@@ -14,7 +14,7 @@ abstract class AppException implements Exception {
 
   @override
   String toString() {
-    String result = '${message}';
+    String result = message;
     if (_stackTrace != null) {
       // result += '\n$_stackTrace'; // Optionally include stacktrace
     }
@@ -56,30 +56,20 @@ class ApiException extends AppException {
 class ServerException extends ApiException {
   ServerException({
     String? message,
-    int? statusCode,
-    Map<String, List<String>>? errors,
-    StackTrace? stackTrace,
-  }) : super(
-         message: message ?? 'Server Error',
-         statusCode: statusCode,
-         errors: errors,
-         stackTrace: stackTrace,
-       );
+    super.statusCode,
+    super.errors,
+    super.stackTrace,
+  }) : super(message: message ?? 'Server Error');
 }
 
 /// Exception thrown when there is a client-side error with the request (e.g., 4xx status code).
 class ClientException extends ApiException {
   ClientException({
     String? message,
-    int? statusCode,
-    Map<String, List<String>>? errors,
-    StackTrace? stackTrace,
-  }) : super(
-         message: message ?? 'Client Error',
-         statusCode: statusCode,
-         errors: errors,
-         stackTrace: stackTrace,
-       );
+    super.statusCode,
+    super.errors,
+    super.stackTrace,
+  }) : super(message: message ?? 'Client Error');
 }
 
 /// Exception thrown when the device is not connected to the internet.
@@ -102,42 +92,18 @@ class AuthException extends AppException {
 
 /// Exception thrown when a requested resource is not found (e.g., 404 status code).
 class NotFoundException extends ClientException {
-  NotFoundException({
-    String? message,
-    Map<String, List<String>>? errors,
-    StackTrace? stackTrace,
-  }) : super(
-         message: message ?? 'Resource Not Found',
-         statusCode: 404,
-         errors: errors,
-         stackTrace: stackTrace,
-       );
+  NotFoundException({String? message, super.errors, super.stackTrace})
+    : super(message: message ?? 'Resource Not Found', statusCode: 404);
 }
 
 /// Exception thrown when an operation is unauthorized (e.g., 401 status code).
 class UnauthorizedException extends ClientException {
-  UnauthorizedException({
-    String? message,
-    Map<String, List<String>>? errors,
-    StackTrace? stackTrace,
-  }) : super(
-         message: message ?? 'Unauthorized',
-         statusCode: 401,
-         errors: errors,
-         stackTrace: stackTrace,
-       );
+  UnauthorizedException({String? message, super.errors, super.stackTrace})
+    : super(message: message ?? 'Unauthorized', statusCode: 401);
 }
 
 /// Exception thrown when an operation is forbidden (e.g., 403 status code).
 class ForbiddenException extends ClientException {
-  ForbiddenException({
-    String? message,
-    Map<String, List<String>>? errors,
-    StackTrace? stackTrace,
-  }) : super(
-         message: message ?? 'Forbidden',
-         statusCode: 403,
-         errors: errors,
-         stackTrace: stackTrace,
-       );
+  ForbiddenException({String? message, super.errors, super.stackTrace})
+    : super(message: message ?? 'Forbidden', statusCode: 403);
 }
