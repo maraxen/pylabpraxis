@@ -2,7 +2,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_group.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/parameter_validation_service.dart';
 
 part 'rich_form_state.freezed.dart';
@@ -32,7 +31,7 @@ abstract class FormParameterState with _$FormParameterState {
     ParameterDefinition? definition,
   }) = _FormParameterState;
 
-  bool get isRequired => definition?.config.constraints?['_required'] == true;
+  bool get isRequired => definition?.config.constraints?.required_ == true;
   bool get hasDefaultValue => definition?.defaultValue != null;
 
   bool get isSetAndNotDefault {
@@ -123,19 +122,19 @@ abstract class RichFormState with _$RichFormState {
         }
 
         ParameterUIHints uiHints = const ParameterUIHints.none();
-        if (paramDef.config.constraints?['array'] != null &&
-            paramDef.config.constraints!['array']!.isNotEmpty) {
+        if (paramDef.config.constraints?.array != null &&
+            paramDef.config.constraints!.array!.isNotEmpty) {
           uiHints = ParameterUIHints.dropdown(
             choices:
-                paramDef.config.constraints!['array']!
+                paramDef.config.constraints!.array!
                     .map((e) => e.toString())
                     .toList(),
           );
-        } else if (paramDef.config.constraints?['minValue'] != null &&
-            paramDef.config.constraints?['maxValue'] != null) {
+        } else if (paramDef.config.constraints?.minValue != null &&
+            paramDef.config.constraints?.maxValue != null) {
           uiHints = ParameterUIHints.slider(
-            minValue: paramDef.config.constraints!['minValue']!,
-            maxValue: paramDef.config.constraints!['maxValue']!,
+            minValue: paramDef.config.constraints!.minValue!,
+            maxValue: paramDef.config.constraints!.maxValue!,
           );
         }
 
@@ -166,35 +165,9 @@ abstract class RichFormState with _$RichFormState {
     }
 
     // Process main parameters
-    if (details.parameters is Map<String, dynamic>) {
-      // Convert parameters map to a list of ParameterDefinition objects
-      final parametersList = details.parameterDefinitions;
-      processParameterList(parametersList, '');
-    } else if (details.parameters is List) {
-      // If parameters is already a list, try to use it directly
-      final parametersList =
-          (details.parameters as List)
-              .map((item) {
-                if (item is ParameterDefinition) {
-                  return item;
-                } else if (item is Map<String, dynamic>) {
-                  return ParameterDefinition(
-                    name: item['name'] ?? '',
-                    description: item['description'] ?? '',
-                    defaultValue: item['defaultValue'],
-                    config:
-                        item['config'] is ParameterConfig
-                            ? item['config']
-                            : ParameterConfig.fromJson(item['config'] ?? {}),
-                  );
-                }
-                return null;
-              })
-              .whereType<ParameterDefinition>()
-              .toList();
-
-      processParameterList(parametersList, '');
-    }
+    // Convert parameters map to a list of ParameterDefinition objects
+    final parametersList = details.parameterDefinitions;
+    processParameterList(parametersList, '');
 
     // Process parameters by groups if any
     final parameterGroups = details.derivedParameterGroups;

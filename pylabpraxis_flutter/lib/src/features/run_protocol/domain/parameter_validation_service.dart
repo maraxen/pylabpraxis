@@ -10,11 +10,13 @@ class ValidationResult {
 
 class ParameterValidationService {
   /// Converts a constraint map to a structured ParameterConstraints object
-  static ParameterConstraints getConstraints(
-    Map<String, dynamic>? constraints,
-  ) {
+  static ParameterConstraints getConstraints(dynamic constraints) {
     if (constraints == null) return const ParameterConstraints();
-    return ParameterConstraints.fromMap(constraints);
+    if (constraints is ParameterConstraints) return constraints;
+    if (constraints is Map<String, dynamic>) {
+      return ParameterConstraints.fromMap(constraints);
+    }
+    return const ParameterConstraints();
   }
 
   /// Validates a parameter value based on the parameter definition and constraints
@@ -32,9 +34,7 @@ class ParameterValidationService {
     // Get item specific constraints for dictionary items
     final itemSpecificConstraints =
         dictItemKey != null && rawConstraints != null
-            ? getConstraints(
-              rawConstraints['valueConstraints'] as Map<String, dynamic>?,
-            )
+            ? getConstraints(rawConstraints.valueConstraints)
             : constraints;
 
     // If no constraints and not a dictionary item, it's valid
@@ -123,7 +123,7 @@ class ParameterValidationService {
       }
 
       // Integer type check
-      if (paramType == 'integer' && numValue != numValue!.toInt()) {
+      if (paramType == 'integer' && numValue != numValue.toInt()) {
         return ValidationResult(
           isValid: false,
           validationError: '$displayName must be an integer.',

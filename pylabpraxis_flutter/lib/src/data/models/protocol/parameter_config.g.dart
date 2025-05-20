@@ -9,7 +9,12 @@ part of 'parameter_config.dart';
 _ParameterConfig _$ParameterConfigFromJson(Map<String, dynamic> json) =>
     _ParameterConfig(
       type: json['type'] as String,
-      constraints: json['constraints'] as Map<String, dynamic>?,
+      constraints:
+          json['constraints'] == null
+              ? null
+              : ParameterConstraints.fromJson(
+                json['constraints'] as Map<String, dynamic>,
+              ),
       displayName: json['displayName'] as String?,
       description: json['description'] as String?,
       defaultValue: json['defaultValue'],

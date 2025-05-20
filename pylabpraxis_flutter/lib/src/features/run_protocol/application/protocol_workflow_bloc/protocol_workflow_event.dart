@@ -16,7 +16,7 @@ sealed class ProtocolWorkflowEvent with _$ProtocolWorkflowEvent {
   }) = ParametersSubmittedToWorkflow;
 
   /// Dispatched when asset assignments are submitted from the AssetAssignmentScreen.
-  const factory ProtocolWorkflowEvent.assetsSubmitted({
+  const factory ProtocolWorkflowEvent.assetsSubmittedToWorkflow({
     required Map<String, String> assets,
   }) = AssetsSubmittedToWorkflow;
 

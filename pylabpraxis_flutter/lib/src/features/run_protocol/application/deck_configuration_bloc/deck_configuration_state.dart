@@ -1,7 +1,7 @@
 part of 'deck_configuration_bloc.dart';
 
 @freezed
-class DeckConfigurationState with _$DeckConfigurationState {
+sealed class DeckConfigurationState with _$DeckConfigurationState {
   /// Initial state before any layouts are fetched or selected.
   const factory DeckConfigurationState.initial() = DeckConfigurationInitial;
 

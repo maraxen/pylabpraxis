@@ -1,0 +1,293 @@
+# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-locals, too-many-branches, too-many-statements
+"""
+praxis/core/asset_manager.py
+
+The AssetManager is responsible for managing the lifecycle and allocation
+of physical laboratory assets (devices and labware instances). It interacts
+with the AssetDataService for persistence and the WorkcellRuntime for
+live PyLabRobot object interactions.
+
+Version 6: Further refines sync_pylabrobot_definitions based on detailed
+           PLR structure and "PLR Inspection Utility" document.
+           Removes ResourceLoader, correctly handles Deck, Coordinate, Well, Tip.
+"""
+from typing import Dict, Any, Optional, List, Type, Tuple, Set
+import importlib
+import inspect
+import traceback
+import os
+import pkgutil
+
+from sqlalchemy.orm import Session as DbSession
+
+# Data services
+try:
+    from praxis.db_services import asset_data_service as ads
+except ImportError:
+    print("WARNING: AM-1: Could not import asset_data_service. AssetManager DB ops placeholder.")
+    class PlaceholderAssetDataService:
+        def get_labware_definition(self, db, name): return None
+        def add_or_update_labware_definition(self, db, **kw): class D: pass; return D() # type: ignore
+        def list_managed_devices(self, *args, **kwargs): return [] # type: ignore
+        def update_managed_device_status(self, *args, **kwargs): return None # type: ignore
+        def list_labware_instances(self, *args, **kwargs): return [] # type: ignore
+        def get_labware_instance_by_id(self, *args, **kwargs): return None # type: ignore
+        def update_labware_instance_location_and_status(self, *args, **kwargs): return None # type: ignore
+    ads = PlaceholderAssetDataService() # type: ignore
+
+# ORM Models
+try:
+    from praxis.database_models.asset_management_orm import (
+        ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
+        ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, LabwareCategoryEnum
+    )
+except ImportError:
+    print("WARNING: AM-2: Could not import Asset ORM models.")
+    class ManagedDeviceOrm: id: int; user_friendly_name: str; pylabrobot_class_name: str; current_status: Any; current_protocol_run_guid: Optional[str] # type: ignore
+    class LabwareInstanceOrm: id: int; user_assigned_name: str; pylabrobot_definition_name: str; current_status: Any; current_protocol_run_guid: Optional[str]; location_device_id: Optional[int]; current_deck_slot_name: Optional[str] # type: ignore
+    class LabwareDefinitionCatalogOrm: pylabrobot_definition_name: str # type: ignore
+    class ManagedDeviceStatusEnum(enum.Enum): AVAILABLE="available"; IN_USE="in_use"; ERROR="error"; OFFLINE="offline" # type: ignore
+    class LabwareInstanceStatusEnum(enum.Enum): AVAILABLE_ON_DECK="available_on_DECK"; AVAILABLE_IN_STORAGE="available_in_storage"; IN_USE="in_use"; EMPTY="empty"; UNKNOWN="unknown" # type: ignore
+    class LabwareCategoryEnum(enum.Enum): PLATE="plate"; TIP_RACK="tip_rack"; RESERVOIR="reservoir"; TUBE_RACK="tube_rack"; CARRIER="carrier"; LID="lid"; WASTE="waste"; TUBE="tube"; OTHER="other"; DECK="deck" # type: ignore
+    import enum
+
+# PyLabRobot imports
+try:
+    import pylabrobot.resources
+    from pylabrobot.resources import (
+        Resource as PlrResource, Lid, Carrier, Deck as PlrDeck, Well, Container, Coordinate,
+        PlateCarrier, TipCarrier, Trash, ItemizedResource, PlateAdapter,
+        TIP_RACK_RESOURCE_TYPE, PLATE_RESOURCE_TYPE, LID_RESOURCE_TYPE,
+    )
+    from pylabrobot.resources.plate import Plate as PlrPlate
+    from pylabrobot.resources.tip_rack import TipRack as PlrTipRack
+    from pylabrobot.resources.tube_rack import TubeRack as PlrTubeRack
+    from pylabrobot.resources.tube import Tube as PlrTube
+    from pylabrobot.resources.tip import Tip as PlrTip
+    from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
+    # from pylabrobot.resources.opentrons.load import load_labware as ot_load_labware # AM-5E
+    from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
+except ImportError:
+    print("WARNING: AM-3: PyLabRobot not found/fully importable.")
+    # Define placeholders (condensed)
+    class PlrResource: name: str; resource_type: Optional[str]; parent: Any; children: List[Any]; model: Optional[str]; def serialize(self): return {}; def __init__(self, name, **kwargs): self.name=name # type: ignore
+    class PlrPlate(PlrResource): pass; class PlrTipRack(PlrResource): pass; class PlrTubeRack(PlrResource): pass
+    class PlrReservoir(PlrResource): pass; class Lid(PlrResource): pass; class Carrier(PlrResource): pass
+    class PlrDeck(PlrResource): pass; class Well(PlrResource): pass; class Container(PlrResource): pass
+    class Coordinate: pass; class PlateCarrier(Carrier): pass; class TipCarrier(Carrier): pass
+    class Trash(PlrResource): pass; class ItemizedResource(PlrResource): pass; class PlateAdapter(Carrier): pass
+    class PlrTube(Container): pass; class PlrTip(Container): pass; class PlrPetriDish(Container): pass
+    TIP_RACK_RESOURCE_TYPE = "tip_rack"; PLATE_RESOURCE_TYPE = "plate"; LID_RESOURCE_TYPE = "lid"
+    class LiquidHandlerBackend: pass # type: ignore
+
+
+# Placeholder for WorkcellRuntime
+class WorkcellRuntimePlaceholder: # (Same as v1)
+    def get_plr_device_backend(self, device_orm: ManagedDeviceOrm) -> Optional[Any]: return None
+    def get_plr_labware_object(self, labware_instance_orm: LabwareInstanceOrm) -> Optional[PlrResource]: return None
+    def assign_labware_to_deck_slot(self, deck_plr_obj: Any, slot_name: str, labware_plr_obj: PlrResource): pass
+    def clear_deck_slot(self, deck_plr_obj: Any, slot_name: str): pass
+
+class AssetAcquisitionError(RuntimeError): pass
+
+class AssetManager:
+    def __init__(self, db_session: DbSession, workcell_runtime: Optional[WorkcellRuntimePlaceholder] = None):
+        self.db: DbSession = db_session
+        self.workcell_runtime = workcell_runtime if workcell_runtime else WorkcellRuntimePlaceholder()
+
+        # Classes to explicitly exclude from labware catalog (bases, utilities, components)
+        # Based on "PLR Inspection Utility" document and common sense.
+        self.EXCLUDED_BASE_CLASSES: List[Type[PlrResource]] = [
+            PlrResource, Container, ItemizedResource, Well, PlrTip, Coordinate,
+            PlrDeck # Decks are ManagedDevices, not labware definitions for placement.
+        ]
+        # Names of classes that are known to be utility/creators
+        self.EXCLUDED_CLASS_NAMES: Set[str] = {"WellCreator", "TipCreator", "CarrierSite", "ResourceStack"}
+
+    def _get_category_from_plr_object(self, plr_object: PlrResource) -> LabwareCategoryEnum:
+        """Determines LabwareCategoryEnum from a PyLabRobot resource object."""
+        # Order matters: more specific types first
+        if isinstance(plr_object, PlrPlate): return LabwareCategoryEnum.PLATE
+        if isinstance(plr_object, PlrTipRack): return LabwareCategoryEnum.TIP_RACK
+        if isinstance(plr_object, Lid): return LabwareCategoryEnum.LID
+        if isinstance(plr_object, PlrReservoir): return LabwareCategoryEnum.RESERVOIR
+        if isinstance(plr_object, PlrTubeRack): return LabwareCategoryEnum.TUBE_RACK
+        if isinstance(plr_object, PlrPetriDish): return LabwareCategoryEnum.PLATE # Often treated like plates
+        if isinstance(plr_object, PlrTube): return LabwareCategoryEnum.TUBE # Standalone tube or tube in rack
+        if isinstance(plr_object, Trash): return LabwareCategoryEnum.WASTE
+        if isinstance(plr_object, (PlateCarrier, TipCarrier, PlateAdapter, Carrier)): return LabwareCategoryEnum.CARRIER
+        # If it's a Container but not caught above, it's likely a generic or custom one
+        if isinstance(plr_object, Container): return LabwareCategoryEnum.OTHER # Or RESERVOIR if appropriate
+        return LabwareCategoryEnum.OTHER
+
+    def _is_catalogable_labware_class(self, plr_class: Type[Any]) -> bool:
+        """
+        Determines if a PyLabRobot class should be a primary, catalogable labware definition.
+        """
+        if not inspect.isclass(plr_class) or not issubclass(plr_class, PlrResource):
+            return False
+        if inspect.isabstract(plr_class):
+            return False
+        if plr_class in self.EXCLUDED_BASE_CLASSES:
+            return False
+        if plr_class.__name__ in self.EXCLUDED_CLASS_NAMES:
+            return False
+
+        # Module check: ensure it's from a 'resources' submodule, not e.g. 'backends'
+        # This is a heuristic; PLR's structure is generally good but could have exceptions.
+        if not plr_class.__module__.startswith("pylabrobot.resources"):
+            # Allow exceptions for known community/extension paths if configured
+            # TODO: AM-5C: Make additional scan paths/module prefixes configurable.
+            # print(f"DEBUG: Skipping {plr_class.__module__}.{plr_class.__name__} due to module path.")
+            return False # For now, strict to pylabrobot.resources
+
+        return True
+
+    def sync_pylabrobot_definitions(self, plr_resources_package=pylabrobot.resources) -> Tuple[int, int]:
+        """
+        Scans PyLabRobot's resources by introspecting modules and classes,
+        then populates/updates the LabwareDefinitionCatalogOrm.
+        """
+        print(f"INFO: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}")
+        added_count = 0; updated_count = 0
+        processed_fqns: Set[str] = set()
+
+        for importer, modname, ispkg in pkgutil.walk_packages(
+            path=plr_resources_package.__path__, # type: ignore
+            prefix=plr_resources_package.__name__ + '.',
+            onerror=lambda x: print(f"Error walking package: {x}") # Log errors during walk
+        ):
+            try:
+                module = importlib.import_module(modname)
+            except Exception as e:
+                print(f"WARNING: Could not import module {modname} during sync: {e}")
+                continue
+
+            for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
+                fqn = f"{modname}.{class_name}"
+                if fqn in processed_fqns: continue
+                processed_fqns.add(fqn)
+
+                if not self._is_catalogable_labware_class(plr_class_obj):
+                    continue
+
+                # print(f"DEBUG: Processing potential labware class: {fqn}")
+                temp_instance: Optional[PlrResource] = None
+                try:
+                    # TODO: AM-5D: Handle classes with complex __init__ more gracefully.
+                    # Attempt instantiation with 'name'. If it fails, try to get class-level info.
+                    # Some PLR resources (e.g. from specific manufacturers) are directly instantiable this way.
+                    # Others might be bases that are technically concrete but not meant for direct use.
+                    sig = inspect.signature(plr_class_obj.__init__)
+                    if 'name' in sig.parameters:
+                        temp_instance = plr_class_obj(name=f"praxis_sync_temp_{class_name}")
+                    else:
+                        # If 'name' is not in __init__, it might be a class not intended for direct cataloging
+                        # or requires specific setup. For now, skip if simple instantiation fails.
+                        # print(f"DEBUG: Skipping {fqn}, 'name' not in __init__ or complex init.")
+                        continue
+                except Exception: # as inst_err:
+                    # print(f"DEBUG: Could not instantiate {fqn} simply: {inst_err}. Skipping for now.")
+                    continue
+
+                try:
+                    # Determine pylabrobot_definition_name (primary key for catalog)
+                    # 1. instance.resource_type (most specific if set by PLR for that definition)
+                    # 2. class.resource_type
+                    # 3. instance.model (if a distinct model identifier)
+                    # 4. Fully qualified class name (most stable fallback)
+                    pylabrobot_def_name: Optional[str] = None
+                    if hasattr(temp_instance, 'resource_type') and isinstance(temp_instance.resource_type, str) and temp_instance.resource_type:
+                        pylabrobot_def_name = temp_instance.resource_type
+                    elif hasattr(plr_class_obj, 'resource_type') and isinstance(plr_class_obj.resource_type, str) and plr_class_obj.resource_type: # type: ignore
+                        pylabrobot_def_name = plr_class_obj.resource_type # type: ignore
+
+                    if not pylabrobot_def_name and hasattr(temp_instance, 'model') and isinstance(temp_instance.model, str) and temp_instance.model:
+                         pylabrobot_def_name = temp_instance.model
+
+                    if not pylabrobot_def_name:
+                        pylabrobot_def_name = fqn
+
+                    praxis_type_name = getattr(temp_instance, 'model', None) or plr_class_obj.__name__
+                    category = self._get_category_from_plr_object(temp_instance)
+
+                    details_json: Optional[Dict[str, Any]] = None
+                    if hasattr(temp_instance, 'serialize') and callable(temp_instance.serialize):
+                        try:
+                            details_json = temp_instance.serialize()
+                            if 'name' in details_json: del details_json['name'] # Temp instance name
+                            # TODO: AM-5F: Sanitize/normalize serialized JSON if it contains complex objects not suitable for direct JSON storage.
+                        except Exception as ser_err: print(f"WARN: Serialize failed for {pylabrobot_def_name}: {ser_err}")
+
+                    # TODO: AM-5B: Refine property extraction (volume, consumable, etc.)
+                    is_consumable = category in [LabwareCategoryEnum.PLATE, LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.RESERVOIR, LabwareCategoryEnum.LID, LabwareCategoryEnum.TUBE]
+                    nominal_volume_ul: Optional[float] = None
+                    # ... (heuristic logic for volume from v4) ...
+                    if hasattr(temp_instance, 'get_well') and hasattr(temp_instance, 'wells') and temp_instance.wells: # type: ignore
+                        try: first_well = temp_instance.get_well(0); nominal_volume_ul = float(first_well.max_volume) # type: ignore
+                        except: pass
+                    elif hasattr(temp_instance, 'capacity'):
+                        try: nominal_volume_ul = float(temp_instance.capacity) # type: ignore
+                        except: pass
+
+                    existing_def_orm = ads.get_labware_definition(self.db, pylabrobot_def_name)
+                    ads.add_or_update_labware_definition(
+                        db=self.db, pylabrobot_definition_name=pylabrobot_def_name,
+                        praxis_labware_type_name=praxis_type_name, category=category,
+                        description=inspect.getdoc(plr_class_obj) or temp_instance.name,
+                        is_consumable=is_consumable, nominal_volume_ul=nominal_volume_ul,
+                        plr_definition_details_json=details_json
+                    )
+                    if not existing_def_orm: added_count += 1
+                    else: updated_count += 1
+                except Exception as e_proc:
+                    print(f"ERROR: Could not process or save PLR class '{fqn}': {e_proc}")
+                finally:
+                    if temp_instance: del temp_instance # Cleanup temporary instance
+
+        # TODO: AM-5E: Add step for loading definitions from external files (e.g., Opentrons JSON).
+        print(f"Labware definition sync complete. Added: {added_count}, Updated: {updated_count}")
+        return added_count, updated_count
+
+    # --- acquire/release methods (structurally same as v4, with existing TODOs) ---
+    # (Condensed for brevity, full logic from v4 should be retained)
+    def acquire_device(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_class_name_constraint: str, constraints: Optional[Dict[str, Any]] = None) -> ManagedDeviceOrm: # type: ignore
+        # ... (TODOs AM-6, AM-7, AM-4) ...
+        print(f"INFO: Acquiring device '{requested_asset_name_in_protocol}' (type: {pylabrobot_class_name_constraint})")
+        device_orm_list = ads.list_managed_devices(self.db, status=ManagedDeviceStatusEnum.AVAILABLE, pylabrobot_class_filter=pylabrobot_class_name_constraint) # type: ignore
+        if not device_orm_list: raise AssetAcquisitionError("No device found")
+        updated_device = ads.update_managed_device_status(self.db, device_orm_list[0].id, ManagedDeviceStatusEnum.IN_USE, current_protocol_run_guid=protocol_run_guid) # type: ignore
+        if not updated_device: raise AssetAcquisitionError("Failed to update device status")
+        # self.workcell_runtime.initialize_device_backend(updated_device) # AM-4
+        return updated_device # type: ignore
+
+    def acquire_labware(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_definition_name_constraint: str, user_choice_instance_id: Optional[int] = None, location_constraints: Optional[Dict[str, Any]] = None, property_constraints: Optional[Dict[str, Any]] = None) -> LabwareInstanceOrm: # type: ignore
+        # ... (TODOs AM-8, AM-9, AM-10, AM-4) ...
+        print(f"INFO: Acquiring labware '{requested_asset_name_in_protocol}' (type: {pylabrobot_definition_name_constraint})")
+        # ... (placeholder logic from v4) ...
+        labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None # type: ignore
+        if user_choice_instance_id:
+            labware_instance_to_acquire = ads.get_labware_instance_by_id(self.db, user_choice_instance_id) # type: ignore
+        else:
+            lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK) # type: ignore
+            if not lws: lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE) # type: ignore
+            if not lws: raise AssetAcquisitionError("No labware found")
+            labware_instance_to_acquire = lws[0]
+        if not labware_instance_to_acquire: raise AssetAcquisitionError("Labware not found or not available")
+        updated_lw = ads.update_labware_instance_location_and_status(self.db, labware_instance_to_acquire.id, LabwareInstanceStatusEnum.IN_USE, current_protocol_run_guid=protocol_run_guid) # type: ignore
+        if not updated_lw: raise AssetAcquisitionError("Failed to update labware status")
+        # lw_plr_obj = self.workcell_runtime.create_or_get_labware_plr_object(updated_lw) # AM-4
+        # if lw_plr_obj and updated_lw.location_device_id and updated_lw.current_deck_slot_name:
+            # self.workcell_runtime.assign_labware_to_deck_slot(...) # AM-4
+        return updated_lw # type: ignore
+
+    def release_device(self, protocol_run_guid: str, device_orm_id: int, final_status: ManagedDeviceStatusEnum = ManagedDeviceStatusEnum.AVAILABLE, status_details: Optional[str] = "Released"):
+        # ... (TODO AM-4) ...
+        print(f"INFO: Releasing device ID {device_orm_id}")
+        ads.update_managed_device_status(self.db, device_orm_id, final_status, status_details=status_details, current_protocol_run_guid=protocol_run_guid) # type: ignore
+
+    def release_labware(self, protocol_run_guid: str, labware_instance_orm_id: int, final_status: LabwareInstanceStatusEnum, final_properties_json_update: Optional[Dict[str, Any]] = None, final_location_device_id: Optional[int] = None, final_deck_slot_name: Optional[str] = None):
+        # ... (TODO AM-4) ...
+        print(f"INFO: Releasing labware ID {labware_instance_orm_id}")
+        ads.update_labware_instance_location_and_status(self.db, labware_instance_orm_id, final_status, properties_json_update=final_properties_json_update, location_device_id=final_location_device_id, current_deck_slot_name=final_deck_slot_name, current_protocol_run_guid=protocol_run_guid) # type: ignore
+

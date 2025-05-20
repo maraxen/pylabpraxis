@@ -1,8 +1,9 @@
+// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/screens/protocol_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart'; // Keep this if ProtocolInfo is used (it is for `protocols` list)
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart'; // For dispatching to workflow
+import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
 class ProtocolSelectionScreen extends StatefulWidget {
   const ProtocolSelectionScreen({super.key});
@@ -13,209 +14,144 @@ class ProtocolSelectionScreen extends StatefulWidget {
 }
 
 class _ProtocolSelectionScreenState extends State<ProtocolSelectionScreen> {
-  ProtocolInfo?
-  _selectedProtocolForUI; // Local UI state for highlighting selection
-
   @override
   void initState() {
     super.initState();
-    // Fetch protocols if not already loaded or if explicitly desired on screen init
-    // This might be redundant if RunProtocolWorkflowScreen already triggers this.
-    // Consider if this BLoC should be auto-fetching on creation or via an explicit init event.
-    final discoveryBloc = context.read<ProtocolsDiscoveryBloc>();
-    if (discoveryBloc.state is ProtocolsDiscoveryInitial ||
-        discoveryBloc.state is ProtocolsDiscoveryError) {
-      discoveryBloc.add(const FetchDiscoveredProtocols());
-    }
-
-    // Initialize _selectedProtocolForUI from workflow state if available (e.g., navigating back)
-    final workflowState = context.read<ProtocolWorkflowBloc>().state;
-    if (workflowState.selectedProtocolInfo != null) {
-      _selectedProtocolForUI = workflowState.selectedProtocolInfo;
+    final protocolsBloc = context.read<ProtocolsDiscoveryBloc>();
+    // Only add event if not already loading or loaded to prevent multiple fetches on quick rebuilds
+    // Check against the public type names
+    final currentState = protocolsBloc.state;
+    if (currentState is! ProtocolsDiscoveryLoading &&
+        currentState is! ProtocolsDiscoveryLoaded) {
+      protocolsBloc.add(
+        const ProtocolsDiscoveryEvent.fetchDiscoveredProtocols(),
+      ); // Corrected event name
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // The "Next" button's enabled state is now controlled by ProtocolWorkflowBloc.isCurrentStepDataValid
-    // This screen's responsibility is to dispatch ProtocolSelectedInWorkflow.
-    // The ProtocolWorkflowBloc then sets its own isCurrentStepDataValid to true for this step.
-
     return Scaffold(
-      // AppBar is typically part of the parent workflow screen
-      // appBar: AppBar(
-      //   title: const Text('Select Protocol'),
-      // ),
-      body: Column(
-        children: [
-          Expanded(
-            child: BlocConsumer<
-              ProtocolsDiscoveryBloc,
-              ProtocolsDiscoveryState
-            >(
-              listener: (context, state) {
-                state.mapOrNull(
-                  error:
-                      (errorState) =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: ${errorState.message}'),
-                              backgroundColor: theme.colorScheme.error,
-                            ),
-                          ),
-                );
-              },
-              builder: (context, state) {
-                return state.when(
-                  initial:
-                      () => const Center(
-                        child: Text('Initializing protocols...'),
+      appBar: AppBar(title: const Text('Select a Protocol')),
+      body: BlocConsumer<ProtocolsDiscoveryBloc, ProtocolsDiscoveryState>(
+        listener: (context, state) {
+          // Use public type name for checking
+          if (state is ProtocolsDiscoveryError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error loading protocols: ${state.message}'),
+                backgroundColor: theme.colorScheme.error,
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          // Use public type names for switch cases
+          return switch (state) {
+            ProtocolsDiscoveryInitial() => const Center(
+              child: Text('Initializing protocol list...'),
+            ),
+            ProtocolsDiscoveryLoading() => const Center(
+              child: CircularProgressIndicator(),
+            ),
+            ProtocolsDiscoveryLoaded(protocols: final protocols) => () {
+              if (protocols.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.search_off_rounded,
+                        size: 48,
+                        color: Colors.grey,
                       ),
-                  loading:
-                      () => const Center(child: CircularProgressIndicator()),
-                  loaded: (protocols) {
-                    if (protocols.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.search_off_rounded,
-                                size: 48,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No protocols found.',
-                                style: theme.textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Retry Fetch'),
-                                onPressed: () {
-                                  context.read<ProtocolsDiscoveryBloc>().add(
-                                    const FetchDiscoveredProtocols(),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      itemCount: protocols.length,
-                      itemBuilder: (context, index) {
-                        final protocol = protocols[index];
-                        final bool isSelected =
-                            _selectedProtocolForUI?.id == protocol.id;
-                        return Card(
-                          elevation: isSelected ? 3 : 1,
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color:
-                                  isSelected
-                                      ? theme.colorScheme.primary
-                                      : theme.dividerColor.withOpacity(0.5),
-                              width: isSelected ? 1.5 : 1,
-                            ),
-                          ),
-                          child: ListTile(
-                            leading: Icon(
-                              isSelected
-                                  ? Icons.check_circle_rounded
-                                  : Icons.biotech_outlined,
-                              color:
-                                  isSelected
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.secondary,
-                            ),
-                            title: Text(
-                              protocol.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight:
-                                    isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                              ),
-                            ),
-                            subtitle: Text(
-                              protocol.description ??
-                                  'No description available',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            selected: isSelected,
-                            selectedTileColor: theme
-                                .colorScheme
-                                .primaryContainer
-                                .withOpacity(0.3),
-                            onTap: () {
-                              setState(() {
-                                _selectedProtocolForUI = protocol;
-                              });
-                              // Dispatch to workflow BLoC
-                              context.read<ProtocolWorkflowBloc>().add(
-                                ProtocolSelectedInWorkflow(
-                                  selectedProtocol: protocol,
-                                ),
-                              );
-                            },
-                          ),
+                      const SizedBox(height: 16),
+                      const Text('No protocols found.'),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          context.read<ProtocolsDiscoveryBloc>().add(
+                            const ProtocolsDiscoveryEvent.fetchDiscoveredProtocols(),
+                          ); // Corrected event name
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: protocols.length,
+                itemBuilder: (context, index) {
+                  final protocol =
+                      protocols[index]; // protocol is of type ProtocolInfo
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        protocol.name,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      subtitle: Text(
+                        protocol.description ?? 'No description available.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      onTap: () {
+                        context.read<ProtocolWorkflowBloc>().add(
+                          ProtocolWorkflowEvent.protocolSelectedInWorkflow(
+                            // Ensure this event exists
+                            selectedProtocol: protocol,
+                          ), // Pass the selected protocol (type ProtocolInfo)
                         );
                       },
-                    );
-                  },
-                  error:
-                      (message) => Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                size: 48,
-                                color: theme.colorScheme.error,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading protocols: $message',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Retry'),
-                                onPressed: () {
-                                  context.read<ProtocolsDiscoveryBloc>().add(
-                                    const FetchDiscoveredProtocols(),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                );
-              },
+                    ),
+                  );
+                },
+              );
+            }(),
+            ProtocolsDiscoveryError(message: final message) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: theme.colorScheme.error,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load protocols: $message',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<ProtocolsDiscoveryBloc>().add(
+                          const ProtocolsDiscoveryEvent.fetchDiscoveredProtocols(),
+                        ); // Corrected event name
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          // "Next" button is now part of the global RunProtocolWorkflowScreen's bottom navigation bar
-        ],
+          };
+        },
       ),
     );
   }

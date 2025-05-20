@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
 // Import item editing dialogs if needed for complex item types
 import 'basic_parameter_edit_dialog.dart';
 import 'string_parameter_edit_screen.dart';
@@ -35,7 +37,10 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
 
   ParameterConstraints? get arrayConstraints =>
       widget.parameterDefinition.config.constraints;
-  ParameterConstraints? get itemConstraints => arrayConstraints?.items;
+  Map<String, dynamic>? get arrayConstraintsMap =>
+      widget.parameterDefinition.config.constraints?.valueConstraints;
+  ParameterConstraints? get itemConstraints =>
+      ParameterConstraints.fromMap(arrayConstraintsMap!);
 
   void _validateAddItemInput(String value, List<dynamic> currentItems) {
     String? error;
@@ -46,7 +51,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
       final tempItemDef = ParameterDefinition(
         name: "item_validator",
         config: ParameterConfig(
-          type: itemConstraints!.type,
+          type: itemConstraints!.type ?? "string",
           constraints: itemConstraints,
         ),
       );
@@ -194,6 +199,19 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
         _addItemValidationError = null;
         _addItemFocusNode.unfocus();
       });
+    }
+  }
+
+  void _reorderItem(BuildContext context, int oldIndex, int targetIndex) {
+    context.read<ProtocolParametersBloc>().add(
+      ProtocolParametersEvent.reorderArrayItem(
+        parameterPath: widget.parameterPath,
+        oldIndex: oldIndex,
+        targetIndex: targetIndex,
+      ),
+    );
+    if (_editingChipIndex == oldIndex) {
+      _cancelEditChip();
     }
   }
 
@@ -527,6 +545,10 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
     _addItemFocusNode.dispose();
     super.dispose();
   }
+}
+
+extension on ParameterConstraints? {
+  get uniqueItems => this?.uniqueItems ?? false;
 }
 
 Future<void> showArrayParameterEditDialog({

@@ -45,6 +45,38 @@ $ProtocolAssetsEventCopyWith(ProtocolAssetsEvent _, $Res Function(ProtocolAssets
 /// @nodoc
 
 
+class LoadRequested implements ProtocolAssetsEvent {
+  const LoadRequested();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoadRequested);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ProtocolAssetsEvent.loadRequested()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class LoadRequiredAssets implements ProtocolAssetsEvent {
   const LoadRequiredAssets({required final  List<ProtocolAsset> assetsFromProtocolDetails, final  Map<String, String>? existingAssignments}): _assetsFromProtocolDetails = assetsFromProtocolDetails,_existingAssignments = existingAssignments;
   

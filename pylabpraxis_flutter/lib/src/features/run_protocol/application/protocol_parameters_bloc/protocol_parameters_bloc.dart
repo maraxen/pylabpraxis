@@ -242,8 +242,7 @@ class ProtocolParametersBloc
     );
 
     dynamic newItemDefaultValue;
-    final itemConstraints =
-        arrayParamState.definition?.config.constraints?['items'];
+    final itemConstraints = arrayParamState.definition?.config.constraints;
     if (itemConstraints != null) {
       newItemDefaultValue = itemConstraints.defaultValue;
       if (newItemDefaultValue == null) {
@@ -465,11 +464,11 @@ class ProtocolParametersBloc
     }
     dynamic newValue;
     final valueConstraints =
-        dictParamState.definition?.config.constraints?['valueConstraints'];
+        dictParamState.definition?.config.constraints?.valueConstraints;
     if (valueConstraints != null) {
-      newValue = valueConstraints.defaultValue;
+      newValue = valueConstraints['defaultValue'];
       if (newValue == null) {
-        switch (valueConstraints.type) {
+        switch (valueConstraints['type']) {
           case 'string':
             newValue = '';
             break;
@@ -544,11 +543,11 @@ class ProtocolParametersBloc
     // ... (logic for defaultValue)
     dynamic defaultValue;
     final valueConstraints =
-        dictParamState.definition?.config.constraints?['valueConstraints'];
+        dictParamState.definition?.config.constraints?.valueConstraints;
     if (valueConstraints != null) {
-      defaultValue = valueConstraints.defaultValue;
+      defaultValue = valueConstraints['defaultValue'];
       if (defaultValue == null) {
-        switch (valueConstraints.type) {
+        switch (valueConstraints['type']) {
           case 'string':
             defaultValue = '';
             break;

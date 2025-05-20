@@ -1,15 +1,17 @@
+// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart
+// Renamed from BasicParameterEditDialog to BasicParameterEditScreen as per user's file
+// This is the user's provided code for BasicParameterEditScreen, with minimal adjustments for clarity if needed.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart'; // Assuming ParameterConfig is the type for parameterDefinition.config
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// A full-screen dialog for editing string (non-choice) and numeric parameters.
-/// Can also be used for editing values within a dictionary if [dictionaryKey] is provided.
 class BasicParameterEditScreen extends StatefulWidget {
   final String parameterPath; // Path to the parameter (or parent dictionary)
   final ParameterDefinition
-  parameterDefinition; // Definition of the value being edited
+  parameterDefinition; // Definition of the value being edited (this is the ParameterConfig from backend)
   final dynamic currentValue;
   final String?
   dictionaryKey; // If editing a value within a dictionary, this is the key
@@ -19,7 +21,7 @@ class BasicParameterEditScreen extends StatefulWidget {
     required this.parameterPath,
     required this.parameterDefinition,
     required this.currentValue,
-    this.dictionaryKey, // Optional: for dictionary values
+    this.dictionaryKey,
   });
 
   @override
@@ -29,41 +31,46 @@ class BasicParameterEditScreen extends StatefulWidget {
 
 class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
   late TextEditingController _textController;
-  // _currentDialogValue was for dropdowns, which are now in StringParameterEditScreen
-  // For numeric with slider, we use _sliderValue
   String? _validationError;
   bool _isSliderUsed = false;
 
   late FocusNode _numericTextFieldFocusNode;
   dynamic _sliderValue;
 
+  // Helper to access properties, assuming parameterConfig is ParameterConfig
+  String get _paramName =>
+      widget.parameterPath; // Use parameterPath for the name
+  String get _displayName =>
+      widget.parameterDefinition.displayName ?? _paramName;
+  String? get _description => widget.parameterDefinition.description;
+  String get _paramType => widget.parameterDefinition.config.type;
+  ParameterConstraints? get _constraints =>
+      widget.parameterDefinition.config.constraints;
+
   @override
   void initState() {
     super.initState();
     _numericTextFieldFocusNode = FocusNode();
-    // _currentDialogValue = widget.currentValue; // Not needed for dropdown here
     _textController = TextEditingController(
       text: widget.currentValue?.toString() ?? '',
     );
 
-    final paramDef = widget.parameterDefinition;
     // Initialize slider value only if it's a numeric type with min/max constraints
-    if ((paramDef.config.type == 'number' ||
-            paramDef.config.type == 'integer' ||
-            paramDef.config.type == 'float') &&
-        paramDef.config.constraints?.minValue != null &&
-        paramDef.config.constraints?.maxValue != null) {
+    if ((_paramType == 'number' ||
+            _paramType == 'integer' ||
+            _paramType == 'float') &&
+        _constraints?.minValue != null &&
+        _constraints?.maxValue != null) {
       _sliderValue =
           num.tryParse(widget.currentValue?.toString() ?? '') ??
-          paramDef.config.constraints!.minValue!;
+          _constraints!.minValue!;
       // Ensure sliderValue is within bounds
-      if (_sliderValue < paramDef.config.constraints!.minValue!) {
-        _sliderValue = paramDef.config.constraints!.minValue!;
+      if (_sliderValue < _constraints!.minValue!) {
+        _sliderValue = _constraints!.minValue!;
       }
-      if (_sliderValue > paramDef.config.constraints!.maxValue!) {
-        _sliderValue = paramDef.config.constraints!.maxValue!;
+      if (_sliderValue > _constraints!.maxValue!) {
+        _sliderValue = _constraints!.maxValue!;
       }
-      // Sync text controller if it was initialized differently from slider value (e.g. null current value)
       if (_textController.text != _sliderValue.toString()) {
         _textController.text = _sliderValue.toString();
       }
@@ -72,70 +79,63 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
   }
 
   void _validateInput(String value) {
-    final paramDef = widget.parameterDefinition;
-    final constraints = paramDef.config.constraints;
+    final constraints = _constraints;
     String? error;
 
-    // Required check (applies if not a boolean, as booleans have inherent values)
     if (constraints?.required_ == true &&
         value.trim().isEmpty &&
-        paramDef.config.type != 'boolean') {
-      error = '${paramDef.displayName ?? paramDef.name} is required.';
+        _paramType != 'boolean') {
+      error = '$_displayName is required.';
     } else {
-      // Type-specific validation
-      switch (paramDef.config.type) {
+      switch (_paramType) {
         case 'integer':
         case 'float':
         case 'number':
           if (value.isNotEmpty) {
-            // Only validate non-empty, otherwise required check handles it
             final num? parsedNum = num.tryParse(value);
             if (parsedNum == null) {
               error = 'Must be a valid number.';
             } else {
               if (constraints?.minValue != null &&
-                  parsedNum < constraints.minValue!) {
+                  parsedNum < constraints!.minValue!) {
                 error = 'Min value: ${constraints.minValue}.';
               }
               if (constraints?.maxValue != null &&
-                  parsedNum > constraints.maxValue!) {
+                  parsedNum > constraints!.maxValue!) {
                 error = 'Max value: ${constraints.maxValue}.';
               }
               if (constraints?.step != null &&
-                  constraints.step! > 0 &&
+                  constraints!.step! > 0 &&
                   constraints.minValue != null) {
-                // Ensure the number of decimal places in the value matches the step's decimal places
-                // This is a common source of floating point precision issues with modulo.
-                // A robust step validation might require converting to BigDecimal or scaled integers.
-                // Simplified check:
                 num step = constraints.step!;
                 num valRelativeToMin = parsedNum - constraints.minValue!;
-                // Check if valRelativeToMin is a multiple of step, considering precision
-                if ((valRelativeToMin / step) % 1 != 0 &&
-                    (valRelativeToMin / step).toStringAsFixed(8) % 1 != 0.0) {
-                  // Check with some precision
-                  // A more precise check:
-                  // final remainder = (valRelativeToMin * 1e9).round() % (step * 1e9).round();
-                  // if (remainder != 0) {
-                  error =
-                      'Value must align with step ${constraints.step} from min (${constraints.minValue}).';
-                  // }
+                // A more robust check for step alignment, especially for floating point numbers
+                if (step != 0) {
+                  // Using a small epsilon for float comparison
+                  final double epsilon =
+                      1e-9; // Adjust epsilon based on required precision
+                  final double remainder = (valRelativeToMin / step) % 1.0;
+                  if (!(remainder.abs() < epsilon ||
+                      (1.0 - remainder).abs() < epsilon)) {
+                    error =
+                        'Value must align with step ${constraints.step} from min (${constraints.minValue}). Current: $parsedNum';
+                  }
                 }
               }
             }
           }
           break;
-        case 'string': // This dialog now only handles plain strings (not choices)
+        case 'string':
           if (constraints?.minLength != null &&
-              value.length < constraints.minLength!) {
+              value.length < constraints!.minLength!) {
             error = 'Min length: ${constraints.minLength}.';
           }
           if (constraints?.maxLength != null &&
-              value.length > constraints.maxLength!) {
+              value.length > constraints!.maxLength!) {
             error = 'Max length: ${constraints.maxLength}.';
           }
           if (constraints?.regex != null &&
-              !RegExp(constraints.regex!).hasMatch(value)) {
+              !RegExp(constraints!.regex!).hasMatch(value)) {
             error =
                 'Does not match pattern: ${constraints.regexDescription ?? constraints.regex}.';
           }
@@ -151,7 +151,6 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
   }
 
   void _handleSave() {
-    // Use the most recent text from controller for validation, especially if slider was used then text edited.
     _validateInput(_textController.text);
 
     if (_validationError != null) {
@@ -165,53 +164,45 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
     }
 
     dynamic valueToSave;
-    final paramType = widget.parameterDefinition.config.type;
 
-    if (paramType == 'integer') {
+    if (_paramType == 'integer') {
       valueToSave = int.tryParse(_textController.text);
-    } else if (paramType == 'float' || paramType == 'number') {
+    } else if (_paramType == 'float' || _paramType == 'number') {
       valueToSave = double.tryParse(_textController.text);
     } else {
-      // Plain string
       valueToSave = _textController.text;
     }
 
-    // If field is not required and text is empty, valueToSave might be null (for numbers) or empty string.
-    // The BLoC should handle what an "empty" optional value means (null vs empty string).
-    if (widget.parameterDefinition.config.constraints?.required_ != true &&
-        (valueToSave == null || valueToSave.toString().isEmpty)) {
-      valueToSave = null; // Standardize empty optional to null for BLoC
+    if (_constraints?.required_ != true && (_textController.text.isEmpty)) {
+      // Check original text for emptiness
+      valueToSave = null;
     }
 
     if (widget.dictionaryKey != null) {
-      // Editing a value within a dictionary
       context.read<ProtocolParametersBloc>().add(
         ProtocolParametersEvent.updateDictionaryValue(
-          // Use specific event for dictionary value update
-          parameterPath: widget.parameterPath, // Path to the parent dictionary
+          parameterPath: widget.parameterPath,
           key: widget.dictionaryKey!,
           newValue: valueToSave,
         ),
       );
     } else {
-      // Editing a top-level parameter or an array item (if this dialog were used for array items)
       context.read<ProtocolParametersBloc>().add(
         ProtocolParametersEvent.parameterValueChanged(
-          parameterPath: widget.parameterPath,
+          parameterPath: widget.parameterPath, // This is the name/key
           value: valueToSave,
-          // itemIndex: if this dialog were to support array items directly
         ),
       );
     }
-    Navigator.of(context).pop();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _buildNumericInputWithSlider() {
-    final paramDef = widget.parameterDefinition;
-    final constraints = paramDef.config.constraints!;
+    final constraints = _constraints!;
     final theme = Theme.of(context);
 
-    // Ensure _sliderValue is initialized correctly and is a num
     num currentSliderNumValue =
         _sliderValue as num? ?? (constraints.minValue ?? 0.0);
 
@@ -221,7 +212,7 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
-            'Current Value: ${currentSliderNumValue.toStringAsFixed(paramDef.config.type == "integer" ? 0 : 2)}',
+            'Current Value: ${currentSliderNumValue.toStringAsFixed(_paramType == "integer" ? 0 : 2)}', // Ensure currentSliderNumValue is not null
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -229,8 +220,8 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
         ),
         Slider(
           value: currentSliderNumValue.toDouble(),
-          min: (constraints.minValue as num).toDouble(),
-          max: (constraints.maxValue as num).toDouble(),
+          min: (constraints.minValue!).toDouble(), // Ensure not null
+          max: (constraints.maxValue!).toDouble(), // Ensure not null
           divisions:
               constraints.step != null &&
                       constraints.step! > 0 &&
@@ -240,29 +231,31 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
                       .round())
                   : null,
           label: currentSliderNumValue.toStringAsFixed(
-            paramDef.config.type == "integer" ? 0 : 2,
+            // Ensure not null
+            _paramType == "integer" ? 0 : 2,
           ),
           onChanged: (double value) {
             setState(() {
               _isSliderUsed = true;
               num newValueHolder;
-              if (paramDef.config.type == "integer") {
+              if (_paramType == "integer") {
                 newValueHolder = value.round();
               } else {
-                if (constraints.step != null &&
-                    constraints.step.toString().contains('.')) {
-                  int decimalPlaces =
-                      constraints.step.toString().split('.')[1].length;
-                  newValueHolder = double.parse(
-                    value.toStringAsFixed(decimalPlaces),
-                  );
-                } else if (constraints.step != null && constraints.step! >= 1) {
-                  // Integer step for float
+                // Handle float steps more carefully
+                if (constraints.step != null && constraints.step! > 0) {
+                  // Snap to the nearest step
                   newValueHolder =
                       (value / constraints.step!).round() * constraints.step!;
+                  // Ensure precision matches step if step has decimals
+                  if (constraints.step.toString().contains('.')) {
+                    int decimalPlaces =
+                        constraints.step.toString().split('.')[1].length;
+                    newValueHolder = double.parse(
+                      newValueHolder.toStringAsFixed(decimalPlaces),
+                    );
+                  }
                 } else {
-                  newValueHolder =
-                      value; // Potentially round to a general precision for floats
+                  newValueHolder = value; // No step, or step is 0
                 }
               }
               // Ensure the new value from slider is within precise min/max after potential rounding
@@ -285,49 +278,60 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
           focusNode: _numericTextFieldFocusNode,
           decoration: InputDecoration(
             labelText: 'Or Enter Manually',
-            hintText: 'Current: ${_sliderValue.toString()}',
+            hintText:
+                'Current: ${_sliderValue?.toString() ?? ""}', // Handle null _sliderValue
             border: const OutlineInputBorder(),
             errorText: _validationError,
             suffixIcon: IconButton(
               icon: const Icon(Icons.clear),
               onPressed: () {
                 _textController.clear();
-                _validateInput(''); // Re-validate after clearing
-                // Optionally reset slider to min or default if text is cleared
-                // setState(() { _sliderValue = constraints.minValue; });
+                _validateInput('');
+                // Optionally reset slider
+                if (mounted) {
+                  setState(() {
+                    _sliderValue = constraints.minValue; // Reset slider to min
+                    _validateInput(
+                      _sliderValue?.toString() ?? '',
+                    ); // Re-validate if slider value is used
+                  });
+                }
               },
             ),
           ),
           keyboardType: TextInputType.numberWithOptions(
-            decimal: paramDef.config.type != 'integer',
+            decimal: _paramType != 'integer',
           ),
           inputFormatters:
-              (paramDef.config.type == 'integer')
+              (_paramType == 'integer')
                   ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
                   : <TextInputFormatter>[
                     FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
-                  ], // Allow negative
+                  ],
           onChanged: (value) {
             if (!_isSliderUsed || _numericTextFieldFocusNode.hasFocus) {
               _validateInput(value);
               final num? parsed = num.tryParse(value);
               if (parsed != null && _validationError == null) {
-                // Only update slider if valid number
                 if (parsed >= constraints.minValue! &&
                     parsed <= constraints.maxValue!) {
-                  setState(() {
-                    _sliderValue = parsed;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _sliderValue = parsed;
+                    });
+                  }
                 } else if (parsed < constraints.minValue!) {
-                  // Snap to min if below
-                  setState(() {
-                    _sliderValue = constraints.minValue!;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _sliderValue = constraints.minValue!;
+                    });
+                  }
                 } else if (parsed > constraints.maxValue!) {
-                  // Snap to max if above
-                  setState(() {
-                    _sliderValue = constraints.maxValue!;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _sliderValue = constraints.maxValue!;
+                    });
+                  }
                 }
               }
             }
@@ -346,28 +350,24 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final paramDef = widget.parameterDefinition;
-    final constraints = paramDef.config.constraints;
+    final constraints = _constraints;
     final theme = Theme.of(context);
 
     Widget inputWidget;
 
-    if ((paramDef.config.type == 'number' ||
-            paramDef.config.type == 'integer' ||
-            paramDef.config.type == 'float') &&
+    if ((_paramType == 'number' ||
+            _paramType == 'integer' ||
+            _paramType == 'float') &&
         constraints?.minValue != null &&
         constraints?.maxValue != null) {
       inputWidget = _buildNumericInputWithSlider();
     } else {
-      // Plain string or numeric without slider
       inputWidget = TextFormField(
         controller: _textController,
         autofocus: true,
         decoration: InputDecoration(
           labelText: 'Enter Value',
-          hintText:
-              paramDef.description ??
-              'Enter ${paramDef.displayName ?? paramDef.name}',
+          hintText: _description ?? 'Enter $_displayName',
           border: const OutlineInputBorder(),
           errorText: _validationError,
           suffixIcon:
@@ -382,21 +382,20 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
                   : null,
         ),
         keyboardType:
-            (paramDef.config.type == 'integer' ||
-                    paramDef.config.type == 'float' ||
-                    paramDef.config.type == 'number')
+            (_paramType == 'integer' ||
+                    _paramType == 'float' ||
+                    _paramType == 'number')
                 ? TextInputType.numberWithOptions(
-                  decimal: paramDef.config.type != 'integer',
+                  decimal: _paramType != 'integer',
                 )
                 : TextInputType.text,
         inputFormatters:
-            (paramDef.config.type == 'integer')
+            (_paramType == 'integer')
                 ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
-                : (paramDef.config.type == 'float' ||
-                    paramDef.config.type == 'number')
+                : (_paramType == 'float' || _paramType == 'number')
                 ? <TextInputFormatter>[
                   FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d*')),
-                ] // Allow negative
+                ]
                 : null,
         onChanged: (value) {
           _isSliderUsed = false;
@@ -408,7 +407,7 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit: ${paramDef.displayName ?? paramDef.name}'),
+        title: Text('Edit: $_displayName'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -421,16 +420,15 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0), // Increased padding
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (paramDef.description != null &&
-                paramDef.description!.isNotEmpty)
+            if (_description != null && _description!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 20.0),
                 child: Text(
-                  paramDef.description!,
+                  _description!,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -438,9 +436,9 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
               ),
             inputWidget,
             if (constraints != null &&
-                !((paramDef.config.type == 'number' ||
-                        paramDef.config.type == 'integer' ||
-                        paramDef.config.type == 'float') &&
+                !((_paramType == 'number' ||
+                        _paramType == 'integer' ||
+                        _paramType == 'float') &&
                     constraints.minValue != null &&
                     constraints.maxValue != null)) ...[
               const SizedBox(height: 24),
@@ -483,8 +481,6 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
                 ),
               ],
             ],
-            // Validation error is now part of InputDecoration for TextFormFields,
-            // or handled within _buildNumericInputWithSlider for slider errors.
           ],
         ),
       ),
@@ -499,23 +495,30 @@ class _BasicParameterEditScreenState extends State<BasicParameterEditScreen> {
   }
 }
 
+// The showBasicParameterEditScreen function needs to be updated to pass ParameterConfig as parameterDefinition
 Future<void> showBasicParameterEditScreen({
   required BuildContext context,
   required String parameterPath,
   required ParameterDefinition parameterDefinition,
   required dynamic currentValue,
-  String? dictionaryKey, // Added to pass through
+  String? dictionaryKey,
 }) async {
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (BuildContext dialogContext) {
+        // If ProtocolParametersBloc is not directly available via BlocProvider.of<...>(context)
+        // from the calling context (e.g., if this function is called from a utility),
+        // you might need to ensure it's provided higher up or pass it explicitly.
+        // For now, assuming it's available from the original context.
         return BlocProvider.value(
-          value: BlocProvider.of<ProtocolParametersBloc>(context),
+          value: BlocProvider.of<ProtocolParametersBloc>(
+            context,
+          ), // context is from the caller
           child: BasicParameterEditScreen(
             parameterPath: parameterPath,
             parameterDefinition: parameterDefinition,
             currentValue: currentValue,
-            dictionaryKey: dictionaryKey, // Pass it here
+            dictionaryKey: dictionaryKey,
           ),
         );
       },

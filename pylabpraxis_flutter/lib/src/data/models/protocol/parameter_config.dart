@@ -6,6 +6,7 @@
 // that apply to its value.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
 
 part 'parameter_config.freezed.dart';
 part 'parameter_config.g.dart';
@@ -14,7 +15,7 @@ part 'parameter_config.g.dart';
 sealed class ParameterConfig with _$ParameterConfig {
   const factory ParameterConfig({
     required String type,
-    Map<String, dynamic>? constraints,
+    ParameterConstraints? constraints,
     String? displayName,
     String? description,
     dynamic defaultValue,

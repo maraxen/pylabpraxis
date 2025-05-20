@@ -255,7 +255,7 @@ int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(
 
 @override
 String toString() {
-  return 'ProtocolWorkflowEvent.assetsSubmitted(assets: $assets)';
+  return 'ProtocolWorkflowEvent.assetsSubmittedToWorkflow(assets: $assets)';
 }
 
 
@@ -532,6 +532,38 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'ProtocolWorkflowEvent.proceedToNextStep()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class GoToPreviousStep implements ProtocolWorkflowEvent {
+  const GoToPreviousStep();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GoToPreviousStep);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ProtocolWorkflowEvent.goToPreviousStep()';
 }
 
 
