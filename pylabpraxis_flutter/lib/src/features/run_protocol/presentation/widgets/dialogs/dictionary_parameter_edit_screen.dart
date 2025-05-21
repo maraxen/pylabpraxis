@@ -608,14 +608,15 @@ class _DictionaryParameterEditScreenState
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                           side: BorderSide(
-                            color: theme.dividerColor.withOpacity(0.5),
+                            color: theme.dividerColor.withAlpha(0.5),
                           ),
                         ),
                         child: ListTile(
                           leading: Icon(
                             Icons.key_rounded,
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.7),
+                            color: theme.colorScheme.onSurfaceVariant.withAlpha(
+                              0.7,
+                            ),
                           ),
                           title: Text(
                             key,
@@ -708,7 +709,7 @@ class _DictionaryParameterEditScreenState
         Color valueColor =
             (value != null && value.toString().isNotEmpty)
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant.withOpacity(0.7);
+                : theme.colorScheme.onSurfaceVariant.withAlpha(0.7);
         bool valueIsDefaultOrNull = true;
 
         ParameterConstraints? specificValueConstraints =
@@ -719,7 +720,7 @@ class _DictionaryParameterEditScreenState
         if (specificValueConstraints != null) {
           if (value == specificValueConstraints.defaultValue) {
             valueIsDefaultOrNull = true; // Still using default
-            valueColor = theme.colorScheme.onSurfaceVariant.withOpacity(0.7);
+            valueColor = theme.colorScheme.onSurfaceVariant.withAlpha(190);
           } else if (value != null && value.toString().isNotEmpty) {
             valueIsDefaultOrNull = false; // Explicitly set to something else
             valueColor = theme.colorScheme.primary;
@@ -779,8 +780,8 @@ class _DictionaryParameterEditScreenState
             side: BorderSide(
               color:
                   valueIsDefaultOrNull
-                      ? theme.colorScheme.outline.withOpacity(0.5)
-                      : theme.colorScheme.primary.withOpacity(0.7),
+                      ? theme.colorScheme.outline.withAlpha(128)
+                      : theme.colorScheme.primary.withAlpha(190),
               width: valueIsDefaultOrNull ? 1.0 : 1.5,
             ),
           ),

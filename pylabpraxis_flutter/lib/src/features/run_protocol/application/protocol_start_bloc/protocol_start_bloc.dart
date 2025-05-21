@@ -16,6 +16,8 @@ class ProtocolStartBloc extends Bloc<ProtocolStartEvent, ProtocolStartState> {
     on<InitializeStartScreen>(_onInitializeStartScreen);
     on<ExecuteStartProtocol>(_onExecuteStartProtocol);
     on<ResetStart>(_onResetStart);
+    on<LoadConfiguration>(_onLoadConfiguration);
+    on<ReportError>(_onReportError);
   }
 
   void _onInitializeStartScreen(
@@ -72,5 +74,21 @@ class ProtocolStartBloc extends Bloc<ProtocolStartEvent, ProtocolStartState> {
 
   void _onResetStart(ResetStart event, Emitter<ProtocolStartState> emit) {
     emit(const ProtocolStartState.initial());
+  }
+
+  void _onLoadConfiguration(
+    LoadConfiguration event,
+    Emitter<ProtocolStartState> emit,
+  ) {
+    emit(ProtocolStartState.ready(preparedConfig: event.preparedConfig));
+  }
+
+  void _onReportError(ReportError event, Emitter<ProtocolStartState> emit) {
+    emit(
+      ProtocolStartState.failure(
+        error: event.error,
+        preparedConfig: event.preparedConfig,
+      ),
+    );
   }
 }

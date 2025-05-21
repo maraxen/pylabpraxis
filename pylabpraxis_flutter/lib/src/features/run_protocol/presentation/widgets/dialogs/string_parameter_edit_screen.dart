@@ -102,15 +102,15 @@ class _StringParameterEditScreenState extends State<StringParameterEditScreen> {
     // Apply other string constraints only if a value is present (or if required and empty, error already set)
     if (error == null && valueToValidate.isNotEmpty) {
       if (constraints?.minLength != null &&
-          valueToValidate.length < constraints.minLength!) {
+          valueToValidate.length < constraints!.minLength!) {
         error = 'Min length: ${constraints.minLength}.';
       }
       if (constraints?.maxLength != null &&
-          valueToValidate.length > constraints.maxLength!) {
-        error = 'Max length: ${constraints.maxLength}.';
+          valueToValidate.length > constraints!.maxLength!) {
+        error = 'Max length: ${constraints!.maxLength}.';
       }
       if (constraints?.regex != null &&
-          !RegExp(constraints.regex!).hasMatch(valueToValidate)) {
+          !RegExp(constraints!.regex!).hasMatch(valueToValidate)) {
         error =
             'Does not match pattern: ${constraints.regexDescription ?? constraints.regex}.';
       }

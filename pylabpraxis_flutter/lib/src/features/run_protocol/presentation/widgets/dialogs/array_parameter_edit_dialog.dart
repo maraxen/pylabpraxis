@@ -371,7 +371,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
                                     ? (_editingChipIndex != null
                                         ? theme.colorScheme.secondaryContainer
                                         : theme.colorScheme.primaryContainer)
-                                    : theme.disabledColor.withOpacity(0.12),
+                                    : theme.disabledColor.withAlpha(30),
                             foregroundColor:
                                 (canAddMoreItems || _editingChipIndex != null)
                                     ? (_editingChipIndex != null
@@ -446,7 +446,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
                                   color:
                                       _editingChipIndex == index
                                           ? theme.colorScheme.primary
-                                          : theme.dividerColor.withOpacity(0.5),
+                                          : theme.dividerColor.withAlpha(128),
                                 ),
                               ),
                               child: Row(
@@ -481,7 +481,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
                                       backgroundColor:
                                           _editingChipIndex == index
                                               ? theme.colorScheme.primary
-                                                  .withOpacity(0.2)
+                                                  .withAlpha(51)
                                               : null,
                                       selectedColor:
                                           theme
@@ -504,7 +504,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
                                       onDeleted:
                                           () => _removeItem(context, index),
                                       deleteIconColor: theme.colorScheme.error
-                                          .withOpacity(0.8),
+                                          .withAlpha(210),
                                       materialTapTargetSize:
                                           MaterialTapTargetSize.shrinkWrap,
                                       padding: const EdgeInsets.symmetric(

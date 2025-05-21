@@ -13,4 +13,13 @@ sealed class ProtocolStartEvent with _$ProtocolStartEvent {
 
   /// Event to reset the BLoC to its initial state.
   const factory ProtocolStartEvent.resetStart() = ResetStart;
+
+  const factory ProtocolStartEvent.loadConfiguration({
+    required Map<String, dynamic> preparedConfig,
+  }) = LoadConfiguration;
+
+  const factory ProtocolStartEvent.reportError({
+    required String error,
+    required Map<String, dynamic> preparedConfig,
+  }) = ReportError;
 }

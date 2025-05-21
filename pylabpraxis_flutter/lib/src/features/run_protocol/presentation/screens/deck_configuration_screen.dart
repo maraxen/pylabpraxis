@@ -170,9 +170,9 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                           isSelectionValid // Corrected property name
                               ? () {
                                 context.read<ProtocolWorkflowBloc>().add(
-                                  ProtocolWorkflowEvent.deckConfigSubmittedToWorkflow(
+                                  ProtocolWorkflowEvent.deckConfigSubmitted(
                                     // Assuming this event exists
-                                    layoutPath: selectedLayoutName,
+                                    layoutName: selectedLayoutName,
                                     uploadedFile:
                                         pickedFile, // Corrected property name
                                   ),

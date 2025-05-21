@@ -47,6 +47,10 @@ sealed class ProtocolWorkflowEvent with _$ProtocolWorkflowEvent {
     @Default(false) bool fromReviewScreen,
   }) = GoToStep;
 
+  /// Event to navigate to the previous step in the workflow.
+  const factory ProtocolWorkflowEvent.goToPreviousStep() =
+      GoToPreviousStep; // Added
+
   /// Resets the entire workflow to its initial state, clearing all collected data.
   const factory ProtocolWorkflowEvent.resetWorkflow() = ResetWorkflow;
 

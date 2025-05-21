@@ -153,11 +153,11 @@ class StartProtocolScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: Card(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.7),
+                    color: theme.colorScheme.errorContainer.withAlpha(190),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
-                        color: theme.colorScheme.error.withOpacity(0.5),
+                        color: theme.colorScheme.error.withAlpha(120),
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -177,8 +177,8 @@ class StartProtocolScreen extends StatelessWidget {
                       subtitle: Text(
                         errorMessage,
                         style: TextStyle(
-                          color: theme.colorScheme.onErrorContainer.withOpacity(
-                            0.9,
+                          color: theme.colorScheme.onErrorContainer.withAlpha(
+                            230,
                           ),
                         ),
                       ),
@@ -201,7 +201,7 @@ class StartProtocolScreen extends StatelessWidget {
                             .surfaceContainerLowest, // M3 surface color
                     borderRadius: BorderRadius.circular(12.0),
                     border: Border.all(
-                      color: theme.dividerColor.withOpacity(0.7),
+                      color: theme.dividerColor.withAlpha(190),
                     ),
                   ),
                   child: Scrollbar(
@@ -261,7 +261,7 @@ class StartProtocolScreen extends StatelessWidget {
         if (isLoading &&
             successMessage == null) // Show overlay only if not already success
           Container(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(12),
             child: const Center(child: CircularProgressIndicator()),
           ),
       ],

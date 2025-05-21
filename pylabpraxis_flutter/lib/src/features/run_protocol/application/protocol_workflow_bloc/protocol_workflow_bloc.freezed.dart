@@ -543,38 +543,6 @@ String toString() {
 /// @nodoc
 
 
-class GoToPreviousStep implements ProtocolWorkflowEvent {
-  const GoToPreviousStep();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GoToPreviousStep);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'ProtocolWorkflowEvent.goToPreviousStep()';
-}
-
-
-}
-
-
-
-
-/// @nodoc
-
-
 class GoToStep implements ProtocolWorkflowEvent {
   const GoToStep({required this.targetStep, this.fromReviewScreen = false});
   
@@ -639,6 +607,38 @@ as bool,
 
 
 }
+
+/// @nodoc
+
+
+class GoToPreviousStep implements ProtocolWorkflowEvent {
+  const GoToPreviousStep();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GoToPreviousStep);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ProtocolWorkflowEvent.goToPreviousStep()';
+}
+
+
+}
+
+
+
 
 /// @nodoc
 

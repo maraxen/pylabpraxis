@@ -4,13 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart'; // Updated to BasicParameterEditScreen
+import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/widgets/dialogs/string_parameter_edit_screen.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/widgets/dialogs/array_parameter_edit_dialog.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/widgets/dialogs/dictionary_parameter_edit_screen.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-// Assuming ParameterDefinition is no longer a separate class for this screen,
-// and dialogs will take parameterPath and ParameterConfig.
 
 class ParameterConfigurationScreen extends StatefulWidget {
   const ParameterConfigurationScreen({super.key});
@@ -36,14 +33,10 @@ class _ParameterConfigurationScreenState
         ),
       );
     } else {
-      // Handle error: protocol details not available.
-      // This might involve showing an error in this screen or relying on the BLoC to emit an error state.
-      // For example, dispatch an event to ProtocolParametersBloc to report the issue.
       // context.read<ProtocolParametersBloc>().add(const ProtocolParametersEvent.errorOccurred(message: "Protocol details missing for parameter configuration."));
     }
   }
 
-  // paramData is ParameterConfig from backend model
   void _showEditDialog(
     BuildContext context,
     String paramNameKey,
@@ -51,27 +44,14 @@ class _ParameterConfigurationScreenState
     dynamic currentValue,
   ) {
     final parametersBloc = context.read<ProtocolParametersBloc>();
-
     Widget dialogContent;
 
-    // Ensure your ParameterConfig model has a 'type' field and 'constraints.choices'
     if (paramData.config.type == 'array') {
       dialogContent = ArrayParameterEditDialog(
         parameterPath: paramNameKey,
-        parameterDefinition:
-            paramData, // Pass ParameterConfig as parameterDefinition or similar
-        currentValue:
-            currentValue as List<dynamic>? ??
-            paramData.defaultValue as List<dynamic>? ??
-            [],
-        onChanged: (newValue) {
-          parametersBloc.add(
-            ProtocolParametersEvent.parameterValueChanged(
-              parameterPath: paramNameKey,
-              value: newValue,
-            ),
-          );
-        },
+        parameterDefinition: paramData,
+        // Assuming ArrayParameterEditDialog is updated to not require currentValue and onChanged directly,
+        // and will interact with ProtocolParametersBloc for state.
       );
     } else if (paramData.config.type == 'object' ||
         paramData.config.type == 'dict' ||
@@ -79,87 +59,23 @@ class _ParameterConfigurationScreenState
       dialogContent = DictionaryParameterEditScreen(
         parameterPath: paramNameKey,
         parameterDefinition: paramData,
-        currentValue:
-            currentValue as Map<String, dynamic>? ??
-            paramData.defaultValue as Map<String, dynamic>? ??
-            {},
-        onChanged: (newValue) {
-          parametersBloc.add(
-            ProtocolParametersEvent.parameterValueChanged(
-              parameterPath: paramNameKey,
-              value: newValue,
-            ),
-          );
-        },
+        // Assuming DictionaryParameterEditScreen is updated similarly.
       );
     } else if (paramData.config.type == 'string' &&
-        (paramData.config.constraints?.choices?.isEmpty ?? true)) {
+        (paramData.config.constraints?.array?.isEmpty ?? true)) {
+      // choices -> array
       dialogContent = StringParameterEditScreen(
         parameterPath: paramNameKey,
         parameterDefinition: paramData,
-        currentValue:
+        currentValue: // currentValue was not flagged as an error for StringParameterEditScreen
             currentValue as String? ?? paramData.defaultValue as String? ?? '',
-        onChanged: (newValue) {
-          parametersBloc.add(
-            ProtocolParametersEvent.parameterValueChanged(
-              parameterPath: paramNameKey,
-              value: newValue,
-            ),
-          );
-        },
+        // Assuming StringParameterEditScreen is updated to not require onChanged.
       );
     } else {
-      // Basic types (integer, number, boolean, string with choices)
-      // Using BasicParameterEditScreen as per user's provided code
-      // It expects `parameterDefinition` which should be compatible with `ParameterConfig`
-      // and `parameterPath`.
-      // The BasicParameterEditScreen itself will need to use `widget.parameterConfig.displayName` etc.
-      // instead of `widget.parameterDefinition.name` if `ParameterConfig` doesn't have `name`.
-      // For now, assuming BasicParameterEditScreen is adapted or ParameterConfig is sufficient.
-      // The key is that `paramNameKey` is the path/name.
-
-      // Let's assume BasicParameterEditScreen is updated to take parameterConfig
-      // and parameterPath, and internally uses parameterPath for the name.
-      // If BasicParameterEditScreen strictly needs a 'ParameterDefinition' object with 'name' field,
-      // you'd construct it here.
-      // For now, we pass `paramData` as `parameterDefinition` and `paramNameKey` as `parameterPath`.
-      // The internal implementation of BasicParameterEditScreen must align.
-      // The user provided BasicParameterEditScreen takes `parameterDefinition` and `parameterPath`.
-      // `parameterDefinition` in that context seems to be the `ParameterConfig` object itself,
-      // and it uses `widget.parameterDefinition.displayName`, `widget.parameterDefinition.config.type`.
-      // This implies `ParameterConfig` has `displayName` and a nested `config` object.
-      // This contradicts `protocolDetails.parameters` being `Map<String, ParameterConfig>`.
-
-      // Re-evaluating based on user's BasicParameterEditScreen:
-      // It takes `ParameterDefinition parameterDefinition` and `String parameterPath`.
-      // Inside it uses `widget.parameterDefinition.config.type`, `.displayName`, `.name`.
-      // This means the `ParameterDefinition` class used by the dialog has `name`, `displayName`, and `config` fields.
-      // `protocolDetails.parameters` is `Map<String, ParameterConfig>`, where `ParameterConfig` is the `config` part.
-
-      // We need to construct the `ParameterDefinition` object for the dialog.
-      // Assuming `ParameterConfig` (i.e., `paramData`) has `displayName`, `description`, `type`, `constraints`.
-      // The `name` is `paramNameKey`.
-
-      // This requires a `ParameterDefinition` class that matches the dialog's expectation.
-      // For now, I will assume the dialogs are flexible or will be adapted.
-      // The most straightforward is if dialogs take `parameterPath` and `parameterConfig`.
-      // If BasicParameterEditScreen strictly takes `ParameterDefinition parameterDefinition`,
-      // and that class has `name`, `displayName`, `config` (where config is `ParameterConfig`),
-      // then you'd do:
-      // final uiDefinition = ParameterDefinition(name: paramNameKey, displayName: paramData.displayName, config: paramData);
-      // dialogContent = BasicParameterEditScreen(parameterPath: paramNameKey, parameterDefinition: uiDefinition, ...);
-      // For simplicity, I'll assume dialogs can work with path and config directly.
-      // The user's BasicParameterEditScreen takes `parameterPath` and `parameterDefinition`.
-      // Let's assume `paramData` IS the `parameterDefinition` and `paramNameKey` is `parameterPath`.
-      // The dialog then needs to use `widget.parameterPath` for name, and `widget.parameterDefinition` for other props.
-
       dialogContent = BasicParameterEditScreen(
-        // User provided this screen
-        parameterPath: paramNameKey, // This is the name/key
-        parameterDefinition:
-            paramData, // This is ParameterConfig, which BasicParameterEditScreen uses
+        parameterPath: paramNameKey,
+        parameterDefinition: paramData,
         currentValue: currentValue ?? paramData.defaultValue,
-        // onChanged is handled internally by BasicParameterEditScreen by dispatching events
       );
     }
 
@@ -182,14 +98,15 @@ class _ParameterConfigurationScreenState
           onPressed: () {
             context.read<ProtocolWorkflowBloc>().add(
               const ProtocolWorkflowEvent.goToPreviousStep(),
-            ); // Corrected
+            );
           },
         ),
       ),
       body: BlocConsumer<ProtocolParametersBloc, ProtocolParametersState>(
         listener: (context, state) {
+          // Use public factory names for type checks, as intended by Freezed
           if (state is ProtocolParametersError) {
-            // Use public factory name
+            // Using public factory name
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Parameter error: ${state.message}'),
@@ -197,7 +114,7 @@ class _ParameterConfigurationScreenState
               ),
             );
           } else if (state is ProtocolParametersLoaded) {
-            // Use public factory name
+            // Using public factory name
             context.read<ProtocolWorkflowBloc>().add(
               ProtocolWorkflowEvent.updateStepValidity(
                 isValid: state.isFormValid,
@@ -206,25 +123,40 @@ class _ParameterConfigurationScreenState
           }
         },
         builder: (context, state) {
+          // Use public factory names for switch patterns, as intended by Freezed
           return switch (state) {
             ProtocolParametersInitial() => const Center(
+              // Using public factory name
               child: Text('Initializing parameters...'),
-            ), // Use public factory name
+            ),
             ProtocolParametersLoading() => const Center(
+              // Using public factory name
               child: CircularProgressIndicator(),
-            ), // Use public factory name
+            ),
             ProtocolParametersLoaded(
-              // Use public factory name and destructure
               protocolDetails: final protocolDetails,
-              formState: final formState,
+              formState: final formState, // This is RichFormState
               isFormValid: final isFormValid,
-              // requiredParametersCompletionPercent is available if needed
+              requiredParametersCompletionPercent: final _,
             ) =>
               () {
-                // Parameters are a map where key is name, value is ParameterConfig
                 final parametersMap = protocolDetails.parameters;
-                final currentValues = formState.values;
-                final validationErrors = formState.errors;
+
+                // Correctly extract currentValues from formState.parameterStates
+                final Map<String, dynamic> currentValues = formState
+                    .parameterStates
+                    .map(
+                      (key, paramState) =>
+                          MapEntry(key, paramState.currentValue),
+                    );
+
+                // Correctly extract validationErrors from formState.parameterStates
+                final Map<String, String?> validationErrors = formState
+                    .parameterStates
+                    .map(
+                      (key, paramState) =>
+                          MapEntry(key, paramState.validationError),
+                    );
 
                 if (parametersMap.isEmpty) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -233,10 +165,11 @@ class _ParameterConfigurationScreenState
                         isValid: true,
                       ),
                     );
+                    // Ensure parametersSubmitted receives the correct currentValues map
                     context.read<ProtocolWorkflowBloc>().add(
                       ProtocolWorkflowEvent.parametersSubmitted(
-                        parameters: const {},
-                      ), // Corrected
+                        parameters: currentValues,
+                      ), // currentValues is now correctly structured
                     );
                   });
                   return Center(
@@ -261,16 +194,40 @@ class _ParameterConfigurationScreenState
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(8.0),
-                        itemCount: parametersMap.length,
+                        itemCount:
+                            parametersMap
+                                .length, // This should be formState.parameterStates.length if grouped parameters are flattened into parameterStates
+                        // Or, if parametersMap from protocolDetails is the definitive list of what *can* be configured:
+                        // itemCount: parametersMap.length,
                         itemBuilder: (context, index) {
-                          final paramNameKey = parametersMap.keys.elementAt(
-                            index,
-                          );
+                          // Ensure we are iterating over the keys that exist in formState.parameterStates
+                          // If parametersMap is the source of truth for UI listing:
+                          final paramNameKeyFromDetails = parametersMap.keys
+                              .elementAt(index);
                           final paramConfigData = parametersMap.values
-                              .elementAt(index); // This is ParameterConfig
+                              .elementAt(index);
 
-                          final currentValue = currentValues[paramNameKey];
-                          final errorText = validationErrors[paramNameKey];
+                          // Get the state for this parameter path from RichFormState
+                          final formParamState =
+                              formState
+                                  .parameterStates[paramNameKeyFromDetails];
+                          final currentValue =
+                              formParamState
+                                  ?.currentValue; // Use value from RichFormState
+                          final errorText =
+                              formParamState
+                                  ?.validationError; // Use error from RichFormState
+
+                          // Derive a parameter definition from the config
+                          final parameterDefinition = ParameterDefinition(
+                            name:
+                                paramNameKeyFromDetails, // TODO eventually have uuid
+                            displayName: paramConfigData.displayName ?? '',
+                            description: paramConfigData.description ?? '',
+                            defaultValue: paramConfigData.defaultValue,
+                            config: paramConfigData,
+                            // Map other necessary fields from paramConfigData
+                          );
 
                           return Card(
                             margin: const EdgeInsets.symmetric(
@@ -279,7 +236,8 @@ class _ParameterConfigurationScreenState
                             ),
                             child: ListTile(
                               title: Text(
-                                paramConfigData.displayName,
+                                paramConfigData.displayName ??
+                                    '', // Or formParamState.definition.displayName
                                 style: theme.textTheme.titleMedium,
                               ),
                               subtitle: Column(
@@ -300,7 +258,9 @@ class _ParameterConfigurationScreenState
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                  if (errorText != null && errorText.isNotEmpty)
+                                  if (errorText != null &&
+                                      errorText
+                                          .isNotEmpty) // errorText from validationErrors map or formParamState
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4.0),
                                       child: Text(
@@ -320,9 +280,9 @@ class _ParameterConfigurationScreenState
                               onTap:
                                   () => _showEditDialog(
                                     context,
-                                    paramNameKey,
-                                    paramConfigData,
-                                    currentValue,
+                                    paramNameKeyFromDetails, // Use the key from parametersMap iteration
+                                    parameterDefinition, // This is ParameterDefinition
+                                    currentValue, // Pass the current value from RichFormState
                                   ),
                             ),
                           );
@@ -340,8 +300,8 @@ class _ParameterConfigurationScreenState
                                 ? () {
                                   context.read<ProtocolWorkflowBloc>().add(
                                     ProtocolWorkflowEvent.parametersSubmitted(
-                                      // Corrected
-                                      parameters: currentValues,
+                                      parameters:
+                                          currentValues, // Pass the correctly mapped currentValues
                                     ),
                                   );
                                 }
@@ -353,7 +313,7 @@ class _ParameterConfigurationScreenState
                 );
               }(),
             ProtocolParametersError(message: final message) => Center(
-              // Use public factory name
+              // Using public factory name for pattern
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -378,7 +338,6 @@ class _ParameterConfigurationScreenState
                         if (details != null) {
                           context.read<ProtocolParametersBloc>().add(
                             ProtocolParametersEvent.loadProtocolParameters(
-                              // Corrected
                               protocolDetails: details,
                               existingConfiguredParameters:
                                   wfState.configuredParameters,

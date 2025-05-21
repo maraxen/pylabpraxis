@@ -984,8 +984,8 @@ $ProtocolParametersStateCopyWith(ProtocolParametersState _, $Res Function(Protoc
 /// @nodoc
 
 
-class _ProtocolParametersInitial implements ProtocolParametersState {
-  const _ProtocolParametersInitial();
+class ProtocolParametersInitial implements ProtocolParametersState {
+  const ProtocolParametersInitial();
   
 
 
@@ -995,7 +995,7 @@ class _ProtocolParametersInitial implements ProtocolParametersState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParametersInitial);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParametersInitial);
 }
 
 
@@ -1016,8 +1016,8 @@ String toString() {
 /// @nodoc
 
 
-class _ProtocolParametersLoading implements ProtocolParametersState {
-  const _ProtocolParametersLoading();
+class ProtocolParametersLoading implements ProtocolParametersState {
+  const ProtocolParametersLoading();
   
 
 
@@ -1027,7 +1027,7 @@ class _ProtocolParametersLoading implements ProtocolParametersState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParametersLoading);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParametersLoading);
 }
 
 
@@ -1048,27 +1048,26 @@ String toString() {
 /// @nodoc
 
 
-class _ProtocolParametersLoaded implements ProtocolParametersState {
-  const _ProtocolParametersLoaded({required this.protocolDetails, required this.formState, this.isFormValid = false, this.requiredParametersCompletionPercent = 0.0});
+class ProtocolParametersLoaded implements ProtocolParametersState {
+  const ProtocolParametersLoaded({required this.protocolDetails, required this.formState, this.isFormValid = false, this.requiredParametersCompletionPercent = 0.0});
   
 
  final  ProtocolDetails protocolDetails;
  final  RichFormState formState;
 @JsonKey() final  bool isFormValid;
-// Overall form validity (all fields valid by their constraints)
 @JsonKey() final  double requiredParametersCompletionPercent;
 
 /// Create a copy of ProtocolParametersState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$ProtocolParametersLoadedCopyWith<_ProtocolParametersLoaded> get copyWith => __$ProtocolParametersLoadedCopyWithImpl<_ProtocolParametersLoaded>(this, _$identity);
+$ProtocolParametersLoadedCopyWith<ProtocolParametersLoaded> get copyWith => _$ProtocolParametersLoadedCopyWithImpl<ProtocolParametersLoaded>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParametersLoaded&&(identical(other.protocolDetails, protocolDetails) || other.protocolDetails == protocolDetails)&&(identical(other.formState, formState) || other.formState == formState)&&(identical(other.isFormValid, isFormValid) || other.isFormValid == isFormValid)&&(identical(other.requiredParametersCompletionPercent, requiredParametersCompletionPercent) || other.requiredParametersCompletionPercent == requiredParametersCompletionPercent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParametersLoaded&&(identical(other.protocolDetails, protocolDetails) || other.protocolDetails == protocolDetails)&&(identical(other.formState, formState) || other.formState == formState)&&(identical(other.isFormValid, isFormValid) || other.isFormValid == isFormValid)&&(identical(other.requiredParametersCompletionPercent, requiredParametersCompletionPercent) || other.requiredParametersCompletionPercent == requiredParametersCompletionPercent));
 }
 
 
@@ -1084,8 +1083,8 @@ String toString() {
 }
 
 /// @nodoc
-abstract mixin class _$ProtocolParametersLoadedCopyWith<$Res> implements $ProtocolParametersStateCopyWith<$Res> {
-  factory _$ProtocolParametersLoadedCopyWith(_ProtocolParametersLoaded value, $Res Function(_ProtocolParametersLoaded) _then) = __$ProtocolParametersLoadedCopyWithImpl;
+abstract mixin class $ProtocolParametersLoadedCopyWith<$Res> implements $ProtocolParametersStateCopyWith<$Res> {
+  factory $ProtocolParametersLoadedCopyWith(ProtocolParametersLoaded value, $Res Function(ProtocolParametersLoaded) _then) = _$ProtocolParametersLoadedCopyWithImpl;
 @useResult
 $Res call({
  ProtocolDetails protocolDetails, RichFormState formState, bool isFormValid, double requiredParametersCompletionPercent
@@ -1096,17 +1095,17 @@ $ProtocolDetailsCopyWith<$Res> get protocolDetails;$RichFormStateCopyWith<$Res> 
 
 }
 /// @nodoc
-class __$ProtocolParametersLoadedCopyWithImpl<$Res>
-    implements _$ProtocolParametersLoadedCopyWith<$Res> {
-  __$ProtocolParametersLoadedCopyWithImpl(this._self, this._then);
+class _$ProtocolParametersLoadedCopyWithImpl<$Res>
+    implements $ProtocolParametersLoadedCopyWith<$Res> {
+  _$ProtocolParametersLoadedCopyWithImpl(this._self, this._then);
 
-  final _ProtocolParametersLoaded _self;
-  final $Res Function(_ProtocolParametersLoaded) _then;
+  final ProtocolParametersLoaded _self;
+  final $Res Function(ProtocolParametersLoaded) _then;
 
 /// Create a copy of ProtocolParametersState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? protocolDetails = null,Object? formState = null,Object? isFormValid = null,Object? requiredParametersCompletionPercent = null,}) {
-  return _then(_ProtocolParametersLoaded(
+  return _then(ProtocolParametersLoaded(
 protocolDetails: null == protocolDetails ? _self.protocolDetails : protocolDetails // ignore: cast_nullable_to_non_nullable
 as ProtocolDetails,formState: null == formState ? _self.formState : formState // ignore: cast_nullable_to_non_nullable
 as RichFormState,isFormValid: null == isFormValid ? _self.isFormValid : isFormValid // ignore: cast_nullable_to_non_nullable
@@ -1139,8 +1138,8 @@ $RichFormStateCopyWith<$Res> get formState {
 /// @nodoc
 
 
-class _ProtocolParametersError implements ProtocolParametersState {
-  const _ProtocolParametersError({required this.message});
+class ProtocolParametersError implements ProtocolParametersState {
+  const ProtocolParametersError({required this.message});
   
 
  final  String message;
@@ -1149,13 +1148,13 @@ class _ProtocolParametersError implements ProtocolParametersState {
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$ProtocolParametersErrorCopyWith<_ProtocolParametersError> get copyWith => __$ProtocolParametersErrorCopyWithImpl<_ProtocolParametersError>(this, _$identity);
+$ProtocolParametersErrorCopyWith<ProtocolParametersError> get copyWith => _$ProtocolParametersErrorCopyWithImpl<ProtocolParametersError>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParametersError&&(identical(other.message, message) || other.message == message));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParametersError&&(identical(other.message, message) || other.message == message));
 }
 
 
@@ -1171,8 +1170,8 @@ String toString() {
 }
 
 /// @nodoc
-abstract mixin class _$ProtocolParametersErrorCopyWith<$Res> implements $ProtocolParametersStateCopyWith<$Res> {
-  factory _$ProtocolParametersErrorCopyWith(_ProtocolParametersError value, $Res Function(_ProtocolParametersError) _then) = __$ProtocolParametersErrorCopyWithImpl;
+abstract mixin class $ProtocolParametersErrorCopyWith<$Res> implements $ProtocolParametersStateCopyWith<$Res> {
+  factory $ProtocolParametersErrorCopyWith(ProtocolParametersError value, $Res Function(ProtocolParametersError) _then) = _$ProtocolParametersErrorCopyWithImpl;
 @useResult
 $Res call({
  String message
@@ -1183,17 +1182,17 @@ $Res call({
 
 }
 /// @nodoc
-class __$ProtocolParametersErrorCopyWithImpl<$Res>
-    implements _$ProtocolParametersErrorCopyWith<$Res> {
-  __$ProtocolParametersErrorCopyWithImpl(this._self, this._then);
+class _$ProtocolParametersErrorCopyWithImpl<$Res>
+    implements $ProtocolParametersErrorCopyWith<$Res> {
+  _$ProtocolParametersErrorCopyWithImpl(this._self, this._then);
 
-  final _ProtocolParametersError _self;
-  final $Res Function(_ProtocolParametersError) _then;
+  final ProtocolParametersError _self;
+  final $Res Function(ProtocolParametersError) _then;
 
 /// Create a copy of ProtocolParametersState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
-  return _then(_ProtocolParametersError(
+  return _then(ProtocolParametersError(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,
   ));

@@ -179,6 +179,152 @@ String toString() {
 
 
 /// @nodoc
+
+
+class LoadConfiguration implements ProtocolStartEvent {
+  const LoadConfiguration({required final  Map<String, dynamic> preparedConfig}): _preparedConfig = preparedConfig;
+  
+
+ final  Map<String, dynamic> _preparedConfig;
+ Map<String, dynamic> get preparedConfig {
+  if (_preparedConfig is EqualUnmodifiableMapView) return _preparedConfig;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_preparedConfig);
+}
+
+
+/// Create a copy of ProtocolStartEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LoadConfigurationCopyWith<LoadConfiguration> get copyWith => _$LoadConfigurationCopyWithImpl<LoadConfiguration>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoadConfiguration&&const DeepCollectionEquality().equals(other._preparedConfig, _preparedConfig));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preparedConfig));
+
+@override
+String toString() {
+  return 'ProtocolStartEvent.loadConfiguration(preparedConfig: $preparedConfig)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $LoadConfigurationCopyWith<$Res> implements $ProtocolStartEventCopyWith<$Res> {
+  factory $LoadConfigurationCopyWith(LoadConfiguration value, $Res Function(LoadConfiguration) _then) = _$LoadConfigurationCopyWithImpl;
+@useResult
+$Res call({
+ Map<String, dynamic> preparedConfig
+});
+
+
+
+
+}
+/// @nodoc
+class _$LoadConfigurationCopyWithImpl<$Res>
+    implements $LoadConfigurationCopyWith<$Res> {
+  _$LoadConfigurationCopyWithImpl(this._self, this._then);
+
+  final LoadConfiguration _self;
+  final $Res Function(LoadConfiguration) _then;
+
+/// Create a copy of ProtocolStartEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? preparedConfig = null,}) {
+  return _then(LoadConfiguration(
+preparedConfig: null == preparedConfig ? _self._preparedConfig : preparedConfig // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class ReportError implements ProtocolStartEvent {
+  const ReportError({required this.error, required final  Map<String, dynamic> preparedConfig}): _preparedConfig = preparedConfig;
+  
+
+ final  String error;
+ final  Map<String, dynamic> _preparedConfig;
+ Map<String, dynamic> get preparedConfig {
+  if (_preparedConfig is EqualUnmodifiableMapView) return _preparedConfig;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_preparedConfig);
+}
+
+
+/// Create a copy of ProtocolStartEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ReportErrorCopyWith<ReportError> get copyWith => _$ReportErrorCopyWithImpl<ReportError>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReportError&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._preparedConfig, _preparedConfig));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,error,const DeepCollectionEquality().hash(_preparedConfig));
+
+@override
+String toString() {
+  return 'ProtocolStartEvent.reportError(error: $error, preparedConfig: $preparedConfig)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ReportErrorCopyWith<$Res> implements $ProtocolStartEventCopyWith<$Res> {
+  factory $ReportErrorCopyWith(ReportError value, $Res Function(ReportError) _then) = _$ReportErrorCopyWithImpl;
+@useResult
+$Res call({
+ String error, Map<String, dynamic> preparedConfig
+});
+
+
+
+
+}
+/// @nodoc
+class _$ReportErrorCopyWithImpl<$Res>
+    implements $ReportErrorCopyWith<$Res> {
+  _$ReportErrorCopyWithImpl(this._self, this._then);
+
+  final ReportError _self;
+  final $Res Function(ReportError) _then;
+
+/// Create a copy of ProtocolStartEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = null,Object? preparedConfig = null,}) {
+  return _then(ReportError(
+error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as String,preparedConfig: null == preparedConfig ? _self._preparedConfig : preparedConfig // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$ProtocolStartState {
 
 

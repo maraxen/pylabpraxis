@@ -19,6 +19,8 @@ _ParameterConfig _$ParameterConfigFromJson(Map<String, dynamic> json) =>
       description: json['description'] as String?,
       defaultValue: json['defaultValue'],
       group: json['group'] as String?,
+      units: json['units'] as String?,
+      format: json['format'] as String?,
     );
 
 Map<String, dynamic> _$ParameterConfigToJson(_ParameterConfig instance) =>
@@ -29,6 +31,8 @@ Map<String, dynamic> _$ParameterConfigToJson(_ParameterConfig instance) =>
       'description': instance.description,
       'defaultValue': instance.defaultValue,
       'group': instance.group,
+      'units': instance.units,
+      'format': instance.format,
     };
 
 _ParameterDefinition _$ParameterDefinitionFromJson(Map<String, dynamic> json) =>

@@ -110,7 +110,7 @@ class _ProtocolSelectionScreenState extends State<ProtocolSelectionScreen> {
                       ),
                       onTap: () {
                         context.read<ProtocolWorkflowBloc>().add(
-                          ProtocolWorkflowEvent.protocolSelectedInWorkflow(
+                          ProtocolWorkflowEvent.protocolSelected(
                             // Ensure this event exists
                             selectedProtocol: protocol,
                           ), // Pass the selected protocol (type ProtocolInfo)

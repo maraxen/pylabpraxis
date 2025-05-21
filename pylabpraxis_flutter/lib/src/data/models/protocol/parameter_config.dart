@@ -20,6 +20,8 @@ sealed class ParameterConfig with _$ParameterConfig {
     String? description,
     dynamic defaultValue,
     String? group,
+    String? units,
+    String? format,
   }) = _ParameterConfig;
 
   factory ParameterConfig.fromJson(Map<String, dynamic> json) =>

@@ -52,19 +52,19 @@ class ProtocolParametersBloc
   ProtocolParametersState get currentState => state;
 
   // Helper getter to check if the current state is loaded
-  bool get isStateLoaded => state is _ProtocolParametersLoaded;
+  bool get isStateLoaded => state is ProtocolParametersLoaded;
 
   // Helper getter to get completion percent
   double get completionPercent =>
-      state is _ProtocolParametersLoaded
-          ? (state as _ProtocolParametersLoaded)
+      state is ProtocolParametersLoaded
+          ? (state as ProtocolParametersLoaded)
               .requiredParametersCompletionPercent
           : 0.0;
 
   // Helper getter to get form validity
   bool get isFormValid =>
-      state is _ProtocolParametersLoaded
-          ? (state as _ProtocolParametersLoaded).isFormValid
+      state is ProtocolParametersLoaded
+          ? (state as ProtocolParametersLoaded).isFormValid
           : false;
 
   Future<void> _onLoadProtocolParameters(
@@ -99,9 +99,9 @@ class ProtocolParametersBloc
     ValidateParameterValue event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
+    if (state is! ProtocolParametersLoaded) return;
 
-    final loadedState = state as _ProtocolParametersLoaded;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
 
@@ -137,9 +137,9 @@ class ProtocolParametersBloc
     ParameterValueChanged event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
+    if (state is! ProtocolParametersLoaded) return;
 
-    final loadedState = state as _ProtocolParametersLoaded;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
 
@@ -227,8 +227,8 @@ class ProtocolParametersBloc
     AddArrayItem event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
     FormParameterState? arrayParamState = currentFormState[parameterPath];
@@ -300,8 +300,8 @@ class ProtocolParametersBloc
     AddArrayItemWithValue event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
     FormParameterState? arrayParamState = currentFormState[parameterPath];
@@ -343,8 +343,8 @@ class ProtocolParametersBloc
     RemoveArrayItem event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
     FormParameterState? arrayParamState = currentFormState[parameterPath];
@@ -390,8 +390,8 @@ class ProtocolParametersBloc
     ReorderArrayItem event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final parameterPath = event.parameterPath;
     FormParameterState? arrayParamState = currentFormState[parameterPath];
@@ -441,8 +441,8 @@ class ProtocolParametersBloc
     AddDictionaryPair event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final paramPath = event.parameterPath;
     FormParameterState? dictParamState = currentFormState[paramPath];
@@ -522,8 +522,8 @@ class ProtocolParametersBloc
     AddDictionaryPairWithKey event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final paramPath = event.parameterPath;
     FormParameterState? dictParamState = currentFormState[paramPath];
@@ -601,8 +601,8 @@ class ProtocolParametersBloc
     RemoveDictionaryPair event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final paramPath = event.parameterPath;
     FormParameterState? dictParamState = currentFormState[paramPath];
@@ -644,8 +644,8 @@ class ProtocolParametersBloc
     UpdateDictionaryKey event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final paramPath = event.parameterPath;
     FormParameterState? dictParamState = currentFormState[paramPath];
@@ -699,8 +699,8 @@ class ProtocolParametersBloc
     UpdateDictionaryValue event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final paramPath = event.parameterPath;
     FormParameterState? dictParamState = currentFormState[paramPath];
@@ -748,8 +748,8 @@ class ProtocolParametersBloc
     AssignValueToDictionaryKey event,
     Emitter<ProtocolParametersState> emit,
   ) async {
-    if (state is! _ProtocolParametersLoaded) return;
-    final loadedState = state as _ProtocolParametersLoaded;
+    if (state is! ProtocolParametersLoaded) return;
+    final loadedState = state as ProtocolParametersLoaded;
     final currentFormState = loadedState.formState;
     final dictParameterPath = event.dictParameterPath;
     FormParameterState? dictParamState = currentFormState[dictParameterPath];
