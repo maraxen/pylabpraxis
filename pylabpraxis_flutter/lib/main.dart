@@ -91,8 +91,9 @@ Future<void> setupServiceLocator() async {
       return const FlutterSecureStorage(
         webOptions: WebOptions(
           // IMPORTANT: These are placeholders. Replace with your actual secure keys.
-          wrapKey: 'YOUR_SECURE_BASE64_ENCODED_WRAP_KEY_HERE', // REPLACE THIS
-          wrapKeyIv: 'YOUR_SECURE_BASE64_IV_HERE', // REPLACE THIS
+          wrapKey:
+              'HfOqhiH1bqQiKhXkL4BAFyKtWkdH_o10PTQflvEY6aM', // REPLACE THIS
+          wrapKeyIv: 'ZL3K9IfeCOqdjP+VM6y4aA==', // REPLACE THIS
         ),
       );
     } else {

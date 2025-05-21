@@ -30,16 +30,12 @@ const String protocolsRouteName = 'protocols';
 const String assetManagementRouteName = 'assetManagement';
 const String settingsRouteName = 'settings';
 
-// Workflow Step Sub-Routes (now top-level names for direct navigation into the shell)
-// The ShellRoute builder will handle the ProtocolInfo passed as 'extra'
 const String parameterConfigurationRouteName = 'parameterConfiguration';
 const String assetAssignmentRouteName = 'assetAssignment';
 const String deckConfigurationRouteName = 'deckConfiguration';
 const String reviewAndPrepareRouteName = 'reviewAndPrepare';
 const String startProtocolRouteName = 'startProtocol';
 
-// This name can be used by ProtocolsScreen to target the first step of the workflow.
-// It should match the name of the GoRoute for the first step (e.g., parameterConfigurationRouteName).
 const String beginProtocolWorkflowRouteName = parameterConfigurationRouteName;
 
 // Navigator keys
@@ -48,11 +44,9 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
 );
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'shell',
-); // For main AppShell
+);
 final GlobalKey<NavigatorState> _workflowShellNavigatorKey =
-    GlobalKey<NavigatorState>(
-      debugLabel: 'workflowShell',
-    ); // For Workflow Shell
+    GlobalKey<NavigatorState>(debugLabel: 'workflowShell');
 
 class AppGoRouter {
   final AuthBloc authBloc;
@@ -61,12 +55,38 @@ class AppGoRouter {
   AppGoRouter(this.authBloc) {
     router = GoRouter(
       navigatorKey: _rootNavigatorKey,
-      initialLocation: '/splash',
+      initialLocation: '/splash', // Always start at splash
       debugLogDiagnostics: true,
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
       redirect: (BuildContext context, GoRouterState state) {
         final authState = authBloc.state;
-        final currentLocation = state.uri.toString();
+        final uri = state.uri; // This is the full URI go_router is considering
+        final currentPath = uri.path; // The path part, e.g. /login, /splash
+
+        // For web (hash strategy), OIDC params are often in the fragment.
+        // GoRouter's state.uri often reflects the fragment as its "location".
+        // We need to parse parameters from this effective location string.
+        String effectiveLocationString = uri.toString();
+        if (effectiveLocationString.startsWith('/')) {
+          effectiveLocationString = effectiveLocationString.substring(1);
+        }
+
+        Map<String, String> effectiveParams = {};
+        if (effectiveLocationString.contains('=')) {
+          // Basic check for query-like string
+          try {
+            effectiveParams = Uri.splitQueryString(effectiveLocationString);
+          } catch (e) {
+            print("Error parsing effectiveLocationString as query string: $e");
+          }
+        }
+
+        final bool isOidcCallbackUrl =
+            effectiveParams.containsKey('state') &&
+            (effectiveParams.containsKey('code') ||
+                effectiveParams.containsKey('id_token') ||
+                effectiveParams.containsKey('session_state'));
+
         final isAuthenticating =
             authState is AuthInitial || authState is AuthLoading;
         final isAuthenticated = authState is AuthAuthenticated;
@@ -74,42 +94,75 @@ class AppGoRouter {
             authState is AuthUnauthenticated || authState is AuthFailure;
 
         print(
-          'Redirect Check: AuthState: $authState, Location: $currentLocation, MatchedLocation: ${state.matchedLocation}',
-        ); // TODO: Remove in production and move to logging
+          'Redirect Check: AuthState: $authState, CurrentPath: $currentPath, isOidcCallback: $isOidcCallbackUrl, EffectiveLocationParams: $effectiveParams, GoRouter URI: $uri, MatchedLoc: ${state.matchedLocation}',
+        );
 
-        if (isAuthenticating && currentLocation != '/splash') {
-          print('Redirecting to /splash (auth initial/loading)');
-          return '/splash';
-        }
-        if (currentLocation == '/splash' && !isAuthenticating) {
-          if (isAuthenticated) {
-            print('Redirecting from /splash to /home (authenticated)');
-            return '/home';
-          } else {
+        // Scenario 1: AuthBloc is currently working (AuthInitial or AuthLoading)
+        if (isAuthenticating) {
+          if (isOidcCallbackUrl) {
             print(
-              'Redirecting from /splash to /login (unauthenticated/failure)',
+              'OIDC callback detected during auth processing (AuthInitial/AuthLoading). No redirect from router.',
             );
-            return '/login';
+            return null; // Allow AuthBloc to process the OIDC callback URL
           }
+          if (authState is AuthLoading && currentPath == '/login') {
+            print(
+              'AuthLoading on /login (OIDC redirect likely in progress). No redirect from router.',
+            );
+            return null;
+          }
+          if (currentPath != '/splash') {
+            print(
+              'Authenticating (not OIDC callback/initiation from login), not on splash. Redirecting to /splash.',
+            );
+            return '/splash';
+          }
+          print(
+            'Authenticating, on splash or OIDC callback/initiation being handled. No redirect from this block.',
+          );
+          return null;
         }
 
+        // Scenario 2: User is authenticated
         if (isAuthenticated) {
-          if (currentLocation == '/login') {
-            print('Redirecting to /home (authenticated on login page)');
+          if (currentPath == '/login' ||
+              currentPath == '/splash' ||
+              isOidcCallbackUrl) {
+            // Also handle if somehow authenticated on callback URL
+            print(
+              'Authenticated. Redirecting from $currentPath (or OIDC callback) to /home.',
+            );
             return '/home';
           }
-        } else if (isUnauthenticated) {
-          // Allow /splash and /login for unauthenticated users.
-          // For any other route, redirect to login.
-          if (currentLocation != '/login' && currentLocation != '/splash') {
+          print(
+            'Authenticated. Not on login/splash/OIDC callback. No redirect.',
+          );
+          return null;
+        }
+
+        // Scenario 3: User is unauthenticated (AuthUnauthenticated or AuthFailure)
+        if (isUnauthenticated) {
+          if (isOidcCallbackUrl) {
             print(
-              'Redirecting to /login (unauthenticated, not on login/splash)',
+              'OIDC callback processed, but result is Unauthenticated/Failure. Redirecting to /login.',
             );
             return '/login';
           }
+          if (currentPath == '/splash') {
+            print('Unauthenticated. On splash. Redirecting to /login.');
+            return '/login';
+          }
+          if (currentPath != '/login') {
+            print(
+              'Unauthenticated (not OIDC callback). Not on login (and not splash). Redirecting to /login.',
+            );
+            return '/login';
+          }
+          print('Unauthenticated. On login. No redirect from this block.');
+          return null;
         }
 
-        print('No redirection needed for $currentLocation');
+        print('No redirect conditions met. Path: $currentPath');
         return null;
       },
       routes: <RouteBase>[
@@ -127,7 +180,6 @@ class AppGoRouter {
             return const LoginScreen();
           },
         ),
-        // Main App Shell
         ShellRoute(
           navigatorKey: _shellNavigatorKey,
           builder: (BuildContext context, GoRouterState state, Widget child) {
@@ -164,26 +216,18 @@ class AppGoRouter {
             ),
           ],
         ),
-        // Protocol Workflow ShellRoute
-        // This ShellRoute wraps all steps of the protocol workflow.
-        // Navigation to '/run-protocol-workflow/parameters' (or other steps)
-        // will render RunProtocolWorkflowScreen with the specific step screen as its child.
         ShellRoute(
           navigatorKey: _workflowShellNavigatorKey,
           builder: (BuildContext context, GoRouterState state, Widget child) {
-            // RunProtocolWorkflowScreen will act as the shell for the steps.
-            // It needs to receive the ProtocolInfo passed from ProtocolsScreen.
-            // 'state.extra' here comes from the GoRoute that matched (e.g., parameters, assets).
             final protocolInfo = state.extra as ProtocolInfo?;
             return RunProtocolWorkflowScreen(
               protocolInfo: protocolInfo,
-              child: child, // The current step's screen
+              child: child,
             );
           },
           routes: <RouteBase>[
             GoRoute(
-              path:
-                  '/run-protocol-workflow/parameters', // Full path for the first step
+              path: '/run-protocol-workflow/parameters',
               name: parameterConfigurationRouteName,
               builder: (BuildContext context, GoRouterState state) {
                 return const ParameterConfigurationScreen();
@@ -224,7 +268,9 @@ class AppGoRouter {
           (context, state) => Scaffold(
             appBar: AppBar(title: const Text('Page Not Found')),
             body: Center(
-              child: Text('Oops! Page not found: ${state.error?.message}'),
+              child: Text(
+                'Oops! Page not found: ${state.error?.message} from path ${state.uri}',
+              ),
             ),
           ),
     );

@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 20),
-            Text('Loading PylabPraxis...'),
+            Text('Loading Praxis...'),
           ],
         ),
       ),
