@@ -20,6 +20,7 @@ _ParameterConfig _$ParameterConfigFromJson(Map<String, dynamic> json) =>
       defaultValue: json['defaultValue'],
       group: json['group'] as String?,
       units: json['units'] as String?,
+      examples: json['examples'] as String?,
       format: json['format'] as String?,
     );
 
@@ -32,6 +33,7 @@ Map<String, dynamic> _$ParameterConfigToJson(_ParameterConfig instance) =>
       'defaultValue': instance.defaultValue,
       'group': instance.group,
       'units': instance.units,
+      'examples': instance.examples,
       'format': instance.format,
     };
 

@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
-// Import item editing dialogs if needed for complex item types
-import 'basic_parameter_edit_dialog.dart';
-import 'string_parameter_edit_screen.dart';
+// TODO: Import item editing dialogs if needed for complex item types
+// import 'basic_parameter_edit_dialog.dart';
+// import 'string_parameter_edit_screen.dart';
 
 /// A full-screen dialog for editing array parameters using InputChips.
 class ArrayParameterEditDialog extends StatefulWidget {
@@ -37,28 +37,24 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
 
   ParameterConstraints? get arrayConstraints =>
       widget.parameterDefinition.config.constraints;
-  Map<String, dynamic>? get arrayConstraintsMap =>
-      widget.parameterDefinition.config.constraints?.valueConstraints;
-  ParameterConstraints? get itemConstraints =>
-      ParameterConstraints.fromMap(arrayConstraintsMap!);
 
   void _validateAddItemInput(String value, List<dynamic> currentItems) {
     String? error;
     if (value.trim().isEmpty) {
       // Basic check for empty input before type validation
       // error = "Item value cannot be empty."; // Only if items themselves are required to be non-empty
-    } else if (itemConstraints != null) {
+    } else if (arrayConstraints != null) {
       final tempItemDef = ParameterDefinition(
         name: "item_validator",
         config: ParameterConfig(
-          type: itemConstraints!.type ?? "string",
-          constraints: itemConstraints,
+          type: arrayConstraints!.type ?? "string",
+          constraints: arrayConstraints,
         ),
       );
       // Use the BLoC's validation logic if possible, or replicate parts of it.
       // For simplicity, basic type checks here.
       // This validation should ideally be more robust and align with _validateParameterValue in BLoC
-      switch (itemConstraints!.type) {
+      switch (arrayConstraints!.type) {
         case 'integer':
           if (int.tryParse(value) == null) error = 'Must be a valid integer.';
           break;
@@ -91,18 +87,18 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
 
     if (_addItemValidationError == null && valueString.isNotEmpty) {
       dynamic valueToAdd = valueString;
-      if (itemConstraints != null) {
-        if (itemConstraints!.type == 'integer') {
+      if (arrayConstraints != null) {
+        if (arrayConstraints!.type == 'integer') {
           valueToAdd = int.tryParse(valueString) ?? valueString;
-        } else if (itemConstraints!.type == 'float' ||
-            itemConstraints!.type == 'number') {
+        } else if (arrayConstraints!.type == 'float' ||
+            arrayConstraints!.type == 'number') {
           valueToAdd = double.tryParse(valueString) ?? valueString;
-        } else if (itemConstraints!.type == 'boolean') {
+        } else if (arrayConstraints!.type == 'boolean') {
           if (valueString.toLowerCase() == 'true') {
             valueToAdd = true;
-          } else if (valueString.toLowerCase() == 'false')
+          } else if (valueString.toLowerCase() == 'false') {
             valueToAdd = false;
-          else {
+          } else {
             /* Invalid boolean string, validation should catch */
           }
         }
@@ -166,12 +162,12 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
   void _startEditChip(int index, dynamic currentValue) {
     // For simple types (string, number, boolean), edit inline using the top text field.
     // For complex types (nested array/dict as items), a new dialog would be needed.
-    if (itemConstraints != null &&
-        (itemConstraints!.type == 'string' ||
-            itemConstraints!.type == 'integer' ||
-            itemConstraints!.type == 'float' ||
-            itemConstraints!.type == 'number' ||
-            itemConstraints!.type == 'boolean')) {
+    if (arrayConstraints != null &&
+        (arrayConstraints!.type == 'string' ||
+            arrayConstraints!.type == 'integer' ||
+            arrayConstraints!.type == 'float' ||
+            arrayConstraints!.type == 'number' ||
+            arrayConstraints!.type == 'boolean')) {
       setState(() {
         _editingChipIndex = index;
         _editingChipOriginalValue = currentValue?.toString() ?? "";
@@ -202,12 +198,12 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
     }
   }
 
-  void _reorderItem(BuildContext context, int oldIndex, int targetIndex) {
+  void _reorderItem(BuildContext context, int oldIndex, int newIndex) {
     context.read<ProtocolParametersBloc>().add(
       ProtocolParametersEvent.reorderArrayItem(
         parameterPath: widget.parameterPath,
         oldIndex: oldIndex,
-        targetIndex: targetIndex,
+        newIndex: newIndex,
       ),
     );
     if (_editingChipIndex == oldIndex) {
@@ -248,7 +244,7 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
           );
         }
 
-        String itemTypeName = itemConstraints?.type ?? "item";
+        String itemTypeName = arrayConstraints?.type ?? "item";
         TextInputType keyboardType = TextInputType.text;
         if (itemTypeName == 'integer') {
           keyboardType = TextInputType.number;
@@ -545,10 +541,6 @@ class _ArrayParameterEditDialogState extends State<ArrayParameterEditDialog> {
     _addItemFocusNode.dispose();
     super.dispose();
   }
-}
-
-extension on ParameterConstraints? {
-  get uniqueItems => this?.uniqueItems ?? false;
 }
 
 Future<void> showArrayParameterEditDialog({

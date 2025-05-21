@@ -466,9 +466,9 @@ class ProtocolParametersBloc
     final valueConstraints =
         dictParamState.definition?.config.constraints?.valueConstraints;
     if (valueConstraints != null) {
-      newValue = valueConstraints['defaultValue'];
+      newValue = valueConstraints.defaultValue;
       if (newValue == null) {
-        switch (valueConstraints['type']) {
+        switch (valueConstraints.type) {
           case 'string':
             newValue = '';
             break;
@@ -545,9 +545,9 @@ class ProtocolParametersBloc
     final valueConstraints =
         dictParamState.definition?.config.constraints?.valueConstraints;
     if (valueConstraints != null) {
-      defaultValue = valueConstraints['defaultValue'];
+      defaultValue = valueConstraints.defaultValue;
       if (defaultValue == null) {
-        switch (valueConstraints['type']) {
+        switch (valueConstraints.type) {
           case 'string':
             defaultValue = '';
             break;

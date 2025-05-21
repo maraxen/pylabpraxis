@@ -16,44 +16,48 @@ class StartProtocolScreen extends StatelessWidget {
       // AppBar is part of parent workflow screen
       body: BlocConsumer<ProtocolStartBloc, ProtocolStartState>(
         listener: (context, state) {
-          state.mapOrNull(
-            failure:
-                (failureState) => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Protocol Start Failed: ${failureState.error}',
-                    ),
-                    backgroundColor: theme.colorScheme.error,
-                    duration: const Duration(seconds: 5),
-                  ),
+          // Replace mapOrNull with if-else if pattern matching
+          if (state is ProtocolStartFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Protocol Start Failed: ${state.error}'),
+                backgroundColor: theme.colorScheme.error,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          } else if (state is ProtocolStartSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Protocol Started Successfully! Run ID: ${state.response.runId}',
                 ),
-            success: (successState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Protocol Started Successfully! Run ID: ${successState.response.runId}',
-                  ),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              // Notify workflow BLoC that protocol has started
-              context.read<ProtocolWorkflowBloc>().add(
-                ProtocolSuccessfullyStarted(response: successState.response),
-              );
-            },
-          );
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Notify workflow BLoC that protocol has started
+            context.read<ProtocolWorkflowBloc>().add(
+              ProtocolSuccessfullyStarted(response: state.response),
+            );
+          }
         },
         builder: (context, state) {
-          return state.when(
-            initial: () {
+          // Replace when with switch pattern matching
+          // Ensure that ProtocolStartState is a sealed class or that all subtypes are handled.
+          // The class definitions for ProtocolStartInitial, ProtocolStartReady etc.
+          // must be available in this scope.
+          // If they are part of the protocol_start_state.dart which is imported by protocol_start_bloc.dart,
+          // you might need to import protocol_start_state.dart directly here as well,
+          // or ensure protocol_start_bloc.dart exports them.
+          switch (state) {
+            case ProtocolStartInitial():
               // If BLoC is initial, workflow should have initialized it.
               // This screen expects ProtocolStartBloc to be in 'ready' state.
               final wfState = context.read<ProtocolWorkflowBloc>().state;
-              if (wfState.preparedBackendConfig != null) {
+              // Ensure wfState.preparedBackendConfig is not null before accessing it
+              final preparedConfig = wfState.preparedBackendConfig;
+              if (preparedConfig != null) {
                 context.read<ProtocolStartBloc>().add(
-                  InitializeStartScreen(
-                    preparedConfig: wfState.preparedBackendConfig!,
-                  ),
+                  InitializeStartScreen(preparedConfig: preparedConfig),
                 );
               }
               return const Center(
@@ -61,43 +65,58 @@ class StartProtocolScreen extends StatelessWidget {
                   semanticsLabel: "Loading prepared configuration",
                 ),
               );
-            },
-            ready:
-                (preparedConfig) => _buildContent(
-                  context,
-                  preparedConfig,
-                  jsonEncoder,
-                  theme,
-                  isLoading: false,
-                ),
-            startingExecution:
-                (preparedConfig) => _buildContent(
-                  context,
-                  preparedConfig,
-                  jsonEncoder,
-                  theme,
-                  isLoading: true,
-                ),
-            success:
-                (response, preparedConfig) => _buildContent(
-                  context,
-                  preparedConfig,
-                  jsonEncoder,
-                  theme,
-                  isLoading: false,
-                  successMessage:
-                      'Protocol Started: ${response.message} (Run ID: ${response.runId})',
-                ),
-            failure:
-                (error, preparedConfig) => _buildContent(
-                  context,
-                  preparedConfig,
-                  jsonEncoder,
-                  theme,
-                  isLoading: false,
-                  errorMessage: error,
-                ),
-          );
+            case ProtocolStartReady(preparedConfig: final config):
+              return _buildContent(
+                context,
+                config,
+                jsonEncoder,
+                theme,
+                isLoading: false,
+              );
+            case ProtocolStartingExecution(preparedConfig: final config):
+              return _buildContent(
+                context,
+                config,
+                jsonEncoder,
+                theme,
+                isLoading: true,
+              );
+            case ProtocolStartSuccess(
+              response: final response,
+              preparedConfig: final config,
+            ):
+              return _buildContent(
+                context,
+                config,
+                jsonEncoder,
+                theme,
+                isLoading: false,
+                successMessage:
+                    'Protocol Started: ${response.message} (Run ID: ${response.runId})',
+              );
+            case ProtocolStartFailure(
+              error: final errorMsg,
+              preparedConfig: final config,
+            ):
+              // If preparedConfig can be null in ProtocolStartFailure, handle it:
+              final currentConfig = config;
+              return _buildContent(
+                context,
+                currentConfig, // Use a fallback if config is null
+                jsonEncoder,
+                theme,
+                isLoading: false,
+                errorMessage: errorMsg,
+              );
+            // It's good practice to have a default case if not all states are explicitly handled
+            // or if ProtocolStartState is not a sealed class.
+            // However, if ProtocolStartState is sealed and all cases are covered,
+            // the analyzer might tell you a default case is not needed.
+            default:
+              // This case should ideally not be reached if all states are handled.
+              // You might want to log an error or show a generic error UI.
+              return const Center(child: Text("Unhandled state"));
+          }
         },
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
 import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
 // Import other dialogs if needed for editing values
 import 'basic_parameter_edit_dialog.dart';
@@ -34,10 +35,11 @@ class _DictionaryParameterEditScreenState
 
   ParameterConstraints? get dictConstraints =>
       widget.parameterDefinition.config.constraints;
-  ParameterConstraints? get keyConstraints => dictConstraints?.keyConstraints;
+  ParameterConstraintsBase? get keyConstraints =>
+      dictConstraints?.keyConstraints;
   // This is the general valueConstraints for the dictionary.
   // Specific keys might have overrides if the schema supports properties/patternProperties.
-  ParameterConstraints? get generalValueConstraints =>
+  ParameterConstraintsBase? get generalValueConstraints =>
       dictConstraints?.valueConstraints;
 
   @override
@@ -189,7 +191,8 @@ class _DictionaryParameterEditScreenState
     // For now, we use the general `generalValueConstraints` for all keys.
     // A more advanced schema might have `properties` or `patternProperties`
     // that define specific constraints for values of certain keys.
-    ParameterConstraints? effectiveValueConstraints = generalValueConstraints;
+    ParameterConstraints? effectiveValueConstraints =
+        generalValueConstraints as ParameterConstraints?;
 
     if (effectiveValueConstraints == null) {
       ScaffoldMessenger.of(contextForDialog).showSnackBar(
@@ -203,12 +206,11 @@ class _DictionaryParameterEditScreenState
       name: key,
       displayName: 'Value for "$key"',
       config: ParameterConfig(
-        type: effectiveValueConstraints.type,
+        type: effectiveValueConstraints.type ?? 'string',
         constraints: effectiveValueConstraints,
         defaultValue: effectiveValueConstraints.defaultValue,
       ),
-      description:
-          effectiveValueConstraints.description ?? "Set value for $key",
+      description: "Set value for $key",
     );
 
     switch (effectiveValueConstraints.type) {
@@ -524,7 +526,7 @@ class _DictionaryParameterEditScreenState
                     decoration: InputDecoration(
                       labelText: 'New Key Name',
                       hintText:
-                          keyConstraints?.examples?.join(', ') ??
+                          widget.parameterDefinition.config.examples ??
                           'e.g., sample_id',
                       border: const OutlineInputBorder(),
                       errorText: _addKeyValidationError,
@@ -608,14 +610,14 @@ class _DictionaryParameterEditScreenState
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                           side: BorderSide(
-                            color: theme.dividerColor.withAlpha(0.5),
+                            color: theme.dividerColor.withAlpha(120),
                           ),
                         ),
                         child: ListTile(
                           leading: Icon(
                             Icons.key_rounded,
                             color: theme.colorScheme.onSurfaceVariant.withAlpha(
-                              0.7,
+                              190,
                             ),
                           ),
                           title: Text(
@@ -709,11 +711,12 @@ class _DictionaryParameterEditScreenState
         Color valueColor =
             (value != null && value.toString().isNotEmpty)
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant.withAlpha(0.7);
+                : theme.colorScheme.onSurfaceVariant.withAlpha(190);
         bool valueIsDefaultOrNull = true;
 
         ParameterConstraints? specificValueConstraints =
-            generalValueConstraints; // Use general by default
+            generalValueConstraints
+                as ParameterConstraints?; // Use general by default
         // Placeholder: In a more complex schema, one might find specific constraints for this 'key'
         // e.g., from widget.parameterDefinition.config.properties[key].constraints
 
@@ -806,7 +809,7 @@ class _DictionaryParameterEditScreenState
               color: theme.colorScheme.secondary,
               size: 24,
             ), // Changed icon
-            onTap: () => _editValueForKey(context, key, value, currentMapData),
+            onTap: () => _editValueForKey(context, key, value),
           ),
         );
       },

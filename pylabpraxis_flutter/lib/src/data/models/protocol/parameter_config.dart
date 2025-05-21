@@ -21,6 +21,7 @@ sealed class ParameterConfig with _$ParameterConfig {
     dynamic defaultValue,
     String? group,
     String? units,
+    String? examples,
     String? format,
   }) = _ParameterConfig;
 
