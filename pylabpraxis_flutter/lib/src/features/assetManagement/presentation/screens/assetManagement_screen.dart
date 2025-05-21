@@ -9,10 +9,6 @@ class AssetManagementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar is now part of AppShell
-      // appBar: AppBar(
-      //   title: const Text('Assets'),
-      // ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

@@ -8,10 +8,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar is now part of AppShell
-      // appBar: AppBar(
-      //   title: const Text('Home'),
-      // ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

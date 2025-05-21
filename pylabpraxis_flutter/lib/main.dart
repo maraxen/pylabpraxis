@@ -5,13 +5,12 @@ import 'package:flutter/foundation.dart'; // For kDebugMode and PlatformDispatch
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // For secure storage
-import 'package:get_it/get_it.dart'; // For service locator (optional, but good practice)
+import 'package:get_it/get_it.dart'; // For service locator
 
 // Core imports
 import 'src/core/network/dio_client.dart'; // For DioClient
 import 'src/core/theme/app_theme.dart';
-import 'src/core/routing/app_router.dart';
-import 'src/core/widgets/app_shell.dart'; // Your main app UI after login
+import 'src/core/routing/app_go_router.dart'; // Import AppGoRouter
 
 // Data Layer Imports (Services & Repositories & Implementations)
 import 'src/data/services/auth_service.dart';
@@ -21,11 +20,11 @@ import 'src/data/services/protocol_api_service_impl.dart';
 import 'src/data/repositories/auth_repository.dart';
 import 'src/data/repositories/protocol_repository.dart';
 
-// Feature Layer Imports (BLoCs & Screens)
+// Feature Layer Imports (BLoCs & Events)
 import 'src/features/auth/application/bloc/auth_bloc.dart';
 
-// Import the LoginScreen (adjust path if necessary)
-import 'src/features/auth/presentation/screens/login_screen.dart';
+// Import other BLoCs you might provide globally, e.g.:
+// import 'src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
 
 // Simple BlocObserver for logging BLoC events and transitions
 class AppBlocObserver extends BlocObserver {
@@ -48,7 +47,6 @@ class AppBlocObserver extends BlocObserver {
   void onChange(BlocBase bloc, Change change) {
     super.onChange(bloc, change);
     // To avoid overly verbose logs for complex states, consider logging selectively.
-    // For instance, log only the runtimeType of states or specific properties.
     // developer.log(
     //   'Change in ${bloc.runtimeType}: ${change.currentState.runtimeType} -> ${change.nextState.runtimeType}',
     //   name: 'AppBlocObserver',
@@ -89,27 +87,16 @@ final GetIt sl = GetIt.instance;
 Future<void> setupServiceLocator() async {
   // External Packages
   sl.registerLazySingleton<FlutterSecureStorage>(() {
-    // Configure FlutterSecureStorage with WebOptions if on web
     if (kIsWeb) {
       return const FlutterSecureStorage(
-        // IMPORTANT: Replace these placeholder values with your securely generated,
-        // unique, and persistent application-specific keys and IVs.
-        // These are used to wrap the encryption key for data stored in LocalStorage.
-        // wrapKey should be a Base64 encoded 256-bit (32-byte) key.
-        // wrapKeyIv should be a Base64 encoded 128-bit (16-byte) IV.
-        // Generate these once (e.g., using a crypto library) and store them securely.
-        // DO NOT USE THESE EXAMPLE VALUES IN PRODUCTION.
         webOptions: WebOptions(
-          wrapKey:
-              '5YQ_UR7CGYhd4S_pPB906yBQvbV7dh60g2L551bzGvM', // REPLACE THIS
-          wrapKeyIv: '7Kf_Evc-UKQilgFvO7Q74Q', // REPLACE THIS
+          // IMPORTANT: These are placeholders. Replace with your actual secure keys.
+          wrapKey: 'YOUR_SECURE_BASE64_ENCODED_WRAP_KEY_HERE', // REPLACE THIS
+          wrapKeyIv: 'YOUR_SECURE_BASE64_IV_HERE', // REPLACE THIS
         ),
       );
     } else {
-      // For mobile, default options or platform-specific options can be used.
-      return const FlutterSecureStorage(
-        // Example: aOptions: AndroidOptions(encryptedSharedPreferences: true),
-      );
+      return const FlutterSecureStorage();
     }
   });
 
@@ -117,6 +104,9 @@ Future<void> setupServiceLocator() async {
   sl.registerLazySingleton<AuthService>(
     () => AuthServiceImpl(secureStorage: sl<FlutterSecureStorage>()),
   );
+  // Assuming DioClient needs AuthService for interceptors.
+  // If your DioClient doesn't directly depend on AuthService at construction,
+  // you might initialize it differently or pass AuthService later.
   sl.registerLazySingleton<DioClient>(
     () => DioClient(authService: sl<AuthService>()),
   );
@@ -160,7 +150,7 @@ void main() {
           error: error,
           stackTrace: stack,
         );
-        return true;
+        return true; // Indicate that the error has been handled
       };
 
       await setupServiceLocator();
@@ -174,6 +164,7 @@ void main() {
             RepositoryProvider<ProtocolRepository>.value(
               value: sl<ProtocolRepository>(),
             ),
+            // Add other RepositoryProviders if needed
           ],
           child: MultiBlocProvider(
             providers: [
@@ -181,13 +172,16 @@ void main() {
                 create:
                     (context) =>
                         AuthBloc(authRepository: context.read<AuthRepository>())
-                          ..add(
-                            AuthAppStarted(),
-                          ), // Dispatch initial event to check auth status
+                          ..add(AuthAppStarted()), // Dispatch initial event
               ),
-              // Add other BLoCs here
+              // Example of another BLoC:
+              // BlocProvider<ProtocolsDiscoveryBloc>(
+              //   create: (context) => ProtocolsDiscoveryBloc(
+              //     protocolRepository: context.read<ProtocolRepository>(),
+              //   )..add(ProtocolsLoadStarted()), // Dispatch initial event if needed
+              // ),
             ],
-            child: const MyApp(),
+            child: const MyApp(), // MyApp will now use GoRouter
           ),
         ),
       );
@@ -203,49 +197,38 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppGoRouter _appGoRouter;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize AppGoRouter here. It needs AuthBloc, which is available
+    // from the context provided by MultiBlocProvider.
+    _appGoRouter = AppGoRouter(context.read<AuthBloc>());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'PyLabPraxis Flutter',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // darkTheme: AppTheme.darkTheme,
-      // themeMode: ThemeMode.system,
 
-      // The onGenerateRoute might still be useful for named routes within AppShell
-      // but the initial screen (Login or AppShell) is determined by the BlocBuilder below.
-      onGenerateRoute: AppRouter.generateRoute,
+      // darkTheme: AppTheme.darkTheme, // Optional: uncomment if you have a dark theme
+      // themeMode: ThemeMode.system, // Optional: set theme mode
+      routerConfig: _appGoRouter.router, // Use the go_router configuration
 
-      // Use BlocBuilder to determine the initial screen based on AuthState
-      home: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          developer.log(
-            'AuthBloc state changed in MyApp (home builder): ${state.runtimeType}',
-            name: 'MyAppHomeBuilder',
-          );
-          if (state is AuthAuthenticated) {
-            // User is signed in, show the main app shell
-            return const AppShell();
-          } else if (state is AuthUnauthenticated || state is AuthFailure) {
-            // User is not signed in, or an auth error occurred that led to unauthenticated state
-            // Show the login screen. AuthFailure might also be handled by the listener below
-            // to show a snackbar, but here we ensure LoginScreen is shown.
-            return const LoginScreen();
-          } else {
-            // AuthInitial, AuthLoading
-            // Show a loading indicator while checking auth status or processing login/logout
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-        },
-      ),
       builder: (context, child) {
-        // BlocListener for global Auth state changes (e.g., showing SnackBars for errors)
-        // This child will be the widget returned by 'home' (LoginScreen, AppShell, or Loading).
+        // This child is the widget rendered by the router for the current route.
+        // We can wrap it with a BlocListener for global Auth state changes.
         return BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
             developer.log(
@@ -253,9 +236,7 @@ class MyApp extends StatelessWidget {
               name: 'AuthGlobalListener',
             );
             if (state is AuthFailure) {
-              // Only show snackbar if not already on LoginScreen or if it's a general auth error
-              // The LoginScreen itself might display more specific errors.
-              // This global listener is good for errors that occur outside the login flow.
+              // Show a snackbar for authentication failures
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -266,10 +247,9 @@ class MyApp extends StatelessWidget {
                 ),
               );
             }
-            // Potentially handle other global notifications or side effects here
+            // Handle other global notifications or side effects here if needed
           },
-          child:
-              child!, // child is the widget determined by the `home` BlocBuilder
+          child: child!, // The router's current page
         );
       },
     );
