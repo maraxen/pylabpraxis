@@ -1,11 +1,12 @@
-import 'dart:async'; // For PlatformDispatcher.instance.onError & runZonedGuarded
+import 'dart:async';
 import 'dart:developer' as developer; // For developer.log
 
-import 'package:flutter/foundation.dart'; // For kDebugMode and PlatformDispatcher
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // For secure storage
-import 'package:get_it/get_it.dart'; // For service locator
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_it/get_it.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 // Core imports
 import 'src/core/network/dio_client.dart'; // For DioClient
@@ -127,6 +128,8 @@ Future<void> setupServiceLocator() async {
 }
 
 void main() {
+  usePathUrlStrategy(); // Use path URL strategy for web
+
   runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();

@@ -6,6 +6,7 @@
 // It uses a platform-specific OIDC authenticator wrapper.
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:convert'; // For jsonDecode
 import 'package:flutter/foundation.dart'; // For kIsWeb, debugPrint, defaultTargetPlatform
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -28,7 +29,7 @@ const String _mobileRedirectHost = 'auth';
 const String _mobileRedirectPath = '/callback';
 
 const String _webRedirectPath =
-    '/auth-callback.html'; // Ensure this HTML file exists in web/
+    '/splash'; // Ensure this HTML file exists in web/
 
 class AuthServiceImpl implements AuthService {
   final FlutterSecureStorage _secureStorage;
@@ -50,19 +51,6 @@ class AuthServiceImpl implements AuthService {
     required FlutterSecureStorage secureStorage,
   }) // Made secureStorage required
   : _secureStorage = secureStorage {
-    // The WebOptions for FlutterSecureStorage should be configured when it's instantiated,
-    // typically in main.dart within setupServiceLocator.
-    // Example:
-    // if (kIsWeb) {
-    //   sl.registerLazySingleton<FlutterSecureStorage>(
-    //     () => const FlutterSecureStorage(
-    //       webOptions: WebOptions(
-    //         wrapKey: 'YOUR_ACTUAL_GENERATED_WRAP_KEY',
-    //         wrapKeyIv: 'YOUR_ACTUAL_GENERATED_WRAP_KEY_IV',
-    //       ),
-    //     ),
-    //   );
-    // } else { /* ... mobile config ... */ }
     _initialize();
   }
 
@@ -152,27 +140,69 @@ class AuthServiceImpl implements AuthService {
   }
 
   Uri _getPlatformRedirectUri() {
+    final currentBase = Uri.base;
+    print(
+      'AuthServiceImpl._getPlatformRedirectUri: Uri.base is "$currentBase"',
+    );
+    developer.log(
+      'AuthServiceImpl._getPlatformRedirectUri: Uri.base is "$currentBase"',
+      name: 'AuthService',
+    );
+    Uri platformRedirectUri;
     if (kIsWeb) {
-      return Uri.base.replace(path: _webRedirectPath);
+      platformRedirectUri = currentBase.replace(path: _webRedirectPath);
     } else {
-      return Uri(
-        scheme: _mobileRedirectScheme,
-        host: _mobileRedirectHost,
-        path: _mobileRedirectPath,
+      // ... mobile logic ...
+      platformRedirectUri = Uri(
+        // Example for mobile
+        scheme: _mobileRedirectScheme, // Make sure these are defined
+        host: _mobileRedirectHost, // Make sure these are defined
+        path: _mobileRedirectPath, // Make sure these are defined
       );
     }
+    print(
+      'AuthServiceImpl._getPlatformRedirectUri: Calculated redirect URI is "$platformRedirectUri"',
+    );
+    developer.log(
+      'AuthServiceImpl._getPlatformRedirectUri: Calculated redirect URI is "$platformRedirectUri"',
+      name: 'AuthService',
+    );
+    return platformRedirectUri;
   }
 
   Future<UserProfile> _processCredential(oidc.Credential credential) async {
     debugPrint("AuthService: Processing new credential...");
     final tokenResponse = await credential.getTokenResponse();
-    final accessToken = tokenResponse.accessToken;
-    final idTokenString = credential.idToken.toCompactSerialization();
-    final refreshToken = tokenResponse.refreshToken;
-
+    debugPrint("AuthService: Token response received.");
+    if (tokenResponse == null) {
+      debugPrint(
+        "AuthService: Token response is null. Cannot process credential.",
+      );
+      throw AuthException('Token response is null. Cannot process credential.');
+    }
     debugPrint(
-      "AuthService: AccessToken: ${accessToken != null ? "Present" : "NULL"}",
-    );
+      "AuthService: Token response received: ${tokenResponse.toJson()}",
+    ); // Log token response
+    final accessToken = tokenResponse.accessToken;
+    if (accessToken == null) {
+      debugPrint(
+        "AuthService: Access token is null. Cannot process credential.",
+      );
+      throw AuthException('Access token is null. Cannot process credential.');
+    }
+    final idTokenString = credential.idToken.toCompactSerialization();
+    if (idTokenString.isEmpty) {
+      debugPrint(
+        "AuthService: ID token string is empty. Cannot process credential.",
+      );
+      throw AuthException(
+        'ID token string is empty. Cannot process credential.',
+      );
+    }
+    final refreshToken = tokenResponse.refreshToken;
+    debugPrint("AuthService: refreshToken: $refreshToken");
+
+    debugPrint("AuthService: AccessToken: $accessToken");
     debugPrint(
       "AuthService: IdTokenString: ${idTokenString.isNotEmpty ? "Present" : "EMPTY"}",
     );

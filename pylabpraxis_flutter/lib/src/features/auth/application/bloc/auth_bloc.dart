@@ -90,9 +90,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (userProfile != null) {
         emit(AuthAuthenticated(userProfile: userProfile));
       } else if (kIsWeb) {
-        // On web, signIn initiated a redirect. The BLoC can remain in AuthLoading
-        // or go to a specific "Redirecting" state. AuthAppStarted will handle
-        // the state change after the app reloads post-redirect.
+        // On web, if signIn returns null, it indicates a redirect has started.
+        // The actual user profile will be handled in the redirect processing.
+        // We initiate the redirect and wait for the app to reload or handle it.
         debugPrint(
           "AuthSignInRequested: Web redirect initiated. Awaiting app reload/redirect handling.",
         );

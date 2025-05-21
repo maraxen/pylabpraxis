@@ -15,7 +15,7 @@ abstract class OidcAuthenticatorWrapper {
   factory OidcAuthenticatorWrapper({
     required oidc.Client client,
     required List<String> scopes,
-    Uri? redirectUri, // Conditionally used by the IO implementation
+    required Uri redirectUri,
     int? port, // Conditionally used by the IO implementation
   }) {
     // Call the top-level factory function defined in the stub file.

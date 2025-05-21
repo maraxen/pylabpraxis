@@ -37,7 +37,7 @@ export 'oidc_authenticator_unsupported.dart'
 OidcAuthenticatorWrapper createOidcAuthenticatorWrapper({
   required oidc.Client client,
   required List<String> scopes,
-  Uri? redirectUri, // Needed for IO (mobile)
+  required Uri redirectUri, // Needed for IO (mobile)
   int? port, // Needed for IO (mobile)
 }) {
   if (kIsWeb) {
@@ -46,17 +46,9 @@ OidcAuthenticatorWrapper createOidcAuthenticatorWrapper({
     return browser_impl.OidcAuthenticatorBrowser(
       client: client,
       scopes: scopes,
+      redirectUri: redirectUri,
     );
   } else if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) {
-    // Assume non-web and non-Windows (which might not have dart:io fully) is a dart:io environment (Android, iOS, macOS, Linux)
-    // For IO platforms, `io_impl` will refer to `oidc_authenticator_io.dart`.
-    // The `browser_impl` would refer to `oidc_authenticator_unsupported.dart` on IO.
-    if (redirectUri == null) {
-      // This check is important because OidcAuthenticatorIo requires redirectUri.
-      throw ArgumentError(
-        'redirectUri must be provided for OidcAuthenticatorIo on non-web platforms.',
-      );
-    }
     return io_impl.OidcAuthenticatorIo(
       client: client,
       scopes: scopes,

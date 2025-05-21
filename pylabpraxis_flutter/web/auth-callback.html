@@ -2,21 +2,75 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Authentication complete</title>
+  <title>Processing Authentication...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
-    // Send the current URL to the parent window (your Flutter app)
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(window.location.href, window.location.origin);
-      window.close(); // Close the popup after sending the message
-    } else {
-      // Fallback if not a popup or opener is closed (e.g. direct navigation to callback)
-      // This part might need adjustment based on how openid_client expects to receive it
-      // if not via postMessage. Often, it just processes window.location itself.
-      console.log("Auth callback: No window.opener or opener closed. URL:", window.location.href);
-    }
+    // This script is executed when auth-callback.html is loaded after
+    // the OIDC provider (Keycloak) redirects back to the application.
+    //
+    // The main Flutter application, when it initializes at this /auth-callback.html URL,
+    // will trigger its authentication logic (AuthBloc -> AuthService -> OidcAuthenticatorBrowser.processRedirect).
+    // That Dart code reads the OIDC parameters (code, state, etc.) from the current window.location.href.
+    //
+    // Once those parameters are read (or the process is initiated), this page's job is done.
+    // This script then redirects the browser back to the application's base path.
+    // Your Flutter app's GoRouter will then handle further navigation based on the
+    // resulting authentication state.
+
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('auth-callback.html: Page loaded. Current URL:', window.location.href);
+
+      // Determine the application's base redirect URL.
+      // This typically combines the window's origin (e.g., "http://localhost:3000")
+      // with the base href defined in your main Flutter app's index.html (e.g., "/").
+      const origin = window.location.origin;
+      const baseTag = document.querySelector('base');
+      let basePath = '/'; // Default to root if no base tag or href is found
+
+      if (baseTag && baseTag.hasAttribute('href')) {
+        basePath = baseTag.getAttribute('href');
+        // Ensure basePath starts and ends with a slash if it's not just "/"
+        if (basePath !== '/' && !basePath.startsWith('/')) {
+          basePath = '/' + basePath;
+        }
+        if (basePath !== '/' && !basePath.endsWith('/')) {
+          basePath = basePath + '/';
+        }
+      }
+
+      // Ensure no double slashes between origin and basePath if basePath is just '/'
+      const redirectTo = basePath === '/' ? origin + '/' : origin + basePath;
+
+      console.log('auth-callback.html: Redirecting to application base:', redirectTo);
+
+      // Use window.location.replace to redirect without creating a new history entry
+      // for this callback page.
+      window.location.replace(redirectTo);
+    });
   </script>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f4f4; color: #333; }
+    .container { text-align: center; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: #09f;
+      animation: spin 1s ease infinite;
+      margin: 0 auto 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-  <p>Authentication complete. You can close this window.</p>
+  <div class="container">
+    <div class="spinner"></div>
+    <p>Processing authentication, please wait...</p>
+    <p><small>You will be redirected shortly.</small></p>
+  </div>
 </body>
 </html>

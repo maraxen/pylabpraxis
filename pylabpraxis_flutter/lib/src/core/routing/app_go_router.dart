@@ -1,4 +1,8 @@
-import 'dart:async'; // Added for StreamSubscription
+import 'dart:async'; // For StreamSubscription
+import 'dart:developer' as developer; // For developer.log
+import 'package:flutter/foundation.dart' show kIsWeb; // For kIsWeb check
+import 'package:web/web.dart' hide Text;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +33,10 @@ const String homeRouteName = 'home';
 const String protocolsRouteName = 'protocols';
 const String assetManagementRouteName = 'assetManagement';
 const String settingsRouteName = 'settings';
+const String splashRouteName = 'splash';
+const String loginRouteName = 'login';
 
+// Workflow Route Names (already defined in your provided code)
 const String parameterConfigurationRouteName = 'parameterConfiguration';
 const String assetAssignmentRouteName = 'assetAssignment';
 const String deckConfigurationRouteName = 'deckConfiguration';
@@ -55,127 +62,190 @@ class AppGoRouter {
   AppGoRouter(this.authBloc) {
     router = GoRouter(
       navigatorKey: _rootNavigatorKey,
-      initialLocation: '/splash', // Always start at splash
+      initialLocation: '/splash',
       debugLogDiagnostics: true,
       refreshListenable: GoRouterRefreshStream(authBloc.stream),
       redirect: (BuildContext context, GoRouterState state) {
         final authState = authBloc.state;
-        final uri = state.uri; // This is the full URI go_router is considering
-        final currentPath = uri.path; // The path part, e.g. /login, /splash
+        final goRouterUri = state.uri;
+        final currentPath = goRouterUri.path;
+        // --- OIDC Callback Detection ---
+        bool isActualOidcCallbackUrl = false;
+        Map<String, String> oidcParamsFromSource = {};
 
-        // For web (hash strategy), OIDC params are often in the fragment.
-        // GoRouter's state.uri often reflects the fragment as its "location".
-        // We need to parse parameters from this effective location string.
-        String effectiveLocationString = uri.toString();
-        if (effectiveLocationString.startsWith('/')) {
-          effectiveLocationString = effectiveLocationString.substring(1);
-        }
+        final bool pathIsSplash = currentPath == '/splash';
+        print('Current path: $currentPath, isSplash: $pathIsSplash');
+        print('GoRouter URI: $goRouterUri');
+        final bool hasStateInQuery = goRouterUri.queryParameters.containsKey(
+          'state',
+        );
+        final bool hasCodeInQuery = goRouterUri.queryParameters.containsKey(
+          'code',
+        );
+        final bool hasErrorInQuery = goRouterUri.queryParameters.containsKey(
+          'error',
+        );
 
-        Map<String, String> effectiveParams = {};
-        if (effectiveLocationString.contains('=')) {
-          // Basic check for query-like string
-          try {
-            effectiveParams = Uri.splitQueryString(effectiveLocationString);
-          } catch (e) {
-            print("Error parsing effectiveLocationString as query string: $e");
+        print(
+          'OIDC Callback detection on /splash: hasStateInQuery=$hasStateInQuery, hasCodeInQuery=$hasCodeInQuery, hasErrorInQuery=$hasErrorInQuery',
+        );
+
+        if (kIsWeb && pathIsSplash) {
+          print(
+            'Web detected as current platform. Checking for OIDC callback on /splash.',
+          );
+          if (hasStateInQuery && (hasCodeInQuery || hasErrorInQuery)) {
+            isActualOidcCallbackUrl = true;
+            oidcParamsFromSource = goRouterUri.queryParameters;
+            print(
+              'OIDC Callback (Auth Code Flow) detected on /splash via GoRouter query parameters: $oidcParamsFromSource',
+            );
+          } else {
+            // Fallback to check browser fragment if query params are missing,
+            // though with response_type=code, they should be in query.
+            final String browserHash = window.location.hash;
+            if (browserHash.startsWith('#')) {
+              final String fragmentString = browserHash.substring(1);
+              if (fragmentString.isNotEmpty) {
+                try {
+                  final browserFragmentParams = Uri.splitQueryString(
+                    fragmentString,
+                  );
+                  final bool hasOidcParamsInFragment =
+                      browserFragmentParams.containsKey('state') &&
+                      (browserFragmentParams.containsKey('id_token') ||
+                          browserFragmentParams.containsKey('access_token') ||
+                          browserFragmentParams.containsKey('code') ||
+                          browserFragmentParams.containsKey(
+                            'session_state',
+                          )); // Keycloak often includes session_state
+                  final bool hasOidcErrorInFragment = browserFragmentParams
+                      .containsKey('error');
+
+                  if (hasOidcParamsInFragment || hasOidcErrorInFragment) {
+                    isActualOidcCallbackUrl = true;
+                    oidcParamsFromSource = browserFragmentParams;
+                  }
+                  print(
+                    'OIDC Callback (Auth Code Flow) detected on /splash via browser fragment: $browserFragmentParams',
+                  );
+                  developer.log(
+                    'OIDC Callback check on /splash via direct browser fragment: hash="$browserHash", parsed=$browserFragmentParams, isActualOidcCallbackUrl=$isActualOidcCallbackUrl',
+                    name: "AppGoRouter",
+                  );
+                } catch (e) {
+                  developer.log(
+                    "Error parsing browser hash for OIDC check: $e",
+                    name: "AppGoRouter",
+                  );
+                }
+              }
+            }
           }
         }
+        // --- End OIDC Callback Detection ---
+        final bool isOidcCallbackUrl = isActualOidcCallbackUrl;
 
-        final bool isOidcCallbackUrl =
-            effectiveParams.containsKey('state') &&
-            (effectiveParams.containsKey('code') ||
-                effectiveParams.containsKey('id_token') ||
-                effectiveParams.containsKey('session_state'));
-
-        final isAuthenticating =
-            authState is AuthInitial || authState is AuthLoading;
         final isAuthenticated = authState is AuthAuthenticated;
         final isUnauthenticated =
             authState is AuthUnauthenticated || authState is AuthFailure;
+        final isAuthInitialOrLoading =
+            authState is AuthInitial || authState is AuthLoading;
 
-        print(
-          'Redirect Check: AuthState: $authState, CurrentPath: $currentPath, isOidcCallback: $isOidcCallbackUrl, EffectiveLocationParams: $effectiveParams, GoRouter URI: $uri, MatchedLoc: ${state.matchedLocation}',
-        );
-
-        // Scenario 1: AuthBloc is currently working (AuthInitial or AuthLoading)
-        if (isAuthenticating) {
-          if (isOidcCallbackUrl) {
-            print(
-              'OIDC callback detected during auth processing (AuthInitial/AuthLoading). No redirect from router.',
-            );
-            return null; // Allow AuthBloc to process the OIDC callback URL
-          }
-          if (authState is AuthLoading && currentPath == '/login') {
-            print(
-              'AuthLoading on /login (OIDC redirect likely in progress). No redirect from router.',
-            );
-            return null;
-          }
-          if (currentPath != '/splash') {
-            print(
-              'Authenticating (not OIDC callback/initiation from login), not on splash. Redirecting to /splash.',
-            );
-            return '/splash';
-          }
-          print(
-            'Authenticating, on splash or OIDC callback/initiation being handled. No redirect from this block.',
-          );
-          return null;
-        }
-
-        // Scenario 2: User is authenticated
-        if (isAuthenticated) {
-          if (currentPath == '/login' ||
-              currentPath == '/splash' ||
-              isOidcCallbackUrl) {
-            // Also handle if somehow authenticated on callback URL
-            print(
-              'Authenticated. Redirecting from $currentPath (or OIDC callback) to /home.',
+        // Rule 1: If this IS an OIDC callback URL (on /splash with OIDC params in query/fragment)
+        // This rule is paramount to let AuthService process the callback.
+        if (isActualOidcCallbackUrl) {
+          // If authentication has ALREADY completed successfully (e.g. very fast processing), go to home.
+          if (isAuthenticated) {
+            developer.log(
+              'OIDC callback on /splash, already authenticated. Redirecting to /home.',
+              name: 'AppGoRouter',
             );
             return '/home';
           }
-          print(
-            'Authenticated. Not on login/splash/OIDC callback. No redirect.',
+          // If OIDC processing resulted in a definitive failure reported by AuthBloc.
+          if (authState is AuthFailure) {
+            developer.log(
+              'OIDC callback on /splash, resulted in AuthFailure. Redirecting to /login.',
+              name: 'AppGoRouter',
+            );
+            return '/login';
+          }
+          // Otherwise (AuthInitial, AuthLoading, or even an initial AuthUnauthenticated from AuthAppStarted's first pass
+          // *before* OIDC processing from AuthService init completes and updates the stream), STAY ON /splash.
+          developer.log(
+            'OIDC callback on /splash. AuthState is ${authState.runtimeType}. Waiting for OIDC processing to complete via AuthService. No redirect from router.',
+            name: 'AppGoRouter',
           );
           return null;
         }
 
-        // Scenario 3: User is unauthenticated (AuthUnauthenticated or AuthFailure)
-        if (isUnauthenticated) {
-          if (isOidcCallbackUrl) {
-            print(
-              'OIDC callback processed, but result is Unauthenticated/Failure. Redirecting to /login.',
+        if (isAuthInitialOrLoading) {
+          if (currentPath != '/splash') {
+            developer.log(
+              'Authenticating (AuthInitial/AuthLoading, not OIDC callback), not on /splash. Redirecting to /splash.',
+              name: 'AppGoRouter',
             );
-            return '/login';
+            return '/splash';
           }
-          if (currentPath == '/splash') {
-            print('Unauthenticated. On splash. Redirecting to /login.');
-            return '/login';
-          }
-          if (currentPath != '/login') {
-            print(
-              'Unauthenticated (not OIDC callback). Not on login (and not splash). Redirecting to /login.',
-            );
-            return '/login';
-          }
-          print('Unauthenticated. On login. No redirect from this block.');
-          return null;
+          developer.log(
+            'Authenticating on /splash (AuthInitial/AuthLoading, not an OIDC callback). Waiting for AuthBloc. No redirect.',
+            name: 'AppGoRouter',
+          );
+          return null; // Stay on splash
         }
 
-        print('No redirect conditions met. Path: $currentPath');
+        // Rule 3: User is definitively Authenticated (and it was not an OIDC callback URL we just processed under Rule 1)
+        if (isAuthenticated) {
+          if (currentPath == '/login' || currentPath == '/splash') {
+            // Splash is no longer an auth pending page if not OIDC callback
+            developer.log(
+              'Authenticated (not via immediate OIDC callback). Redirecting from $currentPath to /home.',
+              name: 'AppGoRouter',
+            );
+            return '/home';
+          }
+          developer.log(
+            'Authenticated. Not on login/splash. No redirect.',
+            name: 'AppGoRouter',
+          );
+          return null; // Already on a protected route
+        }
+
+        // Rule 4: User is definitively Unauthenticated (AuthUnauthenticated or AuthFailure, and not an OIDC callback URL)
+        if (isUnauthenticated) {
+          // AuthUnauthenticated or AuthFailure
+          if (currentPath != '/login') {
+            developer.log(
+              'Unauthenticated (not an OIDC callback). Not on /login. Current path: $currentPath. Redirecting to /login.',
+              name: 'AppGoRouter',
+            );
+            return '/login';
+          }
+          developer.log(
+            'Unauthenticated. On /login. No redirect.',
+            name: 'AppGoRouter',
+          );
+          return null; // Already on login screen
+        }
+
+        developer.log(
+          'No redirect conditions met by AppGoRouter (should not happen). Current path: $currentPath',
+          name: 'AppGoRouter',
+        );
         return null;
       },
       routes: <RouteBase>[
         GoRoute(
           path: '/splash',
-          name: 'splash',
+          name: splashRouteName,
           builder: (BuildContext context, GoRouterState state) {
             return const SplashScreen();
           },
         ),
         GoRoute(
           path: '/login',
-          name: 'login',
+          name: loginRouteName,
           builder: (BuildContext context, GoRouterState state) {
             return const LoginScreen();
           },
@@ -218,6 +288,7 @@ class AppGoRouter {
         ),
         ShellRoute(
           navigatorKey: _workflowShellNavigatorKey,
+          parentNavigatorKey: _rootNavigatorKey,
           builder: (BuildContext context, GoRouterState state, Widget child) {
             final protocolInfo = state.extra as ProtocolInfo?;
             return RunProtocolWorkflowScreen(
@@ -227,7 +298,8 @@ class AppGoRouter {
           },
           routes: <RouteBase>[
             GoRoute(
-              path: '/run-protocol-workflow/parameters',
+              path:
+                  '/run-protocol-workflow/parameters', // Base path for this step
               name: parameterConfigurationRouteName,
               builder: (BuildContext context, GoRouterState state) {
                 return const ParameterConfigurationScreen();
@@ -269,7 +341,7 @@ class AppGoRouter {
             appBar: AppBar(title: const Text('Page Not Found')),
             body: Center(
               child: Text(
-                'Oops! Page not found: ${state.error?.message} from path ${state.uri}',
+                'Oops! Page not found: ${state.error?.message ?? 'Unknown error'} at path ${state.uri}',
               ),
             ),
           ),
@@ -277,6 +349,7 @@ class AppGoRouter {
   }
 }
 
+// GoRouterRefreshStream class remains the same
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
