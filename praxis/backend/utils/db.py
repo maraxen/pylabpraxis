@@ -1,21 +1,14 @@
 import asyncpg
 import pandas as pd
 import json
-from typing import Optional, Dict, List, Any, Union, cast, TYPE_CHECKING
+from typing import Optional, Dict, List, Any, Union, cast
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pylabrobot.resources import Resource
 from pylabrobot.machines import Machine
 from pylabrobot.utils import find_subclass
 import importlib.util
 from pathlib import Path
 import asyncio
-import os
-from ..interfaces import WorkcellAssetsInterface
-from ..protocol.parameter import ProtocolParameters
-
-if TYPE_CHECKING:
-    from ..interfaces import ProtocolInterface
 
 import logging
 
@@ -33,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     _instance: Optional["DatabaseManager"] = None
-    _pool: Optional[asyncpg.Pool] = None
-    _keycloak_pool: Optional[asyncpg.Pool] = None
+    _pool: Optional[asyncpg.Pool[Any]] = None
+    _keycloak_pool: Optional[asyncpg.Pool[Any]] = None # TODO: should this be Any?
     _max_retries = 3
     _retry_delay = 1  # seconds
 
