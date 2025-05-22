@@ -70,7 +70,7 @@ class AppGoRouter {
         final goRouterUri = state.uri;
         final currentPath = goRouterUri.path;
         // --- OIDC Callback Detection ---
-        bool isActualOidcCallbackUrl = false;
+        bool isOidcCallbackUrl = false;
         Map<String, String> oidcParamsFromSource = {};
 
         final bool pathIsSplash = currentPath == '/splash';
@@ -95,7 +95,7 @@ class AppGoRouter {
             'Web detected as current platform. Checking for OIDC callback on /splash.',
           );
           if (hasStateInQuery && (hasCodeInQuery || hasErrorInQuery)) {
-            isActualOidcCallbackUrl = true;
+            isOidcCallbackUrl = true;
             oidcParamsFromSource = goRouterUri.queryParameters;
             developer.log(
               'OIDC Callback (Auth Code Flow) detected on /splash via GoRouter query parameters: $oidcParamsFromSource',
@@ -123,14 +123,14 @@ class AppGoRouter {
                       .containsKey('error');
 
                   if (hasOidcParamsInFragment || hasOidcErrorInFragment) {
-                    isActualOidcCallbackUrl = true;
+                    isOidcCallbackUrl = true;
                     oidcParamsFromSource = browserFragmentParams;
                   }
                   developer.log(
                     'OIDC Callback (Auth Code Flow) detected on /splash via browser fragment: $browserFragmentParams',
                   );
                   developer.log(
-                    'OIDC Callback check on /splash via direct browser fragment: hash="$browserHash", parsed=$browserFragmentParams, isActualOidcCallbackUrl=$isActualOidcCallbackUrl',
+                    'OIDC Callback check on /splash via direct browser fragment: hash="$browserHash", parsed=$browserFragmentParams, isOidcCallbackUrl=$isOidcCallbackUrl',
                     name: "AppGoRouter",
                   );
                 } catch (e) {
@@ -144,7 +144,6 @@ class AppGoRouter {
           }
         }
         // --- End OIDC Callback Detection ---
-        final bool isOidcCallbackUrl = isActualOidcCallbackUrl;
 
         final isAuthenticated = authState is AuthAuthenticated;
         final isUnauthenticated =
@@ -154,7 +153,7 @@ class AppGoRouter {
 
         // Rule 1: If this IS an OIDC callback URL (on /splash with OIDC params in query/fragment)
         // This rule is paramount to let AuthService process the callback.
-        if (isActualOidcCallbackUrl) {
+        if (isOidcCallbackUrl) {
           // If authentication has ALREADY completed successfully (e.g. very fast processing), go to home.
           if (isAuthenticated) {
             developer.log(
