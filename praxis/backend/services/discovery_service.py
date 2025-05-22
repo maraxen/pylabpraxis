@@ -18,8 +18,8 @@ from typing import List, Dict, Any, Optional, Union, Set
 from sqlalchemy.orm import Session as DbSession
 
 # Pydantic models for structuring data before DB interaction
-from praxis.backend.protocol_core.definitions import (
-    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic, # TODO: DS-2: ensure definitions actually includes this
+from praxis.backend.database_models import (
+    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic, # TODO: DS-2: ensure definitions or models actually includes this
     _convert_decorator_metadata_to_definition_v2 # Using the v2 converter
 )
 # Global in-memory registry (populated by decorators, updated by this service)

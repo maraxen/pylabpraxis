@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List, Union
 from sqlalchemy.orm import Session as DbSession, joinedload, selectinload, aliased
 from sqlalchemy import desc, or_
 
-from praxis.database_models.protocol_definitions_orm import (
+from praxis.backend.database_models import (
     ProtocolSourceRepositoryOrm,
     FileSystemProtocolSourceOrm,
     FunctionProtocolDefinitionOrm,
@@ -27,7 +27,7 @@ from praxis.database_models.protocol_definitions_orm import (
     ProtocolRunStatusEnum,
     FunctionCallStatusEnum
 )
-from praxis.protocol_core.protocol_definition_models import (
+from praxis.backend.protocol_core.definitions import (
     FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic,
     # ParameterDefinition as ParameterDefinitionPydantic,
     # AssetDefinition as AssetDefinitionPydantic
