@@ -27,21 +27,6 @@ class _ProtocolsScreenState extends State<ProtocolsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      // AppBar is now part of AppShell
-      // appBar: AppBar(
-      //   title: const Text('Available Protocols'),
-      //   actions: [
-      //     IconButton(
-      //       icon: const Icon(Icons.refresh),
-      //       onPressed: () {
-      //         context.read<ProtocolsDiscoveryBloc>().add(
-      //               const FetchDiscoveredProtocols(),
-      //             );
-      //       },
-      //       tooltip: 'Refresh Protocols',
-      //     ),
-      //   ],
-      // ),
       body: BlocConsumer<ProtocolsDiscoveryBloc, ProtocolsDiscoveryState>(
         listener: (context, state) {
           if (state is ProtocolsDiscoveryError) {

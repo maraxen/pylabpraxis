@@ -74,8 +74,8 @@ class AppGoRouter {
         Map<String, String> oidcParamsFromSource = {};
 
         final bool pathIsSplash = currentPath == '/splash';
-        print('Current path: $currentPath, isSplash: $pathIsSplash');
-        print('GoRouter URI: $goRouterUri');
+        developer.log('Current path: $currentPath, isSplash: $pathIsSplash');
+        developer.log('GoRouter URI: $goRouterUri');
         final bool hasStateInQuery = goRouterUri.queryParameters.containsKey(
           'state',
         );
@@ -86,18 +86,18 @@ class AppGoRouter {
           'error',
         );
 
-        print(
+        developer.log(
           'OIDC Callback detection on /splash: hasStateInQuery=$hasStateInQuery, hasCodeInQuery=$hasCodeInQuery, hasErrorInQuery=$hasErrorInQuery',
         );
 
         if (kIsWeb && pathIsSplash) {
-          print(
+          developer.log(
             'Web detected as current platform. Checking for OIDC callback on /splash.',
           );
           if (hasStateInQuery && (hasCodeInQuery || hasErrorInQuery)) {
             isActualOidcCallbackUrl = true;
             oidcParamsFromSource = goRouterUri.queryParameters;
-            print(
+            developer.log(
               'OIDC Callback (Auth Code Flow) detected on /splash via GoRouter query parameters: $oidcParamsFromSource',
             );
           } else {
@@ -126,7 +126,7 @@ class AppGoRouter {
                     isActualOidcCallbackUrl = true;
                     oidcParamsFromSource = browserFragmentParams;
                   }
-                  print(
+                  developer.log(
                     'OIDC Callback (Auth Code Flow) detected on /splash via browser fragment: $browserFragmentParams',
                   );
                   developer.log(

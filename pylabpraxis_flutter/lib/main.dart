@@ -23,6 +23,7 @@ import 'src/data/repositories/protocol_repository.dart';
 
 // Feature Layer Imports (BLoCs & Events)
 import 'src/features/auth/application/bloc/auth_bloc.dart';
+import 'src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
 
 // Import other BLoCs you might provide globally, e.g.:
 // import 'src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
@@ -179,11 +180,14 @@ void main() {
                           ..add(AuthAppStarted()), // Dispatch initial event
               ),
               // Example of another BLoC:
-              // BlocProvider<ProtocolsDiscoveryBloc>(
-              //   create: (context) => ProtocolsDiscoveryBloc(
-              //     protocolRepository: context.read<ProtocolRepository>(),
-              //   )..add(ProtocolsLoadStarted()), // Dispatch initial event if needed
-              // ),
+              BlocProvider<ProtocolsDiscoveryBloc>(
+                create:
+                    (context) => ProtocolsDiscoveryBloc(
+                      protocolRepository: context.read<ProtocolRepository>(),
+                    )..add(
+                      FetchDiscoveredProtocols(),
+                    ), // Dispatch initial event if needed
+              ),
             ],
             child: const MyApp(), // MyApp will now use GoRouter
           ),
