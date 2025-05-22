@@ -11,44 +11,12 @@ import os
 from typing import Dict, Any, Union, Optional, TypeVar
 from dataclasses import dataclass, field
 import json
-
-# Attempt to import PyLabRobot base classes and PraxisState.
-try:
-    from pylabrobot.resources import Resource as PlrResource
-    from pylabrobot.resources import Deck as PlrDeck
-except ImportError:
-    print("Warning: PyLabRobot classes (Resource, Deck) not found. Using placeholders for type hinting.")
-    class PlrResource: # type: ignore
-        """Placeholder for pylabrobot.resources.Resource."""
-        def __init__(self, name: str, **kwargs):
-            self.name = name
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-        def __repr__(self): return f"PlrResource(name='{self.name}')"
-
-    class PlrDeck(PlrResource): # type: ignore
-        """Placeholder for pylabrobot.resources.Deck."""
-        def __init__(self, name: str = "deck", **kwargs): super().__init__(name=name, **kwargs)
-        def __repr__(self): return f"PlrDeck(name='{self.name}')"
-
-try:
-    from praxis.utils.state import State as PraxisState
-except ImportError:
-    print("Warning: praxis.utils.state.State (PraxisState) not found. Using placeholder.")
-    @dataclass
-    class PraxisState: # type: ignore
-        """Placeholder for praxis.utils.state.State."""
-        data: Dict[str, Any] = field(default_factory=dict)
-        def update_from_dict(self, data_dict: Dict[str, Any]): self.data.update(data_dict)
-        def get(self, key: str, default: Any = None) -> Any: return self.data.get(key, default)
-        def set(self, key: str, value: Any): self.data[key] = value
-        def __repr__(self): return f"PraxisState(data={self.data})"
-
+from pylabrobot.resources import Resource as PlrResource
+from pylabrobot.resources import Deck as PlrDeck
+from praxis.backend.utils.state import State as PraxisState
 
 PROTOCOL_REGISTRY: Dict[str, Dict[str, Any]] = {}
 DeckInputType = Union[str, os.PathLike, io.IOBase, PlrDeck]
-
-
 @dataclass
 class PraxisRunContext:
     """
@@ -125,6 +93,8 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
 
 
 # Example Placeholder Asset Types
+# TODO: ASSET-1: Replace with actual implementations or imports from the relevant modules.
+# These are just placeholders to illustrate the concept.
 class Pipette(PlrResource):
     def __init__(self, name: str, num_channels: int = 1, **kwargs): super().__init__(name=name, **kwargs); self.num_channels = num_channels
     def aspirate(self, volume: float, location: Any = None): print(f"{self.name} aspirating {volume}uL" + (f" from {location}" if location else ""))

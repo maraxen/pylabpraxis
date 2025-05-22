@@ -20,9 +20,9 @@ import enum
 # TODO: DB-SETUP-1: Ensure this import path for Base is correct for your project structure.
 # Assuming your existing db.py has a Base = declarative_base()
 try:
-    from praxis.utils.db import Base # Import your project's Base
+    from praxis.backend.utils.db import Base # Import your project's Base
 except ImportError:
-    print("WARNING: Could not import Base from praxis.utils.db. Using a local Base for model definition only.")
+    print("WARNING: Could not import Base from praxis.backend.utils.db. Using a local Base for model definition only.")
     from sqlalchemy.orm import declarative_base
     Base = declarative_base()
 
@@ -176,7 +176,7 @@ class ProtocolRunOrm(Base):
     function_calls = relationship("FunctionCallLogOrm", back_populates="protocol_run", cascade="all, delete-orphan", order_by="FunctionCallLogOrm.sequence_in_run")
 
     def __repr__(self):
-        return f"<ProtocolRunOrm(id={self.id}, run_guid='{self.run_guid}', status='{self.status.name if self.status else 'N/A'}')>"
+        return f"<ProtocolRunOrm(id={self.id}, run_guid='{self.run_guid}', status='{self.status.name}')>"
 
 
 class FunctionCallLogOrm(Base):
@@ -199,5 +199,4 @@ class FunctionCallLogOrm(Base):
     parent_call = relationship("FunctionCallLogOrm", remote_side=[id], backref="child_calls") # type: ignore
 
     def __repr__(self):
-        return f"<FunctionCallLogOrm(id={self.id}, run_id={self.protocol_run_id}, seq={self.sequence_in_run}, status='{self.status.name if self.status else 'N/A'}')>"
-
+        return f"<FunctionCallLogOrm(id={self.id}, run_id={self.protocol_run_id}, seq={self.sequence_in_run}, status='{self.status.name}')>"

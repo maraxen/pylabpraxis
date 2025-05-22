@@ -18,18 +18,18 @@ from typing import List, Dict, Any, Optional, Union, Set
 from sqlalchemy.orm import Session as DbSession
 
 # Pydantic models for structuring data before DB interaction
-from praxis.protocol_core.protocol_definition_models import (
-    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic,
+from praxis.backend.protocol_core.definitions import (
+    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic, # TODO: DS-2: ensure definitions actually includes this
     _convert_decorator_metadata_to_definition_v2 # Using the v2 converter
 )
 # Global in-memory registry (populated by decorators, updated by this service)
-from praxis.protocol_core.definitions import PROTOCOL_REGISTRY
+from praxis.backend.protocol_core.definitions import PROTOCOL_REGISTRY
 # Database service for actual DB operations
-# TODO: DS-1: Ensure praxis.db_services.protocol_data_service is correctly imported and fully functional.
+# TODO: DS-1: Ensure praxis.backend.services.protocol_data_service is correctly imported and fully functional.
 try:
-    from praxis.db_services.protocol_data_service import upsert_function_protocol_definition
+    from praxis.backend.services.protocol_data_service import upsert_function_protocol_definition
 except ImportError:
-    print("WARNING: DS-1: Could not import from praxis.db_services.protocol_data_service. DB operations will be placeholder/skipped by DiscoveryService.")
+    print("WARNING: DS-1: Could not import from praxis.backend.services.protocol_data_service. DB operations will be placeholder/skipped by DiscoveryService.")
     def upsert_function_protocol_definition(db, protocol_pydantic, **kwargs): # type: ignore
         print(f"[DiscoveryService-PlaceholderDB] Skipping DB upsert for: {protocol_pydantic.name}")
         class DummyOrm: id = abs(hash(protocol_pydantic.name + protocol_pydantic.version)); parameters = []; assets = [] # type: ignore

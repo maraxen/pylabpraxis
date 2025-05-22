@@ -12,33 +12,25 @@ import time
 import uuid
 import json
 import traceback
+from typing import Callable, Optional, Any, Dict, Union
 
-from praxis.protocol_core.definitions import (
+from praxis.backend.protocol_core.definitions import (
     PROTOCOL_REGISTRY, PlrResource, PlrDeck, DeckInputType,
     PraxisState, PraxisRunContext, serialize_arguments
 )
-from praxis.database_models.protocol_definitions_orm import FunctionCallStatusEnum
-# TODO: DEC-1: Ensure praxis.db_services.protocol_data_service is importable.
-try:
-    from praxis.db_services.protocol_data_service import log_function_call_start, log_function_call_end
-except ImportError:
-    print("WARNING: DEC-1: Could not import from praxis.db_services.protocol_data_service. Logging will be to console only.")
-    def log_function_call_start(db, protocol_run_orm_id, function_definition_id, sequence_in_run, input_args_json, parent_function_call_log_id=None): # type: ignore
-        print(f"[Decor-PlaceholderLog] START Call: run_id={protocol_run_orm_id}, func_def_id={function_definition_id}, seq={sequence_in_run}, args={input_args_json}, parent={parent_function_call_log_id}")
-        class DummyCallLog: id = abs(hash(f"{protocol_run_orm_id}{function_definition_id}{input_args_json}{parent_function_call_log_id}")) # type: ignore
-        return DummyCallLog()
-    def log_function_call_end(db, function_call_log_id, status, return_value_json=None, error_message=None, error_traceback=None, duration_ms=0): # type: ignore
-        print(f"[Decor-PlaceholderLog] END Call: call_log_id={function_call_log_id}, status={status.name}, ret={return_value_json}, err={error_message}, dur={duration_ms}")
-        return None
+from praxis.backend.database_models import FunctionCallStatusEnum
+# TODO: DEC-1: Ensure praxis.backend.services.protocol_data_service is importable.
+from praxis.backend.services.protocol_data_service import log_function_call_start, log_function_call_end
 
 DEFAULT_DECK_PARAM_NAME = "deck"
 DEFAULT_STATE_PARAM_NAME = "state"
 TOP_LEVEL_NAME_REGEX = r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$"
 
 # Helper Functions (assumed to be defined or imported, same as v3 of this file)
+# TODO: DEC-2: Define or import actually usable versions of these helper functions
 def is_pylabrobot_resource(obj_type: Any) -> bool: # Simplified for brevity
     if obj_type is inspect.Parameter.empty: return False
-    origin = get_origin(obj_type); args = get_args(obj_type)
+    origin = get_origin(obj_type); args = get_args(obj_type) # TODO: define get_origin and get_args or import actual methods
     if origin is Union: return any(is_pylabrobot_resource(arg) for arg in args if arg is not type(None))
     return inspect.isclass(obj_type) and issubclass(obj_type, PlrResource)
 def get_actual_type_from_optional(optional_type: Any) -> Any: # Simplified
@@ -55,8 +47,8 @@ def protocol_function(
     name: str, version: str = "0.1.0", description: Optional[str] = None,
     solo: bool = False, is_top_level: bool = False, preconfigure_deck: bool = False,
     deck_param_name: str = DEFAULT_DECK_PARAM_NAME, state_param_name: str = DEFAULT_STATE_PARAM_NAME,
-    param_constraints: Optional[Dict[str, Dict[str, Any]]] = None,
-    asset_constraints: Optional[Dict[str, Dict[str, Any]]] = None,
+    param_constraints: Optional[dict[str, dict[str, Any]]] = None,
+    asset_constraints: Optional[dict[str, dict[str, Any]]] = None,
     top_level_name_format: Optional[str] = TOP_LEVEL_NAME_REGEX
 ):
     if not name: raise ValueError("The 'name' argument for @protocol_function is mandatory.")

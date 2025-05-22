@@ -1,3 +1,4 @@
+# pyright: reportUnusedImport=false, reportUnknownParameterType=false, reportUnknownArgumentType=false, reportMissingTypeArgument=false
 import asyncio
 import asyncpg # For Keycloak database
 import json
@@ -23,17 +24,13 @@ import importlib.util
 
 # Praxis specific imports
 # Assuming this file will be in the 'praxis' directory, adjust paths if it's in 'praxis/utils'
-from .utils.db import AsyncSessionLocal, get_async_db_session, Base as PraxisBase # Core SQLAlchemy setup for Praxis DB
-from .database_models.asset_management_orm import (
-    AssetDefinitionOrm, LabwareDefinitionOrm, DeviceDefinitionOrm,
-    AssetInstanceOrm, LabwareInstanceOrm, DeviceInstanceOrm,
-    DeckLayoutOrm, DeckSlotOrm, AssetLockOrm
-)
-from .database_models.protocol_definitions_orm import (
-    UserOrm, ProtocolSourceRepositoryOrm, FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm, ProtocolParameterDefinitionOrm,
-    ProtocolAssetRequirementOrm, ProtocolRunOrm, ProtocolRunParameterOrm,
-    ProtocolRunAssetAssignmentOrm, FunctionCallLogOrm, ProtocolStateSnapshotOrm
+from praxis.backend.utils.db import AsyncSessionLocal, get_async_db_session, Base as PraxisBase # Core SQLAlchemy setup for Praxis DB
+from praxis.backend.database_models import (
+    ProtocolSourceStatusEnum, ProtocolRunStatusEnum,
+    FunctionCallStatusEnum, ProtocolSourceRepositoryOrm, FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm, ParameterDefinitionOrm, AssetDefinitionOrm,
+    ProtocolRunOrm, FunctionCallLogOrm, ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, LabwareCategoryEnum, AssetInstanceOrm
 )
 # from .configure import PraxisConfiguration # If still needed for other configs
 # from .interfaces import WorkcellAssetsInterface # If used by methods
@@ -43,20 +40,16 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
     # from .interfaces import ProtocolInterface # If used by methods
 
-# Standard library logger
 logger = logging.getLogger(__name__)
-# Ensure basicConfig is called once, typically at application entry point.
-# If called here, it might conflict if already set up.
-# logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class PraxisDBService:
     _instance: Optional["PraxisDBService"] = None
-    _keycloak_pool: Optional[asyncpg.Pool] = None # For Keycloak DB
+    _keycloak_pool: Optional[asyncpg.Pool[Any]] = None # For Keycloak DB TODO: establish if this should be Any
     _max_retries = 3
     _retry_delay = 1  # seconds
 
-    def __new__(cls, *args, **kwargs): # Add *args, **kwargs to match super().__new__
+    def __new__(cls, *args, **kwargs): # type: ignore for generic method
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -143,7 +136,7 @@ class PraxisDBService:
             await session.close()
 
     @asynccontextmanager
-    async def get_keycloak_connection(self) -> AsyncIterator[asyncpg.Connection]:
+    async def get_keycloak_connection(self) -> AsyncIterator[asyncpg.Connection[Any]]: # TODO: refine type
         """Provides an asyncpg connection for the Keycloak database."""
         if self._keycloak_pool is None:
             logger.error("Keycloak database pool not initialized. Call initialize() with keycloak_dsn first.")
@@ -152,6 +145,9 @@ class PraxisDBService:
         conn = None
         try:
             conn = await self._keycloak_pool.acquire()
+            if not isinstance(conn, asyncpg.Connection):
+                logger.error("Failed to acquire Keycloak connection from pool.")
+                raise ConnectionError("Failed to acquire Keycloak connection from pool.") # TODO: decide whether to raise or return None
             yield conn
         finally:
             if conn:
@@ -192,7 +188,7 @@ class PraxisDBService:
                     # Find the corresponding ProtocolParameterDefinitionOrm to link if needed,
                     # or just store the key-value pair.
                     # For simplicity, assuming direct storage for now.
-                    run_param = ProtocolRunParameterOrm(
+                    run_param = ParameterDefinitionOrm(
                         protocol_run_id=new_run.id,
                         parameter_key=key,
                         parameter_value_json=value # Ensure value is JSON serializable
@@ -202,8 +198,11 @@ class PraxisDBService:
             await session.commit() # Commit all changes
             await session.refresh(new_run) # Refresh to get all DB-generated fields like ID, timestamps
 
-            if new_run.id is None:
+            if new_run.id is None: # type: ignore
                 raise ValueError("Failed to create protocol run: no ID returned after commit.")
+
+            logger.info(f"Registered new protocol run: {protocol_name} (ID: {new_run.id})")
+            assert isinstance(new_run.id, int), "Expected integer ID for ProtocolRunOrm" # TODO: validate
             return new_run.id
 
     async def get_protocol_run_details(self, protocol_run_id: int) -> Optional[Dict[str, Any]]:
@@ -247,8 +246,8 @@ class PraxisDBService:
                     "protocol_run_id": run_orm.id,
                     "protocol_definition_id": run_orm.function_protocol_definition_id,
                     # "protocol_name": run_orm.protocol_name, # if stored on ProtocolRunOrm
-                    "start_time": run_orm.start_time.isoformat() if run_orm.start_time else None,
-                    "end_time": run_orm.end_time.isoformat() if run_orm.end_time else None,
+                    "start_time": run_orm.start_time.isoformat() if run_orm.start_time else None, # type:ignore # TODO: check if timezone-aware and see if better None check method
+                    "end_time": run_orm.end_time.isoformat() if run_orm.end_time else None, # type:ignore # TODO: check if timezone-aware and see if better None check method
                     "status": run_orm.run_status,
                     "user": user_info,
                     # "data_directory": run_orm.data_directory,
@@ -273,7 +272,7 @@ class PraxisDBService:
             # No need to fetch, just commit. If you need the updated object, query it.
             # logger.info(f"Protocol run {protocol_run_id} status updated to {status}.")
 
-    async def list_protocol_runs(self, status: Optional[str] = None, user_id: Optional[str] = None) -> List[Dict]:
+    async def list_protocol_runs(self, status: Optional[str] = None, user_id: Optional[str] = None) -> List[Dict]: # type: ignore # TODO: refine type
         """List all protocol runs, optionally filtered by status and/or user_id."""
         async with self.get_praxis_session() as session:
             stmt = select(ProtocolRunOrm).options(
@@ -299,16 +298,16 @@ class PraxisDBService:
                         "email": run_orm.user.email, "first_name": run_orm.user.first_name,
                         "last_name": run_orm.user.last_name
                     }
-                runs_list.append({
+                runs_list.append({ # type: ignore
                     "protocol_run_id": run_orm.id,
                     "protocol_definition_id": run_orm.function_protocol_definition_id,
-                    "start_time": run_orm.start_time.isoformat() if run_orm.start_time else None,
-                    "end_time": run_orm.end_time.isoformat() if run_orm.end_time else None,
+                    "start_time": run_orm.start_time.isoformat() if run_orm.start_time else None, # type:ignore # TODO: check if timezone-aware and see if better None check method
+                    "end_time": run_orm.end_time.isoformat() if run_orm.end_time else None, # type:ignore # TODO: check if timezone-aware and see if better None check method
                     "status": run_orm.run_status,
                     "user": user_info,
                     "parameters": params_dict,
                 })
-            return runs_list
+            return runs_list # type: ignore
 
     # --- Asset Management Methods (To be ported) ---
     async def add_asset_instance(
@@ -316,8 +315,8 @@ class PraxisDBService:
         name: str,
         asset_definition_id: int, # FK to AssetDefinitionOrm
         asset_type: str, # e.g. 'LabwareInstanceOrm', 'DeviceInstanceOrm'
-        metadata: Optional[dict] = None,
-        plr_serialized: Optional[dict] = None
+        metadata: Optional[dict[str, str]] = None, # TODO: refine type
+        plr_serialized: Optional[dict[str, Any]] = None # TODO: refine type
     ) -> int:
         """Adds or updates an asset instance in the database."""
         async with self.get_praxis_session() as session:
@@ -332,7 +331,7 @@ class PraxisDBService:
 
             if asset_orm: # Update existing
                 asset_orm.asset_definition_id = asset_definition_id
-                asset_orm.metadata_json = metadata if metadata else asset_orm.metadata_json
+                asset_orm.metadata_json = metadata if metadata else asset_orm.metadata_json # type: ignore # TODO: see if a problem
                 asset_orm.pylabrobot_configuration_json = plr_serialized if plr_serialized else asset_orm.pylabrobot_configuration_json
                 # asset_orm.asset_type_discriminator = asset_type # if you have a discriminator
                 logger.info(f"Updating existing asset instance: {name}")
@@ -349,11 +348,11 @@ class PraxisDBService:
 
             await session.commit()
             await session.refresh(asset_orm)
-            if asset_orm.id is None:
+            if asset_orm.id is None: # type: ignore
                 raise ValueError(f"Failed to add/update asset instance '{name}': no ID returned.")
-            return asset_orm.id
+            return asset_orm.id # type: ignore # TODO: check if this is correct
 
-    async def get_asset_instance(self, name: str) -> Optional[Dict]:
+    async def get_asset_instance(self, name: str) -> Optional[Dict]: # type: ignore # TODO: refine type
         """Retrieves an asset instance by name."""
         async with self.get_praxis_session() as session:
             # This will fetch the base AssetInstanceOrm.
@@ -382,7 +381,7 @@ class PraxisDBService:
                     # "locked_by_protocol_run_id": asset_orm.locked_by_protocol_run_id,
                     # "lock_acquired_at": asset_orm.lock_acquired_at,
                     # "lock_expires_at": asset_orm.lock_expires_at,
-                }
+                } # type: ignore # TODO: check if this is correct, figure out data to return
             return None
 
     # ... (Other asset methods like instantiate_asset, get_all_machines, etc. to be ported) ...
@@ -490,7 +489,7 @@ def _get_keycloak_dsn_from_config() -> Optional[str]:
 # --- Example Usage (if run directly) ---
 async def example_main():
     # Initialize Praxis DB schema (from praxis.utils.db)
-    from .utils.db import init_db as init_praxis_db
+    from praxis.backend.utils.db import init_praxis_db_schema as init_praxis_db
     await init_praxis_db()
 
     # Initialize the service, including Keycloak pool
@@ -511,7 +510,7 @@ async def example_main():
 
         # Create a dummy UserOrm if it doesn't exist for the example (in real app, users come from Keycloak sync)
         async with service.get_praxis_session() as temp_session:
-            user_exists = await temp_session.get(UserOrm, user_uuid_for_run)
+            user_exists = await temp_session.get(UserOrm, user_uuid_for_run) # TODO: define UserOrm in database models
             if not user_exists:
                 temp_session.add(UserOrm(id=user_uuid_for_run, username="test_runner_user"))
                 # logger.info(f"Added dummy user {user_uuid_for_run} for example.")
@@ -575,7 +574,7 @@ async def example_main():
             name="MyTestPlate001",
             asset_definition_id=asset_def_id,
             asset_type="LabwareInstanceOrm", # Or a discriminator value
-            metadata={"wells": 96, "material": "polystyrene"},
+            metadata={"wells": 96, "material": "polystyrene"}, # type: ignore # TODO: have methods cast and unpack to appropriate types
             plr_serialized={"pylabrobot_resource_name": "plate_96_well_pcr"}
         )
         logger.info(f"Added/Updated asset instance ID: {asset_id}")

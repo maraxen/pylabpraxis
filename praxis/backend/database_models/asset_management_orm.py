@@ -18,9 +18,9 @@ import enum
 
 # TODO: DB-SETUP-1 (Asset ORM): Ensure this import path for Base is correct for your project structure.
 try:
-    from praxis.utils.db import Base # Import your project's Base
+    from praxis.backend.utils.db import Base # Import your project's Base
 except ImportError:
-    print("WARNING: Could not import Base from praxis.utils.db. Using a local Base for Asset ORM definition only.")
+    print("WARNING: Could not import Base from praxis.backend.utils.db. Using a local Base for Asset ORM definition only.")
     from sqlalchemy.orm import declarative_base
     Base = declarative_base()
 
@@ -58,6 +58,41 @@ class LabwareCategoryEnum(enum.Enum):
 
 # --- Asset Management ORM Models ---
 
+class AssetInstanceOrm(Base):
+  """
+  Abstract base class representing any physical asset in the lab.
+  This serves as an umbrella for both devices and labware instances.
+  """
+  __tablename__ = "asset_instances"
+
+  id = Column(Integer, primary_key=True, index=True)
+  asset_type = Column(String, nullable=False, index=True)  # 'device', 'labware', etc.
+  asset_id = Column(Integer, nullable=False, index=True)  # FK to concrete asset table (interpreted based on asset_type)
+
+  barcode = Column(String, nullable=True, unique=True, index=True)
+  serial_number = Column(String, nullable=True, unique=True, index=True)
+
+  acquisition_date = Column(DateTime(timezone=True), nullable=True)
+  warranty_expiry = Column(DateTime(timezone=True), nullable=True)
+  last_maintenance = Column(DateTime(timezone=True), nullable=True)
+  next_maintenance_due = Column(DateTime(timezone=True), nullable=True)
+
+  owner = Column(String, nullable=True)  # Person or group responsible for this asset
+  #cost_center = Column(String, nullable=True)
+  #purchase_value = Column(Float, nullable=True)
+
+  metadata_json = Column(JSON, nullable=True, comment="Additional asset metadata")
+
+  created_at = Column(DateTime(timezone=True), server_default=func.now())
+  updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+  __table_args__ = (
+    UniqueConstraint('asset_type', 'asset_id', name='uq_asset_instance'),
+  )
+
+  def __repr__(self):
+    return f"<AssetInstanceOrm(id={self.id}, type='{self.asset_type}', asset_id={self.asset_id})>"
+
 class ManagedDeviceOrm(Base):
     __tablename__ = "managed_devices"
 
@@ -93,7 +128,7 @@ class ManagedDeviceOrm(Base):
         return f"<ManagedDeviceOrm(id={self.id}, name='{self.user_friendly_name}', type='{self.pylabrobot_class_name}')>"
 
 
-class LabwareDefinitionCatalogOrm(Base):
+class LabwareDefinitionCatalogOrm(Base): # TODO: ASSET-DB-2: Bring in line with PLR labware definition
     __tablename__ = "labware_definition_catalog"
 
     # Using pylabrobot_definition_name as PK assumes it's globally unique and stable in PLR
@@ -103,8 +138,7 @@ class LabwareDefinitionCatalogOrm(Base):
     category = Column(SAEnum(LabwareCategoryEnum, name="labware_category_enum"), nullable=True, index=True)
     description = Column(Text, nullable=True)
     is_consumable = Column(Boolean, default=True)
-
-    nominal_volume_ul = Column(Float, nullable=True) # e.g., for wells or total for reservoir
+    nominal_volume_ul = Column(Float(64), nullable=True) # TODO: ASSET-DB-3: Use a more precise type if needed
     material = Column(String, nullable=True)
     manufacturer = Column(String, nullable=True)
 
@@ -118,7 +152,7 @@ class LabwareDefinitionCatalogOrm(Base):
     labware_instances = relationship("LabwareInstanceOrm", back_populates="labware_definition")
 
     def __repr__(self):
-        return f"<LabwareDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.category.name if self.category else 'N/A'}')>"
+        return f"<LabwareDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.category.value}')>" # TODO: ASSET-DB-4: Add more details if needed
 
 
 class LabwareInstanceOrm(Base):
