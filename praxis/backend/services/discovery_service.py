@@ -13,14 +13,14 @@ import os
 import importlib
 import inspect
 import sys
-from typing import List, Dict, Any, Optional, Union, Set
+from typing import List, Dict, Any, Optional, Union, Set, Callable, Tuple, get_origin, get_args
+import traceback
 
 from sqlalchemy.orm import Session as DbSession
 
-# Pydantic models for structuring data before DB interaction
-from praxis.backend.database_models import (
-    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic, # TODO: DS-2: ensure definitions or models actually includes this
-    _convert_decorator_metadata_to_definition_v2 # Using the v2 converter
+# Updated Pydantic model imports
+from praxis.backend.protocol_core.protocol_definition_models import (
+    FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint
 )
 # Global in-memory registry (populated by decorators, updated by this service)
 from praxis.backend.protocol_core.definitions import PROTOCOL_REGISTRY
@@ -32,8 +32,49 @@ except ImportError:
     print("WARNING: DS-1: Could not import from praxis.backend.services.protocol_data_service. DB operations will be placeholder/skipped by DiscoveryService.")
     def upsert_function_protocol_definition(db, protocol_pydantic, **kwargs): # type: ignore
         print(f"[DiscoveryService-PlaceholderDB] Skipping DB upsert for: {protocol_pydantic.name}")
-        class DummyOrm: id = abs(hash(protocol_pydantic.name + protocol_pydantic.version)); parameters = []; assets = [] # type: ignore
+        class DummyOrm: 
+            id = abs(hash(protocol_pydantic.name + protocol_pydantic.version))
+            parameters = []
+            assets = []
+            name = protocol_pydantic.name # For test block
+            version = protocol_pydantic.version # For test block
+            module_name = protocol_pydantic.module_name # For test block
+            function_name = protocol_pydantic.function_name # For test block
+
         return DummyOrm()
+
+# --- Helper Functions (copied from decorators.py modification plan) ---
+def is_pylabrobot_resource(obj_type: Any) -> bool:
+    if obj_type is inspect.Parameter.empty: return False
+    origin = get_origin(obj_type); t_args = get_args(obj_type) 
+    if origin is Union: return any(is_pylabrobot_resource(arg) for arg in t_args if arg is not type(None))
+    try:
+        if inspect.isclass(obj_type):
+            from praxis.backend.protocol_core.definitions import PlrResource 
+            return issubclass(obj_type, PlrResource)
+    except TypeError: pass
+    return False
+
+def get_actual_type_str_from_hint(type_hint: Any) -> str:
+    if type_hint == inspect.Parameter.empty: return "Any"
+    actual_type = type_hint
+    origin = get_origin(type_hint); t_args = get_args(type_hint)
+    if origin is Union and type(None) in t_args: 
+        non_none_args = [arg for arg in t_args if arg is not type(None)]
+        if len(non_none_args) == 1: actual_type = non_none_args[0]
+        else: actual_type = non_none_args[0] if non_none_args else type_hint 
+    if hasattr(actual_type, "__name__"):
+        module = getattr(actual_type, "__module__", "")
+        # For praxis types, pylabrobot types, and builtins, include module for clarity if not builtin
+        if module.startswith("praxis.") or module.startswith("pylabrobot.") or module == "builtins":
+            return f"{module}.{actual_type.__name__}" if module and module != "builtins" else actual_type.__name__
+        return actual_type.__name__ # For other types, just the name
+    return str(actual_type)
+
+def serialize_type_hint_str(type_hint: Any) -> str:
+    if type_hint == inspect.Parameter.empty: return "Any"
+    return str(type_hint)
+# --- End Helper Functions ---
 
 
 class ProtocolDiscoveryService:
@@ -44,29 +85,16 @@ class ProtocolDiscoveryService:
 
     def __init__(self, db_session: Optional[DbSession] = None):
         self.db_session = db_session
-        # self._discovered_raw_metadata_list: List[Dict[str, Any]] = [] # Not strictly needed as member var
 
-    def _scan_and_load_modules(
+    def _extract_protocol_definitions_from_paths(
         self,
         search_paths: Union[str, List[str]],
-    ) -> List[Dict[str, Any]]:
-        """
-        Scans Python files, imports them, and collects raw metadata from decorated functions.
-        Decorator populates PROTOCOL_REGISTRY; this function ensures modules are loaded
-        and can optionally re-collect metadata if PROTOCOL_REGISTRY is cleared per scan.
-        """
+    ) -> List[Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]]:
         if isinstance(search_paths, str): search_paths = [search_paths]
 
-        # Using a set to track unique metadata dicts based on the function object's ID
-        # to handle reloads or multiple scan paths pointing to same modules.
-        # The metadata dicts themselves are stored in PROTOCOL_REGISTRY by the decorator.
-        # We are essentially ensuring all relevant modules are loaded and then iterating
-        # through the populated PROTOCOL_REGISTRY.
-
-        # Keep track of modules we've tried to import to avoid redundant reloads if not necessary,
-        # though reloading ensures freshness if files changed.
+        extracted_definitions: List[Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]] = []
+        processed_func_ids: Set[int] = set()
         loaded_module_names: Set[str] = set()
-
         original_sys_path = list(sys.path)
 
         for path_item in search_paths:
@@ -80,7 +108,7 @@ class ProtocolDiscoveryService:
             if potential_package_parent not in sys.path:
                 sys.path.insert(0, potential_package_parent)
                 path_added_to_sys = True
-
+            
             for root, _, files in os.walk(abs_path_item):
                 for file in files:
                     if file.endswith(".py") and not file.startswith("_"):
@@ -89,25 +117,73 @@ class ProtocolDiscoveryService:
                         module_import_name = os.path.splitext(rel_module_path)[0].replace(os.sep, '.')
 
                         try:
+                            module = None
                             if module_import_name in loaded_module_names and module_import_name in sys.modules:
-                                # print(f"DEBUG: Reloading module: {module_import_name}")
                                 module = importlib.reload(sys.modules[module_import_name])
                             else:
-                                # print(f"DEBUG: Importing module: {module_import_name}")
                                 module = importlib.import_module(module_import_name)
                             loaded_module_names.add(module_import_name)
-                            # Decorators within 'module' should have populated PROTOCOL_REGISTRY
-                        except Exception as e: # Catch ImportError and other potential issues
-                            print(f"Could not import/reload module '{module_import_name}' from '{module_file_path}': {e}")
 
-            if path_added_to_sys: # Restore sys.path
-                if potential_package_parent in sys.path: sys.path.remove(potential_package_parent)
-                else: sys.path = original_sys_path # Fallback
+                            for name, func_obj in inspect.getmembers(module, inspect.isfunction):
+                                if func_obj.__module__ != module_import_name: continue # Only process functions defined in this module
+                                if id(func_obj) in processed_func_ids: continue
+                                processed_func_ids.add(id(func_obj))
 
-        # Return a list of metadata dicts from the now-populated PROTOCOL_REGISTRY
-        # This ensures we only process what the decorators registered.
-        return list(PROTOCOL_REGISTRY.values())
+                                if hasattr(func_obj, '_protocol_definition') and isinstance(func_obj._protocol_definition, FunctionProtocolDefinitionModel):
+                                    extracted_definitions.append((func_obj._protocol_definition, func_obj))
+                                else:
+                                    # Infer metadata for non-decorated functions
+                                    sig = inspect.signature(func_obj)
+                                    params_list: List[ParameterMetadataModel] = []
+                                    assets_list: List[AssetRequirementModel] = []
+                                    
+                                    for param_name, param_obj_sig in sig.parameters.items():
+                                        param_type_hint = param_obj_sig.annotation
+                                        is_opt = (get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)) or \
+                                                 (param_obj_sig.default is not inspect.Parameter.empty)
+                                        actual_type_str = get_actual_type_str_from_hint(param_type_hint)
+                                        
+                                        # Basic check for PlrResource type for assets
+                                        type_for_plr_check = param_type_hint
+                                        origin_check, args_check = get_origin(param_type_hint), get_args(param_type_hint)
+                                        if origin_check is Union and type(None) in args_check:
+                                            non_none_args = [arg for arg in args_check if arg is not type(None)]
+                                            if len(non_none_args) == 1: type_for_plr_check = non_none_args[0]
+                                        
+                                        common_args = {
+                                            "name": param_name,
+                                            "type_hint_str": serialize_type_hint_str(param_type_hint),
+                                            "actual_type_str": actual_type_str,
+                                            "optional": is_opt,
+                                            "default_value_repr": repr(param_obj_sig.default) if param_obj_sig.default is not inspect.Parameter.empty else None,
+                                        }
+                                        if is_pylabrobot_resource(type_for_plr_check):
+                                            assets_list.append(AssetRequirementModel(**common_args))
+                                        else:
+                                            params_list.append(ParameterMetadataModel(**common_args, is_deck_param=False)) # Assuming not deck by default for inferred
 
+                                    inferred_model = FunctionProtocolDefinitionModel(
+                                        name=func_obj.__name__,
+                                        version="0.0.0-inferred",
+                                        description=inspect.getdoc(func_obj) or "Inferred from code.",
+                                        source_file_path=inspect.getfile(func_obj),
+                                        module_name=func_obj.__module__,
+                                        function_name=func_obj.__name__,
+                                        parameters=params_list,
+                                        assets=assets_list,
+                                        is_top_level=False, # Cannot infer this reliably
+                                        # Fill other fields with sensible defaults
+                                    )
+                                    extracted_definitions.append((inferred_model, func_obj))
+                        except Exception as e:
+                            print(f"Could not import/process module '{module_import_name}' from '{module_file_path}': {e}")
+                            traceback.print_exc()
+            
+            if path_added_to_sys and potential_package_parent in sys.path:
+                sys.path.remove(potential_package_parent)
+        
+        sys.path = original_sys_path # Restore original sys.path
+        return extracted_definitions
 
     def discover_and_upsert_protocols(
         self,
@@ -116,69 +192,70 @@ class ProtocolDiscoveryService:
         commit_hash: Optional[str] = None,
         file_system_source_id: Optional[int] = None
     ) -> List[Any]: # Returns list of ORM objects or Dummies
-        """
-        Scans for protocols, converts metadata, upserts to DB, and updates PROTOCOL_REGISTRY.
-        """
         if not self.db_session:
             print("ERROR: DB session not provided to ProtocolDiscoveryService. Cannot upsert definitions.")
             return []
 
-        # TODO: DS-3: Revisit source linking. If no source provided, how are unmanaged protocols handled?
-        #             Current upsert in data_service requires a source.
         if not ((source_repository_id and commit_hash) or file_system_source_id):
-            print("WARNING: DS-3: No source linkage provided for discovery. Protocols will not be upserted if service requires it.")
-            # Depending on upsert_function_protocol_definition strictness, this might fail.
-            # For now, we proceed, and upsert might raise error or handle it.
+            print("WARNING: DS-3: No source linkage provided for discovery. Protocols may not be correctly linked or upserted if service requires it.")
 
         print(f"Starting protocol discovery in paths: {search_paths}...")
-        # _scan_and_load_modules ensures PROTOCOL_REGISTRY is populated by decorators.
-        # We then iterate over a snapshot of its values.
-        raw_metadata_list = self._scan_and_load_modules(search_paths)
+        extracted_definitions = self._extract_protocol_definitions_from_paths(search_paths)
 
-        if not raw_metadata_list:
-            print("No raw protocol metadata found from scan (PROTOCOL_REGISTRY might be empty or scan paths incorrect).")
+        if not extracted_definitions:
+            print("No protocol definitions found from scan.")
             return []
 
-        print(f"Found {len(raw_metadata_list)} raw protocol entries. Converting and upserting to DB...")
+        print(f"Found {len(extracted_definitions)} protocol functions. Upserting to DB...")
+        upserted_definitions_orm: List[Any] = []
 
-        upserted_definitions_orm: List[Any] = [] # List of ORM objects or Dummies
-
-        for raw_meta in raw_metadata_list:
-            # Ensure raw_meta is a dictionary, as expected by the converter
-            if not isinstance(raw_meta, dict):
-                print(f"WARNING: Skipping non-dict metadata entry: {type(raw_meta)}")
-                continue
-
-            protocol_name_for_error = raw_meta.get('name', 'UnknownProtocol')
-            protocol_version_for_error = raw_meta.get('version', 'N/A')
+        for protocol_pydantic_model, func_ref in extracted_definitions:
+            protocol_name_for_error = protocol_pydantic_model.name
+            protocol_version_for_error = protocol_pydantic_model.version
             try:
-                protocol_pydantic = _convert_decorator_metadata_to_definition_v2(raw_meta)
+                # Update source linkage in the Pydantic model before upsert
+                if source_repository_id and commit_hash:
+                    protocol_pydantic_model.source_repository_name = str(source_repository_id) # Assuming name is ID for now
+                    protocol_pydantic_model.commit_hash = commit_hash
+                elif file_system_source_id:
+                     protocol_pydantic_model.file_system_source_name = str(file_system_source_id) # Assuming name is ID for now
+
 
                 def_orm = upsert_function_protocol_definition(
                     db=self.db_session,
-                    protocol_pydantic=protocol_pydantic,
-                    source_repository_id=source_repository_id,
+                    protocol_pydantic=protocol_pydantic_model, # Pass the Pydantic model directly
+                    # Source info now part of the pydantic model, but data_service might still expect these args
+                    source_repository_id=source_repository_id, 
                     commit_hash=commit_hash,
                     file_system_source_id=file_system_source_id
                 )
                 upserted_definitions_orm.append(def_orm)
 
-                # CRUCIAL: Update the in-memory PROTOCOL_REGISTRY with the database ID
-                protocol_unique_key_from_meta = raw_meta.get("protocol_unique_key")
-                if protocol_unique_key_from_meta and protocol_unique_key_from_meta in PROTOCOL_REGISTRY:
-                    # Ensure def_orm.id exists (it should if upsert was successful)
+                protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
+
+                # Update db_id on the Pydantic model instance attached to the function (if decorated)
+                if func_ref and hasattr(func_ref, '_protocol_definition') and func_ref._protocol_definition is protocol_pydantic_model:
                     if hasattr(def_orm, 'id') and def_orm.id is not None:
-                        PROTOCOL_REGISTRY[protocol_unique_key_from_meta]["db_id"] = def_orm.id
-                        # print(f"DEBUG: Updated PROTOCOL_REGISTRY for '{protocol_unique_key_from_meta}' with db_id: {def_orm.id}")
+                        func_ref._protocol_definition.db_id = def_orm.id
+                
+                # Update PROTOCOL_REGISTRY
+                if protocol_unique_key in PROTOCOL_REGISTRY:
+                    if hasattr(def_orm, 'id') and def_orm.id is not None:
+                        PROTOCOL_REGISTRY[protocol_unique_key]["db_id"] = def_orm.id
+                        # If the decorator stored the pydantic model in the registry, update its db_id too
+                        if "pydantic_definition" in PROTOCOL_REGISTRY[protocol_unique_key] and \
+                           isinstance(PROTOCOL_REGISTRY[protocol_unique_key]["pydantic_definition"], FunctionProtocolDefinitionModel):
+                            PROTOCOL_REGISTRY[protocol_unique_key]["pydantic_definition"].db_id = def_orm.id
                     else:
-                        print(f"WARNING: Upserted ORM object for '{protocol_unique_key_from_meta}' has no 'id'. Cannot update PROTOCOL_REGISTRY.")
-                else:
-                    print(f"WARNING: Could not find '{protocol_unique_key_from_meta}' in PROTOCOL_REGISTRY to update db_id. Registry state: {list(PROTOCOL_REGISTRY.keys())}")
+                        print(f"WARNING: Upserted ORM object for '{protocol_unique_key}' has no 'id'. Cannot update PROTOCOL_REGISTRY.")
+                # else:
+                    # If the function was not decorated, it might not be in PROTOCOL_REGISTRY.
+                    # This is fine, as the Pydantic model was created on-the-fly.
+                    # print(f"INFO: Protocol '{protocol_unique_key}' (likely inferred) not found in PROTOCOL_REGISTRY. Skipping registry db_id update.")
 
             except Exception as e:
                 print(f"ERROR: Failed to process or upsert protocol '{protocol_name_for_error} v{protocol_version_for_error}': {e}")
                 traceback.print_exc()
-
 
         num_successful_upserts = len([d for d in upserted_definitions_orm if hasattr(d, 'id') and d.id is not None])
         print(f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB.")

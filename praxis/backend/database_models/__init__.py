@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from .asset_management_orm import (
     ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
-    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, LabwareCategoryEnum, AssetInstanceOrm
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, AssetInstanceOrm
 )
 
 from .protocol_definitions_orm import (
@@ -19,11 +19,14 @@ from .protocol_definitions_orm import (
     ProtocolRunOrm, FunctionCallLogOrm
 )
 
+from .user_management_orm import UserOrm
+
 __all__ = [
     "ManagedDeviceOrm", "LabwareInstanceOrm", "LabwareDefinitionCatalogOrm",
-    "ManagedDeviceStatusEnum", "LabwareInstanceStatusEnum", "LabwareCategoryEnum",
+    "ManagedDeviceStatusEnum", "LabwareInstanceStatusEnum", # LabwareCategoryEnum removed
     "ProtocolSourceStatusEnum", "ProtocolRunStatusEnum", "FunctionCallStatusEnum",
     "ProtocolSourceRepositoryOrm", "FileSystemProtocolSourceOrm",
     "FunctionProtocolDefinitionOrm", "ParameterDefinitionOrm", "AssetDefinitionOrm",
-    "ProtocolRunOrm", "FunctionCallLogOrm", "AssetInstanceOrm"
+    "ProtocolRunOrm", "FunctionCallLogOrm", "AssetInstanceOrm",
+    "UserOrm"
 ]

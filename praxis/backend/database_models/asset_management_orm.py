@@ -45,16 +45,18 @@ class LabwareInstanceStatusEnum(enum.Enum):
     ERROR = "error" # e.g., damaged, contaminated
     UNKNOWN = "unknown"
 
-class LabwareCategoryEnum(enum.Enum):
-    PLATE = "plate"
-    TIP_RACK = "tip_rack"
-    RESERVOIR = "reservoir"
-    TUBE_RACK = "tube_rack"
-    CARRIER = "carrier" # e.g., tip carrier, plate carrier
-    ADAPTER = "adapter"
-    LID = "lid"
-    WASTE = "waste"
-    OTHER = "other"
+class PraxisDeviceCategoryEnum(enum.Enum):
+    LIQUID_HANDLER = "LiquidHandler"
+    DECK = "Deck"
+    PLATE_READER = "PlateReader"
+    INCUBATOR = "Incubator"
+    CENTRIFUGE = "Centrifuge"
+    MICROSCOPE = "Microscope"
+    ARM = "Arm"
+    CARRIER_HANDLER = "CarrierHandler"
+    GENERAL_AUTOMATION_DEVICE = "GeneralAutomationDevice"
+    OTHER_INSTRUMENT = "OtherInstrument"
+    UNKNOWN = "Unknown"
 
 # --- Asset Management ORM Models ---
 
@@ -100,6 +102,7 @@ class ManagedDeviceOrm(Base):
     # praxis_device_id = Column(String, unique=True, index=True, nullable=False, comment="Unique identifier within Praxis, e.g., Serial Number or user-defined ID")
     user_friendly_name = Column(String, nullable=False, unique=True, index=True)
     pylabrobot_class_name = Column(String, nullable=False, comment="Fully qualified PyLabRobot class name (e.g., pylabrobot.liquid_handling.hamilton.STAR)")
+    praxis_device_category = Column(SAEnum(PraxisDeviceCategoryEnum, name="praxis_device_category_enum"), nullable=True, index=True, comment="Praxis-defined category based on PLR class")
     backend_config_json = Column(JSON, nullable=True, comment="JSON storing PLR backend connection details")
 
     current_status = Column(SAEnum(ManagedDeviceStatusEnum, name="managed_device_status_enum"), default=ManagedDeviceStatusEnum.OFFLINE, nullable=False)
@@ -131,28 +134,33 @@ class ManagedDeviceOrm(Base):
 class LabwareDefinitionCatalogOrm(Base): # TODO: ASSET-DB-2: Bring in line with PLR labware definition
     __tablename__ = "labware_definition_catalog"
 
-    # Using pylabrobot_definition_name as PK assumes it's globally unique and stable in PLR
-    pylabrobot_definition_name = Column(String, primary_key=True, index=True, comment="Unique name from PyLabRobot (e.g., corning_96_wellplate_360ul_flat)")
+    pylabrobot_definition_name = Column(String, primary_key=True, index=True, comment="Unique name from PyLabRobot (e.g., corning_96_wellplate_360ul_flat), corresponds to PLR Resource.name")
 
+    # Fields for PLR Resource base attributes
+    size_x_mm = Column(Float, nullable=True, comment="Dimension X in millimeters, from PLR Resource.size_x")
+    size_y_mm = Column(Float, nullable=True, comment="Dimension Y in millimeters, from PLR Resource.size_y")
+    size_z_mm = Column(Float, nullable=True, comment="Dimension Z in millimeters, from PLR Resource.size_z")
+    plr_category = Column(String, nullable=True, index=True, comment="Category string from PLR Resource.category")
+    model = Column(String, nullable=True, comment="Model identifier, from PLR Resource.model")
+    rotation_json = Column(JSON, nullable=True, comment="Represents PLR Resource.rotation, e.g., {'x_deg': 0, 'y_deg': 0, 'z_deg': 90} or PLR rotation object serialized")
+
+    # Existing Praxis-specific or other fields
     praxis_labware_type_name = Column(String, nullable=True, unique=True, comment="Optional user-friendly alias in Praxis")
-    category = Column(SAEnum(LabwareCategoryEnum, name="labware_category_enum"), nullable=True, index=True)
     description = Column(Text, nullable=True)
     is_consumable = Column(Boolean, default=True)
-    nominal_volume_ul = Column(Float(64), nullable=True) # TODO: ASSET-DB-3: Use a more precise type if needed
+    nominal_volume_ul = Column(Float, nullable=True)
     material = Column(String, nullable=True)
     manufacturer = Column(String, nullable=True)
 
-    # Store key details from PLR definition for quick access & filtering without loading PLR object
-    plr_definition_details_json = Column(JSON, nullable=True, comment="Dimensions, well layout, etc.")
+    plr_definition_details_json = Column(JSON, nullable=True, comment="Additional PLR-specific details not covered by dedicated columns (e.g., well layout, specific geometry details)")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relationship to specific instances of this labware type
     labware_instances = relationship("LabwareInstanceOrm", back_populates="labware_definition")
 
     def __repr__(self):
-        return f"<LabwareDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.category.value}')>" # TODO: ASSET-DB-4: Add more details if needed
+        return f"<LabwareDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.plr_category}')>"
 
 
 class LabwareInstanceOrm(Base):

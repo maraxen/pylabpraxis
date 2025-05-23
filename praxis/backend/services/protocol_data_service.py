@@ -27,10 +27,10 @@ from praxis.backend.database_models import (
     ProtocolRunStatusEnum,
     FunctionCallStatusEnum
 )
-from praxis.backend.protocol_core.definitions import (
-    FunctionProtocolDefinition as FunctionProtocolDefinitionPydantic,
-    # ParameterDefinition as ParameterDefinitionPydantic,
-    # AssetDefinition as AssetDefinitionPydantic
+from praxis.backend.protocol_core.protocol_definition_models import (
+    FunctionProtocolDefinitionModel,
+    ParameterMetadataModel, 
+    AssetRequirementModel
 )
 
 
@@ -72,7 +72,7 @@ def add_or_update_file_system_protocol_source(
 
 # --- Static Protocol Definition Management ---
 def upsert_function_protocol_definition(
-    db: DbSession, protocol_pydantic: FunctionProtocolDefinitionPydantic,
+    db: DbSession, protocol_pydantic: FunctionProtocolDefinitionModel, # MODIFIED type hint
     source_repository_id: Optional[int] = None, commit_hash: Optional[str] = None,
     file_system_source_id: Optional[int] = None
 ) -> FunctionProtocolDefinitionOrm:
@@ -110,7 +110,7 @@ def upsert_function_protocol_definition(
         # ... (update param_orm fields) ...
         param_orm.name=param_pydantic.name; param_orm.type_hint_str=param_pydantic.type_hint_str; param_orm.actual_type_str=param_pydantic.actual_type_str
         param_orm.is_deck_param=param_pydantic.is_deck_param; param_orm.optional=param_pydantic.optional; param_orm.default_value_repr=param_pydantic.default_value_repr
-        param_orm.description=param_pydantic.description; param_orm.constraints_json = param_pydantic.constraints.model_dump() if param_pydantic.constraints else None
+        param_orm.description=param_pydantic.description; param_orm.constraints_json = param_pydantic.constraints_json # MODIFIED assignment
         updated_params_orm.append(param_orm)
     def_orm.parameters = updated_params_orm
 
@@ -121,7 +121,7 @@ def upsert_function_protocol_definition(
         # ... (update asset_orm fields) ...
         asset_orm.name=asset_pydantic.name; asset_orm.type_hint_str=asset_pydantic.type_hint_str; asset_orm.actual_type_str=asset_pydantic.actual_type_str
         asset_orm.optional=asset_pydantic.optional; asset_orm.default_value_repr=asset_pydantic.default_value_repr
-        asset_orm.description=asset_pydantic.description; asset_orm.constraints_json = asset_pydantic.constraints.model_dump() if asset_pydantic.constraints else None
+        asset_orm.description=asset_pydantic.description; asset_orm.constraints_json = asset_pydantic.constraints_json # MODIFIED assignment
         updated_assets_orm.append(asset_orm)
     def_orm.assets = updated_assets_orm
 

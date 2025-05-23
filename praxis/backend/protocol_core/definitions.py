@@ -11,6 +11,7 @@ import os
 from typing import Dict, Any, Union, Optional, TypeVar
 from dataclasses import dataclass, field
 import json
+from pydantic import BaseModel # type: ignore
 from pylabrobot.resources import Resource as PlrResource
 from pylabrobot.resources import Deck as PlrDeck
 from praxis.backend.utils.state import State as PraxisState
@@ -72,12 +73,23 @@ class PraxisRunContext:
 
 def serialize_arguments(args: tuple, kwargs: dict) -> str:
     """Serializes positional and keyword arguments to a JSON string."""
-    # TODO: ARGS-SERIALIZE-1: Handle non-serializable objects more gracefully.
     try:
         def make_serializable(item):
-            if isinstance(item, (PlrResource, PraxisState, PlrDeck, PraxisRunContext)): # Exclude context itself
-                return repr(item)
-            # Add other custom non-serializable types here
+            if isinstance(item, BaseModel): # Check for Pydantic models first
+                try:
+                    return item.dict() # Pydantic v1 style
+                except AttributeError: # Fallback for Pydantic v2 or if .dict() is not available
+                    try:
+                        return item.model_dump() # Pydantic v2 style
+                    except AttributeError:
+                        pass # Not a Pydantic model with dict/model_dump, proceed to other checks
+            
+            if isinstance(item, (PraxisRunContext, PraxisState)): # Context/State should ideally not be logged as simple args
+                return f"<{type(item).__name__} object>"
+            if isinstance(item, (PlrResource, PlrDeck)): # PLR objects
+                return repr(item) # repr() often includes name and key details
+            
+            # Add other custom non-serializable types here if needed in the future
             return item
 
         cleaned_args = [make_serializable(arg) for arg in args]
@@ -85,9 +97,9 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
         cleaned_kwargs = {k: make_serializable(v) for k, v in kwargs.items() if k != '__praxis_run_context__'}
 
         return json.dumps({"args": cleaned_args, "kwargs": cleaned_kwargs}, default=str)
-    except TypeError as e:
+    except TypeError as e: # pragma: no cover
         print(f"Warning: Could not fully serialize arguments due to TypeError: {e}. Storing partial/string representation.")
-        # Fallback for args, ensure kwargs doesn't include context if it was problematic
+        # Fallback serialization: convert everything to string
         cleaned_kwargs_fallback = {k: str(v) for k, v in kwargs.items() if k != '__praxis_run_context__'}
         return json.dumps({"args": [str(arg) for arg in args], "kwargs": cleaned_kwargs_fallback})
 

@@ -12,7 +12,7 @@ import time
 import uuid
 import json
 import traceback
-from typing import Callable, Optional, Any, Dict, Union
+from typing import Callable, Optional, Any, Dict, Union, List, get_origin, get_args
 
 from praxis.backend.protocol_core.definitions import (
     PROTOCOL_REGISTRY, PlrResource, PlrDeck, DeckInputType,
@@ -20,126 +20,226 @@ from praxis.backend.protocol_core.definitions import (
 )
 from praxis.backend.database_models import FunctionCallStatusEnum
 # TODO: DEC-1: Ensure praxis.backend.services.protocol_data_service is importable.
-from praxis.backend.services.protocol_data_service import log_function_call_start, log_function_call_end
+from praxis.backend.services.protocol_data_service import log_function_call_start, log_function_call_end # Assuming this import works
+
+# MODIFICATION: Import Pydantic models
+from praxis.backend.protocol_core.protocol_definition_models import (
+    FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint
+)
+
 
 DEFAULT_DECK_PARAM_NAME = "deck"
 DEFAULT_STATE_PARAM_NAME = "state"
 TOP_LEVEL_NAME_REGEX = r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$"
 
-# Helper Functions (assumed to be defined or imported, same as v3 of this file)
-# TODO: DEC-2: Define or import actually usable versions of these helper functions
-def is_pylabrobot_resource(obj_type: Any) -> bool: # Simplified for brevity
+# Helper Functions
+def is_pylabrobot_resource(obj_type: Any) -> bool:
     if obj_type is inspect.Parameter.empty: return False
-    origin = get_origin(obj_type); args = get_args(obj_type) # TODO: define get_origin and get_args or import actual methods
+    origin = get_origin(obj_type); args = get_args(obj_type)
     if origin is Union: return any(is_pylabrobot_resource(arg) for arg in args if arg is not type(None))
-    return inspect.isclass(obj_type) and issubclass(obj_type, PlrResource)
-def get_actual_type_from_optional(optional_type: Any) -> Any: # Simplified
-    origin = get_origin(optional_type); args = get_args(optional_type)
-    if origin is Union: non_none_args = [arg for arg in args if arg is not type(None)]; return non_none_args[0] if len(non_none_args) == 1 else optional_type
-    return optional_type
-def serialize_type_hint(type_hint: Any) -> str: # Simplified
+    try:
+        if inspect.isclass(obj_type):
+            return issubclass(obj_type, PlrResource)
+    except TypeError: # pragma: no cover
+        pass 
+    return False
+
+def get_actual_type_str_from_hint(type_hint: Any) -> str:
     if type_hint == inspect.Parameter.empty: return "Any"
-    if hasattr(type_hint, "__name__"): module = getattr(type_hint, "__module__", ""); return f"{module}.{type_hint.__name__}" if module and module != "builtins" else type_hint.__name__
+    actual_type = type_hint
+    origin = get_origin(type_hint)
+    args = get_args(type_hint)
+    if origin is Union and type(None) in args: 
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            actual_type = non_none_args[0]
+        else: # pragma: no cover
+            actual_type = non_none_args[0] if non_none_args else type_hint 
+    
+    if hasattr(actual_type, "__name__"):
+        module = getattr(actual_type, "__module__", "")
+        # Use fully qualified name for praxis types, otherwise just name
+        if module.startswith("praxis.") or module == "builtins":
+             return f"{module}.{actual_type.__name__}" if module and module != "builtins" else actual_type.__name__
+        return actual_type.__name__ # For other types like PlrResource subclasses from pylabrobot
+    return str(actual_type)
+
+def serialize_type_hint_str(type_hint: Any) -> str:
+    if type_hint == inspect.Parameter.empty: return "Any"
     return str(type_hint)
 # --- End Helper Functions ---
 
 def protocol_function(
-    name: str, version: str = "0.1.0", description: Optional[str] = None,
+    name: Optional[str] = None, 
+    version: str = "0.1.0", description: Optional[str] = None,
     solo: bool = False, is_top_level: bool = False, preconfigure_deck: bool = False,
     deck_param_name: str = DEFAULT_DECK_PARAM_NAME, state_param_name: str = DEFAULT_STATE_PARAM_NAME,
-    param_constraints: Optional[dict[str, dict[str, Any]]] = None,
-    asset_constraints: Optional[dict[str, dict[str, Any]]] = None,
+    param_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    category: Optional[str] = None,
+    tags: Optional[List[str]] = None,
     top_level_name_format: Optional[str] = TOP_LEVEL_NAME_REGEX
 ):
-    if not name: raise ValueError("The 'name' argument for @protocol_function is mandatory.")
-    if top_level_name_format and not re.match(top_level_name_format, name):
-        raise ValueError(f"Protocol name '{name}' does not match format: {top_level_name_format}")
+    actual_param_metadata = param_metadata or {}
+    actual_tags = tags or []
 
     def decorator(func: Callable):
-        protocol_unique_key = f"{name}_v{version}"
-        # --- Metadata Extraction (same as v3 of this file) ---
-        sig = inspect.signature(func); parameters_info: Dict[str, Dict[str, Any]] = {}; assets_info: Dict[str, Dict[str, Any]] = {}
-        found_deck_param = False; found_state_param_details: Optional[Dict[str, Any]] = None
+        resolved_name = name or func.__name__
+        
+        if not resolved_name: raise ValueError("Protocol function name cannot be empty (either provide 'name' argument or use a named function).")
+        if is_top_level and top_level_name_format and not re.match(top_level_name_format, resolved_name):
+            raise ValueError(f"Top-level protocol name '{resolved_name}' does not match format: {top_level_name_format}")
+
+        protocol_unique_key = f"{resolved_name}_v{version}"
+        
+        sig = inspect.signature(func)
+        parameters_list: List[ParameterMetadataModel] = []
+        assets_list: List[AssetRequirementModel] = []
+        
+        found_deck_param = False
+        # This dict will store essential info about the state param for the wrapper's direct use.
+        found_state_param_details_for_wrapper: Optional[Dict[str, Any]] = None
+
         for param_name_sig, param_obj in sig.parameters.items():
-            param_type_hint = param_obj.annotation; actual_param_type = get_actual_type_from_optional(param_type_hint)
+            param_type_hint = param_obj.annotation
             is_optional_param = (get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)) or \
                                 (param_obj.default is not inspect.Parameter.empty)
-            param_info_base = {"name": param_name_sig, "type_hint_str": serialize_type_hint(param_type_hint),
-                               "actual_type_str": serialize_type_hint(actual_param_type), "optional": is_optional_param,
-                               "default_repr": repr(param_obj.default) if param_obj.default is not inspect.Parameter.empty else None,
-                               "constraints": (param_constraints or {}).get(param_name_sig, {})}
-            if preconfigure_deck and param_name_sig == deck_param_name:
-                parameters_info[param_name_sig] = {**param_info_base, "is_deck_param": True}; found_deck_param = True; continue
-            if param_name_sig == state_param_name:
-                is_state_type = actual_param_type == PraxisState; is_dict_type = actual_param_type == dict
-                found_state_param_details = {**param_info_base, "is_state_param": True, "expects_praxis_state": is_state_type, "expects_dict": is_dict_type}
-                parameters_info[param_name_sig] = found_state_param_details; continue
-            if is_pylabrobot_resource(actual_param_type): assets_info[param_name_sig] = {**param_info_base}
-            else: parameters_info[param_name_sig] = {**param_info_base, "is_deck_param": False, "is_state_param": False}
-        if preconfigure_deck and not found_deck_param: raise TypeError(f"Protocol '{name}' (preconfigure_deck=True) missing '{deck_param_name}' param.")
-        if is_top_level and not found_state_param_details: raise TypeError(f"Top-level protocol '{name}' must define a '{state_param_name}' parameter.")
-        # --- End Metadata Extraction ---
+            
+            # Use get_actual_type_str_from_hint for a cleaner representation of the "core" type
+            actual_type_cleaned_str = get_actual_type_str_from_hint(param_type_hint)
+            
+            param_meta_entry = actual_param_metadata.get(param_name_sig, {})
+            p_description = param_meta_entry.get("description")
+            p_constraints = param_meta_entry.get("constraints_json", {}) # Ensure this is a dict
+            p_ui_hints_dict = param_meta_entry.get("ui_hints")
+            p_ui_hints = UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
 
-        protocol_metadata = {
-            "name": name, "version": version, "protocol_unique_key": protocol_unique_key,
-            "description": description or inspect.getdoc(func) or "No description provided.",
-            "parameters": parameters_info, "assets": assets_info, "solo": solo,
-            "is_top_level": is_top_level, "preconfigure_deck": preconfigure_deck,
-            "deck_param_name": deck_param_name if preconfigure_deck else None,
-            "state_param_name": state_param_name, "found_state_param_details": found_state_param_details,
-            "source_file": inspect.getfile(func), "module": func.__module__,
-            "function_name": func.__name__, "function_ref": func, "callable_wrapper": None,
-            "db_id": None # Populated by DiscoveryService after DB upsert
+            common_model_args = {
+                "name": param_name_sig,
+                "type_hint_str": serialize_type_hint_str(param_type_hint), # Full type hint string
+                "actual_type_str": actual_type_cleaned_str, # Cleaned type string
+                "optional": is_optional_param,
+                "default_value_repr": repr(param_obj.default) if param_obj.default is not inspect.Parameter.empty else None,
+                "description": p_description,
+                "constraints_json": p_constraints if isinstance(p_constraints, dict) else {},
+                "ui_hints": p_ui_hints,
+            }
+
+            if preconfigure_deck and param_name_sig == deck_param_name:
+                parameters_list.append(ParameterMetadataModel(**common_model_args, is_deck_param=True))
+                found_deck_param = True
+                continue
+            
+            if param_name_sig == state_param_name:
+                # Check actual_type_cleaned_str against known state type strings
+                is_state_type_match = actual_type_cleaned_str == 'praxis.backend.protocol_core.definitions.PraxisState' or \
+                                      actual_type_cleaned_str == 'PraxisState' # Might need fqn if not imported directly
+                is_dict_type_match = actual_type_cleaned_str == 'dict'
+                
+                # Store details for wrapper's direct use
+                found_state_param_details_for_wrapper = {
+                    "name": param_name_sig, # Name of the state parameter
+                    "expects_praxis_state": is_state_type_match, 
+                    "expects_dict": is_dict_type_match
+                }
+                parameters_list.append(ParameterMetadataModel(**common_model_args)) # Add to Pydantic model list
+                continue
+
+            # Use get_actual_type_from_optional logic for is_pylabrobot_resource check
+            # The get_actual_type_from_optional was effectively merged into get_actual_type_str_from_hint logic.
+            # For is_pylabrobot_resource, we need the type object, not the string.
+            type_for_plr_check = param_type_hint
+            origin_check = get_origin(param_type_hint)
+            args_check = get_args(param_type_hint)
+            if origin_check is Union and type(None) in args_check:
+                 non_none_args = [arg for arg in args_check if arg is not type(None)]
+                 if len(non_none_args) == 1: type_for_plr_check = non_none_args[0]
+
+
+            if is_pylabrobot_resource(type_for_plr_check):
+                assets_list.append(AssetRequirementModel(**common_model_args))
+            else:
+                parameters_list.append(ParameterMetadataModel(**common_model_args))
+
+        if preconfigure_deck and not found_deck_param: 
+            raise TypeError(f"Protocol '{resolved_name}' (preconfigure_deck=True) missing '{deck_param_name}' param.")
+        if is_top_level and not found_state_param_details_for_wrapper: 
+            raise TypeError(f"Top-level protocol '{resolved_name}' must define a '{state_param_name}' parameter.")
+
+        protocol_definition = FunctionProtocolDefinitionModel(
+            name=resolved_name,
+            version=version,
+            description=(description or inspect.getdoc(func) or "No description provided."),
+            source_file_path=inspect.getfile(func), 
+            module_name=func.__module__,
+            function_name=func.__name__,
+            is_top_level=is_top_level,
+            solo_execution=solo,
+            preconfigure_deck=preconfigure_deck,
+            deck_param_name=deck_param_name if preconfigure_deck else None,
+            state_param_name=state_param_name,
+            category=category,
+            tags=actual_tags,
+            parameters=parameters_list,
+            assets=assets_list,
+        )
+        
+        func._protocol_definition = protocol_definition
+
+        legacy_protocol_metadata = {
+            **protocol_definition.model_dump(exclude_none=True), # Pydantic v2, or .dict(exclude_none=True) for v1
+            "protocol_unique_key": protocol_unique_key,
+            "function_ref": func,
+            "callable_wrapper": None, 
+            "db_id": None, # Populated by DiscoveryService
+            # Crucially, provide found_state_param_details for the existing wrapper logic
+            "found_state_param_details": found_state_param_details_for_wrapper,
+            "pydantic_definition": protocol_definition # Store the model itself too
         }
-        PROTOCOL_REGISTRY[protocol_unique_key] = protocol_metadata
+        PROTOCOL_REGISTRY[protocol_unique_key] = legacy_protocol_metadata
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            praxis_run_context: Optional[PraxisRunContext] = kwargs.pop('__praxis_run_context__', None)
+            # This wrapper part remains largely unchanged for this step.
+            # It uses legacy_protocol_metadata from PROTOCOL_REGISTRY.
+            current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
+            if not current_meta: # Should not happen
+                raise RuntimeError(f"Protocol metadata not found for {protocol_unique_key} in PROTOCOL_REGISTRY.")
 
-            # This function's own static definition DB ID from its metadata
-            # This should have been populated by the DiscoveryService.
-            this_function_def_db_id = protocol_metadata.get("db_id")
+            praxis_run_context: Optional[PraxisRunContext] = kwargs.pop('__praxis_run_context__', None)
+            this_function_def_db_id = current_meta.get("db_id")
+            _found_state_param_details_wrapper = current_meta.get("found_state_param_details")
+
 
             if not isinstance(praxis_run_context, PraxisRunContext):
-                # TODO: DEC-3: Define behavior for direct calls. For now, console log and no DB interaction.
-                print(f"WARNING: Protocol '{name}' v{version} called outside orchestrated context. Logging to console.")
-                # Create a dummy context for the wrapper to proceed without DB logging
+                print(f"WARNING: Protocol '{current_meta['name']}' v{current_meta['version']}' called outside orchestrated context. Logging to console.")
                 praxis_run_context = PraxisRunContext(
                     protocol_run_db_id=0, run_guid="direct_call_" + str(uuid.uuid4())[:8],
-                    canonical_state=PraxisState() if found_state_param_details else None, # type: ignore
+                    canonical_state=PraxisState() if _found_state_param_details_wrapper else None, # type: ignore
                     current_db_session=None, current_call_log_db_id=None
                 )
-                # If db_id is not in metadata, this_function_def_db_id will be None, and DB logging is skipped.
 
-            # --- Argument Preparation (State) ---
             processed_args = list(args)
             processed_kwargs = dict(kwargs)
-            if found_state_param_details:
-                state_arg_name_in_sig = found_state_param_details["name"]
+
+            if _found_state_param_details_wrapper:
+                state_arg_name_in_sig = _found_state_param_details_wrapper["name"]
                 if state_arg_name_in_sig in processed_kwargs and praxis_run_context.protocol_run_db_id != 0:
-                    del processed_kwargs[state_arg_name_in_sig] # Orchestrator provides state
+                    del processed_kwargs[state_arg_name_in_sig] 
 
-                if found_state_param_details["expects_praxis_state"]:
+                if _found_state_param_details_wrapper["expects_praxis_state"]:
                     processed_kwargs[state_arg_name_in_sig] = praxis_run_context.canonical_state
-                elif found_state_param_details["expects_dict"]:
-                    # Top-level dict state is handled by Orchestrator (copy + merge back).
-                    # Nested calls expecting dict get a fresh copy to avoid side effects on shared canonical state.
-                    # The Orchestrator passes the special dict for top-level. This wrapper handles nested.
-                    # If this is a nested call, and it expects a dict, give it a copy.
-                    # If this is the top-level call, Orchestrator has already placed the special dict in processed_kwargs.
-                    if state_arg_name_in_sig not in processed_kwargs: # Not already set by Orchestrator for top-level dict
+                elif _found_state_param_details_wrapper["expects_dict"]:
+                    if state_arg_name_in_sig not in processed_kwargs:
                          processed_kwargs[state_arg_name_in_sig] = praxis_run_context.canonical_state.data.copy() if praxis_run_context.canonical_state else {}
-
-            # --- DB Logging: Start of Call ---
+            
             current_call_log_db_id_for_this_func: Optional[int] = None
-            parent_log_id_for_this_call = praxis_run_context.current_call_log_db_id # Parent is the currently active call log ID in context
+            parent_log_id_for_this_call = praxis_run_context.current_call_log_db_id
 
             if praxis_run_context.current_db_session and this_function_def_db_id is not None:
                 try:
                     sequence_val = praxis_run_context.get_and_increment_sequence_val()
+                    # TODO: DEC-4: Ensure serialize_arguments handles Pydantic models in kwargs if they appear
                     serialized_input_args = serialize_arguments(tuple(processed_args), processed_kwargs)
-
                     call_log_entry_orm = log_function_call_start(
                         db=praxis_run_context.current_db_session,
                         protocol_run_orm_id=praxis_run_context.protocol_run_db_id,
@@ -149,38 +249,78 @@ def protocol_function(
                         parent_function_call_log_id=parent_log_id_for_this_call
                     )
                     current_call_log_db_id_for_this_func = call_log_entry_orm.id
-                except Exception as log_e:
-                    print(f"ERROR: Failed to log_function_call_start for '{name}': {log_e}")
+                except Exception as log_e: # pragma: no cover
+                    print(f"ERROR: Failed to log_function_call_start for '{current_meta['name']}': {log_e}")
             else:
-                print(f"[ConsoleLog] START Call: {name} v{version} (DefID: {this_function_def_db_id}, Run: {praxis_run_context.run_guid}, ParentLog: {parent_log_id_for_this_call}) Args: Shortened for brevity")
+                print(f"[ConsoleLog] START Call: {current_meta['name']} v{current_meta['version']} (DefID: {this_function_def_db_id}, Run: {praxis_run_context.run_guid}, ParentLog: {parent_log_id_for_this_call}) Args: Shortened for brevity")
 
-            # --- Prepare Context for User Code & Any Nested Calls It Makes ---
-            # The context passed to user code will have its `current_call_log_db_id`
-            # set to the log ID of *this current function's execution*.
             context_for_user_code = praxis_run_context.create_context_for_nested_call(
                 new_parent_call_log_db_id=current_call_log_db_id_for_this_func
             )
-
-            # --- Actual Function Call ---
+            
             result = None; error = None; status = FunctionCallStatusEnum.SUCCESS
             start_time = time.perf_counter()
             try:
-                # Pass the new context for any nested calls made by `func`
                 processed_kwargs_for_call = processed_kwargs.copy()
-                processed_kwargs_for_call['__praxis_run_context__'] = context_for_user_code
+                
+                # Logic for passing context to user function if it expects it
+                sig_check = inspect.signature(func) # Re-inspect original func
+                if '__praxis_run_context__' in sig_check.parameters:
+                     processed_kwargs_for_call['__praxis_run_context__'] = context_for_user_code
+                # Check if state_param_name is typed as PraxisRunContext
+                elif _found_state_param_details_wrapper and \
+                     _found_state_param_details_wrapper['name'] == state_param_name and \
+                     sig_check.parameters[state_param_name].annotation == PraxisRunContext:
+                    processed_kwargs_for_call[state_param_name] = context_for_user_code
+                
+                # If __praxis_run_context__ was added to processed_kwargs_for_call but func doesn't expect it by name or **kwargs
+                if '__praxis_run_context__' in processed_kwargs_for_call and \
+                   '__praxis_run_context__' not in func.__code__.co_varnames and \
+                   not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_check.parameters.values()):
+                    del processed_kwargs_for_call['__praxis_run_context__']
+
                 result = func(*processed_args, **processed_kwargs_for_call)
-            except Exception as e:
+            except Exception as e: # pragma: no cover
                 error = e; status = FunctionCallStatusEnum.ERROR
-                print(f"ERROR in '{name}' v{version} (Run: {praxis_run_context.run_guid}): {e}")
+                print(f"ERROR in '{current_meta['name']}' v{current_meta['version']}' (Run: {praxis_run_context.run_guid}): {e}") # type: ignore
+                # print(traceback.format_exc()) # For more detailed debugging if needed
             finally:
                 end_time = time.perf_counter()
                 duration_ms = (end_time - start_time) * 1000
-
-                # --- DB Logging: End of Call ---
                 if praxis_run_context.current_db_session and current_call_log_db_id_for_this_func is not None:
                     try:
-                        # TODO: DEC-5: Robust serialization for result (using serialize_arguments for now as a placeholder concept)
-                        serialized_result = json.dumps(result, default=str) if error is None else None # Basic
+                        serialized_result = None
+                        if error is None:
+                            # Import BaseModel directly if it's not already in the global scope of this file
+                            # from pydantic import BaseModel # Not strictly needed if FunctionProtocolDefinitionModel etc. bring it in
+                            # Check if FunctionProtocolDefinitionModel itself is a BaseModel subclass (it is)
+                            # So, we can use it to check for general Pydantic models.
+                            # However, for robustness, ensure BaseModel is accessible or import it.
+                            # For now, assume it's accessible via the other pydantic imports.
+                            # A more direct check: from pydantic import BaseModel as PydanticBaseModel
+
+                            if any(isinstance(result, p_model) for p_model in [FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint]):
+                                # This checks against specific known models.
+                                # For a generic check, `isinstance(result, pydantic.BaseModel)` is better.
+                                # Assuming BaseModel is available via other imports:
+                                from pydantic import BaseModel as PydanticBaseModel # Make it explicit for this check
+                                if isinstance(result, PydanticBaseModel):
+                                    try:
+                                        serialized_result = result.json(exclude_none=True) # Pydantic v1
+                                    except AttributeError: 
+                                        try:
+                                            serialized_result = result.model_dump_json(exclude_none=True) # Pydantic v2
+                                        except AttributeError: 
+                                            serialized_result = json.dumps(result, default=str)
+                                elif isinstance(result, (PlrResource, PlrDeck)): # PLR objects
+                                    serialized_result = json.dumps(repr(result)) # Store repr as a JSON string
+                                else: # Default for other types
+                                    serialized_result = json.dumps(result, default=str)
+                            elif isinstance(result, (PlrResource, PlrDeck)): # PLR objects
+                                serialized_result = json.dumps(repr(result)) # Store repr as a JSON string
+                            else: # Default for other types
+                                serialized_result = json.dumps(result, default=str)
+                        
                         log_function_call_end(
                             db=praxis_run_context.current_db_session,
                             function_call_log_id=current_call_log_db_id_for_this_func,
@@ -188,20 +328,20 @@ def protocol_function(
                             return_value_json=serialized_result,
                             error_message=str(error) if error else None,
                             error_traceback=traceback.format_exc() if error else None,
-                            duration_ms=duration_ms # Pass duration to service
+                            duration_ms=duration_ms
                         )
-                    except Exception as log_e:
-                        print(f"ERROR: Failed to log_function_call_end for '{name}': {log_e}")
+                    except Exception as log_e: # pragma: no cover
+                        print(f"ERROR: Failed to log_function_call_end for '{current_meta['name']}': {log_e}")
                 else:
-                    print(f"[ConsoleLog] END Call: {name} v{version} (LogID: {current_call_log_db_id_for_this_func}, Run: {praxis_run_context.run_guid}). Status: {status.name}. Duration: {duration_ms:.2f}ms")
-
-            if error:
-                raise error # Re-raise after logging, for Orchestrator or calling wrapper to handle
-
+                    print(f"[ConsoleLog] END Call: {current_meta['name']} v{current_meta['version']} (LogID: {current_call_log_db_id_for_this_func}, Run: {praxis_run_context.run_guid}). Status: {status.name}. Duration: {duration_ms:.2f}ms")
+            if error: # pragma: no cover
+                raise error
             return result
 
-        protocol_metadata["callable_wrapper"] = wrapper
-        wrapper.protocol_metadata = protocol_metadata # type: ignore
+        wrapper._protocol_definition = func._protocol_definition # type: ignore
+        current_meta_in_registry = PROTOCOL_REGISTRY[protocol_unique_key]
+        current_meta_in_registry["callable_wrapper"] = wrapper
+        
         return wrapper
     return decorator
 

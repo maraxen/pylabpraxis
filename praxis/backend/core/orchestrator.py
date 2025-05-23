@@ -34,10 +34,10 @@ from praxis.database_models.protocol_definitions_orm import (
 # Import the data service functions
 # TODO: ORCH-0: Ensure praxis.db_services.protocol_data_service is fully implemented and importable.
 try:
-    from praxis.db_services.protocol_data_service import (
+    from praxis.backend.services.protocol_data_service import ( # Corrected path
         create_protocol_run,
         update_protocol_run_status,
-        get_protocol_definition_details # Using the service function now
+        get_protocol_definition_details
     )
 except ImportError:
     print("WARNING: ORCH-0: Could not import from praxis.db_services.protocol_data_service. Orchestrator DB operations will be placeholder/limited.")
@@ -247,7 +247,9 @@ class Orchestrator:
         self.db_session.refresh(protocol_run_db_obj)
 
 
-        canonical_run_state = PraxisState(data=initial_state_data.copy())
+        canonical_run_state = PraxisState(run_guid=run_guid) # Initialize with run_guid
+        if initial_state_data:
+            canonical_run_state.update(initial_state_data) # Then update with any initial data
         # Initialize PraxisRunContext for the top-level call
         run_context = PraxisRunContext(
             protocol_run_db_id=protocol_run_db_obj.id, # type: ignore
@@ -300,7 +302,7 @@ class Orchestrator:
                     print(f"INFO: Merging back state from dict for run {run_guid}.")
                     canonical_run_state.update_from_dict(state_dict_passed_to_top_level)
 
-                final_protocol_run_db_obj.final_state_json = json.dumps(canonical_run_state.data, default=str)
+                final_protocol_run_db_obj.final_state_json = json.dumps(canonical_run_state.to_dict(), default=str)
                 if not final_protocol_run_db_obj.end_time:
                     final_protocol_run_db_obj.end_time = datetime.datetime.now(datetime.timezone.utc)
                 if final_protocol_run_db_obj.start_time and final_protocol_run_db_obj.end_time and \
