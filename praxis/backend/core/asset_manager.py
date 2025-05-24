@@ -17,6 +17,7 @@ import inspect
 import traceback
 import os
 import pkgutil
+import sys # ADDED
 
 from sqlalchemy.orm import Session as DbSession
 
@@ -72,8 +73,10 @@ try:
     from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
     # from pylabrobot.resources.opentrons.load import load_labware as ot_load_labware # AM-5E
     from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
+    from praxis.backend.utils.plr_inspection import get_resource_constructor_params # ADDED
 except ImportError:
     print("WARNING: AM-3: PyLabRobot not found/fully importable.")
+    def get_resource_constructor_params(resource_class: Type[Any]) -> Dict[str, Dict]: return {} # Placeholder if import fails
     # Define placeholders (condensed)
     class PlrResource: name: str; resource_type: Optional[str]; parent: Any; children: List[Any]; model: Optional[str]; def serialize(self): return {}; def __init__(self, name, **kwargs): self.name=name # type: ignore
     class PlrPlate(PlrResource): pass; class PlrTipRack(PlrResource): pass; class PlrTubeRack(PlrResource): pass
@@ -109,6 +112,48 @@ class AssetManager:
         # Names of classes that are known to be utility/creators
         self.EXCLUDED_CLASS_NAMES: Set[str] = {"WellCreator", "TipCreator", "CarrierSite", "ResourceStack"}
 
+    def _extract_dimensions(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        """Extracts dimensions (x, y, z) in mm."""
+        try:
+            if resource:
+                if hasattr(resource, 'get_size_x') and callable(resource.get_size_x): # type: ignore
+                    return resource.get_size_x(), resource.get_size_y(), resource.get_size_z() # type: ignore
+                if hasattr(resource, 'dimensions') and isinstance(resource.dimensions, Coordinate): # type: ignore
+                    return resource.dimensions.x, resource.dimensions.y, resource.dimensions.z # type: ignore
+            if details:
+                if "dimensions" in details and isinstance(details["dimensions"], dict):
+                    return details["dimensions"].get("x"), details["dimensions"].get("y"), details["dimensions"].get("z")
+                if "size_x" in details and "size_y" in details and "size_z" in details:
+                    return details.get("size_x"), details.get("size_y"), details.get("size_z")
+        except Exception as e:
+            print(f"DEBUG: AM_EXTRACT_DIM_ERR: Error extracting dimensions for {resource_class.__name__}: {e}")
+        return None, None, None
+
+    def _extract_volume(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[float]:
+        """Extracts nominal volume in uL."""
+        try:
+            if resource:
+                if hasattr(resource, 'capacity') and resource.capacity is not None: return float(resource.capacity) # type: ignore
+                if hasattr(resource, 'max_volume') and resource.max_volume is not None: return float(resource.max_volume) # type: ignore
+                if hasattr(resource, 'wells') and resource.wells and hasattr(resource.get_well(0), 'max_volume'): # type: ignore
+                    return float(resource.get_well(0).max_volume) # type: ignore
+            if details:
+                if "capacity" in details and details["capacity"] is not None: return float(details["capacity"])
+                if "max_volume" in details and details["max_volume"] is not None: return float(details["max_volume"])
+                if "nominal_volume_ul" in details and details["nominal_volume_ul"] is not None: return float(details["nominal_volume_ul"])
+        except Exception as e:
+            print(f"DEBUG: AM_EXTRACT_VOL_ERR: Error extracting volume for {resource_class.__name__}: {e}")
+        return None
+
+    def _extract_model_name(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Extracts model name."""
+        try:
+            if resource and hasattr(resource, 'model') and resource.model: return str(resource.model) # type: ignore
+            if details and "model" in details and details["model"]: return str(details["model"])
+        except Exception as e:
+            print(f"DEBUG: AM_EXTRACT_MODEL_ERR: Error extracting model for {resource_class.__name__}: {e}")
+        return None
+
     def _get_category_from_plr_object(self, plr_object: PlrResource) -> LabwareCategoryEnum:
         """Determines LabwareCategoryEnum from a PyLabRobot resource object."""
         # Order matters: more specific types first
@@ -123,6 +168,19 @@ class AssetManager:
         if isinstance(plr_object, (PlateCarrier, TipCarrier, PlateAdapter, Carrier)): return LabwareCategoryEnum.CARRIER
         # If it's a Container but not caught above, it's likely a generic or custom one
         if isinstance(plr_object, Container): return LabwareCategoryEnum.OTHER # Or RESERVOIR if appropriate
+        return LabwareCategoryEnum.OTHER
+
+    def _get_category_from_class_name(self, class_name: str) -> LabwareCategoryEnum:
+        """Infers LabwareCategoryEnum from a class name string if object instance not available."""
+        name_lower = class_name.lower()
+        if "plate" in name_lower: return LabwareCategoryEnum.PLATE
+        if "tiprack" in name_lower or "tip_rack" in name_lower: return LabwareCategoryEnum.TIP_RACK
+        if "lid" in name_lower: return LabwareCategoryEnum.LID
+        if "reservoir" in name_lower: return LabwareCategoryEnum.RESERVOIR
+        if "tuberack" in name_lower or "tube_rack" in name_lower: return LabwareCategoryEnum.TUBE_RACK
+        if "trash" in name_lower: return LabwareCategoryEnum.WASTE
+        if "carrier" in name_lower: return LabwareCategoryEnum.CARRIER
+        if "tube" in name_lower: return LabwareCategoryEnum.TUBE # Must be after tuberack
         return LabwareCategoryEnum.OTHER
 
     def _is_catalogable_labware_class(self, plr_class: Type[Any]) -> bool:
@@ -178,86 +236,110 @@ class AssetManager:
 
                 # print(f"DEBUG: Processing potential labware class: {fqn}")
                 temp_instance: Optional[PlrResource] = None
-                try:
-                    # TODO: AM-5D: Handle classes with complex __init__ more gracefully.
-                    # Attempt instantiation with 'name'. If it fails, try to get class-level info.
-                    # Some PLR resources (e.g. from specific manufacturers) are directly instantiable this way.
-                    # Others might be bases that are technically concrete but not meant for direct use.
-                    sig = inspect.signature(plr_class_obj.__init__)
-                    if 'name' in sig.parameters:
-                        temp_instance = plr_class_obj(name=f"praxis_sync_temp_{class_name}")
-                    else:
-                        # If 'name' is not in __init__, it might be a class not intended for direct cataloging
-                        # or requires specific setup. For now, skip if simple instantiation fails.
-                        # print(f"DEBUG: Skipping {fqn}, 'name' not in __init__ or complex init.")
-                        continue
-                except Exception: # as inst_err:
-                    # print(f"DEBUG: Could not instantiate {fqn} simply: {inst_err}. Skipping for now.")
-                    continue
+                can_instantiate = True
+                kwargs_for_instantiation: Dict[str, Any] = {"name": f"praxis_sync_temp_{class_name}"}
 
                 try:
-                    # Determine pylabrobot_definition_name (primary key for catalog)
-                    # 1. instance.resource_type (most specific if set by PLR for that definition)
-                    # 2. class.resource_type
-                    # 3. instance.model (if a distinct model identifier)
-                    # 4. Fully qualified class name (most stable fallback)
+                    constructor_params = get_resource_constructor_params(plr_class_obj)
+                    for param_name, param_info in constructor_params.items():
+                        if param_name in ["self", "name"]: continue
+                        if param_info["required"] and param_info["default"] is None: # Simplified check for no default
+                            param_type_str = param_info["type"].lower()
+                            if "optional[" in param_type_str: # Handle Optional[type]
+                                kwargs_for_instantiation[param_name] = None
+                            elif "str" in param_type_str: kwargs_for_instantiation[param_name] = ""
+                            elif "int" in param_type_str: kwargs_for_instantiation[param_name] = 0
+                            elif "float" in param_type_str: kwargs_for_instantiation[param_name] = 0.0
+                            elif "bool" in param_type_str: kwargs_for_instantiation[param_name] = False
+                            elif "list" in param_type_str: kwargs_for_instantiation[param_name] = []
+                            elif "dict" in param_type_str: kwargs_for_instantiation[param_name] = {}
+                            else: # Complex/unknown type
+                                print(f"INFO: Skipping instantiation for {fqn} due to complex required parameter '{param_name}' of type '{param_info['type']}'. Will rely on class-level data.")
+                                can_instantiate = False
+                                break
+                    
+                    if can_instantiate:
+                        print(f"DEBUG: Attempting instantiation of {fqn} with kwargs: {kwargs_for_instantiation}")
+                        temp_instance = plr_class_obj(**kwargs_for_instantiation)
+                except Exception as inst_err:
+                    print(f"WARNING: Instantiation of {fqn} failed even with smart defaults: {inst_err}. Proceeding with class-level data extraction.")
+                    temp_instance = None
+                
+                if not can_instantiate and temp_instance is None: # Double check if loop was broken
+                     print(f"INFO: Skipped instantiation for {fqn} due to complex/missing required parameters. Relying on class-level data.")
+                     # temp_instance is already None
+
+                # Property Extraction
+                details_json: Optional[Dict[str, Any]] = None
+                if temp_instance and hasattr(temp_instance, 'serialize') and callable(temp_instance.serialize):
+                    try:
+                        details_json = temp_instance.serialize()
+                        if 'name' in details_json: del details_json['name'] 
+                    except Exception as ser_err: print(f"WARN: Serialize failed for {fqn}: {ser_err}")
+
+                size_x, size_y, size_z = self._extract_dimensions(temp_instance, plr_class_obj, details_json)
+                nominal_volume_ul = self._extract_volume(temp_instance, plr_class_obj, details_json)
+                model_name = self._extract_model_name(temp_instance, plr_class_obj, details_json)
+
+                try:
                     pylabrobot_def_name: Optional[str] = None
-                    if hasattr(temp_instance, 'resource_type') and isinstance(temp_instance.resource_type, str) and temp_instance.resource_type:
-                        pylabrobot_def_name = temp_instance.resource_type
-                    elif hasattr(plr_class_obj, 'resource_type') and isinstance(plr_class_obj.resource_type, str) and plr_class_obj.resource_type: # type: ignore
-                        pylabrobot_def_name = plr_class_obj.resource_type # type: ignore
+                    category: LabwareCategoryEnum
+                    description: Optional[str]
+                    is_consumable: bool = False # Default
+                    praxis_type_name: Optional[str] = model_name # Use extracted model name first
 
-                    if not pylabrobot_def_name and hasattr(temp_instance, 'model') and isinstance(temp_instance.model, str) and temp_instance.model:
-                         pylabrobot_def_name = temp_instance.model
+                    if temp_instance:
+                        if hasattr(temp_instance, 'resource_type') and isinstance(temp_instance.resource_type, str) and temp_instance.resource_type:
+                            pylabrobot_def_name = temp_instance.resource_type
+                        
+                        if not pylabrobot_def_name and model_name:
+                             pylabrobot_def_name = model_name
 
-                    if not pylabrobot_def_name:
+                        if not praxis_type_name: # Fallback if model_name was None
+                            praxis_type_name = getattr(temp_instance, 'model', None) or plr_class_obj.__name__
+
+                        category = self._get_category_from_plr_object(temp_instance)
+                        description = inspect.getdoc(plr_class_obj) or temp_instance.name
+                        is_consumable = category in [LabwareCategoryEnum.PLATE, LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.RESERVOIR, LabwareCategoryEnum.LID, LabwareCategoryEnum.TUBE]
+                    else: # Class-level data fallback
+                        if hasattr(plr_class_obj, 'resource_type') and isinstance(plr_class_obj.resource_type, str) and plr_class_obj.resource_type: # type: ignore
+                            pylabrobot_def_name = plr_class_obj.resource_type # type: ignore
+                        
+                        if not praxis_type_name: # Fallback if model_name was None (likely for class-level)
+                             praxis_type_name = plr_class_obj.__name__
+
+                        category = self._get_category_from_class_name(plr_class_obj.__name__)
+                        description = inspect.getdoc(plr_class_obj)
+                        is_consumable = category in [LabwareCategoryEnum.PLATE, LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.RESERVOIR, LabwareCategoryEnum.LID, LabwareCategoryEnum.TUBE]
+                    
+                    if not pylabrobot_def_name: # Final fallback for def_name
                         pylabrobot_def_name = fqn
+                    if not description: description = fqn # Ensure description is not empty
 
-                    praxis_type_name = getattr(temp_instance, 'model', None) or plr_class_obj.__name__
-                    category = self._get_category_from_plr_object(temp_instance)
-
-                    details_json: Optional[Dict[str, Any]] = None
-                    if hasattr(temp_instance, 'serialize') and callable(temp_instance.serialize):
-                        try:
-                            details_json = temp_instance.serialize()
-                            if 'name' in details_json: del details_json['name'] # Temp instance name
-                            # TODO: AM-5F: Sanitize/normalize serialized JSON if it contains complex objects not suitable for direct JSON storage.
-                        except Exception as ser_err: print(f"WARN: Serialize failed for {pylabrobot_def_name}: {ser_err}")
-
-                    # TODO: AM-5B: Refine property extraction (volume, consumable, etc.)
-                    is_consumable = category in [LabwareCategoryEnum.PLATE, LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.RESERVOIR, LabwareCategoryEnum.LID, LabwareCategoryEnum.TUBE]
-                    nominal_volume_ul: Optional[float] = None
-                    # ... (heuristic logic for volume from v4) ...
-                    if hasattr(temp_instance, 'get_well') and hasattr(temp_instance, 'wells') and temp_instance.wells: # type: ignore
-                        try: first_well = temp_instance.get_well(0); nominal_volume_ul = float(first_well.max_volume) # type: ignore
-                        except: pass
-                    elif hasattr(temp_instance, 'capacity'):
-                        try: nominal_volume_ul = float(temp_instance.capacity) # type: ignore
-                        except: pass
+                    print(f"DEBUG: Syncing {pylabrobot_def_name} (FQN: {fqn}): Category={category.name}, Model={model_name}, Vol={nominal_volume_ul}, X={size_x}, Y={size_y}, Z={size_z}")
 
                     existing_def_orm = ads.get_labware_definition(self.db, pylabrobot_def_name)
                     ads.add_or_update_labware_definition(
                         db=self.db, 
                         pylabrobot_definition_name=pylabrobot_def_name,
-                        python_fqn=fqn, # ADDED THIS ARGUMENT
+                        python_fqn=fqn,
                         praxis_labware_type_name=praxis_type_name, 
                         category=category,
-                        description=inspect.getdoc(plr_class_obj) or (temp_instance.name if temp_instance else fqn), # MODIFIED description robustness
+                        description=description,
                         is_consumable=is_consumable, 
                         nominal_volume_ul=nominal_volume_ul,
-                        # TODO: Ensure other fields like size_x_mm, model, etc., are passed if they were added to LabwareDefinitionCatalogOrm
-                        # and if they are available from temp_instance or plr_class_obj.
-                        # This part of the subtask focuses on python_fqn.
-                        # Example for model (if available and ORM has it):
-                        # model=getattr(temp_instance, 'model', None), 
+                        size_x_mm=size_x, 
+                        size_y_mm=size_y, 
+                        size_z_mm=size_z,
+                        model=model_name,
                         plr_definition_details_json=details_json
                     )
                     if not existing_def_orm: added_count += 1
                     else: updated_count += 1
                 except Exception as e_proc:
-                    print(f"ERROR: Could not process or save PLR class '{fqn}': {e_proc}")
+                    print(f"ERROR: Could not process or save PLR class '{fqn}': {e_proc}\n{traceback.format_exc()}")
                 finally:
-                    if temp_instance: del temp_instance # Cleanup temporary instance
+                    if temp_instance: del temp_instance
 
         # TODO: AM-5E: Add step for loading definitions from external files (e.g., Opentrons JSON).
         print(f"Labware definition sync complete. Added: {added_count}, Updated: {updated_count}")

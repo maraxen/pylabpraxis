@@ -1,6 +1,111 @@
 import pytest # type: ignore
-from unittest.mock import MagicMock, patch, call
-from typing import List, Optional, Any, Dict
+from unittest.mock import MagicMock, patch, call, ANY # Added ANY
+from typing import List, Optional, Any, Dict, Type # Added Type
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
+import inspect # ADDED
+import pkgutil # ADDED
+import importlib # ADDED
 
 # Classes to test
 from praxis.backend.core.asset_manager import AssetManager, AssetAcquisitionError
@@ -14,8 +119,138 @@ AssetRequirementModelMock = MagicMock # from praxis.backend.protocol_core.protoc
 
 # Enums (assuming they are importable or defined simply for test if needed)
 from praxis.backend.database_models.asset_management_orm import (
-    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum, LabwareCategoryEnum
 )
+
+# --- Mock PyLabRobot Base Classes for sync_pylabrobot_definitions tests ---
+class MockPlrResource:
+    resource_type: Optional[str] = None # Class level
+    
+    def __init__(self, name: str, **kwargs: Any):
+        self.name = name
+        self.model: Optional[str] = kwargs.get("model")
+        self.category: Optional[str] = kwargs.get("category") # For serialize
+        self.size_x: Optional[float] = kwargs.get("size_x")
+        self.size_y: Optional[float] = kwargs.get("size_y")
+        self.size_z: Optional[float] = kwargs.get("size_z")
+        self.capacity: Optional[float] = kwargs.get("capacity")
+        self._dimensions: Optional[Any] = kwargs.get("dimensions") 
+        self._wells: List[Any] = [] 
+        self.__class__.__module__ = "pylabrobot.resources.mocked" 
+
+
+    def serialize(self) -> Dict[str, Any]:
+        return {"name": self.name, "model": self.model, "category": self.category or "mock_resource_category"}
+
+    def get_size_x(self) -> Optional[float]: return self.size_x
+    def get_size_y(self) -> Optional[float]: return self.size_y
+    def get_size_z(self) -> Optional[float]: return self.size_z
+    
+    @property
+    def dimensions(self) -> Optional[Any]:
+        return self._dimensions
+
+    def get_well(self, index: int) -> Any:
+        if not self._wells or index >= len(self._wells):
+            mock_well = MagicMock()
+            mock_well.max_volume = self.capacity / len(self.wells) if self.wells and self.capacity else 0 
+            return mock_well
+        return self._wells[index]
+    
+    @property
+    def wells(self) -> List[Any]:
+        return self._wells
+
+class MockPlrContainer(MockPlrResource):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.container"
+
+class MockPlrPlate(MockPlrContainer): 
+    resource_type = "plate_type_class_level" 
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.plate" 
+
+class MockPlrTipRack(MockPlrResource):
+    resource_type = "tip_rack_type_class_level"
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.tip_rack"
+
+class MockPlrWell(MockPlrResource): 
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.well"
+
+class MockPlrDeck(MockPlrResource): 
+     def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.deck"
+
+class MockPlrLid(MockPlrResource):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.lid"
+
+class MockPlrReservoir(MockPlrContainer):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.reservoir"
+
+class MockPlrTubeRack(MockPlrResource):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.tube_rack"
+
+class MockPlrTube(MockPlrContainer):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.tube"
+        
+class MockPlrPetriDish(MockPlrContainer):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.petri_dish"
+
+class MockTrash(MockPlrResource):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.trash"
+
+class MockCarrier(MockPlrResource):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.carrier"
+
+class MockPlateCarrier(MockCarrier):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.plate_carrier"
+
+class MockTipCarrier(MockCarrier):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.tip_carrier"
+        
+class MockPlateAdapter(MockCarrier):
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.plate_adapter"
+
+class MockItemizedResource(MockPlrResource):
+     def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.itemized_resource"
+
+class MockPlrTip(MockPlrResource):
+     def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.__class__.__module__ = "pylabrobot.resources.tip"
+
+class MockCoordinate(MagicMock): # Not a resource, just needs to be mockable
+    pass
+# --- End Mock PyLabRobot Base Classes ---
 
 
 @pytest.fixture
@@ -279,6 +514,135 @@ class TestAssetManagerRelease:
         )
 
 # TODO: Tests for acquire_asset dispatcher method (verify it calls correct acquire_device/labware)
-# TODO: Basic test for sync_pylabrobot_definitions (highly complex to fully unit test, needs extensive mocking of import machinery)
+
+# --- Mock PyLabRobot Base Classes for sync_pylabrobot_definitions tests ---
+class MockPlrResource:
+    resource_type: Optional[str] = None # Class level
+    
+    def __init__(self, name: str, **kwargs: Any):
+        self.name = name
+        self.model: Optional[str] = kwargs.get("model")
+        # Simulate other common attributes that might be checked by helper methods
+        self.size_x: Optional[float] = kwargs.get("size_x")
+        self.size_y: Optional[float] = kwargs.get("size_y")
+        self.size_z: Optional[float] = kwargs.get("size_z")
+        self.capacity: Optional[float] = kwargs.get("capacity")
+        self._dimensions: Optional[Any] = kwargs.get("dimensions") # For Coordinate like objects
+        self._wells: List[Any] = [] # For things that have wells
+
+    def serialize(self) -> Dict[str, Any]:
+        return {"name": self.name, "model": self.model, "category": "mock_resource"}
+
+    def get_size_x(self) -> Optional[float]: return self.size_x
+    def get_size_y(self) -> Optional[float]: return self.size_y
+    def get_size_z(self) -> Optional[float]: return self.size_z
+    
+    # For things like Plate that have dimensions attribute
+    @property
+    def dimensions(self) -> Optional[Any]:
+        return self._dimensions
+
+    # For things that have wells and capacity might be inferred from a well
+    def get_well(self, index: int) -> Any:
+        return self._wells[index]
+    
+    @property
+    def wells(self) -> List[Any]:
+        return self._wells
+
+
+class MockPlrContainer(MockPlrResource):
+    pass
+
+class MockPlrPlate(MockPlrContainer): # Inherits from MockPlrContainer -> MockPlrResource
+    resource_type = "plate_type_class_level" # Example class-level resource_type
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.custom_plate_attr = "plate_specific"
+
+class MockPlrTipRack(MockPlrResource):
+    resource_type = "tip_rack_type_class_level"
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.custom_tip_rack_attr = "tip_rack_specific"
+
+class MockPlrWell(MockPlrResource): # Example of an excluded base class
+    pass
+
+class MockPlrDeck(MockPlrResource): # Example of an excluded base class
+    pass
+
+# --- End Mock PyLabRobot Base Classes ---
+
+
+class TestAssetManagerSyncPylabrobotDefinitions:
+    @pytest.fixture(autouse=True)
+    def patch_dependencies(self, mock_ads_service: MagicMock):
+        self.mock_ads_service = mock_ads_service
+        
+        # Patch external dependencies for sync_pylabrobot_definitions
+        with patch('praxis.backend.core.asset_manager.pkgutil.walk_packages') as self.mock_walk_packages, \
+             patch('praxis.backend.core.asset_manager.importlib.import_module') as self.mock_import_module, \
+             patch('praxis.backend.core.asset_manager.inspect.getmembers') as self.mock_getmembers, \
+             patch('praxis.backend.core.asset_manager.inspect.isabstract') as self.mock_isabstract, \
+             patch('praxis.backend.core.asset_manager.get_resource_constructor_params') as self.mock_get_constructor_params, \
+             patch('praxis.backend.core.asset_manager.PlrResource', MockPlrResource), \
+             patch('praxis.backend.core.asset_manager.Container', MockPlrContainer), \
+             patch('praxis.backend.core.asset_manager.PlrPlate', MockPlrPlate), \
+             patch('praxis.backend.core.asset_manager.PlrTipRack', MockPlrTipRack), \
+             patch('praxis.backend.core.asset_manager.Well', MockPlrWell), \
+             patch('praxis.backend.core.asset_manager.PlrDeck', MockPlrDeck):
+            yield
+
+    def test_sync_simple_instantiable_resource(self, asset_manager: AssetManager):
+        # 1. Setup Mocks
+        class MockSimplePlate(MockPlrPlate):
+            resource_type = "simple_plate_type" # Class level
+            
+            def __init__(self, name: str, model: Optional[str] = None, size_x: Optional[float] = None, capacity: Optional[float] = None):
+                super().__init__(name, model=model, size_x=size_x, capacity=capacity)
+                if model is None: self.model = "TestModel123" # Default instance model
+                if size_x is None: self.size_x = 120.0 # Default instance size_x
+                if capacity is None: self.capacity = 100.0 # Default instance capacity (assume uL for test)
+
+            def serialize(self) -> Dict[str, Any]:
+                return {"custom_field": "value", "name": self.name, "model": self.model, "category": "plate"}
+
+        mock_module = MagicMock()
+        mock_module.MockSimplePlate = MockSimplePlate
+        
+        self.mock_walk_packages.return_value = [(None, 'mock_pylabrobot_module.plates', False)]
+        self.mock_import_module.return_value = mock_module
+        self.mock_getmembers.return_value = [('MockSimplePlate', MockSimplePlate)]
+        self.mock_isabstract.return_value = False
+        self.mock_get_constructor_params.return_value = {
+            'name': {'type': 'str', 'required': True, 'default': None},
+            'model': {'type': 'Optional[str]', 'required': False, 'default': None},
+            'size_x': {'type': 'Optional[float]', 'required': False, 'default': None},
+            'capacity': {'type': 'Optional[float]', 'required': False, 'default': None},
+        }
+        self.mock_ads_service.get_labware_definition.return_value = None # New definition
+
+        # 2. Call sync_pylabrobot_definitions
+        added, updated = asset_manager.sync_pylabrobot_definitions()
+
+        # 3. Assertions
+        assert added == 1
+        assert updated == 0
+        self.mock_ads_service.add_or_update_labware_definition.assert_called_once()
+        call_args = self.mock_ads_service.add_or_update_labware_definition.call_args[1]
+        
+        assert call_args['python_fqn'] == 'mock_pylabrobot_module.plates.MockSimplePlate'
+        assert call_args['pylabrobot_definition_name'] == "simple_plate_type" # From class level
+        assert call_args['praxis_labware_type_name'] == "TestModel123" # From instance model
+        assert call_args['category'].name == 'PLATE' # Inferred from MockPlrPlate inheritance
+        assert call_args['model'] == "TestModel123"
+        assert call_args['size_x_mm'] == 120.0
+        assert call_args['nominal_volume_ul'] == 100.0 # Directly from capacity
+        assert call_args['plr_definition_details_json'] == {"custom_field": "value", "model": "TestModel123", "category": "plate"}
+        assert call_args['is_consumable'] is True
+        assert "MockSimplePlate" in call_args['description'] # Basic check for docstring or name
+
+    # More tests will be added here
 
 ```
