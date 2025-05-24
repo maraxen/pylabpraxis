@@ -137,6 +137,7 @@ def update_managed_device_status(
 def add_or_update_labware_definition(
     db: DbSession,
     pylabrobot_definition_name: str, # Primary Key
+    python_fqn: str, # ADDED new argument
     praxis_labware_type_name: Optional[str] = None,
     category: Optional[LabwareCategoryEnum] = None,
     description: Optional[str] = None,
@@ -145,6 +146,9 @@ def add_or_update_labware_definition(
     material: Optional[str] = None,
     manufacturer: Optional[str] = None,
     plr_definition_details_json: Optional[Dict[str, Any]] = None
+    # TODO: Add other fields like size_x_mm, model, etc., to this signature
+    # if they are to be directly saved by AssetManager.
+    # For now, only python_fqn is added based on the subtask.
 ) -> LabwareDefinitionCatalogOrm:
     """Adds or updates a labware definition in the catalog."""
     def_orm = db.query(LabwareDefinitionCatalogOrm).filter(
@@ -154,7 +158,8 @@ def add_or_update_labware_definition(
     if not def_orm:
         def_orm = LabwareDefinitionCatalogOrm(pylabrobot_definition_name=pylabrobot_definition_name)
         db.add(def_orm)
-
+    
+    def_orm.python_fqn = python_fqn # ADDED assignment
     def_orm.praxis_labware_type_name = praxis_labware_type_name
     def_orm.category = category
     def_orm.description = description
@@ -197,6 +202,10 @@ def list_labware_definitions(
     return query.order_by(LabwareDefinitionCatalogOrm.pylabrobot_definition_name)\
                 .limit(limit).offset(offset).all()
 
+def get_labware_definition_by_name(db: DbSession, pylabrobot_definition_name: str) -> Optional[LabwareDefinitionCatalogOrm]:
+    """Fetches a labware definition by its pylabrobot_definition_name."""
+    # This is an alias for get_labware_definition for semantic clarity where "name" is the PLR definition name.
+    return get_labware_definition(db, pylabrobot_definition_name)
 
 # --- Labware Instance Services ---
 # TODO: ADS-2: Implement full CRUD for LabwareInstanceOrm, DeckConfigurationOrm, DeckConfigurationSlotItemOrm
@@ -277,25 +286,45 @@ def list_labware_instances(
 
 def update_labware_instance_location_and_status(
     db: DbSession,
-    instance_id: int,
-    new_status: LabwareInstanceStatusEnum,
-    location_device_id: Optional[int] = None, # ID of the ManagedDevice (e.g., a deck)
+    labware_instance_id: int, # Renamed for clarity from instance_id
+    new_status: Optional[LabwareInstanceStatusEnum] = None, # MODIFIED: Made optional
+    location_device_id: Optional[int] = None, 
     current_deck_slot_name: Optional[str] = None,
-    physical_location_description: Optional[str] = None,
-    properties_json_update: Optional[Dict[str, Any]] = None, # For partial updates to properties
-    current_protocol_run_guid: Optional[str] = None # If status is IN_USE
+    physical_location_description: Optional[str] = None, # ADDED from placeholder, ensure it's used if passed
+    properties_json_update: Optional[Dict[str, Any]] = None, 
+    current_protocol_run_guid: Optional[str] = None,
+    status_details: Optional[str] = None # ADDED new parameter
 ) -> Optional[LabwareInstanceOrm]:
-    instance_orm = get_labware_instance_by_id(db, instance_id)
+    instance_orm = get_labware_instance_by_id(db, labware_instance_id)
     if instance_orm:
-        instance_orm.current_status = new_status
-        instance_orm.location_device_id = location_device_id
-        instance_orm.current_deck_slot_name = current_deck_slot_name
-        instance_orm.physical_location_description = physical_location_description
+        if new_status is not None: # MODIFIED: Conditional update
+            instance_orm.current_status = new_status
+        
+        # MODIFIED: Only update location if explicitly passed (avoid clearing if only status changes)
+        # Assuming None means "no change" for location fields if not passed.
+        # If explicit clearing is needed, specific values like an empty string or a sentinel should be used.
+        if location_device_id is not None or current_deck_slot_name is not None or physical_location_description is not None:
+            instance_orm.location_device_id = location_device_id
+            instance_orm.current_deck_slot_name = current_deck_slot_name
+            instance_orm.physical_location_description = physical_location_description
 
+        if status_details is not None: # ADDED: Handle status_details
+            if hasattr(instance_orm, 'status_details'):
+                instance_orm.status_details = status_details
+            else: # pragma: no cover
+                print(f"WARNING: LabwareInstanceOrm does not have 'status_details' field. Cannot save: {status_details}")
+
+        # Logic for current_protocol_run_guid based on new_status (if provided)
         if new_status == LabwareInstanceStatusEnum.IN_USE:
             instance_orm.current_protocol_run_guid = current_protocol_run_guid
-        elif instance_orm.current_protocol_run_guid == current_protocol_run_guid: # Clear if no longer in use by this run
+        # If status changes FROM IN_USE for this run, clear the guid
+        elif instance_orm.current_protocol_run_guid == current_protocol_run_guid and new_status != LabwareInstanceStatusEnum.IN_USE and new_status is not None:
             instance_orm.current_protocol_run_guid = None
+        # If new_status is None, don't change current_protocol_run_guid unless explicitly told to (e.g. by passing None to current_protocol_run_guid)
+        elif current_protocol_run_guid is None and new_status != LabwareInstanceStatusEnum.IN_USE : # Explicitly clearing if not IN_USE
+             if instance_orm.current_protocol_run_guid is not None : # only clear if it was set
+                  instance_orm.current_protocol_run_guid = None
+
 
         if properties_json_update:
             if instance_orm.properties_json is None:

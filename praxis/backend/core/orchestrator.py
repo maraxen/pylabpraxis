@@ -24,12 +24,27 @@ from praxis.utils.state import State as PraxisState
 from praxis.protocol_core.definitions import (
     PraxisRunContext, PlrDeck, DeckInputType, PlrResource, PROTOCOL_REGISTRY
 )
+from praxis.backend.core.asset_manager import AssetManager, AssetAcquisitionError
+
+# New imports for JSONSchema validation
+from praxis.backend.protocol.jsonschema_utils import definition_model_parameters_to_jsonschema
+try:
+    from jsonschema import validate as validate_jsonschema, ValidationError as JsonSchemaValidationError
+except ImportError: # pragma: no cover
+    print("WARNING: ORCH-JSONSCHEMA: jsonschema library not installed. Parameter validation will be skipped.")
+    validate_jsonschema = None # type: ignore
+    JsonSchemaValidationError = None # type: ignore
+from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
+
 from praxis.database_models.protocol_definitions_orm import (
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
     ProtocolRunStatusEnum,
     ProtocolSourceRepositoryOrm,
     FileSystemProtocolSourceOrm,
+    # Added for asset release logic
+    LabwareInstanceStatusEnum,
+    ManagedDeviceStatusEnum 
 )
 # Import the data service functions
 # TODO: ORCH-0: Ensure praxis.db_services.protocol_data_service is fully implemented and importable.
@@ -79,7 +94,8 @@ class Orchestrator:
     def __init__(self, db_session: DbSession, workcell_config: Optional[Dict[str, Any]] = None):
         self.db_session = db_session
         self.workcell_config = workcell_config or {}
-        # TODO: ORCH-1: Initialize actual AssetManager
+        self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=None) # Ensure this line is present and correct
+        # TODO: ORCH-1 was here, referencing AssetManager. This line effectively addresses the init part of ORCH-1.
 
     def _get_protocol_definition_orm_from_db(
         self,
@@ -160,9 +176,38 @@ class Orchestrator:
         decorator_metadata: Dict[str, Any],
         user_input_params: Dict[str, Any],
         canonical_run_state: PraxisState,
-    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
-        # (Logic remains the same as Orchestrator v3 - praxis_core_orchestrator_py_v3)
-        # Condensed for brevity in this update, but full logic should be retained.
+    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], List[Dict[str, Any]]]: # MODIFIED return signature
+
+        # --- JSONSchema Validation of user_input_params ---
+        if validate_jsonschema and JsonSchemaValidationError: # Check if jsonschema is available
+            pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
+            if pydantic_def and hasattr(pydantic_def, 'parameters'):
+                if not pydantic_def.parameters and not user_input_params:
+                    pass # No parameters defined, no input params, so no validation needed
+                elif not pydantic_def.parameters and user_input_params:
+                    print(f"Warning: Protocol '{pydantic_def.name}' defines no parameters, but input parameters were provided: {list(user_input_params.keys())}")
+                elif pydantic_def.parameters: # Only validate if there are parameters defined
+                    try:
+                        schema_title = f"{pydantic_def.name} v{pydantic_def.version} Parameters"
+                        schema_description = pydantic_def.description or "Protocol parameters"
+                        param_schema = definition_model_parameters_to_jsonschema(
+                            parameters=pydantic_def.parameters,
+                            protocol_name=schema_title,
+                            protocol_description=schema_description
+                        )
+                        validate_jsonschema(instance=user_input_params, schema=param_schema)
+                        print(f"INFO: User input parameters for '{pydantic_def.name}' validated successfully against JSONSchema.")
+
+                    except JsonSchemaValidationError as e:
+                        error_msg = f"Parameter validation failed for protocol '{pydantic_def.name}': {e.message}"
+                        print(f"ERROR: {error_msg}")
+                        raise ValueError(error_msg) from e 
+                    except Exception as schema_gen_e: 
+                        print(f"ERROR: Could not generate or validate JSONSchema for protocol '{pydantic_def.name}': {schema_gen_e}")
+                        raise ValueError(f"Schema generation/validation error for '{pydantic_def.name}': {schema_gen_e}") from schema_gen_e
+            # else: if no pydantic_def or no parameters, skip validation for now. Could warn.
+        # --- End JSONSchema Validation ---
+        
         final_args: Dict[str, Any] = {}
         state_dict_to_pass: Optional[Dict[str, Any]] = None
         defined_params_from_meta = decorator_metadata.get("parameters", {})
@@ -184,18 +229,47 @@ class Orchestrator:
             elif not param_meta_from_decorator.get("optional"):
                 raise ValueError(f"Mandatory param '{param_name_in_sig}' missing for '{protocol_def_orm.name}'.")
 
-        defined_assets_from_meta = decorator_metadata.get("assets", {})
-        for asset_name_in_sig, asset_meta_from_decorator in defined_assets_from_meta.items():
-            # TODO: ORCH-1: Asset Resolution
-            print(f"INFO: ORCH-1 TODO: Acquiring asset '{asset_name_in_sig}' type '{asset_meta_from_decorator['actual_type_str']}'.")
-            final_args[asset_name_in_sig] = f"DUMMY_ASSET_{asset_name_in_sig}" # Placeholder
+        # Asset Resolution using AssetManager
+        acquired_assets_details: List[Dict[str, Any]] = [] # MODIFIED: Initialize list to store asset details
+        pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
+        
+        if pydantic_def and hasattr(pydantic_def, 'assets'):
+            for asset_req_model in pydantic_def.assets: # asset_req_model is AssetRequirementModel
+                try:
+                    print(f"INFO: Orchestrator acquiring asset '{asset_req_model.name}' of type '{asset_req_model.actual_type_str}' "
+                          f"for run '{canonical_run_state.run_guid}'.") 
+                    
+                    if not hasattr(self, 'asset_manager') or self.asset_manager is None: # pragma: no cover
+                        raise RuntimeError("AssetManager not initialized in Orchestrator.")
+
+                    # MODIFIED: acquire_asset now returns a tuple (live_obj, orm_id, asset_type_str)
+                    live_obj, orm_id, asset_type_str = self.asset_manager.acquire_asset(
+                        protocol_run_guid=canonical_run_state.run_guid, 
+                        asset_requirement=asset_req_model
+                    )
+                    final_args[asset_req_model.name] = live_obj
+                    acquired_assets_details.append({ # MODIFIED: Store details
+                        "type": asset_type_str, 
+                        "orm_id": orm_id, 
+                        "name_in_protocol": asset_req_model.name
+                    })
+                    print(f"INFO: Asset '{asset_req_model.name}' (Type: {asset_type_str}, ORM ID: {orm_id}) acquired: {live_obj}")
+
+                except AssetAcquisitionError as e:
+                    error_msg = f"Failed to acquire asset '{asset_req_model.name}' for protocol '{pydantic_def.name}': {e}"
+                    print(f"ERROR: {error_msg}")
+                    raise ValueError(error_msg) from e 
+                except Exception as e_general: 
+                    error_msg = f"Unexpected error acquiring asset '{asset_req_model.name}' for protocol '{pydantic_def.name}': {e_general}"
+                    print(f"ERROR: {error_msg}")
+                    raise ValueError(error_msg) from e_general
 
         if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
             # TODO: ORCH-7: Deck loading
             deck_input = user_input_params.get(protocol_def_orm.deck_param_name)
             if isinstance(deck_input, str): final_args[protocol_def_orm.deck_param_name] = PlrDeck(name=deck_input) # Placeholder
             elif isinstance(deck_input, PlrDeck): final_args[protocol_def_orm.deck_param_name] = deck_input
-        return final_args, state_dict_to_pass
+        return final_args, state_dict_to_pass, acquired_assets_details # MODIFIED return value
 
 
     def execute_protocol(
@@ -264,6 +338,7 @@ class Orchestrator:
         protocol_wrapper_func: Optional[Callable] = None
         decorator_metadata: Optional[Dict[str, Any]] = None
         state_dict_passed_to_top_level: Optional[Dict[str, Any]] = None
+        acquired_assets_info: List[Dict[str, Any]] = [] # MODIFIED: Initialize
 
         try:
             protocol_wrapper_func, decorator_metadata = self._prepare_protocol_code(protocol_def_orm)
@@ -271,7 +346,8 @@ class Orchestrator:
             # The decorator_metadata["db_id"] is now aligned with protocol_def_orm.id by _prepare_protocol_code.
             # This is used by the top-level wrapper (protocol_wrapper_func) to log itself.
 
-            prepared_args, state_dict_passed_to_top_level = self._prepare_arguments(
+            # MODIFIED: Unpack acquired_assets_info
+            prepared_args, state_dict_passed_to_top_level, acquired_assets_info = self._prepare_arguments(
                 protocol_def_orm, decorator_metadata, user_input_params, canonical_run_state
             )
 
@@ -309,7 +385,32 @@ class Orchestrator:
                    final_protocol_run_db_obj.duration_ms is None :
                     duration = final_protocol_run_db_obj.end_time - final_protocol_run_db_obj.start_time
                     final_protocol_run_db_obj.duration_ms = int(duration.total_seconds() * 1000)
-                # TODO: ORCH-1: Release acquired assets
+                
+                # --- MODIFIED: Release acquired assets ---
+                if acquired_assets_info: # Check if there's anything to release
+                    print(f"INFO: Releasing {len(acquired_assets_info)} acquired assets for run {run_guid}...")
+                    for asset_info in acquired_assets_info:
+                        try:
+                            asset_type = asset_info.get("type")
+                            orm_id = asset_info.get("orm_id")
+                            name_in_protocol = asset_info.get("name_in_protocol", "UnknownAsset")
+
+                            if asset_type == "device":
+                                self.asset_manager.release_device(device_orm_id=orm_id) # type: ignore
+                            elif asset_type == "labware":
+                                # For basic implementation, always release to storage.
+                                # More complex logic might be needed for different final states or if it was on a deck.
+                                # Assuming release_labware can determine if it was on a deck and clear it.
+                                self.asset_manager.release_labware(
+                                    labware_instance_orm_id=orm_id, # type: ignore
+                                    final_status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE 
+                                    # TODO: Determine if it needs clearing from deck and pass relevant args
+                                )
+                            print(f"INFO: Released asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {orm_id}).")
+                        except Exception as release_err: # pragma: no cover
+                            print(f"ERROR: Failed to release asset '{asset_info.get('name_in_protocol', 'UnknownAsset')}' (ORM ID: {asset_info.get('orm_id')}): {release_err}")
+                # --- End Asset Release ---
+
                 try: self.db_session.commit()
                 except Exception as db_err:
                     print(f"CRITICAL: Failed to commit final Orchestrator updates to DB for run {run_guid}: {db_err}")

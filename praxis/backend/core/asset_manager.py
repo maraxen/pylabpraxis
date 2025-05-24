@@ -22,10 +22,10 @@ from sqlalchemy.orm import Session as DbSession
 
 # Data services
 try:
-    from praxis.db_services import asset_data_service as ads
+    from praxis.backend.services import asset_data_service as ads # CORRECTED PATH
 except ImportError:
     print("WARNING: AM-1: Could not import asset_data_service. AssetManager DB ops placeholder.")
-    class PlaceholderAssetDataService:
+    class PlaceholderAssetDataService: # Copied from file for completeness
         def get_labware_definition(self, db, name): return None
         def add_or_update_labware_definition(self, db, **kw): class D: pass; return D() # type: ignore
         def list_managed_devices(self, *args, **kwargs): return [] # type: ignore
@@ -39,17 +39,22 @@ except ImportError:
 try:
     from praxis.database_models.asset_management_orm import (
         ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
-        ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, LabwareCategoryEnum
+        ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, LabwareCategoryEnum, # Keep LabwareCategoryEnum if still used by _get_category_from_plr_object
+        PraxisDeviceCategoryEnum # ADDED for deck filtering
     )
 except ImportError:
     print("WARNING: AM-2: Could not import Asset ORM models.")
     class ManagedDeviceOrm: id: int; user_friendly_name: str; pylabrobot_class_name: str; current_status: Any; current_protocol_run_guid: Optional[str] # type: ignore
     class LabwareInstanceOrm: id: int; user_assigned_name: str; pylabrobot_definition_name: str; current_status: Any; current_protocol_run_guid: Optional[str]; location_device_id: Optional[int]; current_deck_slot_name: Optional[str] # type: ignore
-    class LabwareDefinitionCatalogOrm: pylabrobot_definition_name: str # type: ignore
-    class ManagedDeviceStatusEnum(enum.Enum): AVAILABLE="available"; IN_USE="in_use"; ERROR="error"; OFFLINE="offline" # type: ignore
-    class LabwareInstanceStatusEnum(enum.Enum): AVAILABLE_ON_DECK="available_on_DECK"; AVAILABLE_IN_STORAGE="available_in_storage"; IN_USE="in_use"; EMPTY="empty"; UNKNOWN="unknown" # type: ignore
-    class LabwareCategoryEnum(enum.Enum): PLATE="plate"; TIP_RACK="tip_rack"; RESERVOIR="reservoir"; TUBE_RACK="tube_rack"; CARRIER="carrier"; LID="lid"; WASTE="waste"; TUBE="tube"; OTHER="other"; DECK="deck" # type: ignore
-    import enum
+    class LabwareDefinitionCatalogOrm: pylabrobot_definition_name: str; python_fqn: str # Added python_fqn for type hint
+    class ManagedDeviceStatusEnum(enum.Enum): AVAILABLE="available"; IN_USE="in_use"; ERROR="error"; OFFLINE="offline" # type: ignore # type: ignore
+    class LabwareInstanceStatusEnum(enum.Enum): AVAILABLE_ON_DECK="available_on_DECK"; AVAILABLE_IN_STORAGE="available_in_storage"; IN_USE="in_use"; EMPTY="empty"; UNKNOWN="unknown" # type: ignore # type: ignore
+    class LabwareCategoryEnum(enum.Enum): PLATE="plate"; TIP_RACK="tip_rack"; RESERVOIR="reservoir"; TUBE_RACK="tube_rack"; CARRIER="carrier"; LID="lid"; WASTE="waste"; TUBE="tube"; OTHER="other"; DECK="deck" # type: ignore # type: ignore
+    class PraxisDeviceCategoryEnum(enum.Enum): DECK="Deck" # ADDED for deck filtering
+    import enum # Make sure enum is imported if placeholders are used
+
+# Praxis Protocol Core Models
+from praxis.backend.protocol_core.protocol_definition_models import AssetRequirementModel
 
 # PyLabRobot imports
 try:
@@ -232,10 +237,19 @@ class AssetManager:
 
                     existing_def_orm = ads.get_labware_definition(self.db, pylabrobot_def_name)
                     ads.add_or_update_labware_definition(
-                        db=self.db, pylabrobot_definition_name=pylabrobot_def_name,
-                        praxis_labware_type_name=praxis_type_name, category=category,
-                        description=inspect.getdoc(plr_class_obj) or temp_instance.name,
-                        is_consumable=is_consumable, nominal_volume_ul=nominal_volume_ul,
+                        db=self.db, 
+                        pylabrobot_definition_name=pylabrobot_def_name,
+                        python_fqn=fqn, # ADDED THIS ARGUMENT
+                        praxis_labware_type_name=praxis_type_name, 
+                        category=category,
+                        description=inspect.getdoc(plr_class_obj) or (temp_instance.name if temp_instance else fqn), # MODIFIED description robustness
+                        is_consumable=is_consumable, 
+                        nominal_volume_ul=nominal_volume_ul,
+                        # TODO: Ensure other fields like size_x_mm, model, etc., are passed if they were added to LabwareDefinitionCatalogOrm
+                        # and if they are available from temp_instance or plr_class_obj.
+                        # This part of the subtask focuses on python_fqn.
+                        # Example for model (if available and ORM has it):
+                        # model=getattr(temp_instance, 'model', None), 
                         plr_definition_details_json=details_json
                     )
                     if not existing_def_orm: added_count += 1
@@ -251,43 +265,319 @@ class AssetManager:
 
     # --- acquire/release methods (structurally same as v4, with existing TODOs) ---
     # (Condensed for brevity, full logic from v4 should be retained)
-    def acquire_device(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_class_name_constraint: str, constraints: Optional[Dict[str, Any]] = None) -> ManagedDeviceOrm: # type: ignore
-        # ... (TODOs AM-6, AM-7, AM-4) ...
-        print(f"INFO: Acquiring device '{requested_asset_name_in_protocol}' (type: {pylabrobot_class_name_constraint})")
-        device_orm_list = ads.list_managed_devices(self.db, status=ManagedDeviceStatusEnum.AVAILABLE, pylabrobot_class_filter=pylabrobot_class_name_constraint) # type: ignore
-        if not device_orm_list: raise AssetAcquisitionError("No device found")
-        updated_device = ads.update_managed_device_status(self.db, device_orm_list[0].id, ManagedDeviceStatusEnum.IN_USE, current_protocol_run_guid=protocol_run_guid) # type: ignore
-        if not updated_device: raise AssetAcquisitionError("Failed to update device status")
-        # self.workcell_runtime.initialize_device_backend(updated_device) # AM-4
-        return updated_device # type: ignore
+    def acquire_device(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_class_name_constraint: str, constraints: Optional[Dict[str, Any]] = None) -> Tuple[Any, int, str]: # MODIFIED return type
+        print(f"INFO: Acquiring device '{requested_asset_name_in_protocol}' (type constraint: '{pylabrobot_class_name_constraint}') for run '{protocol_run_guid}'. Constraints: {constraints}")
+        
+        # TODO: AM-6: Implement more sophisticated constraint-based selection from device_orm_list.
+        # TODO: AM-7: Consider locking mechanism for selection if multiple orchestrators/threads.
+        device_orm_list = ads.list_managed_devices(
+            self.db, 
+            status=ManagedDeviceStatusEnum.AVAILABLE, 
+            pylabrobot_class_filter=pylabrobot_class_name_constraint
+        )
 
-    def acquire_labware(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_definition_name_constraint: str, user_choice_instance_id: Optional[int] = None, location_constraints: Optional[Dict[str, Any]] = None, property_constraints: Optional[Dict[str, Any]] = None) -> LabwareInstanceOrm: # type: ignore
-        # ... (TODOs AM-8, AM-9, AM-10, AM-4) ...
-        print(f"INFO: Acquiring labware '{requested_asset_name_in_protocol}' (type: {pylabrobot_definition_name_constraint})")
-        # ... (placeholder logic from v4) ...
-        labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None # type: ignore
+        if not device_orm_list:
+            raise AssetAcquisitionError(f"No device found matching type constraint '{pylabrobot_class_name_constraint}' and status AVAILABLE.")
+
+        selected_device_orm = device_orm_list[0] # Basic selection: first available
+
+        print(f"INFO: Attempting to initialize backend for selected device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}) via WorkcellRuntime.")
+        # TODO: AM-4: Ensure workcell_runtime is the actual WorkcellRuntime, not placeholder.
+        live_plr_device = self.workcell_runtime.initialize_device_backend(selected_device_orm)
+
+        if not live_plr_device:
+            # initialize_device_backend in WorkcellRuntime should have set the device status to ERROR in DB.
+            error_msg = f"Failed to initialize backend for device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}). Check WorkcellRuntime logs and device status in DB."
+            print(f"ERROR: {error_msg}")
+            raise AssetAcquisitionError(error_msg)
+
+        # Backend initialized successfully, now mark as IN_USE for this run
+        print(f"INFO: Backend for device '{selected_device_orm.user_friendly_name}' initialized. Marking as IN_USE for run '{protocol_run_guid}'.")
+        updated_device_orm = ads.update_managed_device_status(
+            self.db, 
+            selected_device_orm.id, 
+            ManagedDeviceStatusEnum.IN_USE, 
+            current_protocol_run_guid=protocol_run_guid,
+            status_details=f"In use by run {protocol_run_guid}" # Optional detail
+        )
+
+        if not updated_device_orm: # Should ideally not happen if selected_device_orm.id is valid
+            # This is a problematic state: backend is live, but DB status update failed.
+            # Attempt to revert by shutting down the backend? Or just raise a critical error.
+            critical_error_msg = f"CRITICAL: Device '{selected_device_orm.user_friendly_name}' backend is live, but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'."
+            print(f"ERROR: {critical_error_msg}")
+            # Consider trying to shut down the backend to prevent orphaned live asset
+            # self.workcell_runtime.shutdown_device_backend(selected_device_orm.id)
+            raise AssetAcquisitionError(critical_error_msg) # Let caller know something is wrong
+
+        print(f"INFO: Device '{updated_device_orm.user_friendly_name}' (ID: {updated_device_orm.id}) successfully acquired and backend initialized for run '{protocol_run_guid}'.")
+        return live_plr_device, selected_device_orm.id, "device" # MODIFIED return value
+
+    def acquire_labware(
+        self, 
+        protocol_run_guid: str, 
+        requested_asset_name_in_protocol: str, 
+        pylabrobot_definition_name_constraint: str, # This is the resource name like "corning_96_wellplate_360ul_flat"
+        user_choice_instance_id: Optional[int] = None, 
+        location_constraints: Optional[Dict[str, Any]] = None, # e.g., {"deck_name": "main_deck", "slot_name": "A1"}
+        property_constraints: Optional[Dict[str, Any]] = None
+    ) -> Tuple[Any, int, str]: # MODIFIED return type
+
+        print(f"INFO: Acquiring labware '{requested_asset_name_in_protocol}' (definition name constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'.")
+        # TODO: AM-10: Implement user_choice_instance_id, location_constraints, property_constraints in selection logic.
+
+        labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None
         if user_choice_instance_id:
-            labware_instance_to_acquire = ads.get_labware_instance_by_id(self.db, user_choice_instance_id) # type: ignore
+            labware_instance_to_acquire = ads.get_labware_instance_by_id(self.db, user_choice_instance_id)
+            if labware_instance_to_acquire and labware_instance_to_acquire.pylabrobot_definition_name != pylabrobot_definition_name_constraint:
+                raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} does not match definition constraint {pylabrobot_definition_name_constraint}.")
+            if labware_instance_to_acquire and labware_instance_to_acquire.current_status not in [LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE, LabwareInstanceStatusEnum.AVAILABLE_ON_DECK]:
+                 raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {labware_instance_to_acquire.current_status}).")
         else:
-            lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK) # type: ignore
-            if not lws: lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE) # type: ignore
-            if not lws: raise AssetAcquisitionError("No labware found")
-            labware_instance_to_acquire = lws[0]
-        if not labware_instance_to_acquire: raise AssetAcquisitionError("Labware not found or not available")
-        updated_lw = ads.update_labware_instance_location_and_status(self.db, labware_instance_to_acquire.id, LabwareInstanceStatusEnum.IN_USE, current_protocol_run_guid=protocol_run_guid) # type: ignore
-        if not updated_lw: raise AssetAcquisitionError("Failed to update labware status")
-        # lw_plr_obj = self.workcell_runtime.create_or_get_labware_plr_object(updated_lw) # AM-4
-        # if lw_plr_obj and updated_lw.location_device_id and updated_lw.current_deck_slot_name:
-            # self.workcell_runtime.assign_labware_to_deck_slot(...) # AM-4
-        return updated_lw # type: ignore
+            # Basic selection: Prioritize AVAILABLE_ON_DECK, then AVAILABLE_IN_STORAGE
+            lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK)
+            if not lws: 
+                lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE)
+            if not lws: 
+                raise AssetAcquisitionError(f"No labware found matching definition '{pylabrobot_definition_name_constraint}' with available status.")
+            labware_instance_to_acquire = lws[0] # Basic: pick first
 
-    def release_device(self, protocol_run_guid: str, device_orm_id: int, final_status: ManagedDeviceStatusEnum = ManagedDeviceStatusEnum.AVAILABLE, status_details: Optional[str] = "Released"):
-        # ... (TODO AM-4) ...
-        print(f"INFO: Releasing device ID {device_orm_id}")
-        ads.update_managed_device_status(self.db, device_orm_id, final_status, status_details=status_details, current_protocol_run_guid=protocol_run_guid) # type: ignore
+        if not labware_instance_to_acquire: # Should be caught by above, but defensive check
+            raise AssetAcquisitionError(f"Labware matching criteria for '{requested_asset_name_in_protocol}' not found or not available.")
 
-    def release_labware(self, protocol_run_guid: str, labware_instance_orm_id: int, final_status: LabwareInstanceStatusEnum, final_properties_json_update: Optional[Dict[str, Any]] = None, final_location_device_id: Optional[int] = None, final_deck_slot_name: Optional[str] = None):
-        # ... (TODO AM-4) ...
-        print(f"INFO: Releasing labware ID {labware_instance_orm_id}")
-        ads.update_labware_instance_location_and_status(self.db, labware_instance_orm_id, final_status, properties_json_update=final_properties_json_update, location_device_id=final_location_device_id, current_deck_slot_name=final_deck_slot_name, current_protocol_run_guid=protocol_run_guid) # type: ignore
+        # Fetch LabwareDefinition to get the python_fqn
+        # Using the existing get_labware_definition (aliased by get_labware_definition_by_name)
+        labware_def_orm = ads.get_labware_definition(self.db, labware_instance_to_acquire.pylabrobot_definition_name) # type: ignore
+        if not labware_def_orm or not hasattr(labware_def_orm, 'python_fqn') or not labware_def_orm.python_fqn: # type: ignore
+            error_msg = f"Python FQN not found for labware definition '{labware_instance_to_acquire.pylabrobot_definition_name}' for instance ID {labware_instance_to_acquire.id}." # type: ignore
+            print(f"ERROR: {error_msg}")
+            # Update instance status to ERROR if FQN is missing, as it's unusable
+            if ads: # Check if ads is not the placeholder
+                ads.update_labware_instance_location_and_status(
+                    db=self.db, labware_instance_id=labware_instance_to_acquire.id, # type: ignore
+                    new_status=LabwareInstanceStatusEnum.ERROR, 
+                    status_details=error_msg
+                )
+            raise AssetAcquisitionError(error_msg)
+        labware_fqn = labware_def_orm.python_fqn # type: ignore
+
+        print(f"INFO: Attempting to create PLR object for labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) using FQN '{labware_fqn}'.") # type: ignore
+        live_plr_labware = self.workcell_runtime.create_or_get_labware_plr_object(
+            labware_instance_orm=labware_instance_to_acquire, # type: ignore
+            labware_definition_fqn=labware_fqn
+        )
+
+        if not live_plr_labware:
+            # WorkcellRuntime should have set status to ERROR
+            error_msg = f"Failed to create PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}). Check WorkcellRuntime logs." # type: ignore
+            print(f"ERROR: {error_msg}")
+            raise AssetAcquisitionError(error_msg)
+
+        # PLR object created successfully, now update status and handle location
+        print(f"INFO: PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' created. Updating status to IN_USE.") # type: ignore
+        
+        # Deck assignment (simplified)
+        target_deck_orm_id: Optional[int] = None
+        target_slot_name: Optional[str] = None
+
+        if location_constraints and isinstance(location_constraints, dict):
+            deck_name = location_constraints.get("deck_name")
+            slot_name = location_constraints.get("slot_name")
+            if deck_name and slot_name:
+                print(f"INFO: Location constraint: place '{live_plr_labware.name}' on deck '{deck_name}' slot '{slot_name}'.")
+                # Find the deck ManagedDeviceOrm
+                # Assuming ads.list_managed_devices can filter by user_friendly_name and praxis_device_category
+                deck_device_list = ads.list_managed_devices(self.db, user_friendly_name_filter=deck_name, praxis_category_filter=PraxisDeviceCategoryEnum.DECK) # type: ignore
+                if not deck_device_list:
+                    raise AssetAcquisitionError(f"Deck '{deck_name}' specified in location_constraints not found.")
+                deck_device_orm = deck_device_list[0]
+                target_deck_orm_id = deck_device_orm.id
+                target_slot_name = slot_name
+                
+                print(f"DEBUG: Assigning to Deck ID {target_deck_orm_id}, Slot {target_slot_name}")
+                self.workcell_runtime.assign_labware_to_deck_slot(
+                    deck_device_orm_id=target_deck_orm_id, # type: ignore
+                    slot_name=target_slot_name, # type: ignore
+                    labware_plr_object=live_plr_labware,
+                    labware_instance_orm_id=labware_instance_to_acquire.id # type: ignore
+                )
+            elif deck_name or slot_name: # Partial location constraint
+                raise AssetAcquisitionError(f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both 'deck_name' and 'slot_name' required if placing on deck.")
+
+
+        # Update final status (IN_USE) and potentially new location if assigned to deck
+        # assign_labware_to_deck_slot in WCR already updates status to AVAILABLE_ON_DECK.
+        # Here we mark it as IN_USE for the run.
+        updated_labware_instance_orm = ads.update_labware_instance_location_and_status(
+            self.db,
+            labware_instance_id=labware_instance_to_acquire.id, # type: ignore
+            new_status=LabwareInstanceStatusEnum.IN_USE,
+            current_protocol_run_guid=protocol_run_guid,
+            status_details=f"In use by run {protocol_run_guid}",
+        )
+
+        if not updated_labware_instance_orm:
+            critical_error_msg = f"CRITICAL: Labware '{labware_instance_to_acquire.user_assigned_name}' PLR object created/assigned, but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'." # type: ignore
+            print(f"ERROR: {critical_error_msg}")
+            raise AssetAcquisitionError(critical_error_msg)
+
+        print(f"INFO: Labware '{updated_labware_instance_orm.user_assigned_name}' (ID: {updated_labware_instance_orm.id}) successfully acquired for run '{protocol_run_guid}'.") # type: ignore
+        return live_plr_labware, labware_instance_to_acquire.id, "labware" # MODIFIED return value
+
+    def release_device(
+        self, 
+        device_orm_id: int, # Removed protocol_run_guid, not strictly needed to release
+        final_status: ManagedDeviceStatusEnum = ManagedDeviceStatusEnum.AVAILABLE, 
+        status_details: Optional[str] = "Released from run"
+    ):
+        print(f"INFO: Releasing device ID {device_orm_id}. Target status: {final_status.name if final_status else 'N/A'}.")
+
+        # First, instruct WorkcellRuntime to shut down the backend.
+        # WorkcellRuntime.shutdown_device_backend also updates status to OFFLINE in DB.
+        if self.workcell_runtime: # Check if workcell_runtime is available
+            print(f"INFO: Calling WorkcellRuntime to shut down backend for device ID {device_orm_id}.")
+            self.workcell_runtime.shutdown_device_backend(device_orm_id) 
+            # After shutdown, device is OFFLINE. If final_status is AVAILABLE, it means
+            # it's ready for another run which might re-initialize.
+            # If the desired state after protocol is different from what shutdown_device_backend sets,
+            # update it again. For now, let's assume shutdown_device_backend sets it appropriately (e.g. OFFLINE or AVAILABLE).
+            # If final_status is different from OFFLINE (set by WCR shutdown), an explicit update is needed.
+            # The ads.update_managed_device_status in WCR's shutdown sets it to OFFLINE.
+            # If we want it to be AVAILABLE, we might need another call here.
+            # For simplicity in this step: let WCR handle the primary status update during shutdown.
+            # This method primarily ensures WCR is called.
+            # However, we always want to ensure current_protocol_run_guid is cleared and final_status is respected.
+            # WCR's shutdown_device_backend already calls ads.update_managed_device_status.
+            # Let's ensure the final desired state is set.
+            # WCR sets to OFFLINE and clears run_guid. If final_status is e.g. AVAILABLE, we update again.
+            if ads: # Check if ads is not the placeholder
+                device_after_wcr_shutdown = ads.get_managed_device_by_id(self.db, device_id_orm_id)
+                if device_after_wcr_shutdown and device_after_wcr_shutdown.current_status != final_status:
+                     print(f"INFO: WorkcellRuntime set device {device_orm_id} to {device_after_wcr_shutdown.current_status}, but final desired status is {final_status}. Updating.")
+                     ads.update_managed_device_status(
+                        self.db, 
+                        device_orm_id, 
+                        final_status, 
+                        status_details=status_details,
+                        current_protocol_run_guid=None # Ensure it's cleared
+                    )
+                elif not device_after_wcr_shutdown: # Should not happen if WCR worked
+                     print(f"ERROR: Device ID {device_orm_id} not found after WorkcellRuntime shutdown attempt.")
+
+
+        else: # Fallback if no workcell_runtime (e.g. testing or error)
+            print(f"WARNING: WorkcellRuntime not available. Attempting direct DB status update for device ID {device_orm_id}.")
+            if ads: # Check if ads is not the placeholder
+                updated_device = ads.update_managed_device_status(
+                    self.db, 
+                    device_orm_id, 
+                    final_status, # Use the requested final_status
+                    status_details=status_details,
+                    current_protocol_run_guid=None # Explicitly clear the run GUID
+                )
+                if not updated_device:
+                    print(f"ERROR: Failed to update status for device ID {device_orm_id} directly in DB.")
+        
+        print(f"INFO: Device ID {device_orm_id} release process initiated.")
+
+    def release_labware(
+        self, 
+        labware_instance_orm_id: int, # Removed protocol_run_guid
+        final_status: LabwareInstanceStatusEnum, 
+        final_properties_json_update: Optional[Dict[str, Any]] = None,
+        clear_from_deck_device_id: Optional[int] = None, # If it needs to be cleared from a specific deck
+        clear_from_slot_name: Optional[str] = None,      # Slot name on that deck
+        status_details: Optional[str] = "Released from run"
+    ):
+        print(f"INFO: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}")
+
+        final_location_device_id_for_ads: Optional[int] = None # Default to None (e.g. if not on deck or being moved to storage)
+        final_deck_slot_name_for_ads: Optional[str] = None
+
+        if clear_from_deck_device_id is not None and clear_from_slot_name is not None:
+            if self.workcell_runtime:
+                print(f"INFO: Calling WorkcellRuntime to clear labware ID {labware_instance_orm_id} from deck ID {clear_from_deck_device_id}, slot '{clear_from_slot_name}'.")
+                self.workcell_runtime.clear_deck_slot(
+                    deck_device_orm_id=clear_from_deck_device_id,
+                    slot_name=clear_from_slot_name,
+                    labware_instance_orm_id=labware_instance_orm_id # WCR uses this to update status to AVAILABLE_IN_STORAGE
+                )
+                # After clearing, it's typically AVAILABLE_IN_STORAGE and its location fields are nulled by WCR's call to ADS.
+                # If final_status is different (e.g. TO_BE_DISPOSED), the subsequent ADS call will set it.
+                # Location fields are effectively nulled by WCR, so we don't need to pass them to the final ads call unless
+                # we are moving it to a *new* specific non-deck location, which is not handled here.
+            else: # pragma: no cover
+                print(f"WARNING: WorkcellRuntime not available. Cannot clear labware ID {labware_instance_orm_id} from deck. Manual DB update for status only.")
+        
+        # Update status, properties, and clear run GUID.
+        # If cleared from deck by WCR, its location (deck_id, slot) should already be nulled,
+        # and status might be AVAILABLE_IN_STORAGE. This call can override status if needed.
+        print(f"INFO: Updating final status and details for labware ID {labware_instance_orm_id} in DB.")
+        if ads: # Check if ads is not the placeholder
+            updated_labware = ads.update_labware_instance_location_and_status(
+                self.db,
+                labware_instance_id=labware_instance_orm_id,
+                new_status=final_status, # Set to the desired final status
+                properties_json_update=final_properties_json_update,
+                # If NOT cleared from deck, these might be used to set a new static location.
+                # If cleared, WCR's ads call would have nulled them.
+                # For simplicity, this release does not actively try to change location beyond deck clearing.
+                # If it was on a deck and cleared, these should be None to reflect that.
+                # If it was never on a deck, or we want to set a new storage location description, that's different.
+                # The current ads.update_labware_instance_location_and_status will set location fields if provided.
+                # If clear_from_deck was called, WCR's ads call already nulled location_device_id and current_deck_slot_name.
+                # If we pass None here for those, it won't change them from what WCR set.
+                location_device_id=final_location_device_id_for_ads, 
+                current_deck_slot_name=final_deck_slot_name_for_ads,
+                # physical_location_description can be set here if needed for new storage location.
+                current_protocol_run_guid=None, # Explicitly clear the run GUID
+                status_details=status_details
+            )
+            if not updated_labware:
+                print(f"ERROR: Failed to update final status for labware ID {labware_instance_orm_id} in DB.")
+        
+        print(f"INFO: Labware ID {labware_instance_orm_id} release process initiated.")
+
+    def acquire_asset(self, protocol_run_guid: str, asset_requirement: AssetRequirementModel) -> Tuple[Any, int, str]: # MODIFIED return type
+        """
+        Acquires an asset based on the AssetRequirementModel.
+        This is a basic dispatcher to specific acquire methods.
+        Actual asset selection and locking logic is complex and part of full AssetManager implementation.
+        """
+        print(f"INFO: AssetManager attempting to acquire asset '{asset_requirement.name}' "
+              f"of type '{asset_requirement.actual_type_str}' for run '{protocol_run_guid}'. "
+              f"Constraints: {asset_requirement.constraints_json}")
+
+        # Basic heuristic to differentiate device vs labware based on common naming or known types.
+        # This needs to be made more robust.
+        is_likely_device = "pipette" in asset_requirement.actual_type_str.lower() or \
+                           "handler" in asset_requirement.actual_type_str.lower() or \
+                           "reader" in asset_requirement.actual_type_str.lower() or \
+                           any(kw in asset_requirement.actual_type_str.lower() for kw in ["star", "hamilton", "opentrons", "ot2"])
+
+
+        # Ensure constraint dicts are passed correctly, even if empty
+        constraints_for_device = asset_requirement.constraints_json if asset_requirement.constraints_json else None
+        properties_for_labware = asset_requirement.constraints_json if asset_requirement.constraints_json else None
+
+
+        if is_likely_device:
+            print(f"DEBUG: acquire_asset dispatching to acquire_device for {asset_requirement.name}")
+            # Assuming acquire_device is updated or can handle these params.
+            # The existing acquire_device stub might need adjustment if its signature is very different.
+            return self.acquire_device(
+                protocol_run_guid=protocol_run_guid,
+                requested_asset_name_in_protocol=asset_requirement.name,
+                pylabrobot_class_name_constraint=asset_requirement.actual_type_str,
+                constraints=constraints_for_device 
+            )
+        else:
+            print(f"DEBUG: acquire_asset dispatching to acquire_labware for {asset_requirement.name}")
+            # Assuming acquire_labware is updated or can handle these params.
+            return self.acquire_labware(
+                protocol_run_guid=protocol_run_guid,
+                requested_asset_name_in_protocol=asset_requirement.name,
+                pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,
+                property_constraints=properties_for_labware
+            )
 

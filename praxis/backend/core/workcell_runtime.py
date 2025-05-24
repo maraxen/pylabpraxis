@@ -140,11 +140,14 @@ class WorkcellRuntime:
                 ads.update_managed_device_status(self.db_session, device_orm.id, ManagedDeviceStatusEnum.ERROR, f"Backend init failed: {str(e)[:250]}")
             return None
 
-    def create_or_get_labware_plr_object(self, labware_instance_orm: LabwareInstanceOrm) -> Optional[PlrResource]:
+    def create_or_get_labware_plr_object(
+        self, 
+        labware_instance_orm: LabwareInstanceOrm, 
+        labware_definition_fqn: str  # MODIFIED: Added new parameter
+    ) -> Optional[PlrResource]:
         """
         Creates or retrieves a live PyLabRobot Resource object for a labware instance
-        using its FQN stored in pylabrobot_definition_name.
-        (WCR-5 Implemented more robustly)
+        using its provided FQN.
         """
         if not hasattr(labware_instance_orm, 'id') or labware_instance_orm.id is None:
             print(f"ERROR: Invalid labware_instance_orm passed (no id)."); return None
@@ -152,9 +155,10 @@ class WorkcellRuntime:
             return self._active_plr_labware_objects[labware_instance_orm.id]
 
         print(f"INFO: Creating PLR object for labware '{labware_instance_orm.user_assigned_name}' (ID: {labware_instance_orm.id}) "
-              f"using definition FQN '{labware_instance_orm.pylabrobot_definition_name}'.")
+              f"using definition FQN '{labware_definition_fqn}'.") # MODIFIED: Log uses new param
         try:
-            LabwareClass = _get_class_from_fqn(labware_instance_orm.pylabrobot_definition_name)
+            # MODIFIED: Use the passed FQN
+            LabwareClass = _get_class_from_fqn(labware_definition_fqn) 
 
             # Most PLR labware resources are initialized with a 'name'.
             # Additional parameters might come from their class defaults or definition.
@@ -165,10 +169,22 @@ class WorkcellRuntime:
             print(f"INFO: PLR object for '{labware_instance_orm.user_assigned_name}' created: {type(plr_object).__name__}")
             return plr_object
         except Exception as e:
-            print(f"ERROR: WCR-5: Failed to create PLR object for '{labware_instance_orm.user_assigned_name}' "
-                  f"using FQN '{labware_instance_orm.pylabrobot_definition_name}': {e}")
+            error_message = f"Failed to create PLR object for '{labware_instance_orm.user_assigned_name}' using FQN '{labware_definition_fqn}': {str(e)[:250]}"
+            print(f"ERROR: WCR-5: {error_message}") # Use a formatted message
             traceback.print_exc()
-            # TODO: WCR-5A: Consider updating LabwareInstanceOrm status to ERROR if load fails.
+            
+            # WCR-5A: Update LabwareInstanceOrm status to ERROR
+            if self.db_session and ads and hasattr(labware_instance_orm, 'id') and labware_instance_orm.id is not None:
+                try:
+                    print(f"INFO: WCR-5A: Setting status of LabwareInstance ID {labware_instance_orm.id} to ERROR.")
+                    ads.update_labware_instance_location_and_status( 
+                        db=self.db_session,
+                        labware_instance_id=labware_instance_orm.id,
+                        new_status=LabwareInstanceStatusEnum.ERROR,
+                        status_details=error_message 
+                    )
+                except Exception as db_error: # pragma: no cover
+                    print(f"ERROR: WCR-5A: Failed to update LabwareInstance ID {labware_instance_orm.id} status to ERROR in DB: {db_error}")
             return None
 
     # --- Other methods (get_active_device_backend, shutdown_device_backend, get_active_labware_plr_object,

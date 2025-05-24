@@ -135,6 +135,7 @@ class LabwareDefinitionCatalogOrm(Base): # TODO: ASSET-DB-2: Bring in line with 
     __tablename__ = "labware_definition_catalog"
 
     pylabrobot_definition_name = Column(String, primary_key=True, index=True, comment="Unique name from PyLabRobot (e.g., corning_96_wellplate_360ul_flat), corresponds to PLR Resource.name")
+    python_fqn = Column(String, nullable=False, index=True, comment="Fully qualified Python class name for this labware definition (e.g., pylabrobot.resources.plate.Plate)")
 
     # Fields for PLR Resource base attributes
     size_x_mm = Column(Float, nullable=True, comment="Dimension X in millimeters, from PLR Resource.size_x")
@@ -176,6 +177,7 @@ class LabwareInstanceOrm(Base):
     date_added_to_inventory = Column(DateTime(timezone=True), server_default=func.now())
 
     current_status = Column(SAEnum(LabwareInstanceStatusEnum, name="labware_instance_status_enum"), default=LabwareInstanceStatusEnum.UNKNOWN, nullable=False, index=True)
+    status_details = Column(Text, nullable=True, comment="Additional details about the current status, e.g., error message") # ADDED
 
     # Location tracking
     # If on a deck, deck_device_id + current_deck_slot_name should be set.
