@@ -1,7 +1,7 @@
 \# PylabPraxis Codebase Documentation \- Part 1: Project Overview & Python Backend Core (Revised V2)
 
 \*\*Version:\*\* 0.1.0 (Inferred from \`backend/\_\_version\_\_.py\`)  
-\*\*Last Updated:\*\* June 10, 2024
+\*\*Last Updated:\*\* May 24, 2025
 
 \#\# 1\. High-Level Project Overview
 
@@ -326,7 +326,7 @@ This concludes the first part of the documentation. The next chunk will focus on
 
 Version: 0.1.0 (Inferred from backend/\_\_version\_\_.py)
 
-Last Updated: June 10, 2024
+Last Updated: May 24, 2025
 
 This document details the refactored protocol definition and execution system in PylabPraxis, focusing on the backend.protocol\_core, backend.protocol, backend.commons, and backend.utils modules. The refactor emphasizes a decorator-based, function-centric approach for enhanced flexibility, metadata extraction, and detailed logging.
 
@@ -913,7 +913,7 @@ This chunk provides a detailed look into the feature modules of the Flutter fron
 
 # **PylabPraxis Codebase Documentation \- Chunk 5: Build, Configuration, Testing & Ancillary Files**
 
-Last Updated: June 10, 2024
+Last Updated: May 24, 2025
 
 This document covers the build systems, deployment configurations, testing setups, and other ancillary files that support the PylabPraxis project. It encompasses both the Python backend (in backend/) and the Flutter frontend (in frontend/).
 
