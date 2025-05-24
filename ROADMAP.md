@@ -1,7 +1,7 @@
 \# PylabPraxis Codebase Documentation \- Part 1: Project Overview & Python Backend Core (Revised V2)
 
 \*\*Version:\*\* 0.1.0 (Inferred from \`backend/\_\_version\_\_.py\`)  
-\*\*Last Updated:\*\* May 22, 2025
+\*\*Last Updated:\*\* June 10, 2024
 
 \#\# 1\. High-Level Project Overview
 
@@ -125,11 +125,11 @@ This module contains the fundamental logic for managing and operating the labora
 
 \#\#\#\# 2.1.2. \`WorkcellRuntime\` (\`backend/core/workcell\_runtime.py\`) (Refactored Role)
 
-\* \*\*Purpose (Refactored):\*\* Manages live PyLabRobot objects (backends, resources) by translating database representations (from \`AssetManager\`) into operational instances. Dynamically instantiates PLR backends and labware resources using their fully qualified Python class paths.  
+\* \*\*Purpose (Refactored):\*\* Manages live PyLabRobot objects (backends, resources) by translating database representations (from \`AssetManager\`) into operational instances. Dynamically instantiates PLR backends and labware resources using their fully qualified Python class paths (FQNs). (Core instantiation logic implemented and refined).
 \* \*\*Key Responsibilities:\*\*  
     \* Holds the live \`Workcell\` instance and its PyLabRobot instrument/resource objects.  
     \* Manages the overall state of the workcell (\`WorkcellState\` enum: \`OFFLINE\`, \`ONLINE\`, \`INITIALIZING\`, \`IDLE\`, \`RUNNING\`, \`PAUSED\`, \`ERROR\`, \`MAINTENANCE\`).  
-    \* Handles dynamic instantiation, initialization, and shutdown of PyLabRobot backends and labware.  
+    \* Handles dynamic instantiation (using FQNs), initialization, and shutdown of PyLabRobot backends and labware. Corrected FQN handling for labware (using `python_fqn` from `LabwareDefinitionCatalogOrm`) is implemented.
     \* Provides methods for device actions (\`execute\_device\_action\`).  
     \* Loads and applies full deck configurations (\`DeckConfigurationOrm\`).  
 \* \*\*TODOs:\*\*  
@@ -139,9 +139,9 @@ This module contains the fundamental logic for managing and operating the labora
     \* \`\# TODO: Define workcell states more granularly.\` (Partially addressed)  
     \* \`\# TODO: Implement robust state transition logic and error handling.\`  
     \* \`\# TODO: Persist workcell state? (e.g., to Redis or DB)\`  
-\* \*\*Important Methods (Conceptual, based on refactor):\*\*  
-    \* \`initialize\_device\_backend(device\_info)\`  
-    \* \`create\_or\_get\_labware\_plr\_object(labware\_info)\`  
+\* \*\*Important Methods (Implemented, based on refactor):\*\*
+    \* \`initialize_device_backend(device_info: ManagedDeviceOrm) -> BaseBackend\`
+    \* \`create_or_get_labware_plr_object(labware_definition: LabwareDefinitionCatalogOrm, labware_instance: Optional[LabwareInstanceOrm] = None) -> Resource\` (Takes FQN from `labware_definition`, updates DB status via `asset_data_service`).
     \* \`assign\_labware\_to\_deck\_slot(deck\_slot, plr\_labware\_object)\`  
     \* \`get\_instrument(self, instrument\_name: str)\`
 
@@ -151,16 +151,16 @@ This module contains the fundamental logic for managing and operating the labora
 \* \*\*Key Responsibilities & Workflow:\*\*  
     \* Fetches protocol definitions (now \`FunctionProtocolDefinitionOrm\`) from the database via \`ProtocolDataService\`.  
     \* Prepares the execution environment (e.g., code checkout from Git for \`ProtocolSourceRepositoryOrm\`, \`sys.path\` management).  
-    \* Manages a canonical \`PraxisState\` object for each top-level run.  
-    \* Prepares arguments for protocol functions, including state (\`PraxisState\` object or a dict copy) and placeholder assets (to be resolved by \`AssetManager\`).  
-    \* Initializes and passes a \`PraxisRunContext\` to the top-level protocol's wrapper. This context carries run identifiers (\`run\_guid\`), the DB session, canonical state, and call hierarchy information.  
+    \* Manages a canonical \`PraxisState\` object for each top-level run. (Implemented).
+    \* Prepares arguments for protocol functions, including state (\`PraxisState\` object or a dict copy) and placeholder assets (resolved by the refined \`AssetManager\`). JSONSchema-based parameter validation using refactored \`jsonschema_utils.py\` is integrated.
+    \* Initializes and passes a \`PraxisRunContext\` to the top-level protocol's wrapper. This context carries run identifiers (\`run\_guid\`), the DB session, canonical state, and call hierarchy information. (Implemented).
     \* Ensures the \`db\_id\` of the top-level protocol definition is available in its metadata for the decorator wrapper (used for logging).  
     \* Handles overall run status logging to \`ProtocolRunOrm\` (e.g., start/end times, status, inputs/outputs, state snapshots).  
-    \* Interacts with \`AssetManager\` to acquire/release assets during protocol execution.  
+    \* Interacts with the refined \`AssetManager\` to acquire/release assets during protocol execution. (Basic integration for acquiring/releasing assets is functional).
 \* \*\*TODOs:\*\*  
-    \* \`\# TODO: ORCH-1: Integrate AssetManager\` (Refactor document \- Major step)  
+    \* \`# TODO: ORCH-1: Integrate AssetManager\` (Significantly progressed: Basic integration for acquiring/releasing assets is functional via refined `AssetManager`)
     \* \`\# TODO: ORCH-4: Git Operations\` (Refactor document \- robust Git clone/fetch/checkout)  
-    \* \`\# TODO: ORCH-5, ORCH-6: Parameter Validation & Type Casting\` (Refactor document)  
+    \* \`# TODO: ORCH-5, ORCH-6: Parameter Validation & Type Casting\` (Largely complete: JSONSchema-based validation is integrated via refactored `jsonschema_utils`)
     \* \`\# TODO: ORCH-7: Deck Loading for preconfigure\_deck=True protocols\` (Refactor document)  
     \* \`\# TODO: Implement step-by-step execution with pause/resume/cancel capabilities.\`  
     \* \`\# TODO: Add detailed logging and event publishing for protocol execution steps (partially addressed by FunctionCallLogOrm).\`  
@@ -172,24 +172,24 @@ This module contains the fundamental logic for managing and operating the labora
 
 \#\#\#\# 2.1.4. \`AssetManager\` (\`backend/core/asset\_manager.py\`) (Refactored Role)
 
-\* \*\*Purpose (Refactored):\*\* Manages the inventory, status, and allocation of devices and labware. Bridges database definitions with live PyLabRobot objects via \`WorkcellRuntime\`.  
+\* \*\*Purpose (Refactored):\*\* Manages the inventory, status, and allocation of devices and labware. Bridges database definitions with live PyLabRobot objects via \`WorkcellRuntime\`. (Core functionalities refactored and implemented).
 \* \*\*Key Responsibilities:\*\*  
     \* Interfaces with \`AssetDataService\` for DB operations.  
-    \* \`sync\_pylabrobot\_definitions()\`: Populates the labware catalog by introspecting PyLabRobot (using direct module/class scanning, avoiding \`ResourceLoader\`).  
-    \* \`acquire\_device()\`: Calls \`workcell\_runtime.initialize\_device\_backend()\`.  
-    \* \`acquire\_labware()\`: Calls \`workcell\_runtime.create\_or\_get\_labware\_plr\_object()\` and \`workcell\_runtime.assign\_labware\_to\_deck\_slot()\`.  
-    \* \`release\_device()\`/\`release\_labware()\`: Calls corresponding \`WorkcellRuntime\` methods.  
+    \* \`sync\_pylabrobot\_definitions()\`: Populates the labware catalog by introspecting PyLabRobot (using direct module/class scanning, avoiding \`ResourceLoader\`). Updated to use `python_fqn` for labware definitions in `LabwareDefinitionCatalogOrm`.
+    \* \`acquire_device()\` / \`acquire_labware()\`: Refactored to use `WorkcellRuntime` for PLR object instantiation and updates database status. An \`acquire_asset\` dispatcher method handles different asset types.
+    \* \`release_device()\` / \`release_labware()\`: Basic methods implemented to update database status.
 \* \*\*TODOs:\*\*  
-    \* \`\# TODO: AM-5A, AM-5B, AM-5D, AM-5E: Refine PLR introspection for sync\_pylabrobot\_definitions\` (Refactor document \- heuristics for properties, complex \`\_\_init\_\_\`, external definitions).  
+    \* \`# TODO: AM-5A, AM-5B, AM-5D, AM-5E: Refine PLR introspection for sync_pylabrobot_definitions\` (Ongoing: Heuristics for properties, complex `__init__`, external definitions. `python_fqn` usage for labware definition is a significant step).
     \* \`\# TODO: Implement versioning for labware definitions and deck layouts.\`  
     \* \`\# TODO: Add more sophisticated querying capabilities for assets.\`  
     \* \`\# TODO: Integrate with inventory management features (e.g., reagent tracking, lot numbers).\`  
-\* \*\*Important Methods (Conceptual, based on refactor):\*\*  
+\* \*\*Important Methods (Implemented, based on refactor):\*\*
     \* \`sync\_pylabrobot\_definitions(self)\`  
-    \* \`acquire\_device(self, device\_name: str) \-\> Any\`  
-    \* \`acquire\_labware(self, labware\_name: str, slot\_name: Optional\[str\] \= None) \-\> Any\`  
-    \* \`release\_device(self, device\_name: str)\`  
-    \* \`release\_labware(self, labware\_name: str)\`
+    \* \`acquire_asset(self, asset_id: int, asset_type: str, slot_name: Optional[str] = None) -> Any\` (Dispatcher method)
+    \* \`acquire\_device(self, device_id: int) \-\> Any\`
+    \* \`acquire\_labware(self, labware_id: int, slot\_name: Optional\[str\] \= None) \-\> Any\`
+    \* \`release\_device(self, device_name: str)\` (Basic implementation)
+    \* \`release\_labware(self, labware_name: str)\` (Basic implementation)
 
 \#\#\#\# 2.1.5. \`Deck\` (\`backend/core/deck.py\`)
 
@@ -255,20 +255,23 @@ Endpoints will need to align with the refactored services and data models, using
 
 \#\#\#\# 2.3.1. \`backend.database\_models\`
 
-\* \*\*Purpose:\*\* Defines SQLAlchemy ORM models for database tables.  
-\* \*\*Key Files:\*\*  
+\* \*\*Purpose:\*\* Defines SQLAlchemy ORM models for database tables. (All models inherit from a common `Base`, and table creation has been verified.)
+\* \*\*Key Files & Models:\*\*
     \* \`asset\_management\_orm.py\`:  
-        \* \`LabwareDefinitionOrm\`: Stores definitions of labware types.  
+        \* \`LabwareDefinitionCatalogOrm\` (formerly `LabwareDefinitionOrm`): Stores definitions of labware types, including `python_fqn` and PLR attribute details.
         \* \`LabwareInstanceOrm\`: Stores instances of specific labware items.  
         \* \`DeckLayoutOrm\`: Stores configurations of deck layouts.  
         \* \`DeckSlotOrm\`: Represents slots within a deck layout and their assigned labware.  
+        \* \`ManagedDeviceOrm\`: Stores definitions of managed devices, including the `praxis_device_category` field.
+    \* \`user_orm.py\`:
+        \* \`UserOrm\`: Represents user information, including new phone number fields.
     \* \`protocol\_definitions\_orm.py\`:  
-        \* \`ProtocolDefinitionOrm\`: Stores metadata about registered protocols.  
+        \* \`ProtocolDefinitionOrm\`: (Largely superseded by `FunctionProtocolDefinitionOrm` for the decorator-based system).
         \* \`ProtocolRunOrm\`: Tracks instances of protocol executions, their parameters, and status.  
-        \* \`FunctionProtocolDefinitionOrm\`, \`FunctionCallLogOrm\` (as per refactor).  
+        \* \`FunctionProtocolDefinitionOrm\`, \`FunctionCallLogOrm\` (Implemented as per refactor, central to the new protocol system).
 \* \*\*TODOs:\*\*  
-    \* \`\# TODO (asset\_management\_orm.py): Add relationships between tables (e.g., LabwareInstance to LabwareDefinition).\` \- Some relationships (e.g., \`DeckSlotOrm.labware\_instance\`) are present. Review for completeness.  
-    \* \`\# TODO (protocol\_definitions\_orm.py): Finalize schema for storing protocol run history and results.\`
+    \* \`# TODO (asset_management_orm.py): Review relationships between tables (e.g., LabwareInstance to LabwareDefinitionCatalogOrm) for completeness after recent changes.\`
+    \* \`# TODO (protocol_definitions_orm.py): Finalize schema for storing protocol run history and results (Ongoing, core elements like FunctionCallLogOrm are in place).\`
 
 \#\#\#\# 2.3.2. \`backend.db\_services\`
 
@@ -297,16 +300,16 @@ Endpoints will need to align with the refactored services and data models, using
 \#\# 3\. Priorities & Key Development Directions (Chunk 1 Scope \- Revised)
 
 \* \*\*Critical Priority:\*\*  
-    \* \*\*Complete Backend Refactor Integration:\*\* Fully implement and test the decorator-based protocol system.  
-    \* \*\*Database Setup & ORM Integration:\*\* Ensure \`backend.utils.db\` is correct, all ORM models use the central \`Base\`, and run \`Base.metadata.create\_all(engine)\`.  
+    \* \*\*Complete Backend Refactor Integration:\*\* (Significantly Progressed/Nearing Completion for Core Parts) Fully implement and test the decorator-based protocol system. Core elements like decorator functionality, discovery, and basic execution via Orchestrator are in place.
+    \* \*\*Database Setup & ORM Integration:\*\* (Complete and Verified) Ensure \`backend.utils.db\` is correct, all ORM models use the central \`Base\`, and run \`Base.metadata.create\_all(engine)\`.
 \* \*\*High Priority:\*\*  
-    \* \*\*Asset Management Implementation.\*\*  
-    \* \*\*Orchestrator Full Integration.\*\*  
+    \* \*\*Asset Management Implementation.\*\* (Significantly Progressed) Core functionalities for acquiring/releasing assets and PLR object interaction are implemented.
+    \* \*\*Orchestrator Full Integration.\*\* (Significantly Progressed) Basic integration of decorator system, parameter validation, and AssetManager interaction is done.
     \* \*\*API Endpoint Alignment.\*\*  
     \* \*\*Authentication & Authorization.\*\*  
+    \* \*\*JSONSchema Integration for Protocol Parameters.\*\* (Complete)
     \* \*\*Robust Error Handling.\*\*  
 \* \*\*Medium Priority:\*\*  
-    \* \*\*JSONSchema Integration for Protocol Parameters.\*\*  
     \* \*\*Refine Workcell State Management & Control.\*\*  
     \* \*\*Concurrency Management.\*\*  
 \* \*\*Low Priority (for initial alpha, but design for future):\*\*  
@@ -323,7 +326,7 @@ This concludes the first part of the documentation. The next chunk will focus on
 
 Version: 0.1.0 (Inferred from backend/\_\_version\_\_.py)
 
-Last Updated: May 22, 2025
+Last Updated: June 10, 2024
 
 This document details the refactored protocol definition and execution system in PylabPraxis, focusing on the backend.protocol\_core, backend.protocol, backend.commons, and backend.utils modules. The refactor emphasizes a decorator-based, function-centric approach for enhanced flexibility, metadata extraction, and detailed logging.
 
@@ -363,10 +366,10 @@ This module is central to the new protocol system.
     10. preconfigure\_deck: bool \= False: Flag indicating if the deck should be preconfigured according to a specific layout before this protocol runs.  
     11. state\_param\_name: Optional\[str\] \= "state": Specifies the name of the parameter that will receive the PraxisState object (if type-hinted as PraxisState) or a dictionary copy.  
   * Functionality:  
-    1. Metadata Extraction: At import time (during discovery), the decorator inspects the decorated function and its arguments, collecting all provided metadata. This metadata is structured (likely into Pydantic models like FunctionProtocolDefinitionModel).  
+    1. Metadata Extraction: At import time (during discovery), the decorator inspects the decorated function and its arguments, collecting all provided metadata. This metadata is structured into Pydantic models (e.g., `FunctionProtocolDefinitionModel`). (Completed)
     2. Execution Wrapping: It returns a wrapper around the original function. When this wrapper is called by the Orchestrator:  
-       * It receives a PraxisRunContext.  
-       * It logs its own execution details (start time, arguments, etc.) to FunctionCallLogOrm, using its protocol\_metadata\['db\_id'\] (the database ID of its definition) and the parent\_function\_call\_log\_id from the PraxisRunContext.  
+       * It receives a `PraxisRunContext`.
+       * It includes stubs for logging its own execution details (start time, arguments, etc.) to `FunctionCallLogOrm`, using its `protocol_metadata['db_id']` (the database ID of its definition) and the `parent_function_call_log_id` from the `PraxisRunContext`. (Logging stubs implemented, full logging pending).
        * It prepares arguments for the original user-written function, including injecting the PraxisState or its dictionary copy, and resolved asset instances.  
        * It calls the original function.  
        * It logs the result (return value or exception) and end time to FunctionCallLogOrm.  
@@ -378,14 +381,14 @@ This module defines key data structures used throughout the protocol execution l
 
 * PraxisState Class:  
   * Purpose: A canonical, mutable object that holds the shared state for a single top-level protocol run. This can include experimental parameters, intermediate results, tracking information for shared resources, etc.  
-  * Implementation: It is intended to be roughly equivalent to the functionality previously provided by backend.utils.state.State, utilizing a Redis cache for runtime in-memory access and persistence of state during a protocol run.  
-  * Structure: Likely a Pydantic model or a class with well-defined attributes, allowing for structured data storage and access. It can be extended or customized per protocol needs.  
+  * Implementation: It is implemented and utilizes a Redis cache (via `RedisStateCache`) for runtime in-memory access and persistence of state during a protocol run. (Completed)
+  * Structure: A Pydantic model allowing for structured data storage and access. It can be extended or customized per protocol needs.
   * Management by Orchestrator:  
     * An instance is created for each top-level run, potentially initialized from Redis if resuming.  
-    * If a @protocol\_function is type-hinted to receive PraxisState (e.g., def my\_func(state: PraxisState):), the Orchestrator passes this canonical instance directly. Modifications by the function persist and are reflected in Redis.  
-    * If a function is type-hinted to receive dict for state (e.g., def my\_func(state\_dict: dict):), the Orchestrator provides a deep copy of the relevant parts of PraxisState. For top-level protocols expecting a dict, changes might be merged back into the canonical PraxisState by the Orchestrator. For nested functions expecting dict state, they receive a fresh copy to prevent unintended side effects on sibling or parent states.  
+    * If a `@protocol_function` is type-hinted to receive `PraxisState` (e.g., `def my_func(state: PraxisState):`), the Orchestrator passes this canonical instance directly. Modifications by the function persist and are reflected in Redis.
+    * If a function is type-hinted to receive `dict` for state (e.g., `def my_func(state_dict: dict):`), the Orchestrator provides a deep copy of the relevant parts of `PraxisState`. For top-level protocols expecting a `dict`, changes might be merged back into the canonical `PraxisState` by the Orchestrator. For nested functions expecting `dict` state, they receive a fresh copy to prevent unintended side effects on sibling or parent states.
 * PraxisRunContext Class:  
-  * Purpose: An immutable object passed through the call stack of @protocol\_function calls within a single top-level run. It carries essential information for execution and logging.  
+  * Purpose: An immutable object passed through the call stack of `@protocol_function` calls within a single top-level run. It carries essential information for execution and logging. (Implemented and in use).
   * Key Attributes:  
     * run\_guid: UUID: The unique identifier for the top-level ProtocolRunOrm.  
     * protocol\_run\_db\_id: int: The database ID of the ProtocolRunOrm.  
@@ -394,22 +397,22 @@ This module defines key data structures used throughout the protocol execution l
     * db\_session: Session: The SQLAlchemy session for database interactions within the protocol function (e.g., for the wrapper to log).  
     * canonical\_state: PraxisState: The canonical PraxisState object for the current run.  
     * Other relevant identifiers or utility objects.  
-  * Propagation: The @protocol\_function wrapper is responsible for creating and passing a new, updated PraxisRunContext (with the correct parent\_function\_call\_log\_id) when calling nested user code that might itself contain calls to other decorated protocol functions.  
-* Pydantic Models (e.g., FunctionProtocolDefinitionModel from backend.protocol\_core.protocol\_definition\_models.py):  
-  * These models are used by the ProtocolDiscoveryService to structure the metadata extracted by the @protocol\_function decorator (or inferred for undecorated functions) before it's persisted to the database via ProtocolDataService. They ensure data consistency and validation.
+  * Propagation: The `@protocol_function` wrapper is responsible for creating and passing a new, updated `PraxisRunContext` (with the correct `parent_function_call_log_id`) when calling nested user code that might itself contain calls to other decorated protocol functions.
+* Pydantic Models (e.g., `FunctionProtocolDefinitionModel` from `backend.protocol_core.protocol_definition_models.py`):
+  * These models are used by the `ProtocolDiscoveryService` to structure the metadata extracted by the `@protocol_function` decorator (or inferred for undecorated functions) before it's persisted to the database via `ProtocolDataService`. They ensure data consistency and validation. (Implemented and in use by Discovery Service and ProtocolDataService).
 
 ### **2.3.** backend.protocol\_core.discovery\_service
 
 * ProtocolDiscoveryService Class:  
-  * Purpose: Responsible for finding, parsing, and registering protocol definitions within the PylabPraxis system.  
+  * Purpose: Responsible for finding, parsing, and registering protocol definitions within the PylabPraxis system. (Refactored and operational).
   * Workflow:  
     1. Scanning Sources: Scans Python code from configured sources (e.g., Git repositories, local filesystem paths, including arbitrary directories containing Python files).  
     2. Metadata Extraction & Inference:  
-       * For functions decorated with @protocol\_function, it directly uses the rich metadata provided.  
-       * For undecorated functions in discoverable Python files, it attempts to infer basic protocol information (e.g., name from function name, parameters from signature). These will have less explicit metadata (like UI hints, constraints, is\_top\_level status) unless defaults are applied.  
-    3. Pydantic Conversion: The collected/inferred metadata is converted into structured Pydantic models.  
-    4. Database Upsertion: Uses ProtocolDataService to "upsert" these protocol definitions into the FunctionProtocolDefinitionOrm table.  
-    5. In-Memory Registry Update: Updates an in-memory PROTOCOL\_REGISTRY mapping a unique protocol identifier to its db\_id.
+       * For functions decorated with `@protocol_function`, it directly uses the rich metadata provided.
+       * For undecorated functions in discoverable Python files, it attempts to infer basic protocol information (e.g., name from function name, parameters from signature), using Pydantic models for structuring. These will have less explicit metadata unless defaults are applied.
+    3. Pydantic Conversion: The collected/inferred metadata is converted into structured Pydantic models (e.g., `FunctionProtocolDefinitionModel`).
+    4. Database Upsertion: Uses `ProtocolDataService` (which now consumes these Pydantic models) to "upsert" these protocol definitions into the `FunctionProtocolDefinitionOrm` table.
+    5. In-Memory Registry Update: Updates an in-memory `PROTOCOL_REGISTRY` mapping a unique protocol identifier to its `db_id`.
 
 ## **3\. Defining Protocols (**backend.protocol **and** backend.protocol.protocols**)**
 
@@ -436,8 +439,8 @@ This section describes how developers write protocols using the new system.
 * backend.protocol.parameter.py:  
   * Contains classes like Parameter, IntegerParameter, etc. Their role is likely reduced with Pydantic models and type hinting, but they might still be used by jsonschema\_utils.py or for generating UI elements if param\_metadata doesn't cover all needs.  
 * backend.protocol.jsonschema\_utils.py:  
-  * Purpose: This utility is responsible for converting protocol parameter definitions (derived from Pydantic models created from decorator metadata and type hints) into JSONSchema.  
-  * Usage: The generated JSONSchema is crucial for the FastAPI backend. It is used by the API layer (specifically endpoints in backend.api.protocols) to validate the structure and types of incoming parameter payloads when a protocol run is requested from the frontend or other clients. This ensures that user-provided parameters conform to the protocol's expectations before execution begins, preventing runtime errors due to mismatched data.  
+  * Purpose: This utility is responsible for converting protocol parameter definitions (derived from Pydantic models created from decorator metadata and type hints) into JSONSchema. (This utility has been refactored and is integrated with the Orchestrator for parameter validation).
+  * Usage: The generated JSONSchema is crucial for the FastAPI backend. It is used by the API layer (specifically endpoints in `backend.api.protocols`) to validate the structure and types of incoming parameter payloads when a protocol run is requested from the frontend or other clients. This ensures that user-provided parameters conform to the protocol's expectations before execution begins, preventing runtime errors due to mismatched data.
 * backend.protocol.config.py:  
   * Legacy Role: Currently contains a ProtocolConfig class that is loaded by the older Protocol class structure.  
   * Future Role: This module will likely evolve to define Pydantic models or data structures that represent the configuration needed to run a protocol, especially for command-line invocation or manual runs. These structures would capture parameters, target state, and potentially notification preferences, replacing direct loading into a class instance. For frontend-driven runs, parameters will primarily come from JSON payloads.  
@@ -483,24 +486,24 @@ This package contains modules with pre-built, reusable functions for common lab 
 
 * Critical Priority:  
   * Solidify @protocol\_function Decorator & ProtocolDiscoveryService:  
-    * Ensure robust metadata extraction (for decorated functions) and inference (for undecorated functions from arbitrary Python files/directories).  
-    * Fully test context propagation (PraxisRunContext) and logging to FunctionCallLogOrm.  
-    * Verify ProtocolDiscoveryService for correct scanning, DB upsertion, and PROTOCOL\_REGISTRY updates.  
-  * Implement PraxisState with Redis Integration: Finalize PraxisState design, ensuring it uses Redis for runtime state management and persistence, and clarify its handling by the Orchestrator.  
+    * Ensure robust metadata extraction (for decorated functions) and inference (for undecorated functions from arbitrary Python files/directories). (Largely complete, Pydantic models used).
+    * Fully test context propagation (PraxisRunContext) and logging to FunctionCallLogOrm. (PraxisRunContext implemented, logging stubs in place, full logging pending).
+    * Verify ProtocolDiscoveryService for correct scanning, DB upsertion, and PROTOCOL_REGISTRY updates. (Core functionality complete and verified).
+  * Implement PraxisState with Redis Integration: Finalize PraxisState design, ensuring it uses Redis for runtime state management and persistence, and clarify its handling by the Orchestrator. (Complete and Integrated).
 * High Priority:  
   * Asset Requirement Inference: Implement logic in Orchestrator/AssetManager to infer asset needs from function type hints (PLR resources/machines, Optional handling). Deprecate/refactor backend.protocol.required\_assets.py.  
   * Parameter Handling for Multiple Invocation Paths:  
     * Implement JSON unpacking for frontend-driven runs.  
     * Define and implement ProtocolConfig\-like Pydantic models in/near backend.protocol.config.py for CLI/manual runs.  
-  * Integrate backend.protocol.jsonschema\_utils.py: For API validation of parameters. Ensure its output is correctly used by FastAPI for validating incoming protocol parameters.  
+  * Integrate backend.protocol.jsonschema\_utils.py: For API validation of parameters. Ensure its output is correctly used by FastAPI for validating incoming protocol parameters. (Complete).
   * Deprecate backend.protocol.standalone\_task.py.  
   * Develop Example Protocols: Using the new system, covering various scenarios.  
 * Medium Priority:  
   * Clarify/Refactor backend.protocol.parameter.py: Determine its final role.  
   * Refine backend.utils.notify.py: Adapt for parameter-driven notification details.  
-  * Address backend.utils.plr\_inspection.py: Plan and begin improvements.  
+  * Address backend.utils.plr\_inspection.py: Plan and begin improvements. (Partially addressed by `python_fqn` usage in `LabwareDefinitionCatalogOrm`).
 * Documentation:  
-  * Update backend/protocol/README.md to reflect the new decorator-based system and JSONSchema validation process.
+  * Update backend/protocol/README.md to reflect the new decorator-based system and JSONSchema validation process. (Partially addressed by this ROADMAP update).
 
 This chunk details the shift towards a more modern, flexible, and observable protocol system, which is key for broader developmental applicability and robust operation.
 
@@ -910,7 +913,7 @@ This chunk provides a detailed look into the feature modules of the Flutter fron
 
 # **PylabPraxis Codebase Documentation \- Chunk 5: Build, Configuration, Testing & Ancillary Files**
 
-Last Updated: May 22, 2025
+Last Updated: June 10, 2024
 
 This document covers the build systems, deployment configurations, testing setups, and other ancillary files that support the PylabPraxis project. It encompasses both the Python backend (in backend/) and the Flutter frontend (in frontend/).
 
@@ -994,9 +997,10 @@ This document covers the build systems, deployment configurations, testing setup
     * addopts: Additional command-line options (e.g., \--cov=backend for code coverage, verbosity).  
     * Markers, path configurations, etc.  
 * TODOs:  
-  * Expand test coverage significantly across all backend modules.  
-  * Implement integration tests that use Docker Compose to spin up dependent services (DB, Redis).  
-  * Set up CI/CD pipeline to run tests automatically.
+    * **Integration Test (`test_integration_discovery_execution.py`) Refactoring:** Module-level `MOCK_LIVE_DEVICE/LABWARE` constants were added. A new `mock_data_services` fixture was created and integrated to provide mocks for `protocol_data_service` functions, replacing older fixtures. Test methods within `test_integration_discovery_execution.py` have been updated to use this new fixture. (Complete).
+    * Expand test coverage significantly across all backend modules.
+    * Implement integration tests that use Docker Compose to spin up dependent services (DB, Redis).
+    * Set up CI/CD pipeline to run tests automatically.
 
 ### **3.3. Static Analysis (**mypy.ini**)**
 
