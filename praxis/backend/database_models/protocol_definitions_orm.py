@@ -39,9 +39,12 @@ class ProtocolRunStatusEnum(enum.Enum):
     PENDING = "pending"
     PREPARING = "preparing"
     RUNNING = "running"
+    PAUSING = "pausing" # New
     PAUSED = "paused"
+    RESUMING = "resuming" # New
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELING = "canceling" # New
     CANCELLED = "cancelled"
 
 class FunctionCallStatusEnum(enum.Enum):
