@@ -588,15 +588,30 @@ async def get_protocol_status(
     return ProtocolStatus(name=protocol.name, status=protocol.status)
 
 
-@router.post("/{protocol_name}/command")
-async def send_command(
-    protocol_name: str,
+@router.post("/{run_guid}/command")
+async def send_control_command_to_run(
+    run_guid: str,
     command: str,
-    orchestrator: Orchestrator = Depends(get_orchestrator),
 ):
-    """Sends a command to a running protocol."""
+    """Sends a control command to a specific run."""
+    from praxis.backend.utils.run_control import send_control_command as send_control_command_to_redis
+    from praxis.backend.utils.run_control import ALLOWED_COMMANDS
+
+    cmd_upper = command.upper()
+    if cmd_upper not in ALLOWED_COMMANDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}",
+        )
     try:
-        orchestrator.send_command(protocol_name, command)
-        return {"message": f"Command '{command}' sent to protocol '{protocol_name}'"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        success = send_control_command_to_redis(run_guid, cmd_upper)
+        if success:
+            return {"message": f"Command '{cmd_upper}' sent to run '{run_guid}'"}
+        else:
+            # This case might occur if Redis is down, for example.
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send command to run '{run_guid}' using Redis.")
+    except ValueError as e: # Should be caught by the ALLOWED_COMMANDS check, but as a safeguard.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e: # Catch-all for other unexpected errors, like Redis connection issues
+        logger.error(f"Error sending command to run '{run_guid}': {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred while sending command to run '{run_guid}'.")
