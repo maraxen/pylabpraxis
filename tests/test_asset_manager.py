@@ -147,7 +147,179 @@ class MockPlrTip(MockPlrResource):
 
 class MockCoordinate(MagicMock): 
     pass
+
+# --- New/Simpler Mock PyLabRobot Base Classes for specific sync tests ---
+class SomeNonSimpleType: # For complex constructor testing
+    pass
+
+class MockBasePlrResource: # Simplified base for these tests
+    # Class attributes to be potentially used if instantiation fails or is skipped
+    model: Optional[str] = "BaseClassModel"
+    resource_type: Optional[str] = "base_class_resource"
+    # For _get_category_from_class_name
+    __name__ = "MockBasePlrResource" 
+
+    def __init__(self, name: str, **kwargs: Any):
+        self.name = name
+        # Instance attributes override class attributes if instance is created
+        self.model = kwargs.get("model", self.model)
+        self.resource_type = kwargs.get("resource_type", self.resource_type)
+        self.__class__.__module__ = kwargs.get("module_name", "pylabrobot.resources.mock_sync_tests")
+        # Ensure __name__ is set on the instance's class for inspect.getdoc
+        self.__class__.__name__ = self.__class__.__name__ 
+
+
+    def serialize(self) -> Dict[str, Any]:
+        # Basic serialization, subclasses should extend
+        return {"name": self.name, "model": self.model, "resource_type": self.resource_type}
+
+class MockBaseItemizedResource(MockBasePlrResource):
+    # Class attributes
+    __name__ = "MockBaseItemizedResource"
+
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.items: List[Any] = kwargs.get("items", [])
+        self.wells: List[Any] = kwargs.get("wells", [])
+        # Ensure __name__ is set on the instance's class
+        self.__class__.__name__ = self.__class__.__name__
+
+
+# Test-specific mock classes
+class MockResourceSimple(MockBasePlrResource):
+    # Override class attributes if needed, or rely on MockBasePlrResource
+    model = "SimpleModel" # Class attribute
+    resource_type = "simple_resource" # Class attribute
+    __name__ = "MockResourceSimple"
+
+    def __init__(self, name: str, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        # Instance attributes
+        self.size_x: float = 10.0
+        self.size_y: float = 20.0
+        self.size_z: float = 30.0
+        self.capacity: float = 100.0
+        self.__class__.__module__ = "pylabrobot.resources.mock_simple"
+        self.__class__.__name__ = "MockResourceSimple"
+
+
+    def serialize(self) -> Dict[str, Any]:
+        data = super().serialize()
+        data.update({
+            "size_x": self.size_x, "size_y": self.size_y, "size_z": self.size_z,
+            "capacity": self.capacity
+        })
+        return data
+
+class MockResourceItemized(MockBaseItemizedResource):
+    model = "ItemizedModel"
+    resource_type = "itemized_resource"
+    __name__ = "MockResourceItemized"
+
+    def __init__(self, name: str, num_items_init: int = 5, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.num_items = num_items_init # Direct attribute for num_items extraction
+        self.wells = [MagicMock(name=f"W{i+1}") for i in range(num_items_init)]
+        self.__class__.__module__ = "pylabrobot.resources.mock_itemized"
+        self.__class__.__name__ = "MockResourceItemized"
+
+
+    def serialize(self) -> Dict[str, Any]:
+        data = super().serialize()
+        data.update({
+            "num_items": self.num_items,
+            "wells_data": [{"name": w.name} for w in self.wells] # Simulate serialized well data
+        })
+        return data
+
+class MockResourceComplexConstructor(MockBasePlrResource):
+    model = "ComplexModel" # Class attribute
+    resource_type = "complex_resource" # Class attribute
+    class_volume = 50.0 # Class attribute for testing fallback
+    __name__ = "MockResourceComplexConstructor"
+
+
+    def __init__(self, name: str, required_object: SomeNonSimpleType, optional_int: int = 0, **kwargs: Any):
+        super().__init__(name, **kwargs)
+        self.required_object = required_object
+        self.optional_int = optional_int
+        self.__class__.__module__ = "pylabrobot.resources.mock_complex"
+        self.__class__.__name__ = "MockResourceComplexConstructor"
+        # No serialize method, as it shouldn't be called if instantiation is skipped.
+
+class MockResourceInstantiationFails(MockBasePlrResource):
+    model = "FailModel" # Class attribute
+    resource_type = "fail_resource" # Class attribute
+    class_size_x = 5.0 # Class attribute for testing fallback
+    __name__ = "MockResourceInstantiationFails"
+
+    def __init__(self, name: str, **kwargs: Any):
+        # super().__init__(name, **kwargs) # Don't call super if init itself fails
+        self.__class__.__module__ = "pylabrobot.resources.mock_fails"
+        self.__class__.__name__ = "MockResourceInstantiationFails"
+        raise ValueError("Cannot instantiate this")
+
+    # No serialize method as it won't be instantiated.
+
+# --- End New/Simpler Mock PyLabRobot Base Classes ---
 # --- End Mock PyLabRobot Base Classes ---
+
+# Helper function for mocking module discovery
+def setup_mock_modules(mock_walk_packages_target, mock_import_module_target, mock_getmembers_target, resource_classes_to_discover):
+    """
+    Configures mocks for pkgutil.walk_packages, importlib.import_module, and inspect.getmembers
+    to simulate the discovery of specified resource_classes.
+    """
+    discovered_modules_info = {} # Stores {module_name: (mock_module_obj, list_of_members)}
+
+    for r_class in resource_classes_to_discover:
+        module_name = r_class.__module__
+        class_name = r_class.__name__
+
+        if module_name not in discovered_modules_info:
+            mock_module = MagicMock()
+            mock_module.__name__ = module_name
+            # Attach the class to the mock module object directly
+            setattr(mock_module, class_name, r_class)
+            discovered_modules_info[module_name] = (mock_module, [])
+        
+        # Ensure the class is also in the list of members for getmembers
+        # and re-set it on the module object in case the module was already created
+        current_module_obj, members_list = discovered_modules_info[module_name]
+        if not hasattr(current_module_obj, class_name): # Avoid duplicate setattr if module processed multiple times
+             setattr(current_module_obj, class_name, r_class)
+        
+        # Avoid adding duplicate (name, class) tuples to members_list
+        if not any(m[0] == class_name for m in members_list):
+            members_list.append((class_name, r_class))
+
+
+    mock_walk_packages_target.return_value = [
+        (None, name, False) for name in discovered_modules_info.keys()
+    ]
+
+    def import_module_side_effect(name_import):
+        if name_import in discovered_modules_info:
+            return discovered_modules_info[name_import][0]
+        # Fallback for other imports if AssetManager tries to import something else from pylabrobot.resources
+        if name_import.startswith("pylabrobot.resources"):
+            # print(f"DEBUG_IMPORT_HELPER: Mock importing {name_import} as new MagicMock")
+            return MagicMock(__name__=name_import) # Return a generic mock for other PLR modules
+        raise ImportError(f"No mock for module {name_import} in setup_mock_modules")
+    mock_import_module_target.side_effect = import_module_side_effect
+
+    def getmembers_side_effect(module_obj, predicate=None): # Added predicate
+        # predicate is often inspect.isclass, ensure it works with our mocks
+        module_name_lookup = getattr(module_obj, '__name__', None)
+        if module_name_lookup in discovered_modules_info:
+            # print(f"DEBUG_GETMEMBERS_HELPER: Returning members for {module_name_lookup}: {discovered_modules_info[module_name_lookup][1]}")
+            # Filter by predicate if provided, as inspect.getmembers does
+            if predicate:
+                return [(name, member) for name, member in discovered_modules_info[module_name_lookup][1] if predicate(member)]
+            return discovered_modules_info[module_name_lookup][1]
+        # print(f"DEBUG_GETMEMBERS_HELPER: No members for {module_name_lookup}")
+        return []
+    mock_getmembers_target.side_effect = getmembers_side_effect
 
 
 @pytest.fixture
@@ -401,20 +573,31 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         self.mock_import_module = MagicMock()
         self.mock_getmembers = MagicMock()
         self.mock_isabstract_inspect = MagicMock() 
-        self.mock_isclass_inspect = MagicMock()   
+        self.mock_isclass_inspect = MagicMock()
         self.mock_issubclass_inspect = MagicMock()
-        self.mock_get_constructor_params = MagicMock()
+        self.mock_get_constructor_params = MagicMock() # Mock for get_resource_constructor_params
 
-        monkeypatch.setattr("praxis.backend.core.asset_manager.pkgutil.walk_packages", self.mock_walk_packages)
-        monkeypatch.setattr("praxis.backend.core.asset_manager.importlib.import_module", self.mock_import_module)
-        monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.getmembers", self.mock_getmembers)
+        # Patch targets for the helper function
+        self.mock_walk_packages_target = MagicMock(name="walk_packages_target_in_fixture")
+        self.mock_import_module_target = MagicMock(name="import_module_target_in_fixture")
+        self.mock_getmembers_target = MagicMock(name="getmembers_target_in_fixture")
+
+
+        monkeypatch.setattr("praxis.backend.core.asset_manager.pkgutil.walk_packages", self.mock_walk_packages_target)
+        monkeypatch.setattr("praxis.backend.core.asset_manager.importlib.import_module", self.mock_import_module_target)
+        monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.getmembers", self.mock_getmembers_target) # Patched here
+        
         monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.isabstract", self.mock_isabstract_inspect)
         monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.isclass", self.mock_isclass_inspect)
-        monkeypatch.setattr("praxis.backend.core.asset_manager.issubclass", self.mock_issubclass_inspect) 
+        monkeypatch.setattr("praxis.backend.core.asset_manager.issubclass", self.mock_issubclass_inspect)
+        # Patch for the constructor param utility
         monkeypatch.setattr("praxis.backend.core.asset_manager.get_resource_constructor_params", self.mock_get_constructor_params)
 
-        monkeypatch.setattr("praxis.backend.core.asset_manager.PlrResource", MockPlrResource)
-        monkeypatch.setattr("praxis.backend.core.asset_manager.Container", MockPlrContainer)
+
+        # Keep existing PLR base class mocks as they might be used by other tests
+        # The new simple mocks are additive for the new tests.
+        monkeypatch.setattr("praxis.backend.core.asset_manager.PlrResource", MockPlrResource) # Original detailed mock
+        monkeypatch.setattr("praxis.backend.core.asset_manager.Container", MockPlrContainer) # Original detailed mock
         monkeypatch.setattr("praxis.backend.core.asset_manager.PlrPlate", MockPlrPlate)
         monkeypatch.setattr("praxis.backend.core.asset_manager.PlrTipRack", MockPlrTipRack)
         monkeypatch.setattr("praxis.backend.core.asset_manager.Well", MockPlrWell) 
@@ -649,66 +832,132 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         assert call_args['python_fqn'] == 'mock_module.kept.KeptResource'
         assert call_args['pylabrobot_definition_name'] == "kept_resource_type"
 
-    def test_sync_property_extraction_from_details_json(self, asset_manager: AssetManager, caplog):
-        class MockResourceWithJsonProps(MockPlrPlate): 
-            resource_type = "json_props_type"
-            model = "InstanceModelShouldBeOverridden" 
-            size_x = 1.0 
-            capacity = 10.0 
-
-            def __init__(self, name: str, model: Optional[str] = None, size_x: Optional[float]=None, capacity: Optional[float]=None, category_str: Optional[str] = None): # Added category_str
-                super().__init__(name=name, model=model or self.model, size_x=size_x or self.size_x, capacity=capacity or self.capacity, category_str=category_str)
-                self.__class__.__module__ = "mock_module.json_props"
-
-            def serialize(self) -> Dict[str, Any]:
-                return {
-                    "name": self.name, 
-                    "model": "JSONModel", 
-                    "category": "plate", # Explicitly set category here
-                    "size_x": 90.0, 
-                    "size_y": 70.0,
-                    "size_z": 15.0,
-                    "capacity": 250.0, 
-                }
-
-        mock_module = MagicMock()
-        mock_module.MockResourceWithJsonProps = MockResourceWithJsonProps
+    # This test replaces the old test_sync_property_extraction_from_details_json
+    # and incorporates checks for the new fields praxis_extracted_num_items and praxis_extracted_ordering
+    def test_sync_extracts_basic_properties_and_new_fields(self, asset_manager: AssetManager, caplog):
+        # Use the setup_mock_modules helper
+        setup_mock_modules(
+            self.mock_walk_packages_target, 
+            self.mock_import_module_target, 
+            self.mock_getmembers_target,
+            [MockResourceSimple, MockResourceItemized]
+        )
         
-        self.mock_walk_packages.return_value = [(None, 'mock_module.json_props', False)]
-        self.mock_import_module.return_value = mock_module
-        self.mock_getmembers.return_value = [('MockResourceWithJsonProps', MockResourceWithJsonProps)]
-        self.mock_isabstract_inspect.return_value = False 
+        # Mock get_resource_constructor_params for each class
+        # For MockResourceSimple
+        simple_params = {'name': {'type': 'str', 'required': True, 'default': inspect.Parameter.empty}}
+        # For MockResourceItemized
+        itemized_params = {
+            'name': {'type': 'str', 'required': True, 'default': inspect.Parameter.empty},
+            'num_items_init': {'type': 'int', 'required': False, 'default': 5}
+        }
+        
+        def get_constructor_params_side_effect(cls):
+            if cls == MockResourceSimple: return simple_params
+            if cls == MockResourceItemized: return itemized_params
+            return {}
+        self.mock_get_constructor_params.side_effect = get_constructor_params_side_effect
+        
+        self.mock_ads_service.get_labware_definition.return_value = None # New definitions
+
+        added, updated = asset_manager.sync_pylabrobot_definitions()
+
+        assert added == 2
+        assert updated == 0
+        assert self.mock_ads_service.add_or_update_labware_definition.call_count == 2
+        
+        calls_args_list = self.mock_ads_service.add_or_update_labware_definition.call_args_list
+
+        # Call 1: MockResourceSimple
+        args_simple = calls_args_list[0][1]
+        assert args_simple['python_fqn'] == 'pylabrobot.resources.mock_simple.MockResourceSimple'
+        assert args_simple['pylabrobot_definition_name'] == 'simple_resource' # From class attribute
+        assert args_simple['praxis_labware_type_name'] == 'SimpleModel' # From class attribute, instance uses it
+        assert args_simple['category'] == LabwareCategoryEnum.OTHER # Default from MockBasePlrResource via _get_category_from_plr_object
+        assert args_simple['model'] == 'SimpleModel'
+        assert args_simple['size_x_mm'] == 10.0
+        assert args_simple['size_y_mm'] == 20.0
+        assert args_simple['size_z_mm'] == 30.0
+        assert args_simple['nominal_volume_ul'] == 100.0
+        details_simple = args_simple['plr_definition_details_json']
+        assert "praxis_extracted_num_items" not in details_simple # Or assert it's None
+        assert "praxis_extracted_ordering" not in details_simple # Or assert it's None
+
+        # Call 2: MockResourceItemized
+        args_itemized = calls_args_list[1][1]
+        assert args_itemized['python_fqn'] == 'pylabrobot.resources.mock_itemized.MockResourceItemized'
+        assert args_itemized['pylabrobot_definition_name'] == 'itemized_resource'
+        assert args_itemized['praxis_labware_type_name'] == 'ItemizedModel'
+        assert args_itemized['category'] == LabwareCategoryEnum.OTHER # Default
+        assert args_itemized['model'] == 'ItemizedModel'
+        details_itemized = args_itemized['plr_definition_details_json']
+        assert details_itemized.get('praxis_extracted_num_items') == 5
+        assert details_itemized.get('praxis_extracted_ordering') == "W1,W2,W3,W4,W5"
+        
+    def test_sync_handles_complex_constructor_gracefully(self, asset_manager: AssetManager, caplog):
+        setup_mock_modules(
+            self.mock_walk_packages_target,
+            self.mock_import_module_target,
+            self.mock_getmembers_target,
+            [MockResourceComplexConstructor]
+        )
+        
         self.mock_get_constructor_params.return_value = {
             'name': {'type': 'str', 'required': True, 'default': inspect.Parameter.empty},
-            # Ensure constructor allows these to be None or take defaults so instance values don't override JSON
-            'model': {'type': 'Optional[str]', 'required': False, 'default': None},
-            'size_x': {'type': 'Optional[float]', 'required': False, 'default': None},
-            'capacity': {'type': 'Optional[float]', 'required': False, 'default': None}
+            'required_object': {'type': 'SomeNonSimpleType', 'required': True, 'default': inspect.Parameter.empty},
+            'optional_int': {'type': 'int', 'required': False, 'default': 0}
         }
         self.mock_ads_service.get_labware_definition.return_value = None
 
-        added, updated = asset_manager.sync_pylabrobot_definitions(plr_resources_package=MagicMock(__path__=['dummy'], __name__='mock_plr_pkg'))
+        added, updated = asset_manager.sync_pylabrobot_definitions()
 
         assert added == 1
-        assert updated == 0
-        self.mock_ads_service.add_or_update_labware_definition.assert_called_once()
-        call_args = self.mock_ads_service.add_or_update_labware_definition.call_args[1]
+        assert self.mock_ads_service.add_or_update_labware_definition.call_count == 1
+        args_complex = self.mock_ads_service.add_or_update_labware_definition.call_args[1]
 
-        assert call_args['python_fqn'] == 'mock_module.json_props.MockResourceWithJsonProps'
-        assert call_args['pylabrobot_definition_name'] == "json_props_type"
-        assert call_args['praxis_labware_type_name'] == "JSONModel" 
-        assert call_args['category'] == LabwareCategoryEnum.PLATE 
-        assert call_args['model'] == "JSONModel" 
-        assert call_args['size_x_mm'] == 90.0 
-        assert call_args['size_y_mm'] == 70.0 
-        assert call_args['size_z_mm'] == 15.0 
-        assert call_args['nominal_volume_ul'] == 250.0 
-        expected_details = {"model": "JSONModel", "category": "plate", "size_x": 90.0, "size_y": 70.0, "size_z": 15.0, "capacity": 250.0}
+        assert args_complex['python_fqn'] == 'pylabrobot.resources.mock_complex.MockResourceComplexConstructor'
+        assert args_complex['pylabrobot_definition_name'] == 'complex_resource' # From class
+        assert args_complex['praxis_labware_type_name'] == 'ComplexModel' # From class
+        assert args_complex['model'] == 'ComplexModel' # From class attribute, as instance not created
+        assert args_complex['nominal_volume_ul'] is None # class_volume not automatically picked up by _extract_volume from class
+        # Ensure details_json does not contain instance-specific data if temp_instance was None
+        details_complex = args_complex['plr_definition_details_json']
+        # If temp_instance is None, details_json will be {} (after initialization) or None if not touched.
+        # If it's {}, then these praxis_extracted keys won't be there.
+        assert "praxis_extracted_num_items" not in details_complex 
+        assert "praxis_extracted_ordering" not in details_complex
         
-        actual_details = call_args['plr_definition_details_json'].copy()
-        if 'name' in actual_details: # name is temporary and not part of the stored details
-            del actual_details['name']
-        assert actual_details == expected_details
-        assert call_args['is_consumable'] is True 
+        assert "INFO: AM_SYNC: Skipping instantiation for pylabrobot.resources.mock_complex.MockResourceComplexConstructor due to complex required parameter 'required_object' of type 'SomeNonSimpleType'" in caplog.text
+        assert "INFO: AM_SYNC: Proceeding to extract data for pylabrobot.resources.mock_complex.MockResourceComplexConstructor without a temporary instance" in caplog.text
+
+
+    def test_sync_handles_instantiation_failure_gracefully(self, asset_manager: AssetManager, caplog):
+        setup_mock_modules(
+            self.mock_walk_packages_target,
+            self.mock_import_module_target,
+            self.mock_getmembers_target,
+            [MockResourceInstantiationFails]
+        )
+        
+        self.mock_get_constructor_params.return_value = {
+            'name': {'type': 'str', 'required': True, 'default': inspect.Parameter.empty}
+        }
+        self.mock_ads_service.get_labware_definition.return_value = None
+
+        added, updated = asset_manager.sync_pylabrobot_definitions()
+
+        assert added == 1
+        assert self.mock_ads_service.add_or_update_labware_definition.call_count == 1
+        args_fail = self.mock_ads_service.add_or_update_labware_definition.call_args[1]
+
+        assert args_fail['python_fqn'] == 'pylabrobot.resources.mock_fails.MockResourceInstantiationFails'
+        assert args_fail['pylabrobot_definition_name'] == 'fail_resource' # From class
+        assert args_fail['praxis_labware_type_name'] == 'FailModel' # From class
+        assert args_fail['model'] == 'FailModel' # From class attribute
+        # class_size_x is not automatically picked up by _extract_dimensions from class.
+        assert args_fail['size_x_mm'] is None 
+        
+        assert "WARNING: AM_SYNC: Instantiation of pylabrobot.resources.mock_fails.MockResourceInstantiationFails failed even with smart defaults: ValueError('Cannot instantiate this')" in caplog.text
+        assert "INFO: AM_SYNC: Proceeding to extract data for pylabrobot.resources.mock_fails.MockResourceInstantiationFails without a temporary instance" in caplog.text
 
 ```

@@ -114,45 +114,187 @@ class AssetManager:
 
     def _extract_dimensions(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Optional[float], Optional[float]]:
         """Extracts dimensions (x, y, z) in mm."""
+        x, y, z = None, None, None
         try:
             if resource:
                 if hasattr(resource, 'get_size_x') and callable(resource.get_size_x): # type: ignore
+                    print(f"DEBUG: AM_EXTRACT_DIM: Extracted from get_size_x/y/z for {resource_class.__name__}")
                     return resource.get_size_x(), resource.get_size_y(), resource.get_size_z() # type: ignore
                 if hasattr(resource, 'dimensions') and isinstance(resource.dimensions, Coordinate): # type: ignore
+                    print(f"DEBUG: AM_EXTRACT_DIM: Extracted from 'dimensions' (Coordinate) for {resource_class.__name__}")
                     return resource.dimensions.x, resource.dimensions.y, resource.dimensions.z # type: ignore
-            if details:
+                
+                size_x, size_y, size_z = None, None, None
+                # PLR often uses (x,y,z) for size but attributes can be named 'width', 'height', 'depth'.
+                # Standard mapping: size_x (depth), size_y (width), size_z (height)
+                if hasattr(resource, 'depth'): size_x = getattr(resource, 'depth', None)
+                if hasattr(resource, 'width'): size_y = getattr(resource, 'width', None)
+                if hasattr(resource, 'height'): size_z = getattr(resource, 'height', None)
+                
+                if size_x is not None and size_y is not None and size_z is not None:
+                    try:
+                        print(f"DEBUG: AM_EXTRACT_DIM: Extracted from direct attributes (depth, width, height) for {resource_class.__name__}")
+                        return float(size_x), float(size_y), float(size_z)
+                    except (ValueError, TypeError) as ve:
+                        print(f"DEBUG: AM_EXTRACT_DIM: Conversion error for depth/width/height for {resource_class.__name__}: {ve}") # Standardized prefix
+
+            if details: # Check details from serialize()
                 if "dimensions" in details and isinstance(details["dimensions"], dict):
-                    return details["dimensions"].get("x"), details["dimensions"].get("y"), details["dimensions"].get("z")
+                    dx_d, dy_d, dz_d = details["dimensions"].get("x"), details["dimensions"].get("y"), details["dimensions"].get("z") # Renamed to avoid conflict
+                    if dx_d is not None and dy_d is not None and dz_d is not None:
+                        print(f"DEBUG: AM_EXTRACT_DIM: Extracted from details['dimensions'] for {resource_class.__name__}")
+                        return dx_d, dy_d, dz_d
                 if "size_x" in details and "size_y" in details and "size_z" in details:
-                    return details.get("size_x"), details.get("size_y"), details.get("size_z")
+                    sx_d, sy_d, sz_d = details.get("size_x"), details.get("size_y"), details.get("size_z") # Renamed
+                    if sx_d is not None and sy_d is not None and sz_d is not None:
+                        print(f"DEBUG: AM_EXTRACT_DIM: Extracted from details['size_x/y/z'] for {resource_class.__name__}")
+                        return sx_d, sy_d, sz_d
+            
+            if x is None and y is None and z is None: # Check if any dimension was found
+                print(f"DEBUG: AM_EXTRACT_DIM: Dimensions not found through any known attributes or details for {resource_class.__name__}.")
+
         except Exception as e:
-            print(f"DEBUG: AM_EXTRACT_DIM_ERR: Error extracting dimensions for {resource_class.__name__}: {e}")
-        return None, None, None
+            print(f"ERROR: AM_EXTRACT_DIM: Error extracting dimensions for {resource_class.__name__}: {e}\n{traceback.format_exc()}") # Standardized prefix
+        return x, y, z # Return whatever was found (could be all Nones)
 
     def _extract_volume(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[float]:
         """Extracts nominal volume in uL."""
+        volume_value = None
         try:
             if resource:
-                if hasattr(resource, 'capacity') and resource.capacity is not None: return float(resource.capacity) # type: ignore
-                if hasattr(resource, 'max_volume') and resource.max_volume is not None: return float(resource.max_volume) # type: ignore
+                vol_attrs = ['capacity', 'max_volume', 'total_liquid_volume']
+                for attr in vol_attrs:
+                    if hasattr(resource, attr):
+                        val = getattr(resource, attr)
+                        if isinstance(val, (int, float)):
+                            print(f"DEBUG: AM_EXTRACT_VOL: Extracted from '{attr}' for {resource_class.__name__}")
+                            volume_value = float(val)
+                            return volume_value # Found, return immediately
                 if hasattr(resource, 'wells') and resource.wells and hasattr(resource.get_well(0), 'max_volume'): # type: ignore
-                    return float(resource.get_well(0).max_volume) # type: ignore
+                    well_vol = getattr(resource.get_well(0), 'max_volume', None)
+                    if isinstance(well_vol, (int, float)):
+                        print(f"DEBUG: AM_EXTRACT_VOL: Extracted from 'well.max_volume' for {resource_class.__name__}")
+                        volume_value = float(well_vol)
+                        return volume_value # Found, return immediately
             if details:
-                if "capacity" in details and details["capacity"] is not None: return float(details["capacity"])
-                if "max_volume" in details and details["max_volume"] is not None: return float(details["max_volume"])
-                if "nominal_volume_ul" in details and details["nominal_volume_ul"] is not None: return float(details["nominal_volume_ul"])
+                detail_vol_attrs = ['capacity', 'max_volume', 'total_liquid_volume', 'nominal_volume_ul']
+                for attr in detail_vol_attrs:
+                    if attr in details and isinstance(details[attr], (int, float)):
+                        print(f"DEBUG: AM_EXTRACT_VOL: Extracted from details['{attr}'] for {resource_class.__name__}")
+                        volume_value = float(details[attr])
+                        return volume_value # Found, return immediately
+            
+            if volume_value is None:
+                print(f"DEBUG: AM_EXTRACT_VOL: Volume not found through any known attributes or details for {resource_class.__name__}.")
+
         except Exception as e:
-            print(f"DEBUG: AM_EXTRACT_VOL_ERR: Error extracting volume for {resource_class.__name__}: {e}")
-        return None
+            print(f"ERROR: AM_EXTRACT_VOL: Error extracting volume for {resource_class.__name__}: {e}\n{traceback.format_exc()}") # Standardized prefix
+        return volume_value
 
     def _extract_model_name(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[str]:
         """Extracts model name."""
+        model_value = None
         try:
-            if resource and hasattr(resource, 'model') and resource.model: return str(resource.model) # type: ignore
-            if details and "model" in details and details["model"]: return str(details["model"])
+            if resource and hasattr(resource, 'model') and resource.model:
+                print(f"DEBUG: AM_EXTRACT_MODEL: Extracted from 'resource.model' for {resource_class.__name__}")
+                model_value = str(resource.model)
+                return model_value
+            if details and "model" in details and details["model"]:
+                print(f"DEBUG: AM_EXTRACT_MODEL: Extracted from details['model'] for {resource_class.__name__}")
+                model_value = str(details["model"])
+                return model_value
+            
+            if model_value is None:
+                 print(f"DEBUG: AM_EXTRACT_MODEL: Model name not found through any known attributes or details for {resource_class.__name__}.")
+
         except Exception as e:
-            print(f"DEBUG: AM_EXTRACT_MODEL_ERR: Error extracting model for {resource_class.__name__}: {e}")
-        return None
+            print(f"ERROR: AM_EXTRACT_MODEL: Error extracting model for {resource_class.__name__}: {e}\n{traceback.format_exc()}") # Standardized prefix
+        return model_value
+
+    def _extract_num_items(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[int]:
+        """Extracts the number of items (e.g., tips, wells, tubes)."""
+        num_items_value = None
+        try:
+            if resource:
+                if hasattr(resource, 'num_items') and isinstance(getattr(resource, 'num_items'), int):
+                    print(f"DEBUG: AM_EXTRACT_NUM: Extracted from 'num_items' for {resource_class.__name__}")
+                    num_items_value = int(getattr(resource, 'num_items'))
+                    return num_items_value
+                
+                if isinstance(resource, ItemizedResource):
+                    # For ItemizedResource, 'capacity' might mean num_items if it's an int
+                    if hasattr(resource, 'capacity') and isinstance(getattr(resource, 'capacity'), int):
+                        category = self._get_category_from_plr_object(resource) # Use already defined helper
+                        if category in [LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.TUBE_RACK, LabwareCategoryEnum.PLATE]: # Plates also have well count
+                            print(f"DEBUG: AM_EXTRACT_NUM: Extracted from 'capacity' (as int) for ItemizedResource {resource_class.__name__}")
+                            num_items_value = int(getattr(resource, 'capacity'))
+                            return num_items_value
+
+                    # Direct check for 'items' or 'wells' list length
+                    if hasattr(resource, 'items') and isinstance(getattr(resource, 'items'), list):
+                        print(f"DEBUG: AM_EXTRACT_NUM: Extracted from len(resource.items) for {resource_class.__name__}")
+                        num_items_value = len(getattr(resource, 'items'))
+                        return num_items_value
+                    if hasattr(resource, 'wells') and isinstance(getattr(resource, 'wells'), list):
+                        print(f"DEBUG: AM_EXTRACT_NUM: Extracted from len(resource.wells) for {resource_class.__name__}")
+                        num_items_value = len(getattr(resource, 'wells'))
+                        return num_items_value
+            if details:
+                if "num_items" in details and isinstance(details["num_items"], int):
+                    print(f"DEBUG: AM_EXTRACT_NUM: Extracted from details['num_items'] for {resource_class.__name__}")
+                    num_items_value = int(details["num_items"])
+                    return num_items_value
+                if "capacity" in details and isinstance(details["capacity"], int):
+                    temp_category = self._get_category_from_class_name(resource_class.__name__)
+                    if temp_category in [LabwareCategoryEnum.TIP_RACK, LabwareCategoryEnum.TUBE_RACK, LabwareCategoryEnum.PLATE]:
+                        print(f"DEBUG: AM_EXTRACT_NUM: Extracted from details['capacity'] (as int) for {resource_class.__name__}")
+                        num_items_value = int(details["capacity"])
+                        return num_items_value
+                if "items" in details and isinstance(details["items"], list):
+                    print(f"DEBUG: AM_EXTRACT_NUM: Extracted from len(details['items']) for {resource_class.__name__}")
+                    num_items_value = len(details["items"])
+                    return num_items_value
+                if "wells" in details and isinstance(details["wells"], list):
+                    print(f"DEBUG: AM_EXTRACT_NUM: Extracted from len(details['wells']) for {resource_class.__name__}")
+                    num_items_value = len(details["wells"])
+                    return num_items_value
+
+            if num_items_value is None:
+                print(f"DEBUG: AM_EXTRACT_NUM: Number of items not found through any known attributes or details for {resource_class.__name__}.")
+
+        except Exception as e:
+            print(f"ERROR: AM_EXTRACT_NUM: Error extracting num_items for {resource_class.__name__}: {e}\n{traceback.format_exc()}") # Standardized prefix
+        return num_items_value
+
+    def _extract_ordering(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Extracts a comma-separated string of item names if ordered (e.g., wells in a plate)."""
+        ordering_value = None
+        try:
+            if resource and isinstance(resource, ItemizedResource):
+                if hasattr(resource, 'wells') and isinstance(getattr(resource, 'wells'), list):
+                    wells_list = getattr(resource, 'wells')
+                    well_names = [getattr(well, 'name', str(i)) for i, well in enumerate(wells_list)]
+                    if well_names:
+                        print(f"DEBUG: AM_EXTRACT_ORDER: Extracted from 'resource.wells' for {resource_class.__name__}")
+                        ordering_value = ",".join(well_names)
+                        return ordering_value
+            if details:
+                if "ordering" in details and isinstance(details["ordering"], str):
+                    print(f"DEBUG: AM_EXTRACT_ORDER: Extracted from details['ordering'] for {resource_class.__name__}")
+                    ordering_value = details["ordering"]
+                    return ordering_value
+                if "wells" in details and isinstance(details["wells"], list):
+                    if all(isinstance(w, dict) and "name" in w for w in details["wells"]):
+                        print(f"DEBUG: AM_EXTRACT_ORDER: Extracted from names in details['wells'] for {resource_class.__name__}")
+                        ordering_value = ",".join([w["name"] for w in details["wells"]])
+                        return ordering_value
+            
+            if ordering_value is None:
+                print(f"DEBUG: AM_EXTRACT_ORDER: Ordering not found through any known attributes or details for {resource_class.__name__}.")
+
+        except Exception as e:
+            print(f"ERROR: AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: {e}\n{traceback.format_exc()}") # Standardized prefix
+        return ordering_value
 
     def _get_category_from_plr_object(self, plr_object: PlrResource) -> LabwareCategoryEnum:
         """Determines LabwareCategoryEnum from a PyLabRobot resource object."""
@@ -211,30 +353,33 @@ class AssetManager:
         Scans PyLabRobot's resources by introspecting modules and classes,
         then populates/updates the LabwareDefinitionCatalogOrm.
         """
-        print(f"INFO: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}")
+        print(f"INFO: AM_SYNC: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}") # Standardized
         added_count = 0; updated_count = 0
         processed_fqns: Set[str] = set()
 
         for importer, modname, ispkg in pkgutil.walk_packages(
             path=plr_resources_package.__path__, # type: ignore
             prefix=plr_resources_package.__name__ + '.',
-            onerror=lambda x: print(f"Error walking package: {x}") # Log errors during walk
+            onerror=lambda x: print(f"ERROR: AM_SYNC: Error walking package {x}") # Standardized
         ):
             try:
                 module = importlib.import_module(modname)
             except Exception as e:
-                print(f"WARNING: Could not import module {modname} during sync: {e}")
+                print(f"WARNING: AM_SYNC: Could not import module {modname} during sync: {e}") # Standardized
                 continue
 
             for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
                 fqn = f"{modname}.{class_name}"
                 if fqn in processed_fqns: continue
                 processed_fqns.add(fqn)
+                
+                print(f"DEBUG: AM_SYNC: Found class {fqn}. Checking if catalogable...") # Added
 
                 if not self._is_catalogable_labware_class(plr_class_obj):
+                    print(f"DEBUG: AM_SYNC: Skipping {fqn} - not a catalogable labware class.") # Added
                     continue
 
-                # print(f"DEBUG: Processing potential labware class: {fqn}")
+                print(f"DEBUG: AM_SYNC: Processing potential labware class: {fqn}") # Standardized (was DEBUG: Processing...)
                 temp_instance: Optional[PlrResource] = None
                 can_instantiate = True
                 kwargs_for_instantiation: Dict[str, Any] = {"name": f"praxis_sync_temp_{class_name}"}
@@ -254,19 +399,19 @@ class AssetManager:
                             elif "list" in param_type_str: kwargs_for_instantiation[param_name] = []
                             elif "dict" in param_type_str: kwargs_for_instantiation[param_name] = {}
                             else: # Complex/unknown type
-                                print(f"INFO: Skipping instantiation for {fqn} due to complex required parameter '{param_name}' of type '{param_info['type']}'. Will rely on class-level data.")
+                                print(f"INFO: AM_SYNC: Skipping instantiation for {fqn} due to complex required parameter '{param_name}' of type '{param_info['type']}'. Will rely on class-level data.") # Standardized
                                 can_instantiate = False
                                 break
                     
                     if can_instantiate:
-                        print(f"DEBUG: Attempting instantiation of {fqn} with kwargs: {kwargs_for_instantiation}")
+                        print(f"DEBUG: AM_SYNC: Attempting instantiation of {fqn} with kwargs: {kwargs_for_instantiation}") # Standardized
                         temp_instance = plr_class_obj(**kwargs_for_instantiation)
                 except Exception as inst_err:
-                    print(f"WARNING: Instantiation of {fqn} failed even with smart defaults: {inst_err}. Proceeding with class-level data extraction.")
+                    print(f"WARNING: AM_SYNC: Instantiation of {fqn} failed even with smart defaults: {inst_err}. Proceeding with class-level data extraction.\n{traceback.format_exc(limit=3)}") # Standardized
                     temp_instance = None
                 
-                if not can_instantiate and temp_instance is None: # Double check if loop was broken
-                     print(f"INFO: Skipped instantiation for {fqn} due to complex/missing required parameters. Relying on class-level data.")
+                if not can_instantiate and temp_instance is None: 
+                     print(f"INFO: AM_SYNC: Proceeding to extract data for {fqn} without a temporary instance (either skipped or failed instantiation).") # Standardized
                      # temp_instance is already None
 
                 # Property Extraction
@@ -275,11 +420,21 @@ class AssetManager:
                     try:
                         details_json = temp_instance.serialize()
                         if 'name' in details_json: del details_json['name'] 
-                    except Exception as ser_err: print(f"WARN: Serialize failed for {fqn}: {ser_err}")
+                    except Exception as ser_err: print(f"WARNING: AM_SYNC: Serialize failed for {fqn}: {ser_err}") # Standardized
 
                 size_x, size_y, size_z = self._extract_dimensions(temp_instance, plr_class_obj, details_json)
                 nominal_volume_ul = self._extract_volume(temp_instance, plr_class_obj, details_json)
                 model_name = self._extract_model_name(temp_instance, plr_class_obj, details_json)
+                
+                # New extractions
+                num_items = self._extract_num_items(temp_instance, plr_class_obj, details_json)
+                ordering_str = self._extract_ordering(temp_instance, plr_class_obj, details_json)
+
+                if details_json is None: details_json = {} # Ensure details_json is initialized
+                if num_items is not None:
+                    details_json["praxis_extracted_num_items"] = num_items
+                if ordering_str is not None:
+                    details_json["praxis_extracted_ordering"] = ordering_str
 
                 try:
                     pylabrobot_def_name: Optional[str] = None
@@ -316,7 +471,7 @@ class AssetManager:
                         pylabrobot_def_name = fqn
                     if not description: description = fqn # Ensure description is not empty
 
-                    print(f"DEBUG: Syncing {pylabrobot_def_name} (FQN: {fqn}): Category={category.name}, Model={model_name}, Vol={nominal_volume_ul}, X={size_x}, Y={size_y}, Z={size_z}")
+                    print(f"DEBUG: AM_SYNC: Syncing {pylabrobot_def_name} (FQN: {fqn}): Category={category.name}, Model={model_name}, Vol={nominal_volume_ul}, X={size_x}, Y={size_y}, Z={size_z}, NumItems={num_items}, Ordering={ordering_str[:50] if ordering_str else 'N/A'}...") # Standardized
 
                     existing_def_orm = ads.get_labware_definition(self.db, pylabrobot_def_name)
                     ads.add_or_update_labware_definition(
@@ -337,12 +492,12 @@ class AssetManager:
                     if not existing_def_orm: added_count += 1
                     else: updated_count += 1
                 except Exception as e_proc:
-                    print(f"ERROR: Could not process or save PLR class '{fqn}': {e_proc}\n{traceback.format_exc()}")
+                    print(f"ERROR: AM_SYNC: Could not process or save PLR class '{fqn}': {e_proc}\n{traceback.format_exc()}") # Standardized
                 finally:
                     if temp_instance: del temp_instance
 
         # TODO: AM-5E: Add step for loading definitions from external files (e.g., Opentrons JSON).
-        print(f"Labware definition sync complete. Added: {added_count}, Updated: {updated_count}")
+        print(f"INFO: AM_SYNC: Labware definition sync complete. Added: {added_count}, Updated: {updated_count}") # Standardized
         return added_count, updated_count
 
     # --- acquire/release methods (structurally same as v4, with existing TODOs) ---
