@@ -210,4 +210,199 @@ class TestOrchestratorExecutionControl:
     # - test_run_status_when_protocol_def_not_found
     # - test_run_status_when_prepare_code_fails
     # - test_run_status_when_prepare_args_fails (e.g., asset acquisition)
+
+    # --- Tests for In-Step Command Handling (Decorator Logic) ---
+
+    @patch('praxis.backend.protocol_core.decorators.get_control_command')
+    @patch('praxis.backend.protocol_core.decorators.clear_control_command')
+    @patch('praxis.backend.protocol_core.decorators.update_protocol_run_status')
+    @patch('praxis.backend.protocol_core.decorators.time.sleep')
+    def test_pause_resume_during_protocol_step(
+        self,
+        mock_decorator_sleep,
+        mock_decorator_update_status,
+        mock_decorator_clear_cmd,
+        mock_decorator_get_cmd,
+        orchestrator_instance,
+        mock_protocol_def_orm,
+        mock_protocol_run_orm,
+        mock_db_session # For context
+    ):
+        orchestrator, _ = orchestrator_instance # Orchestrator's sleep mock not used here
+        protocol_def, decorator_meta = mock_protocol_def_orm
+        
+        # Ensure Orchestrator's own pre-execution command checks are bypassed
+        mock_run_control_get.side_effect = [None, None] # For Orchestrator's initial checks
+
+        # Mock for the protocol function's context
+        mock_praxis_run_context = MagicMock(spec=PraxisRunContext)
+        mock_praxis_run_context.run_guid = mock_protocol_run_orm.run_guid
+        mock_praxis_run_context.protocol_run_db_id = mock_protocol_run_orm.id
+        mock_praxis_run_context.current_db_session = mock_db_session
+
+        # Simulate the sequence of commands the decorator will see
+        mock_decorator_get_cmd.side_effect = [
+            None,    # First check inside decorator before user code
+            "PAUSE", # Second check, PAUSE command received
+            None,    # Inside decorator's pause loop
+            None,    # Inside decorator's pause loop
+            "RESUME" # RESUME command received
+        ]
+
+        # This is the mock for the actual user-written protocol function
+        user_protocol_function_mock = MagicMock(return_value={"status": "user_code_completed"})
+
+        def mock_protocol_wrapper_side_effect(*args, **kwargs):
+            # This simulates the decorator's command handling logic
+            # __praxis_run_context__ is passed by the orchestrator to the wrapper
+            ctx = kwargs.get('__praxis_run_context__', mock_praxis_run_context) # Fallback for safety
+
+            # Simulate 1st command check in decorator (before user code)
+            cmd1 = mock_decorator_get_cmd(ctx.run_guid) # Sees None
+            # No command, so it would proceed to call user_protocol_function_mock,
+            # but we embed further command checks as if they are part of user_protocol_function_mock's execution flow
+            # for this test's purpose, to simulate commands during the step.
+
+            # Simulate decorator checking for command *during* the step (conceptually)
+            cmd2 = mock_decorator_get_cmd(ctx.run_guid) # Sees PAUSE
+            if cmd2 == "PAUSE":
+                mock_decorator_clear_cmd(ctx.run_guid)
+                mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.PAUSING)
+                mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.PAUSED)
+                
+                paused = True
+                while paused:
+                    mock_decorator_sleep(1)
+                    cmd_in_pause = mock_decorator_get_cmd(ctx.run_guid)
+                    if cmd_in_pause == "RESUME":
+                        mock_decorator_clear_cmd(ctx.run_guid)
+                        mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.RESUMING)
+                        mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.RUNNING)
+                        paused = False
+                    elif cmd_in_pause == "CANCEL": # Should not happen in this test's side_effect
+                        raise ProtocolCancelledError("Cancelled during pause") 
+            
+            # If resumed, the actual user function is called
+            result = user_protocol_function_mock(*args, **{k:v for k,v in kwargs.items() if k != '__praxis_run_context__'})
+            return result
+
+        mock_wrapper_func_instance = MagicMock(side_effect=mock_protocol_wrapper_side_effect)
+        # Attach the original metadata, as Orchestrator uses it
+        mock_wrapper_func_instance.protocol_metadata = decorator_meta 
+        
+        orchestrator._prepare_protocol_code = MagicMock(return_value=(mock_wrapper_func_instance, decorator_meta))
+        orchestrator._prepare_arguments = MagicMock(return_value=({}, PraxisState(), []))
+        mock_get_protocol_definition_details.return_value = protocol_def
+        mock_create_protocol_run.return_value = mock_protocol_run_orm
+
+        # Execute
+        result = orchestrator.execute_protocol(protocol_name="TestProtocol", user_input_params={})
+
+        # Assertions
+        assert result == {"status": "user_code_completed"}
+        user_protocol_function_mock.assert_called_once() # Ensure the actual user code ran
+
+        # Check calls to decorator's mocks
+        decorator_status_calls = [
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSING),
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSED),
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RESUMING),
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RUNNING),
+        ]
+        mock_decorator_update_status.assert_has_calls(decorator_status_calls, any_order=False)
+        
+        mock_decorator_clear_cmd.assert_has_calls([
+            call(mock_protocol_run_orm.run_guid), # For PAUSE
+            call(mock_protocol_run_orm.run_guid)  # For RESUME
+        ])
+        assert mock_decorator_clear_cmd.call_count == 2
+        assert mock_decorator_sleep.call_count >= 2 # At least two sleeps during pause
+
+        # Check Orchestrator's status updates (it will still log COMPLETED at the end)
+        # The RUNNING status before the pause is handled by the Orchestrator itself.
+        orchestrator_final_status_call = call(ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.COMPLETED, output_data_json=ANY)
+        assert mock_update_protocol_run_status.call_args_list[-1] == orchestrator_final_status_call
+
+
+    @patch('praxis.backend.protocol_core.decorators.get_control_command')
+    @patch('praxis.backend.protocol_core.decorators.clear_control_command')
+    @patch('praxis.backend.protocol_core.decorators.update_protocol_run_status')
+    @patch('praxis.backend.protocol_core.decorators.time.sleep') # Though not used in cancel path
+    def test_cancel_during_protocol_step(
+        self,
+        mock_decorator_sleep,
+        mock_decorator_update_status,
+        mock_decorator_clear_cmd,
+        mock_decorator_get_cmd,
+        orchestrator_instance,
+        mock_protocol_def_orm,
+        mock_protocol_run_orm,
+        mock_db_session,
+        mock_asset_manager
+    ):
+        orchestrator, _ = orchestrator_instance
+        protocol_def, decorator_meta = mock_protocol_def_orm
+        
+        mock_run_control_get.side_effect = [None, None] # Orchestrator's pre-execution checks
+
+        mock_praxis_run_context = MagicMock(spec=PraxisRunContext)
+        mock_praxis_run_context.run_guid = mock_protocol_run_orm.run_guid
+        mock_praxis_run_context.protocol_run_db_id = mock_protocol_run_orm.id
+        mock_praxis_run_context.current_db_session = mock_db_session
+
+        mock_decorator_get_cmd.side_effect = [
+            None,    # First check inside decorator
+            "CANCEL" # CANCEL command received
+        ]
+        
+        user_protocol_function_mock = MagicMock() # This should not be called
+
+        def mock_protocol_wrapper_side_effect(*args, **kwargs):
+            ctx = kwargs.get('__praxis_run_context__', mock_praxis_run_context)
+
+            cmd1 = mock_decorator_get_cmd(ctx.run_guid) # Sees None
+            
+            # Simulate decorator checking for command *during* the step
+            cmd2 = mock_decorator_get_cmd(ctx.run_guid) # Sees CANCEL
+            if cmd2 == "CANCEL":
+                mock_decorator_clear_cmd(ctx.run_guid)
+                mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.CANCELING)
+                mock_decorator_update_status(ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=ANY)
+                raise ProtocolCancelledError(f"Cancelled by user during step {ctx.run_guid}")
+            
+            user_protocol_function_mock(*args, **{k:v for k,v in kwargs.items() if k != '__praxis_run_context__'})
+            return {"status": "should_not_complete"}
+
+
+        mock_wrapper_func_instance = MagicMock(side_effect=mock_protocol_wrapper_side_effect)
+        mock_wrapper_func_instance.protocol_metadata = decorator_meta
+        
+        # Simulate acquired assets for release check
+        acquired_assets_info = [{"type": "device", "orm_id": 789, "name_in_protocol": "test_device_cancel"}]
+        orchestrator._prepare_arguments = MagicMock(return_value=({}, PraxisState(), acquired_assets_info))
+        
+        orchestrator._prepare_protocol_code = MagicMock(return_value=(mock_wrapper_func_instance, decorator_meta))
+        mock_get_protocol_definition_details.return_value = protocol_def
+        mock_create_protocol_run.return_value = mock_protocol_run_orm
+
+        with pytest.raises(ProtocolCancelledError, match=f"Cancelled by user during step {mock_protocol_run_orm.run_guid}"):
+            orchestrator.execute_protocol(protocol_name="TestProtocol", user_input_params={})
+
+        user_protocol_function_mock.assert_not_called()
+
+        decorator_status_calls = [
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.CANCELING),
+            call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=ANY),
+        ]
+        mock_decorator_update_status.assert_has_calls(decorator_status_calls, any_order=False)
+        mock_decorator_clear_cmd.assert_called_once_with(mock_protocol_run_orm.run_guid)
+
+        # Check Orchestrator's final status update (should be CANCELLED by the orchestrator itself due to the raised error)
+        orchestrator_final_status_call = call(ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=ANY)
+        # Ensure the *last* call to the orchestrator's mock_update_protocol_run_status was for CANCELLED
+        assert mock_update_protocol_run_status.call_args_list[-1] == orchestrator_final_status_call
+        
+        # Check asset release
+        mock_asset_manager.release_device.assert_called_once_with(device_orm_id=789)
+        mock_asset_manager.release_labware.assert_not_called()
 ```

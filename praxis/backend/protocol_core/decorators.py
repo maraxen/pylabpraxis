@@ -20,9 +20,16 @@ from praxis.backend.protocol_core.definitions import (
 )
 from praxis.backend.database_models import FunctionCallStatusEnum
 # TODO: DEC-1: Ensure praxis.backend.services.protocol_data_service is importable.
-from praxis.backend.services.protocol_data_service import log_function_call_start, log_function_call_end # Assuming this import works
+from praxis.backend.services.protocol_data_service import log_function_call_start, log_function_call_end, update_protocol_run_status # Assuming this import works
 
 # MODIFICATION: Import Pydantic models
+# --- New Imports for Command Handling ---
+from praxis.backend.utils.run_control import get_control_command, clear_control_command, ALLOWED_COMMANDS
+from praxis.backend.database_models.protocol_definitions_orm import ProtocolRunStatusEnum
+from praxis.backend.core.orchestrator import ProtocolCancelledError # Assuming this import works for now
+# import time # Already imported for perf_counter, but good to note if it wasn't.
+# json is already imported.
+# --- End New Imports ---
 from praxis.backend.protocol_core.protocol_definition_models import (
     FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint
 )
@@ -260,6 +267,79 @@ def protocol_function(
             
             result = None; error = None; status = FunctionCallStatusEnum.SUCCESS
             start_time = time.perf_counter()
+
+            # --- MODIFICATION: Insert Command Handling Logic Here ---
+            run_guid = praxis_run_context.run_guid
+            current_protocol_run_db_id = praxis_run_context.protocol_run_db_id
+            current_db_session = praxis_run_context.current_db_session
+
+            # Initial Command Check Loop (Handle stacked commands before proceeding to user code):
+            while True: # Loop to handle commands if multiple are sent or if a PAUSE transitions to CANCEL
+                command = get_control_command(run_guid)
+                if not command:
+                    break # No command, proceed to execute the function
+
+                if command not in ALLOWED_COMMANDS:
+                    print(f"Warning: Invalid control command '{command}' received for run {run_guid}. Clearing.")
+                    clear_control_command(run_guid)
+                    continue # Check for another command
+
+                # --- PAUSE Command ---
+                if command == "PAUSE":
+                    clear_control_command(run_guid)
+                    print(f"INFO: Protocol run {run_guid} step PAUSING due to command.")
+                    if current_db_session and current_protocol_run_db_id:
+                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.PAUSING)
+                        current_db_session.commit() # Commit status change
+                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.PAUSED)
+                        current_db_session.commit() # Commit status change
+
+                    # Pause loop
+                    pause_loop_command_after_resume = None
+                    while True:
+                        # print(f"DEBUG: Run {run_guid} is PAUSED. Waiting for RESUME or CANCEL.") # Optional debug log
+                        time.sleep(1) # Check every second (or make configurable)
+                        pause_loop_command = get_control_command(run_guid)
+                        pause_loop_command_after_resume = pause_loop_command # Store for outer loop check
+
+                        if pause_loop_command == "RESUME":
+                            clear_control_command(run_guid)
+                            print(f"INFO: Protocol run {run_guid} step RESUMING.")
+                            if current_db_session and current_protocol_run_db_id:
+                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.RESUMING)
+                                current_db_session.commit() # Commit status change
+                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.RUNNING)
+                                current_db_session.commit() # Commit status change
+                            break # Exit pause loop to continue execution
+                        elif pause_loop_command == "CANCEL":
+                            clear_control_command(run_guid)
+                            print(f"INFO: Protocol run {run_guid} step CANCELLING during pause.")
+                            if current_db_session and current_protocol_run_db_id:
+                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELING)
+                                current_db_session.commit() # Commit status change
+                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": f"Cancelled by user during protocol step execution (from PAUSED state)."}))
+                                current_db_session.commit() # Commit status change
+                            raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during protocol step execution (from PAUSED state).")
+                        elif pause_loop_command and pause_loop_command not in ["RESUME", "CANCEL"]:
+                            print(f"Warning: Invalid command '{pause_loop_command}' received while PAUSED for run {run_guid}. Clearing and ignoring.")
+                            clear_control_command(run_guid)
+                    
+                    if pause_loop_command_after_resume == "RESUME": # If resumed, break the outer command check loop too
+                        break 
+                    # If loop exited due to cancel, exception is already raised.
+
+                # --- CANCEL Command (if not already handled in PAUSE) ---
+                elif command == "CANCEL":
+                    clear_control_command(run_guid)
+                    print(f"INFO: Protocol run {run_guid} step CANCELLING due to command.")
+                    if current_db_session and current_protocol_run_db_id:
+                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELING)
+                        current_db_session.commit() # Commit status change
+                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": f"Cancelled by user during protocol step execution."}))
+                        current_db_session.commit() # Commit status change
+                    raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during protocol step execution.")
+            # --- END MODIFICATION ---
+
             try:
                 processed_kwargs_for_call = processed_kwargs.copy()
                 
