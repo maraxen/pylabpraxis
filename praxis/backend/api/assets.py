@@ -1,8 +1,16 @@
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any # Ensure Any is imported
+from fastapi import APIRouter, HTTPException, Depends, status # Ensure status is imported
+from pydantic import BaseModel, Field # Ensure Field is imported
+import datetime # For setting last_updated_at
 
-from praxis.utils.db import db
+# Assuming get_db and DbSession will be correctly imported from dependencies
+# This might need adjustment based on actual project structure for db sessions
+from praxis.backend.database import get_db, DbSession # Placeholder, adjust if needed
+
+from praxis.backend.services import asset_data_service # For interacting with DB layer
+
+from praxis.utils.db import db as old_db_api # old_db_api, keeping for existing code
 from praxis.utils.plr_inspection import (
     get_resource_metadata,
     get_machine_metadata,
@@ -13,7 +21,48 @@ from praxis.utils.plr_inspection import (
 
 router = APIRouter()
 
+# --- Inventory Pydantic Models ---
+class LabwareInventoryReagentItem(BaseModel):
+    reagent_id: str
+    reagent_name: Optional[str] = None
+    lot_number: Optional[str] = None
+    expiry_date: Optional[str] = None # Use str for date for API, validation can be added
+    supplier: Optional[str] = None
+    catalog_number: Optional[str] = None
+    date_received: Optional[str] = None
+    date_opened: Optional[str] = None
+    concentration: Optional[Dict[str, Any]] = None # e.g., {"value": 10.0, "unit": "mM"}
+    initial_quantity: Dict[str, Any] # e.g., {"value": 50.0, "unit": "mL"}
+    current_quantity: Dict[str, Any] # e.g., {"value": 45.5, "unit": "mL"}
+    quantity_unit_is_volume: Optional[bool] = True
+    custom_fields: Optional[Dict[str, Any]] = None
 
+class LabwareInventoryItemCount(BaseModel):
+    item_type: Optional[str] = None # "tip", "tube", "well_used"
+    initial_max_items: Optional[int] = None
+    current_available_items: Optional[int] = None
+    positions_used: Optional[List[str]] = None
+
+class LabwareInventoryDataIn(BaseModel):
+    praxis_inventory_schema_version: Optional[str] = "1.0"
+    reagents: Optional[List[LabwareInventoryReagentItem]] = None
+    item_count: Optional[LabwareInventoryItemCount] = None
+    consumable_state: Optional[str] = None # e.g., "new", "used", "partially_used", "empty", "contaminated"
+    last_updated_by: Optional[str] = None # User ID or name
+    inventory_notes: Optional[str] = None
+    # last_updated_at is set by server on PUT
+
+class LabwareInventoryDataOut(BaseModel):
+    praxis_inventory_schema_version: Optional[str] = None
+    reagents: Optional[List[LabwareInventoryReagentItem]] = None
+    item_count: Optional[LabwareInventoryItemCount] = None
+    consumable_state: Optional[str] = None
+    last_updated_by: Optional[str] = None
+    inventory_notes: Optional[str] = None
+    last_updated_at: Optional[str] = None # Populated from DB
+
+
+# --- Original Asset Models ---
 class AssetBase(BaseModel):
     name: str
     type: str
@@ -80,7 +129,7 @@ async def list_assets_by_type(asset_type: str):
             WHERE type LIKE $1
             ORDER BY name
         """
-        assets = await db.fetch_all(query, f"%{asset_type}%")
+        assets = await old_db_api.fetch_all(query, f"%{asset_type}%") # Using old_db_api
         return assets
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch assets: {str(e)}")
@@ -105,7 +154,7 @@ async def list_available_assets_by_type(asset_type: str):
                 AND (lock_expires_at IS NULL OR lock_expires_at < CURRENT_TIMESTAMP)
             ORDER BY name
         """
-        assets = await db.fetch_all(query, f"%{asset_type}%")
+        assets = await old_db_api.fetch_all(query, f"%{asset_type}%") # Using old_db_api
         return assets
     except Exception as e:
         raise HTTPException(
@@ -118,7 +167,7 @@ async def get_asset_details(asset_name: str):
     """
     Get detailed information about a specific asset
     """
-    asset = await db.get_asset(asset_name)
+    asset = await old_db_api.get_asset(asset_name) # Using old_db_api
     if not asset:
         raise HTTPException(status_code=404, detail=f"Asset {asset_name} not found")
     return asset
@@ -144,7 +193,7 @@ async def search_assets(query: str):
                 metadata::text ILIKE $1
             ORDER BY name
         """
-        assets = await db.fetch_all(search_query, f"%{query}%")
+        assets = await old_db_api.fetch_all(search_query, f"%{query}%") # Using old_db_api
         return assets
     except Exception as e:
         raise HTTPException(
@@ -240,7 +289,7 @@ async def create_resource(request: ResourceCreationRequest):
             plr_serialized["type"] = request.resourceType
 
             # Add to database
-            asset_id = await db.add_asset(
+            asset_id = await old_db_api.add_asset( # Using old_db_api
                 name=request.name,
                 asset_type=request.resourceType,
                 metadata=metadata,
@@ -317,7 +366,7 @@ async def create_machine(request: MachineCreationRequest):
             plr_serialized["type"] = request.machineType
 
             # Add to database
-            asset_id = await db.add_asset(
+            asset_id = await old_db_api.add_asset( # Using old_db_api
                 name=request.name,
                 asset_type=request.machineType,
                 metadata=metadata,
@@ -345,3 +394,61 @@ async def create_machine(request: MachineCreationRequest):
         raise HTTPException(
             status_code=500, detail=f"Failed to create machine: {str(e)}"
         )
+
+# --- Labware Instance Inventory Endpoints ---
+
+@router.get("/labware_instances/{instance_id}/inventory", response_model=LabwareInventoryDataOut, tags=["Labware Instances"])
+async def get_labware_instance_inventory(instance_id: int, db: DbSession = Depends(get_db)) -> LabwareInventoryDataOut:
+    """
+    Get inventory data for a specific labware instance.
+    """
+    instance = asset_data_service.get_labware_instance_by_id(db, instance_id)
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Labware instance not found")
+    
+    if not instance.properties_json:
+        return LabwareInventoryDataOut() # Return empty if no properties_json
+
+    try:
+        # Assuming properties_json directly stores LabwareInventoryData structure
+        # The model will validate if the structure is correct.
+        inventory_data = LabwareInventoryDataOut(**instance.properties_json)
+        return inventory_data
+    except Exception as e: # Catches Pydantic validation errors among others
+        # Log the error for debugging: print(f"Error parsing inventory data for instance {instance_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error parsing inventory data from instance properties: {e}")
+
+
+@router.put("/labware_instances/{instance_id}/inventory", response_model=LabwareInventoryDataOut, tags=["Labware Instances"])
+async def update_labware_instance_inventory(instance_id: int, inventory_data: LabwareInventoryDataIn, db: DbSession = Depends(get_db)) -> LabwareInventoryDataOut:
+    """
+    Update inventory data for a specific labware instance.
+    """
+    instance = asset_data_service.get_labware_instance_by_id(db, instance_id)
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Labware instance not found")
+
+    # Pydantic v2 uses model_dump, v1 uses .dict()
+    if hasattr(inventory_data, 'model_dump'):
+        updated_properties = inventory_data.model_dump(exclude_unset=True)
+    else:
+        updated_properties = inventory_data.dict(exclude_unset=True) # type: ignore
+
+    updated_properties["last_updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    updated_instance = asset_data_service.update_labware_instance_location_and_status(
+        db, 
+        labware_instance_id=instance_id, 
+        properties_json_update=updated_properties
+        # new_status is not changed here, only properties_json
+    )
+
+    if not updated_instance or not updated_instance.properties_json:
+        # This case should ideally not happen if the update service worked and instance was found
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update or retrieve labware instance properties")
+
+    try:
+        return LabwareInventoryDataOut(**updated_instance.properties_json)
+    except Exception as e:
+        # Log the error: print(f"Error parsing updated inventory data for instance {instance_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error parsing updated inventory data: {e}")
