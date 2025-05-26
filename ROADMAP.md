@@ -139,7 +139,7 @@ This module contains the fundamental logic for managing and operating the labora
     * `# TODO: ORCH-4: Git Operations` (Refactor document - robust Git clone/fetch/checkout)  
     * `# TODO: ORCH-5, ORCH-6: Parameter Validation & Type Casting` (Largely complete: JSONSchema-based validation is integrated via refactored `jsonschema_utils`)
     * `# TODO: ORCH-7: Deck Loading for preconfigure_deck=True protocols` (Refactor document)  
-    * `# TODO: Implement step-by-step execution with pause/resume/cancel capabilities.` (Backend Orchestrator logic still pending, API endpoint for commands is complete)
+    * `# TODO: Fully implement step-by-step execution with pause/resume/cancel capabilities.` (Core command checking and status updates in Orchestrator are implemented. Robust persistence of non-PraxisState context during pause/resume across application restarts needs completion. API endpoint for commands is complete).
     * `# TODO: Add detailed logging and event publishing for protocol execution steps (partially addressed by FunctionCallLogOrm).`  
     * `# TODO: Integrate error handling and recovery strategies for protocol steps.`  
 * **Important Methods (Conceptual, based on refactor):**  
@@ -213,6 +213,9 @@ Endpoints will need to align with the refactored services and data models, using
 * **Purpose:** Endpoints for workcell status and potentially manual control.  
 * **Dependencies:** `WorkcellRuntime`.  
 * **TODOs:**  
+    * `# CRITICAL TODO: Implement `GET /api/workcell/deck_state` endpoint to provide detailed deck layout and content data suitable for frontend visualization.`
+    * `# CRITICAL TODO: Implement WebSocket endpoint `/ws/workcell/subscribe` for real-time broadcasting of workcell updates (e.g., deck changes, instrument status) to frontend visualizer.`
+    * `# TODO: Define the data models/schemas for the deck_state response and WebSocket messages.`
     * `# TODO: Define a clear command structure for manual instrument control if implemented.`  
     * `# TODO: Ensure safety and restrict access to manual control.`
 
@@ -470,7 +473,7 @@ This package contains modules with pre-built, reusable functions for common lab 
     * Verify ProtocolDiscoveryService for correct scanning, DB upsertion, and PROTOCOL_REGISTRY updates. (Core functionality complete and verified).
   * Implement PraxisState with Redis Integration: Finalize PraxisState design, ensuring it uses Redis for runtime state management and persistence, and clarify its handling by the Orchestrator. (Complete and Integrated).
 * High Priority:  
-  * Asset Requirement Inference: Implement logic in Orchestrator/AssetManager to infer asset needs from function type hints (PLR resources/machines, Optional handling). Deprecate/refactor backend.protocol.required_assets.py.  
+  * Asset Requirement Inference: (Largely Implemented) Implement logic in Orchestrator/AssetManager to infer asset needs from function type hints (PLR resources/machines, Optional handling). Core logic is present in Orchestrator._prepare_arguments and AssetManager.acquire_asset. Thorough testing across diverse scenarios and type hint complexities is the remaining part. Deprecate/refactor backend.protocol.required_assets.py.  
   * Parameter Handling for Multiple Invocation Paths:  
     * Implement JSON unpacking for frontend-driven runs.  
     * Define and implement ProtocolConfig-like Pydantic models in/near backend.protocol.config.py for CLI/manual runs.  
