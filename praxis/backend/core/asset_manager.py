@@ -560,7 +560,10 @@ class AssetManager:
         property_constraints: Optional[Dict[str, Any]] = None
     ) -> Tuple[Any, int, str]: # MODIFIED return type
 
-        print(f"INFO: Acquiring labware '{requested_asset_name_in_protocol}' (definition name constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'.")
+        print(f"INFO: AM_ACQUIRE: Acquiring labware '{requested_asset_name_in_protocol}' (definition name constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'.") # Standardized prefix
+        if property_constraints:
+            print(f"INFO: AM_ACQUIRE: Labware acquisition for '{requested_asset_name_in_protocol}' includes property_constraints: {property_constraints}")
+        
         # TODO: AM-10: Implement user_choice_instance_id, location_constraints, property_constraints in selection logic.
 
         labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None
@@ -726,7 +729,9 @@ class AssetManager:
         clear_from_slot_name: Optional[str] = None,      # Slot name on that deck
         status_details: Optional[str] = "Released from run"
     ):
-        print(f"INFO: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}")
+        print(f"INFO: AM_RELEASE: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}") # Standardized prefix
+        if final_properties_json_update is not None:
+            print(f"INFO: AM_RELEASE: Labware release for instance ID {labware_instance_orm_id} includes final_properties_json_update: {final_properties_json_update}")
 
         final_location_device_id_for_ads: Optional[int] = None # Default to None (e.g. if not on deck or being moved to storage)
         final_deck_slot_name_for_ads: Optional[str] = None
@@ -781,7 +786,7 @@ class AssetManager:
         This is a basic dispatcher to specific acquire methods.
         Actual asset selection and locking logic is complex and part of full AssetManager implementation.
         """
-        print(f"INFO: AssetManager attempting to acquire asset '{asset_requirement.name}' "
+        print(f"INFO: AM_ACQUIRE_DISPATCH: AssetManager attempting to acquire asset '{asset_requirement.name}' " # Standardized prefix
               f"of type '{asset_requirement.actual_type_str}' for run '{protocol_run_guid}'. "
               f"Constraints: {asset_requirement.constraints_json}")
 
@@ -799,7 +804,7 @@ class AssetManager:
 
 
         if is_likely_device:
-            print(f"DEBUG: acquire_asset dispatching to acquire_device for {asset_requirement.name}")
+            print(f"DEBUG: AM_ACQUIRE_DISPATCH: Dispatching to acquire_device for {asset_requirement.name}") # Standardized prefix
             # Assuming acquire_device is updated or can handle these params.
             # The existing acquire_device stub might need adjustment if its signature is very different.
             return self.acquire_device(
@@ -809,7 +814,7 @@ class AssetManager:
                 constraints=constraints_for_device 
             )
         else:
-            print(f"DEBUG: acquire_asset dispatching to acquire_labware for {asset_requirement.name}")
+            print(f"DEBUG: AM_ACQUIRE_DISPATCH: Dispatching to acquire_labware for {asset_requirement.name}") # Standardized prefix
             # Assuming acquire_labware is updated or can handle these params.
             return self.acquire_labware(
                 protocol_run_guid=protocol_run_guid,
