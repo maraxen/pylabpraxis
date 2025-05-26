@@ -645,6 +645,9 @@ This layer is responsible for fetching, storing, and managing data for the appli
     * ProtocolApiServiceImpl (protocol_api_service_impl.dart): Concrete implementation.  
       * Uses the DioClient to make HTTP requests to the backend's protocol endpoints (e.g., /protocols, /runs).  
       * Handles serialization/deserialization of request/response bodies using the models from frontend/lib/src/data/models/protocol/.  
+    * **Workcell API Service (Placeholder):**
+        - `WorkcellApiService` (workcell_api_service.dart): Abstract interface for workcell-specific API calls (e.g., fetching deck state, WebSocket for real-time updates).
+        - `WorkcellApiServiceImpl`: Basic placeholder implementation created to support `VisualizerBloc` development.
 * Services are typically registered with GetIt and injected into repository implementations.
 
 ## **5. State Management (BLoC Pattern)**
@@ -752,16 +755,14 @@ The frontend/lib/src/features/ directory organizes the application into distinct
 
 ### **2.4. Asset Management (**frontend/lib/src/features/assetManagement/**)**
 
-* Purpose: Allows users to view and manage laboratory assets (labware, devices).  
-* Application (BLoC - Speculative):  
-  * An AssetManagementBloc would be needed.  
-  * Events: LoadAssets, AddAsset, UpdateAsset, DeleteAsset.  
-  * States: AssetsLoading, AssetsLoaded (List<Asset>), AssetOperationInProgress, AssetOperationSuccess, AssetOperationFailure.  
-* Presentation:  
-  * screens/assetManagement_screen.dart (AssetManagementScreen):  
-    * Displays lists of different asset types (e.g., labware definitions, device instances).  
-    * Provides UI for CRUD operations on assets.  
-    * Interacts with an AssetManagementBloc which in turn uses an AssetRepository (not explicitly shown but implied).
+* Purpose: Allows users to view and manage laboratory assets.
+            *   **Application (BLoC - Implemented):**
+                *   `AssetManagementBloc` (asset_management_bloc.dart) created to manage state for the asset portal.
+                    *   Events: `AssetManagementLoadStarted`, `AddDeviceStarted`, etc.
+                    *   States: `AssetManagementInitial`, `AssetManagementLoadInProgress`, `AssetManagementLoadSuccess`, `AssetManagementLoadFailure`, etc.
+                *   Depends on `AssetApiServiceImpl` (from `frontend/lib/src/data/services/asset_api_service.dart`) which has been implemented with stubbed methods for asset API endpoints.
+            *   **Presentation:**
+                *   `screens/assetManagement_screen.dart` (AssetManagementScreen): Basic UI structure implemented with "Instruments", "Labware Instances", and "Labware Definitions" tabs. Placeholder content for each tab for now.
 
 ### **2.5. Settings (**frontend/lib/src/features/settings/**)**
 
@@ -836,7 +837,12 @@ This feature uses multiple BLoCs, each managing a part of the workflow or a spec
   * Purpose: Manages the overall navigation and state of the multi-step run protocol workflow.  
   * Events: AdvanceToStep (WorkflowStep step, dynamic data), GoToPreviousStep.  
   * States: ProtocolWorkflowState (WorkflowStep currentStep, ProtocolInfo? selectedProtocol, ProtocolDetails? protocolDetails, Map<String, dynamic>? configuredParameters, ... etc.). This state holds the aggregated data as the user progresses.  
-  * This BLoC orchestrates the flow between the different screens of the run_protocol feature.
+  * This BLoC orchestrates the flow between the different screens of the run_protocol feature. It now uses `hydrated_bloc` for state persistence, saving workflow progress.
+* **VisualizerBloc** (visualizer_bloc/):
+    *   Purpose: Manages the state for the deck visualizer.
+    *   Events: `VisualizerLoadDeckStateRequested`, `VisualizerWebSocketMessageReceived`, `VisualizerDisposeRequested`.
+    *   States: `VisualizerInitial`, `VisualizerLoadInProgress`, `VisualizerLoadSuccess`, `VisualizerLoadFailure`, `VisualizerRealtimeUpdate`, `VisualizerDisconnected`.
+    *   Interacts with a (currently placeholder) `WorkcellApiService` to fetch initial deck state and subscribe to WebSocket updates.
 
 ### **3.3. Presentation (**frontend/lib/src/features/run_protocol/presentation/**)**
 
@@ -860,6 +866,9 @@ This feature uses multiple BLoCs, each managing a part of the workflow or a spec
 * screens/review_and_prepare_screen.dart (ReviewAndPrepareScreen):  
   * Displays a summary of all configurations (protocol, parameters, deck, assets) using ReviewDataBundle (from ProtocolReviewBloc).  
   * Allows the user to initiate the "prepare" call to the backend (via ProtocolStartBloc).  
+* **screens/deck_setup_verification_screen.dart** (DeckSetupVerificationScreen):
+    *   A new screen in the workflow for users to verify the deck layout.
+    *   Integrates the `VisualizerScreen` to display the deck.
 * screens/start_protocol_screen.dart (StartProtocolScreen):  
   * Shown after a protocol run is successfully prepared.  
   * Allows the user to trigger the "start" of the protocol execution.  
@@ -870,20 +879,24 @@ This feature uses multiple BLoCs, each managing a part of the workflow or a spec
   * string_parameter_edit_screen.dart: For string parameters, possibly with multi-line support.  
   * array_parameter_edit_dialog.dart: For editing lists of values.  
   * dictionary_parameter_edit_screen.dart: For editing key-value map parameters.
+* **features/visualizer/presentation/screens/visualizer_screen.dart** (VisualizerScreen):
+    *   Renders the deck layout using `CustomPaint` (currently with placeholder graphics).
+    *   Interacts with `VisualizerBloc` for deck state and updates.
+    *   Wrapped by `VisualizerScreenWidget` which handles BLoC provision and lifecycle.
 
 ## **4. TODOs & Priorities (Chunk 4 Scope)**
 
 * High Priority:  
   * Complete run_protocol Workflow Implementation: Ensure all BLoCs, screens, and their interactions within the run_protocol feature are fully implemented and tested, including data flow, validation, and API calls.  
   * Robust Parameter Editing UI: Make sure the parameter editing dialogs (frontend/lib/src/features/run_protocol/presentation/widgets/dialogs/) are user-friendly and handle all parameter types and constraints correctly.  
-  * State Persistence in Workflow: Implement state persistence for the ProtocolWorkflowBloc so users don't lose their progress if they navigate away or the app restarts mid-configuration (e.g., using hydrated_bloc or manual saving to local storage).  
+  * **State Persistence in Workflow: (Completed)** Implement state persistence for the ProtocolWorkflowBloc... (e.g., using `hydrated_bloc` or manual saving to local storage).  
   * Real-time Protocol Execution Monitoring: Enhance StartProtocolScreen to provide robust real-time (or near real-time via polling) feedback on protocol execution status, logs, and any errors from the backend.  
 * Medium Priority:  
   * Implement Missing Feature BLoCs: Develop BLoCs for features like protocols (if not covered by ProtocolsDiscoveryBloc), assetManagement, and settings if they require complex state management.  
   * UI/UX Refinement: Review and refine the UI/UX of all feature screens for clarity, consistency, and ease of use.  
   * Comprehensive Error Handling in UI: Ensure all feature screens gracefully handle and display errors reported by their BLoCs.  
 * Low Priority (for initial alpha, but important long-term):  
-  * Implement advanced UI for deck visualization and configuration.  
+  * **Implement advanced UI for deck visualization and configuration: (Partially Started)** Implement advanced UI for deck visualization and configuration. (`VisualizerBloc` and basic `VisualizerScreen` with placeholder `CustomPaint` are now implemented).  
   * Add more detailed views for asset management (e.g., asset history, calibration data).  
   * Develop UI for any manual workcell control features exposed by the backend.  
   * Integrate Vixn Suite (Future Direction): Plan for future integration of a "Vixn suite" or similar functionality to allow users to view and analyze data from protocol runs directly within the application. For now, this primarily involves keeping this potential future requirement in mind during architectural decisions related to data logging and retrieval.
@@ -1020,9 +1033,9 @@ This document covers the build systems, deployment configurations, testing setup
 * widget_test.dart: A sample widget test, often testing the root app widget or a simple counter.  
 * TODOs:  
   * Significantly expand widget and unit tests for:  
-    * Individual screens and widgets.  
-    * BLoC logic (using bloc_test).  
-    * Repository and service interactions (using mocking, e.g., with mockito).  
+    * Individual screens and widgets. **(New widget tests added for `AssetManagementScreen`, `DeckSetupVerificationScreen`, and `VisualizerScreen`).**
+    * BLoC logic (using `bloc_test`). **(New BLoC tests added for `AssetManagementBloc` and `VisualizerBloc`).**
+    * Repository and service interactions (using mocking, e.g., with `mockito`). **(Mocks for `AssetApiService` and `WorkcellApiService` created).**
   * Implement integration tests (flutter_driver or integration_test package) for user flows.
 
 ### **4.3. Static Analysis & Linting (**frontend/analysis_options.yaml**)**
