@@ -207,6 +207,12 @@ def get_labware_definition_by_name(db: DbSession, pylabrobot_definition_name: st
     # This is an alias for get_labware_definition for semantic clarity where "name" is the PLR definition name.
     return get_labware_definition(db, pylabrobot_definition_name)
 
+def get_labware_definition_by_fqn(db: DbSession, python_fqn: str) -> Optional[LabwareDefinitionCatalogOrm]:
+    """Fetches a labware definition by its Python Fully Qualified Name (FQN)."""
+    return db.query(LabwareDefinitionCatalogOrm).filter(
+        LabwareDefinitionCatalogOrm.python_fqn == python_fqn
+    ).first()
+
 # --- Labware Instance Services ---
 # TODO: ADS-2: Implement full CRUD for LabwareInstanceOrm, DeckConfigurationOrm, DeckConfigurationSlotItemOrm
 # Placeholder for add_labware_instance

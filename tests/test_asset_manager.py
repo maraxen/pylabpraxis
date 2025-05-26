@@ -16,8 +16,10 @@ AssetRequirementModelMock = MagicMock
 
 # Enums
 from praxis.backend.database_models.asset_management_orm import (
-    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum, LabwareCategoryEnum
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum, LabwareCategoryEnum,
+    DeckLayoutOrm, DeckSlotOrm # ADDED for DeckLoading tests
 )
+from praxis.protocol_core.definitions import PlrDeck as ProtocolPlrDeck # ADDED for DeckLoading tests
 
 # --- Mock PyLabRobot Base Classes for sync_pylabrobot_definitions tests ---
 class MockPlrResource:
@@ -960,6 +962,177 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         assert "WARNING: AM_SYNC: Instantiation of pylabrobot.resources.mock_fails.MockResourceInstantiationFails failed even with smart defaults: ValueError('Cannot instantiate this')" in caplog.text
         assert "INFO: AM_SYNC: Proceeding to extract data for pylabrobot.resources.mock_fails.MockResourceInstantiationFails without a temporary instance" in caplog.text
 
+
+class TestAssetManagerDeckLoading:
+
+    @pytest.fixture
+    def mock_deck_layout_orm(self):
+        deck_layout = MagicMock(spec=DeckLayoutOrm)
+        deck_layout.id = 1
+        deck_layout.name = "TestDeckLayout"
+        # deck_layout.managing_device_id = 50 # Assuming a link if needed, or handled by name+category
+        return deck_layout
+
+    @pytest.fixture
+    def mock_deck_device_orm(self):
+        deck_device = MagicMock(spec=ManagedDeviceOrm)
+        deck_device.id = 50
+        deck_device.user_friendly_name = "TestDeckLayout" # Matching layout name
+        deck_device.praxis_device_category = PraxisDeviceCategoryEnum.DECK
+        deck_device.current_status = ManagedDeviceStatusEnum.AVAILABLE
+        deck_device.current_protocol_run_guid = None
+        return deck_device
+
+    @pytest.fixture
+    def mock_slot_orm(self, mock_labware_instance_orm):
+        slot = MagicMock(spec=DeckSlotOrm)
+        slot.id = 101
+        slot.slot_name = "A1"
+        slot.pre_assigned_labware_instance_id = mock_labware_instance_orm.id
+        slot.default_labware_definition_id = None
+        return slot
+        
+    @pytest.fixture
+    def mock_labware_instance_orm(self):
+        lw_instance = MagicMock(spec=LabwareInstanceOrm)
+        lw_instance.id = 201
+        lw_instance.user_assigned_name = "TestPlateOnDeck"
+        lw_instance.pylabrobot_definition_name = "test_plate_def_name"
+        lw_instance.current_status = LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE
+        lw_instance.current_protocol_run_guid = None
+        lw_instance.location_device_id = None
+        lw_instance.current_deck_slot_name = None
+        return lw_instance
+
+    @pytest.fixture
+    def mock_labware_def_catalog_orm(self):
+        lw_def = MagicMock(spec=LabwareDefinitionCatalogOrm)
+        lw_def.pylabrobot_definition_name = "test_plate_def_name"
+        lw_def.python_fqn = "pylabrobot.resources.plate.Plate"
+        return lw_def
+
+    def test_deck_layout_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
+        mock_ads_service.get_deck_layout_by_name.return_value = None
+        with pytest.raises(AssetAcquisitionError, match="Deck layout 'NonExistentLayout' not found"):
+            asset_manager.apply_deck_configuration("NonExistentLayout", "run123")
+
+    def test_deck_device_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [] # No deck device found
+        with pytest.raises(AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK"):
+            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+        mock_ads_service.list_managed_devices.assert_called_once_with(
+            asset_manager.db,
+            user_friendly_name_filter="TestDeckLayout",
+            praxis_category_filter=PraxisDeviceCategoryEnum.DECK
+        )
+
+    def test_deck_device_init_fails(
+        self, asset_manager: AssetManager, mock_ads_service: MagicMock, 
+        mock_deck_layout_orm, mock_deck_device_orm, mock_workcell_runtime: MagicMock
+    ):
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        mock_workcell_runtime.initialize_device_backend.return_value = None # Deck init fails
+
+        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck device 'TestDeckLayout'"):
+            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+        mock_workcell_runtime.initialize_device_backend.assert_called_once_with(mock_deck_device_orm)
+
+    def test_successful_deck_config_no_labware(
+        self, asset_manager: AssetManager, mock_ads_service: MagicMock, 
+        mock_deck_layout_orm, mock_deck_device_orm, mock_workcell_runtime: MagicMock
+    ):
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        live_plr_deck_obj = MagicMock(name="LivePlrDeck")
+        mock_workcell_runtime.initialize_device_backend.return_value = live_plr_deck_obj
+        mock_ads_service.get_deck_slots_for_layout.return_value = [] # No slots with labware
+
+        returned_deck = asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+
+        assert returned_deck == live_plr_deck_obj
+        mock_ads_service.update_managed_device_status.assert_called_once_with(
+            asset_manager.db, mock_deck_device_orm.id, ManagedDeviceStatusEnum.IN_USE,
+            current_protocol_run_guid="run123",
+            status_details="Deck 'TestDeckLayout' in use by run run123"
+        )
+        mock_workcell_runtime.assign_labware_to_deck_slot.assert_not_called()
+
+    def test_successful_deck_config_with_one_labware(
+        self, asset_manager: AssetManager, mock_ads_service: MagicMock,
+        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_labware_instance_orm, mock_labware_def_catalog_orm, mock_workcell_runtime: MagicMock
+    ):
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        live_plr_deck_obj = MagicMock(name="LivePlrDeck")
+        mock_workcell_runtime.initialize_device_backend.return_value = live_plr_deck_obj
+        mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
+        mock_ads_service.get_labware_instance_by_id.return_value = mock_labware_instance_orm
+        mock_ads_service.get_labware_definition.return_value = mock_labware_def_catalog_orm
+        
+        live_plr_labware_obj = MagicMock(name="LiveTestPlate")
+        mock_workcell_runtime.create_or_get_labware_plr_object.return_value = live_plr_labware_obj
+
+        asset_manager.apply_deck_configuration(ProtocolPlrDeck(name="TestDeckLayout"), "run123") # Test with PlrDeck input
+
+        mock_ads_service.get_labware_instance_by_id.assert_called_once_with(asset_manager.db, mock_labware_instance_orm.id)
+        mock_ads_service.get_labware_definition.assert_called_once_with(asset_manager.db, mock_labware_instance_orm.pylabrobot_definition_name)
+        mock_workcell_runtime.create_or_get_labware_plr_object.assert_called_once_with(
+            labware_instance_orm=mock_labware_instance_orm,
+            labware_definition_fqn=mock_labware_def_catalog_orm.python_fqn
+        )
+        mock_workcell_runtime.assign_labware_to_deck_slot.assert_called_once_with(
+            deck_device_orm_id=mock_deck_device_orm.id,
+            slot_name=mock_slot_orm.slot_name,
+            labware_plr_object=live_plr_labware_obj,
+            labware_instance_orm_id=mock_labware_instance_orm.id
+        )
+        mock_ads_service.update_labware_instance_location_and_status.assert_called_once_with(
+            db=asset_manager.db,
+            labware_instance_id=mock_labware_instance_orm.id,
+            new_status=LabwareInstanceStatusEnum.IN_USE,
+            current_protocol_run_guid="run123",
+            location_device_id=mock_deck_device_orm.id,
+            current_deck_slot_name=mock_slot_orm.slot_name,
+            deck_slot_orm_id=mock_slot_orm.id,
+            status_details=f"On deck '{mock_deck_layout_orm.name}' slot '{mock_slot_orm.slot_name}' for run run123"
+        )
+
+    def test_labware_instance_not_available_for_slot(
+        self, asset_manager: AssetManager, mock_ads_service: MagicMock,
+        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_labware_instance_orm, mock_workcell_runtime: MagicMock
+    ):
+        mock_labware_instance_orm.current_status = LabwareInstanceStatusEnum.IN_USE # Not available
+        mock_labware_instance_orm.current_protocol_run_guid = "another_run"
+
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        mock_workcell_runtime.initialize_device_backend.return_value = MagicMock()
+        mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
+        mock_ads_service.get_labware_instance_by_id.return_value = mock_labware_instance_orm
+
+        with pytest.raises(AssetAcquisitionError, match="is not available"):
+            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+
+    def test_labware_def_fqn_not_found_for_slot_labware(
+        self, asset_manager: AssetManager, mock_ads_service: MagicMock,
+        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_labware_instance_orm, mock_labware_def_catalog_orm, mock_workcell_runtime: MagicMock
+    ):
+        mock_labware_def_catalog_orm.python_fqn = None # FQN missing
+
+        mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
+        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        mock_workcell_runtime.initialize_device_backend.return_value = MagicMock()
+        mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
+        mock_ads_service.get_labware_instance_by_id.return_value = mock_labware_instance_orm
+        mock_ads_service.get_labware_definition.return_value = mock_labware_def_catalog_orm
+        
+        with pytest.raises(AssetAcquisitionError, match="Python FQN not found for labware definition"):
+            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
 
 # --- Tests for AssetManager Logging (New Class) ---
 class TestAssetManagerLogging:

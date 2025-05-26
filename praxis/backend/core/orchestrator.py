@@ -15,9 +15,11 @@ import uuid
 import json
 import datetime
 import traceback
-from typing import Dict, Any, Optional, Callable, Tuple, List
+from typing import Dict, Any, Optional, Callable, Tuple, List, Union, get_origin, get_args
 import contextlib
 import time # ADDED
+import subprocess # ADDED FOR GIT OPERATIONS
+import inspect # ADDED FOR TYPE HINT INSPECTION
 
 from sqlalchemy.orm import Session as DbSession
 
@@ -37,7 +39,7 @@ except ImportError: # pragma: no cover
     print("WARNING: ORCH-JSONSCHEMA: jsonschema library not installed. Parameter validation will be skipped.")
     validate_jsonschema = None # type: ignore
     JsonSchemaValidationError = None # type: ignore
-from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
+from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel, AssetRequirementModel
 
 # ORM Models & Data Services
 from praxis.database_models.protocol_definitions_orm import (
@@ -55,6 +57,7 @@ try:
         update_protocol_run_status,
         get_protocol_definition_details
     )
+    from praxis.backend.services import asset_data_service # ADDED FOR FQN LOOKUP
 except ImportError: # pragma: no cover
     print("WARNING: ORCH-0: Could not import from praxis.db_services.protocol_data_service. Orchestrator DB operations will be placeholder/limited.")
     def create_protocol_run(db, run_guid, top_level_protocol_definition_id, **kwargs): # type: ignore
@@ -68,6 +71,7 @@ except ImportError: # pragma: no cover
     def get_protocol_definition_details(db, name, version=None, source_name=None, commit_hash=None): # type: ignore
         print(f"[Orch-PlaceholderDB] Get ProtocolDef: name={name}, v={version}")
         return None
+    asset_data_service = None # type: ignore
 
 
 @contextlib.contextmanager
@@ -92,7 +96,35 @@ class Orchestrator:
     def __init__(self, db_session: DbSession, workcell_config: Optional[Dict[str, Any]] = None):
         self.db_session = db_session
         self.workcell_config = workcell_config or {}
-        self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=None) 
+        self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=None)
+
+    def _run_git_command(self, command: List[str], cwd: str, suppress_output: bool = False) -> str:
+        """Helper to run a Git command and handle errors."""
+        try:
+            print(f"INFO: ORCH-GIT: Running command: {' '.join(command)} in {cwd}")
+            process = subprocess.run(
+                command,
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            if not suppress_output:
+                if process.stdout: print(f"INFO: ORCH-GIT: STDOUT: {process.stdout.strip()}")
+                if process.stderr: print(f"INFO: ORCH-GIT: STDERR: {process.stderr.strip()}") # Git often uses stderr for non-error info
+            return process.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            error_message = (
+                f"ERROR: ORCH-GIT: Command '{' '.join(e.cmd)}' failed with exit code {e.returncode} in {cwd}.\n"
+                f"Stderr: {e.stderr.strip()}\n"
+                f"Stdout: {e.stdout.strip()}"
+            )
+            print(error_message)
+            raise RuntimeError(error_message) from e
+        except FileNotFoundError: #  pragma: no cover
+            error_message = f"ERROR: ORCH-GIT: Git command not found. Ensure git is installed and in PATH. Command: {' '.join(command)}"
+            print(error_message)
+            raise RuntimeError(error_message)
 
     def _get_protocol_definition_orm_from_db(
         self,
@@ -117,9 +149,75 @@ class Orchestrator:
         if protocol_def_orm.source_repository_id and protocol_def_orm.source_repository:
             repo = protocol_def_orm.source_repository
             checkout_path = repo.local_checkout_path
-            if not checkout_path or not os.path.isdir(checkout_path):
-                raise ValueError(f"Local checkout path '{checkout_path}' for repo '{repo.name}' invalid.")
-            print(f"INFO: ORCH-4 TODO: Ensure Git repo '{repo.name}' at '{checkout_path}' is at commit '{protocol_def_orm.commit_hash}'.")
+            commit_hash_to_checkout = protocol_def_orm.commit_hash
+
+            if not checkout_path:
+                raise ValueError(f"Local checkout path not configured for repo '{repo.name}'.")
+            if not commit_hash_to_checkout:
+                raise ValueError(f"Commit hash not specified for protocol '{protocol_def_orm.name}' from repo '{repo.name}'.")
+            if not repo.git_url:
+                raise ValueError(f"Git URL not configured for repo '{repo.name}'.")
+
+            is_git_repo = False
+            if os.path.exists(checkout_path):
+                try:
+                    # Check if it's a git repo. If .git is a file, it's a submodule's gitlink, not a full repo.
+                    # `git rev-parse --is-inside-work-tree` is safer.
+                    result = self._run_git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=checkout_path, suppress_output=True)
+                    is_git_repo = result == "true"
+                    if not is_git_repo : # pragma: no cover
+                         # This case implies something is at checkout_path but it's not the work-tree root.
+                         # Could be a file or a directory not containing .git, or .git is a file (submodule)
+                         # For simplicity, we'll treat it as "not a valid git repo for our purpose"
+                         print(f"WARN: ORCH-GIT: Path '{checkout_path}' exists but 'git rev-parse --is-inside-work-tree' was not 'true'.")
+                except RuntimeError: # If git rev-parse fails, it's not a git repo (or git is not installed)
+                    is_git_repo = False # Ensure it's false
+
+            if is_git_repo:
+                print(f"INFO: ORCH-GIT: '{checkout_path}' is a Git repository. Fetching origin...")
+                self._run_git_command(["git", "fetch", "origin"], cwd=checkout_path)
+            else:
+                if os.path.exists(checkout_path):
+                    if os.listdir(checkout_path): # Check if directory is not empty
+                        raise ValueError(
+                            f"Path '{checkout_path}' exists, is not a Git repository, and is not empty. "
+                            f"Cannot clone into it for repo '{repo.name}'."
+                        )
+                    else: # Directory exists but is empty
+                        print(f"INFO: ORCH-GIT: Path '{checkout_path}' exists and is empty. Will attempt to clone into it.")
+                        # No need to os.rmdir, git clone can handle cloning into an empty directory.
+                else: # Path does not exist
+                    print(f"INFO: ORCH-GIT: Path '{checkout_path}' does not exist. Creating and cloning...")
+                    try:
+                        os.makedirs(checkout_path, exist_ok=True)
+                    except OSError as e: # pragma: no cover
+                        raise ValueError(f"Failed to create directory '{checkout_path}': {e}") from e
+                
+                print(f"INFO: ORCH-GIT: Cloning repository '{repo.git_url}' into '{checkout_path}'...")
+                self._run_git_command(["git", "clone", repo.git_url, checkout_path], cwd=".") # Run clone from a generic cwd
+
+            print(f"INFO: ORCH-GIT: Checking out commit '{commit_hash_to_checkout}' in '{checkout_path}'...")
+            self._run_git_command(["git", "checkout", commit_hash_to_checkout], cwd=checkout_path)
+            
+            # Verify HEAD is at the correct commit
+            try:
+                current_commit = self._run_git_command(["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True)
+                if current_commit != commit_hash_to_checkout:
+                    # This could happen if the commit_hash is an annotated tag, checkout might resolve it to the commit
+                    # Let's check if the resolved commit of the checked-out ref matches the target hash
+                    resolved_target_commit = self._run_git_command(["git", "rev-parse", commit_hash_to_checkout + "^{commit}"], cwd=checkout_path, suppress_output=True)
+                    if current_commit != resolved_target_commit:
+                        raise RuntimeError(
+                            f"Failed to checkout commit '{commit_hash_to_checkout}'. "
+                            f"HEAD is at '{current_commit}', expected '{resolved_target_commit}'. Repo: '{repo.name}'"
+                        )
+                    print(f"INFO: ORCH-GIT: Successfully checked out '{commit_hash_to_checkout}' (resolved to '{current_commit}').")
+                else:
+                    print(f"INFO: ORCH-GIT: Successfully checked out commit '{commit_hash_to_checkout}'. HEAD is at '{current_commit}'.")
+            except RuntimeError as e: # pragma: no cover (should be caught by checkout command itself, but as a safeguard)
+                raise RuntimeError(f"Failed to verify commit after checkout for repo '{repo.name}': {e}")
+
+
             module_path_to_add_for_sys_path = checkout_path
         elif protocol_def_orm.file_system_source_id and protocol_def_orm.file_system_source:
             fs_source = protocol_def_orm.file_system_source
@@ -147,95 +245,223 @@ class Orchestrator:
 
     def _prepare_arguments(
         self,
+    def _prepare_arguments(
+        self,
         protocol_def_orm: FunctionProtocolDefinitionOrm,
         decorator_metadata: Dict[str, Any],
         user_input_params: Dict[str, Any],
         canonical_run_state: PraxisState,
+        protocol_wrapper_func: Callable # ADDED to get __wrapped__
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], List[Dict[str, Any]]]:
-        
-        if validate_jsonschema and JsonSchemaValidationError:
-            pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
-            if pydantic_def and hasattr(pydantic_def, 'parameters'):
-                if not pydantic_def.parameters and not user_input_params:
-                    pass 
-                elif not pydantic_def.parameters and user_input_params:
-                    print(f"Warning: Protocol '{pydantic_def.name}' defines no parameters, but input parameters were provided: {list(user_input_params.keys())}")
-                elif pydantic_def.parameters:
-                    try:
-                        schema_title = f"{pydantic_def.name} v{pydantic_def.version} Parameters"
-                        schema_description = pydantic_def.description or "Protocol parameters"
-                        param_schema = definition_model_parameters_to_jsonschema(
-                            parameters=pydantic_def.parameters,
-                            protocol_name=schema_title,
-                            protocol_description=schema_description
-                        )
-                        validate_jsonschema(instance=user_input_params, schema=param_schema)
-                        print(f"INFO: User input parameters for '{pydantic_def.name}' validated successfully against JSONSchema.")
-                    except JsonSchemaValidationError as e:
-                        error_msg = f"Parameter validation failed for protocol '{pydantic_def.name}': {e.message}"
-                        print(f"ERROR: {error_msg}")
-                        raise ValueError(error_msg) from e 
-                    except Exception as schema_gen_e: 
-                        print(f"ERROR: Could not generate or validate JSONSchema for protocol '{pydantic_def.name}': {schema_gen_e}")
-                        raise ValueError(f"Schema generation/validation error for '{pydantic_def.name}': {schema_gen_e}") from schema_gen_e
-        
+
+        pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
+
+        if validate_jsonschema and JsonSchemaValidationError and pydantic_def:
+            if hasattr(pydantic_def, 'parameters') and pydantic_def.parameters:
+                try:
+                    schema_title = f"{pydantic_def.name} v{pydantic_def.version} Parameters"
+                    schema_description = pydantic_def.description or "Protocol parameters"
+                    param_schema = definition_model_parameters_to_jsonschema(
+                        parameters=pydantic_def.parameters,
+                        protocol_name=schema_title,
+                        protocol_description=schema_description
+                    )
+                    validate_jsonschema(instance=user_input_params, schema=param_schema)
+                    print(f"INFO: User input parameters for '{pydantic_def.name}' validated successfully.")
+                except JsonSchemaValidationError as e:
+                    raise ValueError(f"Parameter validation failed for protocol '{pydantic_def.name}': {e.message}") from e
+                except Exception as schema_gen_e:
+                    raise ValueError(f"Schema generation/validation error for '{pydantic_def.name}': {schema_gen_e}") from schema_gen_e
+            elif not hasattr(pydantic_def, 'parameters') and user_input_params: # No params defined, but some provided
+                 print(f"Warning: Protocol '{pydantic_def.name}' defines no parameters, but input parameters were provided: {list(user_input_params.keys())}")
+
+
         final_args: Dict[str, Any] = {}
         state_dict_to_pass: Optional[Dict[str, Any]] = None
         defined_params_from_meta = decorator_metadata.get("parameters", {})
+        # This set will track params already handled by explicit decorator definitions (params, state, deck)
+        # or explicit asset definitions in @protocol_function(assets=[...])
+        processed_param_names_for_asset_inference: set[str] = set(defined_params_from_meta.keys())
 
+        # Handle explicitly defined parameters (non-assets) first
         for param_name_in_sig, param_meta_from_decorator in defined_params_from_meta.items():
-            if param_meta_from_decorator.get("is_deck_param"): continue
+            if param_meta_from_decorator.get("is_deck_param"): continue # Deck handled later
+            if param_meta_from_decorator.get("is_asset_param"): continue # Assets handled later by combined list
+
             is_state_param_match = (param_name_in_sig == decorator_metadata.get("state_param_name") and
                                     decorator_metadata.get("found_state_param_details"))
             if is_state_param_match:
+                # processed_param_names_for_asset_inference.add(param_name_in_sig) # Already added from defined_params_from_meta.keys()
                 state_details = decorator_metadata["found_state_param_details"]
                 if state_details.get("expects_praxis_state"): final_args[param_name_in_sig] = canonical_run_state
                 elif state_details.get("expects_dict"):
-                    state_dict_to_pass = canonical_run_state.data.copy(); final_args[param_name_in_sig] = state_dict_to_pass
-                else: final_args[param_name_in_sig] = canonical_run_state
+                    state_dict_to_pass = canonical_run_state.data.copy()
+                    final_args[param_name_in_sig] = state_dict_to_pass
+                else: final_args[param_name_in_sig] = canonical_run_state # Default to PraxisState object
                 continue
+
             if param_name_in_sig in user_input_params:
                 final_args[param_name_in_sig] = user_input_params[param_name_in_sig]
             elif not param_meta_from_decorator.get("optional"):
                 raise ValueError(f"Mandatory param '{param_name_in_sig}' missing for '{protocol_def_orm.name}'.")
 
-        acquired_assets_details: List[Dict[str, Any]] = [] 
-        pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
+        # --- Asset Inference from Type Hints ---
+        inferred_assets_requirements: List[AssetRequirementModel] = []
+        if asset_data_service: # Ensure service is available
+            original_function = getattr(protocol_wrapper_func, '__wrapped__', protocol_wrapper_func)
+            sig = inspect.signature(original_function)
+
+            # Add names of explicitly defined assets from @protocol_function(assets=[...]) to prevent re-processing
+            if pydantic_def and pydantic_def.assets:
+                for asset_req in pydantic_def.assets:
+                    processed_param_names_for_asset_inference.add(asset_req.name)
+            # Add state and deck param names as well
+            if decorator_metadata.get("state_param_name"):
+                processed_param_names_for_asset_inference.add(decorator_metadata["state_param_name"])
+            if protocol_def_orm.deck_param_name: # deck_param_name is from DB (FunctionProtocolDefinitionOrm)
+                 processed_param_names_for_asset_inference.add(protocol_def_orm.deck_param_name)
+
+
+            for param_name, param_obj in sig.parameters.items():
+                if param_name in processed_param_names_for_asset_inference or param_name.startswith("__praxis_"):
+                    continue
+
+                annotation = param_obj.annotation
+                if annotation == inspect.Parameter.empty or annotation == Any:
+                    continue
+
+                actual_annotation = annotation
+                is_optional = get_origin(annotation) is Union and type(None) in get_args(annotation)
+                if is_optional:
+                    possible_types = [arg for arg in get_args(annotation) if arg is not type(None)]
+                    if not possible_types: continue 
+                    actual_annotation = possible_types[0]
+                
+                fqn: Optional[str] = None
+                if inspect.isclass(actual_annotation):
+                    fqn = f"{actual_annotation.__module__}.{actual_annotation.__name__}"
+                elif isinstance(actual_annotation, str): 
+                    fqn = actual_annotation.strip("'\"")
+                else: 
+                    print(f"DEBUG: ORCH-ARG-INFER: Skipping param '{param_name}' due to unhandled annotation type: {type(actual_annotation)}")
+                    continue
+                
+                # Heuristic: focus on PyLabRobot and Praxis types. This can be made configurable.
+                # For now, only pylabrobot.resources and direct submodules.
+                if not fqn or not (fqn.startswith("pylabrobot.resources") or fqn.startswith("pylabrobot.liquid_handling") or fqn.startswith("pylabrobot.plate_reading") or fqn.startswith("praxis.")):
+                    print(f"DEBUG: ORCH-ARG-INFER: Param '{param_name}' with FQN '{fqn}' does not seem to be a known asset type package. Skipping inference.")
+                    continue
+
+                print(f"DEBUG: ORCH-ARG-INFER: Potential asset '{param_name}' with FQN '{fqn}', Optional={is_optional}")
+                
+                asset_type_str_for_model: str
+                labware_def_orm = asset_data_service.get_labware_definition_by_fqn(self.db_session, fqn)
+                if labware_def_orm:
+                    asset_type_str_for_model = labware_def_orm.pylabrobot_definition_name
+                    print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as LABWARE, maps to definition '{asset_type_str_for_model}'.")
+                else:
+                    asset_type_str_for_model = fqn # Assume it's a device FQN
+                    print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as DEVICE with FQN '{asset_type_str_for_model}'.")
+
+                inferred_req = AssetRequirementModel(
+                    name=param_name,
+                    actual_type_str=asset_type_str_for_model,
+                    constraints_json={}, 
+                    is_optional=is_optional
+                )
+                inferred_assets_requirements.append(inferred_req)
+                # No need to add to processed_param_names_for_asset_inference here, as this loop already checks it.
+        else: # pragma: no cover
+            print("WARN: ORCH-ARG-INFER: AssetDataService not available, skipping type hint based asset inference.")
+
+        # --- Combine explicit and inferred assets ---
+        final_assets_to_acquire: List[AssetRequirementModel] = []
+        final_asset_names_processed: set[str] = set()
+
+        # Add explicitly defined assets first (from @protocol_function(assets=[...]))
+        if pydantic_def and pydantic_def.assets:
+            for asset_req in pydantic_def.assets:
+                final_assets_to_acquire.append(asset_req)
+                final_asset_names_processed.add(asset_req.name)
         
-        if pydantic_def and hasattr(pydantic_def, 'assets'):
-            for asset_req_model in pydantic_def.assets: 
+        # Add inferred assets only if not already covered by an explicit definition
+        for inferred_req in inferred_assets_requirements:
+            if inferred_req.name not in final_asset_names_processed:
+                final_assets_to_acquire.append(inferred_req)
+                final_asset_names_processed.add(inferred_req.name)
+            else:
+                print(f"DEBUG: ORCH-ARG-INFER: Inferred asset '{inferred_req.name}' was already explicitly defined. Prioritizing explicit definition.")
+
+        # --- Acquire all assets ---
+        acquired_assets_details: List[Dict[str, Any]] = []
+        if final_assets_to_acquire:
+            for asset_req_model in final_assets_to_acquire:
                 try:
-                    print(f"INFO: Orchestrator acquiring asset '{asset_req_model.name}' of type '{asset_req_model.actual_type_str}' "
-                          f"for run '{canonical_run_state.run_guid}'.") 
+                    print(f"INFO: ORCH-ACQUIRE: Acquiring asset '{asset_req_model.name}' (type: '{asset_req_model.actual_type_str}', optional: {asset_req_model.is_optional}) for run '{canonical_run_state.run_guid}'.")
                     
                     if not hasattr(self, 'asset_manager') or self.asset_manager is None: # pragma: no cover
                         raise RuntimeError("AssetManager not initialized in Orchestrator.")
 
-                    live_obj, orm_id, asset_type_str = self.asset_manager.acquire_asset(
-                        protocol_run_guid=canonical_run_state.run_guid, 
+                    live_obj, orm_id, asset_kind_str = self.asset_manager.acquire_asset( 
+                        protocol_run_guid=canonical_run_state.run_guid,
                         asset_requirement=asset_req_model
                     )
                     final_args[asset_req_model.name] = live_obj
-                    acquired_assets_details.append({ 
-                        "type": asset_type_str, 
-                        "orm_id": orm_id, 
+                    acquired_assets_details.append({
+                        "type": asset_kind_str, 
+                        "orm_id": orm_id,
                         "name_in_protocol": asset_req_model.name
                     })
-                    print(f"INFO: Asset '{asset_req_model.name}' (Type: {asset_type_str}, ORM ID: {orm_id}) acquired: {live_obj}")
+                    print(f"INFO: ORCH-ACQUIRE: Asset '{asset_req_model.name}' (Kind: {asset_kind_str}, ORM ID: {orm_id}) acquired: {live_obj}")
 
                 except AssetAcquisitionError as e:
-                    error_msg = f"Failed to acquire asset '{asset_req_model.name}' for protocol '{pydantic_def.name}': {e}"
-                    print(f"ERROR: {error_msg}")
-                    raise ValueError(error_msg) from e 
-                except Exception as e_general: 
-                    error_msg = f"Unexpected error acquiring asset '{asset_req_model.name}' for protocol '{pydantic_def.name}': {e_general}"
+                    if asset_req_model.is_optional:
+                        print(f"INFO: ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' could not be acquired: {e}. Proceeding as it's optional.")
+                        final_args[asset_req_model.name] = None 
+                    else:
+                        error_msg = f"Failed to acquire mandatory asset '{asset_req_model.name}' for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e}"
+                        print(f"ERROR: {error_msg}")
+                        raise ValueError(error_msg) from e
+                except Exception as e_general: # pragma: no cover
+                    error_msg = f"Unexpected error acquiring asset '{asset_req_model.name}' for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e_general}"
                     print(f"ERROR: {error_msg}")
                     raise ValueError(error_msg) from e_general
 
+        # --- Deck Preconfiguration (after other assets) ---
         if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
+            # Ensure deck param name isn't accidentally processed as a regular asset if it was also type-hinted
+            # Though `processed_param_names_for_asset_inference` should handle this.
+            if protocol_def_orm.deck_param_name in final_args: # pragma: no cover
+                 print(f"WARN: ORCH-DECK: Deck parameter '{protocol_def_orm.deck_param_name}' may have been already processed as an asset. Check protocol definition and type hints.")
+            
             deck_input = user_input_params.get(protocol_def_orm.deck_param_name)
-            if isinstance(deck_input, str): final_args[protocol_def_orm.deck_param_name] = PlrDeck(name=deck_input) 
-            elif isinstance(deck_input, PlrDeck): final_args[protocol_def_orm.deck_param_name] = deck_input
+            deck_to_pass_to_protocol: Optional[Any] = None
+
+            if isinstance(deck_input, str): # Deck layout name
+                print(f"INFO: ORCH-DECK: Deck preconfiguration requested for layout '{deck_input}'. Applying...")
+                if not hasattr(self.asset_manager, 'apply_deck_configuration'): # pragma: no cover
+                    raise NotImplementedError("AssetManager does not have 'apply_deck_configuration' method.")
+                configured_plr_deck_obj = self.asset_manager.apply_deck_configuration(
+                    deck_identifier=deck_input, protocol_run_guid=canonical_run_state.run_guid)
+                deck_to_pass_to_protocol = configured_plr_deck_obj
+            elif isinstance(deck_input, PlrDeck): # praxis.protocol_core.definitions.PlrDeck
+                deck_layout_name = deck_input.name
+                print(f"INFO: ORCH-DECK: Deck preconfiguration with PlrDeck object (layout: '{deck_layout_name}'). Applying...")
+                if not hasattr(self.asset_manager, 'apply_deck_configuration'): # pragma: no cover
+                    raise NotImplementedError("AssetManager does not have 'apply_deck_configuration' method.")
+                configured_plr_deck_obj = self.asset_manager.apply_deck_configuration(
+                    deck_identifier=deck_layout_name, protocol_run_guid=canonical_run_state.run_guid)
+                deck_to_pass_to_protocol = configured_plr_deck_obj
+            elif deck_input is not None:
+                 raise ValueError(f"Unsupported type for deck param '{protocol_def_orm.deck_param_name}': {type(deck_input)}. Expected str or PlrDeck.")
+
+            if deck_to_pass_to_protocol:
+                final_args[protocol_def_orm.deck_param_name] = deck_to_pass_to_protocol
+            elif protocol_def_orm.deck_param_name in defined_params_from_meta and \
+                 not defined_params_from_meta[protocol_def_orm.deck_param_name].get("optional") and \
+                 deck_input is None: # Mandatory, but not provided
+                raise ValueError(f"Mandatory deck param '{protocol_def_orm.deck_param_name}' not provided.")
+            
         return final_args, state_dict_to_pass, acquired_assets_details
 
 
@@ -316,9 +542,9 @@ class Orchestrator:
         try:
             protocol_wrapper_func, decorator_metadata = self._prepare_protocol_code(protocol_def_orm)
             prepared_args, state_dict_passed_to_top_level, acquired_assets_info = self._prepare_arguments(
-                protocol_def_orm, decorator_metadata, user_input_params, canonical_run_state
+                protocol_def_orm, decorator_metadata, user_input_params, canonical_run_state, protocol_wrapper_func
             )
-            
+
             # --- Pre-execution command check (PAUSE/CANCEL) ---
             command = get_control_command(run_guid)
             if command == "PAUSE":
