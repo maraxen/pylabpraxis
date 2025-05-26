@@ -1,32 +1,46 @@
-// Concrete implementation of the [ProtocolApiService] using Dio for HTTP communication.
+// Copyright 2024 Google LLC
 //
-// This class handles the actual API calls to the backend for protocol-related
-// operations, including error handling and data parsing.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// For File, if used for uploads
 import 'package:dio/dio.dart';
-import 'package:file_picker/file_picker.dart'; // For PlatformFile
+import 'package:file_picker/file_picker.dart';
 import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
 import 'package:pylabpraxis_flutter/src/core/network/dio_client.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/deck_layout.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/file_upload_response.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_request.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_response.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_run_command.dart';
 import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_status_response.dart';
-import 'protocol_api_service.dart'; // The interface
+import 'package:pylabpraxis_flutter/src/data/models/protocol/run_command_response.dart';
+
+import 'protocol_api_service.dart';
 
 class ProtocolApiServiceImpl implements ProtocolApiService {
   final DioClient _dioClient;
 
   ProtocolApiServiceImpl({required DioClient dioClient})
-    : _dioClient = dioClient;
+      : _dioClient = dioClient;
 
   Dio get _dio => _dioClient.dio;
+
+  String get _basePath => '/api/protocols'; // Centralized base path
 
   @override
   Future<List<ProtocolInfo>> discoverProtocols() async {
     try {
-      final response = await _dio.get('/protocols/discover');
+      final response = await _dio.get('$_basePath/discover');
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> jsonData = response.data as List<dynamic>;
         return jsonData
@@ -39,9 +53,6 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
         );
       }
     } on DioException catch (e) {
-      // The ErrorInterceptor in DioClient should convert DioException
-      // to a subclass of AppException. If it reaches here as DioException,
-      // it means something was not caught by the interceptor or it's a new type.
       if (e.error is AppException) throw e.error as AppException;
       throw ApiException(
         message: e.message ?? 'Protocol discovery failed',
@@ -57,12 +68,13 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
   }
 
   @override
-  Future<ProtocolDetails> getProtocolDetails(String protocolPath) async {
+  Future<ProtocolDetails> getProtocolDetails(
+      {required String protocolPath}) async {
     try {
-      // Ensure the path is properly encoded if it contains special characters
       final encodedPath = Uri.encodeComponent(protocolPath);
-      final response = await _dio.get('/protocols/details/$encodedPath');
-
+      // Corrected to use query parameter as per backend
+      final response =
+          await _dio.get('$_basePath/details', queryParameters: {'protocol_path': encodedPath});
       if (response.statusCode == 200 && response.data is Map) {
         return ProtocolDetails.fromJson(response.data as Map<String, dynamic>);
       } else {
@@ -89,9 +101,9 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
   @override
   Future<List<String>> getDeckLayouts() async {
     try {
-      final response = await _dio.get('/decks/layouts');
+      // Corrected URL
+      final response = await _dio.get('$_basePath/deck_layouts');
       if (response.statusCode == 200 && response.data is List) {
-        // Assuming the API returns a list of strings (layout names/paths)
         return List<String>.from(response.data as List);
       } else {
         throw ApiException(
@@ -114,8 +126,8 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
     }
   }
 
-  @override
-  Future<DeckLayout> uploadDeckFile({required PlatformFile file}) async {
+  Future<FileUploadResponse> _uploadFile(
+      String endpoint, PlatformFile file) async {
     try {
       if (file.bytes == null) {
         throw ClientException(message: 'File bytes are null, cannot upload.');
@@ -124,55 +136,194 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
         'file': MultipartFile.fromBytes(
           file.bytes!,
           filename: file.name,
-          // You might need to specify contentType depending on backend requirements
-          // contentType: MediaType('application', 'json'), // Example
         ),
       });
 
       final response = await _dio.post(
-        '/decks/upload',
+        endpoint,
         data: formData,
         options: Options(
-          headers: {
-            // Dio might set this automatically for FormData, but can be explicit
-            'Content-Type': 'multipart/form-data',
-          },
+          headers: {'Content-Type': 'multipart/form-data'},
         ),
       );
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201 && response.data is Map) {
-        // Assuming the backend returns the created/updated DeckLayout object
-        return DeckLayout.fromJson(response.data as Map<String, dynamic>);
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data is Map) {
+        return FileUploadResponse.fromJson(
+            response.data as Map<String, dynamic>);
       } else {
         throw ApiException(
-          message: 'Failed to upload deck file',
+          message: 'Failed to upload file to $endpoint',
           statusCode: response.statusCode,
         );
       }
     } on DioException catch (e) {
       if (e.error is AppException) throw e.error as AppException;
       throw ApiException(
-        message: e.message ?? 'Deck file upload failed',
+        message: e.message ?? 'File upload to $endpoint failed',
         statusCode: e.response?.statusCode,
         stackTrace: e.stackTrace,
       );
     } catch (e, s) {
-      throw DataParsingException('Failed to parse deck upload response: $e', s);
+      throw DataParsingException(
+          'Failed to parse file upload response from $endpoint: $e', s);
     }
   }
 
   @override
-  Future<Map<String, dynamic>> prepareProtocol({
-    required ProtocolPrepareRequest request,
+  Future<FileUploadResponse> uploadDeckFile(
+      {required PlatformFile file}) async {
+    // Corrected URL and uses helper
+    return _uploadFile('$_basePath/upload_deck_file', file);
+  }
+
+  @override
+  Future<FileUploadResponse> uploadConfigFile(
+      {required PlatformFile file}) async {
+    return _uploadFile('$_basePath/upload_config_file', file);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProtocolSchema(
+      {required String protocolPath}) async {
+    try {
+      final encodedPath = Uri.encodeComponent(protocolPath);
+      final response = await _dio
+          .get('$_basePath/schema', queryParameters: {'protocol_path': encodedPath});
+      if (response.statusCode == 200 && response.data is Map) {
+        return response.data as Map<String, dynamic>;
+      } else {
+        throw ApiException(
+          message: 'Failed to get protocol schema',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.error is AppException) throw e.error as AppException;
+      throw ApiException(
+        message: e.message ?? 'Fetching protocol schema failed',
+        statusCode: e.response?.statusCode,
+        stackTrace: e.stackTrace,
+      );
+    } catch (e, s) {
+      throw DataParsingException(
+        'Failed to parse protocol schema response: $e',
+        s,
+      );
+    }
+  }
+
+  @override
+  Future<List<String>> listRunningProtocols() async {
+    try {
+      // Backend endpoint is GET /api/protocols/
+      final response = await _dio.get('$_basePath/');
+      if (response.statusCode == 200 && response.data is List) {
+        return List<String>.from(response.data as List);
+      } else {
+        throw ApiException(
+          message: 'Failed to list running protocols',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.error is AppException) throw e.error as AppException;
+      throw ApiException(
+        message: e.message ?? 'Listing running protocols failed',
+        statusCode: e.response?.statusCode,
+        stackTrace: e.stackTrace,
+      );
+    } catch (e, s) {
+      throw DataParsingException(
+        'Failed to parse list running protocols response: $e',
+        s,
+      );
+    }
+  }
+
+  @override
+  Future<ProtocolStatusResponse> getProtocolRunStatus(
+      {required String runGuid}) async {
+    try {
+      // Corrected endpoint based on analysis: GET /api/protocols/{runGuid}
+      // (assuming runGuid is used as {protocol_name} in backend for specific run status)
+      // OR a more specific /runs/ endpoint if that's the actual backend structure.
+      // Using /api/protocols/{runGuid} as per current backend file.
+      final response = await _dio.get('$_basePath/$runGuid');
+      if (response.statusCode == 200 && response.data is Map) {
+        return ProtocolStatusResponse.fromJson(
+            response.data as Map<String, dynamic>);
+      } else {
+        throw ApiException(
+          message: 'Failed to get protocol run status for $runGuid',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.error is AppException) throw e.error as AppException;
+      throw ApiException(
+        message: e.message ?? 'Fetching protocol run status for $runGuid failed',
+        statusCode: e.response?.statusCode,
+        stackTrace: e.stackTrace,
+      );
+    } catch (e, s) {
+      throw DataParsingException(
+        'Failed to parse protocol run status response for $runGuid: $e',
+        s,
+      );
+    }
+  }
+
+  @override
+  Future<RunCommandResponse> sendProtocolRunCommand({
+    required String runGuid,
+    required ProtocolRunCommand command,
   }) async {
     try {
+      // Backend endpoint: POST /api/protocols/{run_guid}/command
+      // Backend expects a simple string for command, or Form data.
+      // Sending as JSON: {"command": "THE_COMMAND_STRING"}
       final response = await _dio.post(
-        '/protocols/prepare',
+        '$_basePath/$runGuid/command',
+        data: {'command': protocolRunCommandToString(command)},
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        return RunCommandResponse.fromJson(
+            response.data as Map<String, dynamic>);
+      } else {
+        throw ApiException(
+          message:
+              'Failed to send command ${protocolRunCommandToString(command)} to run $runGuid',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.error is AppException) throw e.error as AppException;
+      throw ApiException(
+        message: e.message ??
+            'Sending command ${protocolRunCommandToString(command)} to run $runGuid failed',
+        statusCode: e.response?.statusCode,
+        stackTrace: e.stackTrace,
+      );
+    } catch (e, s) {
+      throw DataParsingException(
+        'Failed to parse run command response for $runGuid: $e',
+        s,
+      );
+    }
+  }
+
+  @override
+  Future<ProtocolPrepareResponse> prepareProtocol(
+      {required ProtocolPrepareRequest request}) async {
+    try {
+      final response = await _dio.post(
+        '$_basePath/prepare',
         data: request.toJson(),
       );
       if (response.statusCode == 200 && response.data is Map) {
-        return response.data as Map<String, dynamic>;
+        return ProtocolPrepareResponse.fromJson(
+            response.data as Map<String, dynamic>);
       } else {
         throw ApiException(
           message: 'Failed to prepare protocol',
@@ -195,18 +346,16 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
   }
 
   @override
-  Future<ProtocolStatusResponse> startProtocol({
-    required Map<String, dynamic> preparedConfig,
-  }) async {
+  Future<ProtocolStatusResponse> startProtocol(
+      {required Map<String, dynamic> preparedConfig}) async {
     try {
       final response = await _dio.post(
-        '/protocols/start',
+        '$_basePath/start',
         data: preparedConfig,
       );
       if (response.statusCode == 200 && response.data is Map) {
         return ProtocolStatusResponse.fromJson(
-          response.data as Map<String, dynamic>,
-        );
+            response.data as Map<String, dynamic>);
       } else {
         throw ApiException(
           message: 'Failed to start protocol',

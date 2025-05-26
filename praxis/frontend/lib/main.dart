@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart'; // Added for HydratedBloc
+import 'package:path_provider/path_provider.dart'; // Added for HydratedStorage path
 
 // Core imports
 import 'src/core/network/dio_client.dart'; // For DioClient
@@ -24,9 +26,6 @@ import 'src/data/repositories/protocol_repository.dart';
 // Feature Layer Imports (BLoCs & Events)
 import 'src/features/auth/application/bloc/auth_bloc.dart';
 import 'src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
-
-// Import other BLoCs you might provide globally, e.g.:
-// import 'src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
 
 // Simple BlocObserver for logging BLoC events and transitions
 class AppBlocObserver extends BlocObserver {
@@ -107,9 +106,6 @@ Future<void> setupServiceLocator() async {
   sl.registerLazySingleton<AuthService>(
     () => AuthServiceImpl(secureStorage: sl<FlutterSecureStorage>()),
   );
-  // Assuming DioClient needs AuthService for interceptors.
-  // If your DioClient doesn't directly depend on AuthService at construction,
-  // you might initialize it differently or pass AuthService later.
   sl.registerLazySingleton<DioClient>(
     () => DioClient(authService: sl<AuthService>()),
   );
@@ -128,36 +124,47 @@ Future<void> setupServiceLocator() async {
   developer.log('Service Locator Initialized', name: 'main');
 }
 
-void main() {
+Future<void> main() async { // Changed to Future<void> and async
   usePathUrlStrategy(); // Use path URL strategy for web
 
+  // Ensure Flutter bindings are initialized.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Setup HydratedBloc storage. This needs to be done before runApp.
+  // It should also be done before any BLoCs that use HydratedBloc are created.
+  HydratedBloc.storage = await HydratedStorage.build(
+    storageDirectory: kIsWeb
+        ? HydratedStorage.webStorageDirectory // Special directory for web
+        : await getApplicationDocumentsDirectory(),
+  );
+
+  Bloc.observer = AppBlocObserver(); // Setup BLoC observer
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    developer.log(
+      'Flutter error caught by FlutterError.onError:',
+      name: 'FlutterError',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+    if (kDebugMode) {
+      FlutterError.dumpErrorToConsole(details);
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    developer.log(
+      'Unhandled error caught by PlatformDispatcher.instance.onError:',
+      name: 'PlatformError',
+      error: error,
+      stackTrace: stack,
+    );
+    return true; // Indicate that the error has been handled
+  };
+
+  // Wrap the rest of the setup and runApp in runZonedGuarded
   runZonedGuarded<Future<void>>(
     () async {
-      WidgetsFlutterBinding.ensureInitialized();
-      Bloc.observer = AppBlocObserver();
-
-      FlutterError.onError = (FlutterErrorDetails details) {
-        developer.log(
-          'Flutter error caught by FlutterError.onError:',
-          name: 'FlutterError',
-          error: details.exception,
-          stackTrace: details.stack,
-        );
-        if (kDebugMode) {
-          FlutterError.dumpErrorToConsole(details);
-        }
-      };
-
-      PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-        developer.log(
-          'Unhandled error caught by PlatformDispatcher.instance.onError:',
-          name: 'PlatformError',
-          error: error,
-          stackTrace: stack,
-        );
-        return true; // Indicate that the error has been handled
-      };
-
       await setupServiceLocator();
 
       runApp(
@@ -169,27 +176,24 @@ void main() {
             RepositoryProvider<ProtocolRepository>.value(
               value: sl<ProtocolRepository>(),
             ),
-            // Add other RepositoryProviders if needed
           ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider<AuthBloc>(
-                create:
-                    (context) =>
-                        AuthBloc(authRepository: context.read<AuthRepository>())
-                          ..add(AuthAppStarted()), // Dispatch initial event
+                create: (context) =>
+                    AuthBloc(authRepository: context.read<AuthRepository>())
+                      ..add(AuthAppStarted()),
               ),
-              // Example of another BLoC:
               BlocProvider<ProtocolsDiscoveryBloc>(
-                create:
-                    (context) => ProtocolsDiscoveryBloc(
-                      protocolRepository: context.read<ProtocolRepository>(),
-                    )..add(
-                      FetchDiscoveredProtocols(),
-                    ), // Dispatch initial event if needed
+                create: (context) => ProtocolsDiscoveryBloc(
+                  protocolRepository: context.read<ProtocolRepository>(),
+                )..add(FetchDiscoveredProtocols()),
               ),
+              // ProtocolWorkflowBloc will be provided where it's needed,
+              // typically at the entry point of the "Run Protocol" feature.
+              // If it were to be a global BLoC, it would be added here.
             ],
-            child: const MyApp(), // MyApp will now use GoRouter
+            child: const MyApp(),
           ),
         ),
       );
@@ -218,8 +222,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize AppGoRouter here. It needs AuthBloc, which is available
-    // from the context provided by MultiBlocProvider.
     _appGoRouter = AppGoRouter(context.read<AuthBloc>());
   }
 
@@ -229,14 +231,8 @@ class _MyAppState extends State<MyApp> {
       title: 'PyLabPraxis Flutter',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-
-      // darkTheme: AppTheme.darkTheme, // Optional: uncomment if you have a dark theme
-      // themeMode: ThemeMode.system, // Optional: set theme mode
-      routerConfig: _appGoRouter.router, // Use the go_router configuration
-
+      routerConfig: _appGoRouter.router,
       builder: (context, child) {
-        // This child is the widget rendered by the router for the current route.
-        // We can wrap it with a BlocListener for global Auth state changes.
         return BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
             developer.log(
@@ -244,7 +240,6 @@ class _MyAppState extends State<MyApp> {
               name: 'AuthGlobalListener',
             );
             if (state is AuthFailure) {
-              // Show a snackbar for authentication failures
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -255,9 +250,8 @@ class _MyAppState extends State<MyApp> {
                 ),
               );
             }
-            // Handle other global notifications or side effects here if needed
           },
-          child: child!, // The router's current page
+          child: child!,
         );
       },
     );

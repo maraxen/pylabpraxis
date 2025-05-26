@@ -1,102 +1,41 @@
-// FILE: lib/src/data/models/protocol/protocol_details.dart
-// Purpose: Defines the detailed structure of a protocol, including all its components.
-// Corresponds to: ProtocolDetails in protocol.models.ts
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
-
-import './protocol_info.dart';
-import './parameter_config.dart';
-import './protocol_asset.dart';
-import './protocol_step.dart';
-import './protocol_hardware.dart';
-import './deck_layout.dart'; // If you have a DeckLayout model
-import './parameter_group.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_parameter_detail.dart';
+import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_asset_detail.dart';
 
 part 'protocol_details.freezed.dart';
 part 'protocol_details.g.dart';
 
 @freezed
-abstract class ProtocolDetails with _$ProtocolDetails {
-  const ProtocolDetails._(); // Add this line to allow methods in the class
-
+class ProtocolDetails with _$ProtocolDetails {
   const factory ProtocolDetails({
-    // Basic information about the protocol, can be embedded or referenced.
-    // Embedding ProtocolInfo directly using a spread operator in Freezed
-    // is not directly supported for the constructor.
-    // Instead, we list its fields or have a dedicated 'info' field.
-    // For simplicity and direct mapping, let's include ProtocolInfo fields,
-    // or have an 'info' field of type ProtocolInfo.
-    // Option 1: Dedicated 'info' field
-    required ProtocolInfo info,
-
-    // Option 2: Flattened fields (if you prefer direct access, but less clean)
-    // required String name,
-    // required String path,
-    // required String description,
-    // String? version,
-    // @JsonKey(name: 'last_modified') DateTime? lastModified,
-    // List<String>? tags,
-    // ... other fields from ProtocolInfo
-
-    // Parameters required by the protocol.
-    required Map<String, ParameterConfig> parameters,
-
-    // We don't add parameterGroups directly as it will be derived
-
-    // Assets (labware, reagents, etc.) required or used by the protocol.
-    List<ProtocolAsset>? assets,
-
-    // Steps involved in executing the protocol.
-    List<ProtocolStep>? steps,
-
-    // Hardware requirements or configurations.
-    List<ProtocolHardware>? hardware,
-
-    // Deck layout configuration for the protocol.
-    // This might be optional or could be a specific structure.
-    DeckLayout? deckLayout, // Assuming you have a DeckLayout model
-    // Schema version for the protocol definition itself.
-    String? schemaVersion,
-
-    // Any other global metadata specific to the protocol's execution or definition.
-    Map<String, dynamic>? metadata,
-
-    // Entry points or commands that can be run (e.g. "run", "calibrate")
-    // The key could be the command name, value could be details or entry step ID.
-    Map<String, dynamic>? commands,
-
-    // Authorship and contact information.
-    String? author, // Redundant if in ProtocolInfo, but sometimes present
-    String? email,
-
-    // Organization or lab associated with the protocol.
-    String? organization,
-
-    // Publication or reference links.
-    List<String>? publications,
-
-    // Changelog or version history notes.
-    String? changelog,
+    required String name,
+    required String path,
+    required String description,
+    required Map<String, ProtocolParameterDetail> parameters,
+    required List<ProtocolAssetDetail> assets,
+    required bool hasAssets,
+    required bool hasParameters,
+    // Corresponds to 'requires_config' in backend.
+    // Based on backend logic: `not (bool(parameters) or bool(assets))`,
+    // this field is true if there are NO parameters AND NO assets.
+    // Consider renaming to 'isSimple' or 'requiresNoConfiguration' for clarity if appropriate.
+    required bool requiresConfig,
   }) = _ProtocolDetails;
 
   factory ProtocolDetails.fromJson(Map<String, dynamic> json) =>
       _$ProtocolDetailsFromJson(json);
-
-  /// Converts parameters map to list of ParameterDefinition objects
-  List<ParameterDefinition> get parameterDefinitions {
-    return parameters.entries.map((entry) {
-      return ParameterDefinition(
-        name: entry.key,
-        displayName: entry.value.displayName,
-        description: entry.value.description,
-        defaultValue: entry.value.defaultValue,
-        config: entry.value,
-      );
-    }).toList();
-  }
-
-  /// Generates parameter groups from the individual parameters
-  List<ParameterGroup> get derivedParameterGroups {
-    return parameterDefinitions.organizeIntoGroups();
-  }
 }
