@@ -222,6 +222,8 @@ def add_labware_instance(
     is_permanent_fixture: bool = False
 ) -> LabwareInstanceOrm:
     # Check if definition exists
+    if properties_json is not None:
+        print(f"DEBUG: ADS: Setting properties_json for new labware instance '{user_assigned_name}': {properties_json}")
     definition = get_labware_definition(db, pylabrobot_definition_name)
     if not definition:
         raise ValueError(f"Labware definition '{pylabrobot_definition_name}' not found in catalog.")
@@ -327,6 +329,7 @@ def update_labware_instance_location_and_status(
 
 
         if properties_json_update:
+            print(f"DEBUG: ADS: Updating properties_json for labware instance ID {labware_instance_id}: {properties_json_update}")
             if instance_orm.properties_json is None:
                 instance_orm.properties_json = {}
             # TODO: ADS-3: Implement a more robust JSON merge for properties_json
@@ -352,4 +355,3 @@ def update_labware_instance_location_and_status(
 # - add_labware_to_deck_configuration_slot(db, deck_config_id, slot_name, labware_instance_id, expected_def_name=None)
 # - get_deck_configuration_details(db, deck_config_id or layout_name) -> Optional[DeckConfigurationOrm] (with eager loaded items)
 # - list_deck_configurations(db, deck_device_id=None)
-
