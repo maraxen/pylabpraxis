@@ -157,5 +157,7 @@
     "titleBar.activeForeground": "#15202b",
     "titleBar.inactiveBackground": "#42b88399",
     "titleBar.inactiveForeground": "#15202b99"
-  }
+  },
+  "cmake.cmakePath": "/opt/homebrew/Cellar/cmake/4.0.2/bin/cmake",
+  "cmake.sourceDirectory": "/Users/mar/Dropbox (MIT)/PLR_workspace/pylabpraxis/pylabpraxis_flutter/linux/flutter"
 }

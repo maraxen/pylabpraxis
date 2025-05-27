@@ -1,1 +1,0 @@
-export { Vixn } from './pages/Vixn';
