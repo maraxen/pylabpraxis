@@ -213,9 +213,11 @@ Endpoints will need to align with the refactored services and data models, using
 * **Purpose:** Endpoints for workcell status and potentially manual control.  
 * **Dependencies:** `WorkcellRuntime`.  
 * **TODOs:**  
-    * `# CRITICAL TODO: Implement `GET /api/workcell/deck_state` endpoint to provide detailed deck layout and content data suitable for frontend visualization.`
-    * `# CRITICAL TODO: Implement WebSocket endpoint `/ws/workcell/subscribe` for real-time broadcasting of workcell updates (e.g., deck changes, instrument status) to frontend visualizer.`
-    * `# TODO: Define the data models/schemas for the deck_state response and WebSocket messages.`
+    * `# COMPLETED (Phase 1): Implemented `GET /api/workcell/decks/{deck_id}/state` endpoint. Returns detailed state for a specific deck, including labware. Slot coordinates and overall deck dimensions are placeholders pending full `WorkcellRuntime` integration with live deck geometry.`
+    * `# COMPLETED (Phase 1): Implemented WebSocket endpoint `/ws/workcell/decks/{deck_id}/updates`. Manages client connections per deck. Broadcasting actual state changes from `WorkcellRuntime`/`AssetManager` actions is a remaining integration task.`
+    * `# COMPLETED: Defined Pydantic models (`DeckInfo`, `DeckStateResponse`, `DeckUpdateMessage`, etc.) in `praxis/backend/api/models/workcell_models.py` for Workcell API request/responses.`
+    * `# TODO: Enhance `WorkcellRuntime.get_deck_state_representation` to populate actual slot coordinates and overall deck dimensions, potentially by interacting with live PyLabRobot Deck objects or more detailed `DeckConfigurationOrm` data.`
+    * `# TODO: Integrate `ConnectionManager.broadcast_to_deck` calls within `WorkcellRuntime` and `AssetManager` (or via a dedicated event bus) to send real-time updates when deck contents or relevant asset states change.`
     * `# TODO: Define a clear command structure for manual instrument control if implemented.`  
     * `# TODO: Ensure safety and restrict access to manual control.`
 
