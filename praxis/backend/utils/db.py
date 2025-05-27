@@ -1,6 +1,6 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase # Changed from declarative_base
 from configparser import ConfigParser
 from pathlib import Path
 from typing import AsyncGenerator
@@ -93,7 +93,8 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 # --- Base for ORM Models ---
-Base = declarative_base()
+class Base(DeclarativeBase): # Changed from Base = declarative_base()
+    pass
 
 # --- Dependency for FastAPI Routes to Get an Async DB Session ---
 async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
