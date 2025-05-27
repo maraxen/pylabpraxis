@@ -17,8 +17,8 @@ import datetime
 import traceback
 from typing import Dict, Any, Optional, Callable, Tuple, List, Union, get_origin, get_args
 import contextlib
-import time # ADDED
-import subprocess # ADDED FOR GIT OPERATIONS
+import time
+import subprocess
 import inspect # ADDED FOR TYPE HINT INSPECTION
 
 from sqlalchemy.orm import Session as DbSession
@@ -89,6 +89,8 @@ def temporary_sys_path(path_to_add: Optional[str]):
             else: sys.path = original_sys_path
 
 
+from praxis.backend.core.workcell_runtime import WorkcellRuntime # Add import
+
 class AssetAcquisitionError(RuntimeError): pass
 class ProtocolCancelledError(Exception): pass # ADDED
 
@@ -96,35 +98,61 @@ class Orchestrator:
     def __init__(self, db_session: DbSession, workcell_config: Optional[Dict[str, Any]] = None):
         self.db_session = db_session
         self.workcell_config = workcell_config or {}
-        self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=None)
+        # Create and pass a WorkcellRuntime instance
+        self.workcell_runtime = WorkcellRuntime(db_session=self.db_session) # Create WCR
+        self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=self.workcell_runtime) # Pass WCR
 
-    def _run_git_command(self, command: List[str], cwd: str, suppress_output: bool = False) -> str:
-        """Helper to run a Git command and handle errors."""
+    def _run_git_command(self, command: List[str], cwd: str, suppress_output: bool = False, timeout: int = 300) -> str:
+        """
+        Helper to run a Git command and handle errors.
+        Includes a timeout to prevent indefinite hangs.
+        Default timeout is 300 seconds (5 minutes).
+        """
         try:
-            print(f"INFO: ORCH-GIT: Running command: {' '.join(command)} in {cwd}")
+            # Construct a more readable command string for logging, being mindful of potential injection if not careful with inputs.
+            # However, 'command' is a List[str] from internal calls, so it's safer.
+            logged_command = ' '.join(command)
+            print(f"INFO: ORCH-GIT: Running command: {logged_command} in {cwd} with timeout {timeout}s")
             process = subprocess.run(
                 command,
                 cwd=cwd,
-                check=True,
+                check=True, # Raises CalledProcessError on non-zero exit codes.
                 capture_output=True,
-                text=True
+                text=True,
+                timeout=timeout # Added timeout
             )
+            # Log output only if not suppressed, and if there's actual content.
             if not suppress_output:
-                if process.stdout: print(f"INFO: ORCH-GIT: STDOUT: {process.stdout.strip()}")
-                if process.stderr: print(f"INFO: ORCH-GIT: STDERR: {process.stderr.strip()}") # Git often uses stderr for non-error info
+                stdout_stripped = process.stdout.strip()
+                stderr_stripped = process.stderr.strip() # Git often uses stderr for non-error info like 'Already up to date.'
+                if stdout_stripped: print(f"INFO: ORCH-GIT: STDOUT: {stdout_stripped}")
+                if stderr_stripped: print(f"INFO: ORCH-GIT: STDERR: {stderr_stripped}")
             return process.stdout.strip()
+        except subprocess.TimeoutExpired as e:
+            error_message = (
+                f"ERROR: ORCH-GIT: Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds in {cwd}.\n"
+                f"Stderr: {e.stderr.decode(errors='ignore').strip() if e.stderr else 'N/A'}\n"
+                f"Stdout: {e.stdout.decode(errors='ignore').strip() if e.stdout else 'N/A'}"
+            )
+            print(error_message)
+            # Propagate as RuntimeError to be caught by the calling function for consistent error handling.
+            raise RuntimeError(error_message) from e
         except subprocess.CalledProcessError as e:
+            # Ensure stderr and stdout are decoded if they are bytes, though text=True should handle this.
+            stderr_output = e.stderr.strip() if isinstance(e.stderr, str) else e.stderr.decode(errors='ignore').strip() if e.stderr else "N/A"
+            stdout_output = e.stdout.strip() if isinstance(e.stdout, str) else e.stdout.decode(errors='ignore').strip() if e.stdout else "N/A"
             error_message = (
                 f"ERROR: ORCH-GIT: Command '{' '.join(e.cmd)}' failed with exit code {e.returncode} in {cwd}.\n"
-                f"Stderr: {e.stderr.strip()}\n"
-                f"Stdout: {e.stdout.strip()}"
+                f"Stderr: {stderr_output}\n"
+                f"Stdout: {stdout_output}"
             )
             print(error_message)
+            # Propagate as RuntimeError
             raise RuntimeError(error_message) from e
-        except FileNotFoundError: #  pragma: no cover
-            error_message = f"ERROR: ORCH-GIT: Git command not found. Ensure git is installed and in PATH. Command: {' '.join(command)}"
+        except FileNotFoundError: # pragma: no cover
+            error_message = f"ERROR: ORCH-GIT: Git command (usually 'git') not found. Ensure git is installed and in PATH. Command attempted: {' '.join(command)}"
             print(error_message)
-            raise RuntimeError(error_message)
+            raise RuntimeError(error_message) # from None explicitly, as FileNotFoundError doesn't chain well here for the intended purpose.
 
     def _get_protocol_definition_orm_from_db(
         self,
@@ -151,54 +179,26 @@ class Orchestrator:
             checkout_path = repo.local_checkout_path
             commit_hash_to_checkout = protocol_def_orm.commit_hash
 
-            if not checkout_path:
-                raise ValueError(f"Local checkout path not configured for repo '{repo.name}'.")
-            if not commit_hash_to_checkout:
-                raise ValueError(f"Commit hash not specified for protocol '{protocol_def_orm.name}' from repo '{repo.name}'.")
-            if not repo.git_url:
-                raise ValueError(f"Git URL not configured for repo '{repo.name}'.")
+            if not checkout_path: # Should be validated by caller or DB constraints
+                raise ValueError(f"CRITICAL: Local checkout path not configured for repo '{repo.name}'. This should be pre-validated.")
+            if not commit_hash_to_checkout: # Should be validated by caller or DB constraints
+                raise ValueError(f"CRITICAL: Commit hash not specified for protocol '{protocol_def_orm.name}' from repo '{repo.name}'. This should be pre-validated.")
+            if not repo.git_url: # Should be validated by caller or DB constraints
+                raise ValueError(f"CRITICAL: Git URL not configured for repo '{repo.name}'. This should be pre-validated.")
 
-            is_git_repo = False
-            if os.path.exists(checkout_path):
-                try:
-                    # Check if it's a git repo. If .git is a file, it's a submodule's gitlink, not a full repo.
-                    # `git rev-parse --is-inside-work-tree` is safer.
-                    result = self._run_git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=checkout_path, suppress_output=True)
-                    is_git_repo = result == "true"
-                    if not is_git_repo : # pragma: no cover
-                         # This case implies something is at checkout_path but it's not the work-tree root.
-                         # Could be a file or a directory not containing .git, or .git is a file (submodule)
-                         # For simplicity, we'll treat it as "not a valid git repo for our purpose"
-                         print(f"WARN: ORCH-GIT: Path '{checkout_path}' exists but 'git rev-parse --is-inside-work-tree' was not 'true'.")
-                except RuntimeError: # If git rev-parse fails, it's not a git repo (or git is not installed)
-                    is_git_repo = False # Ensure it's false
+            # Ensure checkout_path is an absolute path for security and clarity
+            # If relative paths are allowed, they should be relative to a configured, secure base directory.
+            # For now, let's assume checkout_path from DB is intended to be absolute or relative to a known location.
+            # If it's user-configurable, it MUST be validated upstream to prevent traversal.
+            # We'll proceed assuming it's a valid, designated path for this repo.
 
-            if is_git_repo:
-                print(f"INFO: ORCH-GIT: '{checkout_path}' is a Git repository. Fetching origin...")
-                self._run_git_command(["git", "fetch", "origin"], cwd=checkout_path)
-            else:
-                if os.path.exists(checkout_path):
-                    if os.listdir(checkout_path): # Check if directory is not empty
-                        raise ValueError(
-                            f"Path '{checkout_path}' exists, is not a Git repository, and is not empty. "
-                            f"Cannot clone into it for repo '{repo.name}'."
-                        )
-                    else: # Directory exists but is empty
-                        print(f"INFO: ORCH-GIT: Path '{checkout_path}' exists and is empty. Will attempt to clone into it.")
-                        # No need to os.rmdir, git clone can handle cloning into an empty directory.
-                else: # Path does not exist
-                    print(f"INFO: ORCH-GIT: Path '{checkout_path}' does not exist. Creating and cloning...")
-                    try:
-                        os.makedirs(checkout_path, exist_ok=True)
-                    except OSError as e: # pragma: no cover
-                        raise ValueError(f"Failed to create directory '{checkout_path}': {e}") from e
-                
-                print(f"INFO: ORCH-GIT: Cloning repository '{repo.git_url}' into '{checkout_path}'...")
-                self._run_git_command(["git", "clone", repo.git_url, checkout_path], cwd=".") # Run clone from a generic cwd
+            self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
 
             print(f"INFO: ORCH-GIT: Checking out commit '{commit_hash_to_checkout}' in '{checkout_path}'...")
+            # Use --force for checkout if needed to discard local changes, though this should ideally be clean.
+            # For now, a simple checkout. If it fails due to local changes, that's an issue with the repo state.
             self._run_git_command(["git", "checkout", commit_hash_to_checkout], cwd=checkout_path)
-            
+
             # Verify HEAD is at the correct commit
             try:
                 current_commit = self._run_git_command(["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True)
@@ -221,27 +221,101 @@ class Orchestrator:
             module_path_to_add_for_sys_path = checkout_path
         elif protocol_def_orm.file_system_source_id and protocol_def_orm.file_system_source:
             fs_source = protocol_def_orm.file_system_source
-            if not os.path.isdir(fs_source.base_path):
-                 raise ValueError(f"Base path '{fs_source.base_path}' for FS source '{fs_source.name}' invalid.")
+            if not os.path.isdir(fs_source.base_path): # Should be validated upstream
+                 raise ValueError(f"CRITICAL: Base path '{fs_source.base_path}' for FS source '{fs_source.name}' invalid. This should be pre-validated.")
             module_path_to_add_for_sys_path = fs_source.base_path
-        else:
-            print(f"WARNING: Protocol '{protocol_def_orm.name}' v{protocol_def_orm.version} has no linked source. Direct import attempt.")
+        else: # pragma: no cover (should ideally not happen if data is consistent)
+            print(f"WARNING: Protocol '{protocol_def_orm.name}' v{protocol_def_orm.version} has no linked Git or FS source. Direct import attempt from current sys.path.")
+            # No specific path to add for sys.path in this case, relies on existing PYTHONPATH
 
+        # Security Note: Importing and executing code from the checked-out repository
+        # implies trust in the source of the protocol code. The code runs with the
+        # same privileges as the Orchestrator process. Ensure repositories are from
+        # trusted sources and code is reviewed.
         with temporary_sys_path(module_path_to_add_for_sys_path):
-            module = importlib.import_module(protocol_def_orm.module_name)
-            module = importlib.reload(module) 
+            # Ensure the target module for the protocol is reloaded to pick up changes if already imported.
+            # This is crucial if multiple versions or protocols from the same module are run.
+            if protocol_def_orm.module_name in sys.modules:
+                module = importlib.reload(sys.modules[protocol_def_orm.module_name])
+            else:
+                module = importlib.import_module(protocol_def_orm.module_name)
+
+        
+        if not hasattr(module, protocol_def_orm.function_name):
+            raise AttributeError(f"Function '{protocol_def_orm.function_name}' not found in module '{protocol_def_orm.module_name}' from path '{module_path_to_add_for_sys_path or 'PYTHONPATH'}'.")
 
         func_wrapper = getattr(module, protocol_def_orm.function_name)
-        if not hasattr(func_wrapper, 'protocol_metadata'):
-            raise AttributeError(f"Function '{protocol_def_orm.function_name}' in '{protocol_def_orm.module_name}' not decorated.")
+        if not hasattr(func_wrapper, 'protocol_metadata'): # Check for decorator
+            raise AttributeError(f"Function '{protocol_def_orm.function_name}' in '{protocol_def_orm.module_name}' is not a valid @protocol_function (missing protocol_metadata).")
 
-        decorator_metadata: Dict[str, Any] = func_wrapper.protocol_metadata # type: ignore
-        if decorator_metadata.get("db_id") != protocol_def_orm.id:
+        decorator_metadata: Dict[str, Any] = func_wrapper.protocol_metadata
+        # Update DB ID in decorator metadata if necessary (though ideally it's consistent)
+        if decorator_metadata.get("db_id") != protocol_def_orm.id: # pragma: no cover
+            print(f"WARN: ORCH-META: Decorator DB ID mismatch for '{protocol_def_orm.name}'. Forcing DB ID from {decorator_metadata.get('db_id')} to {protocol_def_orm.id}")
             decorator_metadata["db_id"] = protocol_def_orm.id
+            # Also update the global registry if this protocol was registered
             registry_key = decorator_metadata.get("protocol_unique_key")
             if registry_key and registry_key in PROTOCOL_REGISTRY:
                 PROTOCOL_REGISTRY[registry_key]["db_id"] = protocol_def_orm.id
+        
         return func_wrapper, decorator_metadata
+
+    def _ensure_git_repo_and_fetch(self, git_url: str, checkout_path: str, repo_name_for_logging: str) -> None:
+        """
+        Ensures that checkout_path is a valid git repo for git_url, clones if necessary, and fetches.
+        """
+        is_git_repo = False
+        if os.path.exists(checkout_path):
+            try:
+                result = self._run_git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=checkout_path, suppress_output=True)
+                is_git_repo = result == "true"
+                if not is_git_repo:
+                    print(f"WARN: ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists but is not a git work-tree root.")
+            except RuntimeError: # Error running git rev-parse (e.g. not a git repo, or git not installed)
+                is_git_repo = False
+                print(f"INFO: ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' is not a git repository or git command failed.")
+
+        if is_git_repo:
+            # Verify remote URL matches
+            try:
+                current_remote_url = self._run_git_command(["git", "config", "--get", "remote.origin.url"], cwd=checkout_path, suppress_output=True)
+                if current_remote_url != git_url:
+                    # This is a problematic state: a different repo exists at the expected path.
+                    # For safety, we should not proceed. Manual intervention is likely needed.
+                    raise ValueError(
+                        f"Path '{checkout_path}' for repo '{repo_name_for_logging}' is a Git repository, "
+                        f"but its remote 'origin' URL ('{current_remote_url}') does not match the expected URL ('{git_url}'). "
+                        "Manual intervention required to resolve this conflict."
+                    )
+            except RuntimeError as e: # git config might fail if 'origin' doesn't exist or other issues
+                raise ValueError(
+                    f"Failed to verify remote URL for existing repo at '{checkout_path}' for '{repo_name_for_logging}'. Error: {e}. Manual intervention may be needed."
+                ) from e
+
+            print(f"INFO: ORCH-GIT: '{checkout_path}' for repo '{repo_name_for_logging}' is an existing Git repository. Fetching origin...")
+            self._run_git_command(["git", "fetch", "origin"], cwd=checkout_path) # Consider adding --prune
+        else:
+            # Path is not a git repo or does not exist. Attempt to clone.
+            if os.path.exists(checkout_path):
+                if os.listdir(checkout_path): # Directory is not empty
+                    # This state was previously checked, but as a safeguard if logic changes.
+                    raise ValueError(
+                        f"Path '{checkout_path}' for repo '{repo_name_for_logging}' exists, is not a Git repository, and is not empty. "
+                        f"Cannot clone into it."
+                    )
+                else: # Directory exists but is empty
+                    print(f"INFO: ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists and is empty. Cloning into it.")
+            else: # Path does not exist
+                print(f"INFO: ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' does not exist. Creating and cloning...")
+                try:
+                    os.makedirs(checkout_path, exist_ok=True)
+                except OSError as e: # pragma: no cover
+                    raise ValueError(f"Failed to create directory '{checkout_path}' for repo '{repo_name_for_logging}': {e}") from e
+            
+            print(f"INFO: ORCH-GIT: Cloning repository '{git_url}' into '{checkout_path}' for repo '{repo_name_for_logging}'...")
+            # Clone into the specific checkout_path. The last argument to clone is the directory to clone into.
+            self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
+
 
     def _prepare_arguments(
         self,

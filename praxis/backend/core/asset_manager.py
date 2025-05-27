@@ -727,23 +727,54 @@ class AssetManager:
         # TODO: AM-10: Implement user_choice_instance_id, location_constraints, property_constraints in selection logic.
 
         labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None
+
         if user_choice_instance_id:
             labware_instance_to_acquire = ads.get_labware_instance_by_id(self.db, user_choice_instance_id)
-            if labware_instance_to_acquire and labware_instance_to_acquire.pylabrobot_definition_name != pylabrobot_definition_name_constraint:
-                raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} does not match definition constraint {pylabrobot_definition_name_constraint}.")
-            if labware_instance_to_acquire and labware_instance_to_acquire.current_status not in [LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE, LabwareInstanceStatusEnum.AVAILABLE_ON_DECK]:
-                 raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {labware_instance_to_acquire.current_status}).")
+            if not labware_instance_to_acquire:
+                 raise AssetAcquisitionError(f"Specified labware instance ID {user_choice_instance_id} not found.")
+            if labware_instance_to_acquire.pylabrobot_definition_name != pylabrobot_definition_name_constraint:
+                raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} (Definition: '{labware_instance_to_acquire.pylabrobot_definition_name}') does not match definition constraint '{pylabrobot_definition_name_constraint}'.")
+            
+            # Check status for user_choice_instance_id
+            # If it's IN_USE by the current run, it's a valid re-acquisition.
+            # Otherwise, it must be available.
+            if labware_instance_to_acquire.current_status == LabwareInstanceStatusEnum.IN_USE:
+                if labware_instance_to_acquire.current_protocol_run_guid != protocol_run_guid:
+                    raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is IN_USE by another run ('{labware_instance_to_acquire.current_protocol_run_guid}').")
+                else:
+                    print(f"INFO: AM_ACQUIRE: Labware instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring.")
+            elif labware_instance_to_acquire.current_status not in [LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE, LabwareInstanceStatusEnum.AVAILABLE_ON_DECK]:
+                 raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {labware_instance_to_acquire.current_status.name if labware_instance_to_acquire.current_status else 'N/A'}).")
         else:
-            # Basic selection: Prioritize AVAILABLE_ON_DECK, then AVAILABLE_IN_STORAGE
-            lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK)
-            if not lws: 
-                lws = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE)
-            if not lws: 
-                raise AssetAcquisitionError(f"No labware found matching definition '{pylabrobot_definition_name_constraint}' with available status.")
-            labware_instance_to_acquire = lws[0] # Basic: pick first
+            # No user_choice_instance_id, attempt to find suitable labware
+            # 1. Check if already IN_USE by this run (re-acquisition)
+            in_use_by_this_run_list = ads.list_labware_instances(
+                self.db,
+                pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+                current_protocol_run_guid=protocol_run_guid, # Filter by current run_guid
+                status=LabwareInstanceStatusEnum.IN_USE     # Must be IN_USE
+            )
+            if in_use_by_this_run_list:
+                labware_instance_to_acquire = in_use_by_this_run_list[0] # Pick first match
+                print(f"INFO: AM_ACQUIRE: Labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring.")
+            else:
+                # 2. If not re-acquiring, find available labware: Prioritize AVAILABLE_ON_DECK, then AVAILABLE_IN_STORAGE
+                lws_on_deck = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK)
+                if lws_on_deck:
+                    labware_instance_to_acquire = lws_on_deck[0] # Basic: pick first
+                else:
+                    lws_in_storage = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE)
+                    if lws_in_storage:
+                        labware_instance_to_acquire = lws_in_storage[0] # Basic: pick first
+            
+            if not labware_instance_to_acquire:
+                raise AssetAcquisitionError(f"No labware found matching definition '{pylabrobot_definition_name_constraint}' that is available or already in use by this run.")
 
-        if not labware_instance_to_acquire: # Should be caught by above, but defensive check
-            raise AssetAcquisitionError(f"Labware matching criteria for '{requested_asset_name_in_protocol}' not found or not available.")
+        # If labware_instance_to_acquire is still None here, it means no suitable labware was found.
+        # This condition is now effectively checked by the specific error messages above.
+        # The following is a final safeguard, but should ideally be unreachable if logic above is complete.
+        if not labware_instance_to_acquire: # pragma: no cover
+            raise AssetAcquisitionError(f"Labware matching criteria for '{requested_asset_name_in_protocol}' (Def: '{pylabrobot_definition_name_constraint}') not found or not available for run '{protocol_run_guid}'.")
 
         # Fetch LabwareDefinition to get the python_fqn
         # Using the existing get_labware_definition (aliased by get_labware_definition_by_name)

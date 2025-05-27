@@ -18,8 +18,101 @@ from praxis.utils.plr_inspection import (
     get_all_resource_types,
     get_all_machine_types,
 )
+from praxis.backend.database_models.asset_management_orm import LabwareCategoryEnum # For LabwareDefinitionResponse
 
 router = APIRouter()
+
+# --- Pydantic Models for Labware Definitions ---
+class LabwareDefinitionBase(BaseModel):
+    pylabrobot_definition_name: str
+    python_fqn: str
+    praxis_labware_type_name: Optional[str] = None
+    # Assuming LabwareCategoryEnum is available and correctly imported
+    # It might need to be defined locally or imported if not already.
+    category: Optional[LabwareCategoryEnum] = None # Using the ORM enum for now
+    description: Optional[str] = None
+    is_consumable: bool = True
+    nominal_volume_ul: Optional[float] = None
+    material: Optional[str] = None
+    manufacturer: Optional[str] = None
+    plr_definition_details_json: Optional[Dict[str, Any]] = None
+    size_x_mm: Optional[float] = None
+    size_y_mm: Optional[float] = None
+    size_z_mm: Optional[float] = None
+    model: Optional[str] = None
+    # rotation_json: Optional[Dict[str, Any]] = None # Example if needed
+
+    class Config:
+        orm_mode = True
+        use_enum_values = True # Ensure enums are serialized to values
+
+class LabwareDefinitionCreate(LabwareDefinitionBase):
+    # All fields are required or have defaults in LabwareDefinitionBase
+    pass
+
+class LabwareDefinitionUpdate(BaseModel): # All fields optional for update
+    python_fqn: Optional[str] = None
+    praxis_labware_type_name: Optional[str] = None
+    category: Optional[LabwareCategoryEnum] = None
+    description: Optional[str] = None
+    is_consumable: Optional[bool] = None
+    nominal_volume_ul: Optional[float] = None
+    material: Optional[str] = None
+    manufacturer: Optional[str] = None
+    plr_definition_details_json: Optional[Dict[str, Any]] = None
+    size_x_mm: Optional[float] = None
+    size_y_mm: Optional[float] = None
+    size_z_mm: Optional[float] = None
+    model: Optional[str] = None
+
+class LabwareDefinitionResponse(LabwareDefinitionBase):
+    # Includes all fields from LabwareDefinitionBase due to inheritance
+    # and orm_mode = True will map from the ORM object.
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
+
+# --- Pydantic Models for Deck Layouts ---
+class DeckSlotItemBase(BaseModel):
+    slot_name: str
+    labware_instance_id: Optional[int] = None # Optional: a slot can be empty
+    expected_labware_definition_name: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class DeckSlotItemCreate(DeckSlotItemBase):
+    pass
+
+class DeckSlotItemResponse(DeckSlotItemBase):
+    id: int
+    deck_configuration_id: int
+    # Potential to nest LabwareInstanceResponse here if needed later
+
+
+class DeckLayoutBase(BaseModel):
+    layout_name: str
+    deck_device_id: int
+    description: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class DeckLayoutCreate(DeckLayoutBase):
+    slot_items: Optional[List[DeckSlotItemCreate]] = []
+
+class DeckLayoutUpdate(BaseModel): # All fields optional for update
+    layout_name: Optional[str] = None
+    deck_device_id: Optional[int] = None
+    description: Optional[str] = None
+    slot_items: Optional[List[DeckSlotItemCreate]] = None # To replace all items
+
+class DeckLayoutResponse(DeckLayoutBase):
+    id: int
+    slot_items: List[DeckSlotItemResponse] = []
+    created_at: Optional[datetime.datetime] = None
+    updated_at: Optional[datetime.datetime] = None
+
 
 # --- Inventory Pydantic Models ---
 class LabwareInventoryReagentItem(BaseModel):
@@ -52,17 +145,11 @@ class LabwareInventoryDataIn(BaseModel):
     inventory_notes: Optional[str] = None
     # last_updated_at is set by server on PUT
 
-class LabwareInventoryDataOut(BaseModel):
-    praxis_inventory_schema_version: Optional[str] = None
-    reagents: Optional[List[LabwareInventoryReagentItem]] = None
-    item_count: Optional[LabwareInventoryItemCount] = None
-    consumable_state: Optional[str] = None
-    last_updated_by: Optional[str] = None
-    inventory_notes: Optional[str] = None
-    last_updated_at: Optional[str] = None # Populated from DB
+class LabwareInventoryDataOut(LabwareInventoryDataIn): # Inherits for response, last_updated_at added
+    last_updated_at: Optional[str] = None # Populated from DB. Overrides if present in LabwareInventoryDataIn
 
 
-# --- Original Asset Models ---
+# --- Original Asset Models (Kept for existing endpoints) ---
 class AssetBase(BaseModel):
     name: str
     type: str
@@ -437,8 +524,8 @@ async def update_labware_instance_inventory(instance_id: int, inventory_data: La
     updated_properties["last_updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     updated_instance = asset_data_service.update_labware_instance_location_and_status(
-        db, 
-        labware_instance_id=instance_id, 
+        db,
+        labware_instance_id=instance_id,
         properties_json_update=updated_properties
         # new_status is not changed here, only properties_json
     )
@@ -448,7 +535,195 @@ async def update_labware_instance_inventory(instance_id: int, inventory_data: La
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update or retrieve labware instance properties")
 
     try:
+        # Ensure that the response model correctly handles the structure from properties_json
         return LabwareInventoryDataOut(**updated_instance.properties_json)
-    except Exception as e:
+    except Exception as e: # Catch Pydantic validation errors or others
         # Log the error: print(f"Error parsing updated inventory data for instance {instance_id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error parsing updated inventory data: {e}")
+
+
+# --- Labware Definition Endpoints ---
+@router.post("/labware_definitions", response_model=LabwareDefinitionResponse, status_code=status.HTTP_201_CREATED, tags=["Labware Definitions"])
+async def create_labware_definition_endpoint(definition: LabwareDefinitionCreate, db: DbSession = Depends(get_db)):
+    """
+    Creates a new labware definition in the catalog.
+    The `pylabrobot_definition_name` must be unique.
+    """
+    try:
+        # The model_dump method will correctly handle enum values if use_enum_values = True in Pydantic model Config
+        created_def = asset_data_service.add_or_update_labware_definition(db=db, **definition.model_dump())
+        return created_def
+    except ValueError as e: # Catch errors like definition already exists or validation errors from service
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e: # pragma: no cover
+        # Log the exception e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {e}")
+
+@router.get("/labware_definitions/{pylabrobot_definition_name}", response_model=LabwareDefinitionResponse, tags=["Labware Definitions"])
+async def get_labware_definition_endpoint(pylabrobot_definition_name: str, db: DbSession = Depends(get_db)):
+    """
+    Retrieves a specific labware definition by its PyLabRobot definition name.
+    """
+    db_def = asset_data_service.get_labware_definition(db, pylabrobot_definition_name)
+    if db_def is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Labware definition not found")
+    return db_def
+
+@router.get("/labware_definitions", response_model=List[LabwareDefinitionResponse], tags=["Labware Definitions"])
+async def list_labware_definitions_endpoint(
+    db: DbSession = Depends(get_db), 
+    limit: int = 100, 
+    offset: int = 0,
+    # TODO: Add other filter parameters like category, manufacturer etc.
+    # category: Optional[LabwareCategoryEnum] = Query(None, description="Filter by labware category"),
+    # manufacturer: Optional[str] = Query(None, description="Filter by manufacturer name (case-insensitive search)")
+):
+    """
+    Lists all labware definitions in the catalog, with optional pagination.
+    """
+    # TODO: Pass filter parameters to service layer when implemented there
+    # definitions = asset_data_service.list_labware_definitions(db, limit=limit, offset=offset, category=category, manufacturer=manufacturer)
+    definitions = asset_data_service.list_labware_definitions(db, limit=limit, offset=offset)
+    return definitions
+
+@router.put("/labware_definitions/{pylabrobot_definition_name}", response_model=LabwareDefinitionResponse, tags=["Labware Definitions"])
+async def update_labware_definition_endpoint(
+    pylabrobot_definition_name: str,
+    definition_update: LabwareDefinitionUpdate,
+    db: DbSession = Depends(get_db)
+):
+    """
+    Updates an existing labware definition. 
+    If `pylabrobot_definition_name` does not exist, it will not create one.
+    Use POST /labware_definitions to create.
+    """
+    existing_def = asset_data_service.get_labware_definition(db, pylabrobot_definition_name)
+    if not existing_def:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Labware definition '{pylabrobot_definition_name}' not found.")
+
+    update_data = definition_update.model_dump(exclude_unset=True)
+    
+    # add_or_update_labware_definition expects all non-optional args from LabwareDefinitionBase if creating.
+    # For update, we pass only what's in update_data.
+    # The service function needs to handle partial updates gracefully.
+    # We must ensure pylabrobot_definition_name and python_fqn (if not changing PK) are passed.
+    # For this PUT, pylabrobot_definition_name is fixed. python_fqn is required if not in update_data.
+    
+    # The service function add_or_update_labware_definition is designed for upsert.
+    # For a strict update, we might need a different service function or adapt this one.
+    # Current service function requires python_fqn if creating.
+    # If python_fqn is not in update_data, use existing one.
+    if 'python_fqn' not in update_data and existing_def.python_fqn:
+         update_data['python_fqn'] = existing_def.python_fqn
+    elif 'python_fqn' not in update_data and not existing_def.python_fqn: # Should not happen if DB is consistent
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="python_fqn is required and was not found on existing definition.")
+
+
+    try:
+        updated_def = asset_data_service.add_or_update_labware_definition(
+            db=db,
+            pylabrobot_definition_name=pylabrobot_definition_name, # PK
+            **update_data # Pass other fields from the update model
+        )
+        return updated_def
+    except ValueError as e: # Catch potential errors from service layer
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/labware_definitions/{pylabrobot_definition_name}", status_code=status.HTTP_204_NO_CONTENT, tags=["Labware Definitions"])
+async def delete_labware_definition_endpoint(
+    pylabrobot_definition_name: str,
+    db: DbSession = Depends(get_db)
+):
+    """Deletes a labware definition."""
+    success = asset_data_service.delete_labware_definition(db, pylabrobot_definition_name)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Labware definition '{pylabrobot_definition_name}' not found or could not be deleted.")
+    return None # FastAPI handles 204 No Content response
+
+# --- Deck Layout Endpoints ---
+@router.post("/deck_layouts", response_model=DeckLayoutResponse, status_code=status.HTTP_201_CREATED, tags=["Deck Layouts"])
+async def create_deck_layout_endpoint(
+    deck_layout_in: DeckLayoutCreate,
+    db: DbSession = Depends(get_db)
+):
+    """Creates a new deck layout configuration."""
+    try:
+        slot_items_data = [item.model_dump() for item in deck_layout_in.slot_items] if deck_layout_in.slot_items else []
+        created_layout = asset_data_service.create_deck_layout(
+            db=db,
+            layout_name=deck_layout_in.layout_name,
+            deck_device_id=deck_layout_in.deck_device_id,
+            description=deck_layout_in.description,
+            slot_items_data=slot_items_data
+        )
+        return created_layout
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e: # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {e}")
+
+
+@router.get("/deck_layouts", response_model=List[DeckLayoutResponse], tags=["Deck Layouts"])
+async def list_deck_layouts_endpoint(
+    deck_device_id: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: DbSession = Depends(get_db)
+):
+    """Lists deck layout configurations."""
+    layouts = asset_data_service.list_deck_layouts(db, deck_device_id=deck_device_id, limit=limit, offset=offset)
+    return layouts
+
+
+@router.get("/deck_layouts/{deck_layout_id}", response_model=DeckLayoutResponse, tags=["Deck Layouts"])
+async def get_deck_layout_by_id_endpoint(
+    deck_layout_id: int,
+    db: DbSession = Depends(get_db)
+):
+    """Gets a specific deck layout configuration by its ID."""
+    layout = asset_data_service.get_deck_layout_by_id(db, deck_layout_id)
+    if not layout:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Deck layout with ID {deck_layout_id} not found.")
+    return layout
+
+
+@router.put("/deck_layouts/{deck_layout_id}", response_model=DeckLayoutResponse, tags=["Deck Layouts"])
+async def update_deck_layout_endpoint(
+    deck_layout_id: int,
+    deck_layout_update: DeckLayoutUpdate,
+    db: DbSession = Depends(get_db)
+):
+    """Updates an existing deck layout configuration."""
+    slot_items_data = None
+    if deck_layout_update.slot_items is not None: # Distinguish between not provided (None) and empty list
+        slot_items_data = [item.model_dump() for item in deck_layout_update.slot_items]
+
+    try:
+        updated_layout = asset_data_service.update_deck_layout(
+            db=db,
+            deck_layout_id=deck_layout_id,
+            name=deck_layout_update.layout_name,
+            description=deck_layout_update.description,
+            deck_device_id=deck_layout_update.deck_device_id,
+            slot_items_data=slot_items_data
+        )
+        if not updated_layout:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Deck layout with ID {deck_layout_id} not found for update.")
+        return updated_layout
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e: # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {e}")
+
+
+@router.delete("/deck_layouts/{deck_layout_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Deck Layouts"])
+async def delete_deck_layout_endpoint(
+    deck_layout_id: int,
+    db: DbSession = Depends(get_db)
+):
+    """Deletes a deck layout configuration."""
+    success = asset_data_service.delete_deck_layout(db, deck_layout_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Deck layout with ID {deck_layout_id} not found or could not be deleted.")
+    return None
