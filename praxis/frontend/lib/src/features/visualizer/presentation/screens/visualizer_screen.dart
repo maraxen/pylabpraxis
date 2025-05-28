@@ -138,6 +138,8 @@ class _VisualizerScreenWidgetState extends State<VisualizerScreenWidget> {
                 ),
               ),
             ),
+            // TODO: Handle this case.
+            VisualizerState() => throw UnimplementedError(),
           };
         },
       ),

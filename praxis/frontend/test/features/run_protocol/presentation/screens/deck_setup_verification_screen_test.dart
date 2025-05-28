@@ -14,9 +14,19 @@ import '../../../../mocks/mock_services.mocks.dart';
 // Mock VisualizerBloc
 class MockVisualizerBloc extends Mock implements VisualizerBloc {}
 
-class FakeVisualizerState extends Fake implements VisualizerState {}
+class FakeVisualizerState extends Fake implements VisualizerState {
+  @override
+  String toString({DiagnosticLevel? minLevel}) {
+    return 'FakeVisualizerState';
+  }
+}
 
-class FakeVisualizerEvent extends Fake implements VisualizerEvent {}
+class FakeVisualizerEvent extends Fake implements VisualizerEvent {
+  @override
+  String toString({DiagnosticLevel? minLevel}) {
+    return 'FakeVisualizerEvent';
+  }
+}
 
 void main() {
   late MockVisualizerBloc mockVisualizerBloc;

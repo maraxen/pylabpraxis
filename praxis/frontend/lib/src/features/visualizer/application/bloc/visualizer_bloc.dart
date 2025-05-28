@@ -121,7 +121,7 @@ class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
 
 /// Events for VisualizerBloc
 @freezed
-sealed class VisualizerEvent with _$VisualizerEvent {
+abstract class VisualizerEvent with _$VisualizerEvent {
   const factory VisualizerEvent.loadDeckStateRequested(String workcellId) =
       VisualizerLoadDeckStateRequested;
   const factory VisualizerEvent.webSocketMessageReceived(dynamic message) =
@@ -133,7 +133,7 @@ sealed class VisualizerEvent with _$VisualizerEvent {
 
 /// States for VisualizerBloc
 @freezed
-sealed class VisualizerState with _$VisualizerState {
+abstract class VisualizerState with _$VisualizerState {
   const factory VisualizerState.initial() = VisualizerInitial;
   const factory VisualizerState.loadInProgress() = VisualizerLoadInProgress;
   const factory VisualizerState.loadSuccess(DeckLayout deckLayout) =

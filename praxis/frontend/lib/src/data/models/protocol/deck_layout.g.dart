@@ -15,6 +15,8 @@ _DeckLayout _$DeckLayoutFromJson(Map<String, dynamic> json) => _DeckLayout(
           .toList(),
   schemaVersion: json['schemaVersion'] as String?,
   robot: json['robot'] as Map<String, dynamic>?,
+  positions:
+      (json['positions'] as List<dynamic>?)?.map((e) => e as String).toList(),
 );
 
 Map<String, dynamic> _$DeckLayoutToJson(_DeckLayout instance) =>
@@ -24,6 +26,7 @@ Map<String, dynamic> _$DeckLayoutToJson(_DeckLayout instance) =>
       'items': instance.items,
       'schemaVersion': instance.schemaVersion,
       'robot': instance.robot,
+      'positions': instance.positions,
     };
 
 _DeckItem _$DeckItemFromJson(Map<String, dynamic> json) => _DeckItem(

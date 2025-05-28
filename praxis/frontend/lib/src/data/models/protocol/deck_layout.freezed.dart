@@ -21,7 +21,8 @@ mixin _$DeckLayout {
  String? get name;// List of labware items placed on the deck.
  List<DeckItem>? get items;// Optional: schema version for the deck layout definition.
  String? get schemaVersion;// Optional: metadata about the robot or deck type.
- Map<String, dynamic>? get robot;
+ Map<String, dynamic>? get robot;// e.g., { "model": "OT-2", "deckId": "ot2_standard" }
+ List<String>? get positions;
 /// Create a copy of DeckLayout
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -34,16 +35,16 @@ $DeckLayoutCopyWith<DeckLayout> get copyWith => _$DeckLayoutCopyWithImpl<DeckLay
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.robot, robot));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.robot, robot)&&const DeepCollectionEquality().equals(other.positions, positions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(items),schemaVersion,const DeepCollectionEquality().hash(robot));
+int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(items),schemaVersion,const DeepCollectionEquality().hash(robot),const DeepCollectionEquality().hash(positions));
 
 @override
 String toString() {
-  return 'DeckLayout(id: $id, name: $name, items: $items, schemaVersion: $schemaVersion, robot: $robot)';
+  return 'DeckLayout(id: $id, name: $name, items: $items, schemaVersion: $schemaVersion, robot: $robot, positions: $positions)';
 }
 
 
@@ -54,7 +55,7 @@ abstract mixin class $DeckLayoutCopyWith<$Res>  {
   factory $DeckLayoutCopyWith(DeckLayout value, $Res Function(DeckLayout) _then) = _$DeckLayoutCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? name, List<DeckItem>? items, String? schemaVersion, Map<String, dynamic>? robot
+ String? id, String? name, List<DeckItem>? items, String? schemaVersion, Map<String, dynamic>? robot, List<String>? positions
 });
 
 
@@ -71,14 +72,15 @@ class _$DeckLayoutCopyWithImpl<$Res>
 
 /// Create a copy of DeckLayout
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,Object? positions = freezed,}) {
   return _then(_self.copyWith(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<DeckItem>?,schemaVersion: freezed == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
 as String?,robot: freezed == robot ? _self.robot : robot // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
+as Map<String, dynamic>?,positions: freezed == positions ? _self.positions : positions // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 
@@ -89,7 +91,7 @@ as Map<String, dynamic>?,
 @JsonSerializable()
 
 class _DeckLayout implements DeckLayout {
-  const _DeckLayout({this.id, this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot}): _items = items,_robot = robot;
+  const _DeckLayout({this.id, this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot, final  List<String>? positions}): _items = items,_robot = robot,_positions = positions;
   factory _DeckLayout.fromJson(Map<String, dynamic> json) => _$DeckLayoutFromJson(json);
 
 // Unique identifier for this deck layout configuration.
@@ -120,6 +122,17 @@ class _DeckLayout implements DeckLayout {
   return EqualUnmodifiableMapView(value);
 }
 
+// e.g., { "model": "OT-2", "deckId": "ot2_standard" }
+ final  List<String>? _positions;
+// e.g., { "model": "OT-2", "deckId": "ot2_standard" }
+@override List<String>? get positions {
+  final value = _positions;
+  if (value == null) return null;
+  if (_positions is EqualUnmodifiableListView) return _positions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of DeckLayout
 /// with the given fields replaced by the non-null parameter values.
@@ -134,16 +147,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other._robot, _robot));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other._robot, _robot)&&const DeepCollectionEquality().equals(other._positions, _positions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_items),schemaVersion,const DeepCollectionEquality().hash(_robot));
+int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_items),schemaVersion,const DeepCollectionEquality().hash(_robot),const DeepCollectionEquality().hash(_positions));
 
 @override
 String toString() {
-  return 'DeckLayout(id: $id, name: $name, items: $items, schemaVersion: $schemaVersion, robot: $robot)';
+  return 'DeckLayout(id: $id, name: $name, items: $items, schemaVersion: $schemaVersion, robot: $robot, positions: $positions)';
 }
 
 
@@ -154,7 +167,7 @@ abstract mixin class _$DeckLayoutCopyWith<$Res> implements $DeckLayoutCopyWith<$
   factory _$DeckLayoutCopyWith(_DeckLayout value, $Res Function(_DeckLayout) _then) = __$DeckLayoutCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? name, List<DeckItem>? items, String? schemaVersion, Map<String, dynamic>? robot
+ String? id, String? name, List<DeckItem>? items, String? schemaVersion, Map<String, dynamic>? robot, List<String>? positions
 });
 
 
@@ -171,14 +184,15 @@ class __$DeckLayoutCopyWithImpl<$Res>
 
 /// Create a copy of DeckLayout
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,Object? positions = freezed,}) {
   return _then(_DeckLayout(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<DeckItem>?,schemaVersion: freezed == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
 as String?,robot: freezed == robot ? _self._robot : robot // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
+as Map<String, dynamic>?,positions: freezed == positions ? _self._positions : positions // ignore: cast_nullable_to_non_nullable
+as List<String>?,
   ));
 }
 

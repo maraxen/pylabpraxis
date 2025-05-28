@@ -278,7 +278,7 @@ class AssetManagementBloc
 
 /// Events for AssetManagementBloc
 @freezed
-sealed class AssetManagementEvent with _$AssetManagementEvent {
+abstract class AssetManagementEvent with _$AssetManagementEvent {
   const factory AssetManagementEvent.loadStarted() = AssetManagementLoadStarted;
   const factory AssetManagementEvent.addDeviceStarted(ManagedDeviceOrm device) =
       AddDeviceStarted;

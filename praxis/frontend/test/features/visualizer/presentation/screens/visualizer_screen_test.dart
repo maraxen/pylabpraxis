@@ -15,9 +15,19 @@ import '../../../../mocks/mock_services.mocks.dart'; // For MockWorkcellApiServi
 
 class MockVisualizerBlocExt extends Mock implements VisualizerBloc {}
 
-class FakeVisualizerStateExt extends Fake implements VisualizerState {}
+class FakeVisualizerStateExt extends Fake implements VisualizerState {
+  @override
+  String toString({DiagnosticLevel? minLevel}) {
+    return 'FakeVisualizerStateExt';
+  }
+}
 
-class FakeVisualizerEventExt extends Fake implements VisualizerEvent {}
+class FakeVisualizerEventExt extends Fake implements VisualizerEvent {
+  @override
+  String toString({DiagnosticLevel? minLevel}) {
+    return 'FakeVisualizerEventExt';
+  }
+}
 
 void main() {
   late MockVisualizerBlocExt mockVisualizerBloc;
