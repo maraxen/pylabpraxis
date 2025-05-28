@@ -166,15 +166,13 @@ abstract class RichFormState with _$RichFormState {
 
     // Process main parameters
     // Convert parameters map to a list of ParameterDefinition objects
-    final parametersList = details.parameterDefinitions;
+    final parametersList = details.parameterDefinitions.values.toList();
     processParameterList(parametersList, '');
 
-    // Process parameters by groups if any
-    final parameterGroups = details.derivedParameterGroups;
+    final List<ParameterGroup> parameterGroups = details.derivedParameterGroups;
     for (final group in parameterGroups) {
-      if (group.name != 'default') {
-        // Skip the default group as we handled those above
-        processParameterList(group.parameters, group.name);
+      if (group != 'default') {
+        processParameterList(group.parameters ?? [], group.name);
       }
     }
 
