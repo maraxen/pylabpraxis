@@ -1,9 +1,9 @@
-// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
 class DeckConfigurationScreen extends StatefulWidget {
   const DeckConfigurationScreen({super.key});

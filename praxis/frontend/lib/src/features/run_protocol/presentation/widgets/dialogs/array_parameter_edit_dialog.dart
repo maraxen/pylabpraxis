@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 // TODO: Import item editing dialogs if needed for complex item types
 // import 'basic_parameter_edit_dialog.dart';
 // import 'string_parameter_edit_screen.dart';

@@ -1,17 +1,3 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'dart:convert';
 
 class LabwareDefinitionCatalogOrm {
@@ -62,18 +48,20 @@ class LabwareDefinitionCatalogOrm {
       sizeZmm: (json['size_z_mm'] as num?)?.toDouble(),
       plrCategory: json['plr_category'] as String?,
       model: json['model'] as String?,
-      rotationJson: json['rotation_json'] != null
-          ? json['rotation_json'] as Map<String, dynamic>
-          : null,
+      rotationJson:
+          json['rotation_json'] != null
+              ? json['rotation_json'] as Map<String, dynamic>
+              : null,
       praxisLabwareTypeName: json['praxis_labware_type_name'] as String?,
       description: json['description'] as String?,
       isConsumable: json['is_consumable'] as bool?,
       nominalVolumeUl: (json['nominal_volume_ul'] as num?)?.toDouble(),
       material: json['material'] as String?,
       manufacturer: json['manufacturer'] as String?,
-      plrDefinitionDetailsJson: json['plr_definition_details_json'] != null
-          ? json['plr_definition_details_json'] as Map<String, dynamic>
-          : null,
+      plrDefinitionDetailsJson:
+          json['plr_definition_details_json'] != null
+              ? json['plr_definition_details_json'] as Map<String, dynamic>
+              : null,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
     );

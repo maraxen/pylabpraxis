@@ -1,5 +1,5 @@
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 
 class ValidationResult {
   final bool isValid;

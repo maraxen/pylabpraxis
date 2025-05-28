@@ -1,32 +1,19 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:praxis_data/praxis_data.dart';
-import 'package:praxis/src/data/services/asset_api_service.dart';
+import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
+import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
+import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
 
 part 'asset_management_bloc.freezed.dart';
-part 'asset_management_event.dart';
-part 'asset_management_state.dart';
 
 class AssetManagementBloc
     extends Bloc<AssetManagementEvent, AssetManagementState> {
   final AssetApiService _assetApiService;
 
   AssetManagementBloc(this._assetApiService)
-      : super(const AssetManagementInitial()) {
+    : super(const AssetManagementInitial()) {
     on<AssetManagementLoadStarted>(_onLoadStarted);
     on<AddDeviceStarted>(_onAddDeviceStarted);
     on<UpdateDeviceStarted>(_onUpdateDeviceStarted);
@@ -53,16 +40,17 @@ class AssetManagementBloc
     try {
       // TODO(user): Replace with actual API calls when available
       final devices = await _assetApiService.getDevices();
-      final labwareDefinitions =
-          await _assetApiService.getLabwareDefinitions();
+      final labwareDefinitions = await _assetApiService.getLabwareDefinitions();
       final labwareInstances = await _assetApiService.getLabwareInstances();
       final deckLayouts = await _assetApiService.getDeckLayouts();
-      emit(AssetManagementLoadSuccess(
-        devices: devices,
-        labwareDefinitions: labwareDefinitions,
-        labwareInstances: labwareInstances,
-        deckLayouts: deckLayouts,
-      ));
+      emit(
+        AssetManagementLoadSuccess(
+          devices: devices,
+          labwareDefinitions: labwareDefinitions,
+          labwareInstances: labwareInstances,
+          deckLayouts: deckLayouts,
+        ),
+      );
     } catch (e) {
       emit(AssetManagementLoadFailure(e.toString()));
     }
@@ -158,8 +146,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService
-          .createLabwareDefinition(event.labwareDefinition);
+      await _assetApiService.createLabwareDefinition(event.labwareDefinition);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -174,7 +161,9 @@ class AssetManagementBloc
     emit(const AssetManagementUpdateInProgress());
     try {
       await _assetApiService.updateLabwareDefinition(
-          event.labwareDefinitionId, event.labwareDefinition);
+        event.labwareDefinitionId,
+        event.labwareDefinition,
+      );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -188,8 +177,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService
-          .deleteLabwareDefinition(event.labwareDefinitionId);
+      await _assetApiService.deleteLabwareDefinition(event.labwareDefinitionId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -218,7 +206,9 @@ class AssetManagementBloc
     emit(const AssetManagementUpdateInProgress());
     try {
       await _assetApiService.updateLabwareInstance(
-          event.instanceId, event.labwareInstance);
+        event.instanceId,
+        event.labwareInstance,
+      );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -261,7 +251,9 @@ class AssetManagementBloc
     emit(const AssetManagementUpdateInProgress());
     try {
       await _assetApiService.updateDeckLayout(
-          event.deckLayoutId, event.deckLayout);
+        event.deckLayoutId,
+        event.deckLayout,
+      );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -288,10 +280,12 @@ class AssetManagementBloc
 @freezed
 sealed class AssetManagementEvent with _$AssetManagementEvent {
   const factory AssetManagementEvent.loadStarted() = AssetManagementLoadStarted;
-  const factory AssetManagementEvent.addDeviceStarted(
-      ManagedDeviceOrm device) = AddDeviceStarted;
+  const factory AssetManagementEvent.addDeviceStarted(ManagedDeviceOrm device) =
+      AddDeviceStarted;
   const factory AssetManagementEvent.updateDeviceStarted(
-      String deviceId, ManagedDeviceOrm device) = UpdateDeviceStarted;
+    String deviceId,
+    ManagedDeviceOrm device,
+  ) = UpdateDeviceStarted;
   const factory AssetManagementEvent.deleteDeviceStarted(String deviceId) =
       DeleteDeviceStarted;
   const factory AssetManagementEvent.connectDeviceStarted(String deviceId) =
@@ -301,28 +295,35 @@ sealed class AssetManagementEvent with _$AssetManagementEvent {
   const factory AssetManagementEvent.disconnectDeviceStarted(String deviceId) =
       DisconnectDeviceStarted;
   const factory AssetManagementEvent.addLabwareDefinitionStarted(
-          LabwareDefinitionCatalogOrm labwareDefinition) =
-      AddLabwareDefinitionStarted;
+    LabwareDefinitionCatalogOrm labwareDefinition,
+  ) = AddLabwareDefinitionStarted;
   const factory AssetManagementEvent.updateLabwareDefinitionStarted(
-          String labwareDefinitionId,
-          LabwareDefinitionCatalogOrm labwareDefinition) =
-      UpdateLabwareDefinitionStarted;
+    String labwareDefinitionId,
+    LabwareDefinitionCatalogOrm labwareDefinition,
+  ) = UpdateLabwareDefinitionStarted;
   const factory AssetManagementEvent.deleteLabwareDefinitionStarted(
-      String labwareDefinitionId) = DeleteLabwareDefinitionStarted;
+    String labwareDefinitionId,
+  ) = DeleteLabwareDefinitionStarted;
   const factory AssetManagementEvent.addLabwareInstanceStarted(
-      LabwareInstanceOrm labwareInstance) = AddLabwareInstanceStarted;
+    LabwareInstanceOrm labwareInstance,
+  ) = AddLabwareInstanceStarted;
   const factory AssetManagementEvent.updateLabwareInstanceStarted(
-          String instanceId, LabwareInstanceOrm labwareInstance) =
-      UpdateLabwareInstanceStarted;
+    String instanceId,
+    LabwareInstanceOrm labwareInstance,
+  ) = UpdateLabwareInstanceStarted;
   const factory AssetManagementEvent.deleteLabwareInstanceStarted(
-      String instanceId) = DeleteLabwareInstanceStarted;
+    String instanceId,
+  ) = DeleteLabwareInstanceStarted;
   const factory AssetManagementEvent.addDeckLayoutStarted(
-      DeckLayoutOrm deckLayout) = AddDeckLayoutStarted;
+    DeckLayoutOrm deckLayout,
+  ) = AddDeckLayoutStarted;
   const factory AssetManagementEvent.updateDeckLayoutStarted(
-          String deckLayoutId, DeckLayoutOrm deckLayout) =
-      UpdateDeckLayoutStarted;
+    String deckLayoutId,
+    DeckLayoutOrm deckLayout,
+  ) = UpdateDeckLayoutStarted;
   const factory AssetManagementEvent.deleteDeckLayoutStarted(
-      String deckLayoutId) = DeleteDeckLayoutStarted;
+    String deckLayoutId,
+  ) = DeleteDeckLayoutStarted;
 }
 
 /// States for AssetManagementBloc

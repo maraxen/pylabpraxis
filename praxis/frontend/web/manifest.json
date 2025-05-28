@@ -1,6 +1,6 @@
 {
-    "name": "pylabpraxis_flutter",
-    "short_name": "pylabpraxis_flutter",
+    "name": "praxis_lab_management",
+    "short_name": "praxis_lab_management",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

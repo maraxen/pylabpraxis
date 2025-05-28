@@ -124,18 +124,16 @@ Future<void> setupServiceLocator() async {
   developer.log('Service Locator Initialized', name: 'main');
 }
 
-Future<void> main() async { // Changed to Future<void> and async
+Future<void> main() async {
+  // Changed to Future<void> and async
   usePathUrlStrategy(); // Use path URL strategy for web
 
-  // Ensure Flutter bindings are initialized.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Setup HydratedBloc storage. This needs to be done before runApp.
-  // It should also be done before any BLoCs that use HydratedBloc are created.
   HydratedBloc.storage = await HydratedStorage.build(
     storageDirectory: kIsWeb
-        ? HydratedStorage.webStorageDirectory // Special directory for web
-        : await getApplicationDocumentsDirectory(),
+        ? HydratedStorageDirectory.web
+        : HydratedStorageDirectory((await getTemporaryDirectory()).path),
   );
 
   Bloc.observer = AppBlocObserver(); // Setup BLoC observer
@@ -180,14 +178,16 @@ Future<void> main() async { // Changed to Future<void> and async
           child: MultiBlocProvider(
             providers: [
               BlocProvider<AuthBloc>(
-                create: (context) =>
-                    AuthBloc(authRepository: context.read<AuthRepository>())
-                      ..add(AuthAppStarted()),
+                create:
+                    (context) =>
+                        AuthBloc(authRepository: context.read<AuthRepository>())
+                          ..add(AuthAppStarted()),
               ),
               BlocProvider<ProtocolsDiscoveryBloc>(
-                create: (context) => ProtocolsDiscoveryBloc(
-                  protocolRepository: context.read<ProtocolRepository>(),
-                )..add(FetchDiscoveredProtocols()),
+                create:
+                    (context) => ProtocolsDiscoveryBloc(
+                      protocolRepository: context.read<ProtocolRepository>(),
+                    )..add(FetchDiscoveredProtocols()),
               ),
               // ProtocolWorkflowBloc will be provided where it's needed,
               // typically at the entry point of the "Run Protocol" feature.

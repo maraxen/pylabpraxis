@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_start_bloc/protocol_start_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_start_bloc/protocol_start_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
 class StartProtocolScreen extends StatelessWidget {
   const StartProtocolScreen({super.key});

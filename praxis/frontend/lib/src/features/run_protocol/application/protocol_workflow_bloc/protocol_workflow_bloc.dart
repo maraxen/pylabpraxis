@@ -3,27 +3,29 @@ import 'package:flutter_bloc/flutter_bloc.dart'; // Will be replaced by hydrated
 import 'package:hydrated_bloc/hydrated_bloc.dart'; // Added for HydratedBloc
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_status_response.dart';
-import 'package:pylabpraxis_flutter/src/data/repositories/protocol_repository.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/workflow_step.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_status_response.dart';
+import 'package:praxis_lab_management/src/data/repositories/protocol_repository.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/workflow_step.dart';
 
 // Child BLoCs (assuming they are not hydrated, or managed separately)
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_assets_bloc/protocol_assets_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_review_bloc/protocol_review_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_start_bloc/protocol_start_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/review_data_bundle.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_assets_bloc/protocol_assets_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_review_bloc/protocol_review_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_start_bloc/protocol_start_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/review_data_bundle.dart';
 
 part 'protocol_workflow_event.dart';
 part 'protocol_workflow_state.dart';
 part 'protocol_workflow_bloc.freezed.dart';
+part 'protocol_workflow_bloc.g.dart';
 
 class ProtocolWorkflowBloc
-    extends HydratedBloc<ProtocolWorkflowEvent, ProtocolWorkflowState> { // Changed to HydratedBloc
+    extends HydratedBloc<ProtocolWorkflowEvent, ProtocolWorkflowState> {
+  // Changed to HydratedBloc
   final ProtocolRepository _protocolRepository;
 
   // Child BLoCs - These are not persisted as part of ProtocolWorkflowBloc's state.
@@ -52,7 +54,8 @@ class ProtocolWorkflowBloc
        _deckConfigurationBloc = deckConfigurationBloc,
        _protocolReviewBloc = protocolReviewBloc,
        _protocolStartBloc = protocolStartBloc,
-       super(ProtocolWorkflowState.initial()) { // Initial state setup
+       super(ProtocolWorkflowState.initial()) {
+    // Initial state setup
     on<InitializeWorkflow>(_onInitializeWorkflow);
     on<ProtocolSelectedInWorkflow>(_onProtocolSelectedInWorkflow);
     on<_ProtocolDetailsFetched>(_onProtocolDetailsFetched);
@@ -125,73 +128,97 @@ class ProtocolWorkflowBloc
     // If the current state is truly the initial one (not hydrated from a previous session),
     // then emit initial state and fetch discovery.
     if (state == ProtocolWorkflowState.initial()) {
-        emit(ProtocolWorkflowState.initial()); // Ensure clean slate if truly initial
-        _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
+      emit(
+        ProtocolWorkflowState.initial(),
+      ); // Ensure clean slate if truly initial
+      _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
     }
-    
+
     // Re-initialize child BLoCs based on the current (potentially hydrated) state.
     // This ensures child BLoCs are correctly set up after hydration.
     if (state.selectedProtocolDetails != null) {
-        _protocolParametersBloc.add(
-            LoadProtocolParameters(
-                protocolDetails: state.selectedProtocolDetails!,
-                existingConfiguredParameters: state.configuredParameters,
-            ),
-        );
-        _protocolAssetsBloc.add(
-            LoadRequiredAssets(
-                assetsFromProtocolDetails: state.selectedProtocolDetails!.assets!,
-                existingAssignments: state.assignedAssets,
-            ),
-        );
+      _protocolParametersBloc.add(
+        LoadProtocolParameters(
+          protocolDetails: state.selectedProtocolDetails!,
+          existingConfiguredParameters: state.configuredParameters,
+        ),
+      );
+      _protocolAssetsBloc.add(
+        LoadRequiredAssets(
+          assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
+          existingAssignments: state.assignedAssets,
+        ),
+      );
     } else {
-        // Default initialization if no protocol details are loaded (e.g. fresh start)
-         _protocolParametersBloc.add(
-            const LoadProtocolParameters(
-                protocolDetails: ProtocolDetails( // Dummy details
-                  name: '', path: '', description: '', parameters: {}, assets: [],
-                  hasAssets: false, hasParameters: false, requiresConfig: true,
-                ),
-            ),
-        );
-        _protocolAssetsBloc.add(
-            const LoadRequiredAssets(assetsFromProtocolDetails: []),
-        );
+      // Default initialization if no protocol details are loaded (e.g. fresh start)
+      _protocolParametersBloc.add(
+        const LoadProtocolParameters(
+          protocolDetails: ProtocolDetails(
+            // Dummy details
+            name: '',
+            path: '',
+            description: '',
+            parameters: {},
+            assets: [],
+            hasAssets: false,
+            hasParameters: false,
+            requiresConfig: true,
+          ),
+        ),
+      );
+      _protocolAssetsBloc.add(
+        const LoadRequiredAssets(assetsFromProtocolDetails: []),
+      );
     }
 
-    _deckConfigurationBloc.add(InitializeDeckConfiguration(
+    _deckConfigurationBloc.add(
+      InitializeDeckConfiguration(
         initialSelectedLayoutName: state.deckLayoutName,
         // uploadedDeckFile is not persisted, so it will be null here on hydration
-        initialPickedFile: state.uploadedDeckFile, 
-    ));
-    if (_deckConfigurationBloc.state is DeckConfigurationInitial || state.deckLayoutName == null) {
-        _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
-    }
-    
-    if (state.currentStep == WorkflowStep.reviewAndPrepare || state.preparedBackendConfig != null) {
-        final reviewData = ReviewDataBundle(
-            selectedProtocolInfo: state.selectedProtocolInfo ?? const ProtocolInfo(name: "Unknown", path: "", description: "", version: ""), // Provide default if null
-            configuredParameters: state.configuredParameters ?? {},
-            assignedAssets: state.assignedAssets ?? {},
-            deckLayoutName: state.deckLayoutName,
-            uploadedDeckFile: null, // Not persisted
-        );
-        _protocolReviewBloc.add(LoadReviewData(reviewData: reviewData));
-    } else {
-        _protocolReviewBloc.add(const ResetReview());
+        initialPickedFile: state.uploadedDeckFile,
+      ),
+    );
+    if (_deckConfigurationBloc.state is DeckConfigurationInitial ||
+        state.deckLayoutName == null) {
+      _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
     }
 
-    if (state.currentStep == WorkflowStep.startProtocol || state.protocolStartResponse != null) {
-        if (state.preparedBackendConfig != null) {
-            _protocolStartBloc.add(InitializeStartScreen(preparedConfig: state.preparedBackendConfig!));
-        }
+    if (state.currentStep == WorkflowStep.reviewAndPrepare ||
+        state.preparedBackendConfig != null) {
+      final reviewData = ReviewDataBundle(
+        selectedProtocolInfo:
+            state.selectedProtocolInfo ??
+            const ProtocolInfo(
+              name: "Unknown",
+              path: "",
+              description: "",
+              version: "",
+            ), // Provide default if null
+        configuredParameters: state.configuredParameters ?? {},
+        assignedAssets: state.assignedAssets ?? {},
+        deckLayoutName: state.deckLayoutName,
+        uploadedDeckFile: null, // Not persisted
+      );
+      _protocolReviewBloc.add(LoadReviewData(reviewData: reviewData));
     } else {
-        _protocolStartBloc.add(const ResetStart());
+      _protocolReviewBloc.add(const ResetReview());
     }
-    
+
+    if (state.currentStep == WorkflowStep.startProtocol ||
+        state.protocolStartResponse != null) {
+      if (state.preparedBackendConfig != null) {
+        _protocolStartBloc.add(
+          InitializeStartScreen(preparedConfig: state.preparedBackendConfig!),
+        );
+      }
+    } else {
+      _protocolStartBloc.add(const ResetStart());
+    }
+
     // If after hydration, we are on a step that requires discovery, trigger it.
-    if (state.currentStep == WorkflowStep.protocolSelection && state.selectedProtocolInfo == null) {
-        _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
+    if (state.currentStep == WorkflowStep.protocolSelection &&
+        state.selectedProtocolInfo == null) {
+      _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
     }
   }
 
@@ -211,7 +238,7 @@ class ProtocolWorkflowBloc
         selectedProtocolInfo: event.selectedProtocol,
         isLoading: true,
         error: null,
-        isCurrentStepDataValid: true, 
+        isCurrentStepDataValid: true,
         parametersCompletionPercent: 0.0,
         // Reset downstream data when a new protocol is selected
         selectedProtocolDetails: null,
@@ -248,14 +275,16 @@ class ProtocolWorkflowBloc
       LoadProtocolParameters(
         protocolDetails: event.protocolDetails,
         existingConfiguredParameters:
-            state.navigationReturnTarget == WorkflowStep.reviewAndPrepare && state.currentStep != WorkflowStep.protocolSelection
-                ? state.configuredParameters 
-                : null, 
+            state.navigationReturnTarget == WorkflowStep.reviewAndPrepare &&
+                    state.currentStep != WorkflowStep.protocolSelection
+                ? state.configuredParameters
+                : null,
       ),
     );
 
     if (state.navigationReturnTarget == WorkflowStep.reviewAndPrepare &&
-        state.currentStep == WorkflowStep.protocolSelection) { // Should be currentStep == parameterConfiguration if editing params
+        state.currentStep == WorkflowStep.protocolSelection) {
+      // Should be currentStep == parameterConfiguration if editing params
       add(GoToStep(targetStep: WorkflowStep.reviewAndPrepare));
     } else {
       add(const ProceedToNextStep());
@@ -283,7 +312,7 @@ class ProtocolWorkflowBloc
     emit(
       state.copyWith(
         configuredParameters: event.parameters,
-        navigationReturnTarget: null, 
+        navigationReturnTarget: null,
       ),
     );
 
@@ -294,7 +323,7 @@ class ProtocolWorkflowBloc
         _protocolAssetsBloc.add(
           LoadRequiredAssets(
             assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
-            existingAssignments: state.assignedAssets, 
+            existingAssignments: state.assignedAssets,
           ),
         );
       }
@@ -351,13 +380,12 @@ class ProtocolWorkflowBloc
         navigationReturnTarget: null,
       ),
     );
-    
+
     if (event.uploadedFile != null) {
       // If a file was uploaded, this bloc's state.uploadedDeckFile is ignored for persistence.
       // The DeckConfigurationBloc handles the actual upload.
       // We might store the *name* of the uploaded file if that's useful and comes from DeckConfigurationBloc.
     }
-
 
     if (returnTarget == WorkflowStep.reviewAndPrepare) {
       add(GoToStep(targetStep: WorkflowStep.reviewAndPrepare));
@@ -378,9 +406,7 @@ class ProtocolWorkflowBloc
         uploadedDeckFile: null, // uploadedDeckFile is not persisted
       );
       _protocolReviewBloc.add(LoadReviewData(reviewData: reviewData));
-      emit(
-        state.copyWith(isCurrentStepDataValid: true),
-      ); 
+      emit(state.copyWith(isCurrentStepDataValid: true));
     } else {
       // emit(state.copyWith(error: "Cannot proceed to review: Missing data.", isCurrentStepDataValid: false));
     }
@@ -393,7 +419,7 @@ class ProtocolWorkflowBloc
     emit(
       state.copyWith(
         preparedBackendConfig: event.preparedConfig,
-        isCurrentStepDataValid: true, 
+        isCurrentStepDataValid: true,
       ),
     );
     _protocolStartBloc.add(
@@ -411,7 +437,7 @@ class ProtocolWorkflowBloc
         protocolStartResponse: event.response,
         currentStep: WorkflowStep.workflowComplete,
         isCurrentStepDataValid: true,
-        navigationReturnTarget: null, 
+        navigationReturnTarget: null,
       ),
     );
   }
@@ -422,8 +448,9 @@ class ProtocolWorkflowBloc
   ) {
     if (!state.isCurrentStepDataValid &&
         state.currentStep != WorkflowStep.protocolSelection &&
-        state.navigationReturnTarget == null // Allow proceeding if returning from edit to review
-        ) {
+        state.navigationReturnTarget ==
+            null // Allow proceeding if returning from edit to review
+            ) {
       return;
     }
 
@@ -474,8 +501,8 @@ class ProtocolWorkflowBloc
         break;
       case WorkflowStep.deckConfiguration:
         nextStep = WorkflowStep.reviewAndPrepare;
-        _loadReviewDataAndProceed(emit); 
-        nextStepInitialValidity = state.isCurrentStepDataValid; 
+        _loadReviewDataAndProceed(emit);
+        nextStepInitialValidity = state.isCurrentStepDataValid;
         break;
       case WorkflowStep.reviewAndPrepare:
         if (state.preparedBackendConfig != null) {
@@ -499,7 +526,7 @@ class ProtocolWorkflowBloc
         isCurrentStepDataValid: nextStepInitialValidity,
         isLoading: false,
         error: null,
-        navigationReturnTarget: null, 
+        navigationReturnTarget: null,
       ),
     );
   }
@@ -509,16 +536,16 @@ class ProtocolWorkflowBloc
 
     // Determine if we are navigating away from review to edit something
     WorkflowStep? newNavigationReturnTarget = returnTargetFromOriginalState;
-    if (event.fromReviewScreen && state.currentStep == WorkflowStep.reviewAndPrepare) {
-        newNavigationReturnTarget = WorkflowStep.reviewAndPrepare;
+    if (event.fromReviewScreen &&
+        state.currentStep == WorkflowStep.reviewAndPrepare) {
+      newNavigationReturnTarget = WorkflowStep.reviewAndPrepare;
     } else if (state.currentStep == event.targetStep) {
-        // If already on the target step, don't set a new return target unless one was already set for multi-step back.
-        // Generally, clicking "edit" on the current step's section in review implies returning to review.
+      // If already on the target step, don't set a new return target unless one was already set for multi-step back.
+      // Generally, clicking "edit" on the current step's section in review implies returning to review.
     } else {
-        // Otherwise, clear return target if we are not explicitly setting one for an edit flow.
-        newNavigationReturnTarget = null;
+      // Otherwise, clear return target if we are not explicitly setting one for an edit flow.
+      newNavigationReturnTarget = null;
     }
-
 
     bool targetStepValidity = false;
 
@@ -535,7 +562,8 @@ class ProtocolWorkflowBloc
               existingConfiguredParameters: state.configuredParameters,
             ),
           );
-        } else { // Should not happen if flow is correct
+        } else {
+          // Should not happen if flow is correct
           add(const GoToStep(targetStep: WorkflowStep.protocolSelection));
           return;
         }
@@ -549,9 +577,10 @@ class ProtocolWorkflowBloc
             ),
           );
           final assetState = _protocolAssetsBloc.state;
-          targetStepValidity = assetState is ProtocolAssetsLoaded && assetState.isValid;
+          targetStepValidity =
+              assetState is ProtocolAssetsLoaded && assetState.isValid;
         } else {
-          targetStepValidity = true; 
+          targetStepValidity = true;
         }
         break;
       case WorkflowStep.deckConfiguration:
@@ -563,11 +592,14 @@ class ProtocolWorkflowBloc
         );
         if (_deckConfigurationBloc.state is DeckConfigurationInitial ||
             (_deckConfigurationBloc.state is DeckConfigurationLoaded &&
-                (_deckConfigurationBloc.state as DeckConfigurationLoaded).availableLayouts.isEmpty)) {
+                (_deckConfigurationBloc.state as DeckConfigurationLoaded)
+                    .availableLayouts
+                    .isEmpty)) {
           _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
         }
         final deckState = _deckConfigurationBloc.state;
-        targetStepValidity = deckState is DeckConfigurationLoaded && deckState.isSelectionValid;
+        targetStepValidity =
+            deckState is DeckConfigurationLoaded && deckState.isSelectionValid;
         break;
       case WorkflowStep.reviewAndPrepare:
         if (state.selectedProtocolInfo != null &&
@@ -582,20 +614,24 @@ class ProtocolWorkflowBloc
           );
           _protocolReviewBloc.add(LoadReviewData(reviewData: reviewData));
           targetStepValidity = true;
-          newNavigationReturnTarget = null; // Reached review, clear return target
+          newNavigationReturnTarget =
+              null; // Reached review, clear return target
         } else {
-          add(const GoToStep(targetStep: WorkflowStep.deckConfiguration)); // Go to prev valid step
+          add(
+            const GoToStep(targetStep: WorkflowStep.deckConfiguration),
+          ); // Go to prev valid step
           return;
         }
         break;
       default:
         break;
     }
-    
+
     emit(
       state.copyWith(
         currentStep: event.targetStep,
-        isCurrentStepDataValid: targetStepValidity, // May be updated by child bloc listeners
+        isCurrentStepDataValid:
+            targetStepValidity, // May be updated by child bloc listeners
         navigationReturnTarget: newNavigationReturnTarget,
         error: null,
       ),
@@ -608,15 +644,22 @@ class ProtocolWorkflowBloc
   ) {
     // This should truly reset the persisted state as well.
     // HydratedBloc will call toJson with the new initial state.
-    emit(ProtocolWorkflowState.initial()); 
-    
+    emit(ProtocolWorkflowState.initial());
+
     // Re-initialize child BLoCs to their initial states.
     _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
     _protocolParametersBloc.add(
-       LoadProtocolParameters(
-        protocolDetails: ProtocolDetails( // Dummy details
-            name: '', path: '', description: '', parameters: {}, assets: [],
-            hasAssets: false, hasParameters: false, requiresConfig: true,
+      LoadProtocolParameters(
+        protocolDetails: ProtocolDetails(
+          // Dummy details
+          name: '',
+          path: '',
+          description: '',
+          parameters: {},
+          assets: [],
+          hasAssets: false,
+          hasParameters: false,
+          requiresConfig: true,
         ),
       ),
     );
@@ -624,7 +667,9 @@ class ProtocolWorkflowBloc
       const LoadRequiredAssets(assetsFromProtocolDetails: []),
     );
     _deckConfigurationBloc.add(const InitializeDeckConfiguration());
-    _deckConfigurationBloc.add(const FetchAvailableDeckLayouts()); // Also fetch layouts
+    _deckConfigurationBloc.add(
+      const FetchAvailableDeckLayouts(),
+    ); // Also fetch layouts
     _protocolReviewBloc.add(const ResetReview());
     _protocolStartBloc.add(const ResetStart());
   }

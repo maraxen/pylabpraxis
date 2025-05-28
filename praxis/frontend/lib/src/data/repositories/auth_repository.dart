@@ -4,8 +4,8 @@
 // implementations that will interact with authentication services (like AuthService)
 // to manage user sessions, tokens, and profile data.
 
-import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
-import 'package:pylabpraxis_flutter/src/data/services/auth_service.dart'; // Import AuthService
+import 'package:praxis_lab_management/src/data/models/user/user_profile.dart';
+import 'package:praxis_lab_management/src/data/services/auth_service.dart'; // Import AuthService
 
 /// Abstract interface for authentication repositories.
 ///

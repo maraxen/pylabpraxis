@@ -1,17 +1,3 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'dart:convert';
 
 // Corresponds to LabwareInventoryReagentItem in backend
@@ -24,9 +10,12 @@ class LabwareInventoryReagentItem {
   final String? catalogNumber;
   final String? dateReceived;
   final String? dateOpened;
-  final Map<String, dynamic>? concentration; // e.g., {"value": 10.0, "unit": "mM"}
-  final Map<String, dynamic> initialQuantity; // e.g., {"value": 50.0, "unit": "mL"}
-  final Map<String, dynamic> currentQuantity; // e.g., {"value": 45.5, "unit": "mL"}
+  final Map<String, dynamic>?
+  concentration; // e.g., {"value": 10.0, "unit": "mM"}
+  final Map<String, dynamic>
+  initialQuantity; // e.g., {"value": 50.0, "unit": "mL"}
+  final Map<String, dynamic>
+  currentQuantity; // e.g., {"value": 45.5, "unit": "mL"}
   final bool? quantityUnitIsVolume;
   final Map<String, dynamic>? customFields;
 
@@ -102,9 +91,10 @@ class LabwareInventoryItemCount {
       itemType: json['item_type'] as String?,
       initialMaxItems: json['initial_max_items'] as int?,
       currentAvailableItems: json['current_available_items'] as int?,
-      positionsUsed: (json['positions_used'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
+      positionsUsed:
+          (json['positions_used'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList(),
     );
   }
 
@@ -123,7 +113,8 @@ class LabwareInventoryData {
   final String? praxisInventorySchemaVersion;
   final List<LabwareInventoryReagentItem>? reagents;
   final LabwareInventoryItemCount? itemCount;
-  final String? consumableState; // "new", "used", "partially_used", "empty", "contaminated"
+  final String?
+  consumableState; // "new", "used", "partially_used", "empty", "contaminated"
   final String? lastUpdatedBy; // User ID or name
   final String? inventoryNotes;
   final String? lastUpdatedAt; // DateTime as String, set by server
@@ -140,13 +131,22 @@ class LabwareInventoryData {
 
   factory LabwareInventoryData.fromJson(Map<String, dynamic> json) {
     return LabwareInventoryData(
-      praxisInventorySchemaVersion: json['praxis_inventory_schema_version'] as String?,
-      reagents: (json['reagents'] as List<dynamic>?)
-          ?.map((e) => LabwareInventoryReagentItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      itemCount: json['item_count'] != null
-          ? LabwareInventoryItemCount.fromJson(json['item_count'] as Map<String, dynamic>)
-          : null,
+      praxisInventorySchemaVersion:
+          json['praxis_inventory_schema_version'] as String?,
+      reagents:
+          (json['reagents'] as List<dynamic>?)
+              ?.map(
+                (e) => LabwareInventoryReagentItem.fromJson(
+                  e as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
+      itemCount:
+          json['item_count'] != null
+              ? LabwareInventoryItemCount.fromJson(
+                json['item_count'] as Map<String, dynamic>,
+              )
+              : null,
       consumableState: json['consumable_state'] as String?,
       lastUpdatedBy: json['last_updated_by'] as String?,
       inventoryNotes: json['inventory_notes'] as String?,
@@ -194,7 +194,6 @@ class LabwareInstanceOrm {
   // If not needed, it can be removed.
   final String? workspaceId;
 
-
   LabwareInstanceOrm({
     this.id,
     required this.userAssignedName,
@@ -227,21 +226,28 @@ class LabwareInstanceOrm {
       statusDetails: json['status_details'] as String?,
       currentDeckSlotName: json['current_deck_slot_name'] as String?,
       locationDeviceId: json['location_device_id'] as int?,
-      physicalLocationDescription: json['physical_location_description'] as String?,
+      physicalLocationDescription:
+          json['physical_location_description'] as String?,
       // properties_json from backend ORM maps to inventoryData here
-      inventoryData: json['properties_json'] != null
-          ? LabwareInventoryData.fromJson(json['properties_json'] as Map<String, dynamic>)
-          : ( // If properties_json is not present, check if inventory fields are top-level (e.g. from inventory specific endpoints)
-             json.containsKey('praxis_inventory_schema_version') ||
-             json.containsKey('reagents') ||
-             json.containsKey('item_count')
-            ) ? LabwareInventoryData.fromJson(json) // Assume flat structure from inventory endpoint
-            : null,
+      inventoryData:
+          json['properties_json'] != null
+              ? LabwareInventoryData.fromJson(
+                json['properties_json'] as Map<String, dynamic>,
+              )
+              : ( // If properties_json is not present, check if inventory fields are top-level (e.g. from inventory specific endpoints)
+              json.containsKey('praxis_inventory_schema_version') ||
+                  json.containsKey('reagents') ||
+                  json.containsKey('item_count'))
+              ? LabwareInventoryData.fromJson(
+                json,
+              ) // Assume flat structure from inventory endpoint
+              : null,
       isPermanentFixture: json['is_permanent_fixture'] as bool?,
       currentProtocolRunGuid: json['current_protocol_run_guid'] as String?,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
-      workspaceId: json['workspaceId'] as String? ?? json['workspace_id'] as String?,
+      workspaceId:
+          json['workspaceId'] as String? ?? json['workspace_id'] as String?,
     );
   }
 

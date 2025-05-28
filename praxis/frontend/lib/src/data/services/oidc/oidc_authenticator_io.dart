@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:openid_client/openid_client.dart' as oidc;
 import 'package:openid_client/openid_client_io.dart' as io_authenticator;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
+import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 import 'oidc_authenticator_wrapper.dart';
 
 class OidcAuthenticatorIo implements OidcAuthenticatorWrapper {

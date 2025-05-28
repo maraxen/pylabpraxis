@@ -945,18 +945,20 @@ as double,
 
 }
 
+
 /// @nodoc
 mixin _$ProtocolWorkflowState {
 
- WorkflowStep get currentStep; ProtocolInfo? get selectedProtocolInfo; ProtocolDetails? get selectedProtocolDetails; Map<String, dynamic>? get configuredParameters; Map<String, String>? get assignedAssets; String? get deckLayoutName; PlatformFile? get uploadedDeckFile; Map<String, dynamic>? get preparedBackendConfig; ProtocolStatusResponse? get protocolStartResponse; bool get isLoading; String? get error; bool get isCurrentStepDataValid; double get parametersCompletionPercent;/// If navigating from ReviewScreen to an edit step, this stores
-/// `WorkflowStep.reviewAndPrepare` to indicate where to return after editing.
- WorkflowStep? get navigationReturnTarget;
+ WorkflowStep get currentStep; ProtocolInfo? get selectedProtocolInfo; ProtocolDetails? get selectedProtocolDetails; Map<String, dynamic>? get configuredParameters; Map<String, String>? get assignedAssets; String? get deckLayoutName;@JsonKey(ignore: true) PlatformFile? get uploadedDeckFile;// Excluded from serialization
+ Map<String, dynamic>? get preparedBackendConfig; ProtocolStatusResponse? get protocolStartResponse; bool get isLoading; String? get error; bool get isCurrentStepDataValid; double get parametersCompletionPercent; WorkflowStep? get navigationReturnTarget;
 /// Create a copy of ProtocolWorkflowState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ProtocolWorkflowStateCopyWith<ProtocolWorkflowState> get copyWith => _$ProtocolWorkflowStateCopyWithImpl<ProtocolWorkflowState>(this as ProtocolWorkflowState, _$identity);
 
+  /// Serializes this ProtocolWorkflowState to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -964,7 +966,7 @@ bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other.configuredParameters, configuredParameters)&&const DeepCollectionEquality().equals(other.assignedAssets, assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other.preparedBackendConfig, preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(configuredParameters),const DeepCollectionEquality().hash(assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget);
 
@@ -981,7 +983,7 @@ abstract mixin class $ProtocolWorkflowStateCopyWith<$Res>  {
   factory $ProtocolWorkflowStateCopyWith(ProtocolWorkflowState value, $Res Function(ProtocolWorkflowState) _then) = _$ProtocolWorkflowStateCopyWithImpl;
 @useResult
 $Res call({
- WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName, PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
+ WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(ignore: true) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
 });
 
 
@@ -1058,11 +1060,11 @@ $ProtocolStatusResponseCopyWith<$Res>? get protocolStartResponse {
 
 
 /// @nodoc
-
+@JsonSerializable()
 
 class _ProtocolWorkflowState implements ProtocolWorkflowState {
-  const _ProtocolWorkflowState({required this.currentStep, this.selectedProtocolInfo, this.selectedProtocolDetails, final  Map<String, dynamic>? configuredParameters, final  Map<String, String>? assignedAssets, this.deckLayoutName, this.uploadedDeckFile, final  Map<String, dynamic>? preparedBackendConfig, this.protocolStartResponse, this.isLoading = false, this.error, this.isCurrentStepDataValid = false, this.parametersCompletionPercent = 0.0, this.navigationReturnTarget}): _configuredParameters = configuredParameters,_assignedAssets = assignedAssets,_preparedBackendConfig = preparedBackendConfig;
-  
+  const _ProtocolWorkflowState({required this.currentStep, this.selectedProtocolInfo, this.selectedProtocolDetails, final  Map<String, dynamic>? configuredParameters, final  Map<String, String>? assignedAssets, this.deckLayoutName, @JsonKey(ignore: true) this.uploadedDeckFile, final  Map<String, dynamic>? preparedBackendConfig, this.protocolStartResponse, this.isLoading = false, this.error, this.isCurrentStepDataValid = false, this.parametersCompletionPercent = 0.0, this.navigationReturnTarget}): _configuredParameters = configuredParameters,_assignedAssets = assignedAssets,_preparedBackendConfig = preparedBackendConfig;
+  factory _ProtocolWorkflowState.fromJson(Map<String, dynamic> json) => _$ProtocolWorkflowStateFromJson(json);
 
 @override final  WorkflowStep currentStep;
 @override final  ProtocolInfo? selectedProtocolInfo;
@@ -1086,8 +1088,10 @@ class _ProtocolWorkflowState implements ProtocolWorkflowState {
 }
 
 @override final  String? deckLayoutName;
-@override final  PlatformFile? uploadedDeckFile;
+@override@JsonKey(ignore: true) final  PlatformFile? uploadedDeckFile;
+// Excluded from serialization
  final  Map<String, dynamic>? _preparedBackendConfig;
+// Excluded from serialization
 @override Map<String, dynamic>? get preparedBackendConfig {
   final value = _preparedBackendConfig;
   if (value == null) return null;
@@ -1101,8 +1105,6 @@ class _ProtocolWorkflowState implements ProtocolWorkflowState {
 @override final  String? error;
 @override@JsonKey() final  bool isCurrentStepDataValid;
 @override@JsonKey() final  double parametersCompletionPercent;
-/// If navigating from ReviewScreen to an edit step, this stores
-/// `WorkflowStep.reviewAndPrepare` to indicate where to return after editing.
 @override final  WorkflowStep? navigationReturnTarget;
 
 /// Create a copy of ProtocolWorkflowState
@@ -1111,14 +1113,17 @@ class _ProtocolWorkflowState implements ProtocolWorkflowState {
 @pragma('vm:prefer-inline')
 _$ProtocolWorkflowStateCopyWith<_ProtocolWorkflowState> get copyWith => __$ProtocolWorkflowStateCopyWithImpl<_ProtocolWorkflowState>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$ProtocolWorkflowStateToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other._configuredParameters, _configuredParameters)&&const DeepCollectionEquality().equals(other._assignedAssets, _assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other._preparedBackendConfig, _preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(_configuredParameters),const DeepCollectionEquality().hash(_assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(_preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget);
 
@@ -1135,7 +1140,7 @@ abstract mixin class _$ProtocolWorkflowStateCopyWith<$Res> implements $ProtocolW
   factory _$ProtocolWorkflowStateCopyWith(_ProtocolWorkflowState value, $Res Function(_ProtocolWorkflowState) _then) = __$ProtocolWorkflowStateCopyWithImpl;
 @override @useResult
 $Res call({
- WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName, PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
+ WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(ignore: true) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
 });
 
 

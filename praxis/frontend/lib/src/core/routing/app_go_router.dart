@@ -6,27 +6,27 @@ import 'package:web/web.dart' hide Text;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart'; // For state.extra type casting
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart'; // For state.extra type casting
 
 // Auth Feature
-import 'package:pylabpraxis_flutter/src/features/auth/application/bloc/auth_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/auth/presentation/screens/login_screen.dart';
+import 'package:praxis_lab_management/src/features/auth/application/bloc/auth_bloc.dart';
+import 'package:praxis_lab_management/src/features/auth/presentation/screens/login_screen.dart';
 
 // Core App Shell and Main Screens
-import 'package:pylabpraxis_flutter/src/core/widgets/app_shell.dart';
-import 'package:pylabpraxis_flutter/src/features/home/presentation/screens/home_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/protocols/presentation/screens/protocols_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/assetManagement/presentation/screens/assetManagement_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/settings/presentation/screens/settings_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/splash/presentation/screens/splash_screen.dart';
+import 'package:praxis_lab_management/src/core/widgets/app_shell.dart';
+import 'package:praxis_lab_management/src/features/home/presentation/screens/home_screen.dart';
+import 'package:praxis_lab_management/src/features/protocols/presentation/screens/protocols_screen.dart';
+import 'package:praxis_lab_management/src/features/assetManagement/presentation/screens/assetManagement_screen.dart';
+import 'package:praxis_lab_management/src/features/settings/presentation/screens/settings_screen.dart';
+import 'package:praxis_lab_management/src/features/splash/presentation/screens/splash_screen.dart';
 
 // Run Protocol Workflow Screens
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/run_protocol_workflow_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/parameter_configuration_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/asset_assignment_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/review_and_prepare_screen.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/presentation/screens/start_protocol_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/run_protocol_workflow_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/parameter_configuration_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/asset_assignment_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/review_and_prepare_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/start_protocol_screen.dart';
 
 // --- Route Names ---
 const String homeRouteName = 'home';

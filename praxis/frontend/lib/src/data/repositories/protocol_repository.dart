@@ -6,12 +6,12 @@
 
 // For File
 import 'package:file_picker/file_picker.dart'; // For PlatformFile
-import 'package:pylabpraxis_flutter/src/data/models/protocol/deck_layout.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_request.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_status_response.dart';
-import 'package:pylabpraxis_flutter/src/data/services/protocol_api_service.dart'; // Import ProtocolApiService
+import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_status_response.dart';
+import 'package:praxis_lab_management/src/data/services/protocol_api_service.dart'; // Import ProtocolApiService
 
 /// Abstract interface for protocol repositories.
 ///
@@ -53,7 +53,9 @@ class ProtocolRepositoryImpl implements ProtocolRepository {
   @override
   Future<ProtocolDetails> getProtocolDetails(String protocolPath) async {
     try {
-      return await _protocolApiService.getProtocolDetails(protocolPath);
+      return await _protocolApiService.getProtocolDetails(
+        protocolPath: protocolPath,
+      );
     } catch (e) {
       rethrow;
     }

@@ -4,7 +4,7 @@
 // that will handle user authentication flows (e.g., OIDC with Keycloak),
 // token management, and user session status.
 
-import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
+import 'package:praxis_lab_management/src/data/models/user/user_profile.dart';
 
 /// Abstract interface for authentication services.
 ///

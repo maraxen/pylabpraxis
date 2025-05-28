@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart'; // Import go_router
 // Import your BLoCs if AppShell needs to interact with them directly,
 // though navigation is now handled by go_router.
 // import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:pylabpraxis_flutter/src/features/auth/application/bloc/auth_bloc.dart';
+// import 'package:praxis_lab_management/src/features/auth/application/bloc/auth_bloc.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child; // This child will be the screen for the selected tab

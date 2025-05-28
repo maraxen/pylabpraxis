@@ -1,10 +1,10 @@
 # praxis/backend/protocol_core/protocol_definition_models.py
 from typing import Dict, Any, List, Optional, Union
-from pydantic import BaseModel, Field, validator # type: ignore # Assuming Pydantic v1, add ignore for potential v2 import issues if any
+from pydantic import BaseModel, Field # type: ignore # Assuming Pydantic v1, add ignore for potential v2 import issues if any
 
 # Placeholder for UI hints or constraints, to be expanded
 class UIHint(BaseModel):
-    widget_type: Optional[str] = None # e.g., "slider", "dropdown", "textfield"
+    widget_type: Optional[str] = None
     min_value: Optional[Union[int, float]] = None
     max_value: Optional[Union[int, float]] = None
     step: Optional[Union[int, float]] = None
@@ -37,14 +37,14 @@ class FunctionProtocolDefinitionModel(BaseModel):
     name: str
     version: str = "0.1.0"
     description: Optional[str] = None
-    
+
     # Source information
     source_file_path: str # Relative path within the source
     module_name: str # e.g., my_protocols.transfer
     function_name: str # The actual Python function name
-    
+
     # Link to source repository or filesystem (one of these should be set by DiscoveryService)
-    source_repository_name: Optional[str] = None 
+    source_repository_name: Optional[str] = None
     commit_hash: Optional[str] = None
     file_system_source_name: Optional[str] = None
 
@@ -65,11 +65,11 @@ class FunctionProtocolDefinitionModel(BaseModel):
     assets: List[AssetRequirementModel] = Field(default_factory=list) # Assets inferred from type hints
 
     # db_id will be populated by ProtocolDiscoveryService after saving to FunctionProtocolDefinitionOrm
-    db_id: Optional[int] = None 
+    db_id: Optional[int] = None
 
     class Config:
         # For Pydantic v1:
-        orm_mode = True 
+        orm_mode = True
         # For Pydantic v2, it would be:
         # from_attributes = True
         # However, stick to orm_mode if the project primarily uses Pydantic v1.

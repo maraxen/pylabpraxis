@@ -1,10 +1,10 @@
-// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/screens/review_and_prepare_screen.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/review_and_prepare_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_review_bloc/protocol_review_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/review_data_bundle.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart'; // For ProtocolInfo
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_review_bloc/protocol_review_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/review_data_bundle.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart'; // For ProtocolInfo
 import 'package:file_picker/file_picker.dart'; // For PlatformFile if used in ProtocolWorkflowState and ReviewDataBundle
 
 class ReviewAndPrepareScreen extends StatefulWidget {

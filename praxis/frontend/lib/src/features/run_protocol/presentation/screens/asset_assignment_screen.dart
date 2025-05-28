@@ -1,8 +1,8 @@
-// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/screens/asset_assignment_screen.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/asset_assignment_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_assets_bloc/protocol_assets_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart'; // For submitting and UpdateStepValidity
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_assets_bloc/protocol_assets_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart'; // For submitting and UpdateStepValidity
 
 class AssetAssignmentScreen extends StatefulWidget {
   const AssetAssignmentScreen({super.key});

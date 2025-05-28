@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_request.dart';
-import 'package:pylabpraxis_flutter/src/data/repositories/protocol_repository.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/review_data_bundle.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
+import 'package:praxis_lab_management/src/data/repositories/protocol_repository.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/review_data_bundle.dart';
 // import 'package:file_picker/file_picker.dart';
 
 part 'protocol_review_event.dart';

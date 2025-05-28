@@ -1,9 +1,9 @@
-// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/screens/protocol_selection_screen.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/protocol_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart'; // Keep this if ProtocolInfo is used (it is for `protocols` list)
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart'; // Keep this if ProtocolInfo is used (it is for `protocols` list)
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
 class ProtocolSelectionScreen extends StatefulWidget {
   const ProtocolSelectionScreen({super.key});

@@ -3,19 +3,20 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:file_picker/file_picker.dart';
 // Assuming ProtocolRepository can fetch deck layouts.
 // If not, a dedicated DeckRepository might be needed.
-import 'package:pylabpraxis_flutter/src/data/repositories/protocol_repository.dart';
+import 'package:praxis_lab_management/src/data/repositories/protocol_repository.dart';
 
 part 'deck_configuration_event.dart';
 part 'deck_configuration_state.dart';
 part 'deck_configuration_bloc.freezed.dart';
 
-class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurationState> {
+class DeckConfigurationBloc
+    extends Bloc<DeckConfigurationEvent, DeckConfigurationState> {
   // TODO: Replace with a specific repository if ProtocolRepository doesn't handle deck layouts.
   final ProtocolRepository _protocolRepository;
 
   DeckConfigurationBloc({required ProtocolRepository protocolRepository})
-      : _protocolRepository = protocolRepository,
-        super(const DeckConfigurationState.initial()) {
+    : _protocolRepository = protocolRepository,
+      super(const DeckConfigurationState.initial()) {
     on<InitializeDeckConfiguration>(_onInitializeDeckConfiguration);
     on<FetchAvailableDeckLayouts>(_onFetchAvailableDeckLayouts);
     on<DeckLayoutSelected>(_onDeckLayoutSelected);
@@ -28,24 +29,30 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
     Emitter<DeckConfigurationState> emit,
   ) {
     List<String> layouts = event.availableLayouts ?? [];
-    bool isValid = (event.initialSelectedLayoutName != null && event.initialSelectedLayoutName!.isNotEmpty) || event.initialPickedFile != null;
+    bool isValid =
+        (event.initialSelectedLayoutName != null &&
+            event.initialSelectedLayoutName!.isNotEmpty) ||
+        event.initialPickedFile != null;
 
     // If layouts are provided, directly go to loaded state.
     // Otherwise, if no initial selection, stay initial to trigger fetch later.
-    if (layouts.isNotEmpty || event.initialSelectedLayoutName != null || event.initialPickedFile != null) {
-        emit(DeckConfigurationState.loaded(
-            availableLayouts: layouts,
-            selectedLayoutName: event.initialSelectedLayoutName,
-            pickedFile: event.initialPickedFile,
-            isSelectionValid: isValid,
-        ));
+    if (layouts.isNotEmpty ||
+        event.initialSelectedLayoutName != null ||
+        event.initialPickedFile != null) {
+      emit(
+        DeckConfigurationState.loaded(
+          availableLayouts: layouts,
+          selectedLayoutName: event.initialSelectedLayoutName,
+          pickedFile: event.initialPickedFile,
+          isSelectionValid: isValid,
+        ),
+      );
     } else {
-        emit(const DeckConfigurationState.initial());
-        // Optionally, if this init implies a fresh start, trigger fetch:
-        // add(const FetchAvailableDeckLayouts());
+      emit(const DeckConfigurationState.initial());
+      // Optionally, if this init implies a fresh start, trigger fetch:
+      // add(const FetchAvailableDeckLayouts());
     }
   }
-
 
   Future<void> _onFetchAvailableDeckLayouts(
     FetchAvailableDeckLayouts event,
@@ -68,8 +75,15 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
       // TODO: Implement _protocolRepository.getAvailableDeckLayouts()
       // This is a placeholder for actual API call.
       // final layouts = await _protocolRepository.getAvailableDeckLayouts();
-      await Future.delayed(const Duration(milliseconds: 700)); // Simulate network delay
-      final layouts = ['Default Layout Alpha', 'Standard Setup Beta', 'Custom Rig Gamma', 'Empty Deck'];
+      await Future.delayed(
+        const Duration(milliseconds: 700),
+      ); // Simulate network delay
+      final layouts = [
+        'Default Layout Alpha',
+        'Standard Setup Beta',
+        'Custom Rig Gamma',
+        'Empty Deck',
+      ];
 
       String? finalSelectedLayout = currentSelectedLayout;
       PlatformFile? finalPickedFile = currentPickedFile;
@@ -77,26 +91,33 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
       // After fetching, if a picked file exists, it takes precedence.
       if (finalPickedFile != null) {
         finalSelectedLayout = null; // Picked file overrides dropdown selection
-      } else if (finalSelectedLayout != null && !layouts.contains(finalSelectedLayout)) {
+      } else if (finalSelectedLayout != null &&
+          !layouts.contains(finalSelectedLayout)) {
         // If previously selected layout is no longer in the new list, clear it.
         finalSelectedLayout = null;
       }
 
-      emit(DeckConfigurationState.loaded(
-        availableLayouts: layouts,
-        selectedLayoutName: finalSelectedLayout,
-        pickedFile: finalPickedFile, // Keep picked file if it was there
-        isSelectionValid: (finalSelectedLayout != null && finalSelectedLayout.isNotEmpty) || finalPickedFile != null,
-      ));
+      emit(
+        DeckConfigurationState.loaded(
+          availableLayouts: layouts,
+          selectedLayoutName: finalSelectedLayout,
+          pickedFile: finalPickedFile, // Keep picked file if it was there
+          isSelectionValid:
+              (finalSelectedLayout != null && finalSelectedLayout.isNotEmpty) ||
+              finalPickedFile != null,
+        ),
+      );
     } catch (e) {
       // On error, emit error state, potentially with the old data if available
-      emit(DeckConfigurationState.error(
+      emit(
+        DeckConfigurationState.error(
           message: 'Failed to fetch deck layouts: ${e.toString()}',
           // You could add fields to DeckConfigurationError to hold previous valid data:
           // previousAvailableLayouts: existingLayouts,
           // previousSelectedLayoutName: currentSelectedLayout,
           // previousPickedFile: currentPickedFile,
-          ));
+        ),
+      );
     }
   }
 
@@ -117,13 +138,17 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
       // This scenario (selecting while not loaded) should ideally be prevented by UI.
     }
 
-
-    emit(DeckConfigurationState.loaded(
-      availableLayouts: availableLayouts, // Preserve the list of available layouts
-      selectedLayoutName: event.layoutName,
-      pickedFile: null, // Clear picked file if a layout is selected from dropdown
-      isSelectionValid: event.layoutName != null && event.layoutName!.isNotEmpty,
-    ));
+    emit(
+      DeckConfigurationState.loaded(
+        availableLayouts:
+            availableLayouts, // Preserve the list of available layouts
+        selectedLayoutName: event.layoutName,
+        pickedFile:
+            null, // Clear picked file if a layout is selected from dropdown
+        isSelectionValid:
+            event.layoutName != null && event.layoutName!.isNotEmpty,
+      ),
+    );
   }
 
   void _onDeckFilePicked(
@@ -133,17 +158,19 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
     List<String> currentAvailable = [];
     final currentState = state;
     if (currentState is DeckConfigurationLoaded) {
-        currentAvailable = currentState.availableLayouts;
+      currentAvailable = currentState.availableLayouts;
     } else if (currentState is DeckConfigurationError) {
-        // Potentially use layouts from error state if it carries them
+      // Potentially use layouts from error state if it carries them
     }
 
-    emit(DeckConfigurationState.loaded(
+    emit(
+      DeckConfigurationState.loaded(
         availableLayouts: currentAvailable,
         pickedFile: event.file,
         selectedLayoutName: null,
         isSelectionValid: true,
-    ));
+      ),
+    );
   }
 
   void _onClearDeckSelection(
@@ -153,18 +180,20 @@ class DeckConfigurationBloc extends Bloc<DeckConfigurationEvent, DeckConfigurati
     List<String> currentAvailable = [];
     final currentState = state;
     if (currentState is DeckConfigurationLoaded) {
-        currentAvailable = currentState.availableLayouts;
+      currentAvailable = currentState.availableLayouts;
     } else if (currentState is DeckConfigurationError) {
-        // If clearing from an error state, you might want to retain the available layouts list
-        // if your error state was designed to hold it.
+      // If clearing from an error state, you might want to retain the available layouts list
+      // if your error state was designed to hold it.
     }
     // Always transition to a 'loaded' state with selections cleared,
     // preserving the list of available layouts if known.
-    emit(DeckConfigurationState.loaded(
+    emit(
+      DeckConfigurationState.loaded(
         availableLayouts: currentAvailable,
         selectedLayoutName: null,
         pickedFile: null,
         isSelectionValid: false,
-    ));
+      ),
+    );
   }
 }

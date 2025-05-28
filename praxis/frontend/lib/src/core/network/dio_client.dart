@@ -6,9 +6,9 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'; // For kDebugMode
-import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
-import 'package:pylabpraxis_flutter/src/data/models/common/api_error.dart';
-import 'package:pylabpraxis_flutter/src/data/services/auth_service.dart'; // Import AuthService
+import 'package:praxis_lab_management/src/core/error/exceptions.dart';
+import 'package:praxis_lab_management/src/data/models/common/api_error.dart';
+import 'package:praxis_lab_management/src/data/services/auth_service.dart'; // Import AuthService
 
 class DioClient {
   late final Dio _dio;

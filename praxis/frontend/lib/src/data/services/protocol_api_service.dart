@@ -1,26 +1,12 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'package:file_picker/file_picker.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/file_upload_response.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_info.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_request.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_prepare_response.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_run_command.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_status_response.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/run_command_response.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/file_upload_response.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_response.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_run_command.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_status_response.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/run_command_response.dart';
 
 /// Abstract interface for protocol-related API services.
 abstract class ProtocolApiService {
@@ -40,8 +26,9 @@ abstract class ProtocolApiService {
   Future<FileUploadResponse> uploadConfigFile({required PlatformFile file});
 
   /// Fetches JSONSchema for a protocol's parameters.
-  Future<Map<String, dynamic>> getProtocolSchema(
-      {required String protocolPath});
+  Future<Map<String, dynamic>> getProtocolSchema({
+    required String protocolPath,
+  });
 
   /// Lists all running/active protocols (or runs).
   /// Backend `GET /api/protocols/` returns List<String> of protocol names.
@@ -50,8 +37,9 @@ abstract class ProtocolApiService {
 
   /// Gets the status of a specific protocol run.
   /// Assumes an endpoint like GET /api/protocols/runs/{runGuid} or similar exists.
-  Future<ProtocolStatusResponse> getProtocolRunStatus(
-      {required String runGuid});
+  Future<ProtocolStatusResponse> getProtocolRunStatus({
+    required String runGuid,
+  });
 
   /// Sends a control command (PAUSE, RESUME, CANCEL) to a specific protocol run.
   Future<RunCommandResponse> sendProtocolRunCommand({

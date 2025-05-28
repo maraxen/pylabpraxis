@@ -13,8 +13,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:openid_client/openid_client.dart' as oidc;
 // Import the OidcAuthenticatorWrapper via the stub file
 import 'oidc/oidc_authenticator.dart';
-import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
-import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
+import 'package:praxis_lab_management/src/core/error/exceptions.dart';
+import 'package:praxis_lab_management/src/data/models/user/user_profile.dart';
 import 'auth_service.dart';
 import 'package:url_launcher/url_launcher.dart'; // Still needed for explicit logout launch
 

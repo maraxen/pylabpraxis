@@ -1,8 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/parameter_validation_service.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/parameter_validation_service.dart';
 
 part 'rich_form_state.freezed.dart';
 

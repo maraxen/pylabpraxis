@@ -6,7 +6,7 @@
 // that apply to its value.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 
 part 'parameter_config.freezed.dart';
 part 'parameter_config.g.dart';

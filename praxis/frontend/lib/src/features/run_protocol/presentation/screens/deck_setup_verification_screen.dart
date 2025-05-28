@@ -1,21 +1,7 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'package:flutter/material.dart';
-import 'package:pylabpraxis_flutter/src/features/visualizer/presentation/screens/visualizer_screen.dart';
+import 'package:praxis_lab_management/src/features/visualizer/presentation/screens/visualizer_screen.dart';
 // TODO(user): Import ProtocolWorkflowBloc if workcellId is to be sourced from it.
-// import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
+// import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
 class DeckSetupVerificationScreen extends StatelessWidget {
   final String workcellId;
@@ -53,7 +39,8 @@ class DeckSetupVerificationScreen extends StatelessWidget {
             // Integrate VisualizerScreen here
             Expanded(
               child: VisualizerScreen(
-                  workcellId: workcellId), // Pass the workcellId
+                workcellId: workcellId,
+              ), // Pass the workcellId
             ),
             const SizedBox(height: 16), // Added some spacing
             // TODO(user): Add other UI elements for deck setup verification if needed.
@@ -70,7 +57,9 @@ class DeckSetupVerificationScreen extends StatelessWidget {
                     // if (Navigator.of(context).canPop()) {
                     //   Navigator.of(context).pop();
                     // }
-                    debugPrint('Back button pressed on DeckSetupVerificationScreen');
+                    debugPrint(
+                      'Back button pressed on DeckSetupVerificationScreen',
+                    );
                   },
                   child: const Text('Back'),
                 ),
@@ -79,7 +68,8 @@ class DeckSetupVerificationScreen extends StatelessWidget {
                     // TODO(user): Implement Continue navigation or action using ProtocolWorkflowBloc
                     // e.g., context.read<ProtocolWorkflowBloc>().add(const ProtocolWorkflowEvent.deckVerificationCompleted());
                     debugPrint(
-                        'Continue button pressed on DeckSetupVerificationScreen');
+                      'Continue button pressed on DeckSetupVerificationScreen',
+                    );
                   },
                   child: const Text('Continue'),
                 ),

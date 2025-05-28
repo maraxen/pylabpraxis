@@ -1,22 +1,8 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'dart:async';
 import 'package:flutter/foundation.dart'; // For @visibleForTesting
-import 'package:pylabpraxis_flutter/src/data/models/protocol/deck_layout.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
 // Assuming DioClient might be used for the HTTP part in a real implementation.
-// import 'package:pylabpraxis_flutter/src/core/network/dio_client.dart';
+// import 'package:praxis_lab_management/src/core/network/dio_client.dart';
 // Assuming a WebSocket client might be used.
 // import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -51,7 +37,7 @@ class WorkcellApiServiceImpl implements WorkcellApiService {
     return DeckLayout(
       id: 'simulated-deck-$workcellId',
       name: 'Simulated Deck for $workcellId',
-      positions: [], // Assuming positions is a required field
+      // TODO DL-1: Populate with items and positions consistent with PLR serialization
       // lastModified: DateTime.now().toIso8601String(), // If your model has this
       // schemaVersion: "v1", // If your model has this
     );
@@ -59,7 +45,9 @@ class WorkcellApiServiceImpl implements WorkcellApiService {
 
   @override
   Stream<dynamic> subscribeToWorkcellUpdates(String workcellId) {
-    debugPrint('WorkcellApiServiceImpl: Subscribing to workcell updates for $workcellId');
+    debugPrint(
+      'WorkcellApiServiceImpl: Subscribing to workcell updates for $workcellId',
+    );
 
     // In a real scenario, this would establish a WebSocket connection, e.g.:
     // final uri = Uri.parse('ws://your_backend_url/ws/workcell/$workcellId/subscribe');
@@ -80,7 +68,7 @@ class WorkcellApiServiceImpl implements WorkcellApiService {
             'updated_slot': 'A${count + 1}',
             'new_labware_id': 'plate_00${count + 1}',
             'status': 'loaded',
-          }
+          },
         });
         count++;
       } else {
@@ -97,6 +85,8 @@ class WorkcellApiServiceImpl implements WorkcellApiService {
     // In a real scenario:
     // await _channel?.sink.close();
     // _channel = null;
-    await Future.delayed(const Duration(milliseconds: 100)); // Simulate closing delay
+    await Future.delayed(
+      const Duration(milliseconds: 100),
+    ); // Simulate closing delay
   }
 }

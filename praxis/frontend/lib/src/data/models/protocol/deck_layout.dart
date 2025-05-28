@@ -22,6 +22,8 @@ abstract class DeckLayout with _$DeckLayout {
     // Optional: metadata about the robot or deck type.
     Map<String, dynamic>?
     robot, // e.g., { "model": "OT-2", "deckId": "ot2_standard" }
+
+    // TODO: DL1: Populate with items and positions consistent with PLR serialization
   }) = _DeckLayout;
 
   factory DeckLayout.fromJson(Map<String, dynamic> json) =>

@@ -1,22 +1,8 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/deck_layout.dart';
-import 'package:pylabpraxis_flutter/src/data/services/workcell_api_service.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
+import 'package:praxis_lab_management/src/data/services/workcell_api_service.dart';
 import 'package:flutter/foundation.dart'; // For debugPrint
 
 part 'visualizer_bloc.freezed.dart';
@@ -40,8 +26,9 @@ class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
   ) async {
     emit(const VisualizerLoadInProgress());
     try {
-      final deckLayout =
-          await _workcellApiService.fetchDeckState(event.workcellId);
+      final deckLayout = await _workcellApiService.fetchDeckState(
+        event.workcellId,
+      );
       emit(VisualizerLoadSuccess(deckLayout));
 
       // Cancel any existing subscription before starting a new one
@@ -49,18 +36,18 @@ class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
       _workcellSubscription = _workcellApiService
           .subscribeToWorkcellUpdates(event.workcellId)
           .listen(
-        (message) {
-          add(VisualizerWebSocketMessageReceived(message));
-        },
-        onError: (error) {
-          // Handle WebSocket errors if necessary, e.g., add a specific event
-          debugPrint('VisualizerBloc: WebSocket error: $error');
-          add(const VisualizerWebSocketConnectionClosed());
-        },
-        onDone: () {
-          add(const VisualizerWebSocketConnectionClosed());
-        },
-      );
+            (message) {
+              add(VisualizerWebSocketMessageReceived(message));
+            },
+            onError: (error) {
+              // Handle WebSocket errors if necessary, e.g., add a specific event
+              debugPrint('VisualizerBloc: WebSocket error: $error');
+              add(const VisualizerWebSocketConnectionClosed());
+            },
+            onDone: () {
+              add(const VisualizerWebSocketConnectionClosed());
+            },
+          );
     } catch (e) {
       emit(VisualizerLoadFailure(e.toString()));
     }
@@ -83,16 +70,22 @@ class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
         // final updatedDeckLayout = DeckLayout.fromJson(event.message as Map<String, dynamic>);
         // emit(VisualizerRealtimeUpdate(updatedDeckLayout));
         emit(VisualizerRealtimeUpdate(event.message));
-        debugPrint('VisualizerBloc: Realtime update received: ${event.message}');
+        debugPrint(
+          'VisualizerBloc: Realtime update received: ${event.message}',
+        );
       } catch (e) {
-        debugPrint('VisualizerBloc: Error parsing WebSocket message: $e. Message: ${event.message}');
+        debugPrint(
+          'VisualizerBloc: Error parsing WebSocket message: $e. Message: ${event.message}',
+        );
         // Optionally emit a specific error state or just log
       }
     } else {
       // If the message is not a map, pass it directly.
       // The UI or a subsequent processing step will need to handle its type.
       emit(VisualizerRealtimeUpdate(event.message));
-      debugPrint('VisualizerBloc: Realtime update (non-map) received: ${event.message}');
+      debugPrint(
+        'VisualizerBloc: Realtime update (non-map) received: ${event.message}',
+      );
     }
   }
 
@@ -119,7 +112,9 @@ class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
 
   @override
   Future<void> close() {
-    debugPrint('VisualizerBloc: Closing BLoC, cancelling subscription and closing WebSocket.');
+    debugPrint(
+      'VisualizerBloc: Closing BLoC, cancelling subscription and closing WebSocket.',
+    );
     _workcellSubscription?.cancel();
     _workcellApiService.closeWebSocket(); // Ensure WebSocket is closed
     return super.close();

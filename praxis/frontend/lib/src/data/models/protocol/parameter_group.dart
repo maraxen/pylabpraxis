@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 
 part 'parameter_group.freezed.dart';
 part 'parameter_group.g.dart';

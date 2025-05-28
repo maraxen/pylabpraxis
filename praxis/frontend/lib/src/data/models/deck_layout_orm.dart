@@ -1,17 +1,3 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import 'dart:convert';
 
 // Corresponds to DeckConfigurationSlotItemOrm in backend
@@ -20,7 +6,8 @@ class DeckConfigurationSlotItemOrm {
   final int deckConfigurationId;
   final String slotName;
   final int labwareInstanceId; // FK to LabwareInstanceOrm.id
-  final String? expectedLabwareDefinitionName; // FK to LabwareDefinitionCatalogOrm.pylabrobot_definition_name
+  final String?
+  expectedLabwareDefinitionName; // FK to LabwareDefinitionCatalogOrm.pylabrobot_definition_name
 
   DeckConfigurationSlotItemOrm({
     this.id,
@@ -36,7 +23,8 @@ class DeckConfigurationSlotItemOrm {
       deckConfigurationId: json['deck_configuration_id'] as int,
       slotName: json['slot_name'] as String,
       labwareInstanceId: json['labware_instance_id'] as int,
-      expectedLabwareDefinitionName: json['expected_labware_definition_name'] as String?,
+      expectedLabwareDefinitionName:
+          json['expected_labware_definition_name'] as String?,
     );
   }
 
@@ -64,7 +52,6 @@ class DeckLayoutOrm {
   // Adding it here to satisfy the interface.
   final String workspaceId;
 
-
   DeckLayoutOrm({
     this.id,
     required this.layoutName,
@@ -80,9 +67,14 @@ class DeckLayoutOrm {
     var itemsList = json['slot_items'] as List<dynamic>?;
     List<DeckConfigurationSlotItemOrm>? slotItems;
     if (itemsList != null) {
-      slotItems = itemsList
-          .map((i) => DeckConfigurationSlotItemOrm.fromJson(i as Map<String, dynamic>))
-          .toList();
+      slotItems =
+          itemsList
+              .map(
+                (i) => DeckConfigurationSlotItemOrm.fromJson(
+                  i as Map<String, dynamic>,
+                ),
+              )
+              .toList();
     }
 
     return DeckLayoutOrm(
@@ -93,7 +85,10 @@ class DeckLayoutOrm {
       slotItems: slotItems,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
-      workspaceId: json['workspace_id'] as String? ?? json['workspaceId'] as String? ?? '', // Ensure workspaceId is present
+      workspaceId:
+          json['workspace_id'] as String? ??
+          json['workspaceId'] as String? ??
+          '', // Ensure workspaceId is present
     );
   }
 

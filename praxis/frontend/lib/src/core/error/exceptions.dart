@@ -107,3 +107,8 @@ class ForbiddenException extends ClientException {
   ForbiddenException({String? message, super.errors, super.stackTrace})
     : super(message: message ?? 'Forbidden', statusCode: 403);
 }
+
+class UnknownException extends AppException {
+  UnknownException([String? message, StackTrace? stackTrace])
+    : super(message ?? 'Unknown Error', stackTrace);
+}

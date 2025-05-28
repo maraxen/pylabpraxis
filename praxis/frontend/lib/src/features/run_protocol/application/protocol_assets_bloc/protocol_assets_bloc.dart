@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_asset.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_asset.dart';
 
 part 'protocol_assets_event.dart';
 part 'protocol_assets_state.dart';

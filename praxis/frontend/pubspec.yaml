@@ -1,4 +1,4 @@
-name: pylabpraxis_flutter
+name: praxis_lab_management
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -47,6 +47,8 @@ dependencies:
   get_it: ^8.0.3
   go_router: ^15.1.2
   web: ^1.1.1
+  hydrated_bloc: ^10.0.0
+  mockito: ^5.4.5
 
 dev_dependencies:
   flutter_test:

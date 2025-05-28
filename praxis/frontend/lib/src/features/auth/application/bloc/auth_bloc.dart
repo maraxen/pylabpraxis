@@ -7,9 +7,9 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb, debugPrint
-import 'package:pylabpraxis_flutter/src/data/models/user/user_profile.dart';
-import 'package:pylabpraxis_flutter/src/data/repositories/auth_repository.dart';
-import 'package:pylabpraxis_flutter/src/core/error/exceptions.dart';
+import 'package:praxis_lab_management/src/data/models/user/user_profile.dart';
+import 'package:praxis_lab_management/src/data/repositories/auth_repository.dart';
+import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';

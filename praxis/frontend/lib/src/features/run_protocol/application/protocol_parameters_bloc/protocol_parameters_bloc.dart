@@ -2,10 +2,10 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/protocol_details.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart'; // For ParameterDefinition
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/rich_form_state.dart';
-import 'package:pylabpraxis_flutter/src/features/run_protocol/domain/parameter_validation_service.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart'; // For ParameterDefinition
+import 'package:praxis_lab_management/src/features/run_protocol/domain/rich_form_state.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/domain/parameter_validation_service.dart';
 
 part 'protocol_parameters_event.dart';
 part 'protocol_parameters_state.dart';

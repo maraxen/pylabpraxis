@@ -1,17 +1,3 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -166,15 +152,15 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     Provides a TestClient instance for FastAPI, with DB session override.
     """
     from praxis.backend.api.dependencies import get_db
-    
+
     # Override the get_db dependency for this test client
     def override_get_db() -> Generator[Session, None, None]:
         try:
             yield db_session
         finally:
             # The session is managed by the db_session fixture (rollback, close)
-            pass 
-            
+            pass
+
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
@@ -216,7 +202,7 @@ def test_list_available_decks_with_data(client: TestClient, db_session: Session,
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 1 # Should only return the DECK device
-    
+
     deck_info = data[0]
     assert deck_info["id"] == VALID_DECK_ID
     assert deck_info["user_friendly_name"] == "Test Deck 1"
@@ -301,9 +287,9 @@ def test_get_specific_deck_state_with_labware(client: TestClient, db_session: Se
     assert data["user_friendly_name"] == "Test Deck 1"
     assert data["pylabrobot_class_name"] == "pylabrobot.resources.Deck"
     # Placeholder dimensions might be None or specific values if set in WorkcellRuntime
-    assert "size_x_mm" in data 
+    assert "size_x_mm" in data
     assert "slots" in data
-    
+
     slots_with_labware = {slot["name"]: slot["labware"] for slot in data["slots"] if slot["labware"]}
     assert len(slots_with_labware) == 2 # PlateOnDeck and TipsOnDeck
 
@@ -325,7 +311,7 @@ def test_get_specific_deck_state_with_labware(client: TestClient, db_session: Se
     # Ensure no other labware is reported for this deck
     all_labware_names_on_deck = [lw["user_assigned_name"] for lw in slots_with_labware.values()]
     assert "PlateInStorage" not in all_labware_names_on_deck
-    
+
     # TODO: Add checks for empty slots if get_deck_state_representation is updated to include them.
 
 # --- WebSocket Endpoint Tests ---
@@ -345,13 +331,13 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
         # Receive the message from WebSocket
         message_str = websocket.receive_text()
         message_data = json.loads(message_str)
-        
+
         assert message_data["deck_id"] == VALID_DECK_ID
         # The test_broadcast endpoint sends a DeckUpdateMessage.
         # The message_type in the POST request to test_broadcast is used to construct this.
-        assert message_data["update_type"] == test_message_payload["message_type"] 
+        assert message_data["update_type"] == test_message_payload["message_type"]
         assert message_data["slot_name"] == test_message_payload["slot_name"]
-        
+
         assert message_data["labware_info"] is not None
         assert message_data["labware_info"]["user_assigned_name"] == test_message_payload["labware_name"]
         assert "timestamp" in message_data
@@ -370,13 +356,13 @@ def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, d
                 _ = websocket.receive_text(timeout=1) # timeout to prevent hanging if no close frame
             except Exception as e: # WebSocketTimeoutError or similar
                  pass # Expected if server just closes without sending a close frame client expects
-    
+
     # The exact exception and how to check the close code (1008) can be tricky with TestClient.
     # FastAPI's TestClient might not expose the close code directly in a simple way.
     # If the server closes with 1008, the client might see it as a generic disconnect or an exception.
     # For now, we assert that an exception occurs, implying the connection was not maintained.
     # A more direct way to test close codes might require lower-level WebSocket client testing.
-    assert exc_info is not None 
+    assert exc_info is not None
     # If we could access the close event details, we'd check:
     # assert exc_info.value.code == 1008 # For WebSocketDisconnect exception if it holds the code
 

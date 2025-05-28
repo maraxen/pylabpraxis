@@ -1,11 +1,11 @@
-// pylabpraxis_flutter/lib/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart
 // Renamed from BasicParameterEditDialog to BasicParameterEditScreen as per user's file
 // This is the user's provided code for BasicParameterEditScreen, with minimal adjustments for clarity if needed.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_config.dart'; // Assuming ParameterConfig is the type for parameterDefinition.config
-import 'package:pylabpraxis_flutter/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
-import 'package:pylabpraxis_flutter/src/data/models/protocol/parameter_constraints.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart'; // Assuming ParameterConfig is the type for parameterDefinition.config
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class BasicParameterEditScreen extends StatefulWidget {

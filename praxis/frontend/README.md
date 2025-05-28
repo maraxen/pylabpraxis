@@ -1,4 +1,4 @@
-# pylabpraxis_flutter
+# praxis_lab_management
 
 A new Flutter project.
 
