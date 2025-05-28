@@ -12,31 +12,33 @@ part of 'protocol_parameter_detail.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
+
 /// @nodoc
 mixin _$ProtocolParameterDetail {
 
- bool get isRequired; dynamic get defaultValue;// 'default' is a reserved keyword in Dart
- String? get description; Map<String, dynamic>? get constraints;
+ String get paramType; bool get isRequired;@JsonKey(name: 'default') dynamic get defaultValue; String? get description; Map<String, dynamic>? get constraints;
 /// Create a copy of ProtocolParameterDetail
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ProtocolParameterDetailCopyWith<ProtocolParameterDetail> get copyWith => _$ProtocolParameterDetailCopyWithImpl<ProtocolParameterDetail>(this as ProtocolParameterDetail, _$identity);
 
+  /// Serializes this ProtocolParameterDetail to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParameterDetail&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.constraints, constraints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolParameterDetail&&(identical(other.paramType, paramType) || other.paramType == paramType)&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.constraints, constraints));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,isRequired,const DeepCollectionEquality().hash(defaultValue),description,const DeepCollectionEquality().hash(constraints));
+int get hashCode => Object.hash(runtimeType,paramType,isRequired,const DeepCollectionEquality().hash(defaultValue),description,const DeepCollectionEquality().hash(constraints));
 
 @override
 String toString() {
-  return 'ProtocolParameterDetail(isRequired: $isRequired, defaultValue: $defaultValue, description: $description, constraints: $constraints)';
+  return 'ProtocolParameterDetail(paramType: $paramType, isRequired: $isRequired, defaultValue: $defaultValue, description: $description, constraints: $constraints)';
 }
 
 
@@ -47,7 +49,7 @@ abstract mixin class $ProtocolParameterDetailCopyWith<$Res>  {
   factory $ProtocolParameterDetailCopyWith(ProtocolParameterDetail value, $Res Function(ProtocolParameterDetail) _then) = _$ProtocolParameterDetailCopyWithImpl;
 @useResult
 $Res call({
- bool isRequired, dynamic defaultValue, String? description, Map<String, dynamic>? constraints
+ String paramType, bool isRequired,@JsonKey(name: 'default') dynamic defaultValue, String? description, Map<String, dynamic>? constraints
 });
 
 
@@ -64,9 +66,10 @@ class _$ProtocolParameterDetailCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolParameterDetail
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isRequired = null,Object? defaultValue = freezed,Object? description = freezed,Object? constraints = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? paramType = null,Object? isRequired = null,Object? defaultValue = freezed,Object? description = freezed,Object? constraints = freezed,}) {
   return _then(_self.copyWith(
-isRequired: null == isRequired ? _self.isRequired : isRequired // ignore: cast_nullable_to_non_nullable
+paramType: null == paramType ? _self.paramType : paramType // ignore: cast_nullable_to_non_nullable
+as String,isRequired: null == isRequired ? _self.isRequired : isRequired // ignore: cast_nullable_to_non_nullable
 as bool,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
 as dynamic,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,constraints: freezed == constraints ? _self.constraints : constraints // ignore: cast_nullable_to_non_nullable
@@ -78,15 +81,15 @@ as Map<String, dynamic>?,
 
 
 /// @nodoc
-
+@JsonSerializable()
 
 class _ProtocolParameterDetail implements ProtocolParameterDetail {
-  const _ProtocolParameterDetail({required this.isRequired, this.defaultValue, this.description, final  Map<String, dynamic>? constraints}): _constraints = constraints;
-  
+  const _ProtocolParameterDetail({required this.paramType, required this.isRequired, @JsonKey(name: 'default') this.defaultValue, this.description, final  Map<String, dynamic>? constraints}): _constraints = constraints;
+  factory _ProtocolParameterDetail.fromJson(Map<String, dynamic> json) => _$ProtocolParameterDetailFromJson(json);
 
+@override final  String paramType;
 @override final  bool isRequired;
-@override final  dynamic defaultValue;
-// 'default' is a reserved keyword in Dart
+@override@JsonKey(name: 'default') final  dynamic defaultValue;
 @override final  String? description;
  final  Map<String, dynamic>? _constraints;
 @override Map<String, dynamic>? get constraints {
@@ -104,20 +107,23 @@ class _ProtocolParameterDetail implements ProtocolParameterDetail {
 @pragma('vm:prefer-inline')
 _$ProtocolParameterDetailCopyWith<_ProtocolParameterDetail> get copyWith => __$ProtocolParameterDetailCopyWithImpl<_ProtocolParameterDetail>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$ProtocolParameterDetailToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParameterDetail&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._constraints, _constraints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolParameterDetail&&(identical(other.paramType, paramType) || other.paramType == paramType)&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._constraints, _constraints));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,isRequired,const DeepCollectionEquality().hash(defaultValue),description,const DeepCollectionEquality().hash(_constraints));
+int get hashCode => Object.hash(runtimeType,paramType,isRequired,const DeepCollectionEquality().hash(defaultValue),description,const DeepCollectionEquality().hash(_constraints));
 
 @override
 String toString() {
-  return 'ProtocolParameterDetail(isRequired: $isRequired, defaultValue: $defaultValue, description: $description, constraints: $constraints)';
+  return 'ProtocolParameterDetail(paramType: $paramType, isRequired: $isRequired, defaultValue: $defaultValue, description: $description, constraints: $constraints)';
 }
 
 
@@ -128,7 +134,7 @@ abstract mixin class _$ProtocolParameterDetailCopyWith<$Res> implements $Protoco
   factory _$ProtocolParameterDetailCopyWith(_ProtocolParameterDetail value, $Res Function(_ProtocolParameterDetail) _then) = __$ProtocolParameterDetailCopyWithImpl;
 @override @useResult
 $Res call({
- bool isRequired, dynamic defaultValue, String? description, Map<String, dynamic>? constraints
+ String paramType, bool isRequired,@JsonKey(name: 'default') dynamic defaultValue, String? description, Map<String, dynamic>? constraints
 });
 
 
@@ -145,9 +151,10 @@ class __$ProtocolParameterDetailCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolParameterDetail
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isRequired = null,Object? defaultValue = freezed,Object? description = freezed,Object? constraints = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? paramType = null,Object? isRequired = null,Object? defaultValue = freezed,Object? description = freezed,Object? constraints = freezed,}) {
   return _then(_ProtocolParameterDetail(
-isRequired: null == isRequired ? _self.isRequired : isRequired // ignore: cast_nullable_to_non_nullable
+paramType: null == paramType ? _self.paramType : paramType // ignore: cast_nullable_to_non_nullable
+as String,isRequired: null == isRequired ? _self.isRequired : isRequired // ignore: cast_nullable_to_non_nullable
 as bool,defaultValue: freezed == defaultValue ? _self.defaultValue : defaultValue // ignore: cast_nullable_to_non_nullable
 as dynamic,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,constraints: freezed == constraints ? _self._constraints : constraints // ignore: cast_nullable_to_non_nullable
