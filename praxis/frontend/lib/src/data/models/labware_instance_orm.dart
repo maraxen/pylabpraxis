@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 // Corresponds to LabwareInventoryReagentItem in backend
 class LabwareInventoryReagentItem {
   final String reagentId;

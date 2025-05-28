@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class LabwareDefinitionCatalogOrm {
   final String pylabrobotDefinitionName;
   final String pythonFqn;

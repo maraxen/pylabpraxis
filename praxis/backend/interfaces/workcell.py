@@ -11,7 +11,7 @@ from typing import (
 )
 from dataclasses import dataclass
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pylabrobot.resources import Resource
 from pylabrobot.machines import Machine
 

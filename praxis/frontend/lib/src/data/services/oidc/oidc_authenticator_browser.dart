@@ -46,7 +46,7 @@ class OidcAuthenticatorBrowser implements OidcAuthenticatorWrapper {
     );
 
     final flow = _createAndConfigureFlow();
-    final authUrl = await flow.authenticationUri;
+    final authUrl = flow.authenticationUri;
 
     print('OidcAuthenticatorBrowser: Flow prepared. State: ${flow.state}');
     print(

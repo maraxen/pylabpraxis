@@ -1,24 +1,20 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import os
-from os import PathLike
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.resources import Resource, Deck
+from pylabrobot.resources import Resource
 import datetime
 import logging
 import json
 import asyncio
-from .parameter import Parameter, ProtocolParameters
 from .config import ProtocolConfiguration
 from .required_assets import WorkcellAssets
 from ..configure import PraxisConfiguration
 from ..utils import Notifier, DEFAULT_NOTIFIER, State, db
-from typing import Optional, Coroutine, Any, Sequence, cast, TYPE_CHECKING, List, Dict
+from typing import Optional, Any, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core import DeckManager, Workcell
 
-import warnings
 from ..interfaces import ProtocolInterface, WorkcellInterface, WorkcellAssetsInterface
 
 
@@ -159,7 +155,7 @@ class Protocol(ProtocolInterface):
             key in smtp_details for key in expected_keys
         ):
             raise ValueError(
-                f"SMTP server detail overrides not properly included. Structure should"
+                "SMTP server detail overrides not properly included. Structure should"
                 "be 'smtp_server': SMTP_SERVER, 'smtp_port': SMTP_PORT, 'smtp_username': SMTP_USERNAME,"
                 "'smtp_password': SMTP_PASSWORD' Current structure is: {smtp_details}"
             )

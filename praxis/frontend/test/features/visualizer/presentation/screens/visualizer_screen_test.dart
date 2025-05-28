@@ -5,7 +5,7 @@ import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/visualizer/application/bloc/visualizer_bloc.dart';
 import 'package:praxis_lab_management/src/features/visualizer/presentation/screens/visualizer_screen.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
-import 'package:praxis_lab_management/src/data/services/workcell_api_service.dart'; // Required for VisualizerBloc if not mocking create
+// Required for VisualizerBloc if not mocking create
 
 // MockVisualizerBloc was defined in deck_setup_verification_screen_test,
 // but it's better to define mocks per-test-suite or in a shared file if not using build_runner for them.

@@ -3,7 +3,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/visualizer/application/bloc/visualizer_bloc.dart';
-import 'package:praxis_lab_management/src/data/services/workcell_api_service.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
 
 // Assuming mock_services.mocks.dart is generated in praxis/frontend/test/mocks/

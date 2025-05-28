@@ -174,12 +174,6 @@ class AuthServiceImpl implements AuthService {
     debugPrint("AuthService: Processing new credential...");
     final tokenResponse = await credential.getTokenResponse();
     debugPrint("AuthService: Token response received.");
-    if (tokenResponse == null) {
-      debugPrint(
-        "AuthService: Token response is null. Cannot process credential.",
-      );
-      throw AuthException('Token response is null. Cannot process credential.');
-    }
     debugPrint(
       "AuthService: Token response received: ${tokenResponse.toJson()}",
     ); // Log token response
@@ -210,7 +204,7 @@ class AuthServiceImpl implements AuthService {
       "AuthService: RefreshToken: ${refreshToken != null ? "Present" : "NULL"}",
     );
 
-    if (accessToken == null || idTokenString.isEmpty) {
+    if (idTokenString.isEmpty) {
       debugPrint(
         "AuthService: Authentication failed - missing critical tokens (access or ID) after processing credential.",
       );

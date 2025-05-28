@@ -10,7 +10,7 @@ Version 3: Adds comprehensive query functions.
 """
 import datetime
 import json
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Optional, List, Union
 
 from sqlalchemy.orm import Session as DbSession, joinedload, selectinload, aliased
 from sqlalchemy import desc, or_
@@ -28,9 +28,7 @@ from praxis.backend.database_models import (
     FunctionCallStatusEnum
 )
 from praxis.backend.protocol_core.protocol_definition_models import (
-    FunctionProtocolDefinitionModel,
-    ParameterMetadataModel,
-    AssetRequirementModel
+    FunctionProtocolDefinitionModel
 )
 
 

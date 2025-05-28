@@ -1,7 +1,7 @@
 # praxis/backend/protocol/parameter.py
 # Minimal placeholder for legacy classes to allow jsonschema_utils to be refactored.
 
-from typing import Dict, Any, Type, List, Optional
+from typing import Dict, Any, Type, Optional
 
 class Parameter:
     def __init__(self, name: str, datatype: Type, default: Optional[Any] = None, description: Optional[str] = None, constraints: Optional[Dict[str, Any]] = None, required: bool = True):

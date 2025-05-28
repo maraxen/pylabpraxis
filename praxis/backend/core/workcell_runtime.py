@@ -12,66 +12,14 @@ from typing import Dict, Any, Optional, Type, List
 import importlib
 import traceback
 import inspect # For inspecting constructor parameters
-import enum # Required if enum is used in placeholder ORM models
 
-# Assuming ORM models and Enums are correctly defined and importable
-try:
-    from praxis.database_models.asset_management_orm import (
-        ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
-        ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum
-    )
-    from praxis.db_services import asset_data_service as ads
-except ImportError: # pragma: no cover
-    print("WARNING: WCR-1: Could not import ORM models or asset_data_service. WorkcellRuntime will use placeholders.")
-    # Placeholder classes for when ORM models are not available (e.g. testing without full DB setup)
-    class ManagedDeviceStatusEnum(enum.Enum): OFFLINE="offline"; AVAILABLE="available"; ERROR="error"; IN_USE="in_use" # type: ignore
-    class LabwareInstanceStatusEnum(enum.Enum): AVAILABLE_ON_DECK="available_on_deck"; AVAILABLE_IN_STORAGE="available_in_storage"; IN_USE="in_use"; EMPTY="empty"; UNKNOWN="unknown"; ERROR="error" # type: ignore
-    class PraxisDeviceCategoryEnum(enum.Enum): DECK="DECK"; GENERIC_DEVICE="GENERIC_DEVICE"; LIQUID_HANDLER="LIQUID_HANDLER" # type: ignore
-
-    class BaseOrmPlaceholder: # Basic placeholder for ORM attributes
-        id: int
-        user_friendly_name: Optional[str] = None
-        pylabrobot_class_name: Optional[str] = None
-        backend_config_json: Optional[Dict[str,Any]] = None
-        current_status: Any = None
-        praxis_device_category: Optional[PraxisDeviceCategoryEnum] = None
-        user_assigned_name: Optional[str] = None
-        pylabrobot_definition_name: Optional[str] = None
-        python_fqn: Optional[str] = None
-        plr_category: Optional[str] = None
-        size_x_mm: Optional[float] = None
-        size_y_mm: Optional[float] = None
-        size_z_mm: Optional[float] = None
-        nominal_volume_ul: Optional[float] = None
-        properties_json: Optional[Dict[str, Any]] = None
-        model: Optional[str] = None
-        labware_definition: Any = None # Placeholder for relationship
-        current_deck_slot_name: Optional[str] = None
-        location_device_id: Optional[int] = None
-
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-
-    class ManagedDeviceOrm(BaseOrmPlaceholder): pass # type: ignore
-    class LabwareInstanceOrm(BaseOrmPlaceholder): pass # type: ignore
-    class LabwareDefinitionCatalogOrm(BaseOrmPlaceholder): pass # type: ignore
-    ads = None # type: ignore
-
-
-# PyLabRobot imports
-try:
-    from pylabrobot.resources import Resource as PlrResource, Deck as PlrDeck
-    from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
-except ImportError: # pragma: no cover
-    print("WARNING: WCR-2: PyLabRobot not found/fully importable. WorkcellRuntime PLR interactions will be limited.")
-    class PlrResource: name: str; children: List; parent_slot: Optional[str]; def serialize(self): return {}; def __init__(self, name: str, **kwargs): self.name = name; self.children = []; self.parent_slot = None # type: ignore
-    class PlrDeck(PlrResource): # type: ignore
-        def assign_child_resource(self, resource, slot): pass
-        def unassign_child_resource(self, slot_name_or_resource): pass
-    class LiquidHandlerBackend: # type: ignore
-        def setup(self): pass
-        def stop(self): pass
+from praxis.backend.database_models.asset_management_orm import (
+    ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum
+)
+import praxis.backend.services.asset_data_service as ads
+from pylabrobot.resources import Resource as PlrResource, Deck as PlrDeck
+from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
 
 
 def _get_class_from_fqn(class_fqn: str) -> Type:
@@ -92,7 +40,7 @@ class WorkcellRuntime:
         self.db_session = db_session
         self._active_device_backends: Dict[int, Any] = {} # Maps ManagedDeviceOrm.id to live PLR backend/resource
         self._active_plr_labware_objects: Dict[int, PlrResource] = {} # Maps LabwareInstanceOrm.id to live PLR Resource
-        
+
         # Renamed for clarity, stores the last initialized deck's ORM ID and PLR object.
         # This is for potential informational purposes or specific fallbacks if ever needed,
         # but core logic should rely on explicit deck IDs.
@@ -218,14 +166,14 @@ class WorkcellRuntime:
     def get_active_labware_plr_object(self, labware_instance_orm_id: int) -> Optional[PlrResource]:
         return self._active_plr_labware_objects.get(labware_instance_orm_id)
 
-    def assign_labware_to_deck_slot(self, deck_device_orm_id: int, slot_name: str, labware_plr_object: PlrResource, labware_instance_orm_id: int):
+    def assign_labware_to_deck_slot(self, deck_device_orm_id: int, slot_name: str, labware_plr_object: PlrResource, labware_instance_orm_id: int): # TODO: rework to use specific subclasses for assign to slot or general location
         deck_plr_obj = self.get_active_device_backend(deck_device_orm_id)
         if not deck_plr_obj:
             raise WorkcellRuntimeError(f"Deck device ID {deck_device_orm_id} is not an active backend.")
         if not isinstance(deck_plr_obj, PlrDeck):
             raise WorkcellRuntimeError(f"Device ID {deck_device_orm_id} (name: {getattr(deck_plr_obj, 'name', 'N/A')}) is not a PlrDeck instance. Type is {type(deck_plr_obj)}.")
         try:
-            deck_plr_obj.assign_child_resource(resource=labware_plr_object, slot=slot_name)
+            deck_plr_obj.assign_child_resource(resource=labware_plr_object, slot=slot_name) #TODO: have it inspect for args look for slots or rails, have it inspect for assign_child_resource_to_slot
             if self.db_session and ads:
                 ads.update_labware_instance_location_and_status(
                     self.db_session,
@@ -296,7 +244,7 @@ class WorkcellRuntime:
         deck_backend = self.get_active_device_backend(deck_device_orm_id)
         if deck_backend and isinstance(deck_backend, PlrDeck):
             return deck_backend
-        
+
         if self.db_session and ads:
             deck_orm = ads.get_managed_device_by_id(self.db_session, deck_device_orm_id)
             if deck_orm and deck_orm.praxis_device_category == PraxisDeviceCategoryEnum.DECK:
@@ -334,7 +282,7 @@ class WorkcellRuntime:
         # Assuming list_labware_instances can filter by location_device_id and optionally status.
         labware_on_deck = ads.list_labware_instances(
             db=self.db_session,
-            location_device_id_filter=deck_device_orm_id,
+            location_device_id=deck_device_orm_id,
             # Consider if specific statuses like IN_USE or AVAILABLE_ON_DECK are needed.
             # If no status filter, it gets all labware instances that have this deck as their location.
         )
@@ -369,7 +317,7 @@ class WorkcellRuntime:
                     "labware": labware_info_data,
                 }
                 response_slots.append(slot_info_data)
-        
+
         # TODO: Add empty slots. This would typically come from:
         # 1. A specific DeckConfigurationOrm that is "active" on this deck_device_orm_id, listing all its slots.
         # 2. Or, if a live_deck PlrDeck object is available, introspecting its defined slot names/sites.
@@ -390,9 +338,9 @@ class WorkcellRuntime:
             "deck_id": deck_orm.id,
             "user_friendly_name": deck_orm.user_friendly_name or f"Deck_{deck_orm.id}",
             "pylabrobot_class_name": deck_orm.pylabrobot_class_name,
-            "size_x_mm": deck_size_x, 
-            "size_y_mm": deck_size_y, 
-            "size_z_mm": deck_size_z, 
+            "size_x_mm": deck_size_x,
+            "size_y_mm": deck_size_y,
+            "size_z_mm": deck_size_z,
             "slots": response_slots,
         }
         return deck_state_data
@@ -405,7 +353,7 @@ class WorkcellRuntime:
             # Verify it's still active, re-initialize if not?
             # For now, just return if set.
             return self._last_initialized_deck_object
-        
+
         # If not set, or if we want to ensure it's the "main" one from DB (if such a concept exists)
         # This part would need a way to identify a "main" deck from DB if that's desired.
         # For now, it just returns the last one this instance touched.

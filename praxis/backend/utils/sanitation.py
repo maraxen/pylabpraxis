@@ -1,6 +1,6 @@
 from functools import wraps
 from typing import Optional, Literal, Any
-from pylabrobot.resources import TipRack, TipSpot, Well, Container, Plate
+from pylabrobot.resources import TipRack, TipSpot, Well, Plate
 import warnings
 from typing import TypeVar
 

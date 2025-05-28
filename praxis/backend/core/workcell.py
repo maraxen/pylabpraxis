@@ -4,12 +4,9 @@ from typing import Optional, Any, Literal, cast, Self, Set, Dict
 
 import asyncio
 import json
-import asyncio
 
-from pylabrobot.utils.object_parsing import find_subclass
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources.resource import Resource
-from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Deck
 from pylabrobot.pumps import Pump, PumpArray
 from pylabrobot.plate_reading import PlateReader
@@ -18,7 +15,6 @@ from pylabrobot.powder_dispensing import PowderDispenser
 from pylabrobot.scales import Scale
 from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
-from pylabrobot.serializer import serialize, deserialize
 
 # TODO: make different asset types from inspection of PLR
 
@@ -207,7 +203,7 @@ class Workcell(WorkcellInterface):
                 case Machine():
                     self.refs["other_machines"][machine_id] = machine
                 case _:
-                    raise ValueError(f"Machine does not have a valid type.")
+                    raise ValueError("Machine does not have a valid type.")
         self.children.extend(list(self.all_machines.values()))
 
     def specify_deck(self, liquid_handler_id: str, deck: Deck) -> None:

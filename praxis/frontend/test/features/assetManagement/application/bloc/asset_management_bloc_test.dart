@@ -2,7 +2,6 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
-import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
 import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';

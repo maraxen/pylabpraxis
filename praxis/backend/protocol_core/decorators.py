@@ -15,8 +15,7 @@ import traceback
 from typing import Callable, Optional, Any, Dict, Union, List, get_origin, get_args
 
 from praxis.backend.protocol_core.definitions import (
-    PROTOCOL_REGISTRY, PlrResource, PlrDeck, DeckInputType,
-    PraxisState, PraxisRunContext, serialize_arguments
+    PROTOCOL_REGISTRY, PlrResource, PlrDeck, PraxisState, PraxisRunContext, serialize_arguments
 )
 from praxis.backend.database_models import FunctionCallStatusEnum
 # TODO: DEC-1: Ensure praxis.backend.services.protocol_data_service is importable.
@@ -326,7 +325,7 @@ def protocol_function(
                             if current_db_session and current_protocol_run_db_id:
                                 update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELING)
                                 current_db_session.commit() # Commit status change
-                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": f"Cancelled by user during protocol step execution (from PAUSED state)."}))
+                                update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user during protocol step execution (from PAUSED state)."}))
                                 current_db_session.commit() # Commit status change
                             raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during protocol step execution (from PAUSED state).")
                         elif pause_loop_command and pause_loop_command not in ["RESUME", "CANCEL"]:
@@ -344,7 +343,7 @@ def protocol_function(
                     if current_db_session and current_protocol_run_db_id:
                         update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELING)
                         current_db_session.commit() # Commit status change
-                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": f"Cancelled by user during protocol step execution."}))
+                        update_protocol_run_status(current_db_session, current_protocol_run_db_id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user during protocol step execution."}))
                         current_db_session.commit() # Commit status change
                     raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during protocol step execution.")
             # --- END MODIFICATION ---

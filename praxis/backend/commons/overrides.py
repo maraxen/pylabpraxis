@@ -2,12 +2,10 @@ import importlib
 import inspect
 import pkgutil
 
-import pylabrobot
 from pylabrobot.machines import Machine
 
-from functools import partial
 
-from typing import Type, TypeVar, Optional
+from typing import Type, TypeVar
 
 T = TypeVar("T")
 

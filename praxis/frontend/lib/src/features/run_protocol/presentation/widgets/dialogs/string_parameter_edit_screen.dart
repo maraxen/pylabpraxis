@@ -107,7 +107,7 @@ class _StringParameterEditScreenState extends State<StringParameterEditScreen> {
       }
       if (constraints?.maxLength != null &&
           valueToValidate.length > constraints!.maxLength!) {
-        error = 'Max length: ${constraints!.maxLength}.';
+        error = 'Max length: ${constraints.maxLength}.';
       }
       if (constraints?.regex != null &&
           !RegExp(constraints!.regex!).hasMatch(valueToValidate)) {
@@ -269,7 +269,7 @@ class _StringParameterEditScreenState extends State<StringParameterEditScreen> {
                               )
                               : null,
                     );
-                  }).toList(),
+                  }),
                   FilterChip(
                     label: const Text('Other...'),
                     selected: _selectedChipValue == _otherChipValueKey,

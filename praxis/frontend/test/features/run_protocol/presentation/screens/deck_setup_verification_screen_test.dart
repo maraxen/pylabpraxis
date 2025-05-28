@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/deck_setup_verification_screen.dart';
 import 'package:praxis_lab_management/src/features/visualizer/application/bloc/visualizer_bloc.dart';
 import 'package:praxis_lab_management/src/features/visualizer/presentation/screens/visualizer_screen.dart';
-import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
-import 'package:praxis_lab_management/src/data/services/workcell_api_service.dart';
 
 // Assuming mock_services.mocks.dart is generated in praxis/frontend/test/mocks/
 import '../../../../mocks/mock_services.mocks.dart';

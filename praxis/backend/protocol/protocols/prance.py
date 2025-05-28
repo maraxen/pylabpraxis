@@ -7,20 +7,16 @@ Attributes:
 
 """
 
-from typing import Any, Dict, Optional, cast, Union, Type, List
+from typing import Optional, List
 from datetime import datetime as dt, timedelta
 from itertools import product
-import asyncio
 
 from praxis.protocol.protocol import Protocol
 from praxis.protocol.config import ProtocolConfiguration
 from praxis.protocol.required_assets import WorkcellAssets
-from praxis.protocol.parameter import ProtocolParameters, Parameter
-from praxis.utils.state import State
-from praxis.core.orchestrator import Orchestrator
-from pylabrobot.resources import Deck, Plate, TipRack, TipSpot, Well, Resource, Lid
+from praxis.protocol.parameter import ProtocolParameters
+from pylabrobot.resources import Plate, TipRack, Resource
 from pylabrobot.plate_reading import PlateReader
-from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.pumps import PumpArray
 
 # Initialize protocol parameters with default values

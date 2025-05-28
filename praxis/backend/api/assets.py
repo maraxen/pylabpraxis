@@ -1,7 +1,6 @@
 from typing import List, Optional, Dict, Any
-from typing import List, Optional, Dict, Any # Ensure Any is imported
 from fastapi import APIRouter, HTTPException, Depends, status # Ensure status is imported
-from pydantic import BaseModel, Field # Ensure Field is imported
+from pydantic import BaseModel # Ensure Field is imported
 import datetime # For setting last_updated_at
 
 # Assuming get_db and DbSession will be correctly imported from dependencies
@@ -10,15 +9,13 @@ from praxis.backend.database import get_db, DbSession # Placeholder, adjust if n
 
 from praxis.backend.services import asset_data_service # For interacting with DB layer
 
-from praxis.utils.db import db as old_db_api # old_db_api, keeping for existing code
-from praxis.utils.plr_inspection import (
+from praxis.backend.utils.plr_inspection import (
     get_resource_metadata,
     get_machine_metadata,
     get_resource_categories,
     get_all_resource_types,
     get_all_machine_types,
 )
-from praxis.backend.database_models.asset_management_orm import LabwareCategoryEnum # For LabwareDefinitionResponse
 
 router = APIRouter()
 
@@ -27,9 +24,6 @@ class LabwareDefinitionBase(BaseModel):
     pylabrobot_definition_name: str
     python_fqn: str
     praxis_labware_type_name: Optional[str] = None
-    # Assuming LabwareCategoryEnum is available and correctly imported
-    # It might need to be defined locally or imported if not already.
-    category: Optional[LabwareCategoryEnum] = None # Using the ORM enum for now
     description: Optional[str] = None
     is_consumable: bool = True
     nominal_volume_ul: Optional[float] = None
@@ -53,7 +47,6 @@ class LabwareDefinitionCreate(LabwareDefinitionBase):
 class LabwareDefinitionUpdate(BaseModel): # All fields optional for update
     python_fqn: Optional[str] = None
     praxis_labware_type_name: Optional[str] = None
-    category: Optional[LabwareCategoryEnum] = None
     description: Optional[str] = None
     is_consumable: Optional[bool] = None
     nominal_volume_ul: Optional[float] = None
@@ -492,7 +485,7 @@ async def get_labware_instance_inventory(instance_id: int, db: DbSession = Depen
     instance = asset_data_service.get_labware_instance_by_id(db, instance_id)
     if not instance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Labware instance not found")
-    
+
     if not instance.properties_json:
         return LabwareInventoryDataOut() # Return empty if no properties_json
 
@@ -571,8 +564,8 @@ async def get_labware_definition_endpoint(pylabrobot_definition_name: str, db: D
 
 @router.get("/labware_definitions", response_model=List[LabwareDefinitionResponse], tags=["Labware Definitions"])
 async def list_labware_definitions_endpoint(
-    db: DbSession = Depends(get_db), 
-    limit: int = 100, 
+    db: DbSession = Depends(get_db),
+    limit: int = 100,
     offset: int = 0,
     # TODO: Add other filter parameters like category, manufacturer etc.
     # category: Optional[LabwareCategoryEnum] = Query(None, description="Filter by labware category"),
@@ -593,7 +586,7 @@ async def update_labware_definition_endpoint(
     db: DbSession = Depends(get_db)
 ):
     """
-    Updates an existing labware definition. 
+    Updates an existing labware definition.
     If `pylabrobot_definition_name` does not exist, it will not create one.
     Use POST /labware_definitions to create.
     """
@@ -602,13 +595,13 @@ async def update_labware_definition_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Labware definition '{pylabrobot_definition_name}' not found.")
 
     update_data = definition_update.model_dump(exclude_unset=True)
-    
+
     # add_or_update_labware_definition expects all non-optional args from LabwareDefinitionBase if creating.
     # For update, we pass only what's in update_data.
     # The service function needs to handle partial updates gracefully.
     # We must ensure pylabrobot_definition_name and python_fqn (if not changing PK) are passed.
     # For this PUT, pylabrobot_definition_name is fixed. python_fqn is required if not in update_data.
-    
+
     # The service function add_or_update_labware_definition is designed for upsert.
     # For a strict update, we might need a different service function or adapt this one.
     # Current service function requires python_fqn if creating.

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
 import 'package:praxis_lab_management/src/data/services/workcell_api_service.dart';
 import 'package:praxis_lab_management/src/features/visualizer/application/bloc/visualizer_bloc.dart';
 

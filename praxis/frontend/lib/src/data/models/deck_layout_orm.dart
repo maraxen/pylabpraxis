@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 // Corresponds to DeckConfigurationSlotItemOrm in backend
 class DeckConfigurationSlotItemOrm {
   final int? id;

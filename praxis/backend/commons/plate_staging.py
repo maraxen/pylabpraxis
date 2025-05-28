@@ -1,4 +1,4 @@
-from typing import Optional, Literal, cast
+from typing import Optional, Literal
 from pylabrobot.resources import Plate, Well, TipRack, Coordinate
 from pylabrobot.liquid_handling import LiquidHandler
 from praxis.utils.errors import ExperimentError
@@ -6,15 +6,12 @@ from pylabrobot.resources.errors import ResourceNotFoundError
 from pylabrobot.plate_reading import PlateReader
 from pylabrobot.resources import CarrierSite
 from pylabrobot.liquid_handling.standard import GripDirection
-from pylabrobot.resources import volume_tracker
 import numpy as np
 
-from praxis.utils.sanitation import liquid_handler_setup_check, coerce_to_list, type_check, \
-  tip_mapping, check_list_length, parse_well_name
+from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
 
 # take advantage of traverse and snake
 
-from pylabrobot.utils.positions import string_to_index
 
 async def plate_idx_to_well(plate: Plate, index: int | str | Well) -> Well:
   if isinstance(index, str):

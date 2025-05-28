@@ -7,38 +7,21 @@ This includes Managed Devices, Labware Definitions, Labware Instances,
 and Deck Configurations.
 """
 import datetime
-import json
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 
 from sqlalchemy.orm import Session as DbSession, joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import desc, or_ # For querying
 
-# Import Asset Management ORM Models
-# TODO: ADS-1: Ensure praxis.database_models.asset_management_orm is correctly structured and importable
-try:
-    from praxis.database_models.asset_management_orm import (
-        ManagedDeviceOrm,
-        LabwareDefinitionCatalogOrm,
-        LabwareInstanceOrm,
-        DeckConfigurationOrm,
-        DeckConfigurationSlotItemOrm,
-        ManagedDeviceStatusEnum,
-        LabwareInstanceStatusEnum,
-        LabwareCategoryEnum
-    )
-except ImportError:
-    print("WARNING: ADS-1: Could not import Asset ORM models. AssetDataService will have placeholder types.")
-    # Define placeholders if models not found (for linting/testing this file in isolation)
-    class ManagedDeviceOrm: pass # type: ignore
-    class LabwareDefinitionCatalogOrm: pass # type: ignore
-    class LabwareInstanceOrm: pass # type: ignore
-    class DeckConfigurationOrm: pass # type: ignore
-    class DeckConfigurationSlotItemOrm: pass # type: ignore
-    class ManagedDeviceStatusEnum(enum.Enum): OFFLINE="offline"; AVAILABLE="available"; IN_USE="in_use" # type: ignore
-    class LabwareInstanceStatusEnum(enum.Enum): UNKNOWN="unknown"; AVAILABLE_IN_STORAGE="available_in_storage" # type: ignore
-    class LabwareCategoryEnum(enum.Enum): PLATE="plate"; TIP_RACK="tip_rack" # type: ignore
 
+from praxis.backend.database_models.asset_management_orm import (
+    ManagedDeviceOrm,
+    LabwareDefinitionCatalogOrm,
+    LabwareInstanceOrm,
+    DeckConfigurationOrm,
+    DeckConfigurationSlotItemOrm,
+    ManagedDeviceStatusEnum,
+    LabwareInstanceStatusEnum
+)
 
 # --- Managed Device Services ---
 
@@ -120,7 +103,7 @@ def update_managed_device_status(
         if new_status == ManagedDeviceStatusEnum.IN_USE:
             device_orm.current_protocol_run_guid = current_protocol_run_guid
         elif device_orm.current_protocol_run_guid == current_protocol_run_guid: # Clear if no longer in use by this run
-             device_orm.current_protocol_run_guid = None
+              device_orm.current_protocol_run_guid = None
         if new_status != ManagedDeviceStatusEnum.OFFLINE: # Assuming any other status means it was seen
             device_orm.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
         try:
@@ -175,7 +158,6 @@ def add_or_update_labware_definition(
     pylabrobot_definition_name: str, # Primary Key
     python_fqn: str, # ADDED new argument
     praxis_labware_type_name: Optional[str] = None,
-    category: Optional[LabwareCategoryEnum] = None,
     description: Optional[str] = None,
     is_consumable: bool = True,
     nominal_volume_ul: Optional[float] = None,
@@ -194,10 +176,9 @@ def add_or_update_labware_definition(
     if not def_orm:
         def_orm = LabwareDefinitionCatalogOrm(pylabrobot_definition_name=pylabrobot_definition_name)
         db.add(def_orm)
-    
+
     def_orm.python_fqn = python_fqn # ADDED assignment
     def_orm.praxis_labware_type_name = praxis_labware_type_name
-    def_orm.category = category
     def_orm.description = description
     def_orm.is_consumable = is_consumable
     def_orm.nominal_volume_ul = nominal_volume_ul
@@ -223,14 +204,11 @@ def get_labware_definition(db: DbSession, pylabrobot_definition_name: str) -> Op
 
 def list_labware_definitions(
     db: DbSession,
-    category: Optional[LabwareCategoryEnum] = None,
     manufacturer: Optional[str] = None,
     is_consumable: Optional[bool] = None,
     limit: int = 100, offset: int = 0
 ) -> List[LabwareDefinitionCatalogOrm]:
     query = db.query(LabwareDefinitionCatalogOrm)
-    if category:
-        query = query.filter(LabwareDefinitionCatalogOrm.category == category)
     if manufacturer:
         query = query.filter(LabwareDefinitionCatalogOrm.manufacturer.ilike(f"%{manufacturer}%")) # type: ignore
     if is_consumable is not None:
@@ -267,7 +245,7 @@ def delete_labware_definition(db: DbSession, pylabrobot_definition_name: str) ->
         print(f"ERROR: ADS: IntegrityError deleting labware definition '{pylabrobot_definition_name}': {e}")
         # Potentially re-raise or handle as a specific application error if needed
         # For now, let's say deletion failed but doesn't crash the app
-        return False 
+        return False
     except Exception as e:
         db.rollback()
         print(f"ERROR: ADS: Exception deleting labware definition '{pylabrobot_definition_name}': {e}")
@@ -356,7 +334,7 @@ def update_labware_instance_location_and_status(
     db: DbSession,
     labware_instance_id: int, # Renamed for clarity from instance_id
     new_status: Optional[LabwareInstanceStatusEnum] = None, # MODIFIED: Made optional
-    location_device_id: Optional[int] = None, 
+    location_device_id: Optional[int] = None,
     current_deck_slot_name: Optional[str] = None,
     physical_location_description: Optional[str] = None,
     properties_json_update: Optional[Dict[str, Any]] = None,
@@ -367,7 +345,7 @@ def update_labware_instance_location_and_status(
     if instance_orm:
         if new_status is not None:
             instance_orm.current_status = new_status
-        
+
         # Location update logic:
         # If any location field is explicitly provided, update all.
         # To clear location, pass None for location_device_id, current_deck_slot_name,
@@ -378,7 +356,7 @@ def update_labware_instance_location_and_status(
             instance_orm.location_device_id = location_device_id
             instance_orm.current_deck_slot_name = current_deck_slot_name
             instance_orm.physical_location_description = physical_location_description
-            
+
         if status_details is not None:
             if hasattr(instance_orm, 'status_details'): # Should always exist now
                 instance_orm.status_details = status_details
@@ -406,7 +384,7 @@ def update_labware_instance_location_and_status(
             # If properties_json_update is an empty dict {}, it effectively clears existing properties.
             # If it's None, properties_json is not touched.
             instance_orm.properties_json = properties_json_update
-            
+
             from sqlalchemy.orm.attributes import flag_modified # Ensure this import is at top level or handled
             if instance_orm.properties_json is not None: # Only flag if it's not None
                  flag_modified(instance_orm, "properties_json")
@@ -425,7 +403,7 @@ def delete_labware_instance(db: DbSession, instance_id: int) -> bool:
     instance_orm = db.query(LabwareInstanceOrm).filter(LabwareInstanceOrm.id == instance_id).first()
     if not instance_orm:
         return False # Not found
-    
+
     # Check for dependencies:
     # - DeckConfigurationSlotItemOrm.labware_instance_id
     #   The ORM definition for DeckConfigurationSlotItemOrm.labware_instance should specify ondelete behavior.
@@ -500,7 +478,7 @@ def create_deck_layout(
         description=description
     )
     db.add(deck_layout_orm)
-    
+
     # Flush to get deck_layout_orm.id for slot items
     try:
         db.flush() # Get ID before full commit
@@ -520,7 +498,7 @@ def create_deck_layout(
                 if not labware_instance:
                     db.rollback() # Rollback the deck_layout_orm addition
                     raise ValueError(f"LabwareInstanceOrm with id {labware_instance_id} for slot '{item_data.get('slot_name')}' not found.")
-            
+
             # Validate expected labware definition exists, if provided
             expected_def_name = item_data.get("expected_labware_definition_name")
             if expected_def_name:
@@ -536,7 +514,7 @@ def create_deck_layout(
                 expected_labware_definition_name=expected_def_name
             )
             db.add(slot_item)
-    
+
     try:
         db.commit()
         db.refresh(deck_layout_orm)
@@ -633,14 +611,14 @@ def update_deck_layout(
                 if not labware_instance:
                     db.rollback()
                     raise ValueError(f"LabwareInstanceOrm with id {labware_instance_id} for slot '{item_data.get('slot_name')}' not found.")
-            
+
             expected_def_name = item_data.get("expected_labware_definition_name")
             if expected_def_name:
                 labware_def = get_labware_definition(db, expected_def_name)
                 if not labware_def:
                     db.rollback()
                     raise ValueError(f"LabwareDefinitionCatalogOrm with name '{expected_def_name}' for slot '{item_data.get('slot_name')}' not found.")
-            
+
             slot_item = DeckConfigurationSlotItemOrm(
                 deck_configuration_id=deck_layout_orm.id,
                 slot_name=item_data["slot_name"],
@@ -648,7 +626,7 @@ def update_deck_layout(
                 expected_labware_definition_name=expected_def_name
             )
             db.add(slot_item)
-    
+
     try:
         db.commit()
         db.refresh(deck_layout_orm)
@@ -660,13 +638,13 @@ def update_deck_layout(
     except Exception as e: # pragma: no cover
         db.rollback()
         raise e
-    
+
 def delete_deck_layout(db: DbSession, deck_layout_id: int) -> bool:
     """Deletes a deck layout configuration."""
     deck_layout_orm = db.query(DeckConfigurationOrm).filter(DeckConfigurationOrm.id == deck_layout_id).first()
     if not deck_layout_orm:
         return False # Not found
-    
+
     try:
         # Associated slot_items are deleted due to cascade="all, delete-orphan"
         db.delete(deck_layout_orm)

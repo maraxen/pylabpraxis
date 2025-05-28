@@ -119,7 +119,6 @@ async def init_praxis_db_schema():
     defined by ORM models inheriting from `Base`.
     """
     logger.info("Importing ORM models for Praxis database schema initialization...")
-    import praxis.backend.database_models # type: ignore
 
     logger.info(f"Initializing Praxis database tables at {PRAXIS_DATABASE_URL.replace(praxis_db_password, '****')}...")
     try:

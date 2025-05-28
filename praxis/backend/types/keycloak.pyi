@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 class KeycloakOpenIDConnection:
     def __init__(

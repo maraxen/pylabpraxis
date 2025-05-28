@@ -11,7 +11,7 @@ SQLAlchemy ORM models for storing:
 Version 3: Imports Base from praxis.utils.db.
 """
 from datetime import datetime
-from typing import Optional, Any # Any can be used for JSON if type is not strictly dict/list
+from typing import Optional # Any can be used for JSON if type is not strictly dict/list
 import enum
 
 from sqlalchemy import (

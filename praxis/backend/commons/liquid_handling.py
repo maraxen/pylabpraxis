@@ -1,13 +1,10 @@
 from pylabrobot.liquid_handling import LiquidHandler
 from typing import Optional, Literal
-from pylabrobot.liquid_handling import LiquidHandler, STAR
 from pylabrobot.resources import (
   TipRack, Container, Plate, TipSpot, ItemizedResource, Resource, Well
 )
 import warnings
 
-from pylabrobot.resources.errors import ResourceNotFoundError
-from praxis.utils.errors import ExperimentError
 from praxis.utils import (
   type_check,
   coerce_to_list,

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Integer, String, Boolean, DateTime, func # Removed Column
-from sqlalchemy.orm import relationship, Mapped, mapped_column # Added Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column # Added Mapped, mapped_column
 
 from praxis.backend.utils.db import Base # Import your project's Base
 

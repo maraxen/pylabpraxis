@@ -1,7 +1,5 @@
 import inspect
-import sys
-from typing import Dict, List, Optional, Set, Tuple, Type, Any
-import importlib
+from typing import Dict, List, Type
 
 from pylabrobot.resources import Resource
 from pylabrobot.machines import Machine

@@ -1,8 +1,6 @@
-from typing import Optional
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import TipRack, Plate, Well
-from praxis.utils.sanitation import liquid_handler_setup_check, coerce_to_list, type_check, \
-  tip_mapping, check_list_length, parse_well_name
+from praxis.utils.sanitation import parse_well_name
 
 
 async def wash_tips96(liquid_handler: LiquidHandler,
