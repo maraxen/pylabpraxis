@@ -11,6 +11,8 @@ sealed class ProtocolParameterDetail with _$ProtocolParameterDetail {
     @JsonKey(name: 'default') dynamic defaultValue,
     String? description,
     Map<String, dynamic>? constraints,
+    String? displayName,
+    String? unit,
   }) = _ProtocolParameterDetail;
 
   factory ProtocolParameterDetail.fromJson(Map<String, dynamic> json) =>

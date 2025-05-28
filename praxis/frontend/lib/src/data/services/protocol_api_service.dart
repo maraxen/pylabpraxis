@@ -1,6 +1,5 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/file_upload_response.dart';
-import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_response.dart';
@@ -14,7 +13,9 @@ abstract class ProtocolApiService {
   Future<List<ProtocolInfo>> discoverProtocols();
 
   /// Fetches detailed information for a specific protocol.
-  Future<ProtocolDetails> getProtocolDetails({required String protocolPath});
+  Future<Map<String, dynamic>> getProtocolDetails({
+    required String protocolPath,
+  });
 
   /// Fetches available deck layouts from the backend.
   Future<List<String>> getDeckLayouts();

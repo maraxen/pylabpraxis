@@ -1,10 +1,3 @@
-// Defines the configuration for a protocol parameter.
-//
-// This class is used to represent the structure and constraints of a parameter
-// that can be configured for a protocol. It includes information such as the
-// parameter's name, type, description, default value, and any constraints
-// that apply to its value.
-
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 
@@ -15,6 +8,7 @@ part 'parameter_config.g.dart';
 sealed class ParameterConfig with _$ParameterConfig {
   const factory ParameterConfig({
     required String type,
+    @Default(false) bool isRequired,
     ParameterConstraints? constraints,
     String? displayName,
     String? description,
@@ -29,6 +23,7 @@ sealed class ParameterConfig with _$ParameterConfig {
       _$ParameterConfigFromJson(json);
 }
 
+// No changes needed for ParameterDefinition or ParameterConfigExtension
 @freezed
 sealed class ParameterDefinition with _$ParameterDefinition {
   const factory ParameterDefinition({
@@ -43,7 +38,6 @@ sealed class ParameterDefinition with _$ParameterDefinition {
       _$ParameterDefinitionFromJson(json);
 }
 
-// Extension to safely access config properties from ParameterConfig
 extension ParameterConfigExtension on ParameterConfig {
   String get displayName_ => displayName ?? '';
   String get description_ => description ?? '';

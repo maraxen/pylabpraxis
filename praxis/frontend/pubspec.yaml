@@ -63,6 +63,7 @@ dev_dependencies:
   json_serializable: ^6.9.5
   freezed: ^3.0.6
   custom_lint: ^0.7.5
+  bloc_test: ^10.0.0
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

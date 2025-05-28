@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
-import 'package:praxis_data/praxis_data.dart'; // For ORM models
+import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
+import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 
 // Assuming mock_services.mocks.dart is generated in praxis/frontend/test/mocks/
 import '../../../../mocks/mock_services.mocks.dart';
@@ -16,16 +19,27 @@ void main() {
   });
 
   group('AssetManagementBloc', () {
-    final device1 = ManagedDeviceOrm(id: 'device1', name: 'Device 1');
+    final device1 = ManagedDeviceOrm(
+      name: 'Device 1',
+      type: 'deviceType1',
+      metadata: {},
+      isAvailable: true,
+    );
     final labwareDef1 = LabwareDefinitionCatalogOrm(
-      id: 'lwDef1',
-      name: 'Labware Def 1',
+      pylabrobotDefinitionName:
+          'lwDef1', // TODO: replace with actual definition name
+      pythonFqn: 'com.praxis.labware.LabwareDef1',
     );
     final labwareInstance1 = LabwareInstanceOrm(
-      id: 'lwInstance1',
-      labwareDefinitionId: 'lwDef1',
+      userAssignedName: 'Labware Instance 1',
+      pylabrobotDefinitionName: labwareDef1.pylabrobotDefinitionName,
     );
-    final deckLayout1 = DeckLayoutOrm(id: 'deck1', name: 'Deck 1');
+    final deckLayout1 = DeckLayoutOrm(
+      id: 1,
+      layoutName: 'Deck Layout 1',
+      deckDeviceId: 1,
+      workspaceId: 'workspace1',
+    );
 
     final List<ManagedDeviceOrm> mockDevices = [device1];
     final List<LabwareDefinitionCatalogOrm> mockLabwareDefinitions = [
@@ -114,7 +128,12 @@ void main() {
     });
 
     group('AddDeviceStarted', () {
-      final newDevice = ManagedDeviceOrm(id: 'newDevice', name: 'New Device');
+      final newDevice = ManagedDeviceOrm(
+        name: 'New Device',
+        type: 'newDeviceType',
+        metadata: {},
+        isAvailable: true,
+      );
       blocTest<AssetManagementBloc, AssetManagementState>(
         'emits [AssetManagementUpdateInProgress, AssetManagementUpdateSuccess, AssetManagementLoadInProgress, AssetManagementLoadSuccess] when createDevice is successful',
         build: () {

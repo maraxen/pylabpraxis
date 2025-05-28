@@ -3,7 +3,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 import 'package:praxis_lab_management/src/core/network/dio_client.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/file_upload_response.dart';
-import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_response.dart';
@@ -54,7 +53,8 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
   }
 
   @override
-  Future<ProtocolDetails> getProtocolDetails({
+  Future<Map<String, dynamic>> getProtocolDetails({
+    // UPDATE return type
     required String protocolPath,
   }) async {
     try {
@@ -65,7 +65,7 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
         queryParameters: {'protocol_path': encodedPath},
       );
       if (response.statusCode == 200 && response.data is Map) {
-        return ProtocolDetails.fromJson(response.data as Map<String, dynamic>);
+        return response.data as Map<String, dynamic>; // UPDATE: return raw map
       } else {
         throw ApiException(
           message: 'Failed to get protocol details',

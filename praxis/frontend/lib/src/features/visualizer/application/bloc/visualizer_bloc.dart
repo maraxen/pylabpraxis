@@ -6,8 +6,6 @@ import 'package:praxis_lab_management/src/data/services/workcell_api_service.dar
 import 'package:flutter/foundation.dart'; // For debugPrint
 
 part 'visualizer_bloc.freezed.dart';
-part 'visualizer_event.dart';
-part 'visualizer_state.dart';
 
 class VisualizerBloc extends Bloc<VisualizerEvent, VisualizerState> {
   final WorkcellApiService _workcellApiService;

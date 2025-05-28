@@ -12,23 +12,17 @@ part of 'protocol_details.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
-
 /// @nodoc
 mixin _$ProtocolDetails {
 
- String get name; String get path; String get description; Map<String, ProtocolParameterDetail> get parameters; List<ProtocolAssetDetail> get assets; bool get hasAssets; bool get hasParameters;// Corresponds to 'requires_config' in backend.
-// Based on backend logic: `not (bool(parameters) or bool(assets))`,
-// this field is true if there are NO parameters AND NO assets.
-// Consider renaming to 'isSimple' or 'requiresNoConfiguration' for clarity if appropriate.
- bool get requiresConfig;
+ String get name; String get path; String get description; Map<String, ParameterConfig> get parameters;// UPDATE this line
+ List<ProtocolAssetDetail> get assets; bool get hasAssets; bool get hasParameters; bool get requiresConfig;
 /// Create a copy of ProtocolDetails
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $ProtocolDetailsCopyWith<ProtocolDetails> get copyWith => _$ProtocolDetailsCopyWithImpl<ProtocolDetails>(this as ProtocolDetails, _$identity);
 
-  /// Serializes this ProtocolDetails to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -36,7 +30,7 @@ bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolDetails&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.parameters, parameters)&&const DeepCollectionEquality().equals(other.assets, assets)&&(identical(other.hasAssets, hasAssets) || other.hasAssets == hasAssets)&&(identical(other.hasParameters, hasParameters) || other.hasParameters == hasParameters)&&(identical(other.requiresConfig, requiresConfig) || other.requiresConfig == requiresConfig));
 }
 
-@JsonKey(includeFromJson: false, includeToJson: false)
+
 @override
 int get hashCode => Object.hash(runtimeType,name,path,description,const DeepCollectionEquality().hash(parameters),const DeepCollectionEquality().hash(assets),hasAssets,hasParameters,requiresConfig);
 
@@ -53,7 +47,7 @@ abstract mixin class $ProtocolDetailsCopyWith<$Res>  {
   factory $ProtocolDetailsCopyWith(ProtocolDetails value, $Res Function(ProtocolDetails) _then) = _$ProtocolDetailsCopyWithImpl;
 @useResult
 $Res call({
- String name, String path, String description, Map<String, ProtocolParameterDetail> parameters, List<ProtocolAssetDetail> assets, bool hasAssets, bool hasParameters, bool requiresConfig
+ String name, String path, String description, Map<String, ParameterConfig> parameters, List<ProtocolAssetDetail> assets, bool hasAssets, bool hasParameters, bool requiresConfig
 });
 
 
@@ -76,7 +70,7 @@ name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,parameters: null == parameters ? _self.parameters : parameters // ignore: cast_nullable_to_non_nullable
-as Map<String, ProtocolParameterDetail>,assets: null == assets ? _self.assets : assets // ignore: cast_nullable_to_non_nullable
+as Map<String, ParameterConfig>,assets: null == assets ? _self.assets : assets // ignore: cast_nullable_to_non_nullable
 as List<ProtocolAssetDetail>,hasAssets: null == hasAssets ? _self.hasAssets : hasAssets // ignore: cast_nullable_to_non_nullable
 as bool,hasParameters: null == hasParameters ? _self.hasParameters : hasParameters // ignore: cast_nullable_to_non_nullable
 as bool,requiresConfig: null == requiresConfig ? _self.requiresConfig : requiresConfig // ignore: cast_nullable_to_non_nullable
@@ -88,23 +82,25 @@ as bool,
 
 
 /// @nodoc
-@JsonSerializable()
+
 
 class _ProtocolDetails implements ProtocolDetails {
-  const _ProtocolDetails({required this.name, required this.path, required this.description, required final  Map<String, ProtocolParameterDetail> parameters, required final  List<ProtocolAssetDetail> assets, required this.hasAssets, required this.hasParameters, required this.requiresConfig}): _parameters = parameters,_assets = assets;
-  factory _ProtocolDetails.fromJson(Map<String, dynamic> json) => _$ProtocolDetailsFromJson(json);
+  const _ProtocolDetails({required this.name, required this.path, required this.description, required final  Map<String, ParameterConfig> parameters, required final  List<ProtocolAssetDetail> assets, required this.hasAssets, required this.hasParameters, required this.requiresConfig}): _parameters = parameters,_assets = assets;
+  
 
 @override final  String name;
 @override final  String path;
 @override final  String description;
- final  Map<String, ProtocolParameterDetail> _parameters;
-@override Map<String, ProtocolParameterDetail> get parameters {
+ final  Map<String, ParameterConfig> _parameters;
+@override Map<String, ParameterConfig> get parameters {
   if (_parameters is EqualUnmodifiableMapView) return _parameters;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_parameters);
 }
 
+// UPDATE this line
  final  List<ProtocolAssetDetail> _assets;
+// UPDATE this line
 @override List<ProtocolAssetDetail> get assets {
   if (_assets is EqualUnmodifiableListView) return _assets;
   // ignore: implicit_dynamic_type
@@ -113,10 +109,6 @@ class _ProtocolDetails implements ProtocolDetails {
 
 @override final  bool hasAssets;
 @override final  bool hasParameters;
-// Corresponds to 'requires_config' in backend.
-// Based on backend logic: `not (bool(parameters) or bool(assets))`,
-// this field is true if there are NO parameters AND NO assets.
-// Consider renaming to 'isSimple' or 'requiresNoConfiguration' for clarity if appropriate.
 @override final  bool requiresConfig;
 
 /// Create a copy of ProtocolDetails
@@ -125,17 +117,14 @@ class _ProtocolDetails implements ProtocolDetails {
 @pragma('vm:prefer-inline')
 _$ProtocolDetailsCopyWith<_ProtocolDetails> get copyWith => __$ProtocolDetailsCopyWithImpl<_ProtocolDetails>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$ProtocolDetailsToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolDetails&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._parameters, _parameters)&&const DeepCollectionEquality().equals(other._assets, _assets)&&(identical(other.hasAssets, hasAssets) || other.hasAssets == hasAssets)&&(identical(other.hasParameters, hasParameters) || other.hasParameters == hasParameters)&&(identical(other.requiresConfig, requiresConfig) || other.requiresConfig == requiresConfig));
 }
 
-@JsonKey(includeFromJson: false, includeToJson: false)
+
 @override
 int get hashCode => Object.hash(runtimeType,name,path,description,const DeepCollectionEquality().hash(_parameters),const DeepCollectionEquality().hash(_assets),hasAssets,hasParameters,requiresConfig);
 
@@ -152,7 +141,7 @@ abstract mixin class _$ProtocolDetailsCopyWith<$Res> implements $ProtocolDetails
   factory _$ProtocolDetailsCopyWith(_ProtocolDetails value, $Res Function(_ProtocolDetails) _then) = __$ProtocolDetailsCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String path, String description, Map<String, ProtocolParameterDetail> parameters, List<ProtocolAssetDetail> assets, bool hasAssets, bool hasParameters, bool requiresConfig
+ String name, String path, String description, Map<String, ParameterConfig> parameters, List<ProtocolAssetDetail> assets, bool hasAssets, bool hasParameters, bool requiresConfig
 });
 
 
@@ -175,7 +164,7 @@ name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,parameters: null == parameters ? _self._parameters : parameters // ignore: cast_nullable_to_non_nullable
-as Map<String, ProtocolParameterDetail>,assets: null == assets ? _self._assets : assets // ignore: cast_nullable_to_non_nullable
+as Map<String, ParameterConfig>,assets: null == assets ? _self._assets : assets // ignore: cast_nullable_to_non_nullable
 as List<ProtocolAssetDetail>,hasAssets: null == hasAssets ? _self.hasAssets : hasAssets // ignore: cast_nullable_to_non_nullable
 as bool,hasParameters: null == hasParameters ? _self.hasParameters : hasParameters // ignore: cast_nullable_to_non_nullable
 as bool,requiresConfig: null == requiresConfig ? _self.requiresConfig : requiresConfig // ignore: cast_nullable_to_non_nullable

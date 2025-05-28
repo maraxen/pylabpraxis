@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/presentation/screens/assetManagement_screen.dart';
-import 'package:praxis_data/praxis_data.dart'; // For ORM models
 
 // Mock AssetManagementBloc
 class MockAssetManagementBloc extends Mock implements AssetManagementBloc {}

@@ -16,12 +16,9 @@ _ProtocolWorkflowState _$ProtocolWorkflowStateFromJson(
           : ProtocolInfo.fromJson(
             json['selectedProtocolInfo'] as Map<String, dynamic>,
           ),
-  selectedProtocolDetails:
-      json['selectedProtocolDetails'] == null
-          ? null
-          : ProtocolDetails.fromJson(
-            json['selectedProtocolDetails'] as Map<String, dynamic>,
-          ),
+  selectedProtocolDetails: const ProtocolDetailsConverter().fromJson(
+    json['selectedProtocolDetails'] as Map<String, dynamic>?,
+  ),
   configuredParameters: json['configuredParameters'] as Map<String, dynamic>?,
   assignedAssets: (json['assignedAssets'] as Map<String, dynamic>?)?.map(
     (k, e) => MapEntry(k, e as String),
@@ -43,6 +40,10 @@ _ProtocolWorkflowState _$ProtocolWorkflowStateFromJson(
     _$WorkflowStepEnumMap,
     json['navigationReturnTarget'],
   ),
+  history:
+      (json['history'] as List<dynamic>)
+          .map((e) => $enumDecode(_$WorkflowStepEnumMap, e))
+          .toList(),
 );
 
 Map<String, dynamic> _$ProtocolWorkflowStateToJson(
@@ -50,7 +51,9 @@ Map<String, dynamic> _$ProtocolWorkflowStateToJson(
 ) => <String, dynamic>{
   'currentStep': _$WorkflowStepEnumMap[instance.currentStep]!,
   'selectedProtocolInfo': instance.selectedProtocolInfo,
-  'selectedProtocolDetails': instance.selectedProtocolDetails,
+  'selectedProtocolDetails': const ProtocolDetailsConverter().toJson(
+    instance.selectedProtocolDetails,
+  ),
   'configuredParameters': instance.configuredParameters,
   'assignedAssets': instance.assignedAssets,
   'deckLayoutName': instance.deckLayoutName,
@@ -62,6 +65,7 @@ Map<String, dynamic> _$ProtocolWorkflowStateToJson(
   'parametersCompletionPercent': instance.parametersCompletionPercent,
   'navigationReturnTarget':
       _$WorkflowStepEnumMap[instance.navigationReturnTarget],
+  'history': instance.history.map((e) => _$WorkflowStepEnumMap[e]!).toList(),
 };
 
 const _$WorkflowStepEnumMap = {

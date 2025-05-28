@@ -9,6 +9,7 @@ part of 'parameter_config.dart';
 _ParameterConfig _$ParameterConfigFromJson(Map<String, dynamic> json) =>
     _ParameterConfig(
       type: json['type'] as String,
+      isRequired: json['isRequired'] as bool? ?? false,
       constraints:
           json['constraints'] == null
               ? null
@@ -27,6 +28,7 @@ _ParameterConfig _$ParameterConfigFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ParameterConfigToJson(_ParameterConfig instance) =>
     <String, dynamic>{
       'type': instance.type,
+      'isRequired': instance.isRequired,
       'constraints': instance.constraints,
       'displayName': instance.displayName,
       'description': instance.description,

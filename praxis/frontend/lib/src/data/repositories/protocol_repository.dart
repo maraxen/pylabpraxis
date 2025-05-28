@@ -1,27 +1,18 @@
-// Defines the contract for protocol-related data operations.
-//
-// This abstract class serves as an interface for concrete repository
-// implementations that will interact with data sources (like ProtocolApiService)
-// to fetch and manage protocol information.
-
-// For File
-import 'package:file_picker/file_picker.dart'; // For PlatformFile
-import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart';
-import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/file_upload_response.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_prepare_request.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_status_response.dart';
-import 'package:praxis_lab_management/src/data/services/protocol_api_service.dart'; // Import ProtocolApiService
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_asset_detail.dart';
+import 'package:praxis_lab_management/src/data/services/protocol_api_service.dart';
 
-/// Abstract interface for protocol repositories.
-///
-/// Repositories coordinate data operations between data sources (e.g., API services)
-/// and the application's business logic (e.g., BLoCs).
 abstract class ProtocolRepository {
   Future<List<ProtocolInfo>> discoverProtocols();
   Future<ProtocolDetails> getProtocolDetails(String protocolPath);
   Future<List<String>> getDeckLayouts();
-  Future<DeckLayout> uploadDeckFile({required PlatformFile file});
+  Future<FileUploadResponse> uploadDeckFile({required PlatformFile file});
   Future<Map<String, dynamic>> prepareProtocol({
     required ProtocolPrepareRequest request,
   });
@@ -45,16 +36,56 @@ class ProtocolRepositoryImpl implements ProtocolRepository {
     try {
       return await _protocolApiService.discoverProtocols();
     } catch (e) {
-      // Log or handle specific exceptions if needed before rethrowing
-      rethrow; // Propagate the exception (already an AppException or similar)
+      rethrow;
     }
   }
 
   @override
   Future<ProtocolDetails> getProtocolDetails(String protocolPath) async {
     try {
-      return await _protocolApiService.getProtocolDetails(
+      final json = await _protocolApiService.getProtocolDetails(
         protocolPath: protocolPath,
+      );
+
+      // Manually parse the 'parameters' map from the raw JSON
+      final parametersMap = <String, ParameterConfig>{};
+      if (json['parameters'] is Map) {
+        (json['parameters'] as Map<String, dynamic>).forEach((key, value) {
+          final paramDetailJson = value as Map<String, dynamic>;
+          parametersMap[key] = ParameterConfig(
+            type: paramDetailJson['paramType'] as String,
+            isRequired: paramDetailJson['isRequired'] as bool? ?? false,
+            description: paramDetailJson['description'] as String?,
+            defaultValue:
+                paramDetailJson['default'] ?? paramDetailJson['defaultValue'],
+            displayName: paramDetailJson['displayName'] as String?,
+            units: paramDetailJson['units'] as String?,
+          );
+        });
+      }
+
+      // Manually parse the 'assets' list
+      final assetsList = <ProtocolAssetDetail>[];
+      if (json['assets'] is List) {
+        assetsList.addAll(
+          (json['assets'] as List).map(
+            (assetJson) =>
+                ProtocolAssetDetail.fromJson(assetJson as Map<String, dynamic>),
+          ),
+        );
+      }
+
+      // Construct and return the new ProtocolDetails domain model
+      return ProtocolDetails(
+        name: json['name'] as String,
+        path: json['path'] as String,
+        description: json['description'] as String,
+        parameters: parametersMap,
+        assets: assetsList,
+        hasAssets: json['has_assets'] as bool? ?? assetsList.isNotEmpty,
+        hasParameters:
+            json['has_parameters'] as bool? ?? parametersMap.isNotEmpty,
+        requiresConfig: json['requires_config'] as bool? ?? true,
       );
     } catch (e) {
       rethrow;
@@ -71,7 +102,9 @@ class ProtocolRepositoryImpl implements ProtocolRepository {
   }
 
   @override
-  Future<DeckLayout> uploadDeckFile({required PlatformFile file}) async {
+  Future<FileUploadResponse> uploadDeckFile({
+    required PlatformFile file,
+  }) async {
     try {
       return await _protocolApiService.uploadDeckFile(file: file);
     } catch (e) {
@@ -84,7 +117,10 @@ class ProtocolRepositoryImpl implements ProtocolRepository {
     required ProtocolPrepareRequest request,
   }) async {
     try {
-      return await _protocolApiService.prepareProtocol(request: request);
+      final response = await _protocolApiService.prepareProtocol(
+        request: request,
+      );
+      return response.config;
     } catch (e) {
       rethrow;
     }

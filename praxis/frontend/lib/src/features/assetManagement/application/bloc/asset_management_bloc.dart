@@ -328,7 +328,7 @@ sealed class AssetManagementEvent with _$AssetManagementEvent {
 
 /// States for AssetManagementBloc
 @freezed
-sealed class AssetManagementState with _$AssetManagementState {
+abstract class AssetManagementState with _$AssetManagementState {
   const factory AssetManagementState.initial() = AssetManagementInitial;
   const factory AssetManagementState.loadInProgress() =
       AssetManagementLoadInProgress;

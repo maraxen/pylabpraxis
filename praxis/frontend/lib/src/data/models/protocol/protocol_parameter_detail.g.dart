@@ -14,6 +14,8 @@ _ProtocolParameterDetail _$ProtocolParameterDetailFromJson(
   defaultValue: json['default'],
   description: json['description'] as String?,
   constraints: json['constraints'] as Map<String, dynamic>?,
+  displayName: json['displayName'] as String?,
+  unit: json['unit'] as String?,
 );
 
 Map<String, dynamic> _$ProtocolParameterDetailToJson(
@@ -24,4 +26,6 @@ Map<String, dynamic> _$ProtocolParameterDetailToJson(
   'default': instance.defaultValue,
   'description': instance.description,
   'constraints': instance.constraints,
+  'displayName': instance.displayName,
+  'unit': instance.unit,
 };

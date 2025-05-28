@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/parameter_config.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/parameter_constraints.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/widgets/dialogs/basic_parameter_edit_dialog.dart';
@@ -225,7 +226,9 @@ class _ParameterConfigurationScreenState
                             displayName: paramConfigData.displayName ?? '',
                             description: paramConfigData.description ?? '',
                             defaultValue: paramConfigData.defaultValue,
-                            config: paramConfigData,
+                            config: ParameterConfig.fromJson(
+                              paramConfigData.toJson(),
+                            ),
                             // Map other necessary fields from paramConfigData
                           );
 
@@ -237,7 +240,7 @@ class _ParameterConfigurationScreenState
                             child: ListTile(
                               title: Text(
                                 paramConfigData.displayName ??
-                                    '', // Or formParamState.definition.displayName
+                                    paramNameKeyFromDetails, // Or formParamState.definition.displayName
                                 style: theme.textTheme.titleMedium,
                               ),
                               subtitle: Column(

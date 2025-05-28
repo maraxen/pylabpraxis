@@ -949,8 +949,8 @@ as double,
 /// @nodoc
 mixin _$ProtocolWorkflowState {
 
- WorkflowStep get currentStep; ProtocolInfo? get selectedProtocolInfo; ProtocolDetails? get selectedProtocolDetails; Map<String, dynamic>? get configuredParameters; Map<String, String>? get assignedAssets; String? get deckLayoutName;@JsonKey(ignore: true) PlatformFile? get uploadedDeckFile;// Excluded from serialization
- Map<String, dynamic>? get preparedBackendConfig; ProtocolStatusResponse? get protocolStartResponse; bool get isLoading; String? get error; bool get isCurrentStepDataValid; double get parametersCompletionPercent; WorkflowStep? get navigationReturnTarget;
+ WorkflowStep get currentStep; ProtocolInfo? get selectedProtocolInfo;@ProtocolDetailsConverter() ProtocolDetails? get selectedProtocolDetails; Map<String, dynamic>? get configuredParameters; Map<String, String>? get assignedAssets; String? get deckLayoutName;@JsonKey(includeFromJson: false, includeToJson: false) PlatformFile? get uploadedDeckFile;// Excluded from serialization
+ Map<String, dynamic>? get preparedBackendConfig; ProtocolStatusResponse? get protocolStartResponse; bool get isLoading; String? get error; bool get isCurrentStepDataValid; double get parametersCompletionPercent; WorkflowStep? get navigationReturnTarget; List<WorkflowStep> get history;
 /// Create a copy of ProtocolWorkflowState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -963,16 +963,16 @@ $ProtocolWorkflowStateCopyWith<ProtocolWorkflowState> get copyWith => _$Protocol
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other.configuredParameters, configuredParameters)&&const DeepCollectionEquality().equals(other.assignedAssets, assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other.preparedBackendConfig, preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other.configuredParameters, configuredParameters)&&const DeepCollectionEquality().equals(other.assignedAssets, assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other.preparedBackendConfig, preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget)&&const DeepCollectionEquality().equals(other.history, history));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(configuredParameters),const DeepCollectionEquality().hash(assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget);
+int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(configuredParameters),const DeepCollectionEquality().hash(assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget,const DeepCollectionEquality().hash(history));
 
 @override
 String toString() {
-  return 'ProtocolWorkflowState(currentStep: $currentStep, selectedProtocolInfo: $selectedProtocolInfo, selectedProtocolDetails: $selectedProtocolDetails, configuredParameters: $configuredParameters, assignedAssets: $assignedAssets, deckLayoutName: $deckLayoutName, uploadedDeckFile: $uploadedDeckFile, preparedBackendConfig: $preparedBackendConfig, protocolStartResponse: $protocolStartResponse, isLoading: $isLoading, error: $error, isCurrentStepDataValid: $isCurrentStepDataValid, parametersCompletionPercent: $parametersCompletionPercent, navigationReturnTarget: $navigationReturnTarget)';
+  return 'ProtocolWorkflowState(currentStep: $currentStep, selectedProtocolInfo: $selectedProtocolInfo, selectedProtocolDetails: $selectedProtocolDetails, configuredParameters: $configuredParameters, assignedAssets: $assignedAssets, deckLayoutName: $deckLayoutName, uploadedDeckFile: $uploadedDeckFile, preparedBackendConfig: $preparedBackendConfig, protocolStartResponse: $protocolStartResponse, isLoading: $isLoading, error: $error, isCurrentStepDataValid: $isCurrentStepDataValid, parametersCompletionPercent: $parametersCompletionPercent, navigationReturnTarget: $navigationReturnTarget, history: $history)';
 }
 
 
@@ -983,7 +983,7 @@ abstract mixin class $ProtocolWorkflowStateCopyWith<$Res>  {
   factory $ProtocolWorkflowStateCopyWith(ProtocolWorkflowState value, $Res Function(ProtocolWorkflowState) _then) = _$ProtocolWorkflowStateCopyWithImpl;
 @useResult
 $Res call({
- WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(ignore: true) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
+ WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo,@ProtocolDetailsConverter() ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(includeFromJson: false, includeToJson: false) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget, List<WorkflowStep> history
 });
 
 
@@ -1000,7 +1000,7 @@ class _$ProtocolWorkflowStateCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolWorkflowState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? currentStep = null,Object? selectedProtocolInfo = freezed,Object? selectedProtocolDetails = freezed,Object? configuredParameters = freezed,Object? assignedAssets = freezed,Object? deckLayoutName = freezed,Object? uploadedDeckFile = freezed,Object? preparedBackendConfig = freezed,Object? protocolStartResponse = freezed,Object? isLoading = null,Object? error = freezed,Object? isCurrentStepDataValid = null,Object? parametersCompletionPercent = null,Object? navigationReturnTarget = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? currentStep = null,Object? selectedProtocolInfo = freezed,Object? selectedProtocolDetails = freezed,Object? configuredParameters = freezed,Object? assignedAssets = freezed,Object? deckLayoutName = freezed,Object? uploadedDeckFile = freezed,Object? preparedBackendConfig = freezed,Object? protocolStartResponse = freezed,Object? isLoading = null,Object? error = freezed,Object? isCurrentStepDataValid = null,Object? parametersCompletionPercent = null,Object? navigationReturnTarget = freezed,Object? history = null,}) {
   return _then(_self.copyWith(
 currentStep: null == currentStep ? _self.currentStep : currentStep // ignore: cast_nullable_to_non_nullable
 as WorkflowStep,selectedProtocolInfo: freezed == selectedProtocolInfo ? _self.selectedProtocolInfo : selectedProtocolInfo // ignore: cast_nullable_to_non_nullable
@@ -1016,7 +1016,8 @@ as bool,error: freezed == error ? _self.error : error // ignore: cast_nullable_t
 as String?,isCurrentStepDataValid: null == isCurrentStepDataValid ? _self.isCurrentStepDataValid : isCurrentStepDataValid // ignore: cast_nullable_to_non_nullable
 as bool,parametersCompletionPercent: null == parametersCompletionPercent ? _self.parametersCompletionPercent : parametersCompletionPercent // ignore: cast_nullable_to_non_nullable
 as double,navigationReturnTarget: freezed == navigationReturnTarget ? _self.navigationReturnTarget : navigationReturnTarget // ignore: cast_nullable_to_non_nullable
-as WorkflowStep?,
+as WorkflowStep?,history: null == history ? _self.history : history // ignore: cast_nullable_to_non_nullable
+as List<WorkflowStep>,
   ));
 }
 /// Create a copy of ProtocolWorkflowState
@@ -1063,12 +1064,12 @@ $ProtocolStatusResponseCopyWith<$Res>? get protocolStartResponse {
 @JsonSerializable()
 
 class _ProtocolWorkflowState implements ProtocolWorkflowState {
-  const _ProtocolWorkflowState({required this.currentStep, this.selectedProtocolInfo, this.selectedProtocolDetails, final  Map<String, dynamic>? configuredParameters, final  Map<String, String>? assignedAssets, this.deckLayoutName, @JsonKey(ignore: true) this.uploadedDeckFile, final  Map<String, dynamic>? preparedBackendConfig, this.protocolStartResponse, this.isLoading = false, this.error, this.isCurrentStepDataValid = false, this.parametersCompletionPercent = 0.0, this.navigationReturnTarget}): _configuredParameters = configuredParameters,_assignedAssets = assignedAssets,_preparedBackendConfig = preparedBackendConfig;
+  const _ProtocolWorkflowState({required this.currentStep, this.selectedProtocolInfo, @ProtocolDetailsConverter() this.selectedProtocolDetails, final  Map<String, dynamic>? configuredParameters, final  Map<String, String>? assignedAssets, this.deckLayoutName, @JsonKey(includeFromJson: false, includeToJson: false) this.uploadedDeckFile, final  Map<String, dynamic>? preparedBackendConfig, this.protocolStartResponse, this.isLoading = false, this.error, this.isCurrentStepDataValid = false, this.parametersCompletionPercent = 0.0, this.navigationReturnTarget, required final  List<WorkflowStep> history}): _configuredParameters = configuredParameters,_assignedAssets = assignedAssets,_preparedBackendConfig = preparedBackendConfig,_history = history;
   factory _ProtocolWorkflowState.fromJson(Map<String, dynamic> json) => _$ProtocolWorkflowStateFromJson(json);
 
 @override final  WorkflowStep currentStep;
 @override final  ProtocolInfo? selectedProtocolInfo;
-@override final  ProtocolDetails? selectedProtocolDetails;
+@override@ProtocolDetailsConverter() final  ProtocolDetails? selectedProtocolDetails;
  final  Map<String, dynamic>? _configuredParameters;
 @override Map<String, dynamic>? get configuredParameters {
   final value = _configuredParameters;
@@ -1088,7 +1089,7 @@ class _ProtocolWorkflowState implements ProtocolWorkflowState {
 }
 
 @override final  String? deckLayoutName;
-@override@JsonKey(ignore: true) final  PlatformFile? uploadedDeckFile;
+@override@JsonKey(includeFromJson: false, includeToJson: false) final  PlatformFile? uploadedDeckFile;
 // Excluded from serialization
  final  Map<String, dynamic>? _preparedBackendConfig;
 // Excluded from serialization
@@ -1106,6 +1107,13 @@ class _ProtocolWorkflowState implements ProtocolWorkflowState {
 @override@JsonKey() final  bool isCurrentStepDataValid;
 @override@JsonKey() final  double parametersCompletionPercent;
 @override final  WorkflowStep? navigationReturnTarget;
+ final  List<WorkflowStep> _history;
+@override List<WorkflowStep> get history {
+  if (_history is EqualUnmodifiableListView) return _history;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_history);
+}
+
 
 /// Create a copy of ProtocolWorkflowState
 /// with the given fields replaced by the non-null parameter values.
@@ -1120,16 +1128,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other._configuredParameters, _configuredParameters)&&const DeepCollectionEquality().equals(other._assignedAssets, _assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other._preparedBackendConfig, _preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolWorkflowState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.selectedProtocolInfo, selectedProtocolInfo) || other.selectedProtocolInfo == selectedProtocolInfo)&&(identical(other.selectedProtocolDetails, selectedProtocolDetails) || other.selectedProtocolDetails == selectedProtocolDetails)&&const DeepCollectionEquality().equals(other._configuredParameters, _configuredParameters)&&const DeepCollectionEquality().equals(other._assignedAssets, _assignedAssets)&&(identical(other.deckLayoutName, deckLayoutName) || other.deckLayoutName == deckLayoutName)&&(identical(other.uploadedDeckFile, uploadedDeckFile) || other.uploadedDeckFile == uploadedDeckFile)&&const DeepCollectionEquality().equals(other._preparedBackendConfig, _preparedBackendConfig)&&(identical(other.protocolStartResponse, protocolStartResponse) || other.protocolStartResponse == protocolStartResponse)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error)&&(identical(other.isCurrentStepDataValid, isCurrentStepDataValid) || other.isCurrentStepDataValid == isCurrentStepDataValid)&&(identical(other.parametersCompletionPercent, parametersCompletionPercent) || other.parametersCompletionPercent == parametersCompletionPercent)&&(identical(other.navigationReturnTarget, navigationReturnTarget) || other.navigationReturnTarget == navigationReturnTarget)&&const DeepCollectionEquality().equals(other._history, _history));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(_configuredParameters),const DeepCollectionEquality().hash(_assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(_preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget);
+int get hashCode => Object.hash(runtimeType,currentStep,selectedProtocolInfo,selectedProtocolDetails,const DeepCollectionEquality().hash(_configuredParameters),const DeepCollectionEquality().hash(_assignedAssets),deckLayoutName,uploadedDeckFile,const DeepCollectionEquality().hash(_preparedBackendConfig),protocolStartResponse,isLoading,error,isCurrentStepDataValid,parametersCompletionPercent,navigationReturnTarget,const DeepCollectionEquality().hash(_history));
 
 @override
 String toString() {
-  return 'ProtocolWorkflowState(currentStep: $currentStep, selectedProtocolInfo: $selectedProtocolInfo, selectedProtocolDetails: $selectedProtocolDetails, configuredParameters: $configuredParameters, assignedAssets: $assignedAssets, deckLayoutName: $deckLayoutName, uploadedDeckFile: $uploadedDeckFile, preparedBackendConfig: $preparedBackendConfig, protocolStartResponse: $protocolStartResponse, isLoading: $isLoading, error: $error, isCurrentStepDataValid: $isCurrentStepDataValid, parametersCompletionPercent: $parametersCompletionPercent, navigationReturnTarget: $navigationReturnTarget)';
+  return 'ProtocolWorkflowState(currentStep: $currentStep, selectedProtocolInfo: $selectedProtocolInfo, selectedProtocolDetails: $selectedProtocolDetails, configuredParameters: $configuredParameters, assignedAssets: $assignedAssets, deckLayoutName: $deckLayoutName, uploadedDeckFile: $uploadedDeckFile, preparedBackendConfig: $preparedBackendConfig, protocolStartResponse: $protocolStartResponse, isLoading: $isLoading, error: $error, isCurrentStepDataValid: $isCurrentStepDataValid, parametersCompletionPercent: $parametersCompletionPercent, navigationReturnTarget: $navigationReturnTarget, history: $history)';
 }
 
 
@@ -1140,7 +1148,7 @@ abstract mixin class _$ProtocolWorkflowStateCopyWith<$Res> implements $ProtocolW
   factory _$ProtocolWorkflowStateCopyWith(_ProtocolWorkflowState value, $Res Function(_ProtocolWorkflowState) _then) = __$ProtocolWorkflowStateCopyWithImpl;
 @override @useResult
 $Res call({
- WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo, ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(ignore: true) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget
+ WorkflowStep currentStep, ProtocolInfo? selectedProtocolInfo,@ProtocolDetailsConverter() ProtocolDetails? selectedProtocolDetails, Map<String, dynamic>? configuredParameters, Map<String, String>? assignedAssets, String? deckLayoutName,@JsonKey(includeFromJson: false, includeToJson: false) PlatformFile? uploadedDeckFile, Map<String, dynamic>? preparedBackendConfig, ProtocolStatusResponse? protocolStartResponse, bool isLoading, String? error, bool isCurrentStepDataValid, double parametersCompletionPercent, WorkflowStep? navigationReturnTarget, List<WorkflowStep> history
 });
 
 
@@ -1157,7 +1165,7 @@ class __$ProtocolWorkflowStateCopyWithImpl<$Res>
 
 /// Create a copy of ProtocolWorkflowState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? currentStep = null,Object? selectedProtocolInfo = freezed,Object? selectedProtocolDetails = freezed,Object? configuredParameters = freezed,Object? assignedAssets = freezed,Object? deckLayoutName = freezed,Object? uploadedDeckFile = freezed,Object? preparedBackendConfig = freezed,Object? protocolStartResponse = freezed,Object? isLoading = null,Object? error = freezed,Object? isCurrentStepDataValid = null,Object? parametersCompletionPercent = null,Object? navigationReturnTarget = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? currentStep = null,Object? selectedProtocolInfo = freezed,Object? selectedProtocolDetails = freezed,Object? configuredParameters = freezed,Object? assignedAssets = freezed,Object? deckLayoutName = freezed,Object? uploadedDeckFile = freezed,Object? preparedBackendConfig = freezed,Object? protocolStartResponse = freezed,Object? isLoading = null,Object? error = freezed,Object? isCurrentStepDataValid = null,Object? parametersCompletionPercent = null,Object? navigationReturnTarget = freezed,Object? history = null,}) {
   return _then(_ProtocolWorkflowState(
 currentStep: null == currentStep ? _self.currentStep : currentStep // ignore: cast_nullable_to_non_nullable
 as WorkflowStep,selectedProtocolInfo: freezed == selectedProtocolInfo ? _self.selectedProtocolInfo : selectedProtocolInfo // ignore: cast_nullable_to_non_nullable
@@ -1173,7 +1181,8 @@ as bool,error: freezed == error ? _self.error : error // ignore: cast_nullable_t
 as String?,isCurrentStepDataValid: null == isCurrentStepDataValid ? _self.isCurrentStepDataValid : isCurrentStepDataValid // ignore: cast_nullable_to_non_nullable
 as bool,parametersCompletionPercent: null == parametersCompletionPercent ? _self.parametersCompletionPercent : parametersCompletionPercent // ignore: cast_nullable_to_non_nullable
 as double,navigationReturnTarget: freezed == navigationReturnTarget ? _self.navigationReturnTarget : navigationReturnTarget // ignore: cast_nullable_to_non_nullable
-as WorkflowStep?,
+as WorkflowStep?,history: null == history ? _self._history : history // ignore: cast_nullable_to_non_nullable
+as List<WorkflowStep>,
   ));
 }
 

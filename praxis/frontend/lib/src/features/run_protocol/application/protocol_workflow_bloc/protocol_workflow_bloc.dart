@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart'; // Will be replaced by hydrated_bloc
 import 'package:hydrated_bloc/hydrated_bloc.dart'; // Added for HydratedBloc
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -7,6 +8,8 @@ import 'package:praxis_lab_management/src/data/models/protocol/protocol_info.dar
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_details.dart';
 import 'package:praxis_lab_management/src/data/models/protocol/protocol_status_response.dart';
 import 'package:praxis_lab_management/src/data/repositories/protocol_repository.dart';
+import 'package:praxis_lab_management/src/data/models/protocol/protocol_asset.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_details_converter.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/domain/workflow_step.dart';
 
 // Child BLoCs (assuming they are not hydrated, or managed separately)
@@ -120,13 +123,6 @@ class ProtocolWorkflowBloc
     InitializeWorkflow event,
     Emitter<ProtocolWorkflowState> emit,
   ) {
-    // When initializing, we might want to respect the hydrated state unless explicitly resetting.
-    // If 'state' is already something other than initial (i.e., it was hydrated),
-    // this event might need to behave differently, or a separate "ForceReset" event could be used.
-    // For now, it re-initializes child BLoCs based on the current (possibly hydrated) state.
-
-    // If the current state is truly the initial one (not hydrated from a previous session),
-    // then emit initial state and fetch discovery.
     if (state == ProtocolWorkflowState.initial()) {
       emit(
         ProtocolWorkflowState.initial(),
@@ -134,8 +130,8 @@ class ProtocolWorkflowBloc
       _protocolsDiscoveryBloc?.add(const FetchDiscoveredProtocols());
     }
 
-    // Re-initialize child BLoCs based on the current (potentially hydrated) state.
-    // This ensures child BLoCs are correctly set up after hydration.
+    // Initialize child BLoCs with the current state
+
     if (state.selectedProtocolDetails != null) {
       _protocolParametersBloc.add(
         LoadProtocolParameters(
@@ -145,7 +141,17 @@ class ProtocolWorkflowBloc
       );
       _protocolAssetsBloc.add(
         LoadRequiredAssets(
-          assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
+          assetsFromProtocolDetails:
+              state.selectedProtocolDetails!.assets
+                  .map(
+                    (assetDetail) => ProtocolAsset(
+                      name: assetDetail.name,
+                      type: assetDetail.type,
+                      description: assetDetail.description,
+                      required: assetDetail.required,
+                    ),
+                  )
+                  .toList(),
           existingAssignments: state.assignedAssets,
         ),
       );
@@ -322,12 +328,21 @@ class ProtocolWorkflowBloc
       if (state.selectedProtocolDetails?.assets.isNotEmpty ?? false) {
         _protocolAssetsBloc.add(
           LoadRequiredAssets(
-            assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
+            assetsFromProtocolDetails:
+                state.selectedProtocolDetails!.assets
+                    .map(
+                      (assetDetail) => ProtocolAsset(
+                        name: assetDetail.name,
+                        type: assetDetail.type,
+                        description: assetDetail.description,
+                        required: assetDetail.required,
+                      ),
+                    )
+                    .toList(),
             existingAssignments: state.assignedAssets,
           ),
         );
       }
-      add(const ProceedToNextStep());
     }
   }
 
@@ -470,7 +485,17 @@ class ProtocolWorkflowBloc
           nextStep = WorkflowStep.assetAssignment;
           _protocolAssetsBloc.add(
             LoadRequiredAssets(
-              assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
+              assetsFromProtocolDetails:
+                  state.selectedProtocolDetails!.assets
+                      .map(
+                        (assetDetail) => ProtocolAsset(
+                          name: assetDetail.name,
+                          type: assetDetail.type,
+                          description: assetDetail.description,
+                          required: assetDetail.required,
+                        ),
+                      )
+                      .toList(),
               existingAssignments: state.assignedAssets,
             ),
           );
@@ -572,7 +597,17 @@ class ProtocolWorkflowBloc
         if (state.selectedProtocolDetails?.assets.isNotEmpty ?? false) {
           _protocolAssetsBloc.add(
             LoadRequiredAssets(
-              assetsFromProtocolDetails: state.selectedProtocolDetails!.assets,
+              assetsFromProtocolDetails:
+                  state.selectedProtocolDetails!.assets
+                      .map(
+                        (assetDetail) => ProtocolAsset(
+                          name: assetDetail.name,
+                          type: assetDetail.type,
+                          description: assetDetail.description,
+                          required: assetDetail.required,
+                        ),
+                      )
+                      .toList(),
               existingAssignments: state.assignedAssets,
             ),
           );

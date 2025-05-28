@@ -107,43 +107,38 @@ class _VisualizerScreenWidgetState extends State<VisualizerScreenWidget> {
       appBar: AppBar(title: Text('Workcell Visualizer: ${widget.workcellId}')),
       body: BlocBuilder<VisualizerBloc, VisualizerState>(
         builder: (context, state) {
-          return state.when(
-            initial: () => const Center(child: CircularProgressIndicator()),
-            loadInProgress:
-                () => const Center(child: CircularProgressIndicator()),
-            loadFailure:
-                (error) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Error loading deck state: $error',
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+          return switch (state) {
+            VisualizerInitial() => const Center(
+              child: CircularProgressIndicator(),
+            ),
+            VisualizerLoadInProgress() => const Center(
+              child: CircularProgressIndicator(),
+            ),
+            VisualizerLoadFailure(error: final error) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Error loading deck state: $error',
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
                 ),
-            loadSuccess: (deckLayout) {
-              // Initial load successful, render the deck.
-              return DeckVisualizer(deckLayoutData: deckLayout);
-            },
-            realtimeUpdate: (updatedData) {
-              // Real-time update received, re-render the deck.
-              // The updatedData could be a full DeckLayout or a partial update map.
-              // DeckVisualizer and DeckPainter need to be robust enough to handle this.
-              return DeckVisualizer(deckLayoutData: updatedData);
-            },
-            disconnected:
-                () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      'WebSocket disconnected. Real-time updates paused.',
-                      style: TextStyle(color: Colors.orange),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+              ),
+            ),
+            VisualizerLoadSuccess(deckLayout: final deckLayout) =>
+              DeckVisualizer(deckLayoutData: deckLayout),
+            VisualizerRealtimeUpdate(updatedData: final updatedData) =>
+              DeckVisualizer(deckLayoutData: updatedData),
+            VisualizerDisconnected() => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'WebSocket disconnected. Real-time updates paused.',
+                  style: TextStyle(color: Colors.orange),
+                  textAlign: TextAlign.center,
                 ),
-          );
+              ),
+            ),
+          };
         },
       ),
     );
