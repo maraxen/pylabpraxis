@@ -18,7 +18,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from praxis.backend.services.resource_data_service import get_resource_definition
 
 
-from praxis.backend.models.asset_management_orm import (
+from praxis.backend.models import (
     MachineOrm,
     ResourceInstanceOrm,
     DeckConfigurationOrm,
@@ -311,6 +311,12 @@ async def add_or_update_deck_type_definition(
     if not deck_type_orm:
         deck_type_orm = DeckTypeDefinitionOrm(pylabrobot_deck_fqn=pylabrobot_class_name)
         db.add(deck_type_orm)
+
+    if deck_type_orm is None:
+        raise ValueError(
+            f"DeckTypeDefinitionOrm with FQN '{pylabrobot_class_name}' \
+            not found and no ID provided for creation."
+        )
 
     # Update attributes
     deck_type_orm.pylabrobot_deck_fqn = pylabrobot_class_name

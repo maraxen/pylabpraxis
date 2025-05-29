@@ -286,7 +286,7 @@ def _get_accepted_categories_for_resource_holder(
     holder: ResourceHolder, parent_carrier: Optional[Carrier] = None
 ) -> List[str]:
     """
-    Helper to determine accepted labware categories for a ResourceHolder.
+    Helper to determine accepted resource categories for a ResourceHolder.
     Infers based on the type of the holder or its parent carrier.
     """
     accepted_categories: List[str] = []

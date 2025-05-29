@@ -76,10 +76,9 @@ class ParameterMetadataModel(BaseModel):
         None  # String representation of the default value
     )
     description: Optional[str] = None
-    # Using Field(default_factory=dict) for constraints_json to ensure a new dict is created for each instance
-    constraints_json: ParameterConstraintsModel = Field(
+    constraints: ParameterConstraintsModel = Field(
         default_factory=ParameterConstraintsModel
-    )  # For things like min/max, length, etc. TODO: make ParameterConstraintsModel
+    )
     ui_hint: UIHint = Field(default_factory=UIHint)  # For frontend rendering hints
 
 

@@ -7,7 +7,7 @@ import json  # For serializing metadata if needed for DB
 from praxis.backend.api.dependencies import get_db  # MODIFIED: Use local dependencies
 from sqlalchemy.ext.asyncio import AsyncSession  # MODIFIED: For type hinting
 
-from praxis.backend.models.asset_pydantic_models import (
+from praxis.backend.models import (
     AssetResponse,
     ResourceTypeInfo,
     MachineTypeInfo,

@@ -9,13 +9,22 @@ from __future__ import annotations
 
 
 from .asset_management_orm import (
-    MachineOrm,
+    AssetInstanceOrm,
+)
+
+from .machine_orm import MachineOrm, MachineStatusEnum, MachineCategoryEnum
+
+from .resource_orm import (
     ResourceInstanceOrm,
     ResourceDefinitionCatalogOrm,
-    MachineStatusEnum,
     ResourceInstanceStatusEnum,
-    AssetInstanceOrm,
-    PraxisDeviceCategoryEnum,
+)
+
+from .deck_orm import (
+    DeckConfigurationOrm,
+    DeckConfigurationSlotItemOrm,
+    DeckSlotDefinitionOrm,
+    DeckTypeDefinitionOrm,
 )
 
 from .protocol_definitions_orm import (
@@ -46,7 +55,7 @@ from .protocol_pydantic_models import (
     FunctionProtocolDefinitionModel,
 )
 
-from .asset_pydantic_models import (
+from .resource_pydantic_models import (
     ResourceInventoryDataIn,
     ResourceInventoryDataOut,
     ResourceInventoryReagentItem,
@@ -59,6 +68,9 @@ from .asset_pydantic_models import (
     ResourceInstanceUpdate,
     ResourceInstanceResponse,
     ResourceInstanceSharedFields,
+)
+
+from .deck_pydantic_models import (
     DeckLayoutBase,
     DeckLayoutCreate,
     DeckLayoutUpdate,
@@ -74,6 +86,8 @@ from .asset_pydantic_models import (
     DeckTypeDefinitionCreate,
     DeckTypeDefinitionUpdate,
     DeckTypeDefinitionResponse,
+)
+from .machine_pydantic_models import (
     MachineBase,
     MachineCreate,
     MachineUpdate,
@@ -126,7 +140,6 @@ __all__ = [
     "ResourceInventoryItemCount",
     "ProtocolParameters",
     "FunctionProtocolDefinitionModel",
-    "PraxisDeviceCategoryEnum",
     "ResourceDefinitionBase",
     "ResourceDefinitionCreate",
     "ResourceDefinitionUpdate",
@@ -156,4 +169,9 @@ __all__ = [
     "MachineResponse",
     "MachineCreationRequest",
     "MachineTypeInfo",
+    "MachineCategoryEnum",
+    "DeckConfigurationOrm",
+    "DeckConfigurationSlotItemOrm",
+    "DeckSlotDefinitionOrm",
+    "DeckTypeDefinitionOrm",
 ]

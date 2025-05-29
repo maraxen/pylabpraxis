@@ -9,6 +9,7 @@ invokes the protocol functions, and oversees logging.
 Version 5: Adds Pause, Resume, Cancel functionality.
 """
 import importlib
+import asyncio
 import os
 import sys
 import uuid
@@ -21,57 +22,37 @@ import time
 import subprocess
 import inspect # ADDED FOR TYPE HINT INSPECTION
 
-from sqlalchemy.orm import Session as DbSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Utilities
-from praxis.backend.utils.run_control import get_control_command, clear_control_command # ADDED (ALLOWED_COMMANDS not directly used here)
-from praxis.utils.state import State as PraxisState
-from praxis.protocol_core.definitions import (
-    PraxisRunContext, PlrDeck, DeckInputType, PlrResource, PROTOCOL_REGISTRY
+from praxis.backend.utils.run_control import get_control_command, clear_control_command
+from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.core.run_context import (
+    PraxisRunContext,  # ADDED
+    PlrDeck,  # ADDED
+    DeckInputType,  # ADDED
+    PlrResource,  # ADDED
+    PROTOCOL_REGISTRY,  # ADDED
 )
-from praxis.backend.core.asset_manager import AssetManager, AssetAcquisitionError
 
-# JSONSchema validation
-from praxis.backend.protocol.jsonschema_utils import definition_model_parameters_to_jsonschema
-try:
-    from jsonschema import validate as validate_jsonschema, ValidationError as JsonSchemaValidationError
-except ImportError: # pragma: no cover
-    print("WARNING: ORCH-JSONSCHEMA: jsonschema library not installed. Parameter validation will be skipped.")
-    validate_jsonschema = None # type: ignore
-    JsonSchemaValidationError = None # type: ignore
-from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel, AssetRequirementModel
+from praxis.backend.core.asset_manager import AssetManager
+from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError # ADDED
+import praxis.backend.services as svc  # Import all services for use
+
 
 # ORM Models & Data Services
-from praxis.database_models.protocol_definitions_orm import (
+from praxis.backend.models import (
     FunctionProtocolDefinitionOrm,
+    FunctionProtocolDefinitionModel,
     ProtocolRunOrm,
     ProtocolRunStatusEnum,
     ProtocolSourceRepositoryOrm,
     FileSystemProtocolSourceOrm,
-    LabwareInstanceStatusEnum,
-    ManagedDeviceStatusEnum
+    ResourceInstanceStatusEnum,
+    MachineStatusEnum,
+    AssetRequirementModel,
+    FunctionCallLogOrm,
 )
-try:
-    from praxis.backend.services.protocol_data_service import (
-        create_protocol_run,
-        update_protocol_run_status,
-        get_protocol_definition_details
-    )
-    from praxis.backend.services import asset_data_service # ADDED FOR FQN LOOKUP
-except ImportError: # pragma: no cover
-    print("WARNING: ORCH-0: Could not import from praxis.db_services.protocol_data_service. Orchestrator DB operations will be placeholder/limited.")
-    def create_protocol_run(db, run_guid, top_level_protocol_definition_id, **kwargs): # type: ignore
-        print(f"[Orch-PlaceholderDB] Create ProtocolRun: guid={run_guid}, def_id={top_level_protocol_definition_id}")
-        class DummyRun: id = abs(hash(run_guid)); run_guid=run_guid; status=kwargs.get('status'); # type: ignore
-        return DummyRun()
-    def update_protocol_run_status(db, protocol_run_id, new_status, **kwargs): # type: ignore
-        print(f"[Orch-PlaceholderDB] Update ProtocolRun: id={protocol_run_id}, status={new_status.name}")
-        class DummyRun: id = protocol_run_id; status=new_status # type: ignore
-        return DummyRun()
-    def get_protocol_definition_details(db, name, version=None, source_name=None, commit_hash=None): # type: ignore
-        print(f"[Orch-PlaceholderDB] Get ProtocolDef: name={name}, v={version}")
-        return None
-    asset_data_service = None # type: ignore
 
 
 @contextlib.contextmanager
@@ -91,18 +72,16 @@ def temporary_sys_path(path_to_add: Optional[str]):
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime # Add import
 
-class AssetAcquisitionError(RuntimeError): pass
-class ProtocolCancelledError(Exception): pass # ADDED
 
 class Orchestrator:
-    def __init__(self, db_session: DbSession, workcell_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, db_session: AsyncSession, workcell_config: Optional[Dict[str, Any]] = None):
         self.db_session = db_session
         self.workcell_config = workcell_config or {}
         # Create and pass a WorkcellRuntime instance
         self.workcell_runtime = WorkcellRuntime(db_session=self.db_session) # Create WCR
         self.asset_manager = AssetManager(db_session=self.db_session, workcell_runtime=self.workcell_runtime) # Pass WCR
 
-    def _run_git_command(self, command: List[str], cwd: str, suppress_output: bool = False, timeout: int = 300) -> str:
+    async def _run_git_command(self, command: List[str], cwd: str, suppress_output: bool = False, timeout: int = 300) -> str:
         """
         Helper to run a Git command and handle errors.
         Includes a timeout to prevent indefinite hangs.
@@ -154,14 +133,14 @@ class Orchestrator:
             print(error_message)
             raise RuntimeError(error_message) # from None explicitly, as FileNotFoundError doesn't chain well here for the intended purpose.
 
-    def _get_protocol_definition_orm_from_db(
+    async def _get_protocol_definition_orm_from_db(
         self,
         protocol_name: str,
         version: Optional[str] = None,
         commit_hash: Optional[str] = None,
         source_name: Optional[str] = None
     ) -> Optional[FunctionProtocolDefinitionOrm]:
-        return get_protocol_definition_details(
+        return await svc.get_protocol_definition_details(
             db=self.db_session,
             name=protocol_name,
             version=version,
@@ -169,7 +148,7 @@ class Orchestrator:
             commit_hash=commit_hash
         )
 
-    def _prepare_protocol_code(
+    async def _prepare_protocol_code(
         self,
         protocol_def_orm: FunctionProtocolDefinitionOrm
     ) -> Tuple[Callable, Dict[str, Any]]:
@@ -192,20 +171,20 @@ class Orchestrator:
             # If it's user-configurable, it MUST be validated upstream to prevent traversal.
             # We'll proceed assuming it's a valid, designated path for this repo.
 
-            self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
+            await self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
 
             print(f"INFO: ORCH-GIT: Checking out commit '{commit_hash_to_checkout}' in '{checkout_path}'...")
             # Use --force for checkout if needed to discard local changes, though this should ideally be clean.
             # For now, a simple checkout. If it fails due to local changes, that's an issue with the repo state.
-            self._run_git_command(["git", "checkout", commit_hash_to_checkout], cwd=checkout_path)
+            await self._run_git_command(["git", "checkout", commit_hash_to_checkout], cwd=checkout_path)
 
             # Verify HEAD is at the correct commit
             try:
-                current_commit = self._run_git_command(["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True)
+                current_commit = await self._run_git_command(["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True)
                 if current_commit != commit_hash_to_checkout:
                     # This could happen if the commit_hash is an annotated tag, checkout might resolve it to the commit
                     # Let's check if the resolved commit of the checked-out ref matches the target hash
-                    resolved_target_commit = self._run_git_command(["git", "rev-parse", commit_hash_to_checkout + "^{commit}"], cwd=checkout_path, suppress_output=True)
+                    resolved_target_commit = await self._run_git_command(["git", "rev-parse", commit_hash_to_checkout + "^{commit}"], cwd=checkout_path, suppress_output=True)
                     if current_commit != resolved_target_commit:
                         raise RuntimeError(
                             f"Failed to checkout commit '{commit_hash_to_checkout}'. "
@@ -260,14 +239,14 @@ class Orchestrator:
 
         return func_wrapper, decorator_metadata
 
-    def _ensure_git_repo_and_fetch(self, git_url: str, checkout_path: str, repo_name_for_logging: str) -> None:
+    async def _ensure_git_repo_and_fetch(self, git_url: str, checkout_path: str, repo_name_for_logging: str) -> None:
         """
         Ensures that checkout_path is a valid git repo for git_url, clones if necessary, and fetches.
         """
         is_git_repo = False
         if os.path.exists(checkout_path):
             try:
-                result = self._run_git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=checkout_path, suppress_output=True)
+                result = await self._run_git_command(["git", "rev-parse", "--is-inside-work-tree"], cwd=checkout_path, suppress_output=True)
                 is_git_repo = result == "true"
                 if not is_git_repo:
                     print(f"WARN: ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists but is not a git work-tree root.")
@@ -293,7 +272,7 @@ class Orchestrator:
                 ) from e
 
             print(f"INFO: ORCH-GIT: '{checkout_path}' for repo '{repo_name_for_logging}' is an existing Git repository. Fetching origin...")
-            self._run_git_command(["git", "fetch", "origin"], cwd=checkout_path) # Consider adding --prune
+            await self._run_git_command(["git", "fetch", "origin"], cwd=checkout_path) # Consider adding --prune
         else:
             # Path is not a git repo or does not exist. Attempt to clone.
             if os.path.exists(checkout_path):
@@ -314,12 +293,11 @@ class Orchestrator:
 
             print(f"INFO: ORCH-GIT: Cloning repository '{git_url}' into '{checkout_path}' for repo '{repo_name_for_logging}'...")
             # Clone into the specific checkout_path. The last argument to clone is the directory to clone into.
-            self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
+            await self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
 
 
-    def _prepare_arguments(
-        self,
-    def _prepare_arguments(
+
+    async def _prepare_arguments(
         self,
         protocol_def_orm: FunctionProtocolDefinitionOrm,
         decorator_metadata: Dict[str, Any],
@@ -329,26 +307,6 @@ class Orchestrator:
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], List[Dict[str, Any]]]:
 
         pydantic_def: Optional[FunctionProtocolDefinitionModel] = decorator_metadata.get("pydantic_definition")
-
-        if validate_jsonschema and JsonSchemaValidationError and pydantic_def:
-            if hasattr(pydantic_def, 'parameters') and pydantic_def.parameters:
-                try:
-                    schema_title = f"{pydantic_def.name} v{pydantic_def.version} Parameters"
-                    schema_description = pydantic_def.description or "Protocol parameters"
-                    param_schema = definition_model_parameters_to_jsonschema(
-                        parameters=pydantic_def.parameters,
-                        protocol_name=schema_title,
-                        protocol_description=schema_description
-                    )
-                    validate_jsonschema(instance=user_input_params, schema=param_schema)
-                    print(f"INFO: User input parameters for '{pydantic_def.name}' validated successfully.")
-                except JsonSchemaValidationError as e:
-                    raise ValueError(f"Parameter validation failed for protocol '{pydantic_def.name}': {e.message}") from e
-                except Exception as schema_gen_e:
-                    raise ValueError(f"Schema generation/validation error for '{pydantic_def.name}': {schema_gen_e}") from schema_gen_e
-            elif not hasattr(pydantic_def, 'parameters') and user_input_params: # No params defined, but some provided
-                 print(f"Warning: Protocol '{pydantic_def.name}' defines no parameters, but input parameters were provided: {list(user_input_params.keys())}")
-
 
         final_args: Dict[str, Any] = {}
         state_dict_to_pass: Optional[Dict[str, Any]] = None
@@ -381,7 +339,7 @@ class Orchestrator:
 
         # --- Asset Inference from Type Hints ---
         inferred_assets_requirements: List[AssetRequirementModel] = []
-        if asset_data_service: # Ensure service is available
+        if svc: # Ensure service is available
             original_function = getattr(protocol_wrapper_func, '__wrapped__', protocol_wrapper_func)
             sig = inspect.signature(original_function)
 
@@ -429,9 +387,9 @@ class Orchestrator:
                 print(f"DEBUG: ORCH-ARG-INFER: Potential asset '{param_name}' with FQN '{fqn}', Optional={is_optional}")
 
                 asset_type_str_for_model: str
-                labware_def_orm = asset_data_service.get_labware_definition_by_fqn(self.db_session, fqn)
-                if labware_def_orm:
-                    asset_type_str_for_model = labware_def_orm.pylabrobot_definition_name
+                resource_def_orm = await svc.get_resource_definition_by_fqn(self.db_session, fqn)
+                if resource_def_orm:
+                    asset_type_str_for_model = resource_def_orm.pylabrobot_definition_name
                     print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as LABWARE, maps to definition '{asset_type_str_for_model}'.")
                 else:
                     asset_type_str_for_model = fqn # Assume it's a device FQN
@@ -440,8 +398,9 @@ class Orchestrator:
                 inferred_req = AssetRequirementModel(
                     name=param_name,
                     actual_type_str=asset_type_str_for_model,
-                    constraints_json={},
-                    is_optional=is_optional
+                    type_hint_str=serialize_type_hint_str(actual_annotation),
+                    constraints={},
+                    optional=is_optional
                 )
                 inferred_assets_requirements.append(inferred_req)
                 # No need to add to processed_param_names_for_asset_inference here, as this loop already checks it.
@@ -471,12 +430,12 @@ class Orchestrator:
         if final_assets_to_acquire:
             for asset_req_model in final_assets_to_acquire:
                 try:
-                    print(f"INFO: ORCH-ACQUIRE: Acquiring asset '{asset_req_model.name}' (type: '{asset_req_model.actual_type_str}', optional: {asset_req_model.is_optional}) for run '{canonical_run_state.run_guid}'.")
+                    print(f"INFO: ORCH-ACQUIRE: Acquiring asset '{asset_req_model.name}' (type: '{asset_req_model.actual_type_str}', optional: {asset_req_model.optional}) for run '{canonical_run_state.run_guid}'.")
 
                     if not hasattr(self, 'asset_manager') or self.asset_manager is None: # pragma: no cover
                         raise RuntimeError("AssetManager not initialized in Orchestrator.")
 
-                    live_obj, orm_id, asset_kind_str = self.asset_manager.acquire_asset(
+                    live_obj, orm_id, asset_kind_str = await self.asset_manager.acquire_asset(
                         protocol_run_guid=canonical_run_state.run_guid,
                         asset_requirement=asset_req_model
                     )
@@ -486,25 +445,27 @@ class Orchestrator:
                         "orm_id": orm_id,
                         "name_in_protocol": asset_req_model.name
                     })
-                    print(f"INFO: ORCH-ACQUIRE: Asset '{asset_req_model.name}' (Kind: {asset_kind_str}, ORM ID: {orm_id}) acquired: {live_obj}")
+                    print(f"INFO: ORCH-ACQUIRE: Asset '{asset_req_model.name}' (Kind: \
+                      {asset_kind_str}, ORM ID: {orm_id}) acquired: {live_obj}")
 
                 except AssetAcquisitionError as e:
-                    if asset_req_model.is_optional:
-                        print(f"INFO: ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' could not be acquired: {e}. Proceeding as it's optional.")
+                    if asset_req_model.optional:
+                        print(f"INFO: ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' \
+                          could not be acquired: {e}. Proceeding as it's optional.")
                         final_args[asset_req_model.name] = None
                     else:
-                        error_msg = f"Failed to acquire mandatory asset '{asset_req_model.name}' for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e}"
+                        error_msg = f"Failed to acquire mandatory asset '{asset_req_model.name}' \
+                          for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e}"
                         print(f"ERROR: {error_msg}")
                         raise ValueError(error_msg) from e
                 except Exception as e_general: # pragma: no cover
-                    error_msg = f"Unexpected error acquiring asset '{asset_req_model.name}' for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e_general}"
+                    error_msg = f"Unexpected error acquiring asset '{asset_req_model.name}' for \
+                      protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e_general}"
                     print(f"ERROR: {error_msg}")
                     raise ValueError(error_msg) from e_general
 
         # --- Deck Preconfiguration (after other assets) ---
         if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
-            # Ensure deck param name isn't accidentally processed as a regular asset if it was also type-hinted
-            # Though `processed_param_names_for_asset_inference` should handle this.
             if protocol_def_orm.deck_param_name in final_args: # pragma: no cover
                  print(f"WARN: ORCH-DECK: Deck parameter '{protocol_def_orm.deck_param_name}' may have been already processed as an asset. Check protocol definition and type hints.")
 
@@ -539,7 +500,7 @@ class Orchestrator:
         return final_args, state_dict_to_pass, acquired_assets_details
 
 
-    def execute_protocol(
+    async def execute_protocol(
         self,
         protocol_name: str, protocol_version: Optional[str] = None,
         commit_hash: Optional[str] = None, source_name: Optional[str] = None,
@@ -551,48 +512,57 @@ class Orchestrator:
         run_guid = str(uuid.uuid4())
         utc_now = datetime.datetime.now(datetime.timezone.utc)
 
-        protocol_def_orm = self._get_protocol_definition_orm_from_db(
+        protocol_def_orm = await self._get_protocol_definition_orm_from_db(
             protocol_name, protocol_version, commit_hash, source_name
         )
 
         if not protocol_def_orm or not protocol_def_orm.id:
-            error_msg = f"Protocol '{protocol_name}' (v:{protocol_version}, commit:{commit_hash}, src:{source_name}) not found or invalid DB ID."
-            error_protocol_def_id = protocol_def_orm.id if protocol_def_orm and protocol_def_orm.id else -1
-            error_run_db_obj = create_protocol_run(
+            error_msg = f"Protocol '{protocol_name}' (v:{protocol_version}, \
+              commit:{commit_hash}, src:{source_name}) not found or invalid DB ID."
+            error_protocol_def_id = protocol_def_orm.id if protocol_def_orm and \
+              protocol_def_orm.id else -1
+            error_run_db_obj = await svc.create_protocol_run(
                 db=self.db_session, run_guid=run_guid,
                 top_level_protocol_definition_id=error_protocol_def_id, # type: ignore
                 status=ProtocolRunStatusEnum.FAILED,
                 input_parameters_json=json.dumps(user_input_params),
                 initial_state_json=json.dumps(initial_state_data)
             )
-            self.db_session.flush()
-            self.db_session.refresh(error_run_db_obj)
-            update_protocol_run_status(
+            await self.db_session.flush()
+            await self.db_session.refresh(error_run_db_obj)
+            await svc.update_protocol_run_status(
                 db=self.db_session, protocol_run_id=error_run_db_obj.id, # type: ignore
                 new_status=ProtocolRunStatusEnum.FAILED,
                 output_data_json=json.dumps({"error": error_msg})
             )
             raise ValueError(error_msg)
 
-        protocol_run_db_obj = create_protocol_run(
+        protocol_run_db_obj = await svc.create_protocol_run(
             db=self.db_session, run_guid=run_guid,
             top_level_protocol_definition_id=protocol_def_orm.id, # type: ignore
             status=ProtocolRunStatusEnum.PREPARING,
             input_parameters_json=json.dumps(user_input_params),
             initial_state_json=json.dumps(initial_state_data),
         )
-        self.db_session.flush()
-        self.db_session.refresh(protocol_run_db_obj)
+        await self.db_session.flush()
+        await self.db_session.refresh(protocol_run_db_obj)
 
         # --- Initial CANCEL check ---
         initial_command = get_control_command(run_guid)
         if initial_command == "CANCEL":
             print(f"INFO: Protocol run {run_guid} received CANCEL command before preparation.")
-            clear_control_command(run_guid)
-            update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING)
+            await clear_control_command(run_guid)
+            await svc.update_protocol_run_status(self.db_session,
+                                                  protocol_run_db_obj.id,
+                                                  ProtocolRunStatusEnum.CANCELING)
             # self._handle_cancel_protocol(run_guid, protocol_run_db_obj, []) # No assets acquired yet
-            update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user before preparation."}))
-            self.db_session.commit() # Commit status changes
+            await svc.update_protocol_run_status(
+              self.db_session,
+              protocol_run_db_obj.id,
+              ProtocolRunStatusEnum.CANCELLED,
+              output_data_json=json.dumps({"status": "Cancelled by user before preparation."})
+            )
+            await self.db_session.commit() # Commit status changes
             return protocol_run_db_obj
 
 
@@ -614,56 +584,76 @@ class Orchestrator:
         acquired_assets_info: List[Dict[str, Any]] = []
 
         try:
-            protocol_wrapper_func, decorator_metadata = self._prepare_protocol_code(protocol_def_orm)
-            prepared_args, state_dict_passed_to_top_level, acquired_assets_info = self._prepare_arguments(
+            protocol_wrapper_func, decorator_metadata = await self._prepare_protocol_code(protocol_def_orm)
+            prepared_args, state_dict_passed_to_top_level, acquired_assets_info = await self._prepare_arguments(
                 protocol_def_orm, decorator_metadata, user_input_params, canonical_run_state, protocol_wrapper_func
             )
 
             # --- Pre-execution command check (PAUSE/CANCEL) ---
-            command = get_control_command(run_guid)
+            command = await get_control_command(run_guid)
             if command == "PAUSE":
                 print(f"INFO: Protocol run {run_guid} PAUSED before execution.")
-                clear_control_command(run_guid)
-                update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSING)
+                await clear_control_command(run_guid)
+                await svc.update_protocol_run_status(
+                  self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSING
+                  )
                 # TODO: Persist non-PraxisState context if necessary for true pause/resume.
-                update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSED)
-                self.db_session.commit()
+                await svc.update_protocol_run_status(
+                  self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSED
+                )
+                await self.db_session.commit()
 
                 while True:
-                    new_command = get_control_command(run_guid)
+                    new_command = await get_control_command(run_guid)
                     if new_command == "RESUME":
-                        clear_control_command(run_guid)
-                        update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RESUMING)
+                        await clear_control_command(run_guid)
+                        await svc.update_protocol_run_status(
+                          self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RESUMING
+                        )
                         # TODO: Restore non-PraxisState context if necessary.
-                        update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING)
-                        self.db_session.commit()
+                        await svc.update_protocol_run_status(
+                          self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
+                        )
+                        await self.db_session.commit()
                         print(f"INFO: Protocol run {run_guid} resumed.")
                         break
                     elif new_command == "CANCEL":
-                        clear_control_command(run_guid)
-                        update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING)
+                        await clear_control_command(run_guid)
+                        await svc.update_protocol_run_status(
+                          self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING
+                        )
                         # self._handle_cancel_protocol(run_guid, protocol_run_db_obj, acquired_assets_info) # Placeholder
-                        update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user during pause."}))
-                        self.db_session.commit()
+                        await svc.update_protocol_run_status(
+                          self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED,
+                          output_data_json=json.dumps({"status": "Cancelled by user during pause."})
+                        )
+                        await self.db_session.commit()
                         raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during pause.")
-                    time.sleep(2)
+                    await asyncio.sleep(2)
             elif command == "CANCEL":
                 print(f"INFO: Protocol run {run_guid} CANCELLED before execution.")
-                clear_control_command(run_guid)
-                update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING)
+                await clear_control_command(run_guid)
+                await svc.update_protocol_run_status(
+                  self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING
+                )
                 # self._handle_cancel_protocol(run_guid, protocol_run_db_obj, acquired_assets_info) # Placeholder
-                update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user before execution."}))
-                self.db_session.commit()
+                await svc.update_protocol_run_status(
+                  self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED,
+                  output_data_json=json.dumps({"status": "Cancelled by user before execution."})
+                )
+                await self.db_session.commit()
                 raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user before execution.")
 
             if protocol_run_db_obj.status != ProtocolRunStatusEnum.RUNNING: # If not already set to RUNNING (e.g. after RESUME)
-                 update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING)
-                 self.db_session.commit()
+                await svc.update_protocol_run_status(
+                  self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
+                )
+                await self.db_session.commit()
 
 
             result = protocol_wrapper_func(**prepared_args, __praxis_run_context__=run_context)
 
-            update_protocol_run_status(
+            await svc.update_protocol_run_status(
                 self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.COMPLETED,
                 output_data_json=json.dumps(result, default=str)
             )
@@ -674,14 +664,14 @@ class Orchestrator:
             print(f"ERROR during protocol execution for run {run_guid}: {e}")
             error_info = {"error_type": type(e).__name__, "error_message": str(e), "traceback": traceback.format_exc()}
             # Check current status before overriding with FAILED
-            current_status_in_db = self.db_session.query(ProtocolRunOrm.status).filter_by(id=protocol_run_db_obj.id).scalar()
+            current_status_in_db = await self.db_session.query(ProtocolRunOrm.status).filter_by(id=protocol_run_db_obj.id).scalar()
             if current_status_in_db not in [ProtocolRunStatusEnum.CANCELLED, ProtocolRunStatusEnum.CANCELING]:
-                 update_protocol_run_status(
+                 await svc.update_protocol_run_status(
                     self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.FAILED,
                     output_data_json=json.dumps(error_info)
                 )
         finally:
-            final_protocol_run_db_obj = self.db_session.query(ProtocolRunOrm).get(protocol_run_db_obj.id)
+            final_protocol_run_db_obj = await self.db_session.query(ProtocolRunOrm).get(protocol_run_db_obj.id)
             if final_protocol_run_db_obj:
                 if state_dict_passed_to_top_level is not None and protocol_def_orm.is_top_level:
                     print(f"INFO: Merging back state from dict for run {run_guid}.")
@@ -705,21 +695,22 @@ class Orchestrator:
 
                             if asset_type == "device":
                                 self.asset_manager.release_device(device_orm_id=orm_id) # type: ignore
-                            elif asset_type == "labware":
-                                self.asset_manager.release_labware(
-                                    labware_instance_orm_id=orm_id, # type: ignore
-                                    final_status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE
+                            elif asset_type == "resource":
+                                self.asset_manager.release_resource(
+                                    resource_instance_orm_id=orm_id, # type: ignore
+                                    final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
                                 )
                             print(f"INFO: Released asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {orm_id}).")
                         except Exception as release_err: # pragma: no cover
                             print(f"ERROR: Failed to release asset '{asset_info.get('name_in_protocol', 'UnknownAsset')}' (ORM ID: {asset_info.get('orm_id')}): {release_err}")
 
-                try: self.db_session.commit()
+                try:
+                  await self.db_session.commit()
                 except Exception as db_err: # pragma: no cover
                     print(f"CRITICAL: Failed to commit final Orchestrator updates to DB for run {run_guid}: {db_err}")
-                    self.db_session.rollback()
+                    await self.db_session.rollback()
 
-        self.db_session.refresh(protocol_run_db_obj)
+        await self.db_session.refresh(protocol_run_db_obj)
         return protocol_run_db_obj
 
 ```

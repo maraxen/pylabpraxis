@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
 
 
-from praxis.backend.models.asset_management_orm import (
+from praxis.backend.models import (
     ResourceDefinitionCatalogOrm,
     ResourceInstanceOrm,
     ResourceInstanceStatusEnum,

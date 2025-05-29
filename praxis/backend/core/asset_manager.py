@@ -3,7 +3,7 @@
 praxis/core/asset_manager.py
 
 The AssetManager is responsible for managing the lifecycle and allocation
-of physical laboratory assets (devices and labware instances). It interacts
+of physical laboratory assets (devices and resource instances). It interacts
 with the AssetDataService for persistence and the WorkcellRuntime for
 live PyLabRobot object interactions.
 
@@ -21,13 +21,13 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.services import asset_data_service as ads
+import praxis.backend.services as svc
 from praxis.backend.models import (
-    ManagedDeviceOrm,
-    LabwareInstanceOrm,
-    LabwareDefinitionCatalogOrm,
-    ManagedDeviceStatusEnum,
-    LabwareInstanceStatusEnum,
+    MachineOrm,
+    ResourceInstanceOrm,
+    ResourceDefinitionCatalogOrm,
+    MachineStatusEnum,
+    ResourceInstanceStatusEnum,
     PraxisDeviceCategoryEnum,
     AssetRequirementModel,
 )
@@ -125,7 +125,7 @@ class AssetManager:
         self.EXCLUDED_CLASS_NAMES: Set[str] = {
             "WellCreator",  # Utility class
             "TipCreator",  # Utility class
-            "CarrierSite",  # Part of a carrier, not standalone labware
+            "CarrierSite",  # Part of a carrier, not standalone resource
             "ResourceStack",  # Utility for stacking resources
         }
 
@@ -246,9 +246,9 @@ class AssetManager:
             return CATEGORY_CARRIER  # PlateAdapter is a carrier type
         return CATEGORY_OTHER
 
-    def _is_catalogable_labware_class(self, plr_class: Type[Any]) -> bool:
+    def _is_catalogable_resource_class(self, plr_class: Type[Any]) -> bool:
         """
-        Determines if a PyLabRobot class represents a primary, catalogable labware definition.
+        Determines if a PyLabRobot class represents a primary, catalogable resource definition.
         Args:
             plr_class: The class to check.
         Returns:
@@ -272,17 +272,17 @@ class AssetManager:
     ) -> Tuple[int, int]:
         """
         Scans PyLabRobot's resources by introspecting modules and classes,
-        then populates/updates the LabwareDefinitionCatalogOrm.
-        This method focuses on PLR Resources (labware). Machine discovery might be separate.
+        then populates/updates the ResourceDefinitionCatalogOrm.
+        This method focuses on PLR Resources (resource). Machine discovery might be separate.
 
         Args:
             plr_resources_package: The base PyLabRobot package to scan (default: pylabrobot.resources).
 
         Returns:
-            A tuple (added_count, updated_count) of labware definitions.
+            A tuple (added_count, updated_count) of resource definitions.
         """
         logger.info(
-            f"AM_SYNC: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}"
+            f"AM_SYNC: Starting PyLabRobot resource definition sync from package: {plr_resources_package.__name__}"
         )
         added_count = 0
         updated_count = 0
@@ -310,16 +310,16 @@ class AssetManager:
                 processed_fqns.add(fqn)
 
                 logger.debug(
-                    f"AM_SYNC: Found class {fqn}. Checking if catalogable labware..."
+                    f"AM_SYNC: Found class {fqn}. Checking if catalogable resource..."
                 )
 
-                if not self._is_catalogable_labware_class(plr_class_obj):
+                if not self._is_catalogable_resource_class(plr_class_obj):
                     logger.debug(
-                        f"AM_SYNC: Skipping {fqn} - not a catalogable labware class."
+                        f"AM_SYNC: Skipping {fqn} - not a catalogable resource class."
                     )
                     continue
 
-                logger.debug(f"AM_SYNC: Processing potential labware class: {fqn}")
+                logger.debug(f"AM_SYNC: Processing potential resource class: {fqn}")
                 temp_instance: Optional[PlrResource] = None
                 serialized_data: Optional[Dict[str, Any]] = None
                 can_instantiate = True
@@ -427,7 +427,7 @@ class AssetManager:
                 ):  # Fallback if no serialized_data or model/type in it
                     model_name = class_name
 
-                # pylabrobot_def_name: Unique identifier for the labware type in Praxis.
+                # pylabrobot_def_name: Unique identifier for the resource type in Praxis.
                 # Prioritize model, then type (class name from serialization), then FQN.
                 pylabrobot_def_name = (
                     model_name  # Start with model_name (which might be class_name)
@@ -483,33 +483,29 @@ class AssetManager:
                 )
 
                 try:
-                    existing_def_orm = await ads.get_labware_definition(
+                    existing_def_orm = await svc.get_resource_definition(
                         self.db, pylabrobot_def_name
                     )
-                    await ads.add_or_update_labware_definition(
+                    await svc.add_or_update_resource_definition(
                         db=self.db,
                         pylabrobot_definition_name=pylabrobot_def_name,  # This is our key
                         python_fqn=fqn,
-                        praxis_labware_type_name=praxis_type_name,  # Could be same as pylabrobot_definition_name or more specific
+                        praxis_resource_type_name=praxis_type_name,  # Could be same as pylabrobot_definition_name or more specific
                         description=description,
-                        category_str=category,  # Storing the determined category string
                         is_consumable=is_consumable,
                         nominal_volume_ul=nominal_volume_ul,
-                        dim_x_mm=size_x,
-                        dim_y_mm=size_y,
-                        dim_z_mm=size_z,
                         # TODO: Add material and manufacturer if discoverable from PLR or config
                         plr_definition_details_json=details_for_db,  # Store the (potentially augmented) serialized data
                     )
                     if not existing_def_orm:
                         added_count += 1
                         logger.info(
-                            f"AM_SYNC: Added new labware definition: {pylabrobot_def_name}"
+                            f"AM_SYNC: Added new resource definition: {pylabrobot_def_name}"
                         )
                     else:
                         updated_count += 1
                         logger.info(
-                            f"AM_SYNC: Updated existing labware definition: {pylabrobot_def_name}"
+                            f"AM_SYNC: Updated existing resource definition: {pylabrobot_def_name}"
                         )
 
                 except Exception as e_proc:  # pylint: disable=broad-except
@@ -522,7 +518,7 @@ class AssetManager:
                         del serialized_data
 
         logger.info(
-            f"AM_SYNC: Labware definition sync complete. Added: {added_count}, Updated: {updated_count}"
+            f"AM_SYNC: Resource definition sync complete. Added: {added_count}, Updated: {updated_count}"
         )
         return added_count, updated_count
 
@@ -530,7 +526,7 @@ class AssetManager:
         self, deck_identifier: Union[str, ProtocolPlrDeck], protocol_run_guid: str
     ) -> PlrDeck:
         """
-        Applies a deck configuration by initializing the deck device and assigning pre-configured labware.
+        Applies a deck configuration by initializing the deck device and assigning pre-configured resource.
 
         Args:
             deck_identifier: The name of the deck layout or a ProtocolPlrDeck object.
@@ -556,28 +552,16 @@ class AssetManager:
             f"AM_DECK_CONFIG: Applying deck configuration for '{deck_name}', run_guid: {protocol_run_guid}"
         )
 
-        deck_layout_orm = await ads.get_deck_layout_by_name(self.db, deck_name)
+        deck_layout_orm = await svc.get_deck_layout_by_name(self.db, deck_name)
         if not deck_layout_orm:
             raise AssetAcquisitionError(
                 f"Deck layout '{deck_name}' not found in database."
             )
 
-        # Find the ManagedDeviceOrm corresponding to this deck.
-        # A deck is a PLR Resource and often a PLR Machine (or has a machine backend).
-        # We search by user_friendly_name which should match deck_name for the main deck.
-        # The FQN for a PLR Deck resource is like 'pylabrobot.resources.deck.Deck'.
-        # However, specific deck types (e.g. HamiltonDeck) are subclasses.
-        # For now, assume the deck_name in layout matches the user_friendly_name of the deck device.
-        deck_devices_orm = await ads.list_managed_devices(
-            self.db,
-            user_friendly_name_filter=deck_name,
-            # We might need a more robust way to identify the deck device,
-            # e.g., by a specific PraxisDeviceCategoryEnum.DECK_CONTROLLER or similar.
-            # For now, filtering by name and checking if it's a PlrDeck type.
-        )
+        deck_devices_orm = await svc.list_machines(self.db)
 
         # Filter for actual deck devices
-        actual_deck_device_orm: Optional[ManagedDeviceOrm] = None
+        actual_deck_device_orm: Optional[MachineOrm] = None
         for dev_orm in deck_devices_orm:
             # This check might be too simplistic if the FQN is for a generic Deck
             # and the actual instance is, e.g., a HamiltonStarDeck.
@@ -598,13 +582,13 @@ class AssetManager:
 
         if not actual_deck_device_orm:
             raise AssetAcquisitionError(
-                f"No ManagedDevice found and verified as a PLR Deck for deck name '{deck_name}'."
+                f"No Machine found and verified as a PLR Deck for deck name '{deck_name}'."
             )
 
         deck_device_orm = actual_deck_device_orm
 
         if (
-            deck_device_orm.current_status == ManagedDeviceStatusEnum.IN_USE
+            deck_device_orm.current_status == MachineStatusEnum.IN_USE
             and deck_device_orm.current_protocol_run_guid != protocol_run_guid
         ):
             raise AssetAcquisitionError(
@@ -620,10 +604,10 @@ class AssetManager:
                 f"Failed to initialize backend for deck device '{deck_name}' (ID: {deck_device_orm.id}) or it's not a PlrDeck. Check WorkcellRuntime."
             )
 
-        await ads.update_managed_device_status(
+        await svc.update_machine_status(
             self.db,
             deck_device_orm.id,
-            ManagedDeviceStatusEnum.IN_USE,
+            MachineStatusEnum.IN_USE,
             current_protocol_run_guid=protocol_run_guid,
             status_details=f"Deck '{deck_name}' in use by run {protocol_run_guid}",
         )
@@ -632,7 +616,7 @@ class AssetManager:
         )
 
         # Get DeckSlotOrm entries associated with the DeckLayoutOrm
-        deck_slots_orm = await ads.get_deck_slots_for_layout(
+        deck_slots_orm = await svc.get_deck_slots_for_layout(
             self.db, deck_layout_orm.id
         )
         logger.info(
@@ -640,82 +624,82 @@ class AssetManager:
         )
 
         for slot_orm in deck_slots_orm:
-            if slot_orm.pre_assigned_labware_instance_id:
-                labware_instance_id = slot_orm.pre_assigned_labware_instance_id
+            if slot_orm.pre_assigned_resource_instance_id:
+                resource_instance_id = slot_orm.pre_assigned_resource_instance_id
                 logger.info(
-                    f"AM_DECK_CONFIG: Slot '{slot_orm.slot_name}' (Slot ID: {slot_orm.id}) has pre-assigned labware instance ID: {labware_instance_id}."
+                    f"AM_DECK_CONFIG: Slot '{slot_orm.slot_name}' (Slot ID: {slot_orm.id}) has pre-assigned resource instance ID: {resource_instance_id}."
                 )
 
-                labware_instance_orm = await ads.get_labware_instance_by_id(
-                    self.db, labware_instance_id
+                resource_instance_orm = await svc.get_resource_instance_by_id(
+                    self.db, resource_instance_id
                 )
-                if not labware_instance_orm:
+                if not resource_instance_orm:
                     logger.error(
-                        f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' not found. Skipping assignment."
+                        f"Resource instance ID {resource_instance_id} for slot '{slot_orm.slot_name}' not found. Skipping assignment."
                     )
                     continue  # Or raise error, depending on desired strictness
 
-                # Check labware status
+                # Check resource status
                 if (
-                    labware_instance_orm.current_status
-                    == LabwareInstanceStatusEnum.IN_USE
-                    and labware_instance_orm.current_protocol_run_guid
+                    resource_instance_orm.current_status
+                    == ResourceInstanceStatusEnum.IN_USE
+                    and resource_instance_orm.current_protocol_run_guid
                     == protocol_run_guid
-                    and labware_instance_orm.location_device_id == deck_device_orm.id
-                    and labware_instance_orm.current_deck_slot_name
+                    and resource_instance_orm.location_device_id == deck_device_orm.id
+                    and resource_instance_orm.current_deck_slot_name
                     == slot_orm.slot_name
                 ):
                     logger.warning(
-                        f"AM_DECK_CONFIG: Labware instance {labware_instance_id} in slot '{slot_orm.slot_name}' is already IN_USE by this run and at this location. Assuming already configured."
+                        f"AM_DECK_CONFIG: Resource instance {resource_instance_id} in slot '{slot_orm.slot_name}' is already IN_USE by this run and at this location. Assuming already configured."
                     )
                     # Ensure it's in WorkcellRuntime's view of the deck
                     # This might involve re-asserting the assignment in WorkcellRuntime if it clears state.
                     # For now, we assume if DB state is correct, WCR will reflect it or re-establish.
                     continue
 
-                if labware_instance_orm.current_status not in [
-                    LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
-                    LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+                if resource_instance_orm.current_status not in [
+                    ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                    ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
                 ]:
                     raise AssetAcquisitionError(
-                        f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' is not available "
-                        f"(status: {labware_instance_orm.current_status}, run: {labware_instance_orm.current_protocol_run_guid})."
+                        f"Resource instance ID {resource_instance_id} for slot '{slot_orm.slot_name}' is not available "
+                        f"(status: {resource_instance_orm.current_status}, run: {resource_instance_orm.current_protocol_run_guid})."
                     )
 
-                labware_def_orm = await ads.get_labware_definition(
-                    self.db, labware_instance_orm.pylabrobot_definition_name
+                resource_def_orm = await svc.get_resource_definition(
+                    self.db, resource_instance_orm.pylabrobot_definition_name
                 )
-                if not labware_def_orm or not labware_def_orm.python_fqn:
+                if not resource_def_orm or not resource_def_orm.python_fqn:
                     raise AssetAcquisitionError(
-                        f"Python FQN not found for labware definition '{labware_instance_orm.pylabrobot_definition_name}' (instance ID {labware_instance_id})."
+                        f"Python FQN not found for resource definition '{resource_instance_orm.pylabrobot_definition_name}' (instance ID {resource_instance_id})."
                     )
 
-                live_plr_labware = (
-                    self.workcell_runtime.create_or_get_labware_plr_object(
-                        labware_instance_orm=labware_instance_orm,
-                        labware_definition_fqn=labware_def_orm.python_fqn,
+                live_plr_resource = (
+                    self.workcell_runtime.create_or_get_resource_plr_object(
+                        resource_instance_orm=resource_instance_orm,
+                        resource_definition_fqn=resource_def_orm.python_fqn,
                     )
                 )
-                if not live_plr_labware:
+                if not live_plr_resource:
                     raise AssetAcquisitionError(
-                        f"Failed to create PLR object for labware instance ID {labware_instance_id} in slot '{slot_orm.slot_name}'."
+                        f"Failed to create PLR object for resource instance ID {resource_instance_id} in slot '{slot_orm.slot_name}'."
                     )
 
                 logger.info(
-                    f"AM_DECK_CONFIG: Assigning labware '{live_plr_labware.name}' (Instance ID: {labware_instance_id}) to deck '{deck_name}' slot '{slot_orm.slot_name}'."
+                    f"AM_DECK_CONFIG: Assigning resource '{live_plr_resource.name}' (Instance ID: {resource_instance_id}) to deck '{deck_name}' slot '{slot_orm.slot_name}'."
                 )
                 # Assign to PLR Deck object via WorkcellRuntime
-                self.workcell_runtime.assign_labware_to_deck_slot(
-                    deck_device_orm_id=deck_device_orm.id,  # Pass the ManagedDeviceOrm ID of the deck
+                self.workcell_runtime.assign_resource_to_deck_slot(
+                    deck_device_orm_id=deck_device_orm.id,  # Pass the MachineOrm ID of the deck
                     slot_name=slot_orm.slot_name,
-                    labware_plr_object=live_plr_labware,
-                    labware_instance_orm_id=labware_instance_id,
+                    resource_plr_object=live_plr_resource,
+                    resource_instance_orm_id=resource_instance_id,
                 )
-                # Update LabwareInstanceOrm status and location
-                await ads.update_labware_instance_location_and_status(
+                # Update ResourceInstanceOrm status and location
+                await svc.update_resource_instance_location_and_status(
                     db=self.db,
-                    labware_instance_id=labware_instance_id,
-                    new_status=LabwareInstanceStatusEnum.IN_USE,
+                    resource_instance_id=resource_instance_id,
+                    new_status=ResourceInstanceStatusEnum.IN_USE,
                     current_protocol_run_guid=protocol_run_guid,
                     location_device_id=deck_device_orm.id,  # Its location is now this deck device
                     current_deck_slot_name=slot_orm.slot_name,
@@ -723,7 +707,7 @@ class AssetManager:
                     status_details=f"On deck '{deck_name}' slot '{slot_orm.slot_name}' for run {protocol_run_guid}",
                 )
                 logger.info(
-                    f"AM_DECK_CONFIG: Labware instance ID {labware_instance_id} marked IN_USE on slot '{slot_orm.slot_name}'."
+                    f"AM_DECK_CONFIG: Resource instance ID {resource_instance_id} marked IN_USE on slot '{slot_orm.slot_name}'."
                 )
 
         logger.info(
@@ -748,7 +732,7 @@ class AssetManager:
             constraints: Optional dictionary of constraints (e.g., specific serial number).
 
         Returns:
-            A tuple (live_plr_device_object, managed_device_orm_id, "device").
+            A tuple (live_plr_device_object, machine_orm_id, "device").
 
         Raises:
             AssetAcquisitionError: If no suitable device can be acquired or initialized.
@@ -762,13 +746,13 @@ class AssetManager:
         # TODO: Implement constraint matching if `constraints` are provided (e.g., serial_number)
         # For now, we pick the first available or one already in use by this run.
 
-        selected_device_orm: Optional[ManagedDeviceOrm] = None
+        selected_device_orm: Optional[MachineOrm] = None
 
         # 1. Check if a suitable device is already in use by this run
-        in_use_by_this_run_list = await ads.list_managed_devices(
+        in_use_by_this_run_list = await svc.list_machines(
             self.db,
             pylabrobot_class_filter=pylabrobot_class_name_constraint,
-            status=ManagedDeviceStatusEnum.IN_USE,
+            status=MachineStatusEnum.IN_USE,
             current_protocol_run_guid_filter=protocol_run_guid,
         )
         if in_use_by_this_run_list:
@@ -781,9 +765,9 @@ class AssetManager:
             )
         else:
             # 2. If not, find an available one
-            available_devices_list = await ads.list_managed_devices(
+            available_devices_list = await svc.list_machines(
                 self.db,
-                status=ManagedDeviceStatusEnum.AVAILABLE,
+                status=MachineStatusEnum.AVAILABLE,
                 pylabrobot_class_filter=pylabrobot_class_name_constraint,
             )
             if available_devices_list:
@@ -821,10 +805,10 @@ class AssetManager:
             )
             logger.error(error_msg)
             # Optionally set device status to ERROR in DB here
-            await ads.update_managed_device_status(
+            await svc.update_machine_status(
                 self.db,
                 selected_device_orm.id,
-                ManagedDeviceStatusEnum.ERROR,
+                MachineStatusEnum.ERROR,
                 status_details=f"Backend initialization failed for run {protocol_run_guid}: {error_msg[:200]}",
             )
             raise AssetAcquisitionError(error_msg)
@@ -835,13 +819,13 @@ class AssetManager:
         )
 
         if (
-            selected_device_orm.current_status != ManagedDeviceStatusEnum.IN_USE
+            selected_device_orm.current_status != MachineStatusEnum.IN_USE
             or selected_device_orm.current_protocol_run_guid != protocol_run_guid
         ):
-            updated_device_orm = await ads.update_managed_device_status(
+            updated_device_orm = await svc.update_machine_status(
                 self.db,
                 selected_device_orm.id,
-                ManagedDeviceStatusEnum.IN_USE,
+                MachineStatusEnum.IN_USE,
                 current_protocol_run_guid=protocol_run_guid,
                 status_details=f"In use by run {protocol_run_guid}",
             )
@@ -865,11 +849,11 @@ class AssetManager:
 
         return live_plr_device, selected_device_orm.id, "device"
 
-    async def acquire_labware(
+    async def acquire_resource(
         self,
         protocol_run_guid: str,
         requested_asset_name_in_protocol: str,
-        pylabrobot_definition_name_constraint: str,  # Key from LabwareDefinitionCatalogOrm
+        pylabrobot_definition_name_constraint: str,  # Key from ResourceDefinitionCatalogOrm
         user_choice_instance_id: Optional[int] = None,
         location_constraints: Optional[
             Dict[str, Any]
@@ -879,156 +863,156 @@ class AssetManager:
         ] = None,  # e.g., {"is_sterile": True}
     ) -> Tuple[Any, int, str]:
         """
-        Acquires a labware instance that is available or already in use by the current run.
+        Acquires a resource instance that is available or already in use by the current run.
 
         Args:
             protocol_run_guid: GUID of the protocol run.
             requested_asset_name_in_protocol: Name of the asset as requested in the protocol.
-            pylabrobot_definition_name_constraint: The `pylabrobot_definition_name` from `LabwareDefinitionCatalogOrm`.
-            user_choice_instance_id: Optional specific ID of the labware instance to acquire.
-            location_constraints: Optional constraints on where the labware should be (primarily for deck assignment).
-            property_constraints: Optional constraints on labware properties.
+            pylabrobot_definition_name_constraint: The `pylabrobot_definition_name` from `ResourceDefinitionCatalogOrm`.
+            user_choice_instance_id: Optional specific ID of the resource instance to acquire.
+            location_constraints: Optional constraints on where the resource should be (primarily for deck assignment).
+            property_constraints: Optional constraints on resource properties.
 
         Returns:
-            A tuple (live_plr_labware_object, labware_instance_orm_id, "labware").
+            A tuple (live_plr_resource_object, resource_instance_orm_id, "resource").
 
         Raises:
-            AssetAcquisitionError: If no suitable labware can be acquired or initialized.
+            AssetAcquisitionError: If no suitable resource can be acquired or initialized.
         """
         logger.info(
-            f"AM_ACQUIRE_LABWARE: Acquiring labware '{requested_asset_name_in_protocol}' "
+            f"AM_ACQUIRE_LABWARE: Acquiring resource '{requested_asset_name_in_protocol}' "
             f"(PLR Def Name Constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'. "
             f"User Choice ID: {user_choice_instance_id}, Location Constraints: {location_constraints}, Property Constraints: {property_constraints}"
         )
 
-        labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None
+        resource_instance_to_acquire: Optional[ResourceInstanceOrm] = None
 
         if user_choice_instance_id:
-            instance_orm = await ads.get_labware_instance_by_id(
+            instance_orm = await svc.get_resource_instance_by_id(
                 self.db, user_choice_instance_id
             )
             if not instance_orm:
                 raise AssetAcquisitionError(
-                    f"Specified labware instance ID {user_choice_instance_id} not found."
+                    f"Specified resource instance ID {user_choice_instance_id} not found."
                 )
             if (
                 instance_orm.pylabrobot_definition_name
                 != pylabrobot_definition_name_constraint
             ):
                 raise AssetAcquisitionError(
-                    f"Chosen labware instance ID {user_choice_instance_id} (Definition: '{instance_orm.pylabrobot_definition_name}') "
+                    f"Chosen resource instance ID {user_choice_instance_id} (Definition: '{instance_orm.pylabrobot_definition_name}') "
                     f"does not match definition constraint '{pylabrobot_definition_name_constraint}'."
                 )
             # Check status for user_choice_instance_id
-            if instance_orm.current_status == LabwareInstanceStatusEnum.IN_USE:
+            if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
                 if instance_orm.current_protocol_run_guid != protocol_run_guid:
                     raise AssetAcquisitionError(
-                        f"Chosen labware instance ID {user_choice_instance_id} is IN_USE by another run ('{instance_orm.current_protocol_run_guid}')."
+                        f"Chosen resource instance ID {user_choice_instance_id} is IN_USE by another run ('{instance_orm.current_protocol_run_guid}')."
                     )
                 logger.info(
-                    f"AM_ACQUIRE_LABWARE: Labware instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+                    f"AM_ACQUIRE_LABWARE: Resource instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
                 )
-                labware_instance_to_acquire = instance_orm
+                resource_instance_to_acquire = instance_orm
             elif instance_orm.current_status not in [
-                LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
-                LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+                ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
             ]:
                 raise AssetAcquisitionError(
-                    f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {instance_orm.current_status.name})."
+                    f"Chosen resource instance ID {user_choice_instance_id} is not available (status: {instance_orm.current_status.name})."
                 )
             else:
-                labware_instance_to_acquire = instance_orm  # It's available
+                resource_instance_to_acquire = instance_orm  # It's available
         else:
             # 1. Check if already in use by this run
-            in_use_list = await ads.list_labware_instances(
+            in_use_list = await svc.list_resource_instances(
                 self.db,
                 pylabrobot_definition_name=pylabrobot_definition_name_constraint,
-                status=LabwareInstanceStatusEnum.IN_USE,
+                status=ResourceInstanceStatusEnum.IN_USE,
                 current_protocol_run_guid_filter=protocol_run_guid,
                 property_filters=property_constraints,  # Apply property filters if any
             )
             if in_use_list:
-                labware_instance_to_acquire = in_use_list[0]  # Assuming one for now
+                resource_instance_to_acquire = in_use_list[0]  # Assuming one for now
                 logger.info(
-                    f"AM_ACQUIRE_LABWARE: Labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) "
+                    f"AM_ACQUIRE_LABWARE: Resource instance '{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) "
                     f"is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
                 )
             else:
                 # 2. Check if available on deck
-                on_deck_list = await ads.list_labware_instances(
+                on_deck_list = await svc.list_resource_instances(
                     self.db,
                     pylabrobot_definition_name=pylabrobot_definition_name_constraint,
-                    status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+                    status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
                     property_filters=property_constraints,
                 )
                 if on_deck_list:
-                    labware_instance_to_acquire = on_deck_list[0]
+                    resource_instance_to_acquire = on_deck_list[0]
                 else:
                     # 3. Check if available in storage
-                    in_storage_list = await ads.list_labware_instances(
+                    in_storage_list = await svc.list_resource_instances(
                         self.db,
                         pylabrobot_definition_name=pylabrobot_definition_name_constraint,
-                        status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                        status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
                         property_filters=property_constraints,
                     )
                     if in_storage_list:
-                        labware_instance_to_acquire = in_storage_list[0]
+                        resource_instance_to_acquire = in_storage_list[0]
 
-            if not labware_instance_to_acquire:
+            if not resource_instance_to_acquire:
                 raise AssetAcquisitionError(
-                    f"No labware instance found matching definition '{pylabrobot_definition_name_constraint}' "
+                    f"No resource instance found matching definition '{pylabrobot_definition_name_constraint}' "
                     f"and properties {property_constraints} that is available or already in use by this run."
                 )
 
-        # At this point, labware_instance_to_acquire should be set if one was found
-        if not labware_instance_to_acquire:  # Safeguard, should be caught above
+        # At this point, resource_instance_to_acquire should be set if one was found
+        if not resource_instance_to_acquire:  # Safeguard, should be caught above
             raise AssetAcquisitionError(
-                f"Labware acquisition failed for {requested_asset_name_in_protocol}."
+                f"Resource acquisition failed for {requested_asset_name_in_protocol}."
             )
 
-        labware_def_orm = await ads.get_labware_definition(
-            self.db, labware_instance_to_acquire.pylabrobot_definition_name
+        resource_def_orm = await svc.get_resource_definition(
+            self.db, resource_instance_to_acquire.pylabrobot_definition_name
         )
-        if not labware_def_orm or not labware_def_orm.python_fqn:
+        if not resource_def_orm or not resource_def_orm.python_fqn:
             error_msg = (
-                f"Python FQN not found for labware definition '{labware_instance_to_acquire.pylabrobot_definition_name}' "
-                f"for instance ID {labware_instance_to_acquire.id}."
+                f"Python FQN not found for resource definition '{resource_instance_to_acquire.pylabrobot_definition_name}' "
+                f"for instance ID {resource_instance_to_acquire.id}."
             )
             logger.error(error_msg)
-            await ads.update_labware_instance_location_and_status(
+            await svc.update_resource_instance_location_and_status(
                 db=self.db,
-                labware_instance_id=labware_instance_to_acquire.id,
-                new_status=LabwareInstanceStatusEnum.ERROR,
+                resource_instance_id=resource_instance_to_acquire.id,
+                new_status=ResourceInstanceStatusEnum.ERROR,
                 status_details=error_msg[:200],
             )
             raise AssetAcquisitionError(error_msg)
-        labware_fqn = labware_def_orm.python_fqn
+        resource_fqn = resource_def_orm.python_fqn
 
         logger.info(
-            f"AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for labware instance "
-            f"'{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) using FQN '{labware_fqn}'."
+            f"AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for resource instance "
+            f"'{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) using FQN '{resource_fqn}'."
         )
-        live_plr_labware = self.workcell_runtime.create_or_get_labware_plr_object(
-            labware_instance_orm=labware_instance_to_acquire,
-            labware_definition_fqn=labware_fqn,
+        live_plr_resource = self.workcell_runtime.create_or_get_resource_plr_object(
+            resource_instance_orm=resource_instance_to_acquire,
+            resource_definition_fqn=resource_fqn,
         )
-        if not live_plr_labware:
+        if not live_plr_resource:
             error_msg = (
-                f"Failed to create/get PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' "
-                f"(ID: {labware_instance_to_acquire.id}). Check WorkcellRuntime logs."
+                f"Failed to create/get PLR object for resource '{resource_instance_to_acquire.user_assigned_name}' "
+                f"(ID: {resource_instance_to_acquire.id}). Check WorkcellRuntime logs."
             )
             logger.error(error_msg)
-            # Optionally set labware status to ERROR
-            await ads.update_labware_instance_location_and_status(
+            # Optionally set resource status to ERROR
+            await svc.update_resource_instance_location_and_status(
                 db=self.db,
-                labware_instance_id=labware_instance_to_acquire.id,
-                new_status=LabwareInstanceStatusEnum.ERROR,
+                resource_instance_id=resource_instance_to_acquire.id,
+                new_status=ResourceInstanceStatusEnum.ERROR,
                 status_details=f"PLR object creation failed: {error_msg[:150]}",
             )
             raise AssetAcquisitionError(error_msg)
 
         logger.info(
-            f"AM_ACQUIRE_LABWARE: PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' created/retrieved. "
+            f"AM_ACQUIRE_LABWARE: PLR object for resource '{resource_instance_to_acquire.user_assigned_name}' created/retrieved. "
             f"Updating status to IN_USE (if not already by this run) and handling location."
         )
 
@@ -1041,12 +1025,12 @@ class AssetManager:
             slot_name = location_constraints.get("slot_name")
             if deck_name and slot_name:
                 logger.info(
-                    f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_labware.name}' on deck '{deck_name}' slot '{slot_name}'."
+                    f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_resource.name}' on deck '{deck_name}' slot '{slot_name}'."
                 )
                 # Find the deck device ORM
-                deck_devices = await ads.list_managed_devices(
+                deck_devices = await svc.list_machines(
                     self.db, user_friendly_name_filter=deck_name
-                )  # Assuming deck name is unique for ManagedDevice
+                )  # Assuming deck name is unique for Machine
                 if not deck_devices:
                     raise AssetAcquisitionError(
                         f"Deck device '{deck_name}' specified in location_constraints not found."
@@ -1058,69 +1042,69 @@ class AssetManager:
                 target_slot_name = slot_name
 
                 # Assign to PLR Deck object via WorkcellRuntime
-                self.workcell_runtime.assign_labware_to_deck_slot(
+                self.workcell_runtime.assign_resource_to_deck_slot(
                     deck_device_orm_id=target_deck_orm_id,
                     slot_name=target_slot_name,
-                    labware_plr_object=live_plr_labware,
-                    labware_instance_orm_id=labware_instance_to_acquire.id,
+                    resource_plr_object=live_plr_resource,
+                    resource_instance_orm_id=resource_instance_to_acquire.id,
                 )
                 final_status_details = f"On deck '{deck_name}' slot '{slot_name}' for run {protocol_run_guid}"
                 logger.info(
-                    f"AM_ACQUIRE_LABWARE: Labware assigned to deck '{deck_name}' slot '{slot_name}' in WorkcellRuntime."
+                    f"AM_ACQUIRE_LABWARE: Resource assigned to deck '{deck_name}' slot '{slot_name}' in WorkcellRuntime."
                 )
             elif deck_name or slot_name:  # Partial constraint
                 raise AssetAcquisitionError(
                     f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both 'deck_name' and 'slot_name' required if placing on deck."
                 )
 
-        # Update LabwareInstanceOrm status and location, only if it's not already correctly set
+        # Update ResourceInstanceOrm status and location, only if it's not already correctly set
         if not (
-            labware_instance_to_acquire.current_status
-            == LabwareInstanceStatusEnum.IN_USE
-            and labware_instance_to_acquire.current_protocol_run_guid
+            resource_instance_to_acquire.current_status
+            == ResourceInstanceStatusEnum.IN_USE
+            and resource_instance_to_acquire.current_protocol_run_guid
             == protocol_run_guid
             and (
                 not target_deck_orm_id
-                or labware_instance_to_acquire.location_device_id == target_deck_orm_id
+                or resource_instance_to_acquire.location_device_id == target_deck_orm_id
             )
             and (
                 not target_slot_name
-                or labware_instance_to_acquire.current_deck_slot_name
+                or resource_instance_to_acquire.current_deck_slot_name
                 == target_slot_name
             )
         ):
-            updated_labware_instance_orm = await ads.update_labware_instance_location_and_status(
+            updated_resource_instance_orm = await svc.update_resource_instance_location_and_status(
                 self.db,
-                labware_instance_id=labware_instance_to_acquire.id,
-                new_status=LabwareInstanceStatusEnum.IN_USE,
+                resource_instance_id=resource_instance_to_acquire.id,
+                new_status=ResourceInstanceStatusEnum.IN_USE,
                 current_protocol_run_guid=protocol_run_guid,
                 location_device_id=target_deck_orm_id,  # Null if not placed on a specific deck device
                 current_deck_slot_name=target_slot_name,  # Null if not in a specific slot
                 status_details=final_status_details,
             )
-            if not updated_labware_instance_orm:
+            if not updated_resource_instance_orm:
                 critical_error_msg = (
-                    f"CRITICAL: Labware '{labware_instance_to_acquire.user_assigned_name}' PLR object created/assigned, "
+                    f"CRITICAL: Resource '{resource_instance_to_acquire.user_assigned_name}' PLR object created/assigned, "
                     f"but FAILED to update its DB status/location for run '{protocol_run_guid}'."
                 )
                 logger.error(critical_error_msg)
                 raise AssetAcquisitionError(critical_error_msg)
             logger.info(
-                f"AM_ACQUIRE_LABWARE: Labware '{updated_labware_instance_orm.user_assigned_name}' (ID: {updated_labware_instance_orm.id}) "
+                f"AM_ACQUIRE_LABWARE: Resource '{updated_resource_instance_orm.user_assigned_name}' (ID: {updated_resource_instance_orm.id}) "
                 f"successfully acquired for run '{protocol_run_guid}'. Status: IN_USE. Location Device ID: {target_deck_orm_id}, Slot: {target_slot_name}."
             )
         else:
             logger.info(
-                f"AM_ACQUIRE_LABWARE: Labware '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) "
+                f"AM_ACQUIRE_LABWARE: Resource '{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) "
                 f"was already correctly set as IN_USE by this run, and at the target location if specified."
             )
 
-        return live_plr_labware, labware_instance_to_acquire.id, "labware"
+        return live_plr_resource, resource_instance_to_acquire.id, "resource"
 
     async def release_device(
         self,
         device_orm_id: int,
-        final_status: ManagedDeviceStatusEnum = ManagedDeviceStatusEnum.AVAILABLE,
+        final_status: MachineStatusEnum = MachineStatusEnum.AVAILABLE,
         status_details: Optional[str] = "Released from run",
     ):
         """
@@ -1136,7 +1120,7 @@ class AssetManager:
         )
 
         # Update the status in the database
-        updated_device = await ads.update_managed_device_status(
+        updated_device = await svc.update_machine_status(
             self.db,
             device_orm_id,
             final_status,
@@ -1153,57 +1137,55 @@ class AssetManager:
                 f"AM_RELEASE_DEVICE: Device ID {device_orm_id} status updated to {final_status.name} in DB."
             )
 
-    async def release_labware(
+    async def release_resource(
         self,
-        labware_instance_orm_id: int,
-        final_status: LabwareInstanceStatusEnum,
+        resource_instance_orm_id: int,
+        final_status: ResourceInstanceStatusEnum,
         final_properties_json_update: Optional[Dict[str, Any]] = None,
-        clear_from_deck_device_id: Optional[
-            int
-        ] = None,  # ID of the deck ManagedDeviceOrm
+        clear_from_deck_device_id: Optional[int] = None,  # ID of the deck MachineOrm
         clear_from_slot_name: Optional[str] = None,
         status_details: Optional[str] = "Released from run",
     ):
         """
-        Releases a labware instance, updating its status and properties,
+        Releases a resource instance, updating its status and properties,
         and clearing it from a deck slot via WorkcellRuntime if specified.
         """
         logger.info(
-            f"AM_RELEASE_LABWARE: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}"
+            f"AM_RELEASE_LABWARE: Releasing resource ID {resource_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}"
         )
         if final_properties_json_update:
             logger.info(
-                f"AM_RELEASE_LABWARE: Update properties for instance ID {labware_instance_orm_id}: {final_properties_json_update}"
+                f"AM_RELEASE_LABWARE: Update properties for instance ID {resource_instance_orm_id}: {final_properties_json_update}"
             )
 
-        # If the labware was on a deck, clear it from WorkcellRuntime's view of that deck
+        # If the resource was on a deck, clear it from WorkcellRuntime's view of that deck
         if clear_from_deck_device_id is not None and clear_from_slot_name is not None:
             logger.info(
-                f"AM_RELEASE_LABWARE: Clearing labware ID {labware_instance_orm_id} from deck device ID {clear_from_deck_device_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
+                f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck device ID {clear_from_deck_device_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
             )
             self.workcell_runtime.clear_deck_slot(
                 deck_device_orm_id=clear_from_deck_device_id,
                 slot_name=clear_from_slot_name,
-                labware_instance_orm_id=labware_instance_orm_id,
+                resource_instance_orm_id=resource_instance_orm_id,
             )
         else:
             # If not clearing from a specific deck, ensure it's cleared from any WCR internal cache if it was a general acquisition
-            self.workcell_runtime.clear_general_labware_instance(
-                labware_instance_orm_id
+            self.workcell_runtime.clear_general_resource_instance(
+                resource_instance_orm_id
             )
 
         # Determine final location for DB update
         final_location_device_id_for_ads: Optional[int] = None
         final_deck_slot_name_for_ads: Optional[str] = None
         # If final status is AVAILABLE_ON_DECK, it implies it remains on 'clear_from_deck_device_id'
-        if final_status == LabwareInstanceStatusEnum.AVAILABLE_ON_DECK:
+        if final_status == ResourceInstanceStatusEnum.AVAILABLE_ON_DECK:
             final_location_device_id_for_ads = clear_from_deck_device_id
             final_deck_slot_name_for_ads = clear_from_slot_name
         # If AVAILABLE_IN_STORAGE or CONSUMED, location is cleared.
 
-        updated_labware = await ads.update_labware_instance_location_and_status(
+        updated_resource = await svc.update_resource_instance_location_and_status(
             self.db,
-            labware_instance_id=labware_instance_orm_id,
+            resource_instance_id=resource_instance_orm_id,
             new_status=final_status,
             properties_json_update=final_properties_json_update,
             location_device_id=final_location_device_id_for_ads,
@@ -1211,22 +1193,22 @@ class AssetManager:
             current_protocol_run_guid=None,  # Clear the run GUID
             status_details=status_details,
         )
-        if not updated_labware:
+        if not updated_resource:
             logger.error(
-                f"AM_RELEASE_LABWARE: Failed to update final status/location for labware ID {labware_instance_orm_id} in DB."
+                f"AM_RELEASE_LABWARE: Failed to update final status/location for resource ID {resource_instance_orm_id} in DB."
             )
         else:
             logger.info(
-                f"AM_RELEASE_LABWARE: Labware ID {labware_instance_orm_id} status updated to {final_status.name} in DB."
+                f"AM_RELEASE_LABWARE: Resource ID {resource_instance_orm_id} status updated to {final_status.name} in DB."
             )
 
     async def acquire_asset(
         self, protocol_run_guid: str, asset_requirement: AssetRequirementModel
     ) -> Tuple[Any, int, str]:
         """
-        Dispatches asset acquisition to either acquire_device or acquire_labware based on the asset type.
+        Dispatches asset acquisition to either acquire_device or acquire_resource based on the asset type.
         The `asset_requirement.actual_type_str` is key:
-        - If it matches a `pylabrobot_definition_name` in `LabwareDefinitionCatalogOrm`, it's labware.
+        - If it matches a `pylabrobot_definition_name` in `ResourceDefinitionCatalogOrm`, it's resource.
         - Otherwise, it's assumed to be a PLR Machine FQN (device).
         """
         logger.info(
@@ -1235,27 +1217,27 @@ class AssetManager:
             f"Constraints: {asset_requirement.constraints_json}"
         )
 
-        # Check if actual_type_str corresponds to a known labware definition name
-        labware_def_check = await ads.get_labware_definition(
+        # Check if actual_type_str corresponds to a known resource definition name
+        resource_def_check = await svc.get_resource_definition(
             self.db, asset_requirement.actual_type_str
         )
 
-        if labware_def_check:
+        if resource_def_check:
             logger.debug(
                 f"AM_ACQUIRE_ASSET: Identified '{asset_requirement.actual_type_str}' as LABWARE "
-                f"(matches LabwareDefinitionCatalog). Dispatching to acquire_labware for '{asset_requirement.name}'."
+                f"(matches ResourceDefinitionCatalog). Dispatching to acquire_resource for '{asset_requirement.name}'."
             )
-            return await self.acquire_labware(
+            return await self.acquire_resource(
                 protocol_run_guid=protocol_run_guid,
                 requested_asset_name_in_protocol=asset_requirement.name,
-                pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,  # This is the key for LabwareDefinitionCatalogOrm
-                property_constraints=asset_requirement.constraints_json,  # Pass all constraints as property constraints for labware
-                location_constraints=asset_requirement.location_constraints_json,  # Specific for labware placement
+                pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,  # This is the key for ResourceDefinitionCatalogOrm
+                property_constraints=asset_requirement.constraints_json,  # Pass all constraints as property constraints for resource
+                location_constraints=asset_requirement.location_constraints_json,  # Specific for resource placement
             )
         else:
             # Assume it's a device/machine FQN
             logger.debug(
-                f"AM_ACQUIRE_ASSET: Did not find '{asset_requirement.actual_type_str}' in LabwareDefinitionCatalog. "
+                f"AM_ACQUIRE_ASSET: Did not find '{asset_requirement.actual_type_str}' in ResourceDefinitionCatalog. "
                 f"Assuming it's a DEVICE (PLR Machine FQN). Dispatching to acquire_device for '{asset_requirement.name}'."
             )
             # For devices, constraints_json are general constraints.

@@ -20,7 +20,9 @@ def _get_command_key(run_guid: str) -> str:
     return f"{COMMAND_KEY_PREFIX}:{run_guid}"
 
 
-def send_control_command(run_guid: str, command: str, ttl_seconds: int = 3600) -> bool:
+async def send_control_command(
+    run_guid: str, command: str, ttl_seconds: int = 3600
+) -> bool:
     if command not in ALLOWED_COMMANDS:
         raise ValueError(
             f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}"
@@ -28,7 +30,7 @@ def send_control_command(run_guid: str, command: str, ttl_seconds: int = 3600) -
     try:
         r = _get_redis_client()
         key = _get_command_key(run_guid)
-        r.set(key, command, ex=ttl_seconds)
+        await r.set(key, command, ex=ttl_seconds)
         return True
     except RedisError as e:
         # In a real application, use a proper logger
@@ -36,22 +38,22 @@ def send_control_command(run_guid: str, command: str, ttl_seconds: int = 3600) -
         return False
 
 
-def get_control_command(run_guid: str) -> Optional[str]:
+async def get_control_command(run_guid: str) -> Optional[str]:
     try:
         r = _get_redis_client()
         key = _get_command_key(run_guid)
-        command = r.get(key)
+        command = await r.get(key)
         return command  # Returns None if key doesn't exist
     except RedisError as e:
         print(f"RedisError getting control command for run {run_guid}: {e}")
         return None
 
 
-def clear_control_command(run_guid: str) -> bool:
+async def clear_control_command(run_guid: str) -> bool:
     try:
         r = _get_redis_client()
         key = _get_command_key(run_guid)
-        deleted_count = r.delete(key)
+        deleted_count = await r.delete(key)
         return deleted_count > 0
     except RedisError as e:
         print(f"RedisError clearing control command for run {run_guid}: {e}")

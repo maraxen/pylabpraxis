@@ -26,8 +26,6 @@ from praxis.backend.models import (
     ProtocolSourceStatusEnum,
     ProtocolRunStatusEnum,
     FunctionCallStatusEnum,
-)
-from praxis.backend.models.protocol_pydantic_models import (
     FunctionProtocolDefinitionModel,
 )
 
@@ -189,7 +187,9 @@ async def upsert_function_protocol_definition(  # MODIFIED: async def
         param_orm.optional = param_model.optional
         param_orm.default_value_repr = param_model.default_value_repr
         param_orm.description = param_model.description
-        param_orm.constraints_json = param_model.constraints
+        param_orm.constraints_json = (
+            param_model.constraints.model_dump() if param_model.constraints else None
+        )
         new_params_list.append(param_orm)
     def_orm.parameters = new_params_list  # type: ignore
 
@@ -206,7 +206,9 @@ async def upsert_function_protocol_definition(  # MODIFIED: async def
         asset_orm.optional = asset_model.optional
         asset_orm.default_value_repr = asset_model.default_value_repr
         asset_orm.description = asset_model.description
-        asset_orm.constraints_json = asset_model.constraints
+        asset_orm.constraints_json = (
+            asset_model.constraints.model_dump() if asset_model.constraints else None
+        )
         new_assets_list.append(asset_orm)
     def_orm.assets = new_assets_list  # type: ignore
 
@@ -277,16 +279,9 @@ async def update_protocol_run_status(  # MODIFIED: async def
             ProtocolRunStatusEnum.CANCELLED,
         ]:
             db_protocol_run.end_time = utc_now
-            if (
-                db_protocol_run.start_time is not None
-                and db_protocol_run.end_time is not None
-            ):
-                db_protocol_run.duration_ms = int(
-                    (
-                        db_protocol_run.end_time - db_protocol_run.start_time
-                    ).total_seconds()
-                    * 1000
-                )  # type: ignore
+            if db_protocol_run.start_time and db_protocol_run.end_time:
+                duration = db_protocol_run.end_time - db_protocol_run.start_time  # type: ignore
+                db_protocol_run.duration_ms = int(duration.total_seconds() * 1000)
             if output_data_json is not None:
                 db_protocol_run.output_data_json = json.loads(output_data_json)
             if final_state_json is not None:
@@ -354,7 +349,7 @@ async def log_function_call_end(  # MODIFIED: async def
             call_log.duration_ms = int(duration_ms)
         elif call_log.start_time and call_log.end_time is not None:
             call_log.duration_ms = int(
-                (call_log.end_time - call_log.start_time).total_seconds() * 1000
+                (call_log.end_time - call_log.start_time).total_seconds() * 1000  # type: ignore
             )  # type: ignore
         call_log.status = status
         if return_value_json is not None:
@@ -409,7 +404,7 @@ async def get_protocol_definition_details(  # MODIFIED: async def
         )
         .filter(
             FunctionProtocolDefinitionOrm.name == name,
-            FunctionProtocolDefinitionOrm.deprecated == False,
+            ~FunctionProtocolDefinitionOrm.deprecated,
         )
     )  # type: ignore
 
@@ -471,7 +466,7 @@ async def list_protocol_definitions(  # MODIFIED: async def
     )
 
     if not include_deprecated:
-        stmt = stmt.filter(FunctionProtocolDefinitionOrm.deprecated == False)  # type: ignore
+        stmt = stmt.filter(~FunctionProtocolDefinitionOrm.deprecated)
 
     if source_name:
         git_source_alias = aliased(ProtocolSourceRepositoryOrm)

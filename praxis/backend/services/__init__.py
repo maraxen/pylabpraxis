@@ -5,6 +5,12 @@ from .deck_data_service import (
     create_deck_layout,
     update_deck_layout,
     delete_deck_layout,
+    get_deck_type_definition_by_fqn,
+    list_deck_type_definitions,
+    add_or_update_deck_type_definition,
+    add_deck_slot_definitions,
+    get_deck_type_definition_by_id,
+    get_slot_definitions_for_deck_type,
 )
 from .resource_data_service import (
     add_resource_instance,
@@ -54,6 +60,7 @@ from .protocol_data_service import (
     log_function_call_start,
     update_protocol_run_status,
     upsert_function_protocol_definition as data_service_upsert_function_protocol_definition,
+    create_protocol_run,
 )
 
 __all__ = [
@@ -81,6 +88,12 @@ __all__ = [
     "delete_resource_instance",
     "delete_machine",
     "create_deck_layout",
+    "get_deck_type_definition_by_fqn",
+    "list_deck_type_definitions",
+    "add_or_update_deck_type_definition",
+    "add_deck_slot_definitions",
+    "get_deck_type_definition_by_id",
+    "get_slot_definitions_for_deck_type",
     # Discovery service
     "is_pylabrobot_resource",
     "get_actual_type_str_from_hint",
@@ -104,4 +117,5 @@ __all__ = [
     "log_function_call_start",
     "update_protocol_run_status",
     "data_service_upsert_function_protocol_definition",
+    "create_protocol_run",
 ]
