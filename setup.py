@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages # type: ignore
 
-from praxis.__version__ import __version__
+from .__version__ import __version__
 
 with open("README.md", "r", encoding="utf-8") as f:
   long_description = f.read()
@@ -69,7 +69,15 @@ setup(
   description="A hardware agnostic platform for lab automation",
   long_description=long_description,
   long_description_content_type="text/markdown",
-  install_requires=["typing_extensions"],
-  url="https://github.com/sculptingevolution/pylabpraxis.git",
-  author="Sculpting Evolution"
+  install_requires=[
+    "typing_extensions",
+    "pylabrobot git+https://github.com/pylabrobot/pylabrobot.git@main",
+    "pydantic>=2.0.0",
+    "sqlalchemy[asyncio]",
+    "asyncpg>0.27.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0"
+    ],
+  url="https://github.com/maraxen/pylabpraxis.git",
+  author="Marielle Russo"
 )

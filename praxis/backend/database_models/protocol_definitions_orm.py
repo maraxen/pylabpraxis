@@ -168,7 +168,7 @@ class ProtocolRunOrm(Base):
     initial_state_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # Using dict
     final_state_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True) # Using dict
     data_directory_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    # created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # TODO: PDS-5
+    created_by_user: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     top_level_protocol_definition = relationship("FunctionProtocolDefinitionOrm", back_populates="protocol_runs")
