@@ -49,10 +49,10 @@ from praxis.database_models.protocol_definitions_orm import (
     ProtocolSourceRepositoryOrm,
     FileSystemProtocolSourceOrm,
     LabwareInstanceStatusEnum,
-    ManagedDeviceStatusEnum 
+    ManagedDeviceStatusEnum
 )
 try:
-    from praxis.backend.services.protocol_data_service import ( 
+    from praxis.backend.services.protocol_data_service import (
         create_protocol_run,
         update_protocol_run_status,
         get_protocol_definition_details
@@ -240,7 +240,7 @@ class Orchestrator:
             else:
                 module = importlib.import_module(protocol_def_orm.module_name)
 
-        
+
         if not hasattr(module, protocol_def_orm.function_name):
             raise AttributeError(f"Function '{protocol_def_orm.function_name}' not found in module '{protocol_def_orm.module_name}' from path '{module_path_to_add_for_sys_path or 'PYTHONPATH'}'.")
 
@@ -257,7 +257,7 @@ class Orchestrator:
             registry_key = decorator_metadata.get("protocol_unique_key")
             if registry_key and registry_key in PROTOCOL_REGISTRY:
                 PROTOCOL_REGISTRY[registry_key]["db_id"] = protocol_def_orm.id
-        
+
         return func_wrapper, decorator_metadata
 
     def _ensure_git_repo_and_fetch(self, git_url: str, checkout_path: str, repo_name_for_logging: str) -> None:
@@ -311,7 +311,7 @@ class Orchestrator:
                     os.makedirs(checkout_path, exist_ok=True)
                 except OSError as e: # pragma: no cover
                     raise ValueError(f"Failed to create directory '{checkout_path}' for repo '{repo_name_for_logging}': {e}") from e
-            
+
             print(f"INFO: ORCH-GIT: Cloning repository '{git_url}' into '{checkout_path}' for repo '{repo_name_for_logging}'...")
             # Clone into the specific checkout_path. The last argument to clone is the directory to clone into.
             self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
@@ -408,18 +408,18 @@ class Orchestrator:
                 is_optional = get_origin(annotation) is Union and type(None) in get_args(annotation)
                 if is_optional:
                     possible_types = [arg for arg in get_args(annotation) if arg is not type(None)]
-                    if not possible_types: continue 
+                    if not possible_types: continue
                     actual_annotation = possible_types[0]
-                
+
                 fqn: Optional[str] = None
                 if inspect.isclass(actual_annotation):
                     fqn = f"{actual_annotation.__module__}.{actual_annotation.__name__}"
-                elif isinstance(actual_annotation, str): 
+                elif isinstance(actual_annotation, str):
                     fqn = actual_annotation.strip("'\"")
-                else: 
+                else:
                     print(f"DEBUG: ORCH-ARG-INFER: Skipping param '{param_name}' due to unhandled annotation type: {type(actual_annotation)}")
                     continue
-                
+
                 # Heuristic: focus on PyLabRobot and Praxis types. This can be made configurable.
                 # For now, only pylabrobot.resources and direct submodules.
                 if not fqn or not (fqn.startswith("pylabrobot.resources") or fqn.startswith("pylabrobot.liquid_handling") or fqn.startswith("pylabrobot.plate_reading") or fqn.startswith("praxis.")):
@@ -427,7 +427,7 @@ class Orchestrator:
                     continue
 
                 print(f"DEBUG: ORCH-ARG-INFER: Potential asset '{param_name}' with FQN '{fqn}', Optional={is_optional}")
-                
+
                 asset_type_str_for_model: str
                 labware_def_orm = asset_data_service.get_labware_definition_by_fqn(self.db_session, fqn)
                 if labware_def_orm:
@@ -440,7 +440,7 @@ class Orchestrator:
                 inferred_req = AssetRequirementModel(
                     name=param_name,
                     actual_type_str=asset_type_str_for_model,
-                    constraints_json={}, 
+                    constraints_json={},
                     is_optional=is_optional
                 )
                 inferred_assets_requirements.append(inferred_req)
@@ -457,7 +457,7 @@ class Orchestrator:
             for asset_req in pydantic_def.assets:
                 final_assets_to_acquire.append(asset_req)
                 final_asset_names_processed.add(asset_req.name)
-        
+
         # Add inferred assets only if not already covered by an explicit definition
         for inferred_req in inferred_assets_requirements:
             if inferred_req.name not in final_asset_names_processed:
@@ -472,17 +472,17 @@ class Orchestrator:
             for asset_req_model in final_assets_to_acquire:
                 try:
                     print(f"INFO: ORCH-ACQUIRE: Acquiring asset '{asset_req_model.name}' (type: '{asset_req_model.actual_type_str}', optional: {asset_req_model.is_optional}) for run '{canonical_run_state.run_guid}'.")
-                    
+
                     if not hasattr(self, 'asset_manager') or self.asset_manager is None: # pragma: no cover
                         raise RuntimeError("AssetManager not initialized in Orchestrator.")
 
-                    live_obj, orm_id, asset_kind_str = self.asset_manager.acquire_asset( 
+                    live_obj, orm_id, asset_kind_str = self.asset_manager.acquire_asset(
                         protocol_run_guid=canonical_run_state.run_guid,
                         asset_requirement=asset_req_model
                     )
                     final_args[asset_req_model.name] = live_obj
                     acquired_assets_details.append({
-                        "type": asset_kind_str, 
+                        "type": asset_kind_str,
                         "orm_id": orm_id,
                         "name_in_protocol": asset_req_model.name
                     })
@@ -491,7 +491,7 @@ class Orchestrator:
                 except AssetAcquisitionError as e:
                     if asset_req_model.is_optional:
                         print(f"INFO: ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' could not be acquired: {e}. Proceeding as it's optional.")
-                        final_args[asset_req_model.name] = None 
+                        final_args[asset_req_model.name] = None
                     else:
                         error_msg = f"Failed to acquire mandatory asset '{asset_req_model.name}' for protocol '{pydantic_def.name if pydantic_def else 'unknown'}': {e}"
                         print(f"ERROR: {error_msg}")
@@ -507,7 +507,7 @@ class Orchestrator:
             # Though `processed_param_names_for_asset_inference` should handle this.
             if protocol_def_orm.deck_param_name in final_args: # pragma: no cover
                  print(f"WARN: ORCH-DECK: Deck parameter '{protocol_def_orm.deck_param_name}' may have been already processed as an asset. Check protocol definition and type hints.")
-            
+
             deck_input = user_input_params.get(protocol_def_orm.deck_param_name)
             deck_to_pass_to_protocol: Optional[Any] = None
 
@@ -535,7 +535,7 @@ class Orchestrator:
                  not defined_params_from_meta[protocol_def_orm.deck_param_name].get("optional") and \
                  deck_input is None: # Mandatory, but not provided
                 raise ValueError(f"Mandatory deck param '{protocol_def_orm.deck_param_name}' not provided.")
-            
+
         return final_args, state_dict_to_pass, acquired_assets_details
 
 
@@ -596,22 +596,22 @@ class Orchestrator:
             return protocol_run_db_obj
 
 
-        canonical_run_state = PraxisState(run_guid=run_guid) 
+        canonical_run_state = PraxisState(run_guid=run_guid)
         if initial_state_data:
-            canonical_run_state.update(initial_state_data) 
+            canonical_run_state.update(initial_state_data)
         run_context = PraxisRunContext(
             protocol_run_db_id=protocol_run_db_obj.id, # type: ignore
             run_guid=run_guid,
             canonical_state=canonical_run_state,
             current_db_session=self.db_session,
-            current_call_log_db_id=None 
+            current_call_log_db_id=None
         )
 
         prepared_args: Dict[str, Any] = {}
         protocol_wrapper_func: Optional[Callable] = None
         decorator_metadata: Optional[Dict[str, Any]] = None
         state_dict_passed_to_top_level: Optional[Dict[str, Any]] = None
-        acquired_assets_info: List[Dict[str, Any]] = [] 
+        acquired_assets_info: List[Dict[str, Any]] = []
 
         try:
             protocol_wrapper_func, decorator_metadata = self._prepare_protocol_code(protocol_def_orm)
@@ -638,7 +638,7 @@ class Orchestrator:
                         update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING)
                         self.db_session.commit()
                         print(f"INFO: Protocol run {run_guid} resumed.")
-                        break 
+                        break
                     elif new_command == "CANCEL":
                         clear_control_command(run_guid)
                         update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELING)
@@ -646,7 +646,7 @@ class Orchestrator:
                         update_protocol_run_status(self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.CANCELLED, output_data_json=json.dumps({"status": "Cancelled by user during pause."}))
                         self.db_session.commit()
                         raise ProtocolCancelledError(f"Protocol run {run_guid} cancelled by user during pause.")
-                    time.sleep(2) 
+                    time.sleep(2)
             elif command == "CANCEL":
                 print(f"INFO: Protocol run {run_guid} CANCELLED before execution.")
                 clear_control_command(run_guid)
@@ -664,7 +664,7 @@ class Orchestrator:
             result = protocol_wrapper_func(**prepared_args, __praxis_run_context__=run_context)
 
             update_protocol_run_status(
-                self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.COMPLETED, 
+                self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.COMPLETED,
                 output_data_json=json.dumps(result, default=str)
             )
         except ProtocolCancelledError as ce:
@@ -677,11 +677,11 @@ class Orchestrator:
             current_status_in_db = self.db_session.query(ProtocolRunOrm.status).filter_by(id=protocol_run_db_obj.id).scalar()
             if current_status_in_db not in [ProtocolRunStatusEnum.CANCELLED, ProtocolRunStatusEnum.CANCELING]:
                  update_protocol_run_status(
-                    self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.FAILED, 
+                    self.db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.FAILED,
                     output_data_json=json.dumps(error_info)
                 )
         finally:
-            final_protocol_run_db_obj = self.db_session.query(ProtocolRunOrm).get(protocol_run_db_obj.id) 
+            final_protocol_run_db_obj = self.db_session.query(ProtocolRunOrm).get(protocol_run_db_obj.id)
             if final_protocol_run_db_obj:
                 if state_dict_passed_to_top_level is not None and protocol_def_orm.is_top_level:
                     print(f"INFO: Merging back state from dict for run {run_guid}.")
@@ -694,8 +694,8 @@ class Orchestrator:
                    final_protocol_run_db_obj.duration_ms is None :
                     duration = final_protocol_run_db_obj.end_time - final_protocol_run_db_obj.start_time
                     final_protocol_run_db_obj.duration_ms = int(duration.total_seconds() * 1000)
-                
-                if acquired_assets_info: 
+
+                if acquired_assets_info:
                     print(f"INFO: Releasing {len(acquired_assets_info)} acquired assets for run {run_guid}...")
                     for asset_info in acquired_assets_info:
                         try:
@@ -708,18 +708,18 @@ class Orchestrator:
                             elif asset_type == "labware":
                                 self.asset_manager.release_labware(
                                     labware_instance_orm_id=orm_id, # type: ignore
-                                    final_status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE 
+                                    final_status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE
                                 )
                             print(f"INFO: Released asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {orm_id}).")
                         except Exception as release_err: # pragma: no cover
                             print(f"ERROR: Failed to release asset '{asset_info.get('name_in_protocol', 'UnknownAsset')}' (ORM ID: {asset_info.get('orm_id')}): {release_err}")
-                
+
                 try: self.db_session.commit()
                 except Exception as db_err: # pragma: no cover
                     print(f"CRITICAL: Failed to commit final Orchestrator updates to DB for run {run_guid}: {db_err}")
                     self.db_session.rollback()
 
-        self.db_session.refresh(protocol_run_db_obj) 
-        return protocol_run_db_obj 
+        self.db_session.refresh(protocol_run_db_obj)
+        return protocol_run_db_obj
 
 ```

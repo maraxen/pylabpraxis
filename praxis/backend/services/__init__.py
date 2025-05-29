@@ -31,7 +31,7 @@ from .discovery_service import (
   get_args,
   get_origin,
   serialize_type_hint_str,
-  upsert_function_protocol_definition
+  upsert_function_protocol_definition as discovery_upsert_function_protocol_definition,
 )
 
 from .praxis_orm_service import (
@@ -50,7 +50,7 @@ from .protocol_data_service import (
   log_function_call_end,
   log_function_call_start,
   update_protocol_run_status,
-  upsert_function_protocol_definition,
+  upsert_function_protocol_definition as data_service_upsert_function_protocol_definition,
 )
 
 __all__ = [
@@ -85,6 +85,7 @@ __all__ = [
   "get_args",
   "get_origin",
   "serialize_type_hint_str",
+  "discovery_upsert_function_protocol_definition",
 
   # Praxis ORM service
   "PraxisDBService",
@@ -102,5 +103,5 @@ __all__ = [
   "log_function_call_end",
   "log_function_call_start",
   "update_protocol_run_status",
-  "upsert_function_protocol_definition",
+  "data_service_upsert_function_protocol_definition",
 ]

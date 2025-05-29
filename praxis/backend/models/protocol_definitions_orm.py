@@ -129,7 +129,7 @@ class ParameterDefinitionOrm(Base):
     optional: Mapped[bool] = mapped_column(Boolean, nullable=False)
     default_value_repr: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    constraints_json: Mapped[Optional[dict]] = mapped_column("constraints", JSON, nullable=True) # Using dict
+    constraints_json: Mapped[Optional[dict]] = mapped_column("constraints", JSON, nullable=True)
     protocol_definition = relationship("FunctionProtocolDefinitionOrm", back_populates="parameters")
     __table_args__ = (UniqueConstraint('protocol_definition_id', 'name', name='uq_param_def_name_per_protocol_v3'),)
 
