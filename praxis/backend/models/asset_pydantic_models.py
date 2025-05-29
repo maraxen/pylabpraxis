@@ -3,10 +3,10 @@ from typing import Optional, List, Dict, Any
 import datetime
 
 
-class LabwareDefinitionBase(BaseModel):
+class ResourceDefinitionBase(BaseModel):
     pylabrobot_definition_name: str
     python_fqn: str
-    praxis_labware_type_name: Optional[str] = None
+    praxis_resource_type_name: Optional[str] = None
     description: Optional[str] = None
     is_consumable: bool = True
     nominal_volume_ul: Optional[float] = None
@@ -23,13 +23,13 @@ class LabwareDefinitionBase(BaseModel):
         use_enum_values = True
 
 
-class LabwareDefinitionCreate(LabwareDefinitionBase):
+class ResourceDefinitionCreate(ResourceDefinitionBase):
     pass
 
 
-class LabwareDefinitionUpdate(BaseModel):
+class ResourceDefinitionUpdate(BaseModel):
     python_fqn: Optional[str] = None
-    praxis_labware_type_name: Optional[str] = None
+    praxis_resource_type_name: Optional[str] = None
     description: Optional[str] = None
     is_consumable: Optional[bool] = None
     nominal_volume_ul: Optional[float] = None
@@ -42,7 +42,7 @@ class LabwareDefinitionUpdate(BaseModel):
     model: Optional[str] = None
 
 
-class LabwareDefinitionResponse(LabwareDefinitionBase):
+class ResourceDefinitionResponse(ResourceDefinitionBase):
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
@@ -50,8 +50,8 @@ class LabwareDefinitionResponse(LabwareDefinitionBase):
 # --- Pydantic Models for Deck Layouts ---
 class DeckSlotItemBase(BaseModel):
     slot_name: str
-    labware_instance_id: Optional[int] = None
-    expected_labware_definition_name: Optional[str] = None
+    resource_instance_id: Optional[int] = None
+    expected_resource_definition_name: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -68,7 +68,7 @@ class DeckSlotItemResponse(DeckSlotItemBase):
 
 class DeckLayoutBase(BaseModel):
     layout_name: str
-    deck_device_id: int
+    deck_machine_id: int
     description: Optional[str] = None
 
     class Config:
@@ -81,7 +81,7 @@ class DeckLayoutCreate(DeckLayoutBase):
 
 class DeckLayoutUpdate(BaseModel):
     layout_name: Optional[str] = None
-    deck_device_id: Optional[int] = None
+    deck_machine_id: Optional[int] = None
     description: Optional[str] = None
     slot_items: Optional[List[DeckSlotItemCreate]] = None
 
@@ -94,7 +94,7 @@ class DeckLayoutResponse(DeckLayoutBase):
 
 
 # --- Inventory Pydantic Models ---
-class LabwareInventoryReagentItem(BaseModel):
+class ResourceInventoryReagentItem(BaseModel):
     reagent_id: str
     reagent_name: Optional[str] = None
     lot_number: Optional[str] = None
@@ -110,23 +110,23 @@ class LabwareInventoryReagentItem(BaseModel):
     custom_fields: Optional[Dict[str, Any]] = None
 
 
-class LabwareInventoryItemCount(BaseModel):
+class ResourceInventoryItemCount(BaseModel):
     item_type: Optional[str] = None
     initial_max_items: Optional[int] = None
     current_available_items: Optional[int] = None
     positions_used: Optional[List[str]] = None
 
 
-class LabwareInventoryDataIn(BaseModel):
+class ResourceInventoryDataIn(BaseModel):
     praxis_inventory_schema_version: Optional[str] = "1.0"
-    reagents: Optional[List[LabwareInventoryReagentItem]] = None
-    item_count: Optional[LabwareInventoryItemCount] = None
+    reagents: Optional[List[ResourceInventoryReagentItem]] = None
+    item_count: Optional[ResourceInventoryItemCount] = None
     consumable_state: Optional[str] = None
     last_updated_by: Optional[str] = None
     inventory_notes: Optional[str] = None
 
 
-class LabwareInventoryDataOut(LabwareInventoryDataIn):
+class ResourceInventoryDataOut(ResourceInventoryDataIn):
     last_updated_at: Optional[str] = None
 
 
@@ -189,10 +189,10 @@ class DeckSlotDefinitionBase(BaseModel):
     pylabrobot_slot_type_name: Optional[str] = (
         None  # e.g., "PlateCarrier", "TipRackSlot" from PLR spot.resource_type.__name__
     )
-    allowed_labware_categories: Optional[List[str]] = (
-        None  # e.g., ["plate", "tip_rack"] or specific praxis_labware_type_name
+    allowed_resource_categories: Optional[List[str]] = (
+        None  # e.g., ["plate", "tip_rack"] or specific praxis_resource_type_name
     )
-    allowed_labware_definition_names: Optional[List[str]] = (
+    allowed_resource_definition_names: Optional[List[str]] = (
         None  # List of specific pylabrobot_definition_name
     )
     accepts_tips: Optional[bool] = None
@@ -222,8 +222,8 @@ class DeckSlotDefinitionResponse(DeckSlotDefinitionBase):
 class DeckSlotDefinitionUpdate(BaseModel):
     slot_name: Optional[str] = None
     pylabrobot_slot_type_name: Optional[str] = None
-    allowed_labware_categories: Optional[List[str]] = None
-    allowed_labware_definition_names: Optional[List[str]] = None
+    allowed_resource_categories: Optional[List[str]] = None
+    allowed_resource_definition_names: Optional[List[str]] = None
     accepts_tips: Optional[bool] = None
     accepts_plates: Optional[bool] = None
     accepts_tubes: Optional[bool] = None
@@ -270,10 +270,10 @@ class DeckTypeDefinitionUpdate(BaseModel):
     # Slot definitions are typically managed via their own CRUD or through DeckTypeDefinitionCreate
 
 
-# --- Pydantic Models for Managed Devices (includes Decks as a type of device) ---
-class ManagedDeviceBase(BaseModel):
+# --- Pydantic Models for Managed Devices (includes Decks as a type of machine) ---
+class MachineBase(BaseModel):
     name: str  # User-defined unique name for this instance
-    device_category: str  # e.g., "deck", "liquid_handler", "plate_reader", "heater_shaker", "robot_arm"
+    machine_category: str  # e.g., "deck", "liquid_handler", "plate_reader", "heater_shaker", "robot_arm"
     # deck_type_definition_id is intentionally in Create/Response/Update as it's resolved or specified there
     description: Optional[str] = None
     manufacturer: Optional[str] = None  # Can be pre-filled from PLR inspection
@@ -297,27 +297,27 @@ class ManagedDeviceBase(BaseModel):
         use_enum_values = True
 
 
-class ManagedDeviceCreate(ManagedDeviceBase):
+class MachineCreate(MachineBase):
     pylabrobot_class_name: str  # PLR FQN, e.g., "pylabrobot.liquid_handling.hamilton.STAR" or "pylabrobot.resources.hamilton.STARDeck"
     deck_type_definition_id: Optional[int] = (
         None  # Optional: if known, service can also try to resolve it if pylabrobot_class_name is a known deck type
     )
 
 
-class ManagedDeviceResponse(ManagedDeviceBase):
+class MachineResponse(MachineBase):
     id: int
     pylabrobot_class_name: str  # Reflects the class it was instantiated from
     deck_type_definition_id: Optional[int] = (
-        None  # FK to DeckTypeDefinition, if this device IS a deck and is linked
+        None  # FK to DeckTypeDefinition, if this machine IS a deck and is linked
     )
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
 
-class ManagedDeviceUpdate(BaseModel):  # Explicit fields for update
+class MachineUpdate(BaseModel):  # Explicit fields for update
     name: Optional[str] = None
     # pylabrobot_class_name: Optional[str] = None # Typically not updatable without re-instantiation logic
-    device_category: Optional[str] = None
+    machine_category: Optional[str] = None
     deck_type_definition_id: Optional[int] = (
         None  # Allow updating the link if necessary (e.g. more specific type identified)
     )
@@ -333,10 +333,10 @@ class ManagedDeviceUpdate(BaseModel):  # Explicit fields for update
     custom_fields: Optional[Dict[str, Any]] = None
 
 
-# --- Pydantic Models for Labware Instances ---
-class LabwareInstanceSharedFields(BaseModel):
+# --- Pydantic Models for Resource Instances ---
+class ResourceInstanceSharedFields(BaseModel):
     """
-    Fields that are common across different LabwareInstance models
+    Fields that are common across different ResourceInstance models
     and have fully compatible type signatures.
     """
 
@@ -357,49 +357,49 @@ class LabwareInstanceSharedFields(BaseModel):
         use_enum_values = True
 
 
-class LabwareInstanceCreate(LabwareInstanceSharedFields):
+class ResourceInstanceCreate(ResourceInstanceSharedFields):
     # Fields specific to creation or with different handling during creation
     instance_name: Optional[str] = (
         None  # Optional for creation, service can auto-generate
     )
     pylabrobot_definition_name: (
-        str  # e.g., "Cos_96_DW_1mL"; used by service to find/link LabwareDefinition
+        str  # e.g., "Cos_96_DW_1mL"; used by service to find/link ResourceDefinition
     )
-    labware_definition_id: Optional[int] = (
+    resource_definition_id: Optional[int] = (
         None  # Optional: if user provides ID directly
     )
-    inventory_data: Optional[LabwareInventoryDataIn] = None
+    inventory_data: Optional[ResourceInventoryDataIn] = None
     # Override date_added_to_inventory to provide a default for creation, type remains Optional
     date_added_to_inventory: Optional[datetime.datetime] = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
 
 
-class LabwareInstanceResponse(LabwareInstanceSharedFields):
+class ResourceInstanceResponse(ResourceInstanceSharedFields):
     # Fields specific to response or with different type requirements for response
     id: int
-    labware_definition_id: int  # Should be resolved and returned
+    resource_definition_id: int  # Should be resolved and returned
     pylabrobot_definition_name: (
-        str  # Return for clarity, from the linked LabwareDefinition
+        str  # Return for clarity, from the linked ResourceDefinition
     )
 
     # Defined fresh here to be non-optional, avoiding incompatible override
     instance_name: str  # Non-optional in response, guaranteed by service
 
     # Defined fresh here with the 'Out' version of inventory data
-    inventory_data: Optional[LabwareInventoryDataOut] = (
-        None  # Uses LabwareInventoryDataOut for response
+    inventory_data: Optional[ResourceInventoryDataOut] = (
+        None  # Uses ResourceInventoryDataOut for response
     )
 
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
-    # date_added_to_inventory is inherited from LabwareInstanceSharedFields as Optional[datetime.datetime]
+    # date_added_to_inventory is inherited from ResourceInstanceSharedFields as Optional[datetime.datetime]
     # Its value will be populated from the database for the response.
 
 
-class LabwareInstanceUpdate(BaseModel):
+class ResourceInstanceUpdate(BaseModel):
     """
-    Model for updating a LabwareInstance. Fields are all optional.
+    Model for updating a ResourceInstance. Fields are all optional.
     Does not inherit from SharedFields to allow for partial updates without
     default values from SharedFields interfering, unless that is desired.
     If inheriting SharedFields is desired, ensure any defaults are acceptable for updates.
@@ -411,7 +411,7 @@ class LabwareInstanceUpdate(BaseModel):
     status: Optional[str] = None
     current_parent_slot_id: Optional[int] = None
     current_position_in_slot: Optional[str] = None
-    inventory_data: Optional[LabwareInventoryDataIn] = (
+    inventory_data: Optional[ResourceInventoryDataIn] = (
         None  # Allow updating inventory (using In model)
     )
     custom_fields: Optional[Dict[str, Any]] = None

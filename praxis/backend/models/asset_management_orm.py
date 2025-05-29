@@ -3,13 +3,14 @@
 praxis/database_models/asset_management_orm.py
 
 SQLAlchemy ORM models for Asset Management, including:
-- ManagedDeviceOrm (Instruments/Hardware)
-- LabwareDefinitionCatalogOrm (Types of Labware from PLR)
-- LabwareInstanceOrm (Specific physical labware items)
+- MachineOrm (Instruments/Hardware)
+- ResourceDefinitionCatalogOrm (Types of Resource from PLR)
+- ResourceInstanceOrm (Specific physical resource items)
 - DeckConfigurationOrm (Named deck layouts)
-- DeckConfigurationSlotItemOrm (Labware in a slot for a layout)
+- DeckConfigurationSlotItemOrm (Resource in a slot for a layout)
 """
 
+# TODO: refactor to align with PLR and be more modular
 from datetime import datetime
 from typing import Optional, Any
 import enum
@@ -33,7 +34,7 @@ from praxis.backend.utils.db import Base  # Import your project's Base
 
 
 # --- Enum Definitions for Asset Status Fields ---
-class ManagedDeviceStatusEnum(enum.Enum):
+class MachineStatusEnum(enum.Enum):
     AVAILABLE = "available"
     IN_USE = "in_use"  # Could store protocol_run_guid in properties_json
     ERROR = "error"
@@ -42,7 +43,7 @@ class ManagedDeviceStatusEnum(enum.Enum):
     MAINTENANCE = "maintenance"
 
 
-class LabwareInstanceStatusEnum(enum.Enum):
+class ResourceInstanceStatusEnum(enum.Enum):
     AVAILABLE_IN_STORAGE = "available_in_storage"
     AVAILABLE_ON_DECK = "available_on_deck"  # Implies it's on a known deck slot
     IN_USE = "in_use"  # Could store protocol_run_guid in properties_json
@@ -75,7 +76,7 @@ class PraxisDeviceCategoryEnum(enum.Enum):
 class AssetInstanceOrm(Base):
     """
     Abstract base class representing any physical asset in the lab.
-    This serves as an umbrella for both devices and labware instances.
+    This serves as an umbrella for both machines and resource instances.
     """
 
     __tablename__ = "asset_instances"
@@ -83,7 +84,7 @@ class AssetInstanceOrm(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     asset_type: Mapped[str] = mapped_column(
         String, nullable=False, index=True
-    )  # 'device', 'labware', etc.
+    )  # 'machine', 'resource', etc.
     asset_id: Mapped[int] = mapped_column(
         Integer, nullable=False, index=True
     )  # FK to concrete asset table (interpreted based on asset_type)
@@ -133,11 +134,11 @@ class AssetInstanceOrm(Base):
         return f"<AssetInstanceOrm(id={self.id}, type='{self.asset_type}', asset_id={self.asset_id})>"
 
 
-class ManagedDeviceOrm(Base):
-    __tablename__ = "managed_devices"
+class MachineOrm(Base):
+    __tablename__ = "machines"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    # praxis_device_id = Column(String, unique=True, index=True, nullable=False, comment="Unique identifier within Praxis, e.g., Serial Number or user-defined ID")
+    # praxis_machine_id = Column(String, unique=True, index=True, nullable=False, comment="Unique identifier within Praxis, e.g., Serial Number or user-defined ID")
     user_friendly_name: Mapped[str] = mapped_column(
         String, nullable=False, unique=True, index=True
     )
@@ -146,8 +147,8 @@ class ManagedDeviceOrm(Base):
         nullable=False,
         comment="Fully qualified PyLabRobot class name (e.g., pylabrobot.liquid_handling.hamilton.STAR)",
     )
-    praxis_device_category: Mapped[Optional[PraxisDeviceCategoryEnum]] = mapped_column(
-        SAEnum(PraxisDeviceCategoryEnum, name="praxis_device_category_enum"),
+    praxis_machine_category: Mapped[Optional[PraxisDeviceCategoryEnum]] = mapped_column(
+        SAEnum(PraxisDeviceCategoryEnum, name="praxis_machine_category_enum"),
         nullable=True,
         index=True,
         comment="Praxis-defined category based on PLR class",
@@ -165,9 +166,9 @@ class ManagedDeviceOrm(Base):
         ForeignKey("deck_type_definitions.id"), nullable=True, index=True
     )
 
-    current_status: Mapped[ManagedDeviceStatusEnum] = mapped_column(
-        SAEnum(ManagedDeviceStatusEnum, name="managed_device_status_enum"),
-        default=ManagedDeviceStatusEnum.OFFLINE,
+    current_status: Mapped[MachineStatusEnum] = mapped_column(
+        SAEnum(MachineStatusEnum, name="machine_status_enum"),
+        default=MachineStatusEnum.OFFLINE,
         nullable=False,
     )
     status_details: Mapped[Optional[str]] = mapped_column(
@@ -190,7 +191,7 @@ class ManagedDeviceOrm(Base):
     properties_json: Mapped[Optional[dict]] = mapped_column(
         JSON,
         nullable=True,
-        comment="Additional device-specific properties, calibration data",
+        comment="Additional machine-specific properties, calibration data",
     )
 
     last_seen_online: Mapped[Optional[datetime]] = mapped_column(
@@ -205,23 +206,23 @@ class ManagedDeviceOrm(Base):
 
     # Relationships
     deck_type_definition: Mapped[Optional["DeckTypeDefinitionOrm"]] = relationship(
-        back_populates="managed_devices"
+        back_populates="machines"
     )
     deck_configurations = relationship(
-        "DeckConfigurationOrm", back_populates="deck_device"
+        "DeckConfigurationOrm", back_populates="deck_machine"
     )
-    located_labware_instances = relationship(
-        "LabwareInstanceOrm", back_populates="location_device"
+    located_resource_instances = relationship(
+        "ResourceInstanceOrm", back_populates="location_machine"
     )
 
     def __repr__(self):
-        return f"<ManagedDeviceOrm(id={self.id}, name='{self.user_friendly_name}', type='{self.pylabrobot_class_name}')>"
+        return f"<MachineOrm(id={self.id}, name='{self.user_friendly_name}', type='{self.pylabrobot_class_name}')>"
 
 
-class LabwareDefinitionCatalogOrm(
+class ResourceDefinitionCatalogOrm(
     Base
-):  # TODO: ASSET-DB-2: Bring in line with PLR labware definition
-    __tablename__ = "labware_definition_catalog"
+):  # TODO: ASSET-DB-2: Bring in line with PLR resource definition
+    __tablename__ = "resource_definition_catalog"
 
     pylabrobot_definition_name: Mapped[str] = mapped_column(
         String,
@@ -268,7 +269,7 @@ class LabwareDefinitionCatalogOrm(
     )
 
     # Existing Praxis-specific or other fields
-    praxis_labware_type_name: Mapped[Optional[str]] = mapped_column(
+    praxis_resource_type_name: Mapped[Optional[str]] = mapped_column(
         String,
         nullable=True,
         unique=True,
@@ -293,20 +294,20 @@ class LabwareDefinitionCatalogOrm(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    labware_instances = relationship(
-        "LabwareInstanceOrm", back_populates="labware_definition"
+    resource_instances = relationship(
+        "ResourceInstanceOrm", back_populates="resource_definition"
     )
 
     def __repr__(self):
-        return f"<LabwareDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.plr_category}')>"
+        return f"<ResourceDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}', category='{self.plr_category}')>"
 
 
-class LabwareInstanceOrm(Base):
-    __tablename__ = "labware_instances"
+class ResourceInstanceOrm(Base):
+    __tablename__ = "resource_instances"
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True
-    )  # praxis_labware_instance_id
+    )  # praxis_resource_instance_id
     user_assigned_name: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -317,7 +318,7 @@ class LabwareInstanceOrm(Base):
 
     pylabrobot_definition_name: Mapped[str] = mapped_column(
         String,
-        ForeignKey("labware_definition_catalog.pylabrobot_definition_name"),
+        ForeignKey("resource_definition_catalog.pylabrobot_definition_name"),
         nullable=False,
         index=True,
     )
@@ -330,9 +331,9 @@ class LabwareInstanceOrm(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    current_status: Mapped[LabwareInstanceStatusEnum] = mapped_column(
-        SAEnum(LabwareInstanceStatusEnum, name="labware_instance_status_enum"),
-        default=LabwareInstanceStatusEnum.UNKNOWN,
+    current_status: Mapped[ResourceInstanceStatusEnum] = mapped_column(
+        SAEnum(ResourceInstanceStatusEnum, name="resource_instance_status_enum"),
+        default=ResourceInstanceStatusEnum.UNKNOWN,
         nullable=False,
         index=True,
     )
@@ -343,20 +344,20 @@ class LabwareInstanceOrm(Base):
     )  # ADDED
 
     # Location tracking
-    # If on a deck, deck_device_id + current_deck_slot_name should be set.
-    # If inside another device (e.g. plate in reader), location_device_id is set.
+    # If on a deck, deck_machine_id + current_deck_slot_name should be set.
+    # If inside another machine (e.g. plate in reader), location_machine_id is set.
     # If in general storage, physical_location_description can be used.
     current_deck_slot_name: Mapped[Optional[str]] = mapped_column(
         String, nullable=True, comment="If on a deck, the slot name (e.g., A1, SLOT_7)"
     )
-    location_device_id: Mapped[Optional[int]] = mapped_column(
+    location_machine_id: Mapped[Optional[int]] = mapped_column(
         Integer,
-        ForeignKey("managed_devices.id"),
+        ForeignKey("machines.id"),
         nullable=True,
-        comment="FK to ManagedDeviceOrm if located on/in a device (deck, reader, etc.)",
+        comment="FK to MachineOrm if located on/in a machine (deck, reader, etc.)",
     )
     physical_location_description: Mapped[Optional[str]] = mapped_column(
-        String, nullable=True, comment="General storage location if not on a device"
+        String, nullable=True, comment="General storage location if not on a machine"
     )
 
     properties_json: Mapped[Optional[dict]] = mapped_column(
@@ -382,21 +383,21 @@ class LabwareInstanceOrm(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    labware_definition = relationship(
-        "LabwareDefinitionCatalogOrm", back_populates="labware_instances"
+    resource_definition = relationship(
+        "ResourceDefinitionCatalogOrm", back_populates="resource_instances"
     )
-    location_device = relationship(
-        "ManagedDeviceOrm", back_populates="located_labware_instances"
+    location_machine = relationship(
+        "MachineOrm", back_populates="located_resource_instances"
     )
     # protocol_run = relationship("ProtocolRunOrm", foreign_keys=[current_protocol_run_guid]) # If linking to runs
 
     # Relationship to deck configuration items
     deck_configuration_items = relationship(
-        "DeckConfigurationSlotItemOrm", back_populates="labware_instance"
+        "DeckConfigurationSlotItemOrm", back_populates="resource_instance"
     )
 
     def __repr__(self):
-        return f"<LabwareInstanceOrm(id={self.id}, name='{self.user_assigned_name}', type='{self.pylabrobot_definition_name}')>"
+        return f"<ResourceInstanceOrm(id={self.id}, name='{self.user_assigned_name}', type='{self.pylabrobot_definition_name}')>"
 
 
 class DeckConfigurationOrm(Base):
@@ -409,9 +410,9 @@ class DeckConfigurationOrm(Base):
         String, nullable=False, unique=True, index=True
     )
 
-    # A Deck itself is a ManagedDevice
-    deck_device_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("managed_devices.id"), nullable=False
+    # A Deck itself is a Machine
+    deck_machine_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("machines.id"), nullable=False
     )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -422,7 +423,7 @@ class DeckConfigurationOrm(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    deck_device = relationship("ManagedDeviceOrm", back_populates="deck_configurations")
+    deck_machine = relationship("MachineOrm", back_populates="deck_configurations")
     slot_items = relationship(
         "DeckConfigurationSlotItemOrm",
         back_populates="deck_configuration",
@@ -444,15 +445,15 @@ class DeckConfigurationSlotItemOrm(Base):
         String, nullable=False, comment="Slot name on the deck (e.g., A1, SLOT_7)"
     )
 
-    # This links to a specific physical piece of labware
-    labware_instance_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("labware_instances.id"), nullable=False
+    # This links to a specific physical piece of resource
+    resource_instance_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("resource_instances.id"), nullable=False
     )
 
-    # Optional: for validation, store the expected type of labware for this slot in this layout
-    expected_labware_definition_name: Mapped[Optional[str]] = mapped_column(
+    # Optional: for validation, store the expected type of resource for this slot in this layout
+    expected_resource_definition_name: Mapped[Optional[str]] = mapped_column(
         String,
-        ForeignKey("labware_definition_catalog.pylabrobot_definition_name"),
+        ForeignKey("resource_definition_catalog.pylabrobot_definition_name"),
         nullable=True,
     )
     deck_slot_definition_id: Mapped[Optional[int]] = mapped_column(
@@ -462,11 +463,11 @@ class DeckConfigurationSlotItemOrm(Base):
     deck_configuration = relationship(
         "DeckConfigurationOrm", back_populates="slot_items"
     )
-    labware_instance = relationship(
-        "LabwareInstanceOrm", back_populates="deck_configuration_items"
+    resource_instance = relationship(
+        "ResourceInstanceOrm", back_populates="deck_configuration_items"
     )
-    expected_labware_definition = relationship(
-        "LabwareDefinitionCatalogOrm"
+    expected_resource_definition = relationship(
+        "ResourceDefinitionCatalogOrm"
     )  # Simple relationship
     deck_slot_definition = relationship("DeckSlotDefinitionOrm")
 
@@ -477,7 +478,7 @@ class DeckConfigurationSlotItemOrm(Base):
     )
 
     def __repr__(self):
-        return f"<DeckConfigurationSlotItemOrm(deck_config_id={self.deck_configuration_id}, slot='{self.slot_name}', lw_instance_id={self.labware_instance_id})>"
+        return f"<DeckConfigurationSlotItemOrm(deck_config_id={self.deck_configuration_id}, slot='{self.slot_name}', lw_instance_id={self.resource_instance_id})>"
 
 
 class DeckSlotDefinitionOrm(Base):
@@ -497,7 +498,7 @@ class DeckSlotDefinitionOrm(Base):
     nominal_z_mm: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True
     )  # From plan
-    accepted_labware_categories_json: Mapped[Optional[list[str]]] = mapped_column(
+    accepted_resource_categories_json: Mapped[Optional[list[str]]] = mapped_column(
         JSON, nullable=True
     )
     slot_specific_details_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
@@ -552,7 +553,7 @@ class DeckTypeDefinitionOrm(Base):
     slot_definitions: Mapped[list[DeckSlotDefinitionOrm]] = relationship(
         back_populates="deck_type_definition", cascade="all, delete-orphan"
     )
-    managed_devices: Mapped[list[ManagedDeviceOrm]] = relationship(
+    machines: Mapped[list[MachineOrm]] = relationship(
         back_populates="deck_type_definition"
     )
 
