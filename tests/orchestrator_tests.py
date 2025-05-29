@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch, call, ANY
-import time
+import subprocess
 import uuid
 import json # For dummy JSON data
 
@@ -12,10 +12,10 @@ from praxis.backend.database_models.protocol_definitions_orm import (
     FileSystemProtocolSourceOrm, # For mock_protocol_def_orm
     ProtocolSourceRepositoryOrm, # ADDED for GitOps tests
 )
-from praxis.utils.state import State as PraxisState
-from praxis.protocol_core.definitions import PlrDeck # ADDED for DeckLoading tests in Orchestrator
-from praxis.backend.protocol_core.definitions import PraxisRunContext
+from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.protocol_core.definitions import PlrDeck, PraxisRunContext # ADDED for DeckLoading tests in Orchestrator
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel
+from praxis.backend.utils.errors import AssetAcquisitionError
 
 # Mock for services that Orchestrator uses internally
 # These would be patched where Orchestrator looks them up.
@@ -25,6 +25,20 @@ mock_get_protocol_definition_details = MagicMock()
 
 mock_run_control_get = MagicMock()
 mock_run_control_clear = MagicMock()
+
+class MockPlrPlate:
+  pass
+class MockPlrPipette:
+  pass
+class MockPlrTipRack:
+  pass
+# Assume these are in a pylabrobot-like module structure for FQN generation
+MockPlrPlate.__module__ = "pylabrobot.resources.plate"
+MockPlrPlate.__name__ = "Plate"
+MockPlrPipette.__module__ = "pylabrobot.liquid_handling.pipettes"
+MockPlrPipette.__name__ = "Pipette"
+MockPlrTipRack.__module__ = "pylabrobot.resources.tip_rack"
+MockPlrTipRack.__name__ = "TipRack"
 
 @pytest.fixture
 def mock_db_session(): # Removed self
@@ -669,16 +683,7 @@ class TestOrchestratorArgumentPreparation:
     # --- Asset Inference Tests (ORCH-8) ---
 
     # Mock PyLabRobot classes for type hinting in dummy protocols
-    class MockPlrPlate: pass
-    class MockPlrPipette: pass
-    class MockPlrTipRack: pass
-    # Assume these are in a pylabrobot-like module structure for FQN generation
-    MockPlrPlate.__module__ = "pylabrobot.resources.plate"
-    MockPlrPlate.__name__ = "Plate"
-    MockPlrPipette.__module__ = "pylabrobot.liquid_handling.pipettes"
-    MockPlrPipette.__name__ = "Pipette"
-    MockPlrTipRack.__module__ = "pylabrobot.resources.tip_rack"
-    MockPlrTipRack.__name__ = "TipRack"
+
 
 
     @patch('praxis.backend.core.orchestrator.asset_data_service')
@@ -690,7 +695,8 @@ class TestOrchestratorArgumentPreparation:
         protocol_def, decorator_meta = mock_protocol_def_orm
 
         # Define a dummy protocol function with a labware type hint
-        def original_protocol(plate_param: self.MockPlrPlate): pass
+        def original_protocol(plate_param: MockPlrPlate):
+          pass
         mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
         mock_labware_def_orm = MagicMock()
@@ -713,7 +719,7 @@ class TestOrchestratorArgumentPreparation:
 
         assert called_asset_req.name == "plate_param"
         assert called_asset_req.actual_type_str == "mock_plate_definition_name"
-        assert not called_asset_req.is_optional
+        assert not called_asset_req.optional
         assert final_args["plate_param"] == live_asset_mock
         assert len(acquired_assets) == 1
         assert acquired_assets[0]["name_in_protocol"] == "plate_param"
@@ -726,7 +732,8 @@ class TestOrchestratorArgumentPreparation:
         orchestrator, _ = orchestrator_instance
         protocol_def, decorator_meta = mock_protocol_def_orm
 
-        def original_protocol(pipette_param: self.MockPlrPipette): pass
+        def original_protocol(pipette_param: MockPlrPipette):
+          pass
         mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
         mock_asset_data_service_in_orchestrator.get_labware_definition_by_fqn.return_value = None # Not found as labware
@@ -747,7 +754,7 @@ class TestOrchestratorArgumentPreparation:
 
         assert called_asset_req.name == "pipette_param"
         assert called_asset_req.actual_type_str == "pylabrobot.liquid_handling.pipettes.Pipette" # FQN used for devices
-        assert not called_asset_req.is_optional
+        assert not called_asset_req.optional
         assert final_args["pipette_param"] == live_asset_mock
         assert len(acquired_assets) == 1
 
@@ -762,7 +769,8 @@ class TestOrchestratorArgumentPreparation:
         # Need to import Optional from typing for the signature
         from typing import Optional as TypingOptional
 
-        def original_protocol(optional_rack: TypingOptional[self.MockPlrTipRack]): pass
+        def original_protocol(optional_rack: TypingOptional[MockPlrTipRack]):
+          pass
         mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
         mock_asset_data_service_in_orchestrator.get_labware_definition_by_fqn.return_value = None # Treat as device for simplicity here
@@ -775,7 +783,7 @@ class TestOrchestratorArgumentPreparation:
         orchestrator.asset_manager.acquire_asset.assert_called_once()
         called_asset_req: AssetRequirementModel = orchestrator.asset_manager.acquire_asset.call_args[1]['asset_requirement']
         assert called_asset_req.name == "optional_rack"
-        assert called_asset_req.is_optional
+        assert called_asset_req.optional
         assert final_args["optional_rack"] is None # Should be set to None if optional and acquisition fails
         assert len(acquired_assets) == 0 # No asset successfully acquired
 
@@ -808,14 +816,19 @@ class TestOrchestratorArgumentPreparation:
         protocol_def, decorator_meta = mock_protocol_def_orm
 
         # Explicit asset defined in decorator/pydantic model
-        explicit_asset_req = AssetRequirementModel(name="my_plate", actual_type_str="explicit_plate_def_name", is_optional=False)
+        explicit_asset_req = AssetRequirementModel(
+          name="my_plate",
+          actual_type_str="explicit_plate_def_name",
+          type_hint_str="plate", #TODO: check formatting here
+          optional=False)
         decorator_meta["pydantic_definition"].assets = [explicit_asset_req]
         # Also needs to be in decorator_meta["parameters"] as an asset_param to be fully skipped by normal param processing
         decorator_meta["parameters"]["my_plate"] = {"name": "my_plate", "type_str": "Plate", "is_asset_param": True}
 
 
         # Protocol function also has a type hint for "my_plate"
-        def original_protocol(my_plate: self.MockPlrPlate, another_param: int): pass
+        def original_protocol(my_plate: MockPlrPlate, another_param: int):
+          pass
         mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
         # get_labware_definition_by_fqn should NOT be called for "my_plate" due to explicit definition
@@ -923,7 +936,11 @@ class TestOrchestratorArgumentPreparation:
         mock_wrapper_func_instance.protocol_metadata = decorator_meta
 
         orchestrator._prepare_protocol_code = MagicMock(return_value=(mock_wrapper_func_instance, decorator_meta))
-        orchestrator._prepare_arguments = MagicMock(return_value=({}, PraxisState(), []))
+        orchestrator._prepare_arguments = MagicMock(
+          return_value=(
+            {}, PraxisState(run_guid=mock_protocol_run_orm.run_guid), []
+            )
+          )
         mock_get_protocol_definition_details.return_value = protocol_def
         mock_create_protocol_run.return_value = mock_protocol_run_orm
 
@@ -1011,7 +1028,9 @@ class TestOrchestratorArgumentPreparation:
 
         # Simulate acquired assets for release check
         acquired_assets_info = [{"type": "device", "orm_id": 789, "name_in_protocol": "test_device_cancel"}]
-        orchestrator._prepare_arguments = MagicMock(return_value=({}, PraxisState(), acquired_assets_info))
+        orchestrator._prepare_arguments = MagicMock(
+          return_value=({}, PraxisState(run_guid=mock_protocol_run_orm.run_guid), acquired_assets_info)
+        )
 
         orchestrator._prepare_protocol_code = MagicMock(return_value=(mock_wrapper_func_instance, decorator_meta))
         mock_get_protocol_definition_details.return_value = protocol_def
@@ -1037,4 +1056,3 @@ class TestOrchestratorArgumentPreparation:
         # Check asset release
         mock_asset_manager.release_device.assert_called_once_with(device_orm_id=789)
         mock_asset_manager.release_labware.assert_not_called()
-```

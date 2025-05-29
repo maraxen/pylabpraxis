@@ -1,19 +1,11 @@
-// Browser (Web) specific implementation of OidcAuthenticatorWrapper.
-// Manually uses oidc.Flow.authorizationCode and relies on openid_client's
-// internal state persistence (localStorage).
-// Uses package:web for browser interactions.
-// Correctly formats params for flow.callback as Map<String, String>.
-
-import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:openid_client/openid_client.dart' as oidc;
 import 'oidc_authenticator_wrapper.dart';
-import 'dart:developer' as developer; // For developer.log
-import 'package:web/web.dart'; // Using package:web for window access
+import 'package:web/web.dart';
 
 class OidcAuthenticatorBrowser implements OidcAuthenticatorWrapper {
   final oidc.Client client;
   final List<String> scopes;
-  final Uri redirectUri; // This is the intended redirect_uri (e.g., .../splash)
+  final Uri redirectUri;
 
   OidcAuthenticatorBrowser({
     required this.client,

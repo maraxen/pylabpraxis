@@ -1,7 +1,6 @@
 from typing import Optional
 from fastapi import HTTPException, Request
-from ..core.orchestrator import Orchestrator
-
+from praxis.backend.core.orchestrator import Orchestrator
 
 def get_orchestrator(request: Request) -> Orchestrator:
     """Get orchestrator instance from request state."""

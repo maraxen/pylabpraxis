@@ -5,15 +5,14 @@ praxis/db_services/protocol_data_service.py
 Service layer for interacting with protocol-related data in the database.
 This includes definitions for protocol sources, static protocol definitions,
 protocol run instances, and function call logs.
-
-Version 3: Adds comprehensive query functions.
 """
 import datetime
 import json
 from typing import Dict, Optional, List, Union
 
-from sqlalchemy.orm import Session as DbSession, joinedload, selectinload, aliased
-from sqlalchemy import desc, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, or_, select, update
+from sqlalchemy.orm import joinedload, selectinload, aliased
 
 from praxis.backend.database_models import (
     ProtocolSourceRepositoryOrm,
@@ -33,65 +32,81 @@ from praxis.backend.protocol_core.protocol_definition_models import (
 
 
 # --- Protocol Source Management ---
-# (add_or_update_protocol_source_repository and add_or_update_file_system_protocol_source remain the same as v2)
-def add_or_update_protocol_source_repository(
-    db: DbSession, name: str, git_url: str, default_ref: str = "main",
+async def add_or_update_protocol_source_repository( # MODIFIED: async def
+    db: AsyncSession, name: str, git_url: str, default_ref: str = "main", # MODIFIED: DbSession -> AsyncSession
     local_checkout_path: Optional[str] = None,
     status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE,
     auto_sync_enabled: bool = True, source_id: Optional[int] = None
 ) -> ProtocolSourceRepositoryOrm:
     if source_id:
-        source_repo = db.query(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.id == source_id).first()
+        result = await db.execute(select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.id == source_id))
+        source_repo = result.scalar_one_or_none()
         if not source_repo: raise ValueError(f"Repo source id {source_id} not found.")
     else:
-        source_repo = db.query(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name).first()
+        result = await db.execute(select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name))
+        source_repo = result.scalar_one_or_none()
         if not source_repo: source_repo = ProtocolSourceRepositoryOrm(name=name); db.add(source_repo)
+
     source_repo.git_url = git_url; source_repo.default_ref = default_ref
     source_repo.local_checkout_path = local_checkout_path; source_repo.status = status
     source_repo.auto_sync_enabled = auto_sync_enabled
-    try: db.commit(); db.refresh(source_repo)
-    except Exception as e: db.rollback(); print(f"Error upserting repo source '{name}': {e}"); raise
+    try:
+        await db.commit()
+        await db.refresh(source_repo)
+    except Exception as e:
+        await db.rollback()
+        print(f"Error upserting repo source '{name}': {e}"); raise
     return source_repo
 
-def add_or_update_file_system_protocol_source(
-    db: DbSession, name: str, base_path: str, is_recursive: bool = True,
+async def add_or_update_file_system_protocol_source( # MODIFIED: async def
+    db: AsyncSession, name: str, base_path: str, is_recursive: bool = True, # MODIFIED: DbSession -> AsyncSession
     status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE, source_id: Optional[int] = None
 ) -> FileSystemProtocolSourceOrm:
     if source_id:
-        fs_source = db.query(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.id == source_id).first()
+        result = await db.execute(select(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.id == source_id))
+        fs_source = result.scalar_one_or_none()
         if not fs_source: raise ValueError(f"FS source id {source_id} not found.")
     else:
-        fs_source = db.query(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.name == name).first()
+        result = await db.execute(select(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.name == name))
+        fs_source = result.scalar_one_or_none()
         if not fs_source: fs_source = FileSystemProtocolSourceOrm(name=name); db.add(fs_source)
+
     fs_source.base_path = base_path; fs_source.is_recursive = is_recursive; fs_source.status = status
-    try: db.commit(); db.refresh(fs_source)
-    except Exception as e: db.rollback(); print(f"Error upserting FS source '{name}': {e}"); raise
+    try:
+        await db.commit()
+        await db.refresh(fs_source)
+    except Exception as e:
+        await db.rollback()
+        print(f"Error upserting FS source '{name}': {e}"); raise
     return fs_source
 
 # --- Static Protocol Definition Management ---
-def upsert_function_protocol_definition(
-    db: DbSession, protocol_pydantic: FunctionProtocolDefinitionModel,
+async def upsert_function_protocol_definition( # MODIFIED: async def
+    db: AsyncSession, protocol_pydantic: FunctionProtocolDefinitionModel, # MODIFIED: DbSession -> AsyncSession
     source_repository_id: Optional[int] = None,
     commit_hash: Optional[str] = None,
     file_system_source_id: Optional[int] = None
 ) -> FunctionProtocolDefinitionOrm:
-    # (Same as v2 of this file - robust upsert logic)
-    query_filter: dict[str, Union[str, int]] = {"name": protocol_pydantic.name, "version": protocol_pydantic.version}
+    query_filter_dict: dict[str, Union[str, int]] = {"name": protocol_pydantic.name, "version": protocol_pydantic.version}
     if source_repository_id and commit_hash:
-        query_filter["source_repository_id"] = source_repository_id
-        query_filter["commit_hash"] = commit_hash
+        query_filter_dict["source_repository_id"] = source_repository_id
+        query_filter_dict["commit_hash"] = commit_hash
     elif file_system_source_id:
-        query_filter["file_system_source_id"] = file_system_source_id
-        query_filter["source_file_path"] = protocol_pydantic.source_file_path
+        query_filter_dict["file_system_source_id"] = file_system_source_id
+        query_filter_dict["source_file_path"] = protocol_pydantic.source_file_path # type: ignore
     else: raise ValueError("Protocol definition must be linked to a source.")
 
-    def_orm = db.query(FunctionProtocolDefinitionOrm)\
-                .options(joinedload(FunctionProtocolDefinitionOrm.parameters),
-                          joinedload(FunctionProtocolDefinitionOrm.assets))\
-                .filter_by(**query_filter).first()
-    if not def_orm: def_orm = FunctionProtocolDefinitionOrm(**query_filter); db.add(def_orm)
+    stmt = select(FunctionProtocolDefinitionOrm)\
+                .options(selectinload(FunctionProtocolDefinitionOrm.parameters),
+                          selectinload(FunctionProtocolDefinitionOrm.assets))\
+                .filter_by(**query_filter_dict)
+    result = await db.execute(stmt)
+    def_orm = result.scalar_one_or_none()
 
-    # Populate/Update fields (condensed for brevity, full logic from v2)
+    if not def_orm:
+        def_orm = FunctionProtocolDefinitionOrm(**query_filter_dict) # type: ignore
+        db.add(def_orm)
+
     def_orm.description = protocol_pydantic.description
     def_orm.source_file_path = protocol_pydantic.source_file_path
     def_orm.module_name = protocol_pydantic.module_name
@@ -103,101 +118,84 @@ def upsert_function_protocol_definition(
     def_orm.state_param_name = protocol_pydantic.state_param_name
     def_orm.category = protocol_pydantic.category
     def_orm.tags = {"values": protocol_pydantic.tags} if protocol_pydantic.tags else None
-    def_orm.deprecated = False
+    def_orm.deprecated = False # Assuming new/updated definitions are not deprecated by default
     def_orm.source_repository_id = source_repository_id
     def_orm.commit_hash = commit_hash
     def_orm.file_system_source_id = file_system_source_id
 
-    # Parameters & Assets (condensed for brevity, full logic from v2)
-    existing_params_orm = {p.name: p for p in def_orm.parameters}
-    updated_params_orm = []
-    for param_pydantic in protocol_pydantic.parameters:
-        param_orm = existing_params_orm.get(
-          param_pydantic.name, ParameterDefinitionOrm(protocol_definition_id=def_orm.id)
-        )
-        # ... (update param_orm fields) ...
-        param_orm.name=param_pydantic.name
-        param_orm.type_hint_str=param_pydantic.type_hint_str
-        param_orm.actual_type_str=param_pydantic.actual_type_str
-        param_orm.is_deck_param=param_pydantic.is_deck_param
-        param_orm.optional=param_pydantic.optional
-        param_orm.default_value_repr=param_pydantic.default_value_repr
-        param_orm.description=param_pydantic.description
-        param_orm.constraints_json = param_pydantic.constraints_json
-        updated_params_orm.append(param_orm)
-    def_orm.parameters = updated_params_orm
+    # Parameters
+    current_params = {p.name: p for p in def_orm.parameters}
+    new_params_list = []
+    for param_model in protocol_pydantic.parameters:
+        param_orm = current_params.pop(param_model.name, None)
+        if not param_orm:
+            param_orm = ParameterDefinitionOrm(protocol_definition_id=def_orm.id)
+        param_orm.name=param_model.name
+        param_orm.type_hint_str=param_model.type_hint_str
+        param_orm.actual_type_str=param_model.actual_type_str
+        param_orm.is_deck_param=param_model.is_deck_param
+        param_orm.optional=param_model.optional
+        param_orm.default_value_repr=param_model.default_value_repr
+        param_orm.description=param_model.description
+        param_orm.constraints_json = param_model.constraints_json
+        new_params_list.append(param_orm)
+    def_orm.parameters = new_params_list # type: ignore
 
-    existing_assets_orm = {a.name: a for a in def_orm.assets}
-    updated_assets_orm = []
-    for asset_pydantic in protocol_pydantic.assets:
-        asset_orm = existing_assets_orm.get(
-          asset_pydantic.name, AssetDefinitionOrm(protocol_definition_id=def_orm.id)
-        )
-        asset_orm.name=asset_pydantic.name
-        asset_orm.type_hint_str=asset_pydantic.type_hint_str
-        asset_orm.actual_type_str=asset_pydantic.actual_type_str
-        asset_orm.optional=asset_pydantic.optional
-        asset_orm.default_value_repr=asset_pydantic.default_value_repr
-        asset_orm.description=asset_pydantic.description
-        asset_orm.constraints_json = asset_pydantic.constraints_json
-        updated_assets_orm.append(asset_orm)
-    def_orm.assets = updated_assets_orm
+    # Assets
+    current_assets = {p.name: p for p in def_orm.assets}
+    new_assets_list = []
+    for asset_model in protocol_pydantic.assets:
+        asset_orm = current_assets.pop(asset_model.name, None)
+        if not asset_orm:
+            asset_orm = AssetDefinitionOrm(protocol_definition_id=def_orm.id)
+        asset_orm.name=asset_model.name
+        asset_orm.type_hint_str=asset_model.type_hint_str
+        asset_orm.actual_type_str=asset_model.actual_type_str
+        asset_orm.optional=asset_model.optional
+        asset_orm.default_value_repr=asset_model.default_value_repr
+        asset_orm.description=asset_model.description
+        asset_orm.constraints_json = asset_model.constraints_json
+        new_assets_list.append(asset_orm)
+    def_orm.assets = new_assets_list # type: ignore
 
-    try: db.commit(); db.refresh(def_orm)
-    except Exception as e: db.rollback(); print(f"Error upserting protocol def '{protocol_pydantic.name}': {e}"); raise
+    try:
+        await db.commit()
+        await db.refresh(def_orm)
+    except Exception as e:
+        await db.rollback()
+        print(f"Error upserting protocol def '{protocol_pydantic.name}': {e}"); raise
     return def_orm
 
-def create_protocol_run(
-    db: DbSession, run_guid: str, top_level_protocol_definition_id: int,
+async def create_protocol_run( # MODIFIED: async def
+    db: AsyncSession, run_guid: str, top_level_protocol_definition_id: int, # MODIFIED: DbSession -> AsyncSession
     status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
     input_parameters_json: Optional[str] = None, initial_state_json: Optional[str] = None,
 ) -> ProtocolRunOrm:
-    """
-    Creates a new protocol run instance in the database.
-    Parameters:
-        db: Database session.
-        run_guid: Unique identifier for the run, used by the Orchestrator.
-        top_level_protocol_definition_id: ID of the top-level protocol definition being executed.
-        status: Initial status of the run (default is PENDING).
-        input_parameters_json: JSON string of input parameters for the run.
-        initial_state_json: JSON string representing the initial state of the workcell.
-    Returns:
-        The created ProtocolRunOrm instance.
-    """
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     db_protocol_run = ProtocolRunOrm(
         run_guid=run_guid, top_level_protocol_definition_id=top_level_protocol_definition_id,
-        status=status, input_parameters_json=input_parameters_json, initial_state_json=initial_state_json,
+        status=status, input_parameters_json=json.loads(input_parameters_json) if input_parameters_json else {}, # MODIFIED: ensure dict
+        initial_state_json=json.loads(initial_state_json) if initial_state_json else {}, # MODIFIED: ensure dict
         start_time=utc_now if status != ProtocolRunStatusEnum.PENDING else None,
     )
-
     db.add(db_protocol_run)
     try:
-        db.commit()
-        db.refresh(db_protocol_run)
+        await db.commit()
+        await db.refresh(db_protocol_run)
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise e
     return db_protocol_run
 
-def update_protocol_run_status(
-    db: DbSession, protocol_run_id: int, new_status: ProtocolRunStatusEnum,
+async def update_protocol_run_status( # MODIFIED: async def
+    db: AsyncSession, protocol_run_id: int, new_status: ProtocolRunStatusEnum, # MODIFIED: DbSession -> AsyncSession
     output_data_json: Optional[str] = None, final_state_json: Optional[str] = None,
     error_info: Optional[Dict[str, str]] = None
 ) -> Optional[ProtocolRunOrm]:
-    """
-    Updates the status of an existing protocol run.
-    Parameters:
-        db: Database session.
-        protocol_run_id: ID of the protocol run to update.
-        new_status: New status to set for the run.
-        output_data_json: Optional JSON string of output data from the run.
-        final_state_json: Optional JSON string representing the final state of the workcell.
-        error_info: Optional dictionary containing error information if the run failed.
-    Returns:
-        The updated ProtocolRunOrm instance, or None if the run was not found.
-    """
-    db_protocol_run = db.query(ProtocolRunOrm).filter(ProtocolRunOrm.id == protocol_run_id).first()
+    stmt = select(ProtocolRunOrm).filter(ProtocolRunOrm.id == protocol_run_id)
+    result = await db.execute(stmt)
+    db_protocol_run = result.scalar_one_or_none()
+
     if db_protocol_run:
         db_protocol_run.status = new_status
         utc_now = datetime.datetime.now(datetime.timezone.utc)
@@ -218,60 +216,51 @@ def update_protocol_run_status(
             if final_state_json is not None:
               db_protocol_run.final_state_json = json.loads(final_state_json)
             if new_status == ProtocolRunStatusEnum.FAILED and error_info:
-              db_protocol_run.output_data_json = error_info
+              db_protocol_run.output_data_json = error_info # type: ignore
         try:
-            db.commit()
-            db.refresh(db_protocol_run)
+            await db.commit()
+            await db.refresh(db_protocol_run)
         except Exception as e:
-            db.rollback()
+            await db.rollback()
             raise e
         return db_protocol_run
     return None
 
 # --- Function Call Log Management ---
-# (log_function_call_start and log_function_call_end remain the same as v2)
-def log_function_call_start(
-    db: DbSession, protocol_run_orm_id: int, function_definition_id: int,
+async def log_function_call_start( # MODIFIED: async def
+    db: AsyncSession, protocol_run_orm_id: int, function_definition_id: int, # MODIFIED: DbSession -> AsyncSession
     sequence_in_run: int, input_args_json: str, parent_function_call_log_id: Optional[int] = None
 ) -> FunctionCallLogOrm:
-    """
-    Logs the start of a function call in a protocol run.
-    Parameters:
-        db: Database session.
-        protocol_run_orm_id: ID of the ProtocolRunOrm instance this call belongs to.
-        function_definition_id: ID of the FunctionProtocolDefinitionOrm being called.
-        sequence_in_run: Sequence number of this call in the run.
-        input_args_json: JSON string of input arguments for the function call.
-        parent_function_call_log_id: Optional ID of the parent function call log, if this is a nested call.
-    Returns:
-        The created FunctionCallLogOrm instance representing the start of the function call.
-    """
     call_log = FunctionCallLogOrm(
         protocol_run_id=protocol_run_orm_id, function_protocol_definition_id=function_definition_id,
         sequence_in_run=sequence_in_run, parent_function_call_log_id=parent_function_call_log_id,
-        start_time=datetime.datetime.now(datetime.timezone.utc), input_args_json=input_args_json,
-        status=FunctionCallStatusEnum.SUCCESS # Default
+        start_time=datetime.datetime.now(datetime.timezone.utc),
+        input_args_json=json.loads(input_args_json) if input_args_json else {}, # MODIFIED: ensure dict
+        status=FunctionCallStatusEnum.SUCCESS
     )
     db.add(call_log)
     try:
-        db.commit()
-        db.refresh(call_log)
+        await db.commit()
+        await db.refresh(call_log)
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise e
     return call_log
 
-def log_function_call_end(
-    db: DbSession, function_call_log_id: int, status: FunctionCallStatusEnum,
+async def log_function_call_end( # MODIFIED: async def
+    db: AsyncSession, function_call_log_id: int, status: FunctionCallStatusEnum, # MODIFIED: DbSession -> AsyncSession
     return_value_json: Optional[str] = None, error_message: Optional[str] = None,
-    error_traceback: Optional[str] = None, duration_ms: Optional[float] = None # Added duration_ms
+    error_traceback: Optional[str] = None, duration_ms: Optional[float] = None
 ) -> Optional[FunctionCallLogOrm]:
-    call_log = db.query(FunctionCallLogOrm).filter(FunctionCallLogOrm.id == function_call_log_id).first()
+    stmt = select(FunctionCallLogOrm).filter(FunctionCallLogOrm.id == function_call_log_id)
+    result = await db.execute(stmt)
+    call_log = result.scalar_one_or_none()
+
     if call_log:
         call_log.end_time = datetime.datetime.now(datetime.timezone.utc)
-        if duration_ms is not None: # Prefer passed duration if available
+        if duration_ms is not None:
             call_log.duration_ms = int(duration_ms)
-        elif call_log.start_time and call_log.end_time is not None: # Calculate if not passed
+        elif call_log.start_time and call_log.end_time is not None:
             call_log.duration_ms = int((call_log.end_time - call_log.start_time).total_seconds() * 1000) #type: ignore
         call_log.status = status
         if return_value_json is not None:
@@ -281,56 +270,36 @@ def log_function_call_end(
         if error_traceback is not None:
           call_log.error_traceback_text = error_traceback
         try:
-            db.commit()
-            db.refresh(call_log)
+            await db.commit()
+            await db.refresh(call_log)
         except Exception as e:
-            db.rollback()
+            await db.rollback()
             raise e
         return call_log
     return None
 
-# --- NEW: Query Functions (PDS-7) ---
-
-def get_protocol_definition_by_id(
-  db: DbSession,
+# --- Query Functions ---
+async def get_protocol_definition_by_id( # MODIFIED: async def
+  db: AsyncSession, # MODIFIED: DbSession -> AsyncSession
   definition_id: int
   ) -> Optional[FunctionProtocolDefinitionOrm]:
-    """
-    Fetches a single protocol definition by its primary key, including parameters and assets.
-    Parameters:
-        db: Database session.
-        definition_id: ID of the FunctionProtocolDefinitionOrm to fetch.
-    Returns:
-        The FunctionProtocolDefinitionOrm instance if found, or None if not.
-    """
-    return db.query(FunctionProtocolDefinitionOrm)\
+    stmt = select(FunctionProtocolDefinitionOrm)\
               .options(selectinload(FunctionProtocolDefinitionOrm.parameters),
                         selectinload(FunctionProtocolDefinitionOrm.assets),
                         joinedload(FunctionProtocolDefinitionOrm.source_repository),
                         joinedload(FunctionProtocolDefinitionOrm.file_system_source))\
-              .filter(FunctionProtocolDefinitionOrm.id == definition_id)\
-              .first()
+              .filter(FunctionProtocolDefinitionOrm.id == definition_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
-def get_protocol_definition_details(
-    db: DbSession,
+async def get_protocol_definition_details( # MODIFIED: async def
+    db: AsyncSession, # MODIFIED: DbSession -> AsyncSession
     name: str,
     version: Optional[str] = None,
-    source_name: Optional[str] = None, # Name of Git repo or FS source
-    commit_hash: Optional[str] = None  # Specific commit if Git-sourced
+    source_name: Optional[str] = None,
+    commit_hash: Optional[str] = None
 ) -> Optional[FunctionProtocolDefinitionOrm]:
-    """
-    Fetches a specific protocol definition with details, similar to Orchestrator's internal getter.
-    If version is None, tries to get the latest non-deprecated version matching other criteria.
-    Parameters:
-        db: Database session.
-        name: Name of the protocol definition to fetch.
-        version: Optional specific version to fetch. If None, gets the latest version.
-        source_name: Optional name of the source repository or file system source.
-        commit_hash: Optional commit hash for Git-sourced definitions.
-    Returns:
-        The FunctionProtocolDefinitionOrm instance if found, or None if not.
-    """
-    query = db.query(FunctionProtocolDefinitionOrm)\
+    stmt = select(FunctionProtocolDefinitionOrm)\
               .options(selectinload(FunctionProtocolDefinitionOrm.parameters),
                        selectinload(FunctionProtocolDefinitionOrm.assets),
                        joinedload(FunctionProtocolDefinitionOrm.source_repository),
@@ -339,166 +308,139 @@ def get_protocol_definition_details(
                       FunctionProtocolDefinitionOrm.deprecated == False) # type: ignore
 
     if version:
-        query = query.filter(FunctionProtocolDefinitionOrm.version == version)
+        stmt = stmt.filter(FunctionProtocolDefinitionOrm.version == version)
 
-    if commit_hash: # Most specific for Git-sourced
-        query = query.filter(FunctionProtocolDefinitionOrm.commit_hash == commit_hash)
+    if commit_hash:
+        stmt = stmt.filter(FunctionProtocolDefinitionOrm.commit_hash == commit_hash)
         if source_name:
-            query = query.join(ProtocolSourceRepositoryOrm, FunctionProtocolDefinitionOrm.source_repository_id == ProtocolSourceRepositoryOrm.id)\
+            stmt = stmt.join(ProtocolSourceRepositoryOrm, FunctionProtocolDefinitionOrm.source_repository_id == ProtocolSourceRepositoryOrm.id)\
                           .filter(ProtocolSourceRepositoryOrm.name == source_name)
     elif source_name:
-        # If source_name is provided, filter by it. This could be ambiguous if name exists in both Git and FS.
-        # For simplicity, this query part might need to be more specific or use subqueries if ambiguity is an issue.
-        # This assumes source_name is unique across Git and FS sources, or the user knows which one they mean.
         git_source_alias = aliased(ProtocolSourceRepositoryOrm)
         fs_source_alias = aliased(FileSystemProtocolSourceOrm)
-        query = query.outerjoin(git_source_alias, FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id)\
+        stmt = stmt.outerjoin(git_source_alias, FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id)\
                       .outerjoin(fs_source_alias, FunctionProtocolDefinitionOrm.file_system_source_id == fs_source_alias.id)\
                       .filter(or_(git_source_alias.name == source_name, fs_source_alias.name == source_name))
 
-    # If no version, order by creation to get latest (or by semantic version if implemented)
     if not version:
-        query = query.order_by(desc(FunctionProtocolDefinitionOrm.created_at)) # Or semantic version sort
+        stmt = stmt.order_by(desc(FunctionProtocolDefinitionOrm.created_at))
 
-    return query.first()
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
 
-def list_protocol_definitions(
-    db: DbSession,
+async def list_protocol_definitions( # MODIFIED: async def
+    db: AsyncSession, # MODIFIED: DbSession -> AsyncSession
     limit: int = 100,
     offset: int = 0,
     source_name: Optional[str] = None,
     is_top_level: Optional[bool] = None,
     category: Optional[str] = None,
-    tags: Optional[List[str]] = None, # Query for protocols containing ALL listed tags
+    tags: Optional[List[str]] = None,
     include_deprecated: bool = False
 ) -> List[FunctionProtocolDefinitionOrm]:
-    """
-    Lists protocol definitions with filtering and pagination.
-    Parameters:
-        db: Database session.
-        limit: Maximum number of results to return.
-        offset: Number of results to skip (for pagination).
-        source_name: Optional name of the source repository or file system source.
-        is_top_level: Optional flag to filter for top-level protocols.
-        category: Optional category to filter by.
-        tags: Optional list of tags to filter by (all must match).
-        include_deprecated: Whether to include deprecated protocols.
-    Returns:
-        A list of FunctionProtocolDefinitionOrm instances matching the criteria.
-    """
-    query = db.query(FunctionProtocolDefinitionOrm)\
-              .options(selectinload(FunctionProtocolDefinitionOrm.parameters), # Eager load for efficiency if needed
+    stmt = select(FunctionProtocolDefinitionOrm)\
+              .options(selectinload(FunctionProtocolDefinitionOrm.parameters),
                         selectinload(FunctionProtocolDefinitionOrm.assets),
                         joinedload(FunctionProtocolDefinitionOrm.source_repository),
                         joinedload(FunctionProtocolDefinitionOrm.file_system_source))
 
     if not include_deprecated:
-        query = query.filter(FunctionProtocolDefinitionOrm.deprecated == False) # type: ignore
+        stmt = stmt.filter(FunctionProtocolDefinitionOrm.deprecated == False) # type: ignore
 
     if source_name:
         git_source_alias = aliased(ProtocolSourceRepositoryOrm)
         fs_source_alias = aliased(FileSystemProtocolSourceOrm)
-        query = query.outerjoin(git_source_alias, FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id)\
-                      .outerjoin(fs_source_alias, FunctionProtocolDefinitionOrm.file_system_source_id == fs_source_alias.id)\
-                      .filter(or_(git_source_alias.name == source_name, fs_source_alias.name == source_name))
+        stmt = stmt.outerjoin(
+          git_source_alias,
+          FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id
+        )\
+          .outerjoin(
+            fs_source_alias,
+            FunctionProtocolDefinitionOrm.file_system_source_id == fs_source_alias.id
+          )\
+          .filter(
+            or_(git_source_alias.name == source_name,
+                fs_source_alias.name == source_name)
+            ) # type: ignore
     if is_top_level is not None:
-        query = query.filter(FunctionProtocolDefinitionOrm.is_top_level == is_top_level)
+        stmt = stmt.filter(FunctionProtocolDefinitionOrm.is_top_level == is_top_level)
     if category:
-        query = query.filter(FunctionProtocolDefinitionOrm.category == category)
+        stmt = stmt.filter(FunctionProtocolDefinitionOrm.category == category)
     if tags:
         for tag in tags:
-            # This searches for JSON array containing the tag. Adjust for your DB's JSON query syntax.
-            # For PostgreSQL: query = query.filter(FunctionProtocolDefinitionOrm.tags.contains([tag]))
-            # For generic JSON: query = query.filter(FunctionProtocolDefinitionOrm.tags.astext.like(f'%"{tag}"%')) # Less efficient
-            query = query.filter(FunctionProtocolDefinitionOrm.tags.op('?')(tag)) # PostgreSQL JSONB contains operator
+            stmt = stmt.filter(FunctionProtocolDefinitionOrm.tags.op('?')(tag)) # type: ignore
+
+    stmt = stmt.order_by(
+      desc(FunctionProtocolDefinitionOrm.name), desc(FunctionProtocolDefinitionOrm.version)
+      ).limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
-    return query.order_by(desc(FunctionProtocolDefinitionOrm.name), desc(FunctionProtocolDefinitionOrm.version))\
-                .limit(limit).offset(offset).all()
-
-
-def get_protocol_run_by_guid(db: DbSession, run_guid: str) -> Optional[ProtocolRunOrm]:
-    """
-    Fetches a protocol run by its user-facing GUID, including its call logs.
-    Parameters:
-        db: Database session.
-        run_guid: The unique GUID of the protocol run to fetch.
-    Returns:
-        The ProtocolRunOrm instance if found, or None if not.
-    """
-    return db.query(ProtocolRunOrm)\
+async def get_protocol_run_by_guid(db: AsyncSession, run_guid: str) -> Optional[ProtocolRunOrm]:
+    stmt = select(ProtocolRunOrm)\
               .options(selectinload(ProtocolRunOrm.function_calls)
-                        .selectinload(FunctionCallLogOrm.executed_function_definition) # Load def for each call
-                        .selectinload(FunctionProtocolDefinitionOrm.source_repository), # And its source
+                        .selectinload(FunctionCallLogOrm.executed_function_definition)
+                        .selectinload(FunctionProtocolDefinitionOrm.source_repository),
                       selectinload(ProtocolRunOrm.function_calls)
                         .selectinload(FunctionCallLogOrm.executed_function_definition)
                         .selectinload(FunctionProtocolDefinitionOrm.file_system_source),
                       joinedload(ProtocolRunOrm.top_level_protocol_definition))\
-              .filter(ProtocolRunOrm.run_guid == run_guid)\
-              .first()
+              .filter(ProtocolRunOrm.run_guid == run_guid)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
-def list_protocol_runs(
-    db: DbSession,
+async def list_protocol_runs( # MODIFIED
+    db: AsyncSession, # MODIFIED
     limit: int = 100,
     offset: int = 0,
     protocol_definition_id: Optional[int] = None,
-    protocol_name: Optional[str] = None, # Added for convenience
+    protocol_name: Optional[str] = None,
     status: Optional[ProtocolRunStatusEnum] = None,
-    # user_id: Optional[int] = None, # TODO: PDS-5
 ) -> List[ProtocolRunOrm]:
-    """
-    Lists protocol runs with filtering and pagination.
-    Parameters:
-        db: Database session.
-        limit: Maximum number of results to return.
-        offset: Number of results to skip (for pagination).
-        protocol_definition_id: Optional ID of the top-level protocol definition to filter by.
-        protocol_name: Optional name of the protocol to filter by (if multiple versions exist).
-        status: Optional status to filter runs by (e.g., PENDING, RUNNING, COMPLETED).
-        # user_id: Optional user ID to filter runs created by a specific user (TODO: PDS-5).
-    Returns:
-        A list of ProtocolRunOrm instances matching the criteria, ordered by start time and ID.
-    """
-    query = db.query(ProtocolRunOrm)\
-              .options(joinedload(ProtocolRunOrm.top_level_protocol_definition)) # Load basic def info
+    stmt = select(ProtocolRunOrm)\
+              .options(joinedload(ProtocolRunOrm.top_level_protocol_definition))
 
     if protocol_definition_id is not None:
-        query = query.filter(ProtocolRunOrm.top_level_protocol_definition_id == protocol_definition_id)
+        stmt = stmt.filter(ProtocolRunOrm.top_level_protocol_definition_id == protocol_definition_id)
     if protocol_name is not None:
-        query = query.join(FunctionProtocolDefinitionOrm, ProtocolRunOrm.top_level_protocol_definition_id == FunctionProtocolDefinitionOrm.id)\
+        stmt = stmt.join(FunctionProtocolDefinitionOrm, ProtocolRunOrm.top_level_protocol_definition_id == FunctionProtocolDefinitionOrm.id)\
                       .filter(FunctionProtocolDefinitionOrm.name == protocol_name)
     if status is not None:
-        query = query.filter(ProtocolRunOrm.status == status)
-    # if user_id is not None: query = query.filter(ProtocolRunOrm.created_by_user_id == user_id)
+        stmt = stmt.filter(ProtocolRunOrm.status == status)
 
-    return query.order_by(desc(ProtocolRunOrm.start_time), desc(ProtocolRunOrm.id))\
-                .limit(limit).offset(offset).all()
+    stmt = stmt.order_by(desc(ProtocolRunOrm.start_time), desc(ProtocolRunOrm.id))\
+                .limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
-def get_function_call_logs_for_run(
-    db: DbSession,
-    protocol_run_id: int # This is ProtocolRunOrm.id (PK)
+async def get_function_call_logs_for_run( # MODIFIED
+    db: AsyncSession, # MODIFIED
+    protocol_run_id: int
 ) -> List[FunctionCallLogOrm]:
-    """Fetches all function call logs for a specific protocol run, ordered by sequence."""
-    return db.query(FunctionCallLogOrm)\
+    stmt = select(FunctionCallLogOrm)\
               .options(selectinload(FunctionCallLogOrm.executed_function_definition))\
               .filter(FunctionCallLogOrm.protocol_run_id == protocol_run_id)\
-              .order_by(FunctionCallLogOrm.sequence_in_run)\
-               .all()
+              .order_by(FunctionCallLogOrm.sequence_in_run)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
-def list_active_protocol_sources(
-    db: DbSession,
-    source_type: Optional[str] = None # "git" or "filesystem"
+async def list_active_protocol_sources( # MODIFIED
+    db: AsyncSession, # MODIFIED
+    source_type: Optional[str] = None
 ) -> List[Union[ProtocolSourceRepositoryOrm, FileSystemProtocolSourceOrm]]:
-    """Lists active protocol sources."""
     results: List[Union[ProtocolSourceRepositoryOrm, FileSystemProtocolSourceOrm]] = []
     if source_type is None or source_type == "git":
-        git_sources = db.query(ProtocolSourceRepositoryOrm)\
-                        .filter(ProtocolSourceRepositoryOrm.status == ProtocolSourceStatusEnum.ACTIVE).all()
-        results.extend(git_sources)
+        stmt_git = select(ProtocolSourceRepositoryOrm)\
+                        .filter(
+                          ProtocolSourceRepositoryOrm.status == ProtocolSourceStatusEnum.ACTIVE)
+        result_git = await db.execute(stmt_git)
+        results.extend(result_git.scalars().all()) # type: ignore
     if source_type is None or source_type == "filesystem":
-        fs_sources = db.query(FileSystemProtocolSourceOrm)\
-                       .filter(FileSystemProtocolSourceOrm.status == ProtocolSourceStatusEnum.ACTIVE).all()
-        results.extend(fs_sources)
+        stmt_fs = select(FileSystemProtocolSourceOrm)\
+                        .filter(
+                          FileSystemProtocolSourceOrm.status == ProtocolSourceStatusEnum.ACTIVE)
+        result_fs = await db.execute(stmt_fs)
+        results.extend(result_fs.scalars().all()) # type: ignore
     return results
-

@@ -1,4 +1,10 @@
-# pyright: reportUnusedImport=false, reportUnknownParameterType=false, reportUnknownArgumentType=false, reportMissingTypeArgument=false
+# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
+"""
+praxis/db_services/praxis_orm_service.py
+
+Service layer for interacting with praxis-related data in the database.
+This includes Protocol Runs, Protocol Definitions, Users (from Keycloak), and Assets.
+"""
 import asyncio
 import asyncpg # For Keycloak database
 import json
@@ -11,23 +17,23 @@ from pathlib import Path
 from configparser import ConfigParser
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker # MODIFIED
 
-from praxis.backend.utils.db import AsyncSessionLocal
+
+from praxis.backend.utils.db import AsyncSessionLocal # This should be an async_sessionmaker
 from praxis.backend.database_models import (
     ProtocolSourceRepositoryOrm,
     FunctionProtocolDefinitionOrm,
-    # ParameterDefinitionOrm, # Not used directly for ProtocolRunOrm parameters
     AssetDefinitionOrm,
     ProtocolRunOrm,
-    ProtocolRunStatusEnum, # Import the enum
-    LabwareInstanceOrm, # Changed from AssetInstanceOrm for concrete asset operations
-    # AssetInstanceOrm, # Keep if abstract usage is still needed elsewhere, but for these methods, LabwareInstanceOrm is used.
-    UserOrm # Assuming UserOrm is defined in your database_models
+    ProtocolRunStatusEnum,
+    LabwareInstanceOrm,
+    UserOrm
 )
-from praxis.backend.database_models.asset_management_orm import LabwareInstanceStatusEnum # For asset status
+from praxis.backend.database_models.asset_management_orm import LabwareInstanceStatusEnum
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    pass # No changes needed here for async specifically
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +67,7 @@ class PraxisDBService:
 
             while retries < cls._max_retries:
                 try:
-                    if not cls._keycloak_pool or cls._keycloak_pool._closed:
+                    if not cls._keycloak_pool or cls._keycloak_pool._closed: # type: ignore
                         logger.info(f"Attempting to connect to Keycloak database: {keycloak_dsn.split('@')[-1]}")
                         cls._keycloak_pool = await asyncpg.create_pool(
                             dsn=keycloak_dsn,
@@ -71,8 +77,8 @@ class PraxisDBService:
                             timeout=10.0,
                         )
                         assert cls._keycloak_pool is not None, "Failed to create Keycloak database pool"
-                        async with cls._keycloak_pool.acquire() as conn:
-                            await conn.execute("SELECT 1")
+                        async with cls._keycloak_pool.acquire() as conn: # type: ignore
+                            await conn.execute("SELECT 1") # type: ignore
                         logger.info("Successfully connected to Keycloak database.")
                         break
                 except (ConnectionRefusedError, asyncpg.PostgresError, OSError) as e:
@@ -96,22 +102,23 @@ class PraxisDBService:
             logger.info("Keycloak DSN not provided; Keycloak database pool will not be initialized by PraxisDBService.")
 
         logger.info("PraxisDBService initialized. Praxis DB uses SQLAlchemy async engine from praxis.utils.db.")
-        return cls._instance
+        return cls._instance # type: ignore
 
     @asynccontextmanager
     async def get_praxis_session(self) -> AsyncIterator[AsyncSession]:
-        session = AsyncSessionLocal()
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+        # Assuming AsyncSessionLocal is an async_sessionmaker() instance
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+            # finally: # Session is automatically closed by the context manager
+            #     await session.close() # Not needed if AsyncSessionLocal() is used as context manager
 
     @asynccontextmanager
-    async def get_keycloak_connection(self) -> AsyncIterator[asyncpg.Connection[Any]]:
+    async def get_keycloak_connection(self) -> AsyncIterator[asyncpg.Connection[Any]]: # type: ignore
         if self._keycloak_pool is None:
             logger.error("Keycloak database pool not initialized. Call initialize() with keycloak_dsn first.")
             raise RuntimeError("Keycloak database pool not initialized.")
@@ -119,26 +126,22 @@ class PraxisDBService:
         conn = None
         try:
             conn = await self._keycloak_pool.acquire()
-            if not isinstance(conn, asyncpg.Connection):
+            if not isinstance(conn, asyncpg.Connection): # type: ignore
                 logger.error("Failed to acquire Keycloak connection from pool.")
                 raise ConnectionError("Failed to acquire Keycloak connection from pool.")
-            yield conn
+            yield conn # type: ignore
         finally:
-            if conn:
+            if conn and self._keycloak_pool:
                 await self._keycloak_pool.release(conn)
 
     async def register_protocol_run(
         self,
-        protocol_definition_id: int, # FK to FunctionProtocolDefinitionOrm
-        created_by_user_id: str, # UUID of the UserOrm
+        protocol_definition_id: int,
+        created_by_user_id: str,
         parameters: Optional[Dict[str, Any]] = None,
-        status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING, # Use Enum
-        run_guid: Optional[str] = None, # Optional: if not provided, will be generated
+        status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
+        run_guid: Optional[str] = None,
     ) -> int:
-        """
-        Registers a new protocol run in the database.
-        Corresponds to creating a ProtocolRunOrm instance.
-        """
         async with self.get_praxis_session() as session:
             if not run_guid:
                 run_guid = str(uuid.uuid4())
@@ -149,29 +152,25 @@ class PraxisDBService:
                 created_by_user_id=created_by_user_id,
                 status=status,
                 input_parameters_json=parameters if parameters else {},
-                # start_time will be set by default in the ORM or DB if applicable, or set explicitly when run starts
             )
             session.add(new_run)
-            await session.flush() # To get the new_run.id before commit
-            await session.commit()
+            await session.flush()
+            # await session.commit() # Commit is handled by get_praxis_session context manager
             await session.refresh(new_run)
 
             if new_run.id is None:
-                raise ValueError("Failed to create protocol run: no ID returned after commit.")
+                raise ValueError("Failed to create protocol run: no ID returned after flush/refresh.")
 
             logger.info(f"Registered new protocol run (ID: {new_run.id}, GUID: {new_run.run_guid})")
             assert isinstance(new_run.id, int), "Expected integer ID for ProtocolRunOrm"
             return new_run.id
 
     async def get_protocol_run_details(self, protocol_run_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Retrieves details for a specific protocol run, including user info and parameters.
-        """
         async with self.get_praxis_session() as session:
             stmt = (
                 select(ProtocolRunOrm)
                 .options(
-                    joinedload(ProtocolRunOrm.created_by_user) # Eager load user via relationship
+                    joinedload(ProtocolRunOrm.created_by_user)
                 )
                 .where(ProtocolRunOrm.id == protocol_run_id)
             )
@@ -179,14 +178,15 @@ class PraxisDBService:
             run_orm = result.scalar_one_or_none()
 
             if run_orm:
+                user_data = run_orm.created_by_user
                 user_info = None
-                if run_orm.created_by_user: # If UserOrm is loaded
+                if user_data: # Assuming UserOrm is a dict-like structure or has .get()
                     user_info = {
-                        "id": run_orm.created_by_user.get("id", None),
-                        "username": run_orm.created_by_user.get("username", None),
-                        "email": run_orm.created_by_user.get("email", None),
-                        "first_name": run_orm.created_by_user.get("first_name", None),
-                        "last_name": run_orm.created_by_user.get("last_name", None),
+                        "id": user_data.get("id") if isinstance(user_data, dict) else getattr(user_data, "id", None),
+                        "username": user_data.get("username") if isinstance(user_data, dict) else getattr(user_data, "username", None),
+                        "email": user_data.get("email") if isinstance(user_data, dict) else getattr(user_data, "email", None),
+                        "first_name": user_data.get("first_name") if isinstance(user_data, dict) else getattr(user_data, "first_name", None),
+                        "last_name": user_data.get("last_name") if isinstance(user_data, dict) else getattr(user_data, "last_name", None),
                     }
 
                 return {
@@ -195,7 +195,7 @@ class PraxisDBService:
                     "protocol_definition_id": run_orm.top_level_protocol_definition_id,
                     "start_time": run_orm.start_time.isoformat() if run_orm.start_time else None,
                     "end_time": run_orm.end_time.isoformat() if run_orm.end_time else None,
-                    "status": run_orm.status.name if run_orm.status else None, # Access enum name
+                    "status": run_orm.status.name if run_orm.status else None,
                     "user": user_info,
                     "parameters": run_orm.input_parameters_json,
                     "resolved_assets": run_orm.resolved_assets_json,
@@ -207,11 +207,10 @@ class PraxisDBService:
             return None
 
     async def update_protocol_run_status(self, protocol_run_id: int, status: ProtocolRunStatusEnum):
-        """Update the status of a protocol run and set end_time if completed/failed/cancelled."""
         async with self.get_praxis_session() as session:
             values_to_update: Dict[str, Any] = {"status": status}
             if status in (ProtocolRunStatusEnum.COMPLETED, ProtocolRunStatusEnum.FAILED, ProtocolRunStatusEnum.CANCELLED):
-                values_to_update["end_time"] = func.now() # Use database's current time
+                values_to_update["end_time"] = func.now()
 
             stmt = (
                 update(ProtocolRunOrm)
@@ -219,45 +218,40 @@ class PraxisDBService:
                 .values(**values_to_update)
             )
             await session.execute(stmt)
+            # await session.commit() # Handled by context manager
             logger.info(f"Protocol run {protocol_run_id} status updated to {status.name}.")
 
 
     async def list_protocol_runs(self,
                                   status: Optional[ProtocolRunStatusEnum] = None,
                                   created_by_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        List all protocol runs, optionally filtered by status and/or user_id.
-        Parameters:
-            status (Optional[ProtocolRunStatusEnum]): Filter by run status.
-            created_by_user_id (Optional[str]): Filter by user ID who created the run.
-        Returns:
-            List[Dict[str, Any]]: A list of protocol run details.
-        """
         async with self.get_praxis_session() as session:
             stmt = select(ProtocolRunOrm).options(
                 joinedload(ProtocolRunOrm.created_by_user)
-            ).order_by(ProtocolRunOrm.start_time.desc() if ProtocolRunOrm.start_time is not None else ProtocolRunOrm.id.desc())
+            ).order_by(ProtocolRunOrm.start_time.desc() if ProtocolRunOrm.start_time is not None else ProtocolRunOrm.id.desc()) # type: ignore
 
 
             if status:
                 stmt = stmt.where(ProtocolRunOrm.status == status)
             if created_by_user_id:
-                stmt = stmt.where(ProtocolRunOrm.created_by_user.id == created_by_user_id)
+                # Assuming created_by_user relationship points to a UserOrm-like object that has an 'id' attribute
+                stmt = stmt.where(ProtocolRunOrm.created_by_user.has(id=created_by_user_id)) # type: ignore
 
             result = await session.execute(stmt)
             runs_orm = result.scalars().all()
 
             runs_list = []
             for run_orm in runs_orm:
+                user_data = run_orm.created_by_user
                 user_info = None
-                if run_orm.created_by_user:
-                  user_info = {
-                      "id": run_orm.created_by_user.get("id"),
-                      "username": run_orm.created_by_user.get("username"),
-                      "email": run_orm.created_by_user.get("email"),
-                      "first_name": run_orm.created_by_user.get("first_name"),
-                      "last_name": run_orm.created_by_user.get("last_name")
-                  }
+                if user_data:
+                    user_info = {
+                        "id": user_data.get("id") if isinstance(user_data, dict) else getattr(user_data, "id", None),
+                        "username": user_data.get("username") if isinstance(user_data, dict) else getattr(user_data, "username", None),
+                        "email": user_data.get("email") if isinstance(user_data, dict) else getattr(user_data, "email", None),
+                        "first_name": user_data.get("first_name") if isinstance(user_data, dict) else getattr(user_data, "first_name", None),
+                        "last_name": user_data.get("last_name") if isinstance(user_data, dict) else getattr(user_data, "last_name", None)
+                    }
                 runs_list.append({
                   "protocol_run_id": run_orm.id,
                   "run_guid": run_orm.run_guid,
@@ -272,30 +266,26 @@ class PraxisDBService:
 
     async def add_asset_instance(
         self,
-        user_assigned_name: str, # This is the primary identifier for LabwareInstanceOrm
-        pylabrobot_definition_name: str, # FK to LabwareDefinitionCatalogOrm
-        # asset_type: str, # This is implicit with LabwareInstanceOrm
-        properties_json: Optional[dict[str, Any]] = None, # For instance-specific state
+        user_assigned_name: str,
+        pylabrobot_definition_name: str,
+        properties_json: Optional[dict[str, Any]] = None,
         lot_number: Optional[str] = None,
-        expiry_date: Optional[Any] = None, # Can be date or datetime
+        expiry_date: Optional[Any] = None,
         current_status: LabwareInstanceStatusEnum = LabwareInstanceStatusEnum.UNKNOWN,
-        # plr_serialized: Optional[dict[str, Any]] = None # This seems more like a definition detail
     ) -> int:
-        """Adds or updates a labware instance in the database."""
         async with self.get_praxis_session() as session:
-            # Check if asset exists by user_assigned_name to update or insert
             existing_asset_stmt = select(LabwareInstanceOrm).where(LabwareInstanceOrm.user_assigned_name == user_assigned_name)
             result = await session.execute(existing_asset_stmt)
             asset_orm = result.scalar_one_or_none()
 
-            if asset_orm: # Update existing
+            if asset_orm:
                 asset_orm.pylabrobot_definition_name = pylabrobot_definition_name
                 asset_orm.properties_json = properties_json if properties_json is not None else asset_orm.properties_json
                 asset_orm.lot_number = lot_number if lot_number is not None else asset_orm.lot_number
                 asset_orm.expiry_date = expiry_date if expiry_date is not None else asset_orm.expiry_date
                 asset_orm.current_status = current_status
                 logger.info(f"Updating existing labware instance: {user_assigned_name}")
-            else: # Insert new
+            else:
                 asset_orm = LabwareInstanceOrm(
                     user_assigned_name=user_assigned_name,
                     pylabrobot_definition_name=pylabrobot_definition_name,
@@ -303,19 +293,17 @@ class PraxisDBService:
                     lot_number=lot_number,
                     expiry_date=expiry_date,
                     current_status=current_status
-                    # date_added_to_inventory will be set by default
                 )
                 session.add(asset_orm)
                 logger.info(f"Adding new labware instance: {user_assigned_name}")
 
-            await session.commit()
+            await session.flush()
             await session.refresh(asset_orm)
             if asset_orm.id is None:
                 raise ValueError(f"Failed to add/update labware instance '{user_assigned_name}': no ID returned.")
             return asset_orm.id
 
     async def get_asset_instance(self, user_assigned_name: str) -> Optional[Dict[str, Any]]:
-        """Retrieves a labware instance by its user_assigned_name."""
         async with self.get_praxis_session() as session:
             stmt = select(LabwareInstanceOrm).where(LabwareInstanceOrm.user_assigned_name == user_assigned_name)
             result = await session.execute(stmt)
@@ -337,20 +325,22 @@ class PraxisDBService:
                     "properties_json": asset_orm.properties_json,
                     "is_permanent_fixture": asset_orm.is_permanent_fixture,
                     "current_protocol_run_guid": asset_orm.current_protocol_run_guid,
-                    # For availability, you might infer it from current_status or add a specific field if needed
                     "is_available": asset_orm.current_status in [
                         LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
                         LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
-                        LabwareInstanceStatusEnum.EMPTY, # Depending on context, empty might mean available for use
-                        LabwareInstanceStatusEnum.PARTIALLY_FILLED, # Depending on context
-                        LabwareInstanceStatusEnum.FULL # Depending on context (e.g. full source plate)
+                        LabwareInstanceStatusEnum.EMPTY,
+                        LabwareInstanceStatusEnum.PARTIALLY_FILLED,
+                        LabwareInstanceStatusEnum.FULL
                     ]
                 }
             return None
 
     async def get_all_users(self) -> Dict[str, Dict[str, Any]]:
-        async with self.get_keycloak_connection() as conn:
-            records = await conn.fetch(
+        if not self._keycloak_pool:
+             logger.warning("Keycloak pool not initialized. Cannot fetch users.")
+             return {}
+        async with self.get_keycloak_connection() as conn: # type: ignore
+            records = await conn.fetch( # type: ignore
                 """
                 SELECT id, username, email, first_name, last_name, enabled
                 FROM user_entity
@@ -368,38 +358,44 @@ class PraxisDBService:
                 for record in records
             }
 
-    async def execute_sql(self, sql_statement: str, params: Optional[dict] = None):
+    async def execute_sql(self, sql_statement: str, params: Optional[dict] = None): # type: ignore
         async with self.get_praxis_session() as session:
             from sqlalchemy.sql import text
             await session.execute(text(sql_statement), params)
+            # await session.commit() # Handled by context manager
 
-    async def fetch_all_sql(self, sql_query: str, params: Optional[dict] = None) -> List[Dict[Any, Any]]:
+    async def fetch_all_sql(self, sql_query: str, params: Optional[dict] = None) -> List[Dict[Any, Any]]: # type: ignore
         async with self.get_praxis_session() as session:
             from sqlalchemy.sql import text
             result = await session.execute(text(sql_query), params)
-            return [dict(row) for row in result.mappings()]
+            return [dict(row._mapping) for row in result] # Use ._mapping for Result
 
-    async def fetch_one_sql(self, sql_query: str, params: Optional[dict] = None) -> Optional[Dict[Any, Any]]:
+    async def fetch_one_sql(self, sql_query: str, params: Optional[dict] = None) -> Optional[Dict[Any, Any]]: # type: ignore
         async with self.get_praxis_session() as session:
             from sqlalchemy.sql import text
             result = await session.execute(text(sql_query), params)
-            row = result.mappings().first()
+            row = result.mappings().first() # Mappings() provides dict-like rows
             return dict(row) if row else None
 
-    async def fetch_val_sql(self, sql_query: str, params: Optional[dict] = None) -> Any:
+    async def fetch_val_sql(self, sql_query: str, params: Optional[dict] = None) -> Any: # type: ignore
         async with self.get_praxis_session() as session:
             from sqlalchemy.sql import text
             result = await session.execute(text(sql_query), params)
             return result.scalar_one_or_none()
 
     async def close(self):
-        if self._keycloak_pool and not self._keycloak_pool._closed:
-            await self._keycloak_pool.close()
+        if self._keycloak_pool and not self._keycloak_pool._closed: # type: ignore
+            await self._keycloak_pool.close() # type: ignore
             logger.info("Keycloak database pool closed.")
+        # The SQLAlchemy engine (from which AsyncSessionLocal is derived) should be disposed of
+        # at the application level if it's managed globally.
+        # If AsyncSessionLocal is derived from create_async_engine(),
+        # e.g. engine = create_async_engine(...); AsyncSessionLocal = async_sessionmaker(engine)
+        # then engine.dispose() should be called elsewhere (e.g., application shutdown).
 
 
 def _get_keycloak_dsn_from_config() -> Optional[str]:
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent # Adjusted to be project root
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     CONFIG_FILE_PATH = PROJECT_ROOT / "praxis.ini"
 
     if not CONFIG_FILE_PATH.exists():
