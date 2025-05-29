@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, or_, select, update
 from sqlalchemy.orm import joinedload, selectinload, aliased
 
-from praxis.backend.database_models import (
+from praxis.backend.models import (
     ProtocolSourceRepositoryOrm,
     FileSystemProtocolSourceOrm,
     FunctionProtocolDefinitionOrm,
@@ -26,7 +26,7 @@ from praxis.backend.database_models import (
     ProtocolRunStatusEnum,
     FunctionCallStatusEnum
 )
-from praxis.backend.protocol_core.protocol_definition_models import (
+from praxis.backend.models.protocol_pydantic_models import (
     FunctionProtocolDefinitionModel
 )
 

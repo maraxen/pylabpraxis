@@ -13,7 +13,7 @@ from praxis.backend.database_models.protocol_definitions_orm import (
     ProtocolSourceRepositoryOrm, # ADDED for GitOps tests
 )
 from praxis.backend.utils.state import State as PraxisState
-from praxis.backend.protocol_core.definitions import PlrDeck, PraxisRunContext # ADDED for DeckLoading tests in Orchestrator
+from praxis.backend.core.run_context import PlrDeck, PraxisRunContext # ADDED for DeckLoading tests in Orchestrator
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel
 from praxis.backend.utils.errors import AssetAcquisitionError
 

@@ -46,7 +46,7 @@ from pylabrobot.resources.tip import Tip as PlrTip
 from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
 from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
 from praxis.backend.utils.plr_inspection import get_resource_constructor_params
-from praxis.backend.protocol_core.definitions import PlrDeck as ProtocolPlrDeck
+from praxis.backend.core.run_context import PlrDeck as ProtocolPlrDeck
 
 
 # Setup logger for this module

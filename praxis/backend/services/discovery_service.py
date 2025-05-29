@@ -16,8 +16,8 @@ import traceback
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker # MODIFIED
 # Global in-memory registry (populated by decorators, updated by this service)
-from praxis.backend.protocol_core.definitions import PROTOCOL_REGISTRY, PlrResource
-from praxis.backend.protocol_core.protocol_definition_models import (
+from praxis.backend.core.run_context import PROTOCOL_REGISTRY, PlrResource
+from praxis.backend.models.protocol_pydantic_models import (
     FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel
 )
 # MODIFIED: Import async version of upsert

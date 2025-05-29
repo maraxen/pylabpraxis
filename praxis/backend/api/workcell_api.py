@@ -1,29 +1,24 @@
-from fastapi import APIRouter, HTTPException, Depends, Path, WebSocket, WebSocketDisconnect # Added WebSocket, WebSocketDisconnect
+# <filename>praxis/backend/api/workcell_api.py</filename>
+from fastapi import APIRouter, HTTPException, Depends, Path, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
-import datetime # Added datetime
+from sqlalchemy.orm import Session as SQLAlchemyClassicSession # For type hint if needed, but we use AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession # For actual use
+import datetime
 
-# from ..utils.db import db
-from praxis.backend.core.orchestrator import Orchestrator
-# from ..configure import PraxisConfiguration
+# MODIFIED: Import get_db from local dependencies
 from praxis.backend.api.dependencies import get_orchestrator, get_db, get_workcell_runtime
+from praxis.backend.core.orchestrator import Orchestrator
+from praxis.backend.core.workcell_runtime import WorkcellRuntime, WorkcellRuntimeError
 
-# Imports for /decks and /decks/{deck_id}/state endpoints
-from praxis.backend.services import asset_data_service as ads # Corrected path based on previous tasks
-from praxis.backend.database_models.asset_management_orm import PraxisDeviceCategoryEnum, ManagedDeviceStatusEnum
-from praxis.backend.api.models.workcell_models import DeckInfo, DeckStateResponse, DeckUpdateMessage, LabwareInfo # Added DeckUpdateMessage, LabwareInfo
-from ..core.workcell_runtime import WorkcellRuntime, WorkcellRuntimeError
-
+from praxis.backend.services import asset_data_service as ads
+from praxis.backend.models.asset_management_orm import PraxisDeviceCategoryEnum, ManagedDeviceStatusEnum
+from praxis.backend.api.models.workcell_models import DeckInfo, DeckStateResponse, DeckUpdateMessage, LabwareInfo
 
 router = APIRouter()
 
-# config = PraxisConfiguration("praxis.ini")
-
-# --- Connection Manager for WebSockets ---
 class ConnectionManager:
     def __init__(self):
-        # Store connections per deck_id
         self.active_connections: Dict[int, List[WebSocket]] = {}
 
     async def connect(self, deck_id: int, websocket: WebSocket):
@@ -31,63 +26,40 @@ class ConnectionManager:
         if deck_id not in self.active_connections:
             self.active_connections[deck_id] = []
         self.active_connections[deck_id].append(websocket)
-        print(f"INFO: WebSocket connected for deck_id {deck_id}. Total clients for deck: {len(self.active_connections[deck_id])}")
+        print(f"INFO: WebSocket connected for deck_id {deck_id}. Total: {len(self.active_connections[deck_id])}")
 
     def disconnect(self, deck_id: int, websocket: WebSocket):
         if deck_id in self.active_connections:
             self.active_connections[deck_id].remove(websocket)
-            if not self.active_connections[deck_id]: # Remove deck_id if no clients left
-                del self.active_connections[deck_id]
-            print(f"INFO: WebSocket disconnected for deck_id {deck_id}. Remaining clients for deck: {len(self.active_connections.get(deck_id, []))}")
+            if not self.active_connections[deck_id]: del self.active_connections[deck_id]
+            print(f"INFO: WebSocket disconnected for deck_id {deck_id}. Remaining: {len(self.active_connections.get(deck_id, []))}")
 
     async def broadcast_to_deck(self, deck_id: int, message: DeckUpdateMessage):
-        """
-        Broadcasts a DeckUpdateMessage to all connected WebSocket clients for a specific deck.
-        """
-        # TODO: This method needs to be called by other services (e.g., WorkcellRuntime, AssetManager actions)
-        # when actual deck state changes occur.
-        # Example: When labware is assigned or cleared in WorkcellRuntime, it should prepare
-        # a DeckUpdateMessage and call manager.broadcast_to_deck(deck_id, update_message).
-
         if deck_id in self.active_connections:
             disconnected_clients: List[WebSocket] = []
-            message_json = message.model_dump_json() # Use .model_dump_json() for Pydantic v2+
+            message_json = message.model_dump_json()
             for connection in self.active_connections[deck_id]:
                 try:
                     await connection.send_text(message_json)
-                except Exception: # Catches various errors like broken pipe, etc.
-                    # Schedule disconnection for clients that error out
+                except Exception:
                     disconnected_clients.append(connection)
-
-            # Clean up disconnected clients
-            for client in disconnected_clients:
-                self.disconnect(deck_id, client)
-            if disconnected_clients:
-                print(f"INFO: Cleaned up {len(disconnected_clients)} stale connections for deck_id {deck_id} during broadcast.")
+            for client in disconnected_clients: self.disconnect(deck_id, client)
 
 
 manager = ConnectionManager()
-# --- End Connection Manager ---
 
-
-# Asset request/response models (Keep existing models)
 class WorkcellAssetRequest(BaseModel):
-    """Request model for matching assets to requirements."""
     protocol_name: str
     required_assets: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     parameters: Dict[str, Any] = Field(default_factory=dict)
 
-
 class AssetMatchResponse(BaseModel):
-    """Response model for matched assets."""
     asset_name: str
     asset_type: str
     compatibility_score: float
     metadata: Dict[str, Any]
 
-
 class WorkcellStateResponse(BaseModel):
-    """Response model for workcell state."""
     assets: Dict[str, Dict[str, Any]]
     running_protocols: List[str]
     available_resources: List[str]
@@ -95,32 +67,27 @@ class WorkcellStateResponse(BaseModel):
 
 @router.get("/state", response_model=WorkcellStateResponse, tags=["Workcell API - Legacy"])
 async def get_workcell_state(orchestrator: Orchestrator = Depends(get_orchestrator)):
-    """Get current workcell state including assets and protocols."""
-    if not orchestrator._main_workcell:
+    if not orchestrator._main_workcell: # Accessing private member, consider public API if possible
         raise HTTPException(status_code=503, detail="Workcell not initialized")
-
     try:
         return WorkcellStateResponse(
             assets=orchestrator._main_workcell._asset_states,
             running_protocols=orchestrator.get_running_protocols(),
             available_resources=[
-                asset
-                for asset in orchestrator._main_workcell.asset_ids
+                asset for asset in orchestrator._main_workcell.asset_ids
                 if not orchestrator._main_workcell.is_asset_in_use(asset)
             ],
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post("/match_assets", tags=["Workcell API - Legacy"])
 async def match_assets_to_requirements(
-    requirements: WorkcellAssetRequest,
-    orchestrator: Orchestrator = Depends(get_orchestrator),
+    requirements: WorkcellAssetRequest, orchestrator: Orchestrator = Depends(get_orchestrator)
 ) -> Dict[str, List[AssetMatchResponse]]:
-    """Match required assets to available assets in database."""
     try:
-        matches = await orchestrator.match_assets_to_requirements(requirements.dict())
+        # .dict() is for Pydantic v1. For v2+, use .model_dump()
+        matches = await orchestrator.match_assets_to_requirements(requirements.model_dump())
         return {
             asset_name: [AssetMatchResponse(**match) for match in asset_matches]
             for asset_name, asset_matches in matches.items()
@@ -128,63 +95,41 @@ async def match_assets_to_requirements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to match assets: {str(e)}")
 
-
 @router.post("/validate_configuration", tags=["Workcell API - Legacy"])
 async def validate_configuration(
     config: Dict[str, Any], orchestrator: Orchestrator = Depends(get_orchestrator)
 ) -> Dict[str, Any]:
-    """Validate a complete protocol configuration."""
     try:
         result = await orchestrator.validate_configuration(config)
         if not result["valid"]:
             return {"valid": False, "errors": result["errors"], "config": config}
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Configuration validation failed: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Config validation failed: {str(e)}")
 
 @router.post("/release/{protocol_name}", tags=["Workcell API - Legacy"])
 async def release_workcell_view(
     protocol_name: str, orchestrator: Orchestrator = Depends(get_orchestrator)
 ):
-    """Release a protocol's workcell view."""
     try:
         await orchestrator.release_workcell_view(protocol_name)
-        return {
-            "status": "success",
-            "message": f"Released workcell view for {protocol_name}",
-        }
+        return {"status": "success", "message": f"Released view for {protocol_name}"}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to release workcell view: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to release view: {str(e)}")
 
 
 @router.get("/decks", response_model=List[DeckInfo], tags=["Workcell API"])
-async def list_available_decks(db: Session = Depends(get_db)):
-    """
-    Lists all available deck devices registered in the system.
-    A deck device is a ManagedDeviceOrm with praxis_device_category set to DECK.
-    """
+async def list_available_decks(db: AsyncSession = Depends(get_db)): # MODIFIED: AsyncSession
     try:
-        deck_devices_orm = ads.list_managed_devices(
-            db_session=db,
-            praxis_category_filter=PraxisDeviceCategoryEnum.DECK
+        deck_devices_orm = await ads.list_managed_devices( # MODIFIED: await
+            db_session=db, # db is already AsyncSession
+            praxis_category_filter=PraxisDeviceCategoryEnum.DECK # Ensure enum value is passed if service expects it
         )
-
         available_decks = []
         for device_orm in deck_devices_orm:
             status_name = "UNKNOWN"
-            if device_orm.current_status:
-                if isinstance(device_orm.current_status, ManagedDeviceStatusEnum):
-                    status_name = device_orm.current_status.name
-                elif isinstance(device_orm.current_status, str):
-                    status_name = device_orm.current_status
-                else:
-                    status_name = str(device_orm.current_status)
-
+            if device_orm.current_status: # current_status is already Enum
+                status_name = device_orm.current_status.name
             deck_info = DeckInfo(
                 id=device_orm.id,
                 user_friendly_name=device_orm.user_friendly_name or f"Deck_{device_orm.id}",
@@ -193,22 +138,18 @@ async def list_available_decks(db: Session = Depends(get_db)):
             )
             available_decks.append(deck_info)
         return available_decks
-    except HTTPException:
-        raise
     except Exception as e:
         print(f"Error in list_available_decks: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list available decks: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Failed to list decks: {str(e)}")
 
 @router.get("/decks/{deck_id}/state", response_model=DeckStateResponse, tags=["Workcell API"])
 async def get_specific_deck_state(
-    deck_id: int = Path(..., title="The ID of the deck device to get state for", ge=1),
-    workcell_runtime: WorkcellRuntime = Depends(get_workcell_runtime)
+    deck_id: int = Path(..., title="The ID of the deck device", ge=1),
+    workcell_runtime: WorkcellRuntime = Depends(get_workcell_runtime) # workcell_runtime already injected
 ):
-    """
-    Retrieves the current state of a specific deck, including its layout and any labware present.
-    """
     try:
+        # Assuming get_deck_state_representation is async or can be called from async
+        # If it needs db session, WorkcellRuntime should get it via its own dependencies or initialization
         deck_state_data = workcell_runtime.get_deck_state_representation(deck_device_orm_id=deck_id)
         return deck_state_data
     except WorkcellRuntimeError as wre:
@@ -216,61 +157,47 @@ async def get_specific_deck_state(
         if "not found" in error_detail.lower() or "not categorized as a deck" in error_detail.lower():
             raise HTTPException(status_code=404, detail=error_detail)
         else:
-            print(f"WorkcellRuntimeError in get_specific_deck_state for deck ID {deck_id}: {wre}")
             raise HTTPException(status_code=500, detail=f"Workcell runtime error: {error_detail}")
     except Exception as e:
-        print(f"Unexpected error in get_specific_deck_state for deck ID {deck_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while fetching deck state for deck ID {deck_id}.")
+        raise HTTPException(status_code=500, detail=f"Unexpected error fetching deck state: {str(e)}")
 
 
 @router.websocket("/ws/decks/{deck_id}/updates")
 async def websocket_deck_updates(
     websocket: WebSocket,
-    deck_id: int = Path(..., title="The ID of the deck device to subscribe to updates for", ge=1),
-    db: Session = Depends(get_db) # Depends(get_db) will not work directly with WebSockets in this manner
-                                   # We need to manage the session scope manually if DB access is needed within the WS.
-                                   # For initial validation, we can use a regular dependency.
+    deck_id: int = Path(..., title="Deck ID for updates", ge=1),
+    # db: AsyncSession = Depends(get_db) # Cannot use Depends directly in WebSocket path operation func signature
+                                       # We need to manage session manually or pass it if manager methods need it.
 ):
-    """
-    WebSocket endpoint for real-time updates on a specific deck's state.
-    """
-    # Validate deck_id first (using a regular function to get a session for this check)
-    # This part needs careful handling of DB session for WebSocket.
-    # A simple way is to get a session for validation only, then close it.
-    # Or, if db access is needed throughout the WS lifecycle, manage it carefully.
-
-    # For initial validation:
-    temp_db_session_for_validation = next(get_db()) # Get a session instance
+    # For initial validation, we'd manually acquire a session if needed.
+    # However, ads.get_managed_device_by_id is async and needs an AsyncSession.
+    # The simplest is to acquire one for the validation check.
+    db_session_for_validation: Optional[AsyncSession] = None
     try:
-        deck_device = ads.get_managed_device_by_id(temp_db_session_for_validation, deck_id)
-        if not deck_device or deck_device.praxis_device_category != PraxisDeviceCategoryEnum.DECK:
-            print(f"INFO: WebSocket connection attempt to invalid deck_id {deck_id}. Closing.")
-            await websocket.close(code=1008) # Policy Violation
-            return
-    finally:
-        temp_db_session_for_validation.close() # Ensure session is closed after validation
+        async with AsyncSessionLocal() as db_session_for_validation: # Manually create session for validation
+            deck_device = await ads.get_managed_device_by_id(db_session_for_validation, deck_id)
+            if not deck_device or deck_device.praxis_device_category != PraxisDeviceCategoryEnum.DECK:
+                print(f"INFO: WebSocket attempt to invalid deck_id {deck_id}. Closing.")
+                await websocket.close(code=1008)
+                return
+    except Exception as e: # Catch DB connection errors or other issues during validation
+        print(f"ERROR: WebSocket validation for deck_id {deck_id} failed: {e}")
+        await websocket.close(code=1011) # Internal Error
+        return
+    # finally: # Session is closed by 'async with'
 
     await manager.connect(deck_id, websocket)
     try:
         while True:
-            # Keep the connection alive. In a typical use case, the server sends updates.
-            # Clients might send pings or specific requests, which can be handled here.
-            # For now, we just wait for messages from the client (if any) or disconnections.
             data = await websocket.receive_text()
-            # Process received data if your protocol requires client-to-server messages on this WS.
-            # For now, just log it.
-            print(f"INFO: WebSocket for deck_id {deck_id} received text: {data}")
-            # Example: if client sends a PING, server could send a PONG
-            # if data.upper() == "PING":
-            #     await websocket.send_text("PONG")
-
+            print(f"INFO: WebSocket for deck_id {deck_id} received: {data}")
     except WebSocketDisconnect:
         print(f"INFO: WebSocket for deck_id {deck_id} disconnected by client.")
-    except Exception as e: # Catch other exceptions during the receive loop
+    except Exception as e:
         print(f"ERROR: Exception in WebSocket for deck_id {deck_id}: {e}")
     finally:
         manager.disconnect(deck_id, websocket)
-        print(f"INFO: Cleaned up WebSocket connection for deck_id {deck_id}.")
+        print(f"INFO: Cleaned up WebSocket for deck_id {deck_id}.")
 
 
 @router.post("/ws/test_broadcast/{deck_id}", tags=["Workcell API - Test"])
@@ -280,46 +207,19 @@ async def test_broadcast_deck_update(
     slot_name: Optional[str] = "A1",
     labware_name: Optional[str] = "TestPlate123"
 ):
-    """
-    Test endpoint to manually trigger a broadcast of a DeckUpdateMessage
-    to connected WebSocket clients for a specific deck_id.
-    """
-    # Create a sample LabwareInfo if the message type involves labware
     sample_labware_info = None
-    if labware_name and slot_name: # Only create if relevant
+    if labware_name and slot_name:
         sample_labware_info = LabwareInfo(
-            labware_instance_id=999, # Dummy ID
-            user_assigned_name=labware_name,
-            pylabrobot_definition_name="test_plate_def",
-            python_fqn="pylabrobot.resources.Plate",
-            category="PLATE", # Using string representation
-            size_x_mm=127.0,
-            size_y_mm=85.0,
-            size_z_mm=14.0,
-            properties_json={"contents": "test_liquid"},
-            model="TestModel123"
+            labware_instance_id=999, user_assigned_name=labware_name,
+            pylabrobot_definition_name="test_plate_def", python_fqn="pylabrobot.resources.Plate",
+            category="PLATE", size_x_mm=127.0, size_y_mm=85.0, size_z_mm=14.0,
+            properties_json={"contents": "test_liquid"}, model="TestModel123"
         )
-
     update_message = DeckUpdateMessage(
-        deck_id=deck_id,
-        update_type=message_type,
+        deck_id=deck_id, update_type=message_type,
         slot_name=slot_name if message_type in ["labware_added", "labware_removed", "slot_cleared", "labware_updated"] else None,
         labware_info=sample_labware_info if message_type in ["labware_added", "labware_updated"] else None,
-        timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat() # Ensure Pydantic v2 compatibility for default_factory if used
+        timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat()
     )
-
     await manager.broadcast_to_deck(deck_id, update_message)
-    return {"status": "success", "message": f"Test broadcast initiated for deck {deck_id} with type '{message_type}'."}
-
-
-# TODO: Add other new workcell endpoints here following the pattern above:
-# - POST /api/workcell/decks/{deck_orm_id}/slots/{slot_name}/assign_labware
-# - POST /api/workcell/decks/{deck_orm_id}/slots/{slot_name}/clear
-# - POST /api/workcell/devices/{device_orm_id}/execute_action -> DeviceActionResponse
-# - GET /api/workcell/devices -> List[DeviceInfo] (similar to DeckInfo but for all devices)
-# - GET /api/workcell/labware_instances -> List[LabwareInstanceInfo] (more detailed than LabwareInfo)
-
-# Ensure that the main FastAPI app includes this router.
-# Example in main.py:
-# from praxis.backend.api import workcell_api
-# app.include_router(workcell_api.router, prefix="/api/workcell", tags=["Workcell Management"])
+    return {"status": "success", "message": f"Test broadcast for deck {deck_id}, type '{message_type}'."}

@@ -31,8 +31,8 @@ from praxis.backend.protocol_core.protocol_definition_models import (
     FunctionProtocolDefinitionModel
 )
 # Import decorators and other core definitions if needed for creating test content
-from praxis.backend.protocol_core.decorators import protocol_function
-from praxis.backend.protocol_core.definitions import PraxisState, PlrDeck, PlrResource
+from praxis.backend.core.decorators import protocol_function
+from praxis.backend.core.run_context import PraxisState, PlrDeck, PlrResource
 
 
 ASYNC_SQLITE_URL = "sqlite+aiosqlite:///:memory:"

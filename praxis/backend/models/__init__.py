@@ -21,6 +21,20 @@ from .protocol_definitions_orm import (
 
 from .user_management_orm import UserOrm
 
+from .protocol_pydantic_models import (
+    ProtocolStartRequest, ProtocolStatus, ProtocolDirectories,
+    ProtocolPrepareRequest, ProtocolInfo, UIHint, ParameterMetadataModel,
+    AssetRequirementModel, ProtocolParameters
+)
+
+from .asset_pydantic_models import (
+    LabwareInventoryDataIn, LabwareInventoryDataOut,
+    LabwareInventoryReagentItem, LabwareInventoryItemCount
+)
+from .workcell_pydantic_models import (
+    DeckInfo, LabwareInfo, SlotInfo, DeckStateResponse, DeckUpdateMessage
+)
+
 __all__ = [
     "ManagedDeviceOrm", "LabwareInstanceOrm", "LabwareDefinitionCatalogOrm",
     "ManagedDeviceStatusEnum", "LabwareInstanceStatusEnum", # LabwareCategoryEnum removed
@@ -28,5 +42,9 @@ __all__ = [
     "ProtocolSourceRepositoryOrm", "FileSystemProtocolSourceOrm",
     "FunctionProtocolDefinitionOrm", "ParameterDefinitionOrm", "AssetDefinitionOrm",
     "ProtocolRunOrm", "FunctionCallLogOrm", "AssetInstanceOrm",
-    "UserOrm"
+    "UserOrm", "DeckInfo", "LabwareInfo", "SlotInfo", "DeckStateResponse", "DeckUpdateMessage",
+    "ProtocolStartRequest", "ProtocolStatus", "ProtocolDirectories",
+    "ProtocolPrepareRequest", "ProtocolInfo", "UIHint", "ParameterMetadataModel",
+    "AssetRequirementModel", "LabwareInventoryDataIn", "LabwareInventoryDataOut",
+    "LabwareInventoryReagentItem", "LabwareInventoryItemCount"
 ]

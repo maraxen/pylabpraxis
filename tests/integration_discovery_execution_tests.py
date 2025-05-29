@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session as DbSession # For type hinting if needed
 # Modules to test
 from praxis.backend.services.discovery_service import ProtocolDiscoveryService
 from praxis.backend.core.orchestrator import Orchestrator
-from praxis.backend.protocol_core.decorators import protocol_function
-from praxis.backend.protocol_core.definitions import PraxisState, PraxisRunContext, PlrResource
+from praxis.backend.core.decorators import protocol_function
+from praxis.backend.core.run_context import PraxisState, PraxisRunContext, PlrResource
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
 from praxis.backend.database_models.protocol_definitions_orm import (
     FunctionProtocolDefinitionOrm, ParameterDefinitionOrm, AssetDefinitionOrm,
@@ -34,17 +34,17 @@ except ImportError: # pragma: no cover
     JsonSchemaValidationError = None # type: ignore
 from unittest.mock import call, patch # Ensure patch is imported
 from praxis.backend.protocol_core.protocol_definition_models import ParameterMetadataModel, AssetRequirementModel
-from praxis.backend.database_models.asset_management_orm import ( 
-    LabwareInstanceStatusEnum, ManagedDeviceStatusEnum, 
-    LabwareDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal, 
-    LabwareInstanceOrm as LabwareInstanceOrmReal 
+from praxis.backend.database_models.asset_management_orm import (
+    LabwareInstanceStatusEnum, ManagedDeviceStatusEnum,
+    LabwareDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
+    LabwareInstanceOrm as LabwareInstanceOrmReal
 )
 # Import WorkcellRuntime to patch its methods (though we'll mock its instance methods)
-from praxis.backend.core.workcell_runtime import WorkcellRuntime 
+from praxis.backend.core.workcell_runtime import WorkcellRuntime
 
 # Module-level Mock Objects for PLR Live Resources
 MOCK_LIVE_DEVICE = MagicMock(name="MockLivePLRDevice_Global")
-MOCK_LIVE_DEVICE.name = "MockLivePLRDeviceInstance_Global" 
+MOCK_LIVE_DEVICE.name = "MockLivePLRDeviceInstance_Global"
 MOCK_LIVE_LABWARE = MagicMock(name="MockLivePLRLabware_Global")
 MOCK_LIVE_LABWARE.name = "MockLivePLRLabwareInstance_Global"
 
@@ -87,23 +87,23 @@ def main_protocol(state: PraxisState, pipette: IntegrationPipette, initial_messa
     '''Main protocol for integration testing.'''
     print(f"MainIntegrationProtocol started with message: {initial_message}, pipette: {pipette.name}")
     state.main_protocol_started = True # type: ignore
-    
+
     pipette.pick_up_tip()
     pipette.aspirate(50)
-    
+
     # Call nested protocol
     nested_result = nested_step(state=state, message="from_main") # No context needed here, wrapper adds it
-    
+
     pipette.dispense(50)
-    
+
     state.main_protocol_completed = True # type: ignore
     return {"status": "main_complete", "nested_result": nested_result, "final_message": initial_message}
 """
     with open(os.path.join(pkg_root_dir, "protocol_module.py"), "w", encoding="utf-8") as f:
         f.write(protocol_content)
-    
+
     yield pkg_root_dir # This is the path to scan (contains the 'integration_test_protocols' package)
-    
+
     shutil.rmtree(base_temp_dir)
 
 def mock_db_session():
@@ -113,7 +113,7 @@ def mock_db_session():
 def mock_data_services(request): # request is a pytest fixture
     # --- Mock Instances ---
     mock_fpd_instance = MagicMock(spec=FunctionProtocolDefinitionOrm)
-    mock_fpd_instance.id = 12345 
+    mock_fpd_instance.id = 12345
     mock_fpd_instance.name = "DefaultMockedProtocol"
     mock_fpd_instance.version = "1.0.mock"
     # Add other essential attributes that are accessed after get_protocol_definition_details
@@ -128,8 +128,8 @@ def mock_data_services(request): # request is a pytest fixture
 
     _mock_upsert_fpd = MagicMock(
         side_effect=lambda db, protocol_pydantic, **kwargs: MagicMock(
-            spec=FunctionProtocolDefinitionOrm, 
-            id=abs(hash(protocol_pydantic.name + protocol_pydantic.version)), 
+            spec=FunctionProtocolDefinitionOrm,
+            id=abs(hash(protocol_pydantic.name + protocol_pydantic.version)),
             name=protocol_pydantic.name, version=protocol_pydantic.version,
             module_name=protocol_pydantic.module_name, function_name=protocol_pydantic.function_name,
             is_top_level=protocol_pydantic.is_top_level, # Corrected: protocol_pydantic.is_top_level
@@ -140,7 +140,7 @@ def mock_data_services(request): # request is a pytest fixture
             file_system_source_id=kwargs.get('file_system_source_id'),
             file_system_source=MagicMock(spec=FileSystemProtocolSourceOrm, base_path='dummy_scan_path_for_upsert_fixture') if kwargs.get('file_system_source_id') else None,
             commit_hash=kwargs.get('commit_hash'),
-            pydantic_definition=protocol_pydantic 
+            pydantic_definition=protocol_pydantic
         )
     )
     _mock_get_fpd_details = MagicMock(return_value=mock_fpd_instance)
@@ -165,7 +165,7 @@ def mock_data_services(request): # request is a pytest fixture
         p = patch(target_path, mock_obj)
         p.start()
         active_patches.append(p)
-    
+
     request.addfinalizer(lambda: [p.stop() for p in active_patches])
 
     yield {
@@ -186,23 +186,23 @@ class TestIntegrationDiscoveryExecution:
 
     def test_discovery_and_basic_execution_logging(
         self,
-        temp_integration_protocols: str, 
+        temp_integration_protocols: str,
         mock_db_session: MagicMock,
         mock_data_services: Dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
-        mock_asset_manager_instance: MagicMock 
+        mock_asset_manager_instance: MagicMock
     ):
         # --- 1. Discovery Phase ---
         discovery_service = ProtocolDiscoveryService(db_session=mock_db_session)
-        
+
         discovered_defs_orm_mocks = discovery_service.discover_and_upsert_protocols(
-            search_paths=[temp_integration_protocols], 
-            file_system_source_id=1 
+            search_paths=[temp_integration_protocols],
+            file_system_source_id=1
         )
         # Assertion for upsert_function_protocol_definition (mocked by mock_data_services)
-        assert mock_data_services["upsert_function_protocol_definition"].called 
-        assert len(discovered_defs_orm_mocks) == 2 
-        
+        assert mock_data_services["upsert_function_protocol_definition"].called
+        assert len(discovered_defs_orm_mocks) == 2
+
         main_proto_orm_mock = next((p for p in discovered_defs_orm_mocks if p.name == "MainIntegrationProtocol"), None)
         nested_proto_orm_mock = next((p for p in discovered_defs_orm_mocks if p.name == "NestedProtocolStep"), None)
 
@@ -210,32 +210,32 @@ class TestIntegrationDiscoveryExecution:
         assert main_proto_orm_mock.id is not None
         assert nested_proto_orm_mock is not None
         assert nested_proto_orm_mock.id is not None
-        
+
         module_parent_dir = Path(temp_integration_protocols).parent.as_posix()
         if module_parent_dir not in sys.path:
             sys.path.insert(0, module_parent_dir)
 
         import integration_test_protocols.protocol_module as mod
-        
+
         assert mod.main_protocol._protocol_definition.db_id == main_proto_orm_mock.id
         assert mod.nested_step._protocol_definition.db_id == nested_proto_orm_mock.id
-        
+
         # --- 2. Orchestration Phase ---
-        
+
         # Configure get_protocol_definition_details from the new fixture
         mock_data_services['get_protocol_definition_details'].return_value = main_proto_orm_mock
-        main_proto_orm_mock.file_system_source.base_path = temp_integration_protocols 
-        
+        main_proto_orm_mock.file_system_source.base_path = temp_integration_protocols
+
         from praxis.backend.protocol_core.definitions import PROTOCOL_REGISTRY
         registry_key = f"{mod.main_protocol._protocol_definition.name}_v{mod.main_protocol._protocol_definition.version}"
         if registry_key in PROTOCOL_REGISTRY:
              PROTOCOL_REGISTRY[registry_key]['pydantic_definition'] = mod.main_protocol._protocol_definition
         else:
              pytest.fail(f"PROTOCOL_REGISTRY not populated for {registry_key} by discovery service mock.")
-        
+
         orchestrator = Orchestrator(db_session=mock_db_session)
-        orchestrator.asset_manager = mock_asset_manager_instance 
-        
+        orchestrator.asset_manager = mock_asset_manager_instance
+
         test_run_guid = str(uuid.uuid4())
         # Configure create_protocol_run from the new fixture
         mock_data_services['create_protocol_run'].return_value.run_guid = test_run_guid
@@ -246,29 +246,29 @@ class TestIntegrationDiscoveryExecution:
         final_run_orm = orchestrator.execute_protocol(
             protocol_name="MainIntegrationProtocol",
             protocol_version="1.1",
-            file_system_source_id=1, 
+            file_system_source_id=1,
             user_input_params=user_params,
             initial_state_data=initial_state
         )
 
         assert final_run_orm is not None
         assert final_run_orm.id == mock_data_services['create_protocol_run'].return_value.id
-        
+
         # --- 3. Verification ---
 
         mock_data_services['create_protocol_run'].assert_called_once_with(
             db=mock_db_session,
-            run_guid=test_run_guid, 
+            run_guid=test_run_guid,
             top_level_protocol_definition_id=main_proto_orm_mock.id,
             status=ProtocolRunStatusEnum.PREPARING,
-            input_parameters_json=json.dumps(user_params, default=lambda o: o.name if isinstance(o, PlrResource) else str(o)), 
+            input_parameters_json=json.dumps(user_params, default=lambda o: o.name if isinstance(o, PlrResource) else str(o)),
             initial_state_json=json.dumps(initial_state)
         )
-        
+
         update_calls = mock_data_services['update_protocol_run_status'].call_args_list
         assert any(call.kwargs['new_status'] == ProtocolRunStatusEnum.RUNNING for call in update_calls)
         assert any(call.kwargs['new_status'] == ProtocolRunStatusEnum.COMPLETED for call in update_calls)
-        
+
         final_state_json_in_db = json.loads(update_calls[-1].kwargs['final_state_json'])
         assert final_state_json_in_db['main_protocol_started'] == True
         assert final_state_json_in_db['nested_step_ran'] == True
@@ -276,32 +276,32 @@ class TestIntegrationDiscoveryExecution:
 
         mock_redis_for_state.get.assert_any_call(f"praxis_state:{test_run_guid}")
         assert any(
-            call_args[0][0] == f"praxis_state:{test_run_guid}" 
+            call_args[0][0] == f"praxis_state:{test_run_guid}"
             for call_args in mock_redis_for_state.set.call_args_list
         )
-        
+
         log_start_mock = mock_data_services['log_function_call_start']
         log_end_mock = mock_data_services['log_function_call_end']
 
-        assert log_start_mock.call_count == 2 
+        assert log_start_mock.call_count == 2
         assert log_end_mock.call_count == 2
 
         main_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_id'] == main_proto_orm_mock.id)
         assert main_call_start_kwargs['protocol_run_orm_id'] == final_run_orm.id
-        assert main_call_start_kwargs['parent_function_call_log_id'] is None 
-        
+        assert main_call_start_kwargs['parent_function_call_log_id'] is None
+
         main_call_log_entry_mock = next(c.return_value for c in log_start_mock.side_effect_history if c.kwargs['function_definition_id'] == main_proto_orm_mock.id)
 
         nested_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_id'] == nested_proto_orm_mock.id)
         assert nested_call_start_kwargs['protocol_run_orm_id'] == final_run_orm.id
         assert nested_call_start_kwargs['parent_function_call_log_id'] == main_call_log_entry_mock.id
-        
+
         final_output = json.loads(update_calls[-1].kwargs['output_data_json'])
         assert final_output['nested_result']['nested_output'] == "FROM_MAIN"
 
-        if module_parent_dir in sys.path and module_parent_dir != os.path.dirname(temp_integration_protocols): 
+        if module_parent_dir in sys.path and module_parent_dir != os.path.dirname(temp_integration_protocols):
              sys.path.remove(module_parent_dir)
-        
+
         pipette_asset_req = next(a for a in mod.main_protocol._protocol_definition.assets if a.name == "pipette")
         mock_asset_manager_instance.acquire_asset.assert_called_once_with(
             protocol_run_guid=test_run_guid,
@@ -314,7 +314,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
         self, temp_integration_protocols: str, mock_db_session: MagicMock,
         mock_data_services: Dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
-        mock_asset_manager_instance: MagicMock 
+        mock_asset_manager_instance: MagicMock
     ):
         # --- Setup: Discovery (to get Pydantic model into PROTOCOL_REGISTRY) ---
         discovery_service = ProtocolDiscoveryService(db_session=mock_db_session)
@@ -325,12 +325,12 @@ class TestIntegrationParameterValidation: # New class for validation tests
         assert main_proto_discovered_mock_orm is not None
 
         module_parent_dir = Path(temp_integration_protocols).parent.as_posix()
-        if module_parent_dir not in sys.path: 
+        if module_parent_dir not in sys.path:
             sys.path.insert(0, module_parent_dir)
 
         import integration_test_protocols.protocol_module as mod
         main_protocol_pydantic_def_from_module = mod.main_protocol._protocol_definition
-        
+
         # Configure get_protocol_definition_details from the new fixture
         mock_data_services['get_protocol_definition_details'].return_value = main_proto_discovered_mock_orm
         main_proto_discovered_mock_orm.file_system_source.base_path = temp_integration_protocols
@@ -343,12 +343,12 @@ class TestIntegrationParameterValidation: # New class for validation tests
         with pytest.raises(ValueError, match="Parameter validation failed for protocol 'MainIntegrationProtocol'"):
             orchestrator.execute_protocol(
                 protocol_name="MainIntegrationProtocol",
-                protocol_version="1.1", 
+                protocol_version="1.1",
                 file_system_source_id=1,
                 user_input_params=invalid_user_params,
                 initial_state_data={}
             )
-        
+
         mock_data_services['create_protocol_run'].assert_called_once()
         update_calls = mock_data_services['update_protocol_run_status'].call_args_list
         assert any(call.kwargs['new_status'] == ProtocolRunStatusEnum.FAILED for call in update_calls)

@@ -21,19 +21,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 
 from praxis.backend.utils.db import AsyncSessionLocal # This should be an async_sessionmaker
-from praxis.backend.database_models import (
+from praxis.backend.models import (
     ProtocolSourceRepositoryOrm,
     FunctionProtocolDefinitionOrm,
     AssetDefinitionOrm,
     ProtocolRunOrm,
     ProtocolRunStatusEnum,
     LabwareInstanceOrm,
+    LabwareInstanceStatusEnum,
     UserOrm
 )
-from praxis.backend.database_models.asset_management_orm import LabwareInstanceStatusEnum
-
-if TYPE_CHECKING:
-    pass # No changes needed here for async specifically
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 from praxis.backend.services.discovery_service import ProtocolDiscoveryService
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
-from praxis.backend.protocol_core.decorators import protocol_function # To create decorated funcs
-from praxis.backend.protocol_core.definitions import PraxisState, PlrResource # For type hints in dummy protocols
+from praxis.backend.core.decorators import protocol_function # To create decorated funcs
+from praxis.backend.core.run_context import PraxisState, PlrResource # For type hints in dummy protocols
 
 # Dummy PLR resource for type hinting in test protocols
 class DummyTestPipette(PlrResource):
@@ -28,7 +28,7 @@ def temp_protocol_dir():
     #     my_protocol_b.py
     #     common_utils.py (non-protocol, might have undecorated functions)
     #   __init__.py (making temp_dir a package)
-    
+
     base_temp_dir = tempfile.mkdtemp()
     # Create a root package directory within the temp system dir, e.g. "test_protocol_pkg"
     # This helps in making imports more realistic if protocols are structured in packages.
@@ -45,7 +45,7 @@ def temp_protocol_dir():
     with open(os.path.join(dir_a, "__init__.py"), "w", encoding="utf-8") as f:
         f.write("# Protocols A subpackage
 ")
-    
+
     # protocols_B subdirectory
     dir_b = os.path.join(pkg_root_dir, "protocols_B")
     os.makedirs(dir_b)
@@ -83,10 +83,10 @@ def not_a_protocol_util_func(x: int, y: int) -> int:
 """
     with open(os.path.join(dir_b, "my_protocol_b.py"), "w", encoding="utf-8") as f:
         f.write(protocol_b_content)
-    
+
     # Path to scan should be the pkg_root_dir, so imports are like test_protocol_pkg_root.protocols_A.my_protocol_a
     yield pkg_root_dir
-    
+
     shutil.rmtree(base_temp_dir) # Clean up
 
 @pytest.fixture
@@ -105,7 +105,7 @@ class TestProtocolDiscoveryServiceExtraction:
         # The _extract_protocol_definitions_from_paths expects the path that contains the package root.
         # If temp_protocol_dir is ".../test_protocol_pkg_root", then this is correct.
         # The method itself will try to put its parent on sys.path for import.
-        
+
         # Add parent of temp_protocol_dir (which is pkg_root_dir) to sys.path to ensure pkg_root_dir itself is importable
         # This mirrors how python might find the top-level package.
         # The _extract_protocol_definitions_from_paths also manipulates sys.path.
@@ -117,7 +117,7 @@ class TestProtocolDiscoveryServiceExtraction:
         # If scan_target_path = ".../test_protocol_pkg_root/protocols_A"
         # module_root_path = ".../test_protocol_pkg_root" -> this is added to sys.path.
         # So, imports like `test_protocol_pkg_root.protocols_A.my_protocol_a` should work.
-        
+
         definitions_with_refs = discovery_service_mock_db._extract_protocol_definitions_from_paths(scan_target_path)
         definitions = [d for d, _ in definitions_with_refs]
 
@@ -138,11 +138,11 @@ class TestProtocolDiscoveryServiceExtraction:
     def test_scan_undecorated_function(self, discovery_service_mock_db: ProtocolDiscoveryService, temp_protocol_dir: str):
         scan_target_path = os.path.join(temp_protocol_dir, "protocols_B")
         definitions_with_refs = discovery_service_mock_db._extract_protocol_definitions_from_paths(scan_target_path)
-        
+
         # Expected: undecorated_protocol_func and not_a_protocol_util_func
         # The current _extract logic processes all functions. We might want to filter later.
-        assert len(definitions_with_refs) == 2 
-        
+        assert len(definitions_with_refs) == 2
+
         model_undecorated = next((d for d, f_ref in definitions_with_refs if f_ref and f_ref.__name__ == "undecorated_protocol_func"), None)
         assert model_undecorated is not None
         assert isinstance(model_undecorated, FunctionProtocolDefinitionModel)
@@ -157,7 +157,7 @@ class TestProtocolDiscoveryServiceExtraction:
         assert param_names == {"state", "count", "name"}
         count_param = next(p for p in model_undecorated.parameters if p.name == "count")
         assert count_param.actual_type_str == "int"
-        
+
         model_util = next((d for d, f_ref in definitions_with_refs if f_ref and f_ref.__name__ == "not_a_protocol_util_func"), None)
         assert model_util is not None
         assert model_util.name == "not_a_protocol_util_func"
@@ -167,16 +167,16 @@ class TestProtocolDiscoveryServiceExtraction:
         # Scan the whole package root
         definitions_with_refs = discovery_service_mock_db._extract_protocol_definitions_from_paths(temp_protocol_dir)
         definitions = [d for d, _ in definitions_with_refs]
-        
+
         # Expect 3 functions to be picked up (decorated_func_one, undecorated_protocol_func, not_a_protocol_util_func)
         assert len(definitions) == 3
-        
+
         decorated_model = next((d for d in definitions if d.name == "DecoratedProtocolOne"), None)
         undecorated_model = next((d for d in definitions if d.name == "undecorated_protocol_func"), None)
-        
+
         assert decorated_model is not None
         assert decorated_model.version == "1.0" # Check it's not the inferred one
-        
+
         assert undecorated_model is not None
         assert undecorated_model.version == "0.0.0-inferred"
 
@@ -185,7 +185,7 @@ class TestProtocolDiscoveryServiceExtraction:
         os.makedirs(empty_dir)
         with open(os.path.join(empty_dir, "data.txt"), "w", encoding="utf-8") as f:
             f.write("not python")
-            
+
         definitions_with_refs = discovery_service_mock_db._extract_protocol_definitions_from_paths(empty_dir)
         assert len(definitions_with_refs) == 0
 

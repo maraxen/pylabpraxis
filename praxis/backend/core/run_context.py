@@ -75,20 +75,17 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
     """Serializes positional and keyword arguments to a JSON string."""
     try:
         def make_serializable(item):
-            if isinstance(item, BaseModel): # Check for Pydantic models first
+            if isinstance(item, BaseModel): # Check for Pydantic models
                 try:
-                    return item.dict() # Pydantic v1 style
-                except AttributeError: # Fallback for Pydantic v2 or if .dict() is not available
-                    try:
-                        return item.model_dump() # Pydantic v2 style
-                    except AttributeError:
-                        pass # Not a Pydantic model with dict/model_dump, proceed to other checks
-            
+                    return item.model_dump() # Use Pydantic v2 style
+                except AttributeError:
+                    pass # Not a Pydantic model, proceed to other checks
+
             if isinstance(item, (PraxisRunContext, PraxisState)): # Context/State should ideally not be logged as simple args
                 return f"<{type(item).__name__} object>"
             if isinstance(item, (PlrResource, PlrDeck)): # PLR objects
                 return repr(item) # repr() often includes name and key details
-            
+
             # Add other custom non-serializable types here if needed in the future
             return item
 
@@ -102,22 +99,3 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
         # Fallback serialization: convert everything to string
         cleaned_kwargs_fallback = {k: str(v) for k, v in kwargs.items() if k != '__praxis_run_context__'}
         return json.dumps({"args": [str(arg) for arg in args], "kwargs": cleaned_kwargs_fallback})
-
-
-# Example Placeholder Asset Types
-# TODO: ASSET-1: Replace with actual implementations or imports from the relevant modules.
-# These are just placeholders to illustrate the concept.
-class Pipette(PlrResource):
-    def __init__(self, name: str, num_channels: int = 1, **kwargs): super().__init__(name=name, **kwargs); self.num_channels = num_channels
-    def aspirate(self, volume: float, location: Any = None): print(f"{self.name} aspirating {volume}uL" + (f" from {location}" if location else ""))
-    def dispense(self, volume: float, location: Any = None): print(f"{self.name} dispensing {volume}uL" + (f" to {location}" if location else ""))
-    def __repr__(self): return f"Pipette(name='{self.name}', num_channels={self.num_channels})"
-class Plate(PlrResource):
-    def __init__(self, name: str, num_wells: int = 96, **kwargs): super().__init__(name=name, **kwargs); self.num_wells = num_wells
-    def get_well(self, well_name: str) -> Any: print(f"{self.name} getting well {well_name}"); return f"Well_{well_name}"
-    def __repr__(self): return f"Plate(name='{self.name}', num_wells={self.num_wells})"
-class HeaterShaker(PlrResource):
-    def set_temperature(self, temp_celsius: float): print(f"{self.name} setting temp to {temp_celsius}°C")
-    def set_shake_rpm(self, rpm: int): print(f"{self.name} setting shake to {rpm} RPM")
-    def __repr__(self): return f"HeaterShaker(name='{self.name}')"
-

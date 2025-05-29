@@ -3,8 +3,8 @@ import inspect
 from typing import Optional, Dict, Any, Union, List
 from dataclasses import is_dataclass
 
-from praxis.backend.protocol_core.decorators import protocol_function
-from praxis.backend.protocol_core.definitions import PraxisRunContext, PraxisState, PlrResource
+from praxis.backend.core.decorators import protocol_function
+from praxis.backend.core.run_context import PraxisRunContext, PraxisState, PlrResource
 from praxis.backend.protocol_core.protocol_definition_models import (
     FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint
 )
@@ -66,7 +66,7 @@ class TestProtocolFunctionDecoratorMetadata:
         assert model.module_name == __name__ # Test runs in this module
         assert not model.is_top_level
         assert model.state_param_name == "state" # Default
-        
+
         assert len(model.parameters) == 1
         state_param = model.parameters[0]
         assert state_param.name == "state"
@@ -107,7 +107,7 @@ class TestProtocolFunctionDecoratorMetadata:
         assert len(model.assets) == 2 # pipette, target_plate
         asset_names = {a.name for a in model.assets}
         assert asset_names == {"pipette", "target_plate"}
-        
+
         pipette_asset = next(a for a in model.assets if a.name == "pipette")
         assert "DummyPipette" in pipette_asset.actual_type_str
         assert not pipette_asset.optional
@@ -119,7 +119,7 @@ class TestProtocolFunctionDecoratorMetadata:
     def test_default_name_from_function(self):
         @protocol_function(version="0.1") # Name not provided
         def _my_actual_func_name(state: PraxisState): pass
-        
+
         model = _my_actual_func_name._protocol_definition
         assert model.name == "_my_actual_func_name"
 
@@ -138,7 +138,7 @@ class TestProtocolFunctionWrapperInvocation:
         # This test focuses on the metadata part being mostly done.
         # The existing wrapper in decorators.py is complex and handles logging.
         # We'll assume for now the wrapper structure (how it gets context) is as per decorators.py.
-        
+
         # Create a dummy context (as the wrapper expects it)
         # The wrapper in decorators.py creates a dummy if none is passed and logs to console.
         # So, calling without __praxis_run_context__ should still work.
@@ -154,7 +154,7 @@ class TestPraxisRunContext:
         # Assuming PraxisState can be instantiated (even if it's the Redis-backed one, for type hint)
         # For unit test, we assume PraxisState from definitions is usable without full Redis.
         # If PraxisState from definitions is an alias to utils.state.State, it requires run_guid.
-        mock_state = PraxisState(run_guid="test-run-guid-ctx") 
+        mock_state = PraxisState(run_guid="test-run-guid-ctx")
         mock_db_session = object() # Dummy object for session
 
         context = PraxisRunContext(
@@ -180,7 +180,7 @@ class TestPraxisRunContext:
     def test_create_context_for_nested_call(self):
         mock_state = PraxisState(run_guid="test-run-guid-parent")
         mock_db_session = object()
-        
+
         parent_context = PraxisRunContext(
             protocol_run_db_id=1, run_guid="test-run-guid-parent",
             canonical_state=mock_state, current_db_session=mock_db_session,
@@ -197,5 +197,5 @@ class TestPraxisRunContext:
         assert nested_context.canonical_state == parent_context.canonical_state
         assert nested_context.current_db_session == parent_context.current_db_session
         # The 'current_call_log_db_id' of the nested context IS the parent's log ID.
-        assert nested_context.current_call_log_db_id == 100 
+        assert nested_context.current_call_log_db_id == 100
         assert nested_context._call_sequence_next_val == 5 # Sequence counter continues
