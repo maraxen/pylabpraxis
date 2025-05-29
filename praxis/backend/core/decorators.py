@@ -18,8 +18,11 @@ from typing import Callable, Optional, Any, Dict, Union, List, get_origin, get_a
 from praxis.backend.core.run_context import (
     PROTOCOL_REGISTRY, PlrResource, PlrDeck, PraxisState, PraxisRunContext, serialize_arguments
 )
-from praxis.backend.database_models import FunctionCallStatusEnum
-# Assuming these service functions are already async as per previous refactoring
+from praxis.backend.models import (
+  FunctionCallStatusEnum,
+  ParameterMetadataModel, AssetRequirementModel, UIHint,
+  ProtocolRunStatusEnum
+)
 from praxis.backend.services.protocol_data_service import (
     log_function_call_start,
     log_function_call_end,
@@ -27,12 +30,8 @@ from praxis.backend.services.protocol_data_service import (
 )
 
 from praxis.backend.utils.run_control import get_control_command, clear_control_command, ALLOWED_COMMANDS
-from praxis.backend.database_models.protocol_definitions_orm import ProtocolRunStatusEnum
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 
-from praxis.backend.protocol_core.protocol_definition_models import (
-    FunctionProtocolDefinitionModel, ParameterMetadataModel, AssetRequirementModel, UIHint
-)
 from pydantic import BaseModel as PydanticBaseModel # For explicit Pydantic model check
 
 DEFAULT_DECK_PARAM_NAME = "deck"

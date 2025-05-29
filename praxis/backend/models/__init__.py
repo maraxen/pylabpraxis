@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from .asset_management_orm import (
     ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
-    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, AssetInstanceOrm
+    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, AssetInstanceOrm,
+    PraxisDeviceCategoryEnum
 )
 
 from .protocol_definitions_orm import (
@@ -24,7 +25,7 @@ from .user_management_orm import UserOrm
 from .protocol_pydantic_models import (
     ProtocolStartRequest, ProtocolStatus, ProtocolDirectories,
     ProtocolPrepareRequest, ProtocolInfo, UIHint, ParameterMetadataModel,
-    AssetRequirementModel, ProtocolParameters
+    AssetRequirementModel, ProtocolParameters, FunctionProtocolDefinitionModel
 )
 
 from .asset_pydantic_models import (
@@ -46,5 +47,6 @@ __all__ = [
     "ProtocolStartRequest", "ProtocolStatus", "ProtocolDirectories",
     "ProtocolPrepareRequest", "ProtocolInfo", "UIHint", "ParameterMetadataModel",
     "AssetRequirementModel", "LabwareInventoryDataIn", "LabwareInventoryDataOut",
-    "LabwareInventoryReagentItem", "LabwareInventoryItemCount"
+    "LabwareInventoryReagentItem", "LabwareInventoryItemCount", "ProtocolParameters",
+    "FunctionProtocolDefinitionModel", "PraxisDeviceCategoryEnum"
 ]

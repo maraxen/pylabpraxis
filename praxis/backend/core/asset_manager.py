@@ -1,4 +1,4 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-locals, too-many-branches, too-many-statements, E501
+# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-locals, too-many-branches, too-many-statements, E501, line-too-long
 """
 praxis/core/asset_manager.py
 
@@ -7,36 +7,53 @@ of physical laboratory assets (devices and labware instances). It interacts
 with the AssetDataService for persistence and the WorkcellRuntime for
 live PyLabRobot object interactions.
 
-Version 8: Replaces WorkcellRuntimePlaceholder with actual WorkcellRuntime import.
-           Integrates Python's logging module, replacing print statements.
+Version 9: Refactored to align more closely with PyLabRobot ontology.
+           - Simplifies data extraction using Resource.serialize().
+           - Standardizes use of 'category' and 'model' from serialized data.
+           - Removes redundant _extract_* methods.
 """
+
 from typing import Dict, Any, Optional, List, Type, Tuple, Set, Union
 import importlib
 import inspect
 import pkgutil
-import logging # ADDED for logging
+import logging
 
-from sqlalchemy.orm import Session as DbSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.services import asset_data_service as ads
-
-from praxis.backend.database_models.asset_management_orm import (
-    ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
-    ManagedDeviceStatusEnum, LabwareInstanceStatusEnum,
-    PraxisDeviceCategoryEnum
+from praxis.backend.models import (
+    ManagedDeviceOrm,
+    LabwareInstanceOrm,
+    LabwareDefinitionCatalogOrm,
+    ManagedDeviceStatusEnum,
+    LabwareInstanceStatusEnum,
+    PraxisDeviceCategoryEnum,
+    AssetRequirementModel,
 )
-
-# Praxis Protocol Core Models
-from praxis.backend.protocol_core.protocol_definition_models import AssetRequirementModel
-
-# Import actual WorkcellRuntime
-from praxis.backend.core.workcell_runtime import WorkcellRuntime # ADDED
+from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.utils.plr_inspection import get_resource_constructor_params
+from praxis.backend.core.run_context import (
+    PlrDeck as ProtocolPlrDeck,
+)  # Alias to avoid confusion
 
 import pylabrobot.resources
 from pylabrobot.resources import (
-    Resource as PlrResource, Lid, Carrier, Deck as PlrDeck, Well, Container, Coordinate,
-    PlateCarrier, TipCarrier, Trash, ItemizedResource, PlateAdapter,
-    TipRack, Plate, Trough as PlrTrough
+    Resource as PlrResource,
+    Lid,
+    Carrier,
+    Deck as PlrDeck,  # PyLabRobot's Deck
+    Well,
+    Container,
+    Coordinate,
+    PlateCarrier,
+    TipCarrier,
+    Trash,
+    ItemizedResource,
+    PlateAdapter,
+    TipRack,
+    Plate,
+    Trough as PlrTrough,
 )
 from pylabrobot.resources.plate import Plate as PlrPlate
 from pylabrobot.resources.tip_rack import TipRack as PlrTipRack
@@ -44,17 +61,21 @@ from pylabrobot.resources.tube_rack import TubeRack as PlrTubeRack
 from pylabrobot.resources.tube import Tube as PlrTube
 from pylabrobot.resources.tip import Tip as PlrTip
 from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
-from pylabrobot.liquid_handling.backends.backend import LiquidHandlerBackend
-from praxis.backend.utils.plr_inspection import get_resource_constructor_params
-from praxis.backend.core.run_context import PlrDeck as ProtocolPlrDeck
+
+# Import Machine base class for future use in machine discovery
+from pylabrobot.machines.machine import Machine as PlrMachine
 
 
 # Setup logger for this module
-logger = logging.getLogger(__name__) # ADDED
+logger = logging.getLogger(__name__)
 
-class AssetAcquisitionError(RuntimeError): pass
 
-# Define string constants for categories (as in previous version)
+class AssetAcquisitionError(RuntimeError):
+    """Custom exception for errors during asset acquisition."""
+
+
+# Define string constants for categories (as in previous version, for fallback or specific logic)
+# These should ideally align with or be derived from PLR's own category strings.
 CATEGORY_PLATE = "PLATE"
 CATEGORY_TIP_RACK = "TIP_RACK"
 CATEGORY_LID = "LID"
@@ -72,741 +93,1175 @@ CONSUMABLE_CATEGORIES = {
     CATEGORY_TROUGH,
     CATEGORY_LID,
     CATEGORY_TUBE,
-    CATEGORY_PETRI_DISH
+    CATEGORY_PETRI_DISH,
 }
 
 
 class AssetManager:
-    def __init__(self, db_session: DbSession, workcell_runtime: WorkcellRuntime): # UPDATED type hint
-        self.db: DbSession = db_session
-        self.workcell_runtime = workcell_runtime # UPDATED: No more placeholder
+    """
+    Manages the lifecycle and allocation of assets.
+    """
 
+    def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime):
+        """
+        Initializes the AssetManager.
+
+        Args:
+            db_session: The SQLAlchemy async session.
+            workcell_runtime: The WorkcellRuntime instance for live PLR object interaction.
+        """
+        self.db: AsyncSession = db_session
+        self.workcell_runtime = workcell_runtime
+
+        # Classes to exclude from automatic cataloging if they are too generic or abstract.
         self.EXCLUDED_BASE_CLASSES: List[Type[PlrResource]] = [
-            PlrResource, Container, ItemizedResource, Well, PlrDeck
+            PlrResource,  # Too generic
+            Container,  # Abstract base for wells, tubes, etc.
+            ItemizedResource,  # Abstract base for resources composed of items
+            Well,  # Typically part of a plate/rack, not cataloged standalone
+            PlrDeck,  # Generic deck, specific decks (e.g., HamiltonDeck) are preferred
         ]
-        self.EXCLUDED_CLASS_NAMES: Set[str] = {"WellCreator", "TipCreator", "CarrierSite", "ResourceStack"}
+        # Specific class names to exclude by name.
+        self.EXCLUDED_CLASS_NAMES: Set[str] = {
+            "WellCreator",  # Utility class
+            "TipCreator",  # Utility class
+            "CarrierSite",  # Part of a carrier, not standalone labware
+            "ResourceStack",  # Utility for stacking resources
+        }
 
-    def _extract_dimensions(self,
-                            resource_class: Type[PlrResource],
-                            resource: Optional[PlrResource] = None,
-                            details: Optional[Dict[str, Any]] = None) -> Tuple[Optional[float], Optional[float], Optional[float]]:
-        """Extracts dimensions (x, y, z) in mm."""
-        x, y, z = None, None, None
-        try:
-            if resource:
-                if hasattr(resource, 'get_size_x') and callable(resource.get_size_x): # type: ignore
-                    logger.debug(f"AM_EXTRACT_DIM: Extracted from get_size_x/y/z for {resource_class.__name__}")
-                    return resource.get_size_x(), resource.get_size_y(), resource.get_size_z() # type: ignore
-                if hasattr(resource, 'dimensions') and isinstance(resource.dimensions, Coordinate): # type: ignore
-                    logger.debug(f"AM_EXTRACT_DIM: Extracted from 'dimensions' (Coordinate) for {resource_class.__name__}")
-                    return resource.dimensions.x, resource.dimensions.y, resource.dimensions.z # type: ignore
-
-                size_x, size_y, size_z = None, None, None
-                if hasattr(resource, 'depth'): size_x = getattr(resource, 'depth', None)
-                if hasattr(resource, 'width'): size_y = getattr(resource, 'width', None)
-                if hasattr(resource, 'height'): size_z = getattr(resource, 'height', None)
-
-                if size_x is not None and size_y is not None and size_z is not None:
-                    try:
-                        logger.debug(f"AM_EXTRACT_DIM: Extracted from direct attributes (depth, width, height) for {resource_class.__name__}")
-                        return float(size_x), float(size_y), float(size_z)
-                    except (ValueError, TypeError) as ve:
-                        logger.debug(f"AM_EXTRACT_DIM: Conversion error for depth/width/height for {resource_class.__name__}: {ve}")
-
-            if details:
-                if "dimensions" in details and isinstance(details["dimensions"], dict):
-                    dx_d, dy_d, dz_d = details["dimensions"].get("x"), details["dimensions"].get("y"), details["dimensions"].get("z")
-                    if dx_d is not None and dy_d is not None and dz_d is not None:
-                        logger.debug(f"AM_EXTRACT_DIM: Extracted from details['dimensions'] for {resource_class.__name__}")
-                        return dx_d, dy_d, dz_d
-                if "size_x" in details and "size_y" in details and "size_z" in details:
-                    sx_d, sy_d, sz_d = details.get("size_x"), details.get("size_y"), details.get("size_z")
-                    if sx_d is not None and sy_d is not None and sz_d is not None:
-                        logger.debug(f"AM_EXTRACT_DIM: Extracted from details['size_x/y/z'] for {resource_class.__name__}")
-                        return sx_d, sy_d, sz_d
-
-            if x is None and y is None and z is None:
-                logger.debug(f"AM_EXTRACT_DIM: Dimensions not found through any known attributes or details for {resource_class.__name__}.")
-
-        except Exception as e:
-            logger.exception(f"AM_EXTRACT_DIM: Error extracting dimensions for {resource_class.__name__}: {e}")
-        return x, y, z
-
-    def _extract_volume(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[float]:
-        """Extracts nominal volume in uL."""
-        volume_value = None
-        try:
-            if resource:
-                vol_attrs = ['capacity', 'max_volume', 'total_liquid_volume']
-                for attr in vol_attrs:
-                    if hasattr(resource, attr):
-                        val = getattr(resource, attr)
-                        if isinstance(val, (int, float)):
-                            logger.debug(f"AM_EXTRACT_VOL: Extracted from '{attr}' for {resource_class.__name__}")
-                            volume_value = float(val)
-                            return volume_value
-                if hasattr(resource, 'wells') and resource.wells and hasattr(resource.get_well(0), 'max_volume'): # type: ignore
-                    well_vol = getattr(resource.get_well(0), 'max_volume', None) # type: ignore
-                    if isinstance(well_vol, (int, float)):
-                        logger.debug(f"AM_EXTRACT_VOL: Extracted from 'well.max_volume' for {resource_class.__name__}")
-                        volume_value = float(well_vol)
-                        return volume_value
-            if details:
-                detail_vol_attrs = ['capacity', 'max_volume', 'total_liquid_volume', 'nominal_volume_ul']
-                for attr in detail_vol_attrs:
-                    if attr in details and isinstance(details[attr], (int, float)):
-                        logger.debug(f"AM_EXTRACT_VOL: Extracted from details['{attr}'] for {resource_class.__name__}")
-                        volume_value = float(details[attr])
-                        return volume_value
-
-            if volume_value is None:
-                logger.debug(f"AM_EXTRACT_VOL: Volume not found through any known attributes or details for {resource_class.__name__}.")
-
-        except Exception as e:
-            logger.exception(f"AM_EXTRACT_VOL: Error extracting volume for {resource_class.__name__}: {e}")
-        return volume_value
-
-    def _extract_model_name(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[str]:
-        """Extracts model name."""
-        model_value = None
-        try:
-            if resource and hasattr(resource, 'model') and resource.model:
-                logger.debug(f"AM_EXTRACT_MODEL: Extracted from 'resource.model' for {resource_class.__name__}")
-                model_value = str(resource.model)
-                return model_value
-            if details and "model" in details and details["model"]:
-                logger.debug(f"AM_EXTRACT_MODEL: Extracted from details['model'] for {resource_class.__name__}")
-                model_value = str(details["model"])
-                return model_value
-
-            if model_value is None:
-                  logger.debug(f"AM_EXTRACT_MODEL: Model name not found through any known attributes or details for {resource_class.__name__}.")
-
-        except Exception as e:
-            logger.exception(f"AM_EXTRACT_MODEL: Error extracting model for {resource_class.__name__}: {e}")
-        return model_value
-
-    def _extract_num_items(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[int]:
-        """Extracts the number of items (e.g., tips, wells, tubes)."""
+    def _extract_num_items(
+        self,
+        resource_class: Type[PlrResource],  # For logging context
+        details: Optional[Dict[str, Any]],
+    ) -> Optional[int]:
+        """
+        Extracts the number of items (e.g., tips, wells, tubes) from serialized details.
+        This is relevant for ItemizedResource types.
+        """
         num_items_value = None
+        if not details:
+            return None
         try:
-            if resource:
-                if hasattr(resource, 'num_items') and isinstance(getattr(resource, 'num_items'), int):
-                    logger.debug(f"AM_EXTRACT_NUM: Extracted from 'num_items' for {resource_class.__name__}")
-                    num_items_value = int(getattr(resource, 'num_items'))
-                    return num_items_value
-
-            if details:
-                if "num_items" in details and isinstance(details["num_items"], int):
-                    logger.debug(f"AM_EXTRACT_NUM: Extracted from details['num_items'] for {resource_class.__name__}")
-                    num_items_value = int(details["num_items"])
-                    return num_items_value
-                if "items" in details and isinstance(details["items"], list):
-                    logger.debug(f"AM_EXTRACT_NUM: Extracted from len(details['items']) for {resource_class.__name__}")
-                    num_items_value = len(details["items"])
-                    return num_items_value
-                if "wells" in details and isinstance(details["wells"], list):
-                    logger.debug(f"AM_EXTRACT_NUM: Extracted from len(details['wells']) for {resource_class.__name__}")
-                    num_items_value = len(details["wells"])
-                    return num_items_value
+            # PLR's ItemizedResource.serialize() might include 'num_items'
+            # or a list of 'items' or 'wells'.
+            if "num_items" in details and isinstance(details["num_items"], int):
+                logger.debug(
+                    f"AM_EXTRACT_NUM: Extracted from details['num_items'] for {resource_class.__name__}"
+                )
+                num_items_value = int(details["num_items"])
+            elif "items" in details and isinstance(details["items"], list):
+                logger.debug(
+                    f"AM_EXTRACT_NUM: Extracted from len(details['items']) for {resource_class.__name__}"
+                )
+                num_items_value = len(details["items"])
+            elif "wells" in details and isinstance(
+                details["wells"], list
+            ):  # Common for plates/racks
+                logger.debug(
+                    f"AM_EXTRACT_NUM: Extracted from len(details['wells']) for {resource_class.__name__}"
+                )
+                num_items_value = len(details["wells"])
 
             if num_items_value is None:
-                logger.debug(f"AM_EXTRACT_NUM: Number of items not found through any known attributes or details for {resource_class.__name__}.")
-
-        except Exception as e:
-            logger.exception(f"AM_EXTRACT_NUM: Error extracting num_items for {resource_class.__name__}: {e}")
+                logger.debug(
+                    f"AM_EXTRACT_NUM: Number of items not found in details for {resource_class.__name__}."
+                )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception(
+                f"AM_EXTRACT_NUM: Error extracting num_items for {resource_class.__name__}: {e}"
+            )
         return num_items_value
 
-    def _extract_ordering(self, resource: Optional[PlrResource], resource_class: Type[PlrResource], details: Optional[Dict[str, Any]]) -> Optional[str]:
-        """Extracts a comma-separated string of item names if ordered (e.g., wells in a plate)."""
+    def _extract_ordering(
+        self,
+        resource_class: Type[PlrResource],  # For logging context
+        details: Optional[Dict[str, Any]],
+    ) -> Optional[str]:
+        """
+        Extracts a comma-separated string of item names if ordered (e.g., wells in a plate)
+        from serialized details.
+        """
         ordering_value = None
+        if not details:
+            return None
         try:
-            if resource and isinstance(resource, ItemizedResource):
-                if hasattr(resource, 'wells') and isinstance(getattr(resource, 'wells'), list):
-                    wells_list = getattr(resource, 'wells')
-                    well_names = [getattr(well, 'name', str(i)) for i, well in enumerate(wells_list)]
-                    if well_names:
-                        logger.debug(f"AM_EXTRACT_ORDER: Extracted from 'resource.wells' for {resource_class.__name__}")
-                        ordering_value = ",".join(well_names)
-                        return ordering_value
-            if details:
-                if "ordering" in details and isinstance(details["ordering"], str):
-                    logger.debug(f"AM_EXTRACT_ORDER: Extracted from details['ordering'] for {resource_class.__name__}")
-                    ordering_value = details["ordering"]
-                    return ordering_value
-                if "wells" in details and isinstance(details["wells"], list):
-                    if all(isinstance(w, dict) and "name" in w for w in details["wells"]):
-                        logger.debug(f"AM_EXTRACT_ORDER: Extracted from names in details['wells'] for {resource_class.__name__}")
-                        ordering_value = ",".join([w["name"] for w in details["wells"]])
-                        return ordering_value
+            # Check if 'ordering' is directly provided (less common in standard PLR serialize)
+            if "ordering" in details and isinstance(details["ordering"], str):
+                logger.debug(
+                    f"AM_EXTRACT_ORDER: Extracted from details['ordering'] for {resource_class.__name__}"
+                )
+                ordering_value = details["ordering"]
+            # If 'wells' (or 'items') are detailed as a list of dicts, each with a 'name'
+            elif "wells" in details and isinstance(details["wells"], list):
+                if all(isinstance(w, dict) and "name" in w for w in details["wells"]):
+                    logger.debug(
+                        f"AM_EXTRACT_ORDER: Extracted from names in details['wells'] for {resource_class.__name__}"
+                    )
+                    ordering_value = ",".join([w["name"] for w in details["wells"]])
+            elif "items" in details and isinstance(
+                details["items"], list
+            ):  # General case for ItemizedResource
+                if all(isinstance(i, dict) and "name" in i for i in details["items"]):
+                    logger.debug(
+                        f"AM_EXTRACT_ORDER: Extracted from names in details['items'] for {resource_class.__name__}"
+                    )
+                    ordering_value = ",".join([i["name"] for i in details["items"]])
 
             if ordering_value is None:
-                logger.debug(f"AM_EXTRACT_ORDER: Ordering not found through any known attributes or details for {resource_class.__name__}.")
-
-        except Exception as e:
-            logger.exception(f"AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: {e}")
+                logger.debug(
+                    f"AM_EXTRACT_ORDER: Ordering not found in details for {resource_class.__name__}."
+                )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception(
+                f"AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: {e}"
+            )
         return ordering_value
 
-    def _get_category_from_plr_object(self, plr_object: PlrResource) -> str: # TODO: have it use resource.category
-        """Determines string category from a PyLabRobot resource object."""
-        match plr_object:
-          case PlrPlate():
+    def _get_category_from_plr_object_fallback(self, plr_object_class_name: str) -> str:
+        """
+        Infers string category from a PyLabRobot class name if not directly available.
+        This is a fallback mechanism.
+        """
+        name_lower = plr_object_class_name.lower()
+        # Simplified matching based on common PLR naming patterns
+        if "plate" in name_lower and "carrier" not in name_lower:
             return CATEGORY_PLATE
-          case PlrTipRack():
+        if "tiprack" in name_lower or ("tip" in name_lower and "rack" in name_lower):
             return CATEGORY_TIP_RACK
-          case Lid():
+        if "lid" in name_lower:
             return CATEGORY_LID
-          case PlrTrough():
+        if "trough" in name_lower:
             return CATEGORY_TROUGH
-          case PlrTubeRack():
+        if "tuberack" in name_lower or ("tube" in name_lower and "rack" in name_lower):
             return CATEGORY_TUBE_RACK
-          case PlrPetriDish():
+        if "petridish" in name_lower or (
+            "petri" in name_lower and "dish" in name_lower
+        ):
             return CATEGORY_PETRI_DISH
-          case PlrTube():
-            return CATEGORY_TUBE
-          case Trash():
+        if "tube" in name_lower and "rack" not in name_lower:
+            return CATEGORY_TUBE  # Avoid matching TubeRack as Tube
+        if "trash" in name_lower:
             return CATEGORY_WASTE
-          case PlateCarrier() | TipCarrier() | PlateAdapter() | Carrier():
-            return CATEGORY_CARRIER
-          case PlrResource():
-            return CATEGORY_OTHER
-          case _:
-            return CATEGORY_OTHER # TODO: decide how to handle exceptions
-        return CATEGORY_OTHER
-
-    def _get_category_from_class_name(self, class_name: str) -> str:
-        """Infers string category from a class name string if object instance not available."""
-        name_lower = class_name.lower()
-        match name_lower.split('_'):
-          case [*_, "carrier"]:
-            return CATEGORY_CARRIER
-          case [*_, "plate"]:
-            return CATEGORY_PLATE
-          case [*_, "tiprack"] | [*_, "tip", "rack"]:
-            return CATEGORY_TIP_RACK
-          case [*_, "lid"]:
-            return CATEGORY_LID
-          case [*_, "trough"]:
-            return CATEGORY_TROUGH
-          case [*_, "tuberack"] | [*_, "tube", "rack"]:
-            return CATEGORY_TUBE_RACK
-          case [*_, "trash"]:
-            return CATEGORY_WASTE
-          case [*_, "tube"]:
-            return CATEGORY_TUBE
-          case [*_, "petridish"] | [*_, "petri", "dish"]:
-            return CATEGORY_PETRI_DISH
+        if "carrier" in name_lower or "adapter" in name_lower:
+            return CATEGORY_CARRIER  # PlateAdapter is a carrier type
         return CATEGORY_OTHER
 
     def _is_catalogable_labware_class(self, plr_class: Type[Any]) -> bool:
         """
-        Determines if a PyLabRobot class should be a primary, catalogable labware definition.
+        Determines if a PyLabRobot class represents a primary, catalogable labware definition.
+        Args:
+            plr_class: The class to check.
+        Returns:
+            True if the class should be cataloged, False otherwise.
         """
         if not inspect.isclass(plr_class) or not issubclass(plr_class, PlrResource):
-            return False
+            return False  # Must be a class and a subclass of PlrResource
         if inspect.isabstract(plr_class):
-            return False
+            return False  # Skip abstract classes
         if plr_class in self.EXCLUDED_BASE_CLASSES:
-            return False
+            return False  # Skip explicitly excluded base/generic classes
         if plr_class.__name__ in self.EXCLUDED_CLASS_NAMES:
-            return False
+            return False  # Skip explicitly excluded class names
+        # Ensure it's from a PLR resources module (or sub-modules)
         if not plr_class.__module__.startswith("pylabrobot.resources"):
             return False
         return True
 
-    def sync_pylabrobot_definitions(self, plr_resources_package=pylabrobot.resources) -> Tuple[int, int]:
+    async def sync_pylabrobot_definitions(
+        self, plr_resources_package=pylabrobot.resources
+    ) -> Tuple[int, int]:
         """
         Scans PyLabRobot's resources by introspecting modules and classes,
         then populates/updates the LabwareDefinitionCatalogOrm.
+        This method focuses on PLR Resources (labware). Machine discovery might be separate.
+
+        Args:
+            plr_resources_package: The base PyLabRobot package to scan (default: pylabrobot.resources).
+
+        Returns:
+            A tuple (added_count, updated_count) of labware definitions.
         """
-        logger.info(f"AM_SYNC: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}")
-        added_count = 0; updated_count = 0
+        logger.info(
+            f"AM_SYNC: Starting PyLabRobot labware definition sync from package: {plr_resources_package.__name__}"
+        )
+        added_count = 0
+        updated_count = 0
         processed_fqns: Set[str] = set()
 
-        for importer, modname, ispkg in pkgutil.walk_packages(
-            path=plr_resources_package.__path__, # type: ignore
-            prefix=plr_resources_package.__name__ + '.',
-            onerror=lambda x: logger.error(f"AM_SYNC: Error walking package {x}")
+        for _, modname, _ in pkgutil.walk_packages(
+            path=plr_resources_package.__path__,  # type: ignore
+            prefix=plr_resources_package.__name__ + ".",
+            onerror=lambda x: logger.error(f"AM_SYNC: Error walking package {x}"),
         ):
             try:
                 module = importlib.import_module(modname)
-            except Exception as e:
-                logger.warning(f"AM_SYNC: Could not import module {modname} during sync: {e}")
+            except ImportError as e:
+                logger.warning(
+                    f"AM_SYNC: Could not import module {modname} during sync: {e}"
+                )
                 continue
 
-            for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
+            for class_name, plr_class_obj in inspect.getmembers(
+                module, inspect.isclass
+            ):
                 fqn = f"{modname}.{class_name}"
-                if fqn in processed_fqns: continue
+                if fqn in processed_fqns:
+                    continue
                 processed_fqns.add(fqn)
 
-                logger.debug(f"AM_SYNC: Found class {fqn}. Checking if catalogable...")
+                logger.debug(
+                    f"AM_SYNC: Found class {fqn}. Checking if catalogable labware..."
+                )
 
                 if not self._is_catalogable_labware_class(plr_class_obj):
-                    logger.debug(f"AM_SYNC: Skipping {fqn} - not a catalogable labware class.")
+                    logger.debug(
+                        f"AM_SYNC: Skipping {fqn} - not a catalogable labware class."
+                    )
                     continue
 
                 logger.debug(f"AM_SYNC: Processing potential labware class: {fqn}")
                 temp_instance: Optional[PlrResource] = None
+                serialized_data: Optional[Dict[str, Any]] = None
                 can_instantiate = True
-                kwargs_for_instantiation: Dict[str, Any] = {"name": f"praxis_sync_temp_{class_name}"}
 
+                # Prepare kwargs for instantiation, attempting to satisfy required constructor args.
+                kwargs_for_instantiation: Dict[str, Any] = {
+                    "name": f"praxis_sync_temp_{class_name}"
+                }
                 try:
                     constructor_params = get_resource_constructor_params(plr_class_obj)
                     for param_name, param_info in constructor_params.items():
-                        if param_name in ["self", "name"]: continue
+                        if param_name in [
+                            "self",
+                            "name",
+                            "category",
+                            "model",
+                        ]:  # 'name' is handled, category/model come from serialize
+                            continue
                         if param_info["required"] and param_info["default"] is None:
                             param_type_str = param_info["type"].lower()
+                            # Provide sensible defaults for common types
                             if "optional[" in param_type_str:
-                              kwargs_for_instantiation[param_name] = None
+                                kwargs_for_instantiation[param_name] = None
                             elif "str" in param_type_str:
-                              kwargs_for_instantiation[param_name] = ""
+                                kwargs_for_instantiation[param_name] = (
+                                    f"default_{param_name}"
+                                )
                             elif "int" in param_type_str:
-                              kwargs_for_instantiation[param_name] = 0
+                                kwargs_for_instantiation[param_name] = 0
                             elif "float" in param_type_str:
-                              kwargs_for_instantiation[param_name] = 0.0
+                                kwargs_for_instantiation[param_name] = 0.0
                             elif "bool" in param_type_str:
-                              kwargs_for_instantiation[param_name] = False
+                                kwargs_for_instantiation[param_name] = False
                             elif "list" in param_type_str:
-                              kwargs_for_instantiation[param_name] = []
+                                kwargs_for_instantiation[param_name] = []
                             elif "dict" in param_type_str:
-                              kwargs_for_instantiation[param_name] = {}
-                            else:
-                                logger.info(f"AM_SYNC: Skipping instantiation for {fqn} due to complex required parameter '{param_name}' of type '{param_info['type']}'. Will rely on class-level data.")
-                                can_instantiate = False
-                                break
+                                kwargs_for_instantiation[param_name] = {}
+                            else:  # If a complex, unknown required param, we might not be able to instantiate.
+                                logger.info(
+                                    f"AM_SYNC: Cannot auto-default required parameter '{param_name}' of type '{param_info['type']}' for {fqn}. Instantiation might fail or be skipped."
+                                )
+                                # For some resources, instantiation might still work if PLR has internal defaults
+                                # or if the parameter is not strictly needed for basic serialization.
+                                # We'll let it try and catch the error if it fails.
                     if can_instantiate:
-                        logger.debug(f"AM_SYNC: Attempting instantiation of {fqn} with kwargs: {kwargs_for_instantiation}")
+                        logger.debug(
+                            f"AM_SYNC: Attempting instantiation of {fqn} with kwargs: {kwargs_for_instantiation}"
+                        )
                         temp_instance = plr_class_obj(**kwargs_for_instantiation)
-                except Exception as inst_err:
-                    logger.warning(f"AM_SYNC: Instantiation of {fqn} failed even with smart defaults: {inst_err}. Proceeding with class-level data extraction.", exc_info=True)
-                    temp_instance = None
+                        serialized_data = temp_instance.serialize()
+                        if "name" in serialized_data:  # Remove the temporary name
+                            del serialized_data["name"]
+                except Exception as inst_err:  # pylint: disable=broad-except
+                    logger.warning(
+                        f"AM_SYNC: Instantiation or serialization of {fqn} failed: {inst_err}. "
+                        f"Will attempt to proceed with class-level data if possible, but some attributes might be missing.",
+                        exc_info=True,
+                    )
+                    temp_instance = None  # Ensure it's None if instantiation failed
+                    serialized_data = None
 
-                if not can_instantiate and temp_instance is None:
-                      logger.info(f"AM_SYNC: Proceeding to extract data for {fqn} without a temporary instance (either skipped or failed instantiation).")
+                # --- Extract data primarily from serialized_data ---
+                size_x = serialized_data.get("size_x") if serialized_data else None
+                size_y = serialized_data.get("size_y") if serialized_data else None
+                size_z = serialized_data.get("size_z") if serialized_data else None
 
-                details_json: Optional[Dict[str, Any]] = None
-                if temp_instance and hasattr(temp_instance, 'serialize') and callable(temp_instance.serialize):
-                    try:
-                        details_json = temp_instance.serialize()
-                        if 'name' in details_json: del details_json['name']
-                    except Exception as ser_err: logger.warning(f"AM_SYNC: Serialize failed for {fqn}: {ser_err}")
+                # Volume: PLR standard 'serialize' for containers (Plate, TipRack, Trough, Well) includes 'max_volume' at the item level (well/tip).
+                # For the overall resource, it's more about the individual item volumes.
+                # We'll look for 'max_volume' if it's directly on the serialized data (less common for parent resource)
+                # or rely on num_items * item_volume if needed elsewhere.
+                # For now, let's try to get a representative volume if available.
+                nominal_volume_ul: Optional[float] = None
+                if serialized_data:
+                    if (
+                        "max_volume" in serialized_data
+                    ):  # e.g. for a single Well or Tube
+                        nominal_volume_ul = float(serialized_data["max_volume"])
+                    elif (
+                        "wells" in serialized_data
+                        and isinstance(serialized_data["wells"], list)
+                        and serialized_data["wells"]
+                    ):
+                        first_well = serialized_data["wells"][0]
+                        if isinstance(first_well, dict) and "max_volume" in first_well:
+                            nominal_volume_ul = float(first_well["max_volume"])
+                    elif (
+                        "items" in serialized_data
+                        and isinstance(serialized_data["items"], list)
+                        and serialized_data["items"]
+                    ):  # for TipRacks
+                        first_item = serialized_data["items"][0]
+                        if (
+                            isinstance(first_item, dict) and "volume" in first_item
+                        ):  # Tips have 'volume'
+                            nominal_volume_ul = float(first_item["volume"])
 
-                size_x, size_y, size_z = self._extract_dimensions(plr_class_obj, temp_instance, details_json)
-                nominal_volume_ul = self._extract_volume(temp_instance, plr_class_obj, details_json)
-                model_name = self._extract_model_name(temp_instance, plr_class_obj, details_json)
-                num_items = self._extract_num_items(temp_instance, plr_class_obj, details_json)
-                ordering_str = self._extract_ordering(temp_instance, plr_class_obj, details_json)
+                # Model name: From serialized_data['model'] or fallback to serialized_data['type'] (class name)
+                model_name = serialized_data.get("model") if serialized_data else None
+                if not model_name and serialized_data and serialized_data.get("type"):
+                    model_name = serialized_data.get(
+                        "type"
+                    )  # Use class name as model if no explicit model
+                elif (
+                    not model_name
+                ):  # Fallback if no serialized_data or model/type in it
+                    model_name = class_name
 
-                if details_json is None:
-                  details_json = {}
-                if num_items is not None:
-                  details_json["praxis_extracted_num_items"] = num_items
-                if ordering_str is not None:
-                  details_json["praxis_extracted_ordering"] = ordering_str
+                # pylabrobot_def_name: Unique identifier for the labware type in Praxis.
+                # Prioritize model, then type (class name from serialization), then FQN.
+                pylabrobot_def_name = (
+                    model_name  # Start with model_name (which might be class_name)
+                )
+                if (
+                    not pylabrobot_def_name
+                ):  # Should not happen if model_name has fallback to class_name
+                    pylabrobot_def_name = fqn
+                    logger.warning(
+                        f"AM_SYNC: Using FQN '{fqn}' as pylabrobot_def_name for {class_name} due to missing model/type."
+                    )
+
+                # Category: Directly from serialized_data['category'] if available
+                category = serialized_data.get("category") if serialized_data else None
+                if not category:  # Fallback if not in serialized data
+                    category = self._get_category_from_plr_object_fallback(class_name)
+                    logger.debug(
+                        f"AM_SYNC: Used fallback category '{category}' for {fqn}"
+                    )
+
+                # Num items and Ordering (for ItemizedResources)
+                num_items = self._extract_num_items(plr_class_obj, serialized_data)
+                ordering_str = self._extract_ordering(plr_class_obj, serialized_data)
+
+                # Add extracted num_items and ordering to details_json if not already there from serialize
+                # This makes the stored JSON more complete with Praxis-derived info.
+                details_for_db = serialized_data if serialized_data is not None else {}
+                if (
+                    num_items is not None
+                    and "praxis_extracted_num_items" not in details_for_db
+                ):
+                    details_for_db["praxis_extracted_num_items"] = num_items
+                if (
+                    ordering_str is not None
+                    and "praxis_extracted_ordering" not in details_for_db
+                ):
+                    details_for_db["praxis_extracted_ordering"] = ordering_str
+
+                # Description
+                description = inspect.getdoc(plr_class_obj) or fqn
+
+                # Is consumable
+                is_consumable = category in CONSUMABLE_CATEGORIES
+
+                # Praxis type name (can be more specific or user-friendly if needed, defaults to model_name)
+                praxis_type_name = model_name
+
+                logger.debug(
+                    f"AM_SYNC: Preparing to save/update {pylabrobot_def_name} (FQN: {fqn}): "
+                    f"Category={category}, Model={model_name}, Vol={nominal_volume_ul}, "
+                    f"X={size_x}, Y={size_y}, Z={size_z}, NumItems={num_items}, "
+                    f"Ordering={'Present' if ordering_str else 'N/A'}..."
+                )
 
                 try:
-                    pylabrobot_def_name: Optional[str] = None
-                    category: str
-                    description: Optional[str]
-                    is_consumable: bool = False
-                    praxis_type_name: Optional[str] = model_name
-
-                    if temp_instance:
-                        if hasattr(temp_instance, 'category') and isinstance(temp_instance.category, str) and temp_instance.category:
-                            pylabrobot_def_name = temp_instance.category
-                        if not pylabrobot_def_name and model_name:
-                          pylabrobot_def_name = model_name
-                        if not praxis_type_name:
-                          praxis_type_name = getattr(temp_instance, 'model', None) or plr_class_obj.__name__
-                        category = self._get_category_from_plr_object(temp_instance)
-                        description = inspect.getdoc(plr_class_obj) or temp_instance.name
-                        is_consumable = category in CONSUMABLE_CATEGORIES
-                    else:
-                        if hasattr(plr_class_obj, 'resource_type') and isinstance(plr_class_obj.resource_type, str) and plr_class_obj.resource_type: # type: ignore
-                            pylabrobot_def_name = plr_class_obj.resource_type # type: ignore
-                        if not praxis_type_name: praxis_type_name = plr_class_obj.__name__
-                        category = self._get_category_from_class_name(plr_class_obj.__name__)
-                        description = inspect.getdoc(plr_class_obj)
-                        is_consumable = category in CONSUMABLE_CATEGORIES
-
-                    if not pylabrobot_def_name: pylabrobot_def_name = fqn
-                    if not description: description = fqn
-
-                    logger.debug(f"AM_SYNC: Syncing {pylabrobot_def_name} (FQN: {fqn}): Category={category}, Model={model_name}, Vol={nominal_volume_ul}, X={size_x}, Y={size_y}, Z={size_z}, NumItems={num_items}, Ordering={ordering_str[:50] if ordering_str else 'N/A'}...")
-
-                    existing_def_orm = ads.get_labware_definition(self.db, pylabrobot_def_name)
-                    ads.add_or_update_labware_definition(
+                    existing_def_orm = await ads.get_labware_definition(
+                        self.db, pylabrobot_def_name
+                    )
+                    await ads.add_or_update_labware_definition(
                         db=self.db,
-                        pylabrobot_definition_name=pylabrobot_def_name,
+                        pylabrobot_definition_name=pylabrobot_def_name,  # This is our key
                         python_fqn=fqn,
-                        praxis_labware_type_name=praxis_type_name,
+                        praxis_labware_type_name=praxis_type_name,  # Could be same as pylabrobot_definition_name or more specific
                         description=description,
+                        category_str=category,  # Storing the determined category string
                         is_consumable=is_consumable,
-                        nominal_volume_ul=nominal_volume_ul, # TODO: add material and manufacturer
-                        plr_definition_details_json=details_json
+                        nominal_volume_ul=nominal_volume_ul,
+                        dim_x_mm=size_x,
+                        dim_y_mm=size_y,
+                        dim_z_mm=size_z,
+                        # TODO: Add material and manufacturer if discoverable from PLR or config
+                        plr_definition_details_json=details_for_db,  # Store the (potentially augmented) serialized data
                     )
                     if not existing_def_orm:
-                      added_count += 1
+                        added_count += 1
+                        logger.info(
+                            f"AM_SYNC: Added new labware definition: {pylabrobot_def_name}"
+                        )
                     else:
-                      updated_count += 1
-                except Exception as e_proc:
-                    logger.exception(f"AM_SYNC: Could not process or save PLR class '{fqn}': {e_proc}")
-                finally:
-                    if temp_instance: del temp_instance
+                        updated_count += 1
+                        logger.info(
+                            f"AM_SYNC: Updated existing labware definition: {pylabrobot_def_name}"
+                        )
 
-        logger.info(f"AM_SYNC: Labware definition sync complete. Added: {added_count}, Updated: {updated_count}")
+                except Exception as e_proc:  # pylint: disable=broad-except
+                    logger.exception(
+                        f"AM_SYNC: Could not process or save PLR class '{fqn}' (Def Name: {pylabrobot_def_name}): {e_proc}"
+                    )
+                finally:
+                    if temp_instance:  # Explicitly delete to free memory, though Python GC should handle it.
+                        del temp_instance
+                        del serialized_data
+
+        logger.info(
+            f"AM_SYNC: Labware definition sync complete. Added: {added_count}, Updated: {updated_count}"
+        )
         return added_count, updated_count
 
-    def apply_deck_configuration(self, deck_identifier: Union[str, ProtocolPlrDeck], protocol_run_guid: str) -> PlrDeck:
+    async def apply_deck_configuration(
+        self, deck_identifier: Union[str, ProtocolPlrDeck], protocol_run_guid: str
+    ) -> PlrDeck:
+        """
+        Applies a deck configuration by initializing the deck device and assigning pre-configured labware.
+
+        Args:
+            deck_identifier: The name of the deck layout or a ProtocolPlrDeck object.
+            protocol_run_guid: The GUID of the current protocol run.
+
+        Returns:
+            The live PyLabRobot Deck object.
+
+        Raises:
+            AssetAcquisitionError: If the deck or its components cannot be configured.
+        """
         deck_name: str
-        if isinstance(deck_identifier, ProtocolPlrDeck):
+        if isinstance(deck_identifier, ProtocolPlrDeck):  # From protocol definition
             deck_name = deck_identifier.name
-        elif isinstance(deck_identifier, str):
+        elif isinstance(deck_identifier, str):  # From name string
             deck_name = deck_identifier
         else:
-            raise TypeError(f"Unsupported deck_identifier type: {type(deck_identifier)}. Expected str or PlrDeck (protocol definition).")
+            raise TypeError(
+                f"Unsupported deck_identifier type: {type(deck_identifier)}. Expected str or ProtocolPlrDeck."
+            )
 
-        logger.info(f"AM_DECK_CONFIG: Applying deck configuration for '{deck_name}', run_guid: {protocol_run_guid}")
-
-        deck_layout_orm = ads.get_deck_layout_by_name(self.db, deck_name)
-        if not deck_layout_orm:
-            raise AssetAcquisitionError(f"Deck layout '{deck_name}' not found in database.")
-
-        deck_devices_orm = ads.list_managed_devices(
-            self.db,
-            pylabrobot_class_filter=PlrDeck.__name__,
+        logger.info(
+            f"AM_DECK_CONFIG: Applying deck configuration for '{deck_name}', run_guid: {protocol_run_guid}"
         )
-        if not deck_devices_orm:
-            raise AssetAcquisitionError(f"No ManagedDevice found for deck '{deck_name}' with category DECK.")
-        if len(deck_devices_orm) > 1: # pragma: no cover
-            raise AssetAcquisitionError(f"Multiple ManagedDevices found for deck '{deck_name}' with category DECK. Ambiguous.")
 
-        deck_device_orm = deck_devices_orm[0]
+        deck_layout_orm = await ads.get_deck_layout_by_name(self.db, deck_name)
+        if not deck_layout_orm:
+            raise AssetAcquisitionError(
+                f"Deck layout '{deck_name}' not found in database."
+            )
 
-        if deck_device_orm.current_status == ManagedDeviceStatusEnum.IN_USE and \
-          deck_device_orm.current_protocol_run_guid != protocol_run_guid:
-            raise AssetAcquisitionError(f"Deck device '{deck_name}' (ID: {deck_device_orm.id}) is already in use by another run '{deck_device_orm.current_protocol_run_guid}'.")
+        # Find the ManagedDeviceOrm corresponding to this deck.
+        # A deck is a PLR Resource and often a PLR Machine (or has a machine backend).
+        # We search by user_friendly_name which should match deck_name for the main deck.
+        # The FQN for a PLR Deck resource is like 'pylabrobot.resources.deck.Deck'.
+        # However, specific deck types (e.g. HamiltonDeck) are subclasses.
+        # For now, assume the deck_name in layout matches the user_friendly_name of the deck device.
+        deck_devices_orm = await ads.list_managed_devices(
+            self.db,
+            user_friendly_name_filter=deck_name,
+            # We might need a more robust way to identify the deck device,
+            # e.g., by a specific PraxisDeviceCategoryEnum.DECK_CONTROLLER or similar.
+            # For now, filtering by name and checking if it's a PlrDeck type.
+        )
 
-        live_plr_deck_object = self.workcell_runtime.initialize_device_backend(deck_device_orm)
-        if not live_plr_deck_object:
-            raise AssetAcquisitionError(f"Failed to initialize backend for deck device '{deck_name}' (ID: {deck_device_orm.id}). Check WorkcellRuntime.")
+        # Filter for actual deck devices
+        actual_deck_device_orm: Optional[ManagedDeviceOrm] = None
+        for dev_orm in deck_devices_orm:
+            # This check might be too simplistic if the FQN is for a generic Deck
+            # and the actual instance is, e.g., a HamiltonStarDeck.
+            # TODO: Refine deck device identification.
+            if "Deck" in dev_orm.pylabrobot_class_name:  # Basic check
+                # Check if it's a PLR Deck or subclass by trying to import and check inheritance
+                try:
+                    module_path, class_n = dev_orm.pylabrobot_class_name.rsplit(".", 1)
+                    module = importlib.import_module(module_path)
+                    cls_obj = getattr(module, class_n)
+                    if issubclass(cls_obj, PlrDeck):
+                        actual_deck_device_orm = dev_orm
+                        break
+                except (ImportError, AttributeError, ValueError) as e:
+                    logger.warning(
+                        f"Could not verify class for device {dev_orm.user_friendly_name} (FQN: {dev_orm.pylabrobot_class_name}): {e}"
+                    )
 
-        ads.update_managed_device_status(
+        if not actual_deck_device_orm:
+            raise AssetAcquisitionError(
+                f"No ManagedDevice found and verified as a PLR Deck for deck name '{deck_name}'."
+            )
+
+        deck_device_orm = actual_deck_device_orm
+
+        if (
+            deck_device_orm.current_status == ManagedDeviceStatusEnum.IN_USE
+            and deck_device_orm.current_protocol_run_guid != protocol_run_guid
+        ):
+            raise AssetAcquisitionError(
+                f"Deck device '{deck_name}' (ID: {deck_device_orm.id}) is already in use by another run '{deck_device_orm.current_protocol_run_guid}'."
+            )
+
+        # Initialize the deck device through WorkcellRuntime
+        live_plr_deck_object = self.workcell_runtime.initialize_device_backend(
+            deck_device_orm
+        )
+        if not live_plr_deck_object or not isinstance(live_plr_deck_object, PlrDeck):
+            raise AssetAcquisitionError(
+                f"Failed to initialize backend for deck device '{deck_name}' (ID: {deck_device_orm.id}) or it's not a PlrDeck. Check WorkcellRuntime."
+            )
+
+        await ads.update_managed_device_status(
             self.db,
             deck_device_orm.id,
             ManagedDeviceStatusEnum.IN_USE,
             current_protocol_run_guid=protocol_run_guid,
-            status_details=f"Deck '{deck_name}' in use by run {protocol_run_guid}"
+            status_details=f"Deck '{deck_name}' in use by run {protocol_run_guid}",
         )
-        logger.info(f"AM_DECK_CONFIG: Deck device '{deck_name}' (ID: {deck_device_orm.id}) backend initialized and marked IN_USE.")
+        logger.info(
+            f"AM_DECK_CONFIG: Deck device '{deck_name}' (ID: {deck_device_orm.id}) backend initialized and marked IN_USE."
+        )
 
-        deck_slots_orm = [] # ads.get_deck_slots_for_layout(self.db, deck_layout_orm.id) # TODO: implement this
-        logger.info(f"AM_DECK_CONFIG: Found {len(deck_slots_orm)} slots for deck layout '{deck_name}'.")
+        # Get DeckSlotOrm entries associated with the DeckLayoutOrm
+        deck_slots_orm = await ads.get_deck_slots_for_layout(
+            self.db, deck_layout_orm.id
+        )
+        logger.info(
+            f"AM_DECK_CONFIG: Found {len(deck_slots_orm)} slots for deck layout '{deck_name}' (Layout ID: {deck_layout_orm.id})."
+        )
 
         for slot_orm in deck_slots_orm:
             if slot_orm.pre_assigned_labware_instance_id:
                 labware_instance_id = slot_orm.pre_assigned_labware_instance_id
-                logger.info(f"AM_DECK_CONFIG: Slot '{slot_orm.slot_name}' has pre-assigned labware instance ID: {labware_instance_id}.")
+                logger.info(
+                    f"AM_DECK_CONFIG: Slot '{slot_orm.slot_name}' (Slot ID: {slot_orm.id}) has pre-assigned labware instance ID: {labware_instance_id}."
+                )
 
-                labware_instance_orm = ads.get_labware_instance_by_id(self.db, labware_instance_id)
+                labware_instance_orm = await ads.get_labware_instance_by_id(
+                    self.db, labware_instance_id
+                )
                 if not labware_instance_orm:
-                    raise AssetAcquisitionError(f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' not found.")
+                    logger.error(
+                        f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' not found. Skipping assignment."
+                    )
+                    continue  # Or raise error, depending on desired strictness
 
-                if labware_instance_orm.current_status not in [LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE, LabwareInstanceStatusEnum.AVAILABLE_ON_DECK]:
-                    if labware_instance_orm.current_protocol_run_guid == protocol_run_guid and \
-                      labware_instance_orm.location_device_id == deck_device_orm.id and \
-                      labware_instance_orm.current_deck_slot_name == slot_orm.slot_name:
-                        logger.warning(f"AM_DECK_CONFIG: Labware instance {labware_instance_id} in slot '{slot_orm.slot_name}' is already IN_USE by this run. Assuming already configured.")
-                        continue
+                # Check labware status
+                if (
+                    labware_instance_orm.current_status
+                    == LabwareInstanceStatusEnum.IN_USE
+                    and labware_instance_orm.current_protocol_run_guid
+                    == protocol_run_guid
+                    and labware_instance_orm.location_device_id == deck_device_orm.id
+                    and labware_instance_orm.current_deck_slot_name
+                    == slot_orm.slot_name
+                ):
+                    logger.warning(
+                        f"AM_DECK_CONFIG: Labware instance {labware_instance_id} in slot '{slot_orm.slot_name}' is already IN_USE by this run and at this location. Assuming already configured."
+                    )
+                    # Ensure it's in WorkcellRuntime's view of the deck
+                    # This might involve re-asserting the assignment in WorkcellRuntime if it clears state.
+                    # For now, we assume if DB state is correct, WCR will reflect it or re-establish.
+                    continue
+
+                if labware_instance_orm.current_status not in [
+                    LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                    LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+                ]:
                     raise AssetAcquisitionError(
-                      f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' is not available "
-                      f"(status: {labware_instance_orm.current_status}, run: {labware_instance_orm.current_protocol_run_guid})."
+                        f"Labware instance ID {labware_instance_id} for slot '{slot_orm.slot_name}' is not available "
+                        f"(status: {labware_instance_orm.current_status}, run: {labware_instance_orm.current_protocol_run_guid})."
                     )
 
-                labware_def_orm = ads.get_labware_definition(self.db, labware_instance_orm.pylabrobot_definition_name)
+                labware_def_orm = await ads.get_labware_definition(
+                    self.db, labware_instance_orm.pylabrobot_definition_name
+                )
                 if not labware_def_orm or not labware_def_orm.python_fqn:
-                    raise AssetAcquisitionError(f"Python FQN not found for labware definition '{labware_instance_orm.pylabrobot_definition_name}' (instance ID {labware_instance_id}).")
+                    raise AssetAcquisitionError(
+                        f"Python FQN not found for labware definition '{labware_instance_orm.pylabrobot_definition_name}' (instance ID {labware_instance_id})."
+                    )
 
-                live_plr_labware = self.workcell_runtime.create_or_get_labware_plr_object(
-                    labware_instance_orm=labware_instance_orm,
-                    labware_definition_fqn=labware_def_orm.python_fqn
+                live_plr_labware = (
+                    self.workcell_runtime.create_or_get_labware_plr_object(
+                        labware_instance_orm=labware_instance_orm,
+                        labware_definition_fqn=labware_def_orm.python_fqn,
+                    )
                 )
                 if not live_plr_labware:
-                    raise AssetAcquisitionError(f"Failed to create PLR object for labware instance ID {labware_instance_id} in slot '{slot_orm.slot_name}'.")
+                    raise AssetAcquisitionError(
+                        f"Failed to create PLR object for labware instance ID {labware_instance_id} in slot '{slot_orm.slot_name}'."
+                    )
 
-                logger.info(f"AM_DECK_CONFIG: Assigning labware '{live_plr_labware.name}' (Instance ID: {labware_instance_id}) to deck '{deck_name}' slot '{slot_orm.slot_name}'.")
+                logger.info(
+                    f"AM_DECK_CONFIG: Assigning labware '{live_plr_labware.name}' (Instance ID: {labware_instance_id}) to deck '{deck_name}' slot '{slot_orm.slot_name}'."
+                )
+                # Assign to PLR Deck object via WorkcellRuntime
                 self.workcell_runtime.assign_labware_to_deck_slot(
-                    deck_device_orm_id=deck_device_orm.id,
+                    deck_device_orm_id=deck_device_orm.id,  # Pass the ManagedDeviceOrm ID of the deck
                     slot_name=slot_orm.slot_name,
                     labware_plr_object=live_plr_labware,
-                    labware_instance_orm_id=labware_instance_id
+                    labware_instance_orm_id=labware_instance_id,
                 )
-                ads.update_labware_instance_location_and_status(
+                # Update LabwareInstanceOrm status and location
+                await ads.update_labware_instance_location_and_status(
                     db=self.db,
                     labware_instance_id=labware_instance_id,
                     new_status=LabwareInstanceStatusEnum.IN_USE,
                     current_protocol_run_guid=protocol_run_guid,
-                    location_device_id=deck_device_orm.id,
+                    location_device_id=deck_device_orm.id,  # Its location is now this deck device
                     current_deck_slot_name=slot_orm.slot_name,
-                    #deck_slot_orm_id=slot_orm.id, # TODO: implement this or deprecate
-                    status_details=f"On deck '{deck_name}' slot '{slot_orm.slot_name}' for run {protocol_run_guid}"
+                    deck_slot_orm_id=slot_orm.id,
+                    status_details=f"On deck '{deck_name}' slot '{slot_orm.slot_name}' for run {protocol_run_guid}",
                 )
-                logger.info(f"AM_DECK_CONFIG: Labware instance ID {labware_instance_id} marked IN_USE on slot '{slot_orm.slot_name}'.")
+                logger.info(
+                    f"AM_DECK_CONFIG: Labware instance ID {labware_instance_id} marked IN_USE on slot '{slot_orm.slot_name}'."
+                )
 
-        logger.info(f"AM_DECK_CONFIG: Deck configuration for '{deck_name}' applied successfully.")
-        if not isinstance(live_plr_deck_object, PlrDeck):
-            logger.warning(f"AM_DECK_CONFIG: WorkcellRuntime returned an object of type '{type(live_plr_deck_object)}' for deck, not PlrDeck. Ensure compatibility.")
-        return live_plr_deck_object # type: ignore
-
-    def acquire_device(self, protocol_run_guid: str, requested_asset_name_in_protocol: str, pylabrobot_class_name_constraint: str, constraints: Optional[Dict[str, Any]] = None) -> Tuple[Any, int, str]:
-        logger.info(f"Acquiring device '{requested_asset_name_in_protocol}' (type constraint: '{pylabrobot_class_name_constraint}') for run '{protocol_run_guid}'. Constraints: {constraints}")
-        device_orm_list = ads.list_managed_devices(
-            self.db,
-            status=ManagedDeviceStatusEnum.AVAILABLE,
-            pylabrobot_class_filter=pylabrobot_class_name_constraint
+        logger.info(
+            f"AM_DECK_CONFIG: Deck configuration for '{deck_name}' applied successfully."
         )
-        selected_device_orm: Optional[ManagedDeviceOrm] = None
-        if device_orm_list:
-            selected_device_orm = device_orm_list[0]
-        else:
-            in_use_by_this_run_list = ads.list_managed_devices(
-                self.db,
-                pylabrobot_class_filter=pylabrobot_class_name_constraint,
-                status=ManagedDeviceStatusEnum.IN_USE
-            )
-            if in_use_by_this_run_list:
-                selected_device_orm = in_use_by_this_run_list[0]
-                logger.info(f"Device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}) is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring.")
-            else:
-                raise AssetAcquisitionError(f"No device found matching type constraint '{pylabrobot_class_name_constraint}' and status AVAILABLE, nor already in use by this run.")
-        if not selected_device_orm:
-              raise AssetAcquisitionError(f"Device selection failed for '{requested_asset_name_in_protocol}'.")
-        logger.info(f"Attempting to initialize backend for selected device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}) via WorkcellRuntime.")
-        live_plr_device = self.workcell_runtime.initialize_device_backend(selected_device_orm)
-        if not live_plr_device:
-            error_msg = f"Failed to initialize backend for device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}). Check WorkcellRuntime logs and device status in DB."
-            logger.error(error_msg)
-            raise AssetAcquisitionError(error_msg)
-        logger.info(f"Backend for device '{selected_device_orm.user_friendly_name}' initialized. Marking as IN_USE for run '{protocol_run_guid}'.")
-        updated_device_orm = ads.update_managed_device_status(
-            self.db,
-            selected_device_orm.id,
-            ManagedDeviceStatusEnum.IN_USE,
-            current_protocol_run_guid=protocol_run_guid,
-            status_details=f"In use by run {protocol_run_guid}"
-        )
-        if not updated_device_orm:
-            critical_error_msg = f"CRITICAL: Device '{selected_device_orm.user_friendly_name}' backend is live, but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'."
-            logger.error(critical_error_msg)
-            raise AssetAcquisitionError(critical_error_msg)
-        logger.info(f"Device '{updated_device_orm.user_friendly_name}' (ID: {updated_device_orm.id}) successfully acquired and backend initialized for run '{protocol_run_guid}'.")
-        return live_plr_device, selected_device_orm.id, "device"
+        return live_plr_deck_object
 
-    def acquire_labware(
+    async def acquire_device(
         self,
         protocol_run_guid: str,
         requested_asset_name_in_protocol: str,
-        pylabrobot_definition_name_constraint: str,
-        user_choice_instance_id: Optional[int] = None,
-        location_constraints: Optional[Dict[str, Any]] = None,
-        property_constraints: Optional[Dict[str, Any]] = None
+        pylabrobot_class_name_constraint: str,  # This should be the FQN of the PLR Machine class
+        constraints: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, int, str]:
-        logger.info(f"AM_ACQUIRE: Acquiring labware '{requested_asset_name_in_protocol}' (definition name constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'.")
-        if property_constraints:
-            logger.info(f"AM_ACQUIRE: Labware acquisition for '{requested_asset_name_in_protocol}' includes property_constraints: {property_constraints}")
+        """
+        Acquires a device (PLR Machine) that is available or already in use by the current run.
+
+        Args:
+            protocol_run_guid: GUID of the protocol run.
+            requested_asset_name_in_protocol: Name of the asset as requested in the protocol.
+            pylabrobot_class_name_constraint: The FQN of the PyLabRobot Machine class.
+            constraints: Optional dictionary of constraints (e.g., specific serial number).
+
+        Returns:
+            A tuple (live_plr_device_object, managed_device_orm_id, "device").
+
+        Raises:
+            AssetAcquisitionError: If no suitable device can be acquired or initialized.
+        """
+        logger.info(
+            f"AM_ACQUIRE_DEVICE: Acquiring device '{requested_asset_name_in_protocol}' "
+            f"(PLR Class FQN: '{pylabrobot_class_name_constraint}') for run '{protocol_run_guid}'. "
+            f"Constraints: {constraints}"
+        )
+
+        # TODO: Implement constraint matching if `constraints` are provided (e.g., serial_number)
+        # For now, we pick the first available or one already in use by this run.
+
+        selected_device_orm: Optional[ManagedDeviceOrm] = None
+
+        # 1. Check if a suitable device is already in use by this run
+        in_use_by_this_run_list = await ads.list_managed_devices(
+            self.db,
+            pylabrobot_class_filter=pylabrobot_class_name_constraint,
+            status=ManagedDeviceStatusEnum.IN_USE,
+            current_protocol_run_guid_filter=protocol_run_guid,
+        )
+        if in_use_by_this_run_list:
+            selected_device_orm = in_use_by_this_run_list[
+                0
+            ]  # Assuming one device of this type per run for now
+            logger.info(
+                f"AM_ACQUIRE_DEVICE: Device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}) "
+                f"is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+            )
+        else:
+            # 2. If not, find an available one
+            available_devices_list = await ads.list_managed_devices(
+                self.db,
+                status=ManagedDeviceStatusEnum.AVAILABLE,
+                pylabrobot_class_filter=pylabrobot_class_name_constraint,
+            )
+            if available_devices_list:
+                selected_device_orm = available_devices_list[
+                    0
+                ]  # Pick the first available
+                logger.info(
+                    f"AM_ACQUIRE_DEVICE: Found available device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id})."
+                )
+            else:
+                raise AssetAcquisitionError(
+                    f"No device found matching PLR class FQN '{pylabrobot_class_name_constraint}' with status AVAILABLE, "
+                    "nor already in use by this run."
+                )
+
+        if (
+            not selected_device_orm
+        ):  # Should be caught by the logic above, but as a safeguard.
+            raise AssetAcquisitionError(
+                f"Device selection failed for '{requested_asset_name_in_protocol}'."
+            )
+
+        logger.info(
+            f"AM_ACQUIRE_DEVICE: Attempting to initialize backend for selected device '{selected_device_orm.user_friendly_name}' "
+            f"(ID: {selected_device_orm.id}) via WorkcellRuntime."
+        )
+        live_plr_device = self.workcell_runtime.initialize_device_backend(
+            selected_device_orm
+        )
+
+        if not live_plr_device:
+            error_msg = (
+                f"Failed to initialize backend for device '{selected_device_orm.user_friendly_name}' "
+                f"(ID: {selected_device_orm.id}). Check WorkcellRuntime logs and device status in DB."
+            )
+            logger.error(error_msg)
+            # Optionally set device status to ERROR in DB here
+            await ads.update_managed_device_status(
+                self.db,
+                selected_device_orm.id,
+                ManagedDeviceStatusEnum.ERROR,
+                status_details=f"Backend initialization failed for run {protocol_run_guid}: {error_msg[:200]}",
+            )
+            raise AssetAcquisitionError(error_msg)
+
+        logger.info(
+            f"AM_ACQUIRE_DEVICE: Backend for device '{selected_device_orm.user_friendly_name}' initialized. "
+            f"Marking as IN_USE for run '{protocol_run_guid}' (if not already)."
+        )
+
+        if (
+            selected_device_orm.current_status != ManagedDeviceStatusEnum.IN_USE
+            or selected_device_orm.current_protocol_run_guid != protocol_run_guid
+        ):
+            updated_device_orm = await ads.update_managed_device_status(
+                self.db,
+                selected_device_orm.id,
+                ManagedDeviceStatusEnum.IN_USE,
+                current_protocol_run_guid=protocol_run_guid,
+                status_details=f"In use by run {protocol_run_guid}",
+            )
+            if not updated_device_orm:
+                critical_error_msg = (
+                    f"CRITICAL: Device '{selected_device_orm.user_friendly_name}' backend is live, "
+                    f"but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'."
+                )
+                logger.error(critical_error_msg)
+                # Potentially try to shut down the backend if DB update fails?
+                raise AssetAcquisitionError(critical_error_msg)
+            logger.info(
+                f"AM_ACQUIRE_DEVICE: Device '{updated_device_orm.user_friendly_name}' (ID: {updated_device_orm.id}) "
+                f"successfully acquired and backend initialized for run '{protocol_run_guid}'."
+            )
+        else:
+            logger.info(
+                f"AM_ACQUIRE_DEVICE: Device '{selected_device_orm.user_friendly_name}' (ID: {selected_device_orm.id}) "
+                f"was already correctly marked IN_USE by this run."
+            )
+
+        return live_plr_device, selected_device_orm.id, "device"
+
+    async def acquire_labware(
+        self,
+        protocol_run_guid: str,
+        requested_asset_name_in_protocol: str,
+        pylabrobot_definition_name_constraint: str,  # Key from LabwareDefinitionCatalogOrm
+        user_choice_instance_id: Optional[int] = None,
+        location_constraints: Optional[
+            Dict[str, Any]
+        ] = None,  # e.g., {"deck_name": "deck1", "slot_name": "A1"}
+        property_constraints: Optional[
+            Dict[str, Any]
+        ] = None,  # e.g., {"is_sterile": True}
+    ) -> Tuple[Any, int, str]:
+        """
+        Acquires a labware instance that is available or already in use by the current run.
+
+        Args:
+            protocol_run_guid: GUID of the protocol run.
+            requested_asset_name_in_protocol: Name of the asset as requested in the protocol.
+            pylabrobot_definition_name_constraint: The `pylabrobot_definition_name` from `LabwareDefinitionCatalogOrm`.
+            user_choice_instance_id: Optional specific ID of the labware instance to acquire.
+            location_constraints: Optional constraints on where the labware should be (primarily for deck assignment).
+            property_constraints: Optional constraints on labware properties.
+
+        Returns:
+            A tuple (live_plr_labware_object, labware_instance_orm_id, "labware").
+
+        Raises:
+            AssetAcquisitionError: If no suitable labware can be acquired or initialized.
+        """
+        logger.info(
+            f"AM_ACQUIRE_LABWARE: Acquiring labware '{requested_asset_name_in_protocol}' "
+            f"(PLR Def Name Constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'. "
+            f"User Choice ID: {user_choice_instance_id}, Location Constraints: {location_constraints}, Property Constraints: {property_constraints}"
+        )
 
         labware_instance_to_acquire: Optional[LabwareInstanceOrm] = None
+
         if user_choice_instance_id:
-            labware_instance_to_acquire = ads.get_labware_instance_by_id(self.db, user_choice_instance_id)
-            if not labware_instance_to_acquire:
-                 raise AssetAcquisitionError(f"Specified labware instance ID {user_choice_instance_id} not found.")
-            if labware_instance_to_acquire.pylabrobot_definition_name != pylabrobot_definition_name_constraint:
-                raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} (Definition: '{labware_instance_to_acquire.pylabrobot_definition_name}') does not match definition constraint '{pylabrobot_definition_name_constraint}'.")
-            if labware_instance_to_acquire.current_status == LabwareInstanceStatusEnum.IN_USE:
-                if labware_instance_to_acquire.current_protocol_run_guid != protocol_run_guid:
-                    raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is IN_USE by another run ('{labware_instance_to_acquire.current_protocol_run_guid}').")
-                else:
-                    logger.info(f"AM_ACQUIRE: Labware instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring.")
-            elif labware_instance_to_acquire.current_status not in [LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE, LabwareInstanceStatusEnum.AVAILABLE_ON_DECK]:
-                 raise AssetAcquisitionError(f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {labware_instance_to_acquire.current_status.name if labware_instance_to_acquire.current_status else 'N/A'}).")
-        else:
-            in_use_by_this_run_list = ads.list_labware_instances(
-                self.db,
-                pylabrobot_definition_name=pylabrobot_definition_name_constraint,                status=LabwareInstanceStatusEnum.IN_USE
+            instance_orm = await ads.get_labware_instance_by_id(
+                self.db, user_choice_instance_id
             )
-            if in_use_by_this_run_list:
-                labware_instance_to_acquire = in_use_by_this_run_list[0]
-                logger.info(f"AM_ACQUIRE: Labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring.")
-            else:
-                lws_on_deck = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK)
-                if lws_on_deck: labware_instance_to_acquire = lws_on_deck[0]
-                else:
-                    lws_in_storage = ads.list_labware_instances(self.db, pylabrobot_definition_name=pylabrobot_definition_name_constraint, status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE)
-                    if lws_in_storage: labware_instance_to_acquire = lws_in_storage[0]
-            if not labware_instance_to_acquire:
-                raise AssetAcquisitionError(f"No labware found matching definition '{pylabrobot_definition_name_constraint}' that is available or already in use by this run.")
-        if not labware_instance_to_acquire: # pragma: no cover
-            raise AssetAcquisitionError(f"Labware matching criteria for '{requested_asset_name_in_protocol}' (Def: '{pylabrobot_definition_name_constraint}') not found or not available for run '{protocol_run_guid}'.")
-
-        labware_def_orm = ads.get_labware_definition(self.db, labware_instance_to_acquire.pylabrobot_definition_name) # type: ignore
-        if not labware_def_orm or not hasattr(labware_def_orm, 'python_fqn') or not labware_def_orm.python_fqn: # type: ignore
-            error_msg = f"Python FQN not found for labware definition '{labware_instance_to_acquire.pylabrobot_definition_name}' for instance ID {labware_instance_to_acquire.id}." # type: ignore
-            logger.error(error_msg)
-            if ads:
-                ads.update_labware_instance_location_and_status(
-                    db=self.db, labware_instance_id=labware_instance_to_acquire.id, # type: ignore
-                    new_status=LabwareInstanceStatusEnum.ERROR,
-                    status_details=error_msg
+            if not instance_orm:
+                raise AssetAcquisitionError(
+                    f"Specified labware instance ID {user_choice_instance_id} not found."
                 )
-            raise AssetAcquisitionError(error_msg)
-        labware_fqn = labware_def_orm.python_fqn # type: ignore
+            if (
+                instance_orm.pylabrobot_definition_name
+                != pylabrobot_definition_name_constraint
+            ):
+                raise AssetAcquisitionError(
+                    f"Chosen labware instance ID {user_choice_instance_id} (Definition: '{instance_orm.pylabrobot_definition_name}') "
+                    f"does not match definition constraint '{pylabrobot_definition_name_constraint}'."
+                )
+            # Check status for user_choice_instance_id
+            if instance_orm.current_status == LabwareInstanceStatusEnum.IN_USE:
+                if instance_orm.current_protocol_run_guid != protocol_run_guid:
+                    raise AssetAcquisitionError(
+                        f"Chosen labware instance ID {user_choice_instance_id} is IN_USE by another run ('{instance_orm.current_protocol_run_guid}')."
+                    )
+                logger.info(
+                    f"AM_ACQUIRE_LABWARE: Labware instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+                )
+                labware_instance_to_acquire = instance_orm
+            elif instance_orm.current_status not in [
+                LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+            ]:
+                raise AssetAcquisitionError(
+                    f"Chosen labware instance ID {user_choice_instance_id} is not available (status: {instance_orm.current_status.name})."
+                )
+            else:
+                labware_instance_to_acquire = instance_orm  # It's available
+        else:
+            # 1. Check if already in use by this run
+            in_use_list = await ads.list_labware_instances(
+                self.db,
+                pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+                status=LabwareInstanceStatusEnum.IN_USE,
+                current_protocol_run_guid_filter=protocol_run_guid,
+                property_filters=property_constraints,  # Apply property filters if any
+            )
+            if in_use_list:
+                labware_instance_to_acquire = in_use_list[0]  # Assuming one for now
+                logger.info(
+                    f"AM_ACQUIRE_LABWARE: Labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) "
+                    f"is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+                )
+            else:
+                # 2. Check if available on deck
+                on_deck_list = await ads.list_labware_instances(
+                    self.db,
+                    pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+                    status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+                    property_filters=property_constraints,
+                )
+                if on_deck_list:
+                    labware_instance_to_acquire = on_deck_list[0]
+                else:
+                    # 3. Check if available in storage
+                    in_storage_list = await ads.list_labware_instances(
+                        self.db,
+                        pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+                        status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                        property_filters=property_constraints,
+                    )
+                    if in_storage_list:
+                        labware_instance_to_acquire = in_storage_list[0]
 
-        logger.info(f"Attempting to create PLR object for labware instance '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) using FQN '{labware_fqn}'.") # type: ignore
+            if not labware_instance_to_acquire:
+                raise AssetAcquisitionError(
+                    f"No labware instance found matching definition '{pylabrobot_definition_name_constraint}' "
+                    f"and properties {property_constraints} that is available or already in use by this run."
+                )
+
+        # At this point, labware_instance_to_acquire should be set if one was found
+        if not labware_instance_to_acquire:  # Safeguard, should be caught above
+            raise AssetAcquisitionError(
+                f"Labware acquisition failed for {requested_asset_name_in_protocol}."
+            )
+
+        labware_def_orm = await ads.get_labware_definition(
+            self.db, labware_instance_to_acquire.pylabrobot_definition_name
+        )
+        if not labware_def_orm or not labware_def_orm.python_fqn:
+            error_msg = (
+                f"Python FQN not found for labware definition '{labware_instance_to_acquire.pylabrobot_definition_name}' "
+                f"for instance ID {labware_instance_to_acquire.id}."
+            )
+            logger.error(error_msg)
+            await ads.update_labware_instance_location_and_status(
+                db=self.db,
+                labware_instance_id=labware_instance_to_acquire.id,
+                new_status=LabwareInstanceStatusEnum.ERROR,
+                status_details=error_msg[:200],
+            )
+            raise AssetAcquisitionError(error_msg)
+        labware_fqn = labware_def_orm.python_fqn
+
+        logger.info(
+            f"AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for labware instance "
+            f"'{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) using FQN '{labware_fqn}'."
+        )
         live_plr_labware = self.workcell_runtime.create_or_get_labware_plr_object(
-            labware_instance_orm=labware_instance_to_acquire, # type: ignore
-            labware_definition_fqn=labware_fqn
+            labware_instance_orm=labware_instance_to_acquire,
+            labware_definition_fqn=labware_fqn,
         )
         if not live_plr_labware:
-            error_msg = f"Failed to create PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}). Check WorkcellRuntime logs." # type: ignore
+            error_msg = (
+                f"Failed to create/get PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' "
+                f"(ID: {labware_instance_to_acquire.id}). Check WorkcellRuntime logs."
+            )
             logger.error(error_msg)
+            # Optionally set labware status to ERROR
+            await ads.update_labware_instance_location_and_status(
+                db=self.db,
+                labware_instance_id=labware_instance_to_acquire.id,
+                new_status=LabwareInstanceStatusEnum.ERROR,
+                status_details=f"PLR object creation failed: {error_msg[:150]}",
+            )
             raise AssetAcquisitionError(error_msg)
-        logger.info(f"PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' created. Updating status to IN_USE.") # type: ignore
+
+        logger.info(
+            f"AM_ACQUIRE_LABWARE: PLR object for labware '{labware_instance_to_acquire.user_assigned_name}' created/retrieved. "
+            f"Updating status to IN_USE (if not already by this run) and handling location."
+        )
 
         target_deck_orm_id: Optional[int] = None
         target_slot_name: Optional[str] = None
+        final_status_details = f"In use by run {protocol_run_guid}"
+
         if location_constraints and isinstance(location_constraints, dict):
             deck_name = location_constraints.get("deck_name")
             slot_name = location_constraints.get("slot_name")
             if deck_name and slot_name:
-                logger.info(f"Location constraint: place '{live_plr_labware.name}' on deck '{deck_name}' slot '{slot_name}'.")
-                deck_device_list = ads.list_managed_devices(self.db, user_friendly_name_filter=deck_name, praxis_category_filter=PraxisDeviceCategoryEnum.DECK) # type: ignore
-                if not deck_device_list:
-                    raise AssetAcquisitionError(f"Deck '{deck_name}' specified in location_constraints not found.")
-                deck_device_orm = deck_device_list[0]
+                logger.info(
+                    f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_labware.name}' on deck '{deck_name}' slot '{slot_name}'."
+                )
+                # Find the deck device ORM
+                deck_devices = await ads.list_managed_devices(
+                    self.db, user_friendly_name_filter=deck_name
+                )  # Assuming deck name is unique for ManagedDevice
+                if not deck_devices:
+                    raise AssetAcquisitionError(
+                        f"Deck device '{deck_name}' specified in location_constraints not found."
+                    )
+                deck_device_orm = deck_devices[
+                    0
+                ]  # Assuming first one is correct if multiple
                 target_deck_orm_id = deck_device_orm.id
                 target_slot_name = slot_name
-                logger.debug(f"Assigning to Deck ID {target_deck_orm_id}, Slot {target_slot_name}")
+
+                # Assign to PLR Deck object via WorkcellRuntime
                 self.workcell_runtime.assign_labware_to_deck_slot(
-                    deck_device_orm_id=target_deck_orm_id, # type: ignore
-                    slot_name=target_slot_name, # type: ignore
+                    deck_device_orm_id=target_deck_orm_id,
+                    slot_name=target_slot_name,
                     labware_plr_object=live_plr_labware,
-                    labware_instance_orm_id=labware_instance_to_acquire.id # type: ignore
+                    labware_instance_orm_id=labware_instance_to_acquire.id,
                 )
-            elif deck_name or slot_name:
-                raise AssetAcquisitionError(f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both 'deck_name' and 'slot_name' required if placing on deck.")
+                final_status_details = f"On deck '{deck_name}' slot '{slot_name}' for run {protocol_run_guid}"
+                logger.info(
+                    f"AM_ACQUIRE_LABWARE: Labware assigned to deck '{deck_name}' slot '{slot_name}' in WorkcellRuntime."
+                )
+            elif deck_name or slot_name:  # Partial constraint
+                raise AssetAcquisitionError(
+                    f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both 'deck_name' and 'slot_name' required if placing on deck."
+                )
 
-        updated_labware_instance_orm = ads.update_labware_instance_location_and_status(
-            self.db,
-            labware_instance_id=labware_instance_to_acquire.id, # type: ignore
-            new_status=LabwareInstanceStatusEnum.IN_USE,
-            current_protocol_run_guid=protocol_run_guid,
-            status_details=f"In use by run {protocol_run_guid}",
-        )
-        if not updated_labware_instance_orm:
-            critical_error_msg = f"CRITICAL: Labware '{labware_instance_to_acquire.user_assigned_name}' PLR object created/assigned, but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'." # type: ignore
-            logger.error(critical_error_msg)
-            raise AssetAcquisitionError(critical_error_msg)
-        logger.info(f"Labware '{updated_labware_instance_orm.user_assigned_name}' (ID: {updated_labware_instance_orm.id}) successfully acquired for run '{protocol_run_guid}'.") # type: ignore
-        return live_plr_labware, labware_instance_to_acquire.id, "labware" # type: ignore
+        # Update LabwareInstanceOrm status and location, only if it's not already correctly set
+        if not (
+            labware_instance_to_acquire.current_status
+            == LabwareInstanceStatusEnum.IN_USE
+            and labware_instance_to_acquire.current_protocol_run_guid
+            == protocol_run_guid
+            and (
+                not target_deck_orm_id
+                or labware_instance_to_acquire.location_device_id == target_deck_orm_id
+            )
+            and (
+                not target_slot_name
+                or labware_instance_to_acquire.current_deck_slot_name
+                == target_slot_name
+            )
+        ):
+            updated_labware_instance_orm = await ads.update_labware_instance_location_and_status(
+                self.db,
+                labware_instance_id=labware_instance_to_acquire.id,
+                new_status=LabwareInstanceStatusEnum.IN_USE,
+                current_protocol_run_guid=protocol_run_guid,
+                location_device_id=target_deck_orm_id,  # Null if not placed on a specific deck device
+                current_deck_slot_name=target_slot_name,  # Null if not in a specific slot
+                status_details=final_status_details,
+            )
+            if not updated_labware_instance_orm:
+                critical_error_msg = (
+                    f"CRITICAL: Labware '{labware_instance_to_acquire.user_assigned_name}' PLR object created/assigned, "
+                    f"but FAILED to update its DB status/location for run '{protocol_run_guid}'."
+                )
+                logger.error(critical_error_msg)
+                raise AssetAcquisitionError(critical_error_msg)
+            logger.info(
+                f"AM_ACQUIRE_LABWARE: Labware '{updated_labware_instance_orm.user_assigned_name}' (ID: {updated_labware_instance_orm.id}) "
+                f"successfully acquired for run '{protocol_run_guid}'. Status: IN_USE. Location Device ID: {target_deck_orm_id}, Slot: {target_slot_name}."
+            )
+        else:
+            logger.info(
+                f"AM_ACQUIRE_LABWARE: Labware '{labware_instance_to_acquire.user_assigned_name}' (ID: {labware_instance_to_acquire.id}) "
+                f"was already correctly set as IN_USE by this run, and at the target location if specified."
+            )
 
-    def release_device(
+        return live_plr_labware, labware_instance_to_acquire.id, "labware"
+
+    async def release_device(
         self,
         device_orm_id: int,
         final_status: ManagedDeviceStatusEnum = ManagedDeviceStatusEnum.AVAILABLE,
-        status_details: Optional[str] = "Released from run"
+        status_details: Optional[str] = "Released from run",
     ):
-        logger.info(f"Releasing device ID {device_orm_id}. Target status: {final_status.name if final_status else 'N/A'}.")
-        if self.workcell_runtime:
-            logger.info(f"Calling WorkcellRuntime to shut down backend for device ID {device_orm_id}.")
-            self.workcell_runtime.shutdown_device_backend(device_orm_id)
-            if ads:
-                device_after_wcr_shutdown = ads.get_managed_device_by_id(self.db, device_orm_id)
-                if device_after_wcr_shutdown and device_after_wcr_shutdown.current_status != final_status:
-                     logger.info(f"WorkcellRuntime set device {device_orm_id} to {device_after_wcr_shutdown.current_status}, but final desired status is {final_status}. Updating.")
-                     ads.update_managed_device_status(
-                        self.db,
-                        device_orm_id,
-                        final_status,
-                        status_details=status_details,
-                        current_protocol_run_guid=None
-                    )
-                elif not device_after_wcr_shutdown:
-                     logger.error(f"Device ID {device_orm_id} not found after WorkcellRuntime shutdown attempt.")
-        else:
-            logger.warning(f"WorkcellRuntime not available. Attempting direct DB status update for device ID {device_orm_id}.")
-            if ads:
-                updated_device = ads.update_managed_device_status(
-                    self.db,
-                    device_orm_id,
-                    final_status,
-                    status_details=status_details,
-                    current_protocol_run_guid=None
-                )
-                if not updated_device:
-                    logger.error(f"Failed to update status for device ID {device_orm_id} directly in DB.")
-        logger.info(f"Device ID {device_orm_id} release process initiated.")
+        """
+        Releases a device, updating its status and shutting down its backend via WorkcellRuntime.
+        """
+        logger.info(
+            f"AM_RELEASE_DEVICE: Releasing device ID {device_orm_id}. Target status: {final_status.name}. Details: {status_details}"
+        )
+        # Call WorkcellRuntime to shut down the backend first
+        self.workcell_runtime.shutdown_device_backend(device_orm_id)
+        logger.info(
+            f"AM_RELEASE_DEVICE: WorkcellRuntime shutdown initiated for device ID {device_orm_id}."
+        )
 
-    def release_labware(
+        # Update the status in the database
+        updated_device = await ads.update_managed_device_status(
+            self.db,
+            device_orm_id,
+            final_status,
+            status_details=status_details,
+            current_protocol_run_guid=None,  # Clear the run GUID
+        )
+        if not updated_device:
+            logger.error(
+                f"AM_RELEASE_DEVICE: Failed to update status for device ID {device_orm_id} in DB after backend shutdown."
+            )
+            # Potentially raise an error or handle this case (e.g., device backend might be down, but DB state is inconsistent)
+        else:
+            logger.info(
+                f"AM_RELEASE_DEVICE: Device ID {device_orm_id} status updated to {final_status.name} in DB."
+            )
+
+    async def release_labware(
         self,
         labware_instance_orm_id: int,
         final_status: LabwareInstanceStatusEnum,
         final_properties_json_update: Optional[Dict[str, Any]] = None,
-        clear_from_deck_device_id: Optional[int] = None,
+        clear_from_deck_device_id: Optional[
+            int
+        ] = None,  # ID of the deck ManagedDeviceOrm
         clear_from_slot_name: Optional[str] = None,
-        status_details: Optional[str] = "Released from run"
+        status_details: Optional[str] = "Released from run",
     ):
-        logger.info(f"AM_RELEASE: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}")
-        if final_properties_json_update is not None:
-            logger.info(f"AM_RELEASE: Labware release for instance ID {labware_instance_orm_id} includes final_properties_json_update: {final_properties_json_update}")
-
-        final_location_device_id_for_ads: Optional[int] = None
-        final_deck_slot_name_for_ads: Optional[str] = None
-        if clear_from_deck_device_id is not None and clear_from_slot_name is not None:
-            if self.workcell_runtime:
-                logger.info(f"Calling WorkcellRuntime to clear labware ID {labware_instance_orm_id} from deck ID {clear_from_deck_device_id}, slot '{clear_from_slot_name}'.")
-                self.workcell_runtime.clear_deck_slot(
-                    deck_device_orm_id=clear_from_deck_device_id,
-                    slot_name=clear_from_slot_name,
-                    labware_instance_orm_id=labware_instance_orm_id
-                )
-            else: # pragma: no cover
-                logger.warning(f"WorkcellRuntime not available. Cannot clear labware ID {labware_instance_orm_id} from deck. Manual DB update for status only.")
-        logger.info(f"Updating final status and details for labware ID {labware_instance_orm_id} in DB.")
-        if ads:
-            updated_labware = ads.update_labware_instance_location_and_status(
-                self.db,
-                labware_instance_id=labware_instance_orm_id,
-                new_status=final_status,
-                properties_json_update=final_properties_json_update,
-                location_device_id=final_location_device_id_for_ads,
-                current_deck_slot_name=final_deck_slot_name_for_ads,
-                current_protocol_run_guid=None,
-                status_details=status_details
+        """
+        Releases a labware instance, updating its status and properties,
+        and clearing it from a deck slot via WorkcellRuntime if specified.
+        """
+        logger.info(
+            f"AM_RELEASE_LABWARE: Releasing labware ID {labware_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}"
+        )
+        if final_properties_json_update:
+            logger.info(
+                f"AM_RELEASE_LABWARE: Update properties for instance ID {labware_instance_orm_id}: {final_properties_json_update}"
             )
-            if not updated_labware:
-                logger.error(f"Failed to update final status for labware ID {labware_instance_orm_id} in DB.")
-        logger.info(f"Labware ID {labware_instance_orm_id} release process initiated.")
 
-    def acquire_asset(self, protocol_run_guid: str, asset_requirement: AssetRequirementModel) -> Tuple[Any, int, str]:
-        logger.info(f"AM_ACQUIRE_DISPATCH: AssetManager attempting to acquire asset '{asset_requirement.name}' "
-              f"of type '{asset_requirement.actual_type_str}' for run '{protocol_run_guid}'. "
-              f"Constraints: {asset_requirement.constraints_json}")
-        constraints_for_device = asset_requirement.constraints_json if asset_requirement.constraints_json else {}
-        properties_for_labware = asset_requirement.constraints_json if asset_requirement.constraints_json else {}
-        labware_def_check = ads.get_labware_definition(self.db, asset_requirement.actual_type_str)
-        if labware_def_check:
-            logger.debug(f"AM_ACQUIRE_DISPATCH: Identified '{asset_requirement.actual_type_str}' as LABWARE. Dispatching to acquire_labware for {asset_requirement.name}")
-            return self.acquire_labware(
-                protocol_run_guid=protocol_run_guid,
-                requested_asset_name_in_protocol=asset_requirement.name,
-                pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,
-                property_constraints=properties_for_labware
+        # If the labware was on a deck, clear it from WorkcellRuntime's view of that deck
+        if clear_from_deck_device_id is not None and clear_from_slot_name is not None:
+            logger.info(
+                f"AM_RELEASE_LABWARE: Clearing labware ID {labware_instance_orm_id} from deck device ID {clear_from_deck_device_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
+            )
+            self.workcell_runtime.clear_deck_slot(
+                deck_device_orm_id=clear_from_deck_device_id,
+                slot_name=clear_from_slot_name,
+                labware_instance_orm_id=labware_instance_orm_id,
             )
         else:
-            logger.debug(f"AM_ACQUIRE_DISPATCH: Identified '{asset_requirement.actual_type_str}' as DEVICE (FQN). Dispatching to acquire_device for {asset_requirement.name}")
-            return self.acquire_device(
+            # If not clearing from a specific deck, ensure it's cleared from any WCR internal cache if it was a general acquisition
+            self.workcell_runtime.clear_general_labware_instance(
+                labware_instance_orm_id
+            )
+
+        # Determine final location for DB update
+        final_location_device_id_for_ads: Optional[int] = None
+        final_deck_slot_name_for_ads: Optional[str] = None
+        # If final status is AVAILABLE_ON_DECK, it implies it remains on 'clear_from_deck_device_id'
+        if final_status == LabwareInstanceStatusEnum.AVAILABLE_ON_DECK:
+            final_location_device_id_for_ads = clear_from_deck_device_id
+            final_deck_slot_name_for_ads = clear_from_slot_name
+        # If AVAILABLE_IN_STORAGE or CONSUMED, location is cleared.
+
+        updated_labware = await ads.update_labware_instance_location_and_status(
+            self.db,
+            labware_instance_id=labware_instance_orm_id,
+            new_status=final_status,
+            properties_json_update=final_properties_json_update,
+            location_device_id=final_location_device_id_for_ads,
+            current_deck_slot_name=final_deck_slot_name_for_ads,
+            current_protocol_run_guid=None,  # Clear the run GUID
+            status_details=status_details,
+        )
+        if not updated_labware:
+            logger.error(
+                f"AM_RELEASE_LABWARE: Failed to update final status/location for labware ID {labware_instance_orm_id} in DB."
+            )
+        else:
+            logger.info(
+                f"AM_RELEASE_LABWARE: Labware ID {labware_instance_orm_id} status updated to {final_status.name} in DB."
+            )
+
+    async def acquire_asset(
+        self, protocol_run_guid: str, asset_requirement: AssetRequirementModel
+    ) -> Tuple[Any, int, str]:
+        """
+        Dispatches asset acquisition to either acquire_device or acquire_labware based on the asset type.
+        The `asset_requirement.actual_type_str` is key:
+        - If it matches a `pylabrobot_definition_name` in `LabwareDefinitionCatalogOrm`, it's labware.
+        - Otherwise, it's assumed to be a PLR Machine FQN (device).
+        """
+        logger.info(
+            f"AM_ACQUIRE_ASSET: Acquiring asset '{asset_requirement.name}' "
+            f"(Type/Def Name: '{asset_requirement.actual_type_str}') for run '{protocol_run_guid}'. "
+            f"Constraints: {asset_requirement.constraints_json}"
+        )
+
+        # Check if actual_type_str corresponds to a known labware definition name
+        labware_def_check = await ads.get_labware_definition(
+            self.db, asset_requirement.actual_type_str
+        )
+
+        if labware_def_check:
+            logger.debug(
+                f"AM_ACQUIRE_ASSET: Identified '{asset_requirement.actual_type_str}' as LABWARE "
+                f"(matches LabwareDefinitionCatalog). Dispatching to acquire_labware for '{asset_requirement.name}'."
+            )
+            return await self.acquire_labware(
                 protocol_run_guid=protocol_run_guid,
                 requested_asset_name_in_protocol=asset_requirement.name,
-                pylabrobot_class_name_constraint=asset_requirement.actual_type_str,
-                constraints=constraints_for_device
+                pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,  # This is the key for LabwareDefinitionCatalogOrm
+                property_constraints=asset_requirement.constraints_json,  # Pass all constraints as property constraints for labware
+                location_constraints=asset_requirement.location_constraints_json,  # Specific for labware placement
+            )
+        else:
+            # Assume it's a device/machine FQN
+            logger.debug(
+                f"AM_ACQUIRE_ASSET: Did not find '{asset_requirement.actual_type_str}' in LabwareDefinitionCatalog. "
+                f"Assuming it's a DEVICE (PLR Machine FQN). Dispatching to acquire_device for '{asset_requirement.name}'."
+            )
+            # For devices, constraints_json are general constraints.
+            return await self.acquire_device(
+                protocol_run_guid=protocol_run_guid,
+                requested_asset_name_in_protocol=asset_requirement.name,
+                pylabrobot_class_name_constraint=asset_requirement.actual_type_str,  # This is the FQN for the PLR Machine class
+                constraints=asset_requirement.constraints_json,
             )

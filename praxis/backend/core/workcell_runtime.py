@@ -11,9 +11,11 @@ Version 4: Refactored deck handling for explicit targeting and added deck state 
 from typing import Dict, Any, Optional, Type, List
 import importlib
 import traceback
-import inspect # For inspecting constructor parameters
+import inspect
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.database_models.asset_management_orm import (
+
+from praxis.backend.models import (
     ManagedDeviceOrm, LabwareInstanceOrm, LabwareDefinitionCatalogOrm,
     ManagedDeviceStatusEnum, LabwareInstanceStatusEnum, PraxisDeviceCategoryEnum
 )
@@ -36,7 +38,7 @@ class WorkcellRuntimeError(Exception):
 
 
 class WorkcellRuntime:
-    def __init__(self, db_session: Optional[Any] = None): # DbSession type
+    def __init__(self, db_session: Optional[AsyncSession] = None): # DbSession type
         self.db_session = db_session
         self._active_device_backends: Dict[int, Any] = {} # Maps ManagedDeviceOrm.id to live PLR backend/resource
         self._active_plr_labware_objects: Dict[int, PlrResource] = {} # Maps LabwareInstanceOrm.id to live PLR Resource
@@ -48,7 +50,7 @@ class WorkcellRuntime:
         self._last_initialized_deck_orm_id: Optional[int] = None
 
 
-    def initialize_device_backend(self, device_orm: ManagedDeviceOrm) -> Optional[Any]:
+    async def initialize_device_backend(self, device_orm: ManagedDeviceOrm) -> Optional[Any]:
         """
         Initializes and connects to a device's PyLabRobot backend/resource.
         """
@@ -93,7 +95,7 @@ class WorkcellRuntime:
             print(f"INFO: Backend for '{device_orm.user_friendly_name}' initialized: {type(backend_instance).__name__}")
 
             if self.db_session and ads:
-                ads.update_managed_device_status(self.db_session, device_orm.id, ManagedDeviceStatusEnum.AVAILABLE, "Backend initialized.")
+                await ads.update_managed_device_status(self.db_session, device_orm.id, ManagedDeviceStatusEnum.AVAILABLE, "Backend initialized.")
 
             # If this device is a PlrDeck, note it as the last initialized deck.
             # This does NOT make it the sole target for deck operations.
