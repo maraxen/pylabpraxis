@@ -13,6 +13,34 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from praxis.backend.utils.db import Base
 
 
+class WorkcellStatusEnum:
+  """Enumeration for workcell status.
+
+  This enum defines the possible statuses a workcell can have.
+  """
+
+  ACTIVE = "active"
+  IN_USE = "in_use"
+  RESERVED = "reserved"
+  AVAILABLE = "available"
+  ERROR = "error"
+  INACTIVE = "inactive"
+  MAINTENANCE = "maintenance"
+
+  @classmethod
+  def choices(cls):
+    """Return a list of valid status choices."""
+    return [
+      cls.ACTIVE,
+      cls.IN_USE,
+      cls.RESERVED,
+      cls.AVAILABLE,
+      cls.ERROR,
+      cls.INACTIVE,
+      cls.MAINTENANCE,
+    ]
+
+
 class WorkcellOrm(Base):
   """SQLAlchemy ORM model representing a workcell.
 

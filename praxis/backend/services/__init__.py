@@ -76,6 +76,14 @@ from .resource_data_service import (
   list_resource_instances,
   update_resource_instance_location_and_status,
 )
+from .workcell_data_service import (
+  create_workcell,
+  delete_workcell,
+  get_workcell_by_id,
+  get_workcell_by_name,
+  list_workcells,
+  update_workcell,
+)
 
 __all__ = [
   "get_deck_layout_by_id",
@@ -132,4 +140,11 @@ __all__ = [
   "update_protocol_run_status",
   "upsert_discovered_function_protocol_definition",
   "create_protocol_run",
+  # Workcell data service
+  "create_workcell",
+  "update_workcell",
+  "delete_workcell",
+  "get_workcell_by_id",
+  "get_workcell_by_name",
+  "list_workcells",
 ]

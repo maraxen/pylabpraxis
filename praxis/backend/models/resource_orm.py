@@ -9,11 +9,13 @@ These models define the database schema for:
   resource instance.
 - **ResourceDefinitionCatalogOrm**: Catalogs resource definitions with metadata
   including dimensions, categories, and PyLabRobot definitions.
+- **ResourceCategoryEnum**: Enumerates the categories of resources in the catalog,
+  providing a hierarchical classification system.
 """
 
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import (
   JSON,
@@ -47,6 +49,95 @@ class ResourceInstanceStatusEnum(enum.Enum):
   TO_BE_DISPOSED = "to_be_disposed"
   ERROR = "error"
   UNKNOWN = "unknown"
+
+
+class ResourceCategoryEnum(enum.Enum):
+  """Enumeration for the categories of resources in the catalog.
+
+  This enum defines the main categories of lab resources based on a hierarchical
+  classification, used to classify resources in the catalog.
+  """
+
+  # Top-level categories
+  ARM = "Arm"
+  CARRIER = "Carrier"
+  CONTAINER = "Container"
+  DECK = "Deck"
+  ITEMIZED_RESOURCE = "ItemizedResource"
+  RESOURCE_HOLDER = "ResourceHolder"
+  LID = "Lid"
+  PLATE_ADAPTER = "PlateAdapter"
+  RESOURCE_STACK = "ResourceStack"
+  # General catch-all for resources not fitting specific categories
+  OTHER = "Other"
+
+  # Subcategories (can be used for more granular classification if needed)
+  # Arm
+  ARTICULATED_ARM = "ArticulatedArm"
+  CARTESIAN_ARM = "CartesianArm"
+  SCARA = "SCARA"
+
+  # Carrier
+  MFX_CARRIER = "MFXCarrier"
+  PLATE_CARRIER = "PlateCarrier"
+  TIP_CARRIER = "TipCarrier"
+  TROUGH_CARRIER = "TroughCarrier"
+  TUBE_CARRIER = "TubeCarrier"
+
+  # Container
+  PETRI_DISH = "PetriDish"
+  TROUGH = "Trough"
+  TUBE = "Tube"
+  WELL = "Well"
+
+  # Deck
+  OT_DECK = "OTDeck"
+  HAMILTON_DECK = "HamiltonDeck"
+  TECAN_DECK = "TecanDeck"
+
+  # ItemizedResource
+  PLATE = "Plate"
+  TIP_RACK = "TipRack"
+  TUBE_RACK = "TubeRack"
+
+  # ResourceHolder
+  PLATE_HOLDER = "PlateHolder"
+
+  @classmethod
+  def choices(cls) -> List[str]:
+    """Return a list of valid top-level category choices."""
+    # This method returns the top-level categories, similar to how
+    # the original `choices` might have been used for a general filter.
+    return [
+      cls.ARM.value,
+      cls.CARRIER.value,
+      cls.CONTAINER.value,
+      cls.DECK.value,
+      cls.ITEMIZED_RESOURCE.value,
+      cls.RESOURCE_HOLDER.value,
+      cls.LID.value,
+      cls.PLATE_ADAPTER.value,
+      cls.RESOURCE_STACK.value,
+      cls.OTHER.value,
+    ]
+
+  @classmethod
+  def consumables(cls) -> List[str]:
+    """Return a list of common consumable categories.
+
+    This list might need refinement based on how 'consumable' is strictly
+    defined for each new category.
+    """
+    return [
+      cls.PETRI_DISH.value,
+      cls.TROUGH.value,
+      cls.TUBE.value,
+      cls.WELL.value,  # Individual wells might be considered consumable parts
+      cls.PLATE.value,  # Plates are typically consumables
+      cls.TIP_RACK.value,
+      cls.TUBE_RACK.value,
+      cls.LID.value,
+    ]
 
 
 class ResourceDefinitionCatalogOrm(Base):

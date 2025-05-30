@@ -1,132 +1,97 @@
-"""Pydantic models for deck-related entities in the Praxis application.
+"""Pydantic models for managing workcell entities in the Praxis application.
 
-These models are used for data validation and serialization/deserialization of deck
-configurations, positioning with "poses" which are human accessible location guides
-(e.g., poses or rails), and layouts.
+These models are used for data validation and serialization/deserialization
+of workcell configurations, enabling consistent API interactions.
+
+Models included:
+- WorkcellBase
+- WorkcellCreate
+- WorkcellUpdate
+- WorkcellResponse
 """
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-
-class DeckInfo(BaseModel):
-  """Basic information about a deck."""
-
-  id: int = Field(description="ORM ID of the MachineOrm for the deck")
-  user_friendly_name: str = Field(description="User-assigned name for the deck")
-  pylabrobot_class_name: str = Field(
-    description="PyLabRobot class name for the deck (e.g., 'Deck')"
-  )
-  current_status: str = Field(
-    description="Current operational status of the deck (e.g., 'ONLINE', 'OFFLINE')"
-  )
-  # current_status: MachineStatusEnum # Alternative if enum is imported
+from praxis.backend.models.deck_pydantic_models import DeckStateResponse
+from praxis.backend.models.machine_pydantic_models import MachineResponse
+from praxis.backend.models.resource_pydantic_models import ResourceInstanceResponse
 
 
-class ResourceInfo(BaseModel):
-  """Detailed information about a resource instance on the deck."""
+class WorkcellBase(BaseModel):
+  """Defines the base properties for a workcell.
 
-  resource_instance_id: int = Field(description="ORM ID of the ResourceInstanceOrm")
-  user_assigned_name: str = Field(
-    description="User-assigned name for this specific resource instance"
-  )
-  pylabrobot_definition_name: str = Field(
-    description="PyLabRobot definition name (e.g., 'corning_96_wellplate_360ul_flat')"
-  )
-  python_fqn: str = Field(
-    description="Fully qualified Python name of the PyLabRobot resource class"
-  )
-  category: str = Field(
-    description="Category of the resource (e.g., 'PLATE', 'TIP_RACK')"
-  )
-  # category: PlrCategoryEnum # Alternative if enum is imported
-  size_x_mm: Optional[float] = Field(None, description="Dimension X in millimeters")
-  size_y_mm: Optional[float] = Field(None, description="Dimension Y in millimeters")
-  size_z_mm: Optional[float] = Field(
-    None, description="Dimension Z in millimeters (height)"
-  )
-  nominal_volume_ul: Optional[float] = Field(
-    None, description="Nominal volume of a well/container in microliters"
-  )
-  properties_json: Optional[Dict[str, Any]] = Field(
-    None, description="Custom properties, e.g., well contents, calibration data"
-  )
-  model: Optional[str] = Field(
-    None, description="Manufacturer model number or identifier"
-  )
+  This model captures essential attributes shared across workcell
+  representations, such as name, description, and physical location.
+  """
 
-
-class PoseInfo(BaseModel):
-  """Information about a single pose on the deck."""
-
-  name: str = Field(
-    description="Identifier for the pose (e.g., 'A1', 'pose_1', 'trash_pose')"
+  name: str = Field(description="The unique name of the workcell.")
+  id: Optional[int] = Field(
+    None, description="The unique identifier for the workcell (optional for creation)."
   )
-  x_coordinate: Optional[float] = Field(
-    None,
-    description="X coordinate of the pose's origin relative to the deck, in "
-    "millimeters",
-  )
-  y_coordinate: Optional[float] = Field(
-    None,
-    description="Y coordinate of the pose's origin relative to the deck, in "
-    "millimeters",
-  )
-  z_coordinate: Optional[float] = Field(
-    None,
-    description="Z coordinate of the pose's origin relative to the deck, in millimeters"
-    " (often the deck surface at this pose)",
-  )
-  labware: Optional[ResourceInfo] = Field(
-    None, description="Resource instance currently occupying this pose, if any"
-  )
-
-
-class DeckStateResponse(BaseModel):
-  """Represents the complete state of a deck, including its poses and labware."""
-
-  deck_id: int = Field(description="ORM ID of the MachineOrm for the deck")
-  user_friendly_name: str = Field(description="User-assigned name for the deck")
-  pylabrobot_class_name: str = Field(description="PyLabRobot class name for the deck")
-  size_x_mm: Optional[float] = Field(
-    None, description="Overall physical dimension X of the deck in millimeters"
-  )
-  size_y_mm: Optional[float] = Field(
-    None, description="Overall physical dimension Y of the deck in millimeters"
-  )
-  size_z_mm: Optional[float] = Field(
-    None,
-    description="Overall physical dimension Z of the deck in millimeters (e.g., "
-    "height)",
-  )
-  poses: List[PoseInfo] = Field(description="List of all poses defined on this deck")
-
-
-class DeckUpdateMessage(BaseModel):
-  """Model for WebSocket messages broadcasting updates to the deck state."""
-
-  deck_id: int = Field(description="ORM ID of the deck that was updated")
-  update_type: str = Field(
-    description="Type of update (e.g., 'labware_added', 'labware_removed', "
-    "'labware_updated', 'pose_cleared')"
-  )
-  pose_name: Optional[str] = Field(
-    None, description="Name of the pose affected by the update, if applicable"
-  )
-  labware_info: Optional[ResourceInfo] = Field(
-    None,
-    description="The new state of the labware in the pose, or null if labware was "
-    "removed",
-  )
-  timestamp: str = Field(
-    default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    description="Timestamp of the update in ISO format (UTC)",
+  description: Optional[str] = Field(None, description="A description of the workcell.")
+  physical_location: Optional[str] = Field(
+    None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301')."
   )
 
   class Config:
-    """Configuration for Pydantic model."""
+    """Pydantic configuration for WorkcellBase."""
 
-    # Ensure that default_factory works as expected
-    validate_assignment = True
+    orm_mode = True
+
+
+class WorkcellCreate(WorkcellBase):
+  """Represents a workcell for creation requests.
+
+  This model inherits all properties from `WorkcellBase` and is used
+  specifically when creating new workcell entries.
+  """
+
+  pass
+
+
+class WorkcellUpdate(BaseModel):
+  """Specifies the fields that can be updated for an existing workcell.
+
+  All fields are optional, allowing for partial updates to a workcell's
+  attributes.
+  """
+
+  name: Optional[str] = Field(None, description="The new unique name of the workcell.")
+  description: Optional[str] = Field(
+    None, description="The new description of the workcell."
+  )
+  physical_location: Optional[str] = Field(
+    None, description="The new physical location of the workcell."
+  )
+
+
+class WorkcellResponse(WorkcellBase):
+  """Represents a workcell for API responses.
+
+  This model extends `WorkcellBase` by adding system-generated identifiers
+  and timestamps for creation and last update, suitable for client-facing
+  responses.
+  """
+
+  db_id: int = Field(description="The unique database ID of the workcell.")
+  created_at: Optional[datetime.datetime] = Field(
+    None, description="Timestamp when the workcell was created (UTC)."
+  )
+  updated_at: Optional[datetime.datetime] = Field(
+    None, description="Timestamp when the workcell was last updated (UTC)."
+  )
+  machines: List[MachineResponse] = Field(
+    default_factory=list, description="List of machines associated with this workcell."
+  )
+
+  resources: Optional[List[ResourceInstanceResponse]] = Field(
+    default_factory=list, description="List of resources associated with this workcell."
+  )
+
+  decks: Optional[List[DeckStateResponse]] = Field(
+    default_factory=list,
+    description="List of deck configurations associated with this workcell.",
+  )

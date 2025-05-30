@@ -74,27 +74,6 @@ class AssetAcquisitionError(RuntimeError):
     """Custom exception for errors during asset acquisition."""
 
 
-# Define string constants for categories (as in previous version, for fallback or specific logic)
-# These should ideally align with or be derived from PLR's own category strings.
-CATEGORY_PLATE = "PLATE"
-CATEGORY_TIP_RACK = "TIP_RACK"
-CATEGORY_LID = "LID"
-CATEGORY_TROUGH = "TROUGH"
-CATEGORY_TUBE_RACK = "TUBE_RACK"
-CATEGORY_PETRI_DISH = "PETRI_DISH"
-CATEGORY_TUBE = "TUBE"
-CATEGORY_WASTE = "WASTE"
-CATEGORY_CARRIER = "CARRIER"
-CATEGORY_OTHER = "OTHER"
-
-CONSUMABLE_CATEGORIES = {
-    CATEGORY_PLATE,
-    CATEGORY_TIP_RACK,
-    CATEGORY_TROUGH,
-    CATEGORY_LID,
-    CATEGORY_TUBE,
-    CATEGORY_PETRI_DISH,
-}
 
 
 class AssetManager:

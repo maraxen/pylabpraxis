@@ -20,6 +20,7 @@ from .deck_orm import (
   DeckTypeDefinitionOrm,
 )
 from .deck_pydantic_models import (
+  DeckInfo,
   DeckLayoutBase,
   DeckLayoutCreate,
   DeckLayoutResponse,
@@ -28,13 +29,17 @@ from .deck_pydantic_models import (
   DeckPoseDefinitionCreate,
   DeckPoseDefinitionResponse,
   DeckPoseDefinitionUpdate,
+  DeckPoseInfo,
   DeckPoseItemBase,
   DeckPoseItemCreate,
   DeckPoseItemResponse,
+  DeckResourceInfo,
+  DeckStateResponse,
   DeckTypeDefinitionBase,
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
+  DeckUpdateMessage,
 )
 from .machine_orm import MachineCategoryEnum, MachineOrm, MachineStatusEnum
 from .machine_pydantic_models import (
@@ -70,6 +75,7 @@ from .protocol_pydantic_models import (
   UIHint,
 )
 from .resource_orm import (
+  ResourceCategoryEnum,
   ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
@@ -89,13 +95,12 @@ from .resource_pydantic_models import (
   ResourceInventoryReagentItem,
 )
 from .user_management_orm import UserOrm
-from .workcell_orm import WorkcellOrm
+from .workcell_orm import WorkcellOrm, WorkcellStatusEnum
 from .workcell_pydantic_models import (
-  DeckInfo,
-  DeckStateResponse,
-  DeckUpdateMessage,
-  PoseInfo,
-  ResourceInfo,
+  WorkcellBase,
+  WorkcellCreate,
+  WorkcellResponse,
+  WorkcellUpdate,
 )
 
 __all__ = [
@@ -117,8 +122,8 @@ __all__ = [
   "AssetInstanceOrm",
   "UserOrm",
   "DeckInfo",
-  "ResourceInfo",
-  "PoseInfo",
+  "DeckResourceInfo",
+  "DeckPoseInfo",
   "DeckStateResponse",
   "DeckUpdateMessage",
   "ProtocolStartRequest",
@@ -172,4 +177,10 @@ __all__ = [
   "AssetBase",
   "AssetResponse",
   "WorkcellOrm",
+  "WorkcellBase",
+  "WorkcellCreate",
+  "WorkcellUpdate",
+  "WorkcellResponse",
+  "WorkcellStatusEnum",
+  "ResourceCategoryEnum",
 ]

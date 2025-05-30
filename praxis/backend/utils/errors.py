@@ -1,43 +1,163 @@
-class ExperimentError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
+"""Custom exceptions for Praxis backend."""
 
-    def __str__(self):
-        return f"{self.message}"
+
+class PraxisError(Exception):
+  """Base exception for all custom Praxis backend errors.
+
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the PraxisError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
+
+
+class OrchestratorError(Exception):
+  """Exception raised for errors in the orchestrator service.
+
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the OrchestratorError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
 
 
 class DataError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
+  """Exception raised for errors during data operations (e.g., database interactions).
 
-    def __str__(self):
-        return f"{self.message}"
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the DataError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
 
 
 class ModelError(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
+  """Exception raised for data models errors (e.g., validation, serialization).
 
-    def __str__(self):
-        return f"{self.message}"
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the ModelError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
 
 
 class AssetAcquisitionError(RuntimeError):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
+  """Exception raised when there is an issue acquiring or assigning assets.
 
-    def __str__(self):
-        return f"{self.message}"
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the AssetAcquisitionError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
 
 
 class ProtocolCancelledError(Exception):
-    def __init__(self, message="Protocol run was cancelled."):
-        self.message = message
-        super().__init__(self.message)
+  """Exception raised when a protocol run is explicitly cancelled.
 
-    def __str__(self):
-        return f"{self.message}"
+  Attributes:
+    message (str): The cancellation message.
+
+  """
+
+  def __init__(self, message: str = "Protocol run was cancelled."):
+    """Initialize a new instance of the ProtocolCancelledError.
+
+    Args:
+      message (str): The detailed cancellation message.
+        Defaults to "Protocol run was cancelled.".
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
+
+
+class WorkcellRuntimeError(Exception):
+  """Exception raised for errors specific to the WorkcellRuntime.
+
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the WorkcellRuntimeError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
