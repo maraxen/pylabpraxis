@@ -495,7 +495,7 @@ async def list_protocol_definitions(  # MODIFIED: async def
         stmt = stmt.filter(FunctionProtocolDefinitionOrm.category == category)
     if tags:
         for tag in tags:
-            stmt = stmt.filter(FunctionProtocolDefinitionOrm.tags.op("?")(tag))  # type: ignore
+            stmt = stmt.filter(FunctionProtocolDefinitionOrm.tags.op("?")(tag))
 
     stmt = (
         stmt.order_by(

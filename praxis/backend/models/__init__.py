@@ -103,6 +103,8 @@ from .workcell_pydantic_models import (
     DeckUpdateMessage,
 )
 
+from .asset_pydantic_models import AssetBase, AssetResponse
+
 __all__ = [
     "MachineOrm",
     "ResourceInstanceOrm",
@@ -174,4 +176,6 @@ __all__ = [
     "DeckConfigurationSlotItemOrm",
     "DeckSlotDefinitionOrm",
     "DeckTypeDefinitionOrm",
+    "AssetBase",
+    "AssetResponse",
 ]

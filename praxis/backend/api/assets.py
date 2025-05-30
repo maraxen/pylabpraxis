@@ -9,24 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession  # MODIFIED: For type hinting
 
 from praxis.backend.models import (
     AssetResponse,
-    ResourceTypeInfo,
+    ResourceInfo as ResourceTypeInfo,  # TODO: check this is right
     MachineTypeInfo,
-    ResourceCategoriesResponse,
-    ResourceCreationRequest,
-    MachineCreationRequest,
-    LabwareInventoryDataIn,
-    LabwareInventoryDataOut,
-    LabwareDefinitionCreate,
-    LabwareDefinitionUpdate,
-    LabwareDefinitionResponse,
-    DeckLayoutCreate,
-    DeckLayoutUpdate,
-    DeckLayoutResponse,
-    LabwareInventoryReagentItem,
-    LabwareInventoryItemCount,
+    ResourceInventoryDataOut,
+    ResourceInventoryDataIn,
+    ResourceInstanceResponse,
 )
-from praxis.backend.services import asset_data_service
-from praxis.backend.services.praxis_orm_service import PraxisDBService
+from praxis.backend.services import PraxisDBService
 
 from praxis.backend.utils.plr_inspection import (
     get_resource_metadata,
@@ -330,25 +319,25 @@ async def create_machine(
         )
 
 
-# --- Labware Instance Inventory Endpoints ---
+# --- Resource Instance Inventory Endpoints ---
 # These already use asset_data_service and get_db, ensure get_db is from .dependencies
 @router.get(
     "/labware_instances/{instance_id}/inventory",
-    response_model=LabwareInventoryDataOut,
-    tags=["Labware Instances"],
+    response_model=ResourceInventoryDataOut,
+    tags=["Resource Instances"],
 )
 async def get_labware_instance_inventory(
     instance_id: int, db: AsyncSession = Depends(get_db)
-) -> LabwareInventoryDataOut:
+) -> ResourceInventoryDataOut:
     instance = await asset_data_service.get_labware_instance_by_id(db, instance_id)
     if not instance:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Labware instance not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource instance not found"
         )
     if not instance.properties_json:
-        return LabwareInventoryDataOut()
+        return ResourceInventoryDataOut()
     try:
-        inventory_data = LabwareInventoryDataOut(**instance.properties_json)
+        inventory_data = ResourceInventoryDataOut(**instance.properties_json)
         return inventory_data
     except Exception as e:
         raise HTTPException(
@@ -359,18 +348,18 @@ async def get_labware_instance_inventory(
 
 @router.put(
     "/labware_instances/{instance_id}/inventory",
-    response_model=LabwareInventoryDataOut,
-    tags=["Labware Instances"],
+    response_model=ResourceInventoryDataOut,
+    tags=["Resource Instances"],
 )
 async def update_labware_instance_inventory(
     instance_id: int,
-    inventory_data: LabwareInventoryDataIn,
+    inventory_data: ResourceInventoryDataIn,
     db: AsyncSession = Depends(get_db),
-) -> LabwareInventoryDataOut:
-    instance = await asset_data_service.get_labware_instance_by_id(db, instance_id)
+) -> ResourceInventoryDataOut:
+    instance = await svc.get_labware_instance_by_id(db, instance_id)
     if not instance:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Labware instance not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Resource instance not found"
         )
 
     if hasattr(inventory_data, "model_dump"):
@@ -382,12 +371,10 @@ async def update_labware_instance_inventory(
         datetime.timezone.utc
     ).isoformat()
 
-    updated_instance = (
-        await asset_data_service.update_labware_instance_location_and_status(
-            db,
-            labware_instance_id=instance_id,
-            properties_json_update=updated_properties,
-        )
+    updated_instance = await svc.update_labware_instance_location_and_status(
+        db,
+        labware_instance_id=instance_id,
+        properties_json_update=updated_properties,
     )
     if not updated_instance or not updated_instance.properties_json:
         raise HTTPException(
@@ -395,7 +382,7 @@ async def update_labware_instance_inventory(
             detail="Failed to update or retrieve labware instance properties",
         )
     try:
-        return LabwareInventoryDataOut(**updated_instance.properties_json)
+        return ResourceInventoryDataOut(**updated_instance.properties_json)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -403,16 +390,16 @@ async def update_labware_instance_inventory(
         )
 
 
-# --- Labware Definition Endpoints ---
+# --- Resource Definition Endpoints ---
 # These already use asset_data_service and get_db
 @router.post(
     "/labware_definitions",
-    response_model=LabwareDefinitionResponse,
+    response_model=ResourceDefinitionResponse,
     status_code=status.HTTP_201_CREATED,
-    tags=["Labware Definitions"],
+    tags=["Resource Definitions"],
 )
 async def create_labware_definition_endpoint(
-    definition: LabwareDefinitionCreate, db: AsyncSession = Depends(get_db)
+    definition: ResourceDefinitionCreate, db: AsyncSession = Depends(get_db)
 ):
     try:
         created_def = await asset_data_service.add_or_update_labware_definition(
@@ -430,53 +417,48 @@ async def create_labware_definition_endpoint(
 
 @router.get(
     "/labware_definitions/{pylabrobot_definition_name}",
-    response_model=LabwareDefinitionResponse,
-    tags=["Labware Definitions"],
+    response_model=ResourceDefinitionResponse,
+    tags=["Resource Definitions"],
 )
 async def get_labware_definition_endpoint(
     pylabrobot_definition_name: str, db: AsyncSession = Depends(get_db)
 ):
-    db_def = await asset_data_service.get_labware_definition(
-        db, pylabrobot_definition_name
-    )
+    db_def = await svc.get_labware_definition(db, pylabrobot_definition_name)
     if db_def is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Labware definition not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resource definition not found",
         )
     return db_def
 
 
 @router.get(
     "/labware_definitions",
-    response_model=List[LabwareDefinitionResponse],
-    tags=["Labware Definitions"],
+    response_model=List[ResourceDefinitionResponse],
+    tags=["Resource Definitions"],
 )
 async def list_labware_definitions_endpoint(
     db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
 ):
-    definitions = await asset_data_service.list_labware_definitions(
-        db, limit=limit, offset=offset
-    )
+    definitions = await svc.list_labware_definitions(db, limit=limit, offset=offset)
     return definitions
 
 
 @router.put(
     "/labware_definitions/{pylabrobot_definition_name}",
-    response_model=LabwareDefinitionResponse,
-    tags=["Labware Definitions"],
+    response_model=ResourceDefinitionResponse,
+    tags=["Resource Definitions"],
 )
 async def update_labware_definition_endpoint(
     pylabrobot_definition_name: str,
-    definition_update: LabwareDefinitionUpdate,
+    definition_update: ResourceDefinitionUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    existing_def = await asset_data_service.get_labware_definition(
-        db, pylabrobot_definition_name
-    )
+    existing_def = await svc.get_labware_definition(db, pylabrobot_definition_name)
     if not existing_def:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Labware definition '{pylabrobot_definition_name}' not found.",
+            detail=f"Resource definition '{pylabrobot_definition_name}' not found.",
         )
 
     update_data = definition_update.model_dump(exclude_unset=True)
@@ -488,7 +470,7 @@ async def update_labware_definition_endpoint(
         )
 
     try:
-        updated_def = await asset_data_service.add_or_update_labware_definition(
+        updated_def = await svc.add_or_update_labware_definition(
             db=db, pylabrobot_definition_name=pylabrobot_definition_name, **update_data
         )
         return updated_def
@@ -499,18 +481,16 @@ async def update_labware_definition_endpoint(
 @router.delete(
     "/labware_definitions/{pylabrobot_definition_name}",
     status_code=status.HTTP_204_NO_CONTENT,
-    tags=["Labware Definitions"],
+    tags=["Resource Definitions"],
 )
 async def delete_labware_definition_endpoint(
     pylabrobot_definition_name: str, db: AsyncSession = Depends(get_db)
 ):
-    success = await asset_data_service.delete_labware_definition(
-        db, pylabrobot_definition_name
-    )
+    success = await svc.delete_labware_definition(db, pylabrobot_definition_name)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Labware definition '{pylabrobot_definition_name}' not found or could not be deleted.",
+            detail=f"Resource definition '{pylabrobot_definition_name}' not found or could not be deleted.",
         )
     return None
 
@@ -532,7 +512,7 @@ async def create_deck_layout_endpoint(
             if deck_layout_in.slot_items
             else []
         )
-        created_layout = await asset_data_service.create_deck_layout(
+        created_layout = await svc.create_deck_layout(
             db=db,
             layout_name=deck_layout_in.layout_name,
             deck_device_id=deck_layout_in.deck_device_id,
@@ -558,7 +538,7 @@ async def list_deck_layouts_endpoint(
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
-    layouts = await asset_data_service.list_deck_layouts(
+    layouts = await svc.list_deck_layouts(
         db, deck_device_id=deck_device_id, limit=limit, offset=offset
     )
     return layouts
@@ -572,7 +552,7 @@ async def list_deck_layouts_endpoint(
 async def get_deck_layout_by_id_endpoint(
     deck_layout_id: int, db: AsyncSession = Depends(get_db)
 ):
-    layout = await asset_data_service.get_deck_layout_by_id(db, deck_layout_id)
+    layout = await svc.get_deck_layout_by_id(db, deck_layout_id)
     if not layout:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -595,7 +575,7 @@ async def update_deck_layout_endpoint(
     if deck_layout_update.slot_items is not None:
         slot_items_data = [item.model_dump() for item in deck_layout_update.slot_items]
     try:
-        updated_layout = await asset_data_service.update_deck_layout(
+        updated_layout = await svc.update_deck_layout(
             db=db,
             deck_layout_id=deck_layout_id,
             name=deck_layout_update.layout_name,
@@ -626,7 +606,7 @@ async def update_deck_layout_endpoint(
 async def delete_deck_layout_endpoint(
     deck_layout_id: int, db: AsyncSession = Depends(get_db)
 ):
-    success = await asset_data_service.delete_deck_layout(db, deck_layout_id)
+    success = await svc.delete_deck_layout(db, deck_layout_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

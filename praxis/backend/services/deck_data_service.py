@@ -74,7 +74,8 @@ async def create_deck_layout(  # MODIFIED
                 if not resource_instance_result.scalar_one_or_none():
                     await db.rollback()
                     raise ValueError(
-                        f"ResourceInstanceOrm with id {resource_instance_id} for slot '{item_data.get('slot_name')}' not found."
+                        f"ResourceInstanceOrm with id {resource_instance_id} for slot \
+                          '{item_data.get('slot_name')}' not found."
                     )
 
             expected_def_name = item_data.get("expected_resource_definition_name")
@@ -82,7 +83,8 @@ async def create_deck_layout(  # MODIFIED
                 if not await get_resource_definition(db, expected_def_name):
                     await db.rollback()
                     raise ValueError(
-                        f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for slot '{item_data.get('slot_name')}' not found."
+                        f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for slot \
+                          '{item_data.get('slot_name')}' not found."
                     )
 
             slot_item = DeckConfigurationSlotItemOrm(
@@ -208,7 +210,8 @@ async def update_deck_layout(  # MODIFIED
                 if not resource_instance_result.scalar_one_or_none():
                     await db.rollback()
                     raise ValueError(
-                        f"ResourceInstanceOrm with id {resource_instance_id} for slot '{item_data.get('slot_name')}' not found."
+                        f"ResourceInstanceOrm with id {resource_instance_id} for slot \
+                          '{item_data.get('slot_name')}' not found."
                     )
 
             expected_def_name = item_data.get("expected_resource_definition_name")
@@ -216,7 +219,8 @@ async def update_deck_layout(  # MODIFIED
                 if not await get_resource_definition(db, expected_def_name):
                     await db.rollback()
                     raise ValueError(
-                        f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for slot '{item_data.get('slot_name')}' not found."
+                        f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for slot \
+                          '{item_data.get('slot_name')}' not found."
                     )
 
             slot_item = DeckConfigurationSlotItemOrm(
@@ -238,7 +242,7 @@ async def update_deck_layout(  # MODIFIED
         raise e
 
 
-async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:  # MODIFIED
+async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:
     deck_layout_orm = await get_deck_layout_by_id(
         db, deck_layout_id
     )  # Ensures items are loaded for cascade
@@ -246,7 +250,7 @@ async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:  # 
         return False
 
     try:
-        await db.delete(deck_layout_orm)  # MODIFIED
+        await db.delete(deck_layout_orm)
         await db.commit()
         return True
     except IntegrityError as e:
@@ -262,26 +266,22 @@ async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:  # 
 
 async def add_or_update_deck_type_definition(
     db: AsyncSession,
-    pylabrobot_class_name: str,  # Corresponds to DeckTypeDefinitionOrm.pylabrobot_deck_fqn
-    praxis_deck_type_name: str,  # Corresponds to DeckTypeDefinitionOrm.display_name
+    pylabrobot_class_name: str,
+    praxis_deck_type_name: str,
     deck_type_id: Optional[int] = None,
     description: Optional[str] = None,
     manufacturer: Optional[str] = None,
     model: Optional[str] = None,
-    notes: Optional[str] = None,  # Will be stored in additional_properties_json
-    plr_category: Optional[str] = "deck",  # Default to "deck" as per ORM
+    notes: Optional[str] = None,
+    plr_category: Optional[str] = "deck",
     default_size_x_mm: Optional[float] = None,
     default_size_y_mm: Optional[float] = None,
     default_size_z_mm: Optional[float] = None,
     serialized_constructor_args_json: Optional[Dict[str, Any]] = None,
     serialized_assignment_methods_json: Optional[Dict[str, Any]] = None,
     serialized_constructor_layout_hints_json: Optional[Dict[str, Any]] = None,
-    additional_properties_input_json: Optional[
-        Dict[str, Any]
-    ] = None,  # User-provided base for additional_properties_json
-    slot_definitions_data: Optional[
-        List[Dict[str, Any]]
-    ] = None,  # List of dicts based on DeckSlotDefinitionCreate
+    additional_properties_input_json: Optional[Dict[str, Any]] = None,
+    slot_definitions_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckTypeDefinitionOrm:
     """
     Adds a new deck type definition or updates an existing one.
@@ -428,16 +428,19 @@ async def add_or_update_deck_type_definition(
         await db.rollback()
         if "uq_deck_type_definitions_pylabrobot_deck_fqn" in str(e.orig):
             raise ValueError(
-                f"A deck type definition with PyLabRobot FQN '{pylabrobot_class_name}' already exists."
+                f"A deck type definition with PyLabRobot FQN '{pylabrobot_class_name}' \
+                  already exists."
             )
         elif "uq_deck_slot_definition" in str(
             e.orig
         ):  # Should be caught per slot ideally
             raise ValueError(
-                f"A slot definition with the same name might already exist for this deck type. Details: {e}"
+                f"A slot definition with the same name might already exist for this deck type. \
+                  Details: {e}"
             )
         raise ValueError(
-            f"Database integrity error for deck type definition '{pylabrobot_class_name}'. Details: {e}"
+            f"Database integrity error for deck type definition '{pylabrobot_class_name}'. \
+              Details: {e}"
         )
     except Exception as e:
         await db.rollback()
@@ -559,7 +562,7 @@ async def add_deck_slot_definitions(
             db.add(new_slot)
             created_slots.append(new_slot)
 
-        await db.flush()  # Use flush to catch IntegrityErrors before commit, allowing partial operations if designed so (though here we rollback all)
+        await db.flush()
         await db.commit()
         for slot in created_slots:  # Refresh each created slot
             await db.refresh(slot)
@@ -567,10 +570,9 @@ async def add_deck_slot_definitions(
     except IntegrityError as e:
         await db.rollback()
         if "uq_deck_slot_definition" in str(e.orig):
-            # Attempt to identify which slot caused the issue if possible, or give a general message.
-            # For simplicity, a general message is used here.
             raise ValueError(
-                f"Failed to add one or more slot definitions to deck type ID {deck_type_definition_id} "
+                f"Failed to add one or more slot definitions to deck type ID \
+                  {deck_type_definition_id} "
                 f"due to a slot name conflict or other integrity constraint. Details: {e}"
             )
         raise ValueError(
