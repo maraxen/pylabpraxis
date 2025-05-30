@@ -95,6 +95,7 @@ async def list_machines(  # MODIFIED
     status: Optional[MachineStatusEnum] = None,
     pylabrobot_class_filter: Optional[str] = None,
     workcell_id: Optional[int] = None,
+    current_protocol_run_guid_filter: Optional[int] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> List[MachineOrm]:
@@ -107,6 +108,10 @@ async def list_machines(  # MODIFIED
         )
     if workcell_id:
         stmt = stmt.filter(MachineOrm.workcell_id == workcell_id)
+    if current_protocol_run_guid_filter:
+        stmt = stmt.filter(
+            MachineOrm.current_protocol_run_guid == current_protocol_run_guid_filter
+        )
     stmt = stmt.order_by(MachineOrm.user_friendly_name).limit(limit).offset(offset)
     result = await db.execute(stmt)
     return list(result.scalars().all())

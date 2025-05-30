@@ -1,4 +1,6 @@
-"""This module imports and re-exports ORM classes and enums for asset management
+"""ORM and Pydantic classes for standard interoperability and interfacing.
+
+Imports and re-exports ORM classes and enums for asset management
 and protocol definitions. It serves as a single point of access for these models,
 allowing other parts of the application to import them easily.
 It also includes the necessary imports for Alembic migrations, ensuring that
@@ -7,103 +9,93 @@ the database schema is in sync with the ORM models.
 
 from __future__ import annotations
 
-
 from .asset_management_orm import (
     AssetInstanceOrm,
 )
-
-from .machine_orm import MachineOrm, MachineStatusEnum, MachineCategoryEnum
-
-from .resource_orm import (
-    ResourceInstanceOrm,
-    ResourceDefinitionCatalogOrm,
-    ResourceInstanceStatusEnum,
-)
-
+from .asset_pydantic_models import AssetBase, AssetResponse
 from .deck_orm import (
     DeckConfigurationOrm,
-    DeckConfigurationSlotItemOrm,
-    DeckSlotDefinitionOrm,
+    DeckConfigurationPoseItemOrm,
+    DeckPoseDefinitionOrm,
     DeckTypeDefinitionOrm,
 )
-
-from .protocol_definitions_orm import (
-    ProtocolSourceStatusEnum,
-    ProtocolRunStatusEnum,
-    FunctionCallStatusEnum,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-    FunctionProtocolDefinitionOrm,
-    ParameterDefinitionOrm,
-    AssetDefinitionOrm,
-    ProtocolRunOrm,
-    FunctionCallLogOrm,
-)
-
-from .user_management_orm import UserOrm
-
-from .protocol_pydantic_models import (
-    ProtocolStartRequest,
-    ProtocolStatus,
-    ProtocolDirectories,
-    ProtocolPrepareRequest,
-    ProtocolInfo,
-    UIHint,
-    ParameterMetadataModel,
-    AssetRequirementModel,
-    ProtocolParameters,
-    FunctionProtocolDefinitionModel,
-)
-
-from .resource_pydantic_models import (
-    ResourceInventoryDataIn,
-    ResourceInventoryDataOut,
-    ResourceInventoryReagentItem,
-    ResourceInventoryItemCount,
-    ResourceDefinitionBase,
-    ResourceDefinitionCreate,
-    ResourceDefinitionUpdate,
-    ResourceDefinitionResponse,
-    ResourceInstanceCreate,
-    ResourceInstanceUpdate,
-    ResourceInstanceResponse,
-    ResourceInstanceSharedFields,
-)
-
 from .deck_pydantic_models import (
     DeckLayoutBase,
     DeckLayoutCreate,
-    DeckLayoutUpdate,
     DeckLayoutResponse,
-    DeckSlotDefinitionBase,
-    DeckSlotDefinitionCreate,
-    DeckSlotDefinitionUpdate,
-    DeckSlotDefinitionResponse,
-    DeckSlotItemBase,
-    DeckSlotItemCreate,
-    DeckSlotItemResponse,
+    DeckLayoutUpdate,
+    DeckPoseDefinitionBase,
+    DeckPoseDefinitionCreate,
+    DeckPoseDefinitionResponse,
+    DeckPoseDefinitionUpdate,
+    DeckPoseItemBase,
+    DeckPoseItemCreate,
+    DeckPoseItemResponse,
     DeckTypeDefinitionBase,
     DeckTypeDefinitionCreate,
-    DeckTypeDefinitionUpdate,
     DeckTypeDefinitionResponse,
+    DeckTypeDefinitionUpdate,
 )
+from .machine_orm import MachineCategoryEnum, MachineOrm, MachineStatusEnum
 from .machine_pydantic_models import (
     MachineBase,
     MachineCreate,
-    MachineUpdate,
-    MachineResponse,
     MachineCreationRequest,
+    MachineResponse,
     MachineTypeInfo,
+    MachineUpdate,
 )
+from .protocol_definitions_orm import (
+    AssetDefinitionOrm,
+    FileSystemProtocolSourceOrm,
+    FunctionCallLogOrm,
+    FunctionCallStatusEnum,
+    FunctionProtocolDefinitionOrm,
+    ParameterDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolRunStatusEnum,
+    ProtocolSourceRepositoryOrm,
+    ProtocolSourceStatusEnum,
+)
+from .protocol_pydantic_models import (
+    AssetRequirementModel,
+    FunctionProtocolDefinitionModel,
+    ParameterMetadataModel,
+    ProtocolDirectories,
+    ProtocolInfo,
+    ProtocolParameters,
+    ProtocolPrepareRequest,
+    ProtocolStartRequest,
+    ProtocolStatus,
+    UIHint,
+)
+from .resource_orm import (
+    ResourceDefinitionCatalogOrm,
+    ResourceInstanceOrm,
+    ResourceInstanceStatusEnum,
+)
+from .resource_pydantic_models import (
+    ResourceDefinitionBase,
+    ResourceDefinitionCreate,
+    ResourceDefinitionResponse,
+    ResourceDefinitionUpdate,
+    ResourceInstanceCreate,
+    ResourceInstanceResponse,
+    ResourceInstanceSharedFields,
+    ResourceInstanceUpdate,
+    ResourceInventoryDataIn,
+    ResourceInventoryDataOut,
+    ResourceInventoryItemCount,
+    ResourceInventoryReagentItem,
+)
+from .user_management_orm import UserOrm
 from .workcell_pydantic_models import (
     DeckInfo,
-    ResourceInfo,
-    SlotInfo,
     DeckStateResponse,
     DeckUpdateMessage,
+    PoseInfo,
+    ResourceInfo,
 )
-
-from .asset_pydantic_models import AssetBase, AssetResponse
 
 __all__ = [
     "MachineOrm",
@@ -125,7 +117,7 @@ __all__ = [
     "UserOrm",
     "DeckInfo",
     "ResourceInfo",
-    "SlotInfo",
+    "PoseInfo",
     "DeckStateResponse",
     "DeckUpdateMessage",
     "ProtocolStartRequest",
@@ -154,13 +146,13 @@ __all__ = [
     "DeckLayoutCreate",
     "DeckLayoutUpdate",
     "DeckLayoutResponse",
-    "DeckSlotDefinitionBase",
-    "DeckSlotDefinitionCreate",
-    "DeckSlotDefinitionUpdate",
-    "DeckSlotDefinitionResponse",
-    "DeckSlotItemBase",
-    "DeckSlotItemCreate",
-    "DeckSlotItemResponse",
+    "DeckPoseDefinitionBase",
+    "DeckPoseDefinitionCreate",
+    "DeckPoseDefinitionUpdate",
+    "DeckPoseDefinitionResponse",
+    "DeckPoseItemBase",
+    "DeckPoseItemCreate",
+    "DeckPoseItemResponse",
     "DeckTypeDefinitionBase",
     "DeckTypeDefinitionCreate",
     "DeckTypeDefinitionUpdate",
@@ -173,8 +165,8 @@ __all__ = [
     "MachineTypeInfo",
     "MachineCategoryEnum",
     "DeckConfigurationOrm",
-    "DeckConfigurationSlotItemOrm",
-    "DeckSlotDefinitionOrm",
+    "DeckConfigurationPoseItemOrm",
+    "DeckPoseDefinitionOrm",
     "DeckTypeDefinitionOrm",
     "AssetBase",
     "AssetResponse",

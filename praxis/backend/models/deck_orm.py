@@ -7,7 +7,7 @@ SQLAlchemy ORM models for Asset Management, including:
 - ResourceDefinitionCatalogOrm (Types of Resource from PLR)
 - ResourceInstanceOrm (Specific physical resource items)
 - DeckConfigurationOrm (Named deck layouts)
-- DeckConfigurationSlotItemOrm (Resource in a slot for a layout)
+- DeckConfigurationPoseItemOrm (Resource in a pose for a layout)
 """
 
 from datetime import datetime
@@ -53,8 +53,8 @@ class DeckConfigurationOrm(Base):
     )
 
     deck_machine = relationship("MachineOrm", back_populates="deck_configurations")
-    slot_items = relationship(
-        "DeckConfigurationSlotItemOrm",
+    pose_items = relationship(
+        "DeckConfigurationPoseItemOrm",
         back_populates="deck_configuration",
         cascade="all, delete-orphan",
     )
@@ -63,15 +63,15 @@ class DeckConfigurationOrm(Base):
         return f"<DeckConfigurationOrm(id={self.id}, name='{self.layout_name}')>"
 
 
-class DeckConfigurationSlotItemOrm(Base):
-    __tablename__ = "deck_configuration_slot_items"
+class DeckConfigurationPoseItemOrm(Base):
+    __tablename__ = "deck_configuration_pose_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     deck_configuration_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("deck_configurations.id"), nullable=False
     )
-    slot_name: Mapped[str] = mapped_column(
-        String, nullable=False, comment="Slot name on the deck (e.g., A1, SLOT_7)"
+    pose_id: Mapped[str] = mapped_column(
+        String, nullable=False, comment="Pose name on the deck (e.g., A1, SLOT_7)"
     )
 
     # This links to a specific physical piece of resource
@@ -79,18 +79,18 @@ class DeckConfigurationSlotItemOrm(Base):
         Integer, ForeignKey("resource_instances.id"), nullable=False
     )
 
-    # Optional: for validation, store the expected type of resource for this slot in this layout
+    # Optional: for validation, store the expected type of resource for this pose in this layout
     expected_resource_definition_name: Mapped[Optional[str]] = mapped_column(
         String,
         ForeignKey("resource_definition_catalog.pylabrobot_definition_name"),
         nullable=True,
     )
-    deck_slot_definition_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("deck_slot_definitions.id"), nullable=True, index=True
+    deck_pose_definition_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("deck_pose_definitions.id"), nullable=True, index=True
     )
 
     deck_configuration = relationship(
-        "DeckConfigurationOrm", back_populates="slot_items"
+        "DeckConfigurationOrm", back_populates="pose_items"
     )
     resource_instance = relationship(
         "ResourceInstanceOrm", back_populates="deck_configuration_items"
@@ -98,26 +98,25 @@ class DeckConfigurationSlotItemOrm(Base):
     expected_resource_definition = relationship(
         "ResourceDefinitionCatalogOrm"
     )  # Simple relationship
-    deck_slot_definition = relationship("DeckSlotDefinitionOrm")
+    deck_pose_definition = relationship("DeckPoseDefinitionOrm")
 
     __table_args__ = (
-        UniqueConstraint(
-            "deck_configuration_id", "slot_name", name="uq_deck_slot_item"
-        ),
+        UniqueConstraint("deck_configuration_id", "pose_id", name="uq_deck_pose_item"),
     )
 
     def __repr__(self):
-        return f"<DeckConfigurationSlotItemOrm(deck_config_id={self.deck_configuration_id}, slot='{self.slot_name}', lw_instance_id={self.resource_instance_id})>"
+        return f"<DeckConfigurationPoseItemOrm(deck_config_id={self.deck_configuration_id}, \
+          pose='{self.pose_id}', lw_instance_id={self.resource_instance_id})>"
 
 
-class DeckSlotDefinitionOrm(Base):
-    __tablename__ = "deck_slot_definitions"
+class DeckPoseDefinitionOrm(Base):
+    __tablename__ = "deck_pose_definitions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     deck_type_definition_id: Mapped[int] = mapped_column(
         ForeignKey("deck_type_definitions.id"), nullable=False
     )
-    slot_name: Mapped[str] = mapped_column(String, nullable=False)
+    pose_id: Mapped[str] = mapped_column(String, nullable=False)
     nominal_x_mm: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True
     )  # From plan, but PLR might always provide these
@@ -130,24 +129,24 @@ class DeckSlotDefinitionOrm(Base):
     accepted_resource_categories_json: Mapped[Optional[list[str]]] = mapped_column(
         JSON, nullable=True
     )
-    slot_specific_details_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    pose_specific_details_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True
     )
 
     # Relationship
     deck_type_definition: Mapped["DeckTypeDefinitionOrm"] = relationship(
-        back_populates="slot_definitions"
+        back_populates="pose_definitions"
     )
 
-    # Unique constraint for slot_name within a deck_type_definition
+    # Unique constraint for pose_id within a deck_type_definition
     __table_args__ = (
         UniqueConstraint(
-            "deck_type_definition_id", "slot_name", name="uq_deck_slot_definition"
+            "deck_type_definition_id", "pose_id", name="uq_deck_pose_definition"
         ),
     )
 
     def __repr__(self):
-        return f"<DeckSlotDefinitionOrm(id={self.id}, name='{self.slot_name}', \
+        return f"<DeckPoseDefinitionOrm(id={self.id}, name='{self.pose_id}', \
           deck_type_id={self.deck_type_definition_id})>"
 
 
@@ -165,6 +164,15 @@ class DeckTypeDefinitionOrm(Base):
     default_size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     default_size_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     default_size_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    serialized_to_location_method_json: Mapped[Optional[dict[str, Any]]] = (
+        mapped_column(JSON, nullable=True)
+    )
+    pose_to_location_method_name: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True, comment="Name of the method to convert pose to location"
+    )
+    pose_argument_name: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True, comment="Name of the argument for pose in the method"
+    )
     serialized_constructor_args_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True
     )
@@ -179,7 +187,7 @@ class DeckTypeDefinitionOrm(Base):
     )
 
     # Relationships
-    slot_definitions: Mapped[list[DeckSlotDefinitionOrm]] = relationship(
+    pose_definitions: Mapped[list[DeckPoseDefinitionOrm]] = relationship(
         back_populates="deck_type_definition", cascade="all, delete-orphan"
     )
 

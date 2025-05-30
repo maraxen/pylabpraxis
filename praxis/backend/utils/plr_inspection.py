@@ -23,11 +23,11 @@ from typing import (
 
 # PyLabRobot Imports
 from pylabrobot.resources import (
-    Deck as PlrDeck,
-    Resource as PlrResource,
+    Deck as Deck,
+    Resource as Resource,
     ResourceHolder,
 )
-from pylabrobot.machines.machine import Machine as PlrMachine
+from pylabrobot.machines.machine import Machine
 from pylabrobot.resources.coordinate import Coordinate
 from pylabrobot.resources.carrier import (
     Carrier,
@@ -39,6 +39,7 @@ from pylabrobot.resources.carrier import (
 from pylabrobot.resources.plate import Plate
 from pylabrobot.resources.tip_rack import TipRack
 from pylabrobot.resources.trough import Trough
+from inspect import isabstract
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +121,9 @@ def is_resource_subclass(item_class: Type[Any]) -> bool:
     """Check if a class is a non-abstract subclass of pylabrobot.resources.Resource."""
     return (
         inspect.isclass(item_class)
-        and issubclass(item_class, PlrResource)
+        and issubclass(item_class, Resource)
         and not inspect.isabstract(item_class)
-        and item_class is not PlrResource
+        and item_class is not Resource
     )
 
 
@@ -130,9 +131,9 @@ def is_machine_subclass(item_class: Type[Any]) -> bool:
     """Check if a class is a non-abstract subclass of pylabrobot.machines.machine.Machine."""
     return (
         inspect.isclass(item_class)
-        and issubclass(item_class, PlrMachine)
+        and issubclass(item_class, Machine)
         and not inspect.isabstract(item_class)
-        and item_class is not PlrMachine
+        and item_class is not Machine
     )
 
 
@@ -140,9 +141,9 @@ def is_deck_subclass(item_class: Type[Any]) -> bool:
     """Check if a class is a non-abstract subclass of pylabrobot.resources.Deck."""
     return (
         inspect.isclass(item_class)
-        and issubclass(item_class, PlrDeck)
+        and issubclass(item_class, Deck)
         and not inspect.isabstract(item_class)
-        and item_class is not PlrDeck  # Exclude the base Deck class itself
+        and item_class is not Deck  # Exclude the base Deck class itself
     )
 
 
@@ -213,40 +214,40 @@ def get_all_plr_classes(
 
 def get_all_plr_resource_classes(
     concrete_only: bool = True,
-) -> Dict[str, Type[PlrResource]]:
+) -> Dict[str, Type[Resource]]:
     return get_all_plr_classes(  # type: ignore
         base_module_names=[
             "pylabrobot.resources",
             "pylabrobot.liquid_handling.resources",
         ],
-        parent_class=PlrResource,
+        parent_class=Resource,
         concrete_only=concrete_only,
     )
 
 
 def get_all_plr_machine_classes(
     concrete_only: bool = True,
-) -> Dict[str, Type[PlrMachine]]:
+) -> Dict[str, Type[Machine]]:
     return get_all_plr_classes(  # type: ignore
         base_module_names="pylabrobot.machines",
-        parent_class=PlrMachine,
+        parent_class=Machine,
         concrete_only=concrete_only,
     )
 
 
-def get_all_plr_deck_classes(concrete_only: bool = True) -> Dict[str, Type[PlrDeck]]:
+def get_all_plr_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
     all_decks = get_all_plr_classes(  # type: ignore
         base_module_names=[
             "pylabrobot.resources",
             "pylabrobot.liquid_handling.resources",
         ],
-        parent_class=PlrDeck,
+        parent_class=Deck,
         concrete_only=concrete_only,
     )
     return {
         fqn: deck_class
         for fqn, deck_class in all_decks.items()
-        if deck_class is not PlrDeck
+        if deck_class is not Deck
     }
 
 
@@ -255,23 +256,23 @@ def get_all_plr_deck_classes(concrete_only: bool = True) -> Dict[str, Type[PlrDe
 
 def discover_plr_deck_classes(
     packages: Union[str, List[str]] = "pylabrobot.resources",
-) -> Dict[str, Type[PlrDeck]]:
+) -> Dict[str, Type[Deck]]:
     """
     Discovers all non-abstract PLR Deck subclasses within the specified Python package(s).
     """
     package_list = [packages] if isinstance(packages, str) else list(packages)
-    discovered_deck_classes: Dict[str, Type[PlrDeck]] = {}
+    discovered_deck_classes: Dict[str, Type[Deck]] = {}
     visited_modules: Set[str] = set()
     for package_name in package_list:
         try:
             deck_classes_in_pkg = _discover_classes_in_module_recursive(
                 package_name,
-                PlrDeck,
+                Deck,
                 concrete_only=True,
                 visited_modules=visited_modules,
             )
             for fqn, deck_class in deck_classes_in_pkg.items():
-                if issubclass(deck_class, PlrDeck) and deck_class is not PlrDeck:
+                if issubclass(deck_class, Deck) and deck_class is not Deck:
                     discovered_deck_classes[fqn] = deck_class  # type: ignore
         except ImportError:
             logger.warning(f"Package {package_name} not found during deck discovery.")
@@ -349,7 +350,7 @@ def _get_method_signature_details(method: Callable) -> Dict[str, Any]:
     except (
         ValueError,
         TypeError,
-    ) as e:  # ValueError for methods like builtins, TypeError for unresolveable hints
+    ) as e:
         logger.warning(
             f"Could not get signature or type hints for method {method.__name__}: {e}"
         )
@@ -357,18 +358,17 @@ def _get_method_signature_details(method: Callable) -> Dict[str, Any]:
     return sig_details
 
 
-def get_plr_deck_details(deck_class: Type[PlrDeck]) -> Dict[str, Any]:
+def get_deck_details(deck_class: Type[Deck]) -> Dict[str, Any]:
     """
     Extracts detailed information about a PLR Deck subclass.
     """
     details: Dict[str, Any] = {"fqn": get_class_fqn(deck_class)}
     details["constructor_args"] = get_constructor_params_with_defaults(deck_class)
 
-    deck_instance: Optional[PlrDeck] = None
+    deck_instance: Optional[Deck] = None
     temp_deck_name = f"temp_inspection_{deck_class.__name__}"
 
     try:
-        # Attempt instantiation (simplified for now, may need refinement for complex constructors)
         required_params = get_constructor_params_with_defaults(
             deck_class, required_only=True
         )
@@ -383,7 +383,8 @@ def get_plr_deck_details(deck_class: Type[PlrDeck]) -> Dict[str, Any]:
             deck_instance = deck_class(name=temp_deck_name)
         else:  # Cannot satisfy constructor easily
             logger.error(
-                f"Cannot auto-instantiate deck {details['fqn']} due to complex constructor: {required_params}"
+                f"Cannot auto-instantiate deck {details['fqn']} due to complex constructor: "
+                f"{required_params}"
             )
             raise ValueError(f"Complex constructor for {details['fqn']}")
 
@@ -393,7 +394,6 @@ def get_plr_deck_details(deck_class: Type[PlrDeck]) -> Dict[str, Any]:
         details["default_size_x_mm"] = deck_instance.get_size_x()
         details["default_size_y_mm"] = deck_instance.get_size_y()
         details["default_size_z_mm"] = deck_instance.get_size_z()
-        details["slots"] = details.get("slots", [])
 
     except Exception as e:
         logger.error(
@@ -405,44 +405,58 @@ def get_plr_deck_details(deck_class: Type[PlrDeck]) -> Dict[str, Any]:
         details["default_size_x_mm"] = None
         details["default_size_y_mm"] = None
         details["default_size_z_mm"] = None
-        details["slots"] = []  # Ensure slots key exists
 
     # Deck Assignment Interface Inspection
     assignment_methods_info: List[Dict[str, Any]] = []
-    # Look for 'assign_child_resource' and common overrides/alternatives.
-    # This list can be expanded based on PLR conventions.
-    potential_assignment_method_names = [
-        "assign_child_resource",
-        "add_resource",
-        "assign_resource",
-        "add_plate",
-        "add_tip_rack",
-        "assign_to_slot",
-        "assign_to_rail",
-    ]
+
     for method_name, method_obj in inspect.getmembers(deck_class, inspect.isfunction):
-        if method_name in potential_assignment_method_names:
-            # Ensure it's a method defined in this class or its PLR base, not from object or too far up MRO
-            if (
-                method_name in deck_class.__dict__
-                or (
-                    hasattr(PlrDeck, method_name)
-                    and getattr(deck_class, method_name)
-                    == getattr(PlrDeck, method_name)
-                )
-                or any(
-                    method_name in base_cls.__dict__
-                    for base_cls in deck_class.__mro__
-                    if issubclass(base_cls, PlrDeck)
-                )
-            ):
-                assignment_methods_info.append(
-                    _get_method_signature_details(method_obj)
-                )
+        if (
+            method_name in deck_class.__dict__
+            or (
+                hasattr(Deck, method_name)
+                and getattr(deck_class, method_name) == getattr(Deck, method_name)
+            )
+            or any(
+                method_name in base_cls.__dict__
+                for base_cls in deck_class.__mro__
+                if issubclass(base_cls, Deck)
+            )
+        ):
+            assignment_methods_info.append(_get_method_signature_details(method_obj))
     details["assignment_methods_info"] = assignment_methods_info
 
-    # Constructor Layout Hints (Heuristic)
-    # Analyzing constructor_args for patterns suggesting layout elements
+    details["pose_to_location_methods"] = [
+        getattr(deck_class, method[0])
+        for method in inspect.getmembers(deck_class, inspect.isfunction)
+        if method[0].endswith("_to_location")
+    ]
+
+    if not details["pose_to_location_methods"]:
+        # Fallback to serialized method if no specific pose_to_location methods found
+        details["pose_to_location_method"] = getattr(
+            deck_class, "rail_to_location", getattr(deck_class, "assign_child_resource")
+        )
+
+    if len(details["pose_to_location_methods"]) == 1:
+        details["pose_to_location_method"] = details["pose_to_location_methods"][0]
+
+    elif len(details["pose_to_location_methods"]) > 1:
+        # If multiple methods, choose the first one for now
+        details["pose_to_location_method"] = details["pose_to_location_methods"][0]
+        logger.warning(
+            f"Multiple pose_to_location methods found in {details['fqn']}."
+            f" Using the first one: {details['pose_to_location_method'].__name__}"
+        )
+    del details["pose_to_location_methods"]
+
+    # pull the arg names from the method signature
+    for param in details["pose_to_location_method"].get("parameters", []):
+        if param["name"] == "self":
+            continue
+        if param["type"] == "bool":
+            continue  # for now, assume its some kind of setting
+        details["pose_arg_name"] = param.get("name", "rail")
+
     constructor_layout_hints = {}
     for param_name, default_value in details["constructor_args"].items():
         if (
@@ -473,9 +487,13 @@ def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
             logger.error(f"{asset_fqn} is not a class.")
             return {"fqn": asset_fqn, "error": "Not a class."}
 
+        if isabstract(asset_class):
+            logger.error(f"{asset_fqn} is an abstract class.")
+            return {"fqn": asset_fqn, "error": "Abstract class."}
+
         constructor_params_for_asset = get_constructor_params_with_defaults(asset_class)
 
-        if issubclass(asset_class, PlrResource):
+        if issubclass(asset_class, Resource):
             try:
                 required_params = get_constructor_params_with_defaults(
                     asset_class, required_only=True
@@ -490,7 +508,7 @@ def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
                     instance = asset_class(
                         name=f"temp_inspect_{class_name}", **required_params
                     )
-                else:  # Attempt default instantiation if no 'name' and no other required args
+                else:
                     if not required_params:
                         instance = asset_class(**required_params)
                     else:
@@ -499,25 +517,20 @@ def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
                         )
             except Exception as e:
                 logger.warning(
-                    f"Failed to instantiate PLR Resource {asset_fqn} simply: {e}. Params: {constructor_params_for_asset}"
+                    f"Failed to instantiate PLR Resource {asset_fqn} simply: {e}. Params: "
+                    f"{constructor_params_for_asset}"
                 )
 
-        elif issubclass(asset_class, PlrMachine):  # TODO: improve this flow
+        elif issubclass(asset_class, Machine):
             try:
-                # Simplified machine instantiation for inspection
-                if (
-                    "backend" in constructor_params_for_asset
-                    and "name" in constructor_params_for_asset
-                ):
-                    instance = asset_class(
-                        name=f"temp_inspect_{class_name}",  # type: ignore
-                        backend=None,  # type: ignore
-                    )
-                else:
-                    instance = asset_class(backend=None)  # type: ignore
+                required_params = get_constructor_params_with_defaults(
+                    asset_class, required_only=True
+                )
+                instance = asset_class(**required_params)
             except Exception as e:
                 logger.warning(
-                    f"Failed to instantiate PLR Machine {asset_fqn} simply: {e}. Params: {constructor_params_for_asset}"
+                    f"Failed to instantiate PLR Machine {asset_fqn} simply: "
+                    f"{e}. Params: {constructor_params_for_asset}"
                 )
         else:
             logger.warning(
@@ -528,14 +541,13 @@ def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
         if instance:
             try:
                 if hasattr(instance, "serialize") and callable(instance.serialize):
-                    properties.update(instance.serialize())  # type: ignore
-                # Ensure common properties are present
+                    properties.update(instance.serialize())
                 properties["name"] = getattr(
                     instance, "name", f"temp_inspect_{class_name}"
                 )
                 properties["category"] = getattr(instance, "category", None)
                 properties["model"] = getattr(instance, "model", None)
-                if isinstance(instance, PlrResource):
+                if isinstance(instance, Resource):
                     properties["size_x"] = instance.get_size_x()
                     properties["size_y"] = instance.get_size_y()
                     properties["size_z"] = instance.get_size_z()
@@ -546,7 +558,8 @@ def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
                 properties["serialization_error"] = str(e)
         else:
             properties["instantiation_error"] = (
-                f"Could not create an instance of {asset_fqn} for detail extraction. Constructor params: {constructor_params_for_asset}"
+                f"Could not create an instance of {asset_fqn} for detail extraction. "
+                f"Constructor params: {constructor_params_for_asset}"
             )
 
     except ImportError:
