@@ -2,7 +2,7 @@
 
 These models are used for data validation and serialization/deserialization of deck
 configurations, positioning with "poses" which are human accessible location guides
-(e.g., slots or rails), and layouts.
+(e.g., poses or rails), and layouts.
 """
 
 import datetime
@@ -59,28 +59,28 @@ class ResourceInfo(BaseModel):
 
 
 class PoseInfo(BaseModel):
-  """Information about a single slot on the deck."""
+  """Information about a single pose on the deck."""
 
   name: str = Field(
-    description="Identifier for the slot (e.g., 'A1', 'slot_1', 'trash_slot')"
+    description="Identifier for the pose (e.g., 'A1', 'pose_1', 'trash_pose')"
   )
   x_coordinate: Optional[float] = Field(
     None,
-    description="X coordinate of the slot's origin relative to the deck, in "
+    description="X coordinate of the pose's origin relative to the deck, in "
     "millimeters",
   )
   y_coordinate: Optional[float] = Field(
     None,
-    description="Y coordinate of the slot's origin relative to the deck, in "
+    description="Y coordinate of the pose's origin relative to the deck, in "
     "millimeters",
   )
   z_coordinate: Optional[float] = Field(
     None,
-    description="Z coordinate of the slot's origin relative to the deck, in millimeters"
-    " (often the deck surface at this slot)",
+    description="Z coordinate of the pose's origin relative to the deck, in millimeters"
+    " (often the deck surface at this pose)",
   )
   labware: Optional[ResourceInfo] = Field(
-    None, description="Resource instance currently occupying this slot, if any"
+    None, description="Resource instance currently occupying this pose, if any"
   )
 
 
@@ -98,9 +98,10 @@ class DeckStateResponse(BaseModel):
   )
   size_z_mm: Optional[float] = Field(
     None,
-    description="Overall physical dimension Z of the deck in millimeters (e.g., height)",
+    description="Overall physical dimension Z of the deck in millimeters (e.g., "
+    "height)",
   )
-  slots: List[PoseInfo] = Field(description="List of all slots defined on this deck")
+  poses: List[PoseInfo] = Field(description="List of all poses defined on this deck")
 
 
 class DeckUpdateMessage(BaseModel):
@@ -109,14 +110,14 @@ class DeckUpdateMessage(BaseModel):
   deck_id: int = Field(description="ORM ID of the deck that was updated")
   update_type: str = Field(
     description="Type of update (e.g., 'labware_added', 'labware_removed', "
-    "'labware_updated', 'slot_cleared')"
+    "'labware_updated', 'pose_cleared')"
   )
-  slot_name: Optional[str] = Field(
-    None, description="Name of the slot affected by the update, if applicable"
+  pose_name: Optional[str] = Field(
+    None, description="Name of the pose affected by the update, if applicable"
   )
   labware_info: Optional[ResourceInfo] = Field(
     None,
-    description="The new state of the labware in the slot, or null if labware was "
+    description="The new state of the labware in the pose, or null if labware was "
     "removed",
   )
   timestamp: str = Field(
