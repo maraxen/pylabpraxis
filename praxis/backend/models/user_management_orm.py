@@ -1,47 +1,56 @@
-# praxis/backend/database_models/user_management_orm.py
+"""SQLAlchemy ORM model for user management in the Praxis application.
+
+This file defines the database schema for storing user information,
+including authentication credentials, contact details, and account status.
+"""
+
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Integer, String, Boolean, DateTime, func  # Removed Column
-from sqlalchemy.orm import Mapped, mapped_column  # Added Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column
 
-from praxis.backend.utils.db import Base  # Import your project's Base
+from praxis.backend.utils.db import Base
 
 
 class UserOrm(Base):
-    __tablename__ = "users"
+  """SQLAlchemy ORM model representing a user in the Praxis application.
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    username: Mapped[str] = mapped_column(
-        String, unique=True, index=True, nullable=False
-    )
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-    full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+  This model stores user account details such as username, email, hashed password,
+  full name, active status, and optional contact information.
+  """
 
-    phone_number: Mapped[Optional[str]] = mapped_column(
-        String,
-        nullable=True,
-        index=True,
-        comment="User's phone number for SMS notifications",
-    )
-    phone_carrier: Mapped[Optional[str]] = mapped_column(
-        String,
-        nullable=True,
-        comment="User's phone carrier for SMS gateway emails, e.g., 'verizon', 'att'",
-    )
-    # TODO: Add is_superuser or roles if needed for authorization
+  __tablename__ = "users"
 
-    created_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+  email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+  hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+  full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    # Example of a relationship if UserOrm links to other tables in the future
-    # protocol_runs = relationship("ProtocolRunOrm", back_populates="created_by_user")
+  phone_number: Mapped[Optional[str]] = mapped_column(
+    String,
+    nullable=True,
+    index=True,
+    comment="User's phone number for SMS notifications",
+  )
+  phone_carrier: Mapped[Optional[str]] = mapped_column(
+    String,
+    nullable=True,
+    comment="User's phone carrier for SMS gateway emails, e.g., 'verizon', 'att'",
+  )
 
-    def __repr__(self):
-        return f"<UserOrm(id={self.id}, username='{self.username}', email='{self.email}', is_active={self.is_active})>"
+  created_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime(timezone=True), server_default=func.now()
+  )
+  updated_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+  )
+
+  def __repr__(self):
+    """Return a string representation of the UserOrm object."""
+    return (
+      f"<UserOrm(id={self.id}, username='{self.username}',"
+      f" email='{self.email}', is_active={self.is_active})>"
+    )

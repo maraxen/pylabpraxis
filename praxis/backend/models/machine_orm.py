@@ -27,7 +27,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from praxis.backend.utils.db import Base  # Import your project's Base
+from praxis.backend.models.workcell_orm import WorkcellOrm
+from praxis.backend.utils.db import Base
 
 
 class MachineStatusEnum(enum.Enum):
@@ -121,10 +122,18 @@ class MachineOrm(Base):
     index=True,
   )  # Link to ProtocolRunOrm.run_guid
 
-  # TODO: ASSET-DB-1: Define WorkcellOrm if supporting multiple workcells and link here.
   workcell_id: Mapped[Optional[int]] = mapped_column(
-    Integer, nullable=True, index=True, comment="FK to a future Workcells table"
+    ForeignKey("workcells.id"),
+    nullable=True,
+    index=True,
+    comment="FK to workcell table",
   )
+
+  # Link to Workcell table
+  workcell: Mapped[Optional["WorkcellOrm"]] = relationship(
+    "WorkcellOrm", foreign_keys=[workcell_id], back_populates="machines"
+  )
+
   physical_location_description: Mapped[Optional[str]] = mapped_column(
     String, nullable=True
   )
