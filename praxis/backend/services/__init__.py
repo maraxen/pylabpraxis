@@ -12,7 +12,7 @@ to provide a single point of access for all data services.
 """
 
 from .deck_data_service import (
-  add_deck_pose_definitions,
+  add_deck_position_definitions,
   add_or_update_deck_type_definition,
   create_deck_layout,
   delete_deck_layout,
@@ -21,7 +21,7 @@ from .deck_data_service import (
   get_deck_layout_by_name,
   get_deck_type_definition_by_fqn,
   get_deck_type_definition_by_id,
-  get_pose_definitions_for_deck_type,
+  get_position_definitions_for_deck_type,
   list_deck_layouts,
   list_deck_type_definitions,
   update_deck_layout,
@@ -115,9 +115,9 @@ __all__ = [
   "get_deck_type_definition_by_fqn",
   "list_deck_type_definitions",
   "add_or_update_deck_type_definition",
-  "add_deck_pose_definitions",
+  "add_deck_position_definitions",
   "get_deck_type_definition_by_id",
-  "get_pose_definitions_for_deck_type",
+  "get_position_definitions_for_deck_type",
   # Discovery service
   "is_pylabrobot_resource",
   "get_actual_type_str_from_hint",

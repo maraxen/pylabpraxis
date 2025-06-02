@@ -4,12 +4,12 @@
 praxis/db_services/deck_data_service.py
 
 Service layer for interacting with deck-related data in the database.
-This includes Deck Configurations, Deck Types, and Deck Pose Definitions.
+This includes Deck Configurations, Deck Types, and Deck Position Definitions.
 
 This module provides functions to create, read, update, and delete deck layouts,
-deck type definitions, and deck pose definitions.
+deck type definitions, and deck position definitions.
 
-It also includes functions to manage pose definitions for deck types.
+It also includes functions to manage position definitions for deck types.
 """
 
 import datetime
@@ -24,10 +24,11 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
   DeckConfigurationOrm,
-  DeckConfigurationPoseItemOrm,
-  DeckPoseDefinitionOrm,
+  DeckConfigurationPositionItemOrm,
+  DeckPositionDefinitionOrm,
   DeckTypeDefinitionOrm,
   MachineOrm,
+  PositioningConfig,
   ResourceInstanceOrm,
 )
 from praxis.backend.services.resource_data_service import get_resource_definition
@@ -40,12 +41,12 @@ async def create_deck_layout(
   layout_name: str,
   deck_id: int,
   description: Optional[str] = None,
-  pose_items_data: Optional[List[Dict[str, Any]]] = None,
+  position_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckConfigurationOrm:
-  """Create a new deck layout configuration with optional posed items.
+  """Create a new deck layout configuration with optional positiond items.
 
   This function creates a deck layout configuration and associates it with a deck
-  machine. It can also create posed items for the deck layout if `pose_items_data`
+  machine. It can also create positiond items for the deck layout if `position_items_data`
   is provided.
 
   Args:
@@ -54,13 +55,13 @@ async def create_deck_layout(
     deck_id (int): The ID of the deck machine to associate with this layout.
     description (Optional[str], optional): Description of the deck layout.
       Defaults to None.
-    pose_items_data (Optional[List[Dict[str, Any]]], optional): List of pose items
+    position_items_data (Optional[List[Dict[str, Any]]], optional): List of position items
       data. Each dictionary in the list should contain:
-      - 'pose_name' (str): The name of the pose.
+      - 'position_name' (str): The name of the position.
       - 'resource_instance_id' (Optional[int]): The ID of the resource instance
-        associated with this pose (optional).
+        associated with this position (optional).
       - 'expected_resource_definition_name' (Optional[str]): The name of the
-        expected resource definition for this pose (optional).
+        expected resource definition for this position (optional).
       Defaults to None.
 
   Returns:
@@ -116,14 +117,14 @@ async def create_deck_layout(
     await db.rollback()
     raise e
 
-  if pose_items_data:
+  if position_items_data:
     logger.info(
-      "Processing %d pose items for deck layout '%s'.",
-      len(pose_items_data),
+      "Processing %d position items for deck layout '%s'.",
+      len(position_items_data),
       layout_name,
     )
-    for item_data in pose_items_data:
-      pose_name = item_data.get("pose_name", "N/A")
+    for item_data in position_items_data:
+      position_name = item_data.get("position_name", "N/A")
       resource_instance_id = item_data.get("resource_instance_id")
       expected_def_name = item_data.get("expected_resource_definition_name")
 
@@ -136,8 +137,8 @@ async def create_deck_layout(
         if not resource_instance_result.scalar_one_or_none():
           await db.rollback()
           error_message = (
-            f"ResourceInstanceOrm with id {resource_instance_id} for pose "
-            f"'{pose_name}' not found. Rolling back."
+            f"ResourceInstanceOrm with id {resource_instance_id} for position "
+            f"'{position_name}' not found. Rolling back."
           )
           logger.error(error_message)
           raise ValueError(error_message)
@@ -146,35 +147,37 @@ async def create_deck_layout(
         if not await get_resource_definition(db, expected_def_name):
           await db.rollback()
           error_message = (
-            f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for pose "
-            f"'{pose_name}' not found. Rolling back."
+            f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for position "
+            f"'{position_name}' not found. Rolling back."
           )
           logger.error(error_message)
           raise ValueError(error_message)
 
-      pose_item = DeckConfigurationPoseItemOrm(
+      position_item = DeckConfigurationPositionItemOrm(
         deck_configuration_id=deck_layout_orm.id,
-        pose_name=pose_name,
+        position_name=position_name,
         resource_instance_id=resource_instance_id,
         expected_resource_definition_name=expected_def_name,
       )
-      db.add(pose_item)
-      logger.debug("Added pose item '%s' to deck layout '%s'.", pose_name, layout_name)
+      db.add(position_item)
+      logger.debug(
+        "Added position item '%s' to deck layout '%s'.", position_name, layout_name
+      )
 
   try:
     await db.commit()
     await db.refresh(deck_layout_orm)
     logger.info(
-      "Successfully committed deck layout '%s' and its pose items.", layout_name
+      "Successfully committed deck layout '%s' and its position items.", layout_name
     )
-    # Eagerly load pose_items for the returned object
+    # Eagerly load position_items for the returned object
     if deck_layout_orm.id:
       return await get_deck_layout_by_id(db, deck_layout_orm.id)  # type: ignore
     return deck_layout_orm  # Should not be reached if ID is None after flush/commit
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error while creating deck layout '{layout_name}' or its pose items. "
+      f"Integrity error while creating deck layout '{layout_name}' or its position items. "
       f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -182,7 +185,7 @@ async def create_deck_layout(
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error creating deck layout '%s' or its pose items. Rolling back.",
+      "Unexpected error creating deck layout '%s' or its position items. Rolling back.",
       layout_name,
     )
     raise e
@@ -229,7 +232,7 @@ async def get_deck_layout_by_id(
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck layout configuration by its ID.
 
-  This function retrieves a deck layout configuration along with its pose items,
+  This function retrieves a deck layout configuration along with its position items,
   including the associated resource instances and their definitions.
 
   Args:
@@ -245,11 +248,11 @@ async def get_deck_layout_by_id(
   stmt = (
     select(DeckConfigurationOrm)
     .options(
-      selectinload(DeckConfigurationOrm.pose_items)
-      .selectinload(DeckConfigurationPoseItemOrm.resource_instance)
+      selectinload(DeckConfigurationOrm.position_items)
+      .selectinload(DeckConfigurationPositionItemOrm.resource_instance)
       .selectinload(ResourceInstanceOrm.resource_definition),
-      selectinload(DeckConfigurationOrm.pose_items).selectinload(
-        DeckConfigurationPoseItemOrm.expected_resource_definition
+      selectinload(DeckConfigurationOrm.position_items).selectinload(
+        DeckConfigurationPositionItemOrm.expected_resource_definition
       ),
     )
     .filter(DeckConfigurationOrm.id == deck_layout_id)
@@ -272,7 +275,7 @@ async def get_deck_layout_by_name(
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck layout configuration by its name.
 
-  This function retrieves a deck layout configuration along with its pose items,
+  This function retrieves a deck layout configuration along with its position items,
   including the associated resource instances and their definitions.
 
   Args:
@@ -288,11 +291,11 @@ async def get_deck_layout_by_name(
   stmt = (
     select(DeckConfigurationOrm)
     .options(
-      selectinload(DeckConfigurationOrm.pose_items)
-      .selectinload(DeckConfigurationPoseItemOrm.resource_instance)
+      selectinload(DeckConfigurationOrm.position_items)
+      .selectinload(DeckConfigurationPositionItemOrm.resource_instance)
       .selectinload(ResourceInstanceOrm.resource_definition),
-      selectinload(DeckConfigurationOrm.pose_items).selectinload(
-        DeckConfigurationPoseItemOrm.expected_resource_definition
+      selectinload(DeckConfigurationOrm.position_items).selectinload(
+        DeckConfigurationPositionItemOrm.expected_resource_definition
       ),
     )
     .filter(DeckConfigurationOrm.layout_name == layout_name)
@@ -314,7 +317,7 @@ async def list_deck_layouts(
 ) -> List[DeckConfigurationOrm]:
   """List all deck layouts with optional filtering by deck machine ID.
 
-  This function retrieves a list of deck layout configurations, including their pose
+  This function retrieves a list of deck layout configurations, including their position
   items, associated resource instances, and their definitions.
 
   Args:
@@ -335,11 +338,11 @@ async def list_deck_layouts(
     offset,
   )
   stmt = select(DeckConfigurationOrm).options(
-    selectinload(DeckConfigurationOrm.pose_items)
-    .selectinload(DeckConfigurationPoseItemOrm.resource_instance)
+    selectinload(DeckConfigurationOrm.position_items)
+    .selectinload(DeckConfigurationPositionItemOrm.resource_instance)
     .selectinload(ResourceInstanceOrm.resource_definition),
-    selectinload(DeckConfigurationOrm.pose_items).selectinload(
-      DeckConfigurationPoseItemOrm.expected_resource_definition
+    selectinload(DeckConfigurationOrm.position_items).selectinload(
+      DeckConfigurationPositionItemOrm.expected_resource_definition
     ),
   )
   if deck_id is not None:
@@ -357,13 +360,13 @@ async def update_deck_layout(
   name: Optional[str] = None,
   description: Optional[str] = None,
   deck_id: Optional[int] = None,
-  pose_items_data: Optional[List[Dict[str, Any]]] = None,
+  position_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[DeckConfigurationOrm]:
   """Update an existing deck layout configuration.
 
   Updates the specified deck layout with new values for its name, description,
-  associated deck machine, and pose items. If `pose_items_data` is provided,
-  it will replace the existing pose items for the deck layout.
+  associated deck machine, and position items. If `position_items_data` is provided,
+  it will replace the existing position items for the deck layout.
 
   Args:
     db (AsyncSession): The database session.
@@ -373,14 +376,14 @@ async def update_deck_layout(
       Defaults to None.
     deck_id (Optional[int], optional): The ID of the new deck machine to
       associate with this layout. Defaults to None.
-    pose_items_data (Optional[List[Dict[str, Any]]], optional): A list of new pose
+    position_items_data (Optional[List[Dict[str, Any]]], optional): A list of new position
       items data. Each dictionary in the list should contain:
-      - 'pose_name' (str): The name of the pose.
+      - 'position_name' (str): The name of the position.
       - 'resource_instance_id' (Optional[int]): The ID of the resource instance
-        associated with this pose (optional).
+        associated with this position (optional).
       - 'expected_resource_definition_name' (Optional[str]): The name of the
-        expected resource definition for this pose (optional).
-      If provided, existing pose items for this layout will be deleted and
+        expected resource definition for this position (optional).
+      If provided, existing position items for this layout will be deleted and
       replaced with these. Defaults to None.
 
   Returns:
@@ -434,23 +437,23 @@ async def update_deck_layout(
     deck_layout_orm.deck_id = deck_id
     updates_made = True
 
-  if pose_items_data is not None:
-    logger.info("Replacing pose items for deck layout '%s'.", original_layout_name)
-    # Delete existing pose items
-    if deck_layout_orm.pose_items:
-      for item in deck_layout_orm.pose_items:
+  if position_items_data is not None:
+    logger.info("Replacing position items for deck layout '%s'.", original_layout_name)
+    # Delete existing position items
+    if deck_layout_orm.position_items:
+      for item in deck_layout_orm.position_items:
         logger.debug(
-          "Deleting existing pose item '%s' for layout '%s'.",
-          item.pose_name,
+          "Deleting existing position item '%s' for layout '%s'.",
+          item.position_name,
           original_layout_name,
         )
         await db.delete(item)
     await db.flush()  # Process deletions before adding new ones
     updates_made = True
 
-    # Add new pose items
-    for item_data in pose_items_data:
-      pose_name = item_data.get("pose_name", "N/A")
+    # Add new position items
+    for item_data in position_items_data:
+      position_name = item_data.get("position_name", "N/A")
       resource_instance_id = item_data.get("resource_instance_id")
       expected_def_name = item_data.get("expected_resource_definition_name")
 
@@ -463,8 +466,8 @@ async def update_deck_layout(
         if not resource_instance_result.scalar_one_or_none():
           await db.rollback()
           error_message = (
-            f"ResourceInstanceOrm with id {resource_instance_id} for pose "
-            f"'{pose_name}' not found. Rolling back update for layout "
+            f"ResourceInstanceOrm with id {resource_instance_id} for position "
+            f"'{position_name}' not found. Rolling back update for layout "
             f"'{original_layout_name}'."
           )
           logger.error(error_message)
@@ -474,22 +477,24 @@ async def update_deck_layout(
         if not await get_resource_definition(db, expected_def_name):
           await db.rollback()
           error_message = (
-            f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for pose "
-            f"'{pose_name}' not found. Rolling back update for layout "
+            f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for position "
+            f"'{position_name}' not found. Rolling back update for layout "
             f"'{original_layout_name}'."
           )
           logger.error(error_message)
           raise ValueError(error_message)
 
-      pose_item = DeckConfigurationPoseItemOrm(
+      position_item = DeckConfigurationPositionItemOrm(
         deck_configuration_id=deck_layout_orm.id,
-        pose_name=pose_name,
+        position_name=position_name,
         resource_instance_id=resource_instance_id,
         expected_resource_definition_name=expected_def_name,
       )
-      db.add(pose_item)
+      db.add(position_item)
       logger.debug(
-        "Added new pose item '%s' to layout '%s'.", pose_name, original_layout_name
+        "Added new position item '%s' to layout '%s'.",
+        position_name,
+        original_layout_name,
       )
 
   if not updates_made:
@@ -528,7 +533,7 @@ async def update_deck_layout(
 async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:
   """Delete a specific deck layout configuration by its ID.
 
-  This function deletes a deck layout configuration and all its associated pose items.
+  This function deletes a deck layout configuration and all its associated position items.
 
   Args:
     db (AsyncSession): The database session.
@@ -585,18 +590,19 @@ async def add_or_update_deck_type_definition(
   default_size_x_mm: Optional[float] = None,
   default_size_y_mm: Optional[float] = None,
   default_size_z_mm: Optional[float] = None,
+  positioning_config: Optional[PositioningConfig] = None,
   serialized_constructor_args_json: Optional[Dict[str, Any]] = None,
   serialized_assignment_methods_json: Optional[Dict[str, Any]] = None,
   serialized_constructor_layout_hints_json: Optional[Dict[str, Any]] = None,
   additional_properties_input_json: Optional[Dict[str, Any]] = None,
-  pose_definitions_data: Optional[List[Dict[str, Any]]] = None,
+  position_definitions_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckTypeDefinitionOrm:
   """Add a new deck type definition or updates an existing one.
 
   This function creates a new `DeckTypeDefinitionOrm` if `deck_type_id` is not
   provided and no existing definition matches `pylabrobot_class_name`. If
   `deck_type_id` is provided, it attempts to update the existing definition.
-  If `pose_definitions_data` is provided, all existing pose definitions for this
+  If `position_definitions_data` is provided, all existing position definitions for this
   deck type will be deleted and replaced with the new ones.
 
   Args:
@@ -623,6 +629,9 @@ async def add_or_update_deck_type_definition(
       Defaults to None.
     default_size_z_mm (Optional[float], optional): The default Z dimension in mm.
       Defaults to None.
+    positioning_config (Optional[PositioningConfig], optional): Configuration for
+      positioning of the deck. Specifies how positions are encoded for the particular
+      deck sublcass.
     serialized_constructor_args_json (Optional[Dict[str, Any]], optional): JSON
       string of constructor arguments for PyLabRobot instantiation. Defaults to None.
     serialized_assignment_methods_json (Optional[Dict[str, Any]], optional): JSON
@@ -633,23 +642,24 @@ async def add_or_update_deck_type_definition(
       of additional properties to store as JSON. Keys in this dictionary will
       override `description`, `manufacturer`, `model`, `notes` if also provided.
       Defaults to None.
-    pose_definitions_data (Optional[List[Dict[str, Any]]], optional): A list of
-      dictionaries, each representing a pose definition for this deck type. Each
+    position_definitions_data (Optional[List[Dict[str, Any]]], optional): A list of
+      dictionaries, each representing a position definition for this deck type. Each
       dictionary should contain:
-      - 'pose_name' (str): The unique name of the pose.
-      - 'location_x_mm' (Optional[float]): Nominal X coordinate of the pose.
-      - 'location_y_mm' (Optional[float]): Nominal Y coordinate of the pose.
-      - 'location_z_mm' (Optional[float]): Nominal Z coordinate of the pose.
+      - 'position_name' (str): The unique name of the position.
+      - 'location_x_mm' (Optional[float]): Nominal X coordinate of the position.
+      - 'location_y_mm' (Optional[float]): Nominal Y coordinate of the position.
+      - 'location_z_mm' (Optional[float]): Nominal Z coordinate of the position.
       - 'allowed_resource_categories' (Optional[List[str]]): List of resource
-        categories allowed at this pose.
-      - 'pylabrobot_pose_type_name' (Optional[str]): PyLabRobot specific pose type.
+        categories allowed at this position.
+      - 'pylabrobot_position_type_name' (Optional[str]): PyLabRobot specific position
+      type.
       - 'allowed_resource_definition_names' (Optional[List[str]]): Specific
         resource definition names allowed.
-      - 'accepts_tips' (Optional[bool]): If the pose accepts tips.
-      - 'accepts_plates' (Optional[bool]): If the pose accepts plates.
-      - 'accepts_tubes' (Optional[bool]): If the pose accepts tubes.
-      - 'notes' (Optional[str]): Any specific notes for the pose.
-      If provided, existing pose definitions for this deck type will be deleted
+      - 'accepts_tips' (Optional[bool]): If the position accepts tips.
+      - 'accepts_plates' (Optional[bool]): If the position accepts plates.
+      - 'accepts_tubes' (Optional[bool]): If the position accepts tubes.
+      - 'notes' (Optional[str]): Any specific notes for the position.
+      If provided, existing position definitions for this deck type will be deleted
       and replaced with these. Defaults to None.
 
   Returns:
@@ -660,11 +670,12 @@ async def add_or_update_deck_type_definition(
       - `deck_type_id` is provided but no matching deck type is found.
       - A deck type definition with the same `pylabrobot_class_name` already exists
         during creation.
-      - A pose definition with a conflicting name is attempted to be added.
+      - A position definition with a conflicting name is attempted to be added.
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Type Definition (FQN: '{pylabrobot_class_name}', ID: {deck_type_id or 'new'}):"
+  log_prefix = f"Deck Type Definition (FQN: '{pylabrobot_class_name}', ID: \
+    {deck_type_id or 'new'}):"
   logger.info("%s Attempting to add or update.", log_prefix)
 
   deck_type_orm: Optional[DeckTypeDefinitionOrm] = None
@@ -672,19 +683,20 @@ async def add_or_update_deck_type_definition(
   if deck_type_id:
     result = await db.execute(
       select(DeckTypeDefinitionOrm)
-      .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+      .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
       .filter(DeckTypeDefinitionOrm.id == deck_type_id)
     )
     deck_type_orm = result.scalar_one_or_none()
     if not deck_type_orm:
-      error_message = f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_id} not found for update."
+      error_message = f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_id} not \
+        found for update."
       logger.error(error_message)
       raise ValueError(error_message)
     logger.info("%s Found existing deck type for update.", log_prefix)
   else:
     result = await db.execute(
       select(DeckTypeDefinitionOrm)
-      .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+      .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
       .filter(DeckTypeDefinitionOrm.pylabrobot_deck_fqn == pylabrobot_class_name)
     )
     deck_type_orm = result.scalar_one_or_none()
@@ -698,9 +710,9 @@ async def add_or_update_deck_type_definition(
       deck_type_orm = DeckTypeDefinitionOrm(pylabrobot_deck_fqn=pylabrobot_class_name)
       db.add(deck_type_orm)
 
-  # This check should ideally not be needed if logic above is sound, but kept as a safeguard
   if deck_type_orm is None:
-    error_message = f"{log_prefix} Failed to initialize DeckTypeDefinitionOrm. This indicates a logic error."
+    error_message = f"{log_prefix} Failed to initialize DeckTypeDefinitionOrm. This \
+      indicates a logic error."
     logger.critical(error_message)
     raise ValueError(error_message)
 
@@ -711,6 +723,21 @@ async def add_or_update_deck_type_definition(
   deck_type_orm.default_size_x_mm = default_size_x_mm
   deck_type_orm.default_size_y_mm = default_size_y_mm
   deck_type_orm.default_size_z_mm = default_size_z_mm
+
+  if positioning_config is not None:
+    if not isinstance(positioning_config, PositioningConfig):
+      error_message = (
+        f"{log_prefix} positioning_config must be an instance of PositioningConfig. "
+        f"Received: {type(positioning_config)}"
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    deck_type_orm.positioning_config_json = positioning_config.model_dump()
+    logger.debug("%s Set positioning_config_json.", log_prefix)
+  else:
+    deck_type_orm.positioning_config_json = None
+    logger.debug("%s Cleared positioning_config_json.", log_prefix)
+
   deck_type_orm.serialized_constructor_args_json = serialized_constructor_args_json
   deck_type_orm.serialized_assignment_methods_json = serialized_assignment_methods_json
   deck_type_orm.serialized_constructor_layout_hints_json = (
@@ -740,76 +767,84 @@ async def add_or_update_deck_type_definition(
     await db.flush()  # Flush to get deck_type_orm.id if it's new
     logger.debug("%s Flushed deck type definition.", log_prefix)
 
-    if pose_definitions_data is not None:
+    if position_definitions_data is not None:
       logger.info(
-        "%s Replacing existing pose definitions with %d new ones.",
+        "%s Replacing existing position definitions with %d new ones.",
         log_prefix,
-        len(pose_definitions_data),
+        len(position_definitions_data),
       )
-      # Delete existing pose definitions for this deck type
+      # Delete existing position definitions for this deck type
       if deck_type_orm.id:
-        existing_poses_stmt = select(DeckPoseDefinitionOrm).filter(
-          DeckPoseDefinitionOrm.deck_type_definition_id == deck_type_orm.id
+        existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
+          DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_orm.id
         )
-        result = await db.execute(existing_poses_stmt)
-        for pose in result.scalars().all():
-          logger.debug("%s Deleting existing pose '%s'.", log_prefix, pose.pose_id)
-          await db.delete(pose)
+        result = await db.execute(existing_positions_stmt)
+        for position in result.scalars().all():
+          logger.debug(
+            "%s Deleting existing position '%s'.", log_prefix, position.position_id
+          )
+          await db.delete(position)
         await db.flush()  # Process deletions
-        logger.debug("%s Existing pose definitions deleted.", log_prefix)
+        logger.debug("%s Existing position definitions deleted.", log_prefix)
 
-      # Add new pose definitions
-      for pose_data in pose_definitions_data:
-        pose_name = pose_data.get("pose_id", "UNKNOWN_POSE")
-        logger.debug("%s Adding new pose definition: '%s'.", log_prefix, pose_name)
-        pose_specific_details = pose_data.get("pose_specific_details_json", {})
+      # Add new position definitions
+      for position_data in position_definitions_data:
+        position_name = position_data.get("position_id", "UNKNOWN_POSE")
+        logger.debug(
+          "%s Adding new position definition: '%s'.", log_prefix, position_name
+        )
+        position_specific_details = position_data.get(
+          "position_specific_details_json", {}
+        )
 
-        # Map Pydantic fields to pose_specific_details if not direct ORM fields
-        if pose_data.get("pylabrobot_pose_type_name"):
-          pose_specific_details["pylabrobot_pose_type_name"] = pose_data[
-            "pylabrobot_pose_type_name"
+        # Map Pydantic fields to position_specific_details if not direct ORM fields
+        if position_data.get("pylabrobot_position_type_name"):
+          position_specific_details["pylabrobot_position_type_name"] = position_data[
+            "pylabrobot_position_type_name"
           ]
-        if pose_data.get("allowed_resource_definition_names"):
-          pose_specific_details["allowed_resource_definition_names"] = pose_data[
-            "allowed_resource_definition_names"
-          ]
-        if pose_data.get("accepts_tips") is not None:
-          pose_specific_details["accepts_tips"] = pose_data["accepts_tips"]
-        if pose_data.get("accepts_plates") is not None:
-          pose_specific_details["accepts_plates"] = pose_data["accepts_plates"]
-        if pose_data.get("accepts_tubes") is not None:
-          pose_specific_details["accepts_tubes"] = pose_data["accepts_tubes"]
-        if "notes" in pose_data:
-          pose_specific_details["notes"] = pose_data["notes"]
+        if position_data.get("allowed_resource_definition_names"):
+          position_specific_details["allowed_resource_definition_names"] = (
+            position_data["allowed_resource_definition_names"]
+          )
+        if position_data.get("accepts_tips") is not None:
+          position_specific_details["accepts_tips"] = position_data["accepts_tips"]
+        if position_data.get("accepts_plates") is not None:
+          position_specific_details["accepts_plates"] = position_data["accepts_plates"]
+        if position_data.get("accepts_tubes") is not None:
+          position_specific_details["accepts_tubes"] = position_data["accepts_tubes"]
+        if "notes" in position_data:
+          position_specific_details["notes"] = position_data["notes"]
 
-        new_pose = DeckPoseDefinitionOrm(
+        new_position = DeckPositionDefinitionOrm(
           deck_type_definition_id=deck_type_orm.id,  # type: ignore
-          pose_name=pose_name,
-          nominal_x_mm=pose_data.get("location_x_mm"),
-          nominal_y_mm=pose_data.get("location_y_mm"),
-          nominal_z_mm=pose_data.get("location_z_mm"),
-          accepted_resource_categories_json=pose_data.get(
+          position_name=position_name,
+          nominal_x_mm=position_data.get("location_x_mm"),
+          nominal_y_mm=position_data.get("location_y_mm"),
+          nominal_z_mm=position_data.get("location_z_mm"),
+          accepted_resource_categories_json=position_data.get(
             "allowed_resource_categories"
           ),
-          pose_specific_details_json=pose_specific_details
-          if pose_specific_details
+          position_specific_details_json=position_specific_details
+          if position_specific_details
           else None,
         )
-        db.add(new_pose)
+        db.add(new_position)
 
     await db.commit()
     await db.refresh(deck_type_orm)
     logger.info("%s Successfully committed changes.", log_prefix)
 
-    # Eagerly load pose_definitions again after commit & refresh for the returned object
+    # Eagerly load position_definitions again after commit & refresh for the returned object
     if deck_type_orm.id:
       refreshed_deck_type_result = await db.execute(
         select(DeckTypeDefinitionOrm)
-        .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+        .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
         .filter(DeckTypeDefinitionOrm.id == deck_type_orm.id)
       )
       deck_type_orm = refreshed_deck_type_result.scalar_one()
-      logger.debug("%s Refreshed deck type and reloaded pose definitions.", log_prefix)
+      logger.debug(
+        "%s Refreshed deck type and reloaded position definitions.", log_prefix
+      )
 
   except IntegrityError as e:
     await db.rollback()
@@ -820,9 +855,9 @@ async def add_or_update_deck_type_definition(
       )
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e
-    if "uq_deck_pose_definition" in str(e.orig):
+    if "uq_deck_position_definition" in str(e.orig):
       error_message = (
-        f"{log_prefix} A pose definition with a conflicting name might already "
+        f"{log_prefix} A position definition with a conflicting name might already "
         f"exist for this deck type. Details: {e}"
       )
       logger.error(error_message, exc_info=True)
@@ -856,7 +891,7 @@ async def get_deck_type_definition_by_id(
   logger.info("Attempting to retrieve deck type definition with ID: %d.", deck_type_id)
   stmt = (
     select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+    .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
     .filter(DeckTypeDefinitionOrm.id == deck_type_id)
   )
   result = await db.execute(stmt)
@@ -891,7 +926,7 @@ async def get_deck_type_definition_by_fqn(
   )
   stmt = (
     select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+    .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
     .filter(DeckTypeDefinitionOrm.pylabrobot_deck_fqn == pylabrobot_deck_fqn)
   )
   result = await db.execute(stmt)
@@ -908,7 +943,7 @@ async def get_deck_type_definition_by_fqn(
 async def list_deck_type_definitions(
   db: AsyncSession, limit: int = 100, offset: int = 0
 ) -> List[DeckTypeDefinitionOrm]:
-  """List all deck type definitions with pagination, including their pose definitions.
+  """List all deck type definitions with pagination, including their position definitions.
 
   Args:
     db (AsyncSession): The database session.
@@ -924,7 +959,7 @@ async def list_deck_type_definitions(
   )
   stmt = (
     select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.pose_definitions))
+    .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
     .order_by(DeckTypeDefinitionOrm.display_name)
     .limit(limit)
     .offset(offset)
@@ -935,48 +970,50 @@ async def list_deck_type_definitions(
   return deck_type_defs
 
 
-async def add_deck_pose_definitions(
+async def add_deck_position_definitions(
   db: AsyncSession,
   deck_type_definition_id: int,
-  new_poses_data: List[Dict[str, Any]],
-) -> List[DeckPoseDefinitionOrm]:
-  """Add multiple new pose definitions to an existing deck type definition.
+  new_positions_data: List[Dict[str, Any]],
+) -> List[DeckPositionDefinitionOrm]:
+  """Add multiple new position definitions to an existing deck type definition.
 
-  This function appends poses. If a pose name conflicts with an existing one
+  This function appends positions. If a position name conflicts with an existing one
   for this deck type, an `IntegrityError` will be raised by the database.
 
   Args:
     db (AsyncSession): The database session.
     deck_type_definition_id (int): The ID of the deck type definition to which
-      to add the poses.
-    new_poses_data (List[Dict[str, Any]]): A list of dictionaries, each
-      representing a new pose definition. Each dictionary should contain:
-      - 'pose_name' (str): The unique name of the pose.
-      - 'location_x_mm' (Optional[float]): Nominal X coordinate of the pose.
-      - 'location_y_mm' (Optional[float]): Nominal Y coordinate of the pose.
-      - 'location_z_mm' (Optional[float]): Nominal Z coordinate of the pose.
+      to add the positions.
+    new_positions_data (List[Dict[str, Any]]): A list of dictionaries, each
+      representing a new position definition. Each dictionary should contain:
+      - 'position_name' (str): The unique name of the position.
+      - 'location_x_mm' (Optional[float]): Nominal X coordinate of the position.
+      - 'location_y_mm' (Optional[float]): Nominal Y coordinate of the position.
+      - 'location_z_mm' (Optional[float]): Nominal Z coordinate of the position.
       - 'allowed_resource_categories' (Optional[List[str]]): List of resource
-        categories allowed at this pose.
-      - 'pylabrobot_pose_type_name' (Optional[str]): PyLabRobot specific pose type.
+        categories allowed at this position.
+      - 'pylabrobot_position_type_name' (Optional[str]): PyLabRobot specific position type.
       - 'allowed_resource_definition_names' (Optional[List[str]]): Specific
         resource definition names allowed.
-      - 'accepts_tips' (Optional[bool]): If the pose accepts tips.
-      - 'accepts_plates' (Optional[bool]): If the pose accepts plates.
-      - 'accepts_tubes' (Optional[bool]): If the pose accepts tubes.
-      - 'notes' (Optional[str]): Any specific notes for the pose.
+      - 'accepts_tips' (Optional[bool]): If the position accepts tips.
+      - 'accepts_plates' (Optional[bool]): If the position accepts plates.
+      - 'accepts_tubes' (Optional[bool]): If the position accepts tubes.
+      - 'notes' (Optional[str]): Any specific notes for the position.
 
   Returns:
-    List[DeckPoseDefinitionOrm]: A list of the newly created deck pose definition
+    List[DeckPositionDefinitionOrm]: A list of the newly created deck position definition
     objects.
 
   Raises:
-    ValueError: If the `deck_type_definition_id` does not exist, or if a pose
+    ValueError: If the `deck_type_definition_id` does not exist, or if a position
       name conflict occurs during addition.
     Exception: For any other unexpected errors during the process.
   """
-  log_prefix = f"Deck Pose Definitions (Deck Type ID: {deck_type_definition_id}):"
+  log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_definition_id}):"
   logger.info(
-    "%s Attempting to add %d new pose definitions.", log_prefix, len(new_poses_data)
+    "%s Attempting to add %d new position definitions.",
+    log_prefix,
+    len(new_positions_data),
   )
 
   # First, check if the parent DeckTypeDefinitionOrm exists
@@ -990,98 +1027,102 @@ async def add_deck_pose_definitions(
   if not deck_type_orm:
     error_message = (
       f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_definition_id} not found. "
-      "Cannot add pose definitions."
+      "Cannot add position definitions."
     )
     logger.error(error_message)
     raise ValueError(error_message)
   logger.debug("%s Parent deck type definition found.", log_prefix)
 
-  created_poses: List[DeckPoseDefinitionOrm] = []
+  created_positions: List[DeckPositionDefinitionOrm] = []
   try:
-    for pose_data in new_poses_data:
-      pose_name = pose_data.get("pose_name", "UNKNOWN_POSE")
-      logger.debug("%s Preparing to add pose '%s'.", log_prefix, pose_name)
+    for position_data in new_positions_data:
+      position_name = position_data.get("position_name", "UNKNOWN_POSE")
+      logger.debug("%s Preparing to add position '%s'.", log_prefix, position_name)
 
-      pose_specific_details = pose_data.get("pose_specific_details_json", {})
+      position_specific_details = position_data.get(
+        "position_specific_details_json", {}
+      )
 
-      # Map Pydantic-like fields to pose_specific_details_json
-      if pose_data.get("pylabrobot_pose_type_name"):
-        pose_specific_details["pylabrobot_pose_type_name"] = pose_data[
-          "pylabrobot_pose_type_name"
+      # Map Pydantic-like fields to position_specific_details_json
+      if position_data.get("pylabrobot_position_type_name"):
+        position_specific_details["pylabrobot_position_type_name"] = position_data[
+          "pylabrobot_position_type_name"
         ]
-      if pose_data.get("allowed_resource_definition_names"):
-        pose_specific_details["allowed_resource_definition_names"] = pose_data[
+      if position_data.get("allowed_resource_definition_names"):
+        position_specific_details["allowed_resource_definition_names"] = position_data[
           "allowed_resource_definition_names"
         ]
-      if pose_data.get("accepts_tips") is not None:
-        pose_specific_details["accepts_tips"] = pose_data["accepts_tips"]
-      if pose_data.get("accepts_plates") is not None:
-        pose_specific_details["accepts_plates"] = pose_data["accepts_plates"]
-      if pose_data.get("accepts_tubes") is not None:
-        pose_specific_details["accepts_tubes"] = pose_data["accepts_tubes"]
-      if "notes" in pose_data:
-        pose_specific_details["notes"] = pose_data["notes"]
+      if position_data.get("accepts_tips") is not None:
+        position_specific_details["accepts_tips"] = position_data["accepts_tips"]
+      if position_data.get("accepts_plates") is not None:
+        position_specific_details["accepts_plates"] = position_data["accepts_plates"]
+      if position_data.get("accepts_tubes") is not None:
+        position_specific_details["accepts_tubes"] = position_data["accepts_tubes"]
+      if "notes" in position_data:
+        position_specific_details["notes"] = position_data["notes"]
 
-      new_pose = DeckPoseDefinitionOrm(
+      new_position = DeckPositionDefinitionOrm(
         deck_type_definition_id=deck_type_definition_id,
-        pose_name=pose_name,
-        nominal_x_mm=pose_data.get("location_x_mm"),
-        nominal_y_mm=pose_data.get("location_y_mm"),
-        nominal_z_mm=pose_data.get("location_z_mm"),
-        accepted_resource_categories_json=pose_data.get("allowed_resource_categories"),
-        pose_specific_details_json=pose_specific_details
-        if pose_specific_details
+        position_name=position_name,
+        nominal_x_mm=position_data.get("location_x_mm"),
+        nominal_y_mm=position_data.get("location_y_mm"),
+        nominal_z_mm=position_data.get("location_z_mm"),
+        accepted_resource_categories_json=position_data.get(
+          "allowed_resource_categories"
+        ),
+        position_specific_details_json=position_specific_details
+        if position_specific_details
         else None,
       )
-      db.add(new_pose)
-      created_poses.append(new_pose)
-      logger.debug("%s Added pose '%s' to session.", log_prefix, pose_name)
+      db.add(new_position)
+      created_positions.append(new_position)
+      logger.debug("%s Added position '%s' to session.", log_prefix, position_name)
 
     await db.flush()
     await db.commit()
-    for pose in created_poses:
-      await db.refresh(pose)
+    for position in created_positions:
+      await db.refresh(position)
     logger.info(
-      "%s Successfully added and committed %d pose definitions.",
+      "%s Successfully added and committed %d position definitions.",
       log_prefix,
-      len(created_poses),
+      len(created_positions),
     )
 
   except IntegrityError as e:
     await db.rollback()
-    if "uq_deck_pose_definition" in str(e.orig):
+    if "uq_deck_position_definition" in str(e.orig):
       error_message = (
-        f"{log_prefix} Failed to add one or more pose definitions due to a pose name "
+        f"{log_prefix} Failed to add one or more position definitions due to a position name "
         f"conflict or other integrity constraint. Details: {e}"
       )
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e
-    error_message = f"{log_prefix} Database integrity error while adding pose "
+    error_message = f"{log_prefix} Database integrity error while adding position "
     f"definitions. Details: {e}"
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "%s Unexpected error while adding pose definitions. Rolling back.", log_prefix
+      "%s Unexpected error while adding position definitions. Rolling back.", log_prefix
     )
     raise e
 
-  return created_poses
+  return created_positions
 
 
-async def get_pose_definitions_for_deck_type(
+async def get_position_definitions_for_deck_type(
   db: AsyncSession, deck_type_definition_id: int
-) -> List[DeckPoseDefinitionOrm]:
-  """Retrieve all pose definitions associated with a specific deck type definition ID.
+) -> List[DeckPositionDefinitionOrm]:
+  """Retrieve all position definitions associated with a specific deck type definition ID.
 
   Args:
     db (AsyncSession): The database session.
     deck_type_definition_id (int): The ID of the deck type definition.
 
   Returns:
-    List[DeckPoseDefinitionOrm]: A list of pose definitions for the specified
-    deck type. Returns an empty list if no poses are found or if the deck type
+    List[DeckPositionDefinitionOrm]: A list of position definitions for the specified
+    deck type. Returns an empty list if no positions are found or if the deck type
     does not exist.
 
   Raises:
@@ -1089,7 +1130,7 @@ async def get_pose_definitions_for_deck_type(
 
   """
   logger.info(
-    "Attempting to retrieve pose definitions for deck type ID: %d.",
+    "Attempting to retrieve position definitions for deck type ID: %d.",
     deck_type_definition_id,
   )
   deck_type_exists_result = await db.execute(
@@ -1100,21 +1141,23 @@ async def get_pose_definitions_for_deck_type(
   if not deck_type_exists_result.scalar_one_or_none():
     error_message = (
       f"DeckTypeDefinitionOrm with id {deck_type_definition_id} not found. "
-      "Cannot retrieve pose definitions."
+      "Cannot retrieve position definitions."
     )
     logger.error(error_message)
     raise ValueError(error_message)
 
   stmt = (
-    select(DeckPoseDefinitionOrm)
-    .filter(DeckPoseDefinitionOrm.deck_type_definition_id == deck_type_definition_id)
-    .order_by(DeckPoseDefinitionOrm.pose_id)
+    select(DeckPositionDefinitionOrm)
+    .filter(
+      DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_definition_id
+    )
+    .order_by(DeckPositionDefinitionOrm.position_id)
   )
   result = await db.execute(stmt)
-  poses = list(result.scalars().all())
+  positions = list(result.scalars().all())
   logger.info(
-    "Found %d pose definitions for deck type ID %d.",
-    len(poses),
+    "Found %d position definitions for deck type ID %d.",
+    len(positions),
     deck_type_definition_id,
   )
-  return poses
+  return positions

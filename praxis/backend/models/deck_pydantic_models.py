@@ -1,24 +1,55 @@
 """Pydantic models for deck-related entities in the Praxis application.
 
 These models are used for data validation and serialization/deserialization of deck
-configurations, positioning with "poses" which are human accessible location guides
+configurations, positioning with "positions" which are human accessible location guides
 (e.g., slots or rails), and layouts.
 """
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 
-class DeckPoseItemBase(BaseModel):
-  """Define the base properties for an item placed on a deck pose.
+class PositioningConfig(BaseModel):
+  """Configuration for how positions are calculated/managed for this deck type.
 
-  This model captures the essential information about an item's placement,
-  including its pose identifier and optional associated resource details.
+  A general configuration for methods that follow the pattern:
+  `deck_instance.method_name(position_arg)` -> Coordinate
+
   """
 
-  pose_id: str | int
+  method_name: str = Field(
+    ...,
+    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location',"
+    "'slot_to_location').",
+  )
+  arg_name: str = Field(
+    ...,
+    description="Name of the argument for the position in the method (e.g., 'rail', "
+    "'slot').",
+  )
+  arg_type: Literal["str", "int"] = Field(
+    "str", description="Expected type of the position argument ('str' or 'int')."
+  )
+  params: Optional[Dict[str, Any]] = Field(
+    None, description="Additional parameters for the positioning method."
+  )
+
+  class Config:
+    """Configuration for Pydantic model behavior."""
+
+    orm_mode = True
+
+
+class DeckPositionItemBase(BaseModel):
+  """Define the base properties for an item placed on a deck position.
+
+  This model captures the essential information about an item's placement,
+  including its position identifier and optional associated resource details.
+  """
+
+  position_id: str | int
   resource_instance_id: Optional[int] = None
   expected_resource_definition_name: Optional[str] = None
 
@@ -28,20 +59,20 @@ class DeckPoseItemBase(BaseModel):
     orm_mode = True
 
 
-class DeckPoseItemCreate(DeckPoseItemBase):
-  """Represent a deck pose item for creation requests.
+class DeckPositionItemCreate(DeckPositionItemBase):
+  """Represent a deck position item for creation requests.
 
-  This model inherits all properties from `DeckPoseItemBase` and is used
-  specifically when creating new pose item entries.
+  This model inherits all properties from `DeckPositionItemBase` and is used
+  specifically when creating new position item entries.
   """
 
   pass
 
 
-class DeckPoseItemResponse(DeckPoseItemBase):
-  """Represent a deck pose item for API responses.
+class DeckPositionItemResponse(DeckPositionItemBase):
+  """Represent a deck position item for API responses.
 
-  This model extends `DeckPoseItemBase` by adding system-generated identifiers,
+  This model extends `DeckPositionItemBase` by adding system-generated identifiers,
   suitable for client-facing responses.
   """
 
@@ -70,11 +101,11 @@ class DeckLayoutCreate(DeckLayoutBase):
   """Represent a deck layout for creation requests.
 
   This model extends `DeckLayoutBase` by allowing the inclusion of
-  `DeckPoseItemCreate` instances, enabling the definition of a layout's
+  `DeckPositionItemCreate` instances, enabling the definition of a layout's
   contents upon creation.
   """
 
-  pose_items: Optional[List[DeckPoseItemCreate]] = []
+  position_items: Optional[List[DeckPositionItemCreate]] = []
 
 
 class DeckLayoutUpdate(BaseModel):
@@ -82,39 +113,39 @@ class DeckLayoutUpdate(BaseModel):
 
   This model provides optional fields for updating various properties of a
   deck layout, including its name, associated deck, description, and
-  its constituent pose items.
+  its constituent position items.
   """
 
   layout_name: Optional[str] = None
   deck_id: Optional[int] = None
   description: Optional[str] = None
-  pose_items: Optional[List[DeckPoseItemCreate]] = None
+  position_items: Optional[List[DeckPositionItemCreate]] = None
 
 
 class DeckLayoutResponse(DeckLayoutBase):
   """Represent a deck layout for API responses.
 
   This model extends `DeckLayoutBase` by including system-generated identifiers,
-  associated pose items (as `DeckPoseItemResponse`), and timestamps for
+  associated position items (as `DeckPositionItemResponse`), and timestamps for
   creation and last update, suitable for client-facing responses.
   """
 
   id: int
-  pose_items: List[DeckPoseItemResponse] = []
+  position_items: List[DeckPositionItemResponse] = []
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 
 
-class DeckPoseDefinitionBase(BaseModel):
-  """Define the base properties for a deck pose definition.
+class DeckPositionDefinitionBase(BaseModel):
+  """Define the base properties for a deck position definition.
 
-  This model specifies the characteristics of a specific position or "pose"
+  This model specifies the characteristics of a specific position or "position"
   on a deck, including its identifier, compatibility with different resource
   types, and physical location coordinates.
   """
 
-  pose_id: str | int
-  pylabrobot_pose_type_name: Optional[str] = None
+  position_id: str | int
+  pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
   allowed_resource_definition_names: Optional[List[str]] = None
   accepts_tips: Optional[bool] = None
@@ -132,20 +163,20 @@ class DeckPoseDefinitionBase(BaseModel):
     use_enum_values = True
 
 
-class DeckPoseDefinitionCreate(DeckPoseDefinitionBase):
-  """Represent a deck pose definition for creation requests.
+class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
+  """Represent a deck position definition for creation requests.
 
-  This model inherits all properties from `DeckPoseDefinitionBase` and is used
-  specifically when creating new pose definition entries.
+  This model inherits all properties from `DeckPositionDefinitionBase` and is used
+  specifically when creating new position definition entries.
   """
 
   pass
 
 
-class DeckPoseDefinitionResponse(DeckPoseDefinitionBase):
-  """Represent a deck pose definition for API responses.
+class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
+  """Represent a deck position definition for API responses.
 
-  This model extends `DeckPoseDefinitionBase` by adding system-generated
+  This model extends `DeckPositionDefinitionBase` by adding system-generated
   identifiers, a foreign key to its associated deck type definition, and
   timestamps for creation and last update, suitable for client-facing responses.
   """
@@ -156,16 +187,16 @@ class DeckPoseDefinitionResponse(DeckPoseDefinitionBase):
   updated_at: Optional[datetime.datetime] = None
 
 
-class DeckPoseDefinitionUpdate(BaseModel):
-  """Represent a deck pose definition for update requests.
+class DeckPositionDefinitionUpdate(BaseModel):
+  """Represent a deck position definition for update requests.
 
   This model provides optional fields for updating various properties of a
-  deck pose definition, such as its identifier, compatible resource types,
+  deck position definition, such as its identifier, compatible resource types,
   and physical location details.
   """
 
-  pose_id: Optional[str | int] = None
-  pylabrobot_pose_type_name: Optional[str] = None
+  position_id: Optional[str | int] = None
+  pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
   allowed_resource_definition_names: Optional[List[str]] = None
   accepts_tips: Optional[bool] = None
@@ -182,13 +213,16 @@ class DeckTypeDefinitionBase(BaseModel):
 
   This model encapsulates the fundamental attributes of a specific type of
   deck, including its PyLabRobot class mapping, Praxis-specific name,
-  and methods for pose-to-location mapping, along with descriptive metadata.
+  and methods for position-to-location mapping, along with descriptive metadata.
   """
 
   pylabrobot_class_name: str
   praxis_deck_type_name: str
-  pose_arg_name: str
-  pose_to_location_method_name: str
+  positioning_config: Optional[PositioningConfig] = Field(
+    None,
+    description="Configuration for the primary method to calculate positions on this \
+      deck.",
+  )
   description: Optional[str] = None
   manufacturer: Optional[str] = None
   model: Optional[str] = None
@@ -205,23 +239,23 @@ class DeckTypeDefinitionCreate(DeckTypeDefinitionBase):
   """Represent a deck type definition for creation requests.
 
   This model extends `DeckTypeDefinitionBase` by allowing the inclusion of
-  `DeckPoseDefinitionCreate` instances, enabling the definition of a deck type's
-  associated poses upon creation.
+  `DeckPositionDefinitionCreate` instances, enabling the definition of a deck type's
+  associated positions upon creation.
   """
 
-  pose_definitions: Optional[List[DeckPoseDefinitionCreate]] = []
+  position_definitions: Optional[List[DeckPositionDefinitionCreate]] = []
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
   """Represent a deck type definition for API responses.
 
   This model extends `DeckTypeDefinitionBase` by including system-generated
-  identifiers, associated pose definitions (as `DeckPoseDefinitionResponse`),
+  identifiers, associated position definitions (as `DeckPositionDefinitionResponse`),
   and timestamps for creation and last update, suitable for client-facing responses.
   """
 
   id: int
-  pose_definitions: List[DeckPoseDefinitionResponse] = []
+  position_definitions: List[DeckPositionDefinitionResponse] = []
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 
@@ -231,20 +265,17 @@ class DeckTypeDefinitionUpdate(BaseModel):
 
   This model provides optional fields for updating various properties of a
   deck type definition, such as its PyLabRobot class name, Praxis-specific name,
-  and descriptive metadata. Pose definitions are typically managed via their
+  and descriptive metadata. Position definitions are typically managed via their
   own CRUD operations or through `DeckTypeDefinitionCreate`.
   """
 
   pylabrobot_class_name: Optional[str] = None
   praxis_deck_type_name: Optional[str] = None
-  pose_arg_name: Optional[str] = None
-  pose_to_location_method_name: Optional[str] = None
+  positioning_config: Optional[PositioningConfig] = None
   description: Optional[str] = None
   manufacturer: Optional[str] = None
   model: Optional[str] = None
   notes: Optional[str] = None
-  # Pose definitions are typically managed via their own CRUD or through
-  # DeckTypeDefinitionCreate
 
 
 class DeckInfo(BaseModel):
@@ -294,34 +325,35 @@ class DeckResourceInfo(BaseModel):
   )
 
 
-class DeckPoseInfo(BaseModel):
-  """Information about a single pose on the deck."""
+class DeckPositionInfo(BaseModel):
+  """Information about a single position on the deck."""
 
   name: str = Field(
-    description="Identifier for the pose (e.g., 'A1', 'pose_1', 'trash_pose')"
+    description="Identifier for the position (e.g., 'A1', 'position_1', \
+      'trash_position')"
   )
   x_coordinate: Optional[float] = Field(
     None,
-    description="X coordinate of the pose's origin relative to the deck, in "
+    description="X coordinate of the position's origin relative to the deck, in "
     "millimeters",
   )
   y_coordinate: Optional[float] = Field(
     None,
-    description="Y coordinate of the pose's origin relative to the deck, in "
+    description="Y coordinate of the position's origin relative to the deck, in "
     "millimeters",
   )
   z_coordinate: Optional[float] = Field(
     None,
-    description="Z coordinate of the pose's origin relative to the deck, in millimeters"
-    " (often the deck surface at this pose)",
+    description="Z coordinate of the position's origin relative to the deck, in "
+    "millimeters (often the deck surface at this position)",
   )
   labware: Optional[DeckResourceInfo] = Field(
-    None, description="Resource instance currently occupying this pose, if any"
+    None, description="Resource instance currently occupying this position, if any"
   )
 
 
 class DeckStateResponse(BaseModel):
-  """Represents the complete state of a deck, including its poses and labware."""
+  """Represents the complete state of a deck, including its positions and labware."""
 
   deck_id: int = Field(description="ORM ID of the MachineOrm for the deck")
   user_friendly_name: str = Field(description="User-assigned name for the deck")
@@ -337,7 +369,9 @@ class DeckStateResponse(BaseModel):
     description="Overall physical dimension Z of the deck in millimeters (e.g., "
     "height)",
   )
-  poses: List[DeckPoseInfo] = Field(description="List of all poses defined on this deck")
+  positions: List[DeckPositionInfo] = Field(
+    description="List of all positions defined on this deck"
+  )
 
 
 class DeckUpdateMessage(BaseModel):
@@ -346,14 +380,14 @@ class DeckUpdateMessage(BaseModel):
   deck_id: int = Field(description="ORM ID of the deck that was updated")
   update_type: str = Field(
     description="Type of update (e.g., 'labware_added', 'labware_removed', "
-    "'labware_updated', 'pose_cleared')"
+    "'labware_updated', 'position_cleared')"
   )
-  pose_name: Optional[str] = Field(
-    None, description="Name of the pose affected by the update, if applicable"
+  position_name: Optional[str] = Field(
+    None, description="Name of the position affected by the update, if applicable"
   )
   labware_info: Optional[DeckResourceInfo] = Field(
     None,
-    description="The new state of the labware in the pose, or null if labware was "
+    description="The new state of the labware in the position, or null if labware was "
     "removed",
   )
   timestamp: str = Field(
