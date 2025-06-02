@@ -486,7 +486,7 @@ async def list_resource_instances(
   pylabrobot_definition_name: Optional[str] = None,
   status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_id: Optional[int] = None,
-  on_deck_pose: Optional[str] = None,
+  on_deck_position: Optional[str] = None,
   limit: int = 100,
   offset: int = 0,
 ) -> List[ResourceInstanceOrm]:
@@ -500,8 +500,8 @@ async def list_resource_instances(
           by their current status. Defaults to None.
       location_machine_id (Optional[int], optional): Filter instances by the
           ID of the machine they are currently located on. Defaults to None.
-      on_deck_pose (Optional[str], optional): Filter instances by the name of
-          the deck pose they are currently in. Defaults to None.
+      on_deck_position (Optional[str], optional): Filter instances by the name of
+          the deck position they are currently in. Defaults to None.
       limit (int): The maximum number of results to return. Defaults to 100.
       offset (int): The number of results to skip before returning. Defaults to 0.
 
@@ -512,11 +512,11 @@ async def list_resource_instances(
   """
   logger.info(
     "Listing resource instances with filters: def_name='%s', status=%s, "
-    "machine_id=%s, deck_pose='%s', limit=%d, offset=%d.",
+    "machine_id=%s, deck_position='%s', limit=%d, offset=%d.",
     pylabrobot_definition_name,
     status,
     location_machine_id,
-    on_deck_pose,
+    on_deck_position,
     limit,
     offset,
   )
@@ -535,9 +535,9 @@ async def list_resource_instances(
   if location_machine_id:
     stmt = stmt.filter(ResourceInstanceOrm.location_machine_id == location_machine_id)
     logger.debug("Filtering by location machine ID: %d.", location_machine_id)
-  if on_deck_pose:
-    stmt = stmt.filter(ResourceInstanceOrm.current_deck_pose_name == on_deck_pose)
-    logger.debug("Filtering by deck pose: '%s'.", on_deck_pose)
+  if on_deck_position:
+    stmt = stmt.filter(ResourceInstanceOrm.current_deck_position_name == on_deck_position)
+    logger.debug("Filtering by deck position: '%s'.", on_deck_position)
 
   stmt = (
     stmt.order_by(ResourceInstanceOrm.user_assigned_name).limit(limit).offset(offset)
@@ -553,7 +553,7 @@ async def update_resource_instance_location_and_status(
   resource_instance_id: int,
   new_status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_id: Optional[int] = None,
-  current_deck_pose_name: Optional[str] = None,
+  current_deck_position_name: Optional[str] = None,
   physical_location_description: Optional[str] = None,
   properties_json_update: Optional[Dict[str, Any]] = None,
   current_protocol_run_guid: Optional[str] = None,
@@ -568,8 +568,8 @@ async def update_resource_instance_location_and_status(
           status for the resource instance. Defaults to None.
       location_machine_id (Optional[int], optional): The ID of the machine
           where the resource is now located. Defaults to None.
-      current_deck_pose_name (Optional[str], optional): The name of the deck
-          pose where the resource is now located. Defaults to None.
+      current_deck_position_name (Optional[str], optional): The name of the deck
+          position where the resource is now located. Defaults to None.
       physical_location_description (Optional[str], optional): An updated
           description of the physical location. Defaults to None.
       properties_json_update (Optional[Dict[str, Any]], optional): A dictionary
@@ -592,11 +592,11 @@ async def update_resource_instance_location_and_status(
   """
   logger.info(
     "Updating resource instance ID %d: new_status=%s, machine_id=%s, "
-    "deck_pose='%s'.",
+    "deck_position='%s'.",
     resource_instance_id,
     new_status,
     location_machine_id,
-    current_deck_pose_name,
+    current_deck_position_name,
   )
   instance_orm = await get_resource_instance_by_id(db, resource_instance_id)
   if instance_orm:
@@ -612,19 +612,19 @@ async def update_resource_instance_location_and_status(
     # Update location fields if any are provided
     if (
       location_machine_id is not None
-      or current_deck_pose_name is not None
+      or current_deck_position_name is not None
       or physical_location_description is not None
     ):
       logger.debug(
-        "Instance ID %d location update: machine_id=%s, deck_pose='%s', "
+        "Instance ID %d location update: machine_id=%s, deck_position='%s', "
         "physical_desc='%s'.",
         resource_instance_id,
         location_machine_id,
-        current_deck_pose_name,
+        current_deck_position_name,
         physical_location_description,
       )
       instance_orm.location_machine_id = location_machine_id
-      instance_orm.current_deck_pose_name = current_deck_pose_name
+      instance_orm.current_deck_position_name = current_deck_position_name
       instance_orm.physical_location_description = physical_location_description
 
     if status_details is not None:

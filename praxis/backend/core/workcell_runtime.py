@@ -8,13 +8,13 @@ for an active workcell configuration. It translates database-defined assets
 into operational PyLabRobot instances.
 """
 
-from functools import wraps
 import importlib
 import inspect
 import logging
 import traceback
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
 import warnings
+from functools import partial, wraps
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type, Union
 
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines import Machine
@@ -27,18 +27,26 @@ from praxis.backend.models import (
   MachineCategoryEnum,
   MachineOrm,
   MachineStatusEnum,
+  PositioningConfig,
   ResourceCategoryEnum,
   ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
-from praxis.backend.utils.errors import WorkcellRuntimeError
+from praxis.backend.utils.errors import WorkcellRuntimeError, log_async_runtime_errors
 
 logger = logging.getLogger(__name__)
 
+log_workcell_runtime_errors = partial(
+  log_async_runtime_errors,
+  logger_instance=logger,
+  raises=True,  # DECIDE BEHAVIOR WE WANT, I THINK WE WANT EVERYTHING RAISED TO ORCH
+  raises_exception=WorkcellRuntimeError,
+)
+
 
 def check_db_session(func: Callable) -> Callable:
-  """Decorator to ensure a valid database session is available."""
+  """Ensure a valid database session is available."""
 
   @wraps(func)
   async def wrapper(*args, **kwargs):
@@ -55,7 +63,7 @@ def check_db_session(func: Callable) -> Callable:
 
 
 def _get_class_from_fqn(class_fqn: str) -> Type:
-  """Dynamically imports and returns a class from its fully qualified name."""
+  """Import and return a class dynamically from its fully qualified name."""
   if not class_fqn or "." not in class_fqn:
     raise ValueError("Invalid fully qualified class name: %s", class_fqn)
   module_name, class_name = class_fqn.rsplit(".", 1)
@@ -88,11 +96,153 @@ class WorkcellRuntime:
     logger.info("WorkcellRuntime initialized with db_session: %s", db_session)
 
   @check_db_session
+  @log_workcell_runtime_errors(
+    prefix="WorkcellRuntime: Error encountered calculating location from deck position",
+    suffix=" - Ensure the deck type definition exists in the database.",
+  )
+  async def _get_calculated_location(
+    self,
+    target_deck: Deck,
+    deck_type_definition_id: int,
+    position_id: Union[str, int],
+    positioning_config: Optional[PositioningConfig],
+  ) -> Coordinate:
+    """Calculate the PyLabRobot Coordinate for a given position_id.
+
+    Based on the deck's positioning configuration or predefined positions, returns the
+    corresponding PyLabRobot Coordinate for the position_id on the target deck.
+    Different Deck subclasses have different human interpretable position descriptions
+    (e.g., "A1", "B2", "C3", etc. for slots, or 1,2,3, etc. for rails), this allows
+    for easy interoperability and informing users of how to set-up a deck.
+
+
+    Args:
+        target_deck (Deck): The live PyLabRobot Deck object.
+        deck_type_definition_id (int): The ID of the associated DeckTypeDefinition.
+        position_id (Union[str, int]): The human-interpretable identifier for the
+        position.
+        positioning_config (Optional[PositioningConfig]): The general positioning
+            configuration for the deck type.
+
+    Returns:
+        Coordinate: The calculated PyLabRobot Coordinate.
+
+    Raises:
+        WorkcellRuntimeError: If the location cannot be determined.
+
+    """
+    if positioning_config is None:
+      logger.info(
+        f"No general positioning config for deck type ID {deck_type_definition_id},"
+        " attempting to find position in DeckPositionDefinitionOrm."
+      )
+      if isinstance(position_id, (str, int)):
+        if self.db_session is not None:
+          all_deck_position_definitions = (
+            await svc.get_position_definitions_for_deck_type(
+              self.db_session, deck_type_definition_id
+            )
+          )
+          found_position_def = next(
+            (
+              p
+              for p in all_deck_position_definitions
+              if p.position_id == str(position_id) or p.position_id == int(position_id)
+            ),
+            None,
+          )
+          if (
+            found_position_def
+            and found_position_def.nominal_x_mm is not None
+            and found_position_def.nominal_y_mm is not None
+          ):
+            return Coordinate(
+              x=found_position_def.nominal_x_mm,
+              y=found_position_def.nominal_y_mm,
+              z=found_position_def.nominal_z_mm
+              if found_position_def.nominal_z_mm is not None
+              else 0.0,
+            )
+          else:
+            raise WorkcellRuntimeError(
+              f"Position '{position_id}' not found in predefined deck position "
+              f"definitions for deck type ID {deck_type_definition_id}."
+            )
+        else:
+          raise TypeError(
+            f"Position ID for deck type ID {deck_type_definition_id} must be a string "
+            f"or integer for direct lookup."
+          )
+      else:
+        raise WorkcellRuntimeError(
+          f"No positioning configuration provided for deck type ID "
+          f"{deck_type_definition_id}. Cannot determine position location."
+        )
+    else:
+      method_name = positioning_config.method_name
+      arg_name = positioning_config.arg_name
+      arg_type = positioning_config.arg_type
+      method_params = positioning_config.params or {}
+
+      position_method = getattr(target_deck, method_name, None)
+      if position_method is None or not callable(position_method):
+        raise WorkcellRuntimeError(
+          f"Deck does not have a valid position method '{method_name}' as configured."
+        )
+
+      converted_position_arg: Union[str, int]
+      if arg_type == "int":
+        try:
+          converted_position_arg = int(position_id)
+        except (ValueError, TypeError) as e:
+          raise TypeError(
+            f"Expected integer for position_id '{position_id}' for method "
+            f"'{method_name}' but got invalid type/value: {e}"
+          ) from e
+      else:
+        converted_position_arg = str(position_id)
+
+      try:
+        sig = inspect.signature(position_method)
+        bound_args = sig.bind_partial(**method_params)
+        bound_args.arguments[arg_name] = converted_position_arg
+        bound_args.apply_defaults()
+        calculated_location = position_method(*bound_args.args, **bound_args.kwargs)
+
+      except TypeError as e:
+        raise WorkcellRuntimeError(
+          f"Error calling PLR method '{method_name}' with arguments "
+          f"'{arg_name}={converted_position_arg}' and params '{method_params}': {e}. "
+          "Check if method signature matches configuration."
+        ) from e
+      except Exception as e:
+        raise WorkcellRuntimeError(
+          f"Unexpected error when calling PLR method '{method_name}': {e}"
+        ) from e
+
+      # Ensure the calculated location is a PyLabRobot Coordinate object
+      if not isinstance(calculated_location, Coordinate):
+        if isinstance(calculated_location, tuple) and len(calculated_location) == 3:
+          calculated_location = Coordinate(
+            x=calculated_location[0], y=calculated_location[1], z=calculated_location[2]
+          )
+        else:
+          raise TypeError(
+            f"Expected PLR method '{method_name}' to return a Coordinate or (x,y,z) "
+            f"tuple, but got {type(calculated_location)}: {calculated_location}"
+          )
+      return calculated_location
+
+  @check_db_session
+  @log_workcell_runtime_errors(
+    prefix="WorkcellRuntime: Error initializing machine",
+    suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
+  )
   async def initialize_machine(self, machine_orm: MachineOrm) -> Optional[Any]:
     """Initialize and connects to a machine's PyLabRobot machine/resource.
 
     Args:
-      machine_orm (MachineOrm): The ORM object representing the machine to
+      machine_orm (MachineOrm): The ORM representing the machine to
         initialize.
 
     Returns:
@@ -166,15 +316,11 @@ class WorkcellRuntime:
         try:
           await machine_instance.setup()
         except Exception as e:
-          logger.error(
-            "WorkcellRuntime: Failed to call setup() for '%s': %s",
-            machine_orm.user_friendly_name,
-            e,
-          )
-          raise WorkcellRuntimeError(
-            f"Machine '{machine_orm.user_friendly_name}' setup failed:"
+          error_message = (
+            f"Failed to call setup() for machine '{machine_orm.user_friendly_name}':"
             f" {str(e)[:250]}"
-          ) from e
+          )
+          raise WorkcellRuntimeError(error_message)
       else:
         logger.info(
           "WorkcellRuntime: No setup() method for '%s'.",
@@ -221,6 +367,10 @@ class WorkcellRuntime:
       return None
 
   @check_db_session
+  @log_workcell_runtime_errors(
+    prefix="WorkcellRuntime: Error creating or getting resource",
+    suffix=" - Ensure the resource instance ORM and definition FQN are valid.",
+  )
   async def create_or_get_resource(
     self, resource_instance_orm: ResourceInstanceOrm, resource_definition_fqn: str
   ) -> Optional[Resource]:
@@ -238,8 +388,10 @@ class WorkcellRuntime:
 
     """
     if not hasattr(resource_instance_orm, "id") or resource_instance_orm.id is None:
-      logger.error("WorkcellRuntime: Invalid resource_instance_orm passed (no id).")
-      return None
+      raise ValueError(
+        "Invalid resource_instance_orm object passed to create_or_get_resource"
+        " (no id)."
+      )
     if resource_instance_orm.id in self._active_resources:
       return self._active_resources[resource_instance_orm.id]
 
@@ -261,14 +413,11 @@ class WorkcellRuntime:
       return resource
     except Exception as e:
       error_message = (
-        f"Failed to create PLR resource for '{resource_instance_orm.user_assigned_name}'"
-        f" using FQN '{resource_definition_fqn}': {str(e)[:250]}"
+        f"Failed to create PLR resource for '{resource_instance_orm.user_assigned_name}"
+        f"' using FQN '{resource_definition_fqn}': {str(e)[:250]}"
       )
-      logger.error("WorkcellRuntime: %s", error_message)
-      traceback.print_exc()
       if (
         self.db_session
-        and svc
         and hasattr(resource_instance_orm, "id")
         and resource_instance_orm.id is not None
       ):
@@ -280,13 +429,12 @@ class WorkcellRuntime:
             status_details=error_message,
           )
         except Exception as db_error:  # pragma: no cover
-          logger.error(
-            "WorkcellRuntime: Failed to update ResourceInstance ID %d status to"
-            " ERROR in DB: %s",
-            resource_instance_orm.id,
-            db_error,
+          error_message += (
+            f" Failed to update resource instance ID {resource_instance_orm.id} status"
+            f" to ERROR in DB: {str(db_error)[:250]}"
           )
-      return None
+          raise WorkcellRuntimeError(error_message)
+    return None
 
   def get_active_machine(self, machine_orm_id: int) -> Optional[Any]:
     """Retrieve an active PyLabRobot machine instance by its ORM ID.
@@ -397,29 +545,13 @@ class WorkcellRuntime:
     parent_machine_orm_id: int,
     resource: Resource,
     resource_instance_orm_id: int,
-    location: Optional[Coordinate | tuple[float, float, float]] = None,
-    pose_id: Optional[str | int] = None,
+    location: Optional[Union[Coordinate, tuple[float, float, float]]] = None,
+    position_id: Optional[Union[str, int]] = None,
   ):
-    """Assign a live PyLabRobot resource to a specific location or pose on a deck.
-
-    Args:
-      parent_machine_orm_id (int): The ORM ID of the parent machine.
-      resource (Resource): The PyLabRobot resource object to assign.
-      resource_instance_orm_id (int): The ORM ID of the resource instance.
-      location (Optional[Union[Coordinate, Tuple[float, float, float]]]): The
-        coordinates to assign the resource to.
-      pose_id (Optional[Union[str, int]]): The identifier of the pose to
-        assign the resource to.
-
-    Raises:
-      WorkcellRuntimeError: If neither location nor pose_id is provided,
-        the deck machine is not active, the machine is not a Deck instance,
-        or if there's an error during assignment.
-
-    """
-    if location is None and pose_id is None:
+    """Assign a live Resource to a specific location or position on a deck."""
+    if location is None and position_id is None:
       raise WorkcellRuntimeError(
-        "Either 'location' or 'pose_id' must be provided to assign a resource"
+        "Either 'location' or 'position_id' must be provided to assign a resource"
         " to a deck."
       )
     if not isinstance(resource, Resource):
@@ -436,6 +568,7 @@ class WorkcellRuntime:
       )
       logger.error(error_message)
       raise WorkcellRuntimeError(error_message)
+
     target_deck_parent_orm = await svc.get_machine_by_id(
       self.db_session, parent_machine_orm_id
     )
@@ -451,10 +584,11 @@ class WorkcellRuntime:
       )
       logger.error(error_message)
       raise WorkcellRuntimeError(error_message)
-    deck_type_definition_orm = await svc.get_deck_type_definition_by_id(
+
+    deck_type_definition_pydantic = await svc.get_deck_type_definition_by_id(
       self.db_session, target_deck_parent_orm.deck_type_definition_id
     )
-    if not deck_type_definition_orm:
+    if not deck_type_definition_pydantic:
       error_message = (
         f"Deck type definition for parent machine ID {parent_machine_orm_id}"
         " not found in database."
@@ -462,19 +596,9 @@ class WorkcellRuntime:
       logger.error(error_message)
       raise WorkcellRuntimeError(error_message)
 
-    pose_method_name = deck_type_definition_orm.pose_to_location_method_name
     deck_orm = await svc.get_deck_by_parent_machine_id(
       self.db_session, parent_machine_orm_id
     )
-
-    if pose_method_name is None:
-      error_message = (
-        f"Deck type definition for parent machine ID {parent_machine_orm_id}"
-        " does not specify a pose (slot, rails) to location method name."
-      )
-      logger.error(error_message)
-      raise WorkcellRuntimeError(error_message)
-
     if not deck_orm:
       error_message = (
         f"Deck machine with parent machine ID {parent_machine_orm_id} not found"
@@ -484,92 +608,101 @@ class WorkcellRuntime:
       raise WorkcellRuntimeError(error_message)
 
     target_deck = self.get_active_deck(deck_orm.id)
-    pose_method = getattr(target_deck, pose_method_name, None)
     if target_deck is None:
       error_message = f"Deck machine ID {deck_orm.id} is not an active machine."
       logger.error(error_message)
       raise WorkcellRuntimeError(error_message)
     if not isinstance(target_deck, Deck):
-      error_message = f"Device ID {deck_orm.id} (name: "
-      f"{getattr(target_deck, 'name', 'N/A')}) is not a Deck instance. "
-      f"Type is {type(target_deck)}."
-      logger.error(error_message)
-      raise WorkcellRuntimeError(error_message)
-    if pose_method is None or not callable(pose_method):
       error_message = (
-        f"Deck type definition for parent machine ID {parent_machine_orm_id}"
-        f" does not have a valid pose method '{pose_method_name}' on deck ID"
-        f" {deck_orm.id}."
+        f"Device ID {deck_orm.id} (name: "
+        f"{getattr(target_deck, 'name', 'N/A')}) is not a Deck instance. "
+        f"Type is {type(target_deck)}."
       )
       logger.error(error_message)
       raise WorkcellRuntimeError(error_message)
 
-    deck_parent = target_deck.parent
-    if deck_parent is None:
-      error_message = (
-        f"Deck ID {deck_orm.id} has no parent machine. Cannot assign resource."
+    final_location_for_plr: Coordinate
+    if location is not None:
+      # If explicit coordinates are provided, use them directly
+      if isinstance(location, tuple):
+        final_location_for_plr = Coordinate(x=location[0], y=location[1], z=location[2])
+      else:
+        final_location_for_plr = location
+    elif position_id is not None:
+      # Delegate position calculation to the helper function
+      final_location_for_plr = await self._get_calculated_location(
+        target_deck=target_deck,
+        deck_type_definition_id=deck_type_definition_pydantic.id,
+        position_id=position_id,
+        positioning_config=deck_type_definition_pydantic.positioning_config_json,
       )
-      logger.error(error_message)
-      raise WorkcellRuntimeError(error_message)
+    else:
+      # This case should ideally be caught by the initial check, but for type safety.
+      raise WorkcellRuntimeError(
+        "Internal error: Neither location nor position_id provided after initial check."
+      )
 
     try:
-      if pose_id is not None:
-        target_deck.assign_child_resource(
-          resource=resource, location=pose_method(pose_id)
+      target_deck.assign_child_resource(
+        resource=resource, location=final_location_for_plr
+      )
+      if self.db_session and svc:
+        await svc.update_resource_instance_location_and_status(
+          self.db_session,
+          resource_instance_orm_id,
+          ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+          location_machine_id=deck_orm.id,
+          current_deck_position_name=str(position_id),
         )
-        if self.db_session and svc:
-          await svc.update_resource_instance_location_and_status(
-            self.db_session,
-            resource_instance_orm_id,
-            ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
-            location_machine_id=deck_orm.id,
-            current_deck_pose_name=str(pose_id),
-          )
     except Exception as e:
-      traceback.print_exc()
-      raise WorkcellRuntimeError(
-        f"Error assigning resource '{resource.name}' to pose '{pose_id}' on"
-        f" deck ID {deck_orm_id}: {e}"
-      ) from e
+      error_message = (
+        f"Error assigning resource '{resource.name}' to location "
+        f"{final_location_for_plr} on deck ID {deck_orm.id}: {str(e)[:250]}"
+      )
+      logger.error(error_message)
+      raise WorkcellRuntimeError(error_message)
 
-  async def clear_deck_pose(
+  async def clear_deck_position(
     self,
     deck_machine_orm_id: int,
-    pose_name: str,
+    position_name: str,
     resource_instance_orm_id: Optional[int] = None,
   ):
-    """Clears a resource from a specific pose on a live deck.
+    """Clear a resource from a specific position on a live deck.
 
     Args:
       deck_machine_orm_id (int): The ORM ID of the deck machine.
-      pose_name (str): The name of the pose to clear.
+      position_name (str): The name of the position to clear.
       resource_instance_orm_id (Optional[int]): The ORM ID of the resource
-        instance that was in the pose, if known. Used for updating DB status.
+        instance that was in the position, if known. Used for updating DB status.
 
     Raises:
       WorkcellRuntimeError: If the deck machine is not active, not a Deck
         instance, or if there's an error during unassignment.
+
     """
     deck_plr_obj = self.get_active_machine(deck_machine_orm_id)
     if not deck_plr_obj:
-      raise WorkcellRuntimeError(
-        f"Deck machine ID {deck_machine_orm_id} is not an active machine."
-      )
+      error_message = f"Deck machine ID {deck_machine_orm_id} is not an active machine."
+      logger.error(error_message)
+      raise WorkcellRuntimeError(error_message)
     if not isinstance(deck_plr_obj, Deck):
-      raise WorkcellRuntimeError(
+      error_message = (
         f"Device ID {deck_machine_orm_id} "
         f"(name: {getattr(deck_plr_obj, 'name', 'N/A')}) is not a Deck instance. "
         f"Type is {type(deck_plr_obj)}."
       )
+      logger.error(error_message)
+      raise WorkcellRuntimeError(error_message)
     try:
-      resource_in_pose = deck_plr_obj.get_resource(pose_name)
-      if resource_in_pose:
-        deck_plr_obj.unassign_child_resource(resource_in_pose)
+      resource_in_position = deck_plr_obj.get_resource(position_name)
+      if resource_in_position:
+        deck_plr_obj.unassign_child_resource(resource_in_position)
       else:
         logger.warning(
-          "No specific resource found in pose '%s' on deck ID %d to unassign."
-          " Assuming pose is already clear or unassignment by name is sufficient.",
-          pose_name,
+          "No specific resource found in position '%s' on deck ID %d to unassign."
+          " Assuming position is already clear or unassignment by name is sufficient.",
+          position_name,
           deck_machine_orm_id,
         )
 
@@ -579,12 +712,12 @@ class WorkcellRuntime:
           resource_instance_orm_id,
           ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
           location_machine_id=None,
-          current_deck_pose_name=None,
+          current_deck_position_name=None,
         )
     except Exception as e:
       traceback.print_exc()
       raise WorkcellRuntimeError(
-        f"Error clearing deck pose '{pose_name}' on deck ID"
+        f"Error clearing deck position '{position_name}' on deck ID"
         f" {deck_machine_orm_id}: {e}"
       ) from e
 
@@ -594,7 +727,7 @@ class WorkcellRuntime:
     action_name: str,
     params: Optional[Dict[str, Any]] = None,
   ) -> Any:
-    """Executes a method/action on a live PyLabRobot machine instance.
+    """Execute a method/action on a live PyLabRobot machine instance.
 
     Args:
       machine_orm_id (int): The ORM ID of the machine to interact with.
@@ -609,10 +742,13 @@ class WorkcellRuntime:
       WorkcellRuntimeError: If the machine is not active or if an error occurs
         during action execution.
       AttributeError: If the specified action name does not exist on the machine.
+
     """
     machine = self.get_active_machine(machine_orm_id)
     if not machine:
-      raise WorkcellRuntimeError("Device ID %d machine not active.", machine_orm_id)
+      error_message = f"WorkcellRuntime: Device ID {machine_orm_id} machine not active."
+      logger.error(error_message)
+      raise WorkcellRuntimeError(error_message)
     if hasattr(machine, action_name) and callable(getattr(machine, action_name)):
       try:
         return getattr(machine, action_name)(**(params or {}))
@@ -629,14 +765,14 @@ class WorkcellRuntime:
       )
 
   async def shutdown_all_machines(self):
-    """Shuts down all currently active PyLabRobot machine instances."""
+    """Shut down all currently active PyLabRobot machine instances."""
     logger.info("WorkcellRuntime: Shutting down all active machines...")
     for machine_id in list(self._active_machines.keys()):
       await self.shutdown_machine(machine_id)
     logger.info("WorkcellRuntime: All active machines processed for shutdown.")
 
   async def get_deck_plr_object(self, deck_machine_orm_id: int) -> Optional[Deck]:
-    """Retrieves a specific live PyLabRobot Deck object by its ORM ID.
+    """Retrieve a specific live PyLabRobot Deck object by its ORM ID.
 
     This method prioritizes getting an already active deck. If not active,
     it attempts to initialize it.
@@ -647,6 +783,7 @@ class WorkcellRuntime:
     Returns:
       Optional[Deck]: The live PyLabRobot Deck object, or None if it cannot
       be retrieved or initialized as a Deck.
+
     """
     deck_machine = self.get_active_machine(deck_machine_orm_id)
     if deck_machine and isinstance(deck_machine, Deck):
@@ -665,7 +802,7 @@ class WorkcellRuntime:
   async def get_deck_state_representation(
     self, deck_machine_orm_id: int
   ) -> Dict[str, Any]:
-    """Constructs a dictionary representing the state of a specific deck.
+    """Construct a dictionary representing the state of a specific deck.
 
     This representation is suitable for serialization into `DeckStateResponse`.
     It uses a database-first approach for resources located on the deck.
@@ -680,8 +817,8 @@ class WorkcellRuntime:
       WorkcellRuntimeError: If the database session or service is unavailable,
         the deck machine is not found in the database, or the machine is not
         categorized as a DECK.
-    """
 
+    """
     if not self.db_session or not svc:
       raise WorkcellRuntimeError(
         "Database session or asset_data_service not available."
@@ -700,7 +837,7 @@ class WorkcellRuntime:
         deck_orm.praxis_machine_category,
       )
 
-    response_poses: List[Dict[str, Any]] = []
+    response_positions: List[Dict[str, Any]] = []
 
     resources_on_deck = await svc.list_resource_instances(
       db=self.db_session,
@@ -708,7 +845,7 @@ class WorkcellRuntime:
     )
 
     for lw_instance in resources_on_deck:
-      if lw_instance.current_deck_pose_name:
+      if lw_instance.current_deck_position_name:
         if (
           not hasattr(lw_instance, "resource_definition")
           or not lw_instance.resource_definition
@@ -736,8 +873,8 @@ class WorkcellRuntime:
           "properties_json": lw_instance.properties_json,
           "model": lw_def.model,
         }
-        pose_info_data = {
-          "name": lw_instance.current_deck_pose_name,
+        position_info_data = {
+          "name": lw_instance.current_deck_position_name,
           # Placeholder for coordinates, as they are not directly in ORM
           # and require a live PLR Deck object to compute.
           "x_coordinate": None,
@@ -745,7 +882,7 @@ class WorkcellRuntime:
           "z_coordinate": None,
           "labware": resource_info_data,
         }
-        response_poses.append(pose_info_data)
+        response_positions.append(position_info_data)
 
     deck_size_x = None
     deck_size_y = None
@@ -775,7 +912,7 @@ class WorkcellRuntime:
       "size_x_mm": deck_size_x,
       "size_y_mm": deck_size_y,
       "size_z_mm": deck_size_z,
-      "poses": response_poses,
+      "positions": response_positions,
     }
     return deck_state_data
 
@@ -788,9 +925,9 @@ class WorkcellRuntime:
   # TODO: WCR-7: Add methods for loading/applying full DeckConfigurationOrm to
   # the live deck. This would involve:
   # - Clearing all existing resource from the live deck (if any).
-  # - Iterating through DeckPoseOrm entries in the DeckConfigurationOrm.
-  # - For each pose with assigned resource:
+  # - Iterating through DeckPositionOrm entries in the DeckConfigurationOrm.
+  # - For each position with assigned resource:
   #   - Get/create the PlrResource for the ResourceInstanceOrm.
-  #   - Call assign_resource_to_deck_pose with the target deck's ORM ID.
+  #   - Call assign_resource_to_deck_position with the target deck's ORM ID.
   # - This would be the primary way to set up a live deck to match a saved
   # configuration.
