@@ -618,7 +618,7 @@ class PraxisDBService:
             asset_orm.current_status.name if asset_orm.current_status else None
           ),
           "status_details": asset_orm.status_details,
-          "current_deck_slot_name": asset_orm.current_deck_slot_name,
+          "current_deck_pose_name": asset_orm.current_deck_pose_name,
           "location_machine_id": asset_orm.location_machine_id,
           "physical_location_description": (asset_orm.physical_location_description),
           "properties_json": asset_orm.properties_json,

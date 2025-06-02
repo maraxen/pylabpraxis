@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 async def create_deck_layout(
   db: AsyncSession,
   layout_name: str,
-  deck_machine_id: int,
+  deck_id: int,
   description: Optional[str] = None,
   pose_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckConfigurationOrm:
@@ -51,7 +51,7 @@ async def create_deck_layout(
   Args:
     db (AsyncSession): The database session.
     layout_name (str): The name of the deck layout.
-    deck_machine_id (int): The ID of the deck machine to associate with this layout.
+    deck_id (int): The ID of the deck machine to associate with this layout.
     description (Optional[str], optional): Description of the deck layout.
       Defaults to None.
     pose_items_data (Optional[List[Dict[str, Any]]], optional): List of pose items
@@ -78,16 +78,16 @@ async def create_deck_layout(
   logger.info(
     "Attempting to create deck layout '%s' for machine ID %d.",
     layout_name,
-    deck_machine_id,
+    deck_id,
   )
 
   deck_machine_result = await db.execute(
-    select(MachineOrm).filter(MachineOrm.id == deck_machine_id)
+    select(MachineOrm).filter(MachineOrm.id == deck_id)
   )
   deck_machine = deck_machine_result.scalar_one_or_none()
   if not deck_machine:
     error_message = (
-      f"MachineOrm (Deck Device) with id {deck_machine_id} not found. "
+      f"MachineOrm (Deck Device) with id {deck_id} not found. "
       "Cannot create deck layout."
     )
     logger.error(error_message)
@@ -95,7 +95,7 @@ async def create_deck_layout(
 
   deck_layout_orm = DeckConfigurationOrm(
     layout_name=layout_name,
-    deck_machine_id=deck_machine_id,
+    deck_id=deck_id,
     description=description,
   )
   db.add(deck_layout_orm)
@@ -188,6 +188,42 @@ async def create_deck_layout(
     raise e
 
 
+async def get_deck_by_parent_machine_id(
+  db: AsyncSession, parent_machine_id: int
+) -> Optional[DeckConfigurationOrm]:
+  """Retrieve a specific deck configuration by its parent machine ID.
+
+  Args:
+    db (AsyncSession): The database session.
+    parent_machine_id (int): The ID of the parent machine.
+
+  Returns:
+    Optional[DeckConfigurationOrm]: The deck configuration object if found,
+    otherwise None.
+
+  """
+  logger.info(
+    "Attempting to retrieve deck configuration with parent machine ID: %d.",
+    parent_machine_id,
+  )
+  stmt = select(DeckConfigurationOrm).filter(
+    DeckConfigurationOrm.deck_id == parent_machine_id
+  )
+  result = await db.execute(stmt)
+  deck_configuration = result.scalar_one_or_none()
+  if deck_configuration:
+    logger.info(
+      "Successfully retrieved deck configuration with parent machine ID %d: '%s'.",
+      parent_machine_id,
+      deck_configuration.layout_name,
+    )
+  else:
+    logger.info(
+      "Deck configuration with parent machine ID %d not found.", parent_machine_id
+    )
+  return deck_configuration
+
+
 async def get_deck_layout_by_id(
   db: AsyncSession, deck_layout_id: int
 ) -> Optional[DeckConfigurationOrm]:
@@ -272,7 +308,7 @@ async def get_deck_layout_by_name(
 
 async def list_deck_layouts(
   db: AsyncSession,
-  deck_machine_id: Optional[int] = None,
+  deck_id: Optional[int] = None,
   limit: int = 100,
   offset: int = 0,
 ) -> List[DeckConfigurationOrm]:
@@ -283,7 +319,7 @@ async def list_deck_layouts(
 
   Args:
     db (AsyncSession): The database session.
-    deck_machine_id (Optional[int]): The ID of the deck machine to filter by.
+    deck_id (Optional[int]): The ID of the deck machine to filter by.
       Defaults to None, meaning no filtering by machine ID.
     limit (int): The maximum number of results to return. Defaults to 100.
     offset (int): The number of results to skip before returning. Defaults to 0.
@@ -294,7 +330,7 @@ async def list_deck_layouts(
   """
   logger.info(
     "Listing deck layouts with machine ID filter: %s, limit: %d, offset: %d.",
-    deck_machine_id,
+    deck_id,
     limit,
     offset,
   )
@@ -306,8 +342,8 @@ async def list_deck_layouts(
       DeckConfigurationPoseItemOrm.expected_resource_definition
     ),
   )
-  if deck_machine_id is not None:
-    stmt = stmt.filter(DeckConfigurationOrm.deck_machine_id == deck_machine_id)
+  if deck_id is not None:
+    stmt = stmt.filter(DeckConfigurationOrm.deck_id == deck_id)
   stmt = stmt.order_by(DeckConfigurationOrm.layout_name).limit(limit).offset(offset)
   result = await db.execute(stmt)
   deck_layouts = list(result.scalars().all())
@@ -320,7 +356,7 @@ async def update_deck_layout(
   deck_layout_id: int,
   name: Optional[str] = None,
   description: Optional[str] = None,
-  deck_machine_id: Optional[int] = None,
+  deck_id: Optional[int] = None,
   pose_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[DeckConfigurationOrm]:
   """Update an existing deck layout configuration.
@@ -335,7 +371,7 @@ async def update_deck_layout(
     name (Optional[str], optional): The new name for the deck layout. Defaults to None.
     description (Optional[str], optional): The new description for the deck layout.
       Defaults to None.
-    deck_machine_id (Optional[int], optional): The ID of the new deck machine to
+    deck_id (Optional[int], optional): The ID of the new deck machine to
       associate with this layout. Defaults to None.
     pose_items_data (Optional[List[Dict[str, Any]]], optional): A list of new pose
       items data. Each dictionary in the list should contain:
@@ -378,24 +414,24 @@ async def update_deck_layout(
     logger.debug("Updating description for layout '%s'.", original_layout_name)
     deck_layout_orm.description = description
     updates_made = True
-  if deck_machine_id is not None and deck_layout_orm.deck_machine_id != deck_machine_id:
+  if deck_id is not None and deck_layout_orm.deck_id != deck_id:
     logger.debug(
       "Updating deck machine ID from %d to %d for layout '%s'.",
-      deck_layout_orm.deck_machine_id,
-      deck_machine_id,
+      deck_layout_orm.deck_id,
+      deck_id,
       original_layout_name,
     )
     new_deck_machine_result = await db.execute(
-      select(MachineOrm).filter(MachineOrm.id == deck_machine_id)
+      select(MachineOrm).filter(MachineOrm.id == deck_id)
     )
     if not new_deck_machine_result.scalar_one_or_none():
       error_message = (
-        f"New MachineOrm (Deck Device) with id {deck_machine_id} not found. "
+        f"New MachineOrm (Deck Device) with id {deck_id} not found. "
         f"Cannot update deck layout '{original_layout_name}'."
       )
       logger.error(error_message)
       raise ValueError(error_message)
-    deck_layout_orm.deck_machine_id = deck_machine_id
+    deck_layout_orm.deck_id = deck_id
     updates_made = True
 
   if pose_items_data is not None:

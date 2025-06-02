@@ -47,7 +47,7 @@ class DeckConfigurationOrm(Base):
   Attributes:
       id (int): Primary key, unique identifier for the deck configuration.
       layout_name (str): A unique, human-readable name for the deck layout.
-      deck_machine_id (int): Foreign key to the `MachineOrm` representing
+      deck_id (int): Foreign key to the `MachineOrm` representing
           the physical deck associated with this layout.
       description (Optional[str]): An optional description of the deck layout.
       created_at (Optional[datetime]): Timestamp when the record was created.
@@ -70,7 +70,7 @@ class DeckConfigurationOrm(Base):
   )
 
   # A Deck itself is a Machine
-  deck_machine_id: Mapped[int] = mapped_column(
+  deck_id: Mapped[int] = mapped_column(
     Integer, ForeignKey("machines.id"), nullable=False
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -311,6 +311,12 @@ class DeckTypeDefinitionOrm(Base):
   pose_argument_name: Mapped[Optional[str]] = mapped_column(
     String, nullable=True, comment="Name of the argument for pose in the method"
   )
+  pose_argument_type: Mapped[Optional[str]] = mapped_column(
+    String,
+    nullable=True,
+    comment="Type of the pose argument in the method (e.g., 'str', 'int')",
+  )
+
   serialized_constructor_args_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
     JSON, nullable=True
   )

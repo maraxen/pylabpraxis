@@ -9,7 +9,7 @@ This includes Machine Definitions, Machine Instances, and Machine configurations
 
 import datetime
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
@@ -186,6 +186,31 @@ async def get_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineOr
   else:
     logger.info("Machine with name '%s' not found.", name)
   return machine
+
+
+async def get_machines_by_workcell_id(
+  db: AsyncSession, workcell_id: int
+) -> Sequence[MachineOrm]:
+  """Retrieve all machines associated with a specific workcell ID.
+
+  Args:
+      db (AsyncSession): The database session.
+      workcell_id (int): The ID of the workcell to filter machines by.
+
+  Returns:
+      Sequence[MachineOrm]: A sequence of machine objects associated with the workcell.
+
+  """
+  logger.info("Retrieving machines for workcell ID: %d.", workcell_id)
+  stmt = (
+    select(MachineOrm)
+    .filter(MachineOrm.workcell_id == workcell_id)
+    .order_by(MachineOrm.user_friendly_name)
+  )
+  result = await db.execute(stmt)
+  machines = result.scalars().all()
+  logger.info("Found %d machines for workcell ID %d.", len(machines), workcell_id)
+  return machines
 
 
 async def list_machines(

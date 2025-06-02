@@ -16,6 +16,7 @@ from .deck_data_service import (
   add_or_update_deck_type_definition,
   create_deck_layout,
   delete_deck_layout,
+  get_deck_by_parent_machine_id,
   get_deck_layout_by_id,
   get_deck_layout_by_name,
   get_deck_type_definition_by_fqn,
@@ -40,6 +41,7 @@ from .machine_data_service import (
   delete_machine,
   get_machine_by_id,
   get_machine_by_name,
+  get_machines_by_workcell_id,
   list_machines,
   update_machine_status,
 )
@@ -147,4 +149,6 @@ __all__ = [
   "get_workcell_by_id",
   "get_workcell_by_name",
   "list_workcells",
+  "get_machines_by_workcell_id",
+  "get_deck_by_parent_machine_id",
 ]

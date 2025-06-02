@@ -275,8 +275,8 @@ class ResourceInstanceOrm(Base):
     comment="Additional details about the current status," " e.g., error message",
   )
 
-  current_deck_slot_name: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, comment="If on a deck, the slot name (e.g., A1, SLOT_7)"
+  current_deck_pose_name: Mapped[Optional[str]] = mapped_column(
+    String, nullable=True, comment="If on a deck, the pose name (e.g., A1, SLOT_7)"
   )
   location_machine_id: Mapped[Optional[int]] = mapped_column(
     Integer,
@@ -323,7 +323,7 @@ class ResourceInstanceOrm(Base):
   )
 
   deck_configuration_items = relationship(
-    "DeckConfigurationSlotItemOrm", back_populates="resource_instance"
+    "DeckConfigurationPoseItemOrm", back_populates="resource_instance"
   )
 
   def __repr__(self):
