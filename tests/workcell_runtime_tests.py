@@ -168,7 +168,7 @@ class TestWorkcellRuntimeResourceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock # Added ads mock
     ):
         mock_get_class.return_value = mock_plr_resource_class
-        resource_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", pylabrobot_definition_name="some.ResourceFQN") # Name used for instance
+        resource_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some.ResourceFQN") # Name used for instance
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "some.ResourceFQN") # Pass FQN
 
@@ -182,7 +182,7 @@ class TestWorkcellRuntimeResourceHandling:
         self, mock_get_class: MagicMock, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.side_effect = ImportError("Cannot import resource class")
-        resource_orm = ResourceInstanceOrmMock(id=2, user_assigned_name="BadPlate", pylabrobot_definition_name="bad.fqn.Resource")
+        resource_orm = ResourceInstanceOrmMock(id=2, user_assigned_name="BadPlate", name="bad.fqn.Resource")
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "bad.fqn.Resource")
 

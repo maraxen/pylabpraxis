@@ -402,14 +402,14 @@ async def create_resource_definition_endpoint(
 
 
 @router.get(
-  "/resource_definitions/{pylabrobot_definition_name}",
+  "/resource_definitions/{name}",
   response_model=ResourceDefinitionResponse,
   tags=["Resource Definitions"],
 )
 async def get_resource_definition_endpoint(
-  pylabrobot_definition_name: str, db: AsyncSession = Depends(get_db)
+  name: str, db: AsyncSession = Depends(get_db)
 ):
-  db_def = await svc.get_resource_definition(db, pylabrobot_definition_name)
+  db_def = await svc.get_resource_definition(db, name)
   if db_def is None:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -431,20 +431,20 @@ async def list_resource_definitions_endpoint(
 
 
 @router.put(
-  "/resource_definitions/{pylabrobot_definition_name}",
+  "/resource_definitions/{name}",
   response_model=ResourceDefinitionResponse,
   tags=["Resource Definitions"],
 )
 async def update_resource_definition_endpoint(
-  pylabrobot_definition_name: str,
+  name: str,
   definition_update: ResourceDefinitionUpdate,
   db: AsyncSession = Depends(get_db),
 ):
-  existing_def = await svc.get_resource_definition(db, pylabrobot_definition_name)
+  existing_def = await svc.get_resource_definition(db, name)
   if not existing_def:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail=f"Resource definition '{pylabrobot_definition_name}' not found.",
+      detail=f"Resource definition '{name}' not found.",
     )
 
   update_data = definition_update.model_dump(exclude_unset=True)
@@ -457,7 +457,7 @@ async def update_resource_definition_endpoint(
 
   try:
     updated_def = await svc.add_or_update_resource_definition(
-      db=db, pylabrobot_definition_name=pylabrobot_definition_name, **update_data
+      db=db, name=name, **update_data
     )
     return updated_def
   except ValueError as e:
@@ -465,18 +465,18 @@ async def update_resource_definition_endpoint(
 
 
 @router.delete(
-  "/resource_definitions/{pylabrobot_definition_name}",
+  "/resource_definitions/{name}",
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Resource Definitions"],
 )
 async def delete_resource_definition_endpoint(
-  pylabrobot_definition_name: str, db: AsyncSession = Depends(get_db)
+  name: str, db: AsyncSession = Depends(get_db)
 ):
-  success = await svc.delete_resource_definition(db, pylabrobot_definition_name)
+  success = await svc.delete_resource_definition(db, name)
   if not success:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail=f"Resource definition '{pylabrobot_definition_name}' not found or could not be deleted.",
+      detail=f"Resource definition '{name}' not found or could not be deleted.",
     )
   return None
 

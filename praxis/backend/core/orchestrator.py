@@ -389,7 +389,7 @@ class Orchestrator:
                 asset_type_str_for_model: str
                 resource_def_orm = await svc.get_resource_definition_by_fqn(self.db_session, fqn)
                 if resource_def_orm:
-                    asset_type_str_for_model = resource_def_orm.pylabrobot_definition_name
+                    asset_type_str_for_model = resource_def_orm.name
                     print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as LABWARE, maps to definition '{asset_type_str_for_model}'.")
                 else:
                     asset_type_str_for_model = fqn # Assume it's a device FQN

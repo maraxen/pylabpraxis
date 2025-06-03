@@ -88,8 +88,8 @@ class MachineOrm(Base):
     comment="Fully qualified PyLabRobot class name \
           (e.g., pylabrobot.liquid_handling.hamilton.STAR)",
   )
-  praxis_machine_category: Mapped[Optional[MachineCategoryEnum]] = mapped_column(
-    SAEnum(MachineCategoryEnum, name="praxis_machine_category_enum"),
+  category: Mapped[Optional[MachineCategoryEnum]] = mapped_column(
+    SAEnum(MachineCategoryEnum, name="category_enum"),
     nullable=True,
     index=True,
     comment="Praxis-defined category based on PLR class",

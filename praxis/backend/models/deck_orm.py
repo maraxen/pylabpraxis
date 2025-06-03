@@ -156,7 +156,7 @@ class DeckConfigurationPositionItemOrm(Base):
   # position in this layout
   expected_resource_definition_name: Mapped[Optional[str]] = mapped_column(
     String,
-    ForeignKey("resource_definition_catalog.pylabrobot_definition_name"),
+    ForeignKey("resource_definition_catalog.name"),
     nullable=True,
   )
   deck_position_definition_id: Mapped[Optional[int]] = mapped_column(

@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 async def add_or_update_resource_definition(
   db: AsyncSession,
-  pylabrobot_definition_name: str,
+  name: str,
   python_fqn: str,
-  praxis_resource_type_name: Optional[str] = None,
+  resource_type: Optional[str] = None,
   description: Optional[str] = None,
   is_consumable: bool = True,
   nominal_volume_ul: Optional[float] = None,
@@ -44,15 +44,15 @@ async def add_or_update_resource_definition(
   """Add a new resource definition to the catalog or update an existing one.
 
   This function creates a new `ResourceDefinitionCatalogOrm` if no existing
-  definition matches `pylabrobot_definition_name`. If a match is found, it
+  definition matches `name`. If a match is found, it
   updates the existing definition.
 
   Args:
       db (AsyncSession): The database session.
-      pylabrobot_definition_name (str): The unique PyLabRobot definition name
+      name (str): The unique PyLabRobot definition name
           for the resource (e.g., "tip_rack_1000ul").
       python_fqn (str): The fully qualified Python name of the resource class.
-      praxis_resource_type_name (Optional[str], optional): A human-readable
+      resource_type (Optional[str], optional): A human-readable
           name for the resource type. Defaults to None.
       description (Optional[str], optional): A description of the resource.
           Defaults to None.
@@ -77,28 +77,25 @@ async def add_or_update_resource_definition(
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Resource Definition (Name: '{pylabrobot_definition_name}'):"
+  log_prefix = f"Resource Definition (Name: '{name}'):"
   logger.info("%s Attempting to add or update.", log_prefix)
 
   result = await db.execute(
     select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.pylabrobot_definition_name
-      == pylabrobot_definition_name
+      ResourceDefinitionCatalogOrm.name == name
     )
   )
   def_orm = result.scalar_one_or_none()
 
   if not def_orm:
-    def_orm = ResourceDefinitionCatalogOrm(
-      pylabrobot_definition_name=pylabrobot_definition_name
-    )
+    def_orm = ResourceDefinitionCatalogOrm(name=name)
     db.add(def_orm)
     logger.info("%s No existing definition found, creating new.", log_prefix)
   else:
     logger.info("%s Found existing definition, updating.", log_prefix)
 
   def_orm.python_fqn = python_fqn
-  def_orm.praxis_resource_type_name = praxis_resource_type_name
+  def_orm.resource_type = resource_type
   def_orm.description = description
   def_orm.is_consumable = is_consumable
   def_orm.nominal_volume_ul = nominal_volume_ul
@@ -127,13 +124,13 @@ async def add_or_update_resource_definition(
 
 
 async def get_resource_definition(
-  db: AsyncSession, pylabrobot_definition_name: str
+  db: AsyncSession, name: str
 ) -> Optional[ResourceDefinitionCatalogOrm]:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
   Args:
       db (AsyncSession): The database session.
-      pylabrobot_definition_name (str): The PyLabRobot definition name of the
+      name (str): The PyLabRobot definition name of the
           resource to retrieve.
 
   Returns:
@@ -143,19 +140,18 @@ async def get_resource_definition(
   """
   logger.info(
     "Retrieving resource definition by PyLabRobot name: '%s'.",
-    pylabrobot_definition_name,
+    name,
   )
   result = await db.execute(
     select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.pylabrobot_definition_name
-      == pylabrobot_definition_name
+      ResourceDefinitionCatalogOrm.name == name
     )
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
-    logger.info("Found resource definition '%s'.", pylabrobot_definition_name)
+    logger.info("Found resource definition '%s'.", name)
   else:
-    logger.info("Resource definition '%s' not found.", pylabrobot_definition_name)
+    logger.info("Resource definition '%s' not found.", name)
   return resource_def
 
 
@@ -199,11 +195,7 @@ async def list_resource_definitions(
   if is_consumable is not None:
     stmt = stmt.filter(ResourceDefinitionCatalogOrm.is_consumable == is_consumable)
     logger.debug("Filtering by is_consumable: %s.", is_consumable)
-  stmt = (
-    stmt.order_by(ResourceDefinitionCatalogOrm.pylabrobot_definition_name)
-    .limit(limit)
-    .offset(offset)
-  )
+  stmt = stmt.order_by(ResourceDefinitionCatalogOrm.name).limit(limit).offset(offset)
   result = await db.execute(stmt)
   resource_defs = list(result.scalars().all())
   logger.info("Found %d resource definitions.", len(resource_defs))
@@ -211,7 +203,7 @@ async def list_resource_definitions(
 
 
 async def get_resource_definition_by_name(
-  db: AsyncSession, pylabrobot_definition_name: str
+  db: AsyncSession, name: str
 ) -> Optional[ResourceDefinitionCatalogOrm]:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
@@ -219,7 +211,7 @@ async def get_resource_definition_by_name(
 
   Args:
       db (AsyncSession): The database session.
-      pylabrobot_definition_name (str): The PyLabRobot definition name of the
+      name (str): The PyLabRobot definition name of the
           resource to retrieve.
 
   Returns:
@@ -227,7 +219,7 @@ async def get_resource_definition_by_name(
       if found, otherwise None.
 
   """
-  return await get_resource_definition(db, pylabrobot_definition_name)
+  return await get_resource_definition(db, name)
 
 
 async def get_resource_definition_by_fqn(
@@ -258,14 +250,12 @@ async def get_resource_definition_by_fqn(
   return resource_def
 
 
-async def delete_resource_definition(
-  db: AsyncSession, pylabrobot_definition_name: str
-) -> bool:
+async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
   """Delete a specific resource definition from the catalog.
 
   Args:
       db (AsyncSession): The database session.
-      pylabrobot_definition_name (str): The PyLabRobot definition name of the
+      name (str): The PyLabRobot definition name of the
           resource to delete.
 
   Returns:
@@ -278,14 +268,12 @@ async def delete_resource_definition(
       Exception: For any other unexpected errors during deletion.
 
   """
-  logger.info(
-    "Attempting to delete resource definition: '%s'.", pylabrobot_definition_name
-  )
-  def_orm = await get_resource_definition(db, pylabrobot_definition_name)
+  logger.info("Attempting to delete resource definition: '%s'.", name)
+  def_orm = await get_resource_definition(db, name)
   if not def_orm:
     logger.warning(
       "Resource definition '%s' not found for deletion.",
-      pylabrobot_definition_name,
+      name,
     )
     return False
 
@@ -294,13 +282,13 @@ async def delete_resource_definition(
     await db.commit()
     logger.info(
       "Successfully deleted resource definition '%s'.",
-      pylabrobot_definition_name,
+      name,
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Cannot delete resource definition '{pylabrobot_definition_name}' "
+      f"Cannot delete resource definition '{name}' "
       f"due to existing references (e.g., resource instances). Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -309,7 +297,7 @@ async def delete_resource_definition(
     await db.rollback()
     logger.exception(
       "Unexpected error deleting resource definition '%s'. Rolling back.",
-      pylabrobot_definition_name,
+      name,
     )
     raise e
 
@@ -318,7 +306,7 @@ async def delete_resource_definition(
 async def add_resource_instance(
   db: AsyncSession,
   user_assigned_name: str,
-  pylabrobot_definition_name: str,
+  name: str,
   initial_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
   lot_number: Optional[str] = None,
   expiry_date: Optional[datetime.datetime] = None,
@@ -332,7 +320,7 @@ async def add_resource_instance(
       db (AsyncSession): The database session.
       user_assigned_name (str): A unique, user-friendly name for the
           resource instance.
-      pylabrobot_definition_name (str): The PyLabRobot definition name
+      name (str): The PyLabRobot definition name
           associated with this instance. This definition must exist in the
           catalog.
       initial_status (ResourceInstanceStatusEnum, optional): The initial
@@ -354,22 +342,21 @@ async def add_resource_instance(
       ResourceInstanceOrm: The newly created resource instance object.
 
   Raises:
-      ValueError: If the `pylabrobot_definition_name` is not found in the
+      ValueError: If the `name` is not found in the
           catalog, or if a resource instance with the same
           `user_assigned_name` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
   log_prefix = (
-    f"Resource Instance (Name: '{user_assigned_name}', "
-    f"Definition: '{pylabrobot_definition_name}'):"
+    f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{name}'):"
   )
   logger.info("%s Attempting to add new resource instance.", log_prefix)
 
-  definition = await get_resource_definition(db, pylabrobot_definition_name)
+  definition = await get_resource_definition(db, name)
   if not definition:
     error_message = (
-      f"{log_prefix} Resource definition '{pylabrobot_definition_name}' "
+      f"{log_prefix} Resource definition '{name}' "
       "not found in catalog. Cannot add instance."
     )
     logger.error(error_message)
@@ -377,7 +364,7 @@ async def add_resource_instance(
 
   instance_orm = ResourceInstanceOrm(
     user_assigned_name=user_assigned_name,
-    pylabrobot_definition_name=pylabrobot_definition_name,
+    name=name,
     current_status=initial_status,
     lot_number=lot_number,
     expiry_date=expiry_date,
@@ -483,7 +470,7 @@ async def get_resource_instance_by_name(
 
 async def list_resource_instances(
   db: AsyncSession,
-  pylabrobot_definition_name: Optional[str] = None,
+  name: Optional[str] = None,
   status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_id: Optional[int] = None,
   on_deck_position: Optional[str] = None,
@@ -494,7 +481,7 @@ async def list_resource_instances(
 
   Args:
       db (AsyncSession): The database session.
-      pylabrobot_definition_name (Optional[str], optional): Filter instances
+      name (Optional[str], optional): Filter instances
           by their PyLabRobot definition name. Defaults to None.
       status (Optional[ResourceInstanceStatusEnum], optional): Filter instances
           by their current status. Defaults to None.
@@ -513,7 +500,7 @@ async def list_resource_instances(
   logger.info(
     "Listing resource instances with filters: def_name='%s', status=%s, "
     "machine_id=%s, deck_position='%s', limit=%d, offset=%d.",
-    pylabrobot_definition_name,
+    name,
     status,
     location_machine_id,
     on_deck_position,
@@ -524,11 +511,9 @@ async def list_resource_instances(
     joinedload(ResourceInstanceOrm.resource_definition),
     joinedload(ResourceInstanceOrm.location_machine),
   )
-  if pylabrobot_definition_name:
-    stmt = stmt.filter(
-      ResourceInstanceOrm.pylabrobot_definition_name == pylabrobot_definition_name
-    )
-    logger.debug("Filtering by definition name: '%s'.", pylabrobot_definition_name)
+  if name:
+    stmt = stmt.filter(ResourceInstanceOrm.name == name)
+    logger.debug("Filtering by definition name: '%s'.", name)
   if status:
     stmt = stmt.filter(ResourceInstanceOrm.current_status == status)
     logger.debug("Filtering by status: '%s'.", status.name)
@@ -536,7 +521,9 @@ async def list_resource_instances(
     stmt = stmt.filter(ResourceInstanceOrm.location_machine_id == location_machine_id)
     logger.debug("Filtering by location machine ID: %d.", location_machine_id)
   if on_deck_position:
-    stmt = stmt.filter(ResourceInstanceOrm.current_deck_position_name == on_deck_position)
+    stmt = stmt.filter(
+      ResourceInstanceOrm.current_deck_position_name == on_deck_position
+    )
     logger.debug("Filtering by deck position: '%s'.", on_deck_position)
 
   stmt = (

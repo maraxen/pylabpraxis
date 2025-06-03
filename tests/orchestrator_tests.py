@@ -946,7 +946,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
     mock_resource_def_orm = MagicMock()
-    mock_resource_def_orm.pylabrobot_definition_name = "mock_plate_definition_name"
+    mock_resource_def_orm.name = "mock_plate_definition_name"
     mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.return_value = mock_resource_def_orm
 
     # Mock AssetManager's acquire_asset

@@ -330,7 +330,7 @@ void main() {
 
   group('ResourceDefinitionCatalogOrm - CRUD', () {
     final resourceDefJson = {
-      'pylabrobot_definition_name': 'test_plate',
+      'name': 'test_plate',
       'python_fqn': 'pylabrobot.resources.Plate',
       'size_x_mm': 127.0,
       'size_y_mm': 85.0,
@@ -489,7 +489,7 @@ void main() {
     final resourceInstanceJson = {
       'id': 1,
       'user_assigned_name': 'Test LW Instance 1',
-      'pylabrobot_definition_name': 'test_plate_def',
+      'name': 'test_plate_def',
       'properties_json':
           inventoryDataJson, // This contains the inventory details
       'current_status': 'AVAILABLE_IN_STORAGE',

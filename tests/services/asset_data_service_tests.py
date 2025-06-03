@@ -59,7 +59,7 @@ class TestResourceInstanceInventory:
       instance = asset_data_service.add_resource_instance(
         db=mock_db_session,
         user_assigned_name="TestLWInventory",
-        pylabrobot_definition_name="test_plate_def",
+        name="test_plate_def",
         properties_json=sample_inventory_data,
         initial_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
       )
@@ -76,7 +76,7 @@ class TestResourceInstanceInventory:
 
       assert isinstance(added_instance_orm, ResourceInstanceOrm)
       assert added_instance_orm.user_assigned_name == "TestLWInventory"
-      assert added_instance_orm.pylabrobot_definition_name == "test_plate_def"
+      assert added_instance_orm.name == "test_plate_def"
       assert added_instance_orm.properties_json == sample_inventory_data
       assert (
         added_instance_orm.current_status

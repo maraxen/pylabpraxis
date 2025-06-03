@@ -150,7 +150,7 @@ class ResourceDefinitionCatalogOrm(Base):
 
   __tablename__ = "resource_definition_catalog"
 
-  pylabrobot_definition_name: Mapped[str] = mapped_column(
+  name: Mapped[str] = mapped_column(
     String,
     primary_key=True,
     index=True,
@@ -194,7 +194,7 @@ class ResourceDefinitionCatalogOrm(Base):
     ),
   )
 
-  praxis_resource_type_name: Mapped[Optional[str]] = mapped_column(
+  resource_type: Mapped[Optional[str]] = mapped_column(
     String, nullable=True, unique=True
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -226,7 +226,7 @@ class ResourceDefinitionCatalogOrm(Base):
   def __repr__(self):
     """Return a string representation of the ResourceDefinitionCatalogOrm object."""
     return (
-      f"<ResourceDefinitionCatalogOrm(name='{self.pylabrobot_definition_name}',"
+      f"<ResourceDefinitionCatalogOrm(name='{self.name}',"
       f" category='{self.plr_category}')>"
     )
 
@@ -249,9 +249,9 @@ class ResourceInstanceOrm(Base):
     comment="User-friendly unique name for this physical item",
   )
 
-  pylabrobot_definition_name: Mapped[str] = mapped_column(
+  name: Mapped[str] = mapped_column(
     String,
-    ForeignKey("resource_definition_catalog.pylabrobot_definition_name"),
+    ForeignKey("resource_definition_catalog.name"),
     nullable=False,
     index=True,
   )
@@ -332,5 +332,5 @@ class ResourceInstanceOrm(Base):
     """Return a string representation of the ResourceInstanceOrm object."""
     return (
       f"<ResourceInstanceOrm(id={self.id}, name='{self.user_assigned_name}',"
-      f" type='{self.pylabrobot_definition_name}')>"
+      f" type='{self.name}')>"
     )

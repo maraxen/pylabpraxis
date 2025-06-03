@@ -216,7 +216,7 @@ class ResourceInstanceOrm {
     return ResourceInstanceOrm(
       id: json['id'] as int?,
       userAssignedName: json['user_assigned_name'] as String,
-      pylabrobotDefinitionName: json['pylabrobot_definition_name'] as String,
+      pylabrobotDefinitionName: json['name'] as String,
       lotNumber: json['lot_number'] as String?,
       expiryDate: json['expiry_date'] as String?,
       dateAddedToInventory: json['date_added_to_inventory'] as String?,
@@ -253,7 +253,7 @@ class ResourceInstanceOrm {
     final Map<String, dynamic> data = {
       'id': id,
       'user_assigned_name': userAssignedName,
-      'pylabrobot_definition_name': pylabrobotDefinitionName,
+      'name': pylabrobotDefinitionName,
       'lot_number': lotNumber,
       'expiry_date': expiryDate,
       // 'date_added_to_inventory': dateAddedToInventory, // Usually server-set

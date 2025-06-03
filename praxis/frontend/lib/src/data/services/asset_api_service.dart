@@ -284,16 +284,16 @@ class AssetApiServiceImpl extends AssetApiService {
         return jsonData.map((item) {
           final assetResponse = item as Map<String, dynamic>;
           // Attempting to reconstruct ResourceDefinitionCatalogOrm from AssetResponse
-          // 'name' from AssetResponse is assumed to be 'pylabrobot_definition_name'
+          // 'name' from AssetResponse is assumed to be 'name'
           // 'metadata' from AssetResponse is assumed to contain the rest of the fields.
           // 'type' from AssetResponse is 'resource'.
           if (assetResponse['metadata'] is Map<String, dynamic>) {
             final metadata = assetResponse['metadata'] as Map<String, dynamic>;
             return ResourceDefinitionCatalogOrm.fromJson({
               ...metadata, // Spread the metadata
-              'pylabrobot_definition_name':
+              'name':
                   assetResponse['name'] ??
-                  metadata['pylabrobot_definition_name'], // Prioritize name from AssetResponse
+                  metadata['name'], // Prioritize name from AssetResponse
               'python_fqn':
                   metadata['python_fqn'] ??
                   'pylabrobot.resources.Resource', // Placeholder if not in metadata
@@ -356,10 +356,10 @@ class AssetApiServiceImpl extends AssetApiService {
         final assetResponse = response.data as Map<String, dynamic>;
         if (assetResponse['metadata'] is Map<String, dynamic>) {
           final metadata = assetResponse['metadata'] as Map<String, dynamic>;
-          // Ensure pylabrobot_definition_name from original request is used if not in metadata explicitly
+          // Ensure name from original request is used if not in metadata explicitly
           return ResourceDefinitionCatalogOrm.fromJson({
             ...metadata,
-            'pylabrobot_definition_name':
+            'name':
                 assetResponse['name'] ??
                 resourceDefinition.pylabrobotDefinitionName,
           });
@@ -385,7 +385,7 @@ class AssetApiServiceImpl extends AssetApiService {
 
   @override
   Future<ResourceDefinitionCatalogOrm> updateResourceDefinition(
-    String resourceDefinitionId, // This should be pylabrobot_definition_name
+    String resourceDefinitionId, // This should be name
     ResourceDefinitionCatalogOrm resourceDefinition,
   ) async {
     try {
@@ -527,7 +527,7 @@ class AssetApiServiceImpl extends AssetApiService {
       );
       if (response.statusCode == 200 && response.data != null) {
         // We need to construct a ResourceInstanceOrm. Since the endpoint only returns inventory,
-        // other details like user_assigned_name, pylabrobot_definition_name might be missing.
+        // other details like user_assigned_name, name might be missing.
         // The FromJson factory for ResourceInstanceOrm will need to be robust to this.
         // We'll pass the instanceId to be potentially used as 'id' or part of 'user_assigned_name' if needed.
         Map<String, dynamic> jsonData = response.data as Map<String, dynamic>;
@@ -541,7 +541,7 @@ class AssetApiServiceImpl extends AssetApiService {
           'id': int.tryParse(instanceId), // Attempt to use instanceId as the ID
           'user_assigned_name':
               'Instance $instanceId (Inventory)', // Placeholder name
-          'pylabrobot_definition_name': 'UnknownType', // Placeholder type
+          'name': 'UnknownType', // Placeholder type
           ...jsonData, // Spread the inventory data
         });
       } else if (response.statusCode == 404) {

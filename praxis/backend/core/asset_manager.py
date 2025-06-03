@@ -455,9 +455,9 @@ class AssetManager:
           )
           await svc.add_or_update_resource_definition(
             db=self.db,
-            pylabrobot_definition_name=pylabrobot_def_name,
+            name=pylabrobot_def_name,
             python_fqn=fqn,
-            praxis_resource_type_name=praxis_type_name,
+            resource_type=praxis_type_name,
             description=description,
             is_consumable=is_consumable,
             nominal_volume_ul=nominal_volume_ul,
@@ -632,11 +632,11 @@ class AssetManager:
           )
 
         resource_def_orm = await svc.get_resource_definition(
-          self.db, resource_instance_orm.pylabrobot_definition_name
+          self.db, resource_instance_orm.name
         )
         if not resource_def_orm or not resource_def_orm.python_fqn:
           raise AssetAcquisitionError(
-            f"Python FQN not found for resource definition '{resource_instance_orm.pylabrobot_definition_name}' (instance ID {resource_instance_id})."
+            f"Python FQN not found for resource definition '{resource_instance_orm.name}' (instance ID {resource_instance_id})."
           )
 
         live_plr_resource = self.workcell_runtime.create_or_get_resource_plr_object(
@@ -814,7 +814,7 @@ class AssetManager:
     self,
     protocol_run_guid: str,
     requested_asset_name_in_protocol: str,
-    pylabrobot_definition_name_constraint: str,  # Key from ResourceDefinitionCatalogOrm
+    name_constraint: str,  # Key from ResourceDefinitionCatalogOrm
     user_choice_instance_id: Optional[int] = None,
     location_constraints: Optional[
       Dict[str, Any]
@@ -827,7 +827,7 @@ class AssetManager:
     Args:
         protocol_run_guid: GUID of the protocol run.
         requested_asset_name_in_protocol: Name of the asset as requested in the protocol.
-        pylabrobot_definition_name_constraint: The `pylabrobot_definition_name` from `ResourceDefinitionCatalogOrm`.
+        name_constraint: The `name` from `ResourceDefinitionCatalogOrm`.
         user_choice_instance_id: Optional specific ID of the resource instance to acquire.
         location_constraints: Optional constraints on where the resource should be (primarily for deck assignment).
         property_constraints: Optional constraints on resource properties.
@@ -840,7 +840,7 @@ class AssetManager:
     """
     logger.info(
       f"AM_ACQUIRE_LABWARE: Acquiring resource '{requested_asset_name_in_protocol}' "
-      f"(PLR Def Name Constraint: '{pylabrobot_definition_name_constraint}') for run '{protocol_run_guid}'. "
+      f"(PLR Def Name Constraint: '{name_constraint}') for run '{protocol_run_guid}'. "
       f"User Choice ID: {user_choice_instance_id}, Location Constraints: {location_constraints}, Property Constraints: {property_constraints}"
     )
 
@@ -854,12 +854,10 @@ class AssetManager:
         raise AssetAcquisitionError(
           f"Specified resource instance ID {user_choice_instance_id} not found."
         )
-      if (
-        instance_orm.pylabrobot_definition_name != pylabrobot_definition_name_constraint
-      ):
+      if instance_orm.name != name_constraint:
         raise AssetAcquisitionError(
-          f"Chosen resource instance ID {user_choice_instance_id} (Definition: '{instance_orm.pylabrobot_definition_name}') "
-          f"does not match definition constraint '{pylabrobot_definition_name_constraint}'."
+          f"Chosen resource instance ID {user_choice_instance_id} (Definition: '{instance_orm.name}') "
+          f"does not match definition constraint '{name_constraint}'."
         )
       # Check status for user_choice_instance_id
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
@@ -884,7 +882,7 @@ class AssetManager:
       # 1. Check if already in use by this run
       in_use_list = await svc.list_resource_instances(
         self.db,
-        pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+        name=name_constraint,
         status=ResourceInstanceStatusEnum.IN_USE,
         current_protocol_run_guid_filter=protocol_run_guid,
         property_filters=property_constraints,  # Apply property filters if any
@@ -899,7 +897,7 @@ class AssetManager:
         # 2. Check if available on deck
         on_deck_list = await svc.list_resource_instances(
           self.db,
-          pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+          name=name_constraint,
           status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
           property_filters=property_constraints,
         )
@@ -909,7 +907,7 @@ class AssetManager:
           # 3. Check if available in storage
           in_storage_list = await svc.list_resource_instances(
             self.db,
-            pylabrobot_definition_name=pylabrobot_definition_name_constraint,
+            name=name_constraint,
             status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
             property_filters=property_constraints,
           )
@@ -918,7 +916,7 @@ class AssetManager:
 
       if not resource_instance_to_acquire:
         raise AssetAcquisitionError(
-          f"No resource instance found matching definition '{pylabrobot_definition_name_constraint}' "
+          f"No resource instance found matching definition '{name_constraint}' "
           f"and properties {property_constraints} that is available or already in use by this run."
         )
 
@@ -929,11 +927,11 @@ class AssetManager:
       )
 
     resource_def_orm = await svc.get_resource_definition(
-      self.db, resource_instance_to_acquire.pylabrobot_definition_name
+      self.db, resource_instance_to_acquire.name
     )
     if not resource_def_orm or not resource_def_orm.python_fqn:
       error_msg = (
-        f"Python FQN not found for resource definition '{resource_instance_to_acquire.pylabrobot_definition_name}' "
+        f"Python FQN not found for resource definition '{resource_instance_to_acquire.name}' "
         f"for instance ID {resource_instance_to_acquire.id}."
       )
       logger.error(error_msg)
@@ -1161,7 +1159,7 @@ class AssetManager:
     """
     Dispatches asset acquisition to either acquire_machine or acquire_resource based on the asset type.
     The `asset_requirement.actual_type_str` is key:
-    - If it matches a `pylabrobot_definition_name` in `ResourceDefinitionCatalogOrm`, it's resource.
+    - If it matches a `name` in `ResourceDefinitionCatalogOrm`, it's resource.
     - Otherwise, it's assumed to be a PLR Machine FQN (machine).
     """
     logger.info(
@@ -1183,7 +1181,7 @@ class AssetManager:
       return await self.acquire_resource(
         protocol_run_guid=protocol_run_guid,
         requested_asset_name_in_protocol=asset_requirement.name,
-        pylabrobot_definition_name_constraint=asset_requirement.actual_type_str,  # This is the key for ResourceDefinitionCatalogOrm
+        name_constraint=asset_requirement.actual_type_str,  # This is the key for ResourceDefinitionCatalogOrm
         property_constraints=asset_requirement.constraints_json,  # Pass all constraints as property constraints for resource
         location_constraints=asset_requirement.location_constraints_json,  # Specific for resource placement
       )

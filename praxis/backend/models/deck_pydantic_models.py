@@ -300,7 +300,7 @@ class DeckResourceInfo(BaseModel):
   user_assigned_name: str = Field(
     description="User-assigned name for this specific resource instance"
   )
-  pylabrobot_definition_name: str = Field(
+  name: str = Field(
     description="PyLabRobot definition name (e.g., 'corning_96_wellplate_360ul_flat')"
   )
   python_fqn: str = Field(

@@ -1004,7 +1004,7 @@ class WorkcellRuntime:
           "user_assigned_name": (
             lw_instance.user_assigned_name or f"Resource_{lw_instance.id}"
           ),
-          "pylabrobot_definition_name": lw_def.pylabrobot_definition_name,
+          "name": lw_def.name,
           "python_fqn": lw_def.python_fqn,
           "category": (str(lw_def.plr_category.value) if lw_def.plr_category else None),
           "size_x_mm": lw_def.size_x_mm,

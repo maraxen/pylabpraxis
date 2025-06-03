@@ -417,7 +417,7 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", pylabrobot_definition_name="some_plate_def_name")
+        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
         mock_ads_service.list_resource_instances.side_effect = [
             [],
             [mock_lw_instance_orm]
@@ -429,7 +429,7 @@ class TestAssetManagerAcquireResource:
         live_resource, orm_id, lw_type = asset_manager.acquire_resource(
             protocol_run_guid="run123",
             requested_asset_name_in_protocol="lw_in_proto",
-            pylabrobot_definition_name_constraint="some_plate_def_name"
+            name_constraint="some_plate_def_name"
         )
 
         mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, "some_plate_def_name")
@@ -451,7 +451,7 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", pylabrobot_definition_name="some_plate_def_name")
+        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
         mock_deck_orm = ManagedDeviceOrmMock(id=10, user_friendly_name="MainDeck")
 
         mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
@@ -463,7 +463,7 @@ class TestAssetManagerAcquireResource:
         asset_manager.acquire_resource(
             protocol_run_guid="run123",
             requested_asset_name_in_protocol="plate_on_deck",
-            pylabrobot_definition_name_constraint="some_plate_def_name",
+            name_constraint="some_plate_def_name",
             location_constraints=location_constraints
         )
 
@@ -484,7 +484,7 @@ class TestAssetManagerAcquireResource:
         )
 
     def test_acquire_resource_fqn_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, pylabrobot_definition_name="unknown_def_name")
+        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, name="unknown_def_name")
         mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
         mock_ads_service.get_resource_definition.return_value = None
 
@@ -501,7 +501,7 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", pylabrobot_definition_name="def")
+        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="def")
         mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
         mock_workcell_runtime.create_or_get_resource_plr_object.return_value = None
@@ -662,8 +662,8 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         call_args = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
 
         assert call_args['python_fqn'] == 'mock_pylabrobot_module.plates.MockSimplePlateToSync'
-        assert call_args['pylabrobot_definition_name'] == "simple_plate_type_inst"
-        assert call_args['praxis_resource_type_name'] == "TestModel123"
+        assert call_args['name'] == "simple_plate_type_inst"
+        assert call_args['resource_type'] == "TestModel123"
         assert call_args['category'] == ResourceCategoryEnum.PLATE
         assert call_args['model'] == "TestModel123"
         assert call_args['size_x_mm'] == 120.0
@@ -706,7 +706,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         call_args = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
 
         assert call_args['python_fqn'] == 'mock_module.complex.MockComplexResource'
-        assert call_args['pylabrobot_definition_name'] == "complex_static_type"
+        assert call_args['name'] == "complex_static_type"
         assert call_args['description'] == "Description for complex resource"
         assert call_args['category'] == ResourceCategoryEnum.OTHER
         assert call_args['model'] is None
@@ -746,7 +746,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         call_args = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
 
         assert call_args['python_fqn'] == 'mock_module.failing.MockFailingResource'
-        assert call_args['pylabrobot_definition_name'] == "failing_static_type"
+        assert call_args['name'] == "failing_static_type"
         assert call_args['description'] == "Description for failing resource"
         assert call_args['category'] == ResourceCategoryEnum.OTHER
         assert call_args['model'] is None
@@ -832,7 +832,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         self.mock_ads_service.add_or_update_resource_definition.assert_called_once()
         call_args = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
         assert call_args['python_fqn'] == 'mock_module.kept.KeptResource'
-        assert call_args['pylabrobot_definition_name'] == "kept_resource_type"
+        assert call_args['name'] == "kept_resource_type"
 
     # This test replaces the old test_sync_property_extraction_from_details_json
     # and incorporates checks for the new fields praxis_extracted_num_items and praxis_extracted_ordering
@@ -873,8 +873,8 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         # Call 1: MockResourceSimple
         args_simple = calls_args_list[0][1]
         assert args_simple['python_fqn'] == 'pylabrobot.resources.mock_simple.MockResourceSimple'
-        assert args_simple['pylabrobot_definition_name'] == 'simple_resource' # From class attribute
-        assert args_simple['praxis_resource_type_name'] == 'SimpleModel' # From class attribute, instance uses it
+        assert args_simple['name'] == 'simple_resource' # From class attribute
+        assert args_simple['resource_type'] == 'SimpleModel' # From class attribute, instance uses it
         assert args_simple['category'] == ResourceCategoryEnum.OTHER # Default from MockBasePlrResource via _get_category_from_plr_object
         assert args_simple['model'] == 'SimpleModel'
         assert args_simple['size_x_mm'] == 10.0
@@ -888,8 +888,8 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         # Call 2: MockResourceItemized
         args_itemized = calls_args_list[1][1]
         assert args_itemized['python_fqn'] == 'pylabrobot.resources.mock_itemized.MockResourceItemized'
-        assert args_itemized['pylabrobot_definition_name'] == 'itemized_resource'
-        assert args_itemized['praxis_resource_type_name'] == 'ItemizedModel'
+        assert args_itemized['name'] == 'itemized_resource'
+        assert args_itemized['resource_type'] == 'ItemizedModel'
         assert args_itemized['category'] == ResourceCategoryEnum.OTHER # Default
         assert args_itemized['model'] == 'ItemizedModel'
         details_itemized = args_itemized['plr_definition_details_json']
@@ -918,8 +918,8 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         args_complex = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
 
         assert args_complex['python_fqn'] == 'pylabrobot.resources.mock_complex.MockResourceComplexConstructor'
-        assert args_complex['pylabrobot_definition_name'] == 'complex_resource' # From class
-        assert args_complex['praxis_resource_type_name'] == 'ComplexModel' # From class
+        assert args_complex['name'] == 'complex_resource' # From class
+        assert args_complex['resource_type'] == 'ComplexModel' # From class
         assert args_complex['model'] == 'ComplexModel' # From class attribute, as instance not created
         assert args_complex['nominal_volume_ul'] is None # class_volume not automatically picked up by _extract_volume from class
         # Ensure details_json does not contain instance-specific data if temp_instance was None
@@ -953,8 +953,8 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         args_fail = self.mock_ads_service.add_or_update_resource_definition.call_args[1]
 
         assert args_fail['python_fqn'] == 'pylabrobot.resources.mock_fails.MockResourceInstantiationFails'
-        assert args_fail['pylabrobot_definition_name'] == 'fail_resource' # From class
-        assert args_fail['praxis_resource_type_name'] == 'FailModel' # From class
+        assert args_fail['name'] == 'fail_resource' # From class
+        assert args_fail['resource_type'] == 'FailModel' # From class
         assert args_fail['model'] == 'FailModel' # From class attribute
         # class_size_x is not automatically picked up by _extract_dimensions from class.
         assert args_fail['size_x_mm'] is None
@@ -997,7 +997,7 @@ class TestAssetManagerDeckLoading:
         lw_instance = MagicMock(spec=ResourceInstanceOrm)
         lw_instance.id = 201
         lw_instance.user_assigned_name = "TestPlateOnDeck"
-        lw_instance.pylabrobot_definition_name = "test_plate_def_name"
+        lw_instance.name = "test_plate_def_name"
         lw_instance.current_status = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
         lw_instance.current_protocol_run_guid = None
         lw_instance.location_device_id = None
@@ -1007,7 +1007,7 @@ class TestAssetManagerDeckLoading:
     @pytest.fixture
     def mock_resource_def_catalog_orm(self):
         lw_def = MagicMock(spec=ResourceDefinitionCatalogOrm)
-        lw_def.pylabrobot_definition_name = "test_plate_def_name"
+        lw_def.name = "test_plate_def_name"
         lw_def.python_fqn = "pylabrobot.resources.plate.Plate"
         return lw_def
 
@@ -1078,7 +1078,7 @@ class TestAssetManagerDeckLoading:
         asset_manager.apply_deck_configuration(ProtocolPlrDeck(name="TestDeckLayout"), "run123") # Test with PlrDeck input
 
         mock_ads_service.get_resource_instance_by_id.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.id)
-        mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.pylabrobot_definition_name)
+        mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.name)
         mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
             resource_instance_orm=mock_resource_instance_orm,
             resource_definition_fqn=mock_resource_def_catalog_orm.python_fqn
@@ -1139,7 +1139,7 @@ class TestAssetManagerLogging:
 
     def test_acquire_resource_logs_property_constraints(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock, caplog):
         # Setup for a successful resource acquisition to reach the logging point
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="PlateLogTest", pylabrobot_definition_name="log_plate_def")
+        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="PlateLogTest", name="log_plate_def")
         mock_resource_def = ResourceDefinitionCatalogOrmMock()
         mock_resource_def.python_fqn = "pylabrobot.resources.plate.Plate" # Valid FQN
 
@@ -1153,7 +1153,7 @@ class TestAssetManagerLogging:
         # This is the AssetRequirementModel that Orchestrator would build and pass
         asset_req = AssetRequirementModelMock()
         asset_req.name = "test_plate_for_log"
-        asset_req.actual_type_str = "log_plate_def" # Matches pylabrobot_definition_name_constraint
+        asset_req.actual_type_str = "log_plate_def" # Matches name_constraint
         asset_req.constraints_json = property_constraints_payload # This is what we want to log
 
         # Call acquire_asset, which dispatches to acquire_resource

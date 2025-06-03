@@ -5,7 +5,7 @@ class DeckConfigurationSlotItemOrm {
   final String slotName;
   final int resourceInstanceId; // FK to ResourceInstanceOrm.id
   final String?
-  expectedResourceDefinitionName; // FK to ResourceDefinitionCatalogOrm.pylabrobot_definition_name
+  expectedResourceDefinitionName; // FK to ResourceDefinitionCatalogOrm.name
 
   DeckConfigurationSlotItemOrm({
     this.id,

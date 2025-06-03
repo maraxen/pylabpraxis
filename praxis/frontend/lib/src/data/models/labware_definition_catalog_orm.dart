@@ -39,7 +39,7 @@ class ResourceDefinitionCatalogOrm {
 
   factory ResourceDefinitionCatalogOrm.fromJson(Map<String, dynamic> json) {
     return ResourceDefinitionCatalogOrm(
-      pylabrobotDefinitionName: json['pylabrobot_definition_name'] as String,
+      pylabrobotDefinitionName: json['name'] as String,
       pythonFqn: json['python_fqn'] as String,
       sizeXmm: (json['size_x_mm'] as num?)?.toDouble(),
       sizeYmm: (json['size_y_mm'] as num?)?.toDouble(),
@@ -50,7 +50,7 @@ class ResourceDefinitionCatalogOrm {
           json['rotation_json'] != null
               ? json['rotation_json'] as Map<String, dynamic>
               : null,
-      praxisResourceTypeName: json['praxis_resource_type_name'] as String?,
+      praxisResourceTypeName: json['resource_type'] as String?,
       description: json['description'] as String?,
       isConsumable: json['is_consumable'] as bool?,
       nominalVolumeUl: (json['nominal_volume_ul'] as num?)?.toDouble(),
@@ -67,7 +67,7 @@ class ResourceDefinitionCatalogOrm {
 
   Map<String, dynamic> toJson() {
     return {
-      'pylabrobot_definition_name': pylabrobotDefinitionName,
+      'name': pylabrobotDefinitionName,
       'python_fqn': pythonFqn,
       'size_x_mm': sizeXmm,
       'size_y_mm': sizeYmm,
@@ -75,7 +75,7 @@ class ResourceDefinitionCatalogOrm {
       'plr_category': plrCategory,
       'model': model,
       'rotation_json': rotationJson,
-      'praxis_resource_type_name': praxisResourceTypeName,
+      'resource_type': praxisResourceTypeName,
       'description': description,
       'is_consumable': isConsumable,
       'nominal_volume_ul': nominalVolumeUl,

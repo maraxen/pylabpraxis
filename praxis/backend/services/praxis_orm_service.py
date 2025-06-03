@@ -490,7 +490,7 @@ class PraxisDBService:
   async def add_asset_instance(
     self,
     user_assigned_name: str,
-    pylabrobot_definition_name: str,
+    name: str,
     properties_json: Optional[dict[str, Any]] = None,
     lot_number: Optional[str] = None,
     expiry_date: Optional[Any] = None,
@@ -504,7 +504,7 @@ class PraxisDBService:
     Args:
         user_assigned_name (str): A unique, user-friendly name for the
             asset instance.
-        pylabrobot_definition_name (str): The PyLabRobot definition name
+        name (str): The PyLabRobot definition name
             associated with this asset (e.g., "tip_rack_1000ul").
         properties_json (Optional[dict[str, Any]], optional): Additional
             properties for the asset stored as JSON. Defaults to None.
@@ -525,10 +525,7 @@ class PraxisDBService:
         Exception: For any unexpected errors during the process.
 
     """
-    log_prefix = (
-      f"Asset Instance (Name: '{user_assigned_name}', "
-      f"Def: '{pylabrobot_definition_name}'):"
-    )
+    log_prefix = f"Asset Instance (Name: '{user_assigned_name}', " f"Def: '{name}'):"
     logger.info("%s Attempting to add or update asset instance.", log_prefix)
     async with self.get_praxis_session() as session:
       existing_asset_stmt = select(ResourceInstanceOrm).where(
@@ -538,7 +535,7 @@ class PraxisDBService:
       asset_orm = result.scalar_one_or_none()
 
       if asset_orm:
-        asset_orm.pylabrobot_definition_name = pylabrobot_definition_name
+        asset_orm.name = name
         asset_orm.properties_json = (
           properties_json if properties_json is not None else asset_orm.properties_json
         )
@@ -553,7 +550,7 @@ class PraxisDBService:
       else:
         asset_orm = ResourceInstanceOrm(
           user_assigned_name=user_assigned_name,
-          pylabrobot_definition_name=pylabrobot_definition_name,
+          name=name,
           properties_json=properties_json if properties_json else {},
           lot_number=lot_number,
           expiry_date=expiry_date,
@@ -604,7 +601,7 @@ class PraxisDBService:
         return {
           "id": asset_orm.id,
           "user_assigned_name": asset_orm.user_assigned_name,
-          "pylabrobot_definition_name": (asset_orm.pylabrobot_definition_name),
+          "name": (asset_orm.name),
           "lot_number": asset_orm.lot_number,
           "expiry_date": (
             asset_orm.expiry_date.isoformat() if asset_orm.expiry_date else None

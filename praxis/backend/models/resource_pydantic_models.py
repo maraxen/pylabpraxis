@@ -35,9 +35,9 @@ class ResourceDefinitionBase(BaseModel):
   such as its PyLabRobot definition name, type, and physical dimensions.
   """
 
-  pylabrobot_definition_name: str
+  name: str
   python_fqn: str
-  praxis_resource_type_name: Optional[str] = None
+  resource_type: Optional[str] = None
   description: Optional[str] = None
   is_consumable: bool = True
   nominal_volume_ul: Optional[float] = None
@@ -74,7 +74,7 @@ class ResourceDefinitionUpdate(BaseModel):
   """
 
   python_fqn: Optional[str] = None
-  praxis_resource_type_name: Optional[str] = None
+  resource_type: Optional[str] = None
   description: Optional[str] = None
   is_consumable: Optional[bool] = None
   nominal_volume_ul: Optional[float] = None
@@ -223,7 +223,7 @@ class ResourceInstanceCreate(ResourceInstanceSharedFields):
   """
 
   instance_name: Optional[str] = None
-  pylabrobot_definition_name: str
+  name: str
   resource_definition_id: Optional[int] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   date_added_to_inventory: Optional[datetime.datetime] = Field(
@@ -241,7 +241,7 @@ class ResourceInstanceResponse(ResourceInstanceSharedFields):
 
   id: int
   resource_definition_id: int
-  pylabrobot_definition_name: str
+  name: str
 
   instance_name: str
 

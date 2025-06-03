@@ -170,7 +170,7 @@ async def create_test_resource_definition(
   session: AsyncSession, name: str = "test_plate_def_96"
 ) -> ResourceDefinitionCatalogOrm:
   lw_def = ResourceDefinitionCatalogOrm(
-    pylabrobot_definition_name=name,
+    name=name,
     python_fqn=f"pylabrobot.resources.{name}.{name.capitalize()}",
     plr_category="Plate",
     size_x_mm=127.76,
@@ -365,7 +365,7 @@ class TestAssetInstanceManagement:
 
     asset_id = await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,
-      pylabrobot_definition_name=lw_def_name,
+      name=lw_def_name,
       properties_json=properties,
       current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
@@ -379,7 +379,7 @@ class TestAssetInstanceManagement:
 
     assert asset_orm is not None
     assert asset_orm.user_assigned_name == asset_name
-    assert asset_orm.pylabrobot_definition_name == lw_def_name
+    assert asset_orm.name == lw_def_name
     assert asset_orm.properties_json == properties
     assert asset_orm.current_status == ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
 
@@ -394,7 +394,7 @@ class TestAssetInstanceManagement:
     # Initial add
     await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,
-      pylabrobot_definition_name=lw_def_name,
+      name=lw_def_name,
       properties_json={"initial": "data"},
       current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
@@ -403,7 +403,7 @@ class TestAssetInstanceManagement:
     updated_properties = {"updated": "info", "initial": "overwritten"}
     updated_id = await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,  # Same name
-      pylabrobot_definition_name=lw_def_name,  # Can be same or different if type changes
+      name=lw_def_name,  # Can be same or different if type changes
       properties_json=updated_properties,
       current_status=ResourceInstanceStatusEnum.IN_USE,
       lot_number="LOT123",
@@ -427,7 +427,7 @@ class TestAssetInstanceManagement:
 
     await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,
-      pylabrobot_definition_name=lw_def_name,
+      name=lw_def_name,
       properties_json=properties,
       current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
     )
@@ -435,7 +435,7 @@ class TestAssetInstanceManagement:
     details = await praxis_db_service.get_asset_instance(asset_name)
     assert details is not None
     assert details["user_assigned_name"] == asset_name
-    assert details["pylabrobot_definition_name"] == lw_def_name
+    assert details["name"] == lw_def_name
     assert details["properties_json"] == properties
     assert (
       details["current_status"] == ResourceInstanceStatusEnum.AVAILABLE_ON_DECK.name

@@ -273,7 +273,7 @@ async def test_broadcast_deck_update(
     sample_resource_info = ResourceInfo(
       resource_instance_id=999,
       user_assigned_name=resource_name,
-      pylabrobot_definition_name="test_plate_def",
+      name="test_plate_def",
       python_fqn="pylabrobot.resources.Plate",
       category="PLATE",
       size_x_mm=127.0,

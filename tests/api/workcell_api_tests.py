@@ -44,7 +44,7 @@ def test_resource_info_model():
     data = {
         "resource_instance_id": 10,
         "user_assigned_name": "Reagent Plate 1",
-        "pylabrobot_definition_name": "corning_96_wellplate_360ul_flat",
+        "name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate",
         "category": "PLATE",
         "size_x_mm": 127.0,
@@ -61,7 +61,7 @@ def test_resource_info_model():
 def test_slot_info_model():
     resource_data = {
         "resource_instance_id": 10, "user_assigned_name": "Reagent Plate 1",
-        "pylabrobot_definition_name": "corning_96_wellplate_360ul_flat",
+        "name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate", "category": "PLATE"
     }
     data = {
@@ -97,7 +97,7 @@ def test_deck_state_response_model():
 def test_deck_update_message_model():
     resource_data = {
         "resource_instance_id": 10, "user_assigned_name": "Tip Box",
-        "pylabrobot_definition_name": "opentrons_96_tiprack_300ul",
+        "name": "opentrons_96_tiprack_300ul",
         "python_fqn": "pylabrobot.resources.TipRack", "category": "TIP_RACK"
     }
     data = {
@@ -230,7 +230,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> 
     plate_def = ResourceDefinitionCatalogOrm(
         id=1,
         user_friendly_name="Standard 96 Well Plate Def",
-        pylabrobot_definition_name="corning_96_wellplate_360ul_flat",
+        name="corning_96_wellplate_360ul_flat",
         python_fqn="pylabrobot.resources.Plate",
         plr_category=PlrCategoryEnum.PLATE,
         size_x_mm=127.76, size_y_mm=85.48, size_z_mm=14.35,
@@ -239,7 +239,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> 
     tip_rack_def = ResourceDefinitionCatalogOrm(
         id=2,
         user_friendly_name="Standard 300ul Tip Rack Def",
-        pylabrobot_definition_name="opentrons_96_tiprack_300ul",
+        name="opentrons_96_tiprack_300ul",
         python_fqn="pylabrobot.resources.TipRack",
         plr_category=PlrCategoryEnum.TIP_RACK,
     )
@@ -297,7 +297,7 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
     assert "A1" in slots_with_resource
     plate_info = slots_with_resource["A1"]
     assert plate_info["user_assigned_name"] == "PlateOnDeck"
-    assert plate_info["pylabrobot_definition_name"] == "corning_96_wellplate_360ul_flat"
+    assert plate_info["name"] == "corning_96_wellplate_360ul_flat"
     assert plate_info["category"] == "PLATE"
     assert plate_info["properties_json"] == {"sample_type": "plasma"}
 
@@ -305,7 +305,7 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
     assert "B2" in slots_with_resource
     tip_rack_info = slots_with_resource["B2"]
     assert tip_rack_info["user_assigned_name"] == "TipsOnDeck"
-    assert tip_rack_info["pylabrobot_definition_name"] == "opentrons_96_tiprack_300ul"
+    assert tip_rack_info["name"] == "opentrons_96_tiprack_300ul"
     assert tip_rack_info["category"] == "TIP_RACK"
 
     # Ensure no other resource is reported for this deck
