@@ -47,6 +47,7 @@ class ResourceInstanceStatusEnum(enum.Enum):
   FULL = "full"
   NEEDS_REFILL = "needs_refill"
   TO_BE_DISPOSED = "to_be_disposed"
+  TO_BE_CLEANED = "to_be_cleaned"
   ERROR = "error"
   UNKNOWN = "unknown"
 
@@ -275,14 +276,15 @@ class ResourceInstanceOrm(Base):
     comment="Additional details about the current status," " e.g., error message",
   )
 
-  current_deck_pose_name: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, comment="If on a deck, the pose name (e.g., A1, SLOT_7)"
+  current_deck_position_name: Mapped[Optional[str]] = mapped_column(
+    String, nullable=True, comment="If on a deck, the position name (e.g., A1, SLOT_7)"
   )
+
   location_machine_id: Mapped[Optional[int]] = mapped_column(
     Integer,
     ForeignKey("machines.id"),
     nullable=True,
-    comment="FK to MachineOrm if located on/in a machine (deck, reader, etc.)",
+    comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
   )
   physical_location_description: Mapped[Optional[str]] = mapped_column(
     String, nullable=True, comment="General storage location if not on a machine"
