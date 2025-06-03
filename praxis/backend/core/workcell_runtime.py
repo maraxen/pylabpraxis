@@ -261,11 +261,11 @@ class WorkcellRuntime:
       "WorkcellRuntime: Initializing machine '%s' (ID: %d) using class '%s'.",
       machine_orm.user_friendly_name,
       machine_orm.id,
-      machine_orm.pylabrobot_class_name,
+      machine_orm.python_fqn,
     )
 
     try:
-      TargetClass = _get_class_from_fqn(machine_orm.pylabrobot_class_name)
+      TargetClass = _get_class_from_fqn(machine_orm.python_fqn)
       machine_config = machine_orm.backend_config_json or {}
       instance_name = machine_orm.user_friendly_name
 
@@ -385,7 +385,7 @@ class WorkcellRuntime:
       return machine_instance
     except Exception as e:
       error_message = f"Failed to initialize machine '{machine_orm.user_friendly_name}'\
-        (ID: {machine_orm.id}) using class '{machine_orm.pylabrobot_class_name}': \
+        (ID: {machine_orm.id}) using class '{machine_orm.python_fqn}': \
           {str(e)[:250]}"
       await svc.update_machine_status(
         self.db_session,
@@ -946,9 +946,7 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error getting deck state representation",
     suffix=" - Ensure the deck machine ORM ID is valid and the deck is active.",
   )
-  async def get_deck_state_representation(
-    self, deck_orm_id: int
-  ) -> Dict[str, Any]:
+  async def get_deck_state_representation(self, deck_orm_id: int) -> Dict[str, Any]:
     """Construct a dictionary representing the state of a specific deck.
 
     This representation is suitable for serialization into `DeckStateResponse`.
@@ -969,9 +967,7 @@ class WorkcellRuntime:
     deck_orm = await svc.get_deck_by_id(self.db_session, deck_orm_id)
 
     if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.id is None:
-      raise WorkcellRuntimeError(
-        f"Deck ORM ID {deck_orm_id} not found in database."
-      )
+      raise WorkcellRuntimeError(f"Deck ORM ID {deck_orm_id} not found in database.")
 
     response_positions: List[Dict[str, Any]] = []
 
@@ -994,6 +990,15 @@ class WorkcellRuntime:
           continue
         lw_def = lw_instance.resource_definition
 
+        lw_active_instance = self.get_active_resource(lw_instance.id)
+        if lw_active_instance is None or not isinstance(lw_active_instance, Resource):
+          raise WorkcellRuntimeError(
+            f"Resource instance ID {lw_instance.id} identified in deck {deck_orm.id} "
+            "is not an active resource."
+          )
+
+        lw_active_coords = lw_active_instance.get_absolute_location()
+
         resource_info_data = {
           "resource_instance_id": lw_instance.id,
           "user_assigned_name": (
@@ -1011,12 +1016,10 @@ class WorkcellRuntime:
         }
         position_info_data = {
           "name": lw_instance.current_deck_position_name,
-          # Placeholder for coordinates, as they are not directly in ORM
-          # and require a live PLR Deck object to compute.
-          "x_coordinate": None,
-          "y_coordinate": None,
-          "z_coordinate": None,
-          "labware": resource_info_data,
+          "x_coordinate": lw_active_coords.x,
+          "y_coordinate": lw_active_coords.y,
+          "z_coordinate": lw_active_coords.z,
+          "resource": resource_info_data,
         }
         response_positions.append(position_info_data)
 
@@ -1024,27 +1027,31 @@ class WorkcellRuntime:
     deck_size_y = None
     deck_size_z = None
 
-    live_deck = await self.get_deck_plr_object(deck_machine_orm_id)
-    if live_deck and hasattr(live_deck, "get_size"):
+    live_deck = self.get_active_deck(deck_orm_id)
+    if live_deck is not None and hasattr(live_deck, "get_size"):
       try:
-        deck_size_tuple = live_deck.get_size()  # Assuming (x,y,z)
+        deck_size_tuple = (
+          live_deck.get_size_x(),
+          live_deck.get_size_y(),
+          live_deck.get_size_z(),
+        )
         deck_size_x, deck_size_y, deck_size_z = deck_size_tuple
         logger.debug(
           "Retrieved live deck dimensions for ID %d: %s",
-          deck_machine_orm_id,
+          deck_orm_id,
           deck_size_tuple,
         )
       except Exception as e:
         logger.warning(
           "Could not get size from live deck object for ID %d: %s",
-          deck_machine_orm_id,
+          deck_orm_id,
           e,
         )
 
     deck_state_data = {
       "deck_id": deck_orm.id,
-      "user_friendly_name": deck_orm.user_friendly_name or f"Deck_{deck_orm.id}",
-      "pylabrobot_class_name": deck_orm.pylabrobot_class_name,
+      "name": deck_orm.name or f"Deck_{deck_orm.id}",
+      "python_fqn": deck_orm.python_fqn,
       "size_x_mm": deck_size_x,
       "size_y_mm": deck_size_y,
       "size_z_mm": deck_size_z,

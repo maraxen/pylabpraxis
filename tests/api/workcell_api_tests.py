@@ -6,15 +6,15 @@ from typing import List, Dict, Any, Generator
 from praxis.backend.main import app # Assuming your FastAPI app instance is here
 from praxis.backend.database_models.asset_management_orm import (
     ManagedDeviceOrm,
-    LabwareInstanceOrm,
-    LabwareDefinitionCatalogOrm,
+    ResourceInstanceOrm,
+    ResourceDefinitionCatalogOrm,
     PraxisDeviceCategoryEnum,
     ManagedDeviceStatusEnum,
     PlrCategoryEnum,
 )
 from praxis.backend.api.models.workcell_models import (
     DeckInfo,
-    LabwareInfo,
+    ResourceInfo,
     SlotInfo,
     DeckStateResponse,
     DeckUpdateMessage,
@@ -32,7 +32,7 @@ def test_deck_info_model():
     data = {
         "id": 1,
         "user_friendly_name": "Main Deck",
-        "pylabrobot_class_name": "pylabrobot.resources.Deck",
+        "python_fqn": "pylabrobot.resources.Deck",
         "current_status": "ONLINE",
     }
     deck_info = DeckInfo.model_validate(data)
@@ -40,9 +40,9 @@ def test_deck_info_model():
     assert deck_info.user_friendly_name == data["user_friendly_name"]
     assert deck_info.model_dump()["current_status"] == "ONLINE"
 
-def test_labware_info_model():
+def test_resource_info_model():
     data = {
-        "labware_instance_id": 10,
+        "resource_instance_id": 10,
         "user_assigned_name": "Reagent Plate 1",
         "pylabrobot_definition_name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate",
@@ -54,13 +54,13 @@ def test_labware_info_model():
         "properties_json": {"contents": "buffer"},
         "model": "Corning-1234",
     }
-    labware_info = LabwareInfo.model_validate(data)
-    assert labware_info.labware_instance_id == data["labware_instance_id"]
-    assert labware_info.model_dump()["category"] == "PLATE"
+    resource_info = ResourceInfo.model_validate(data)
+    assert resource_info.resource_instance_id == data["resource_instance_id"]
+    assert resource_info.model_dump()["category"] == "PLATE"
 
 def test_slot_info_model():
-    labware_data = {
-        "labware_instance_id": 10, "user_assigned_name": "Reagent Plate 1",
+    resource_data = {
+        "resource_instance_id": 10, "user_assigned_name": "Reagent Plate 1",
         "pylabrobot_definition_name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate", "category": "PLATE"
     }
@@ -69,20 +69,20 @@ def test_slot_info_model():
         "x_coordinate": 10.0,
         "y_coordinate": 20.0,
         "z_coordinate": 0.5,
-        "labware": labware_data,
+        "resource": resource_data,
     }
     slot_info = SlotInfo.model_validate(data)
     assert slot_info.name == data["name"]
-    assert slot_info.labware is not None
-    assert slot_info.labware.labware_instance_id == labware_data["labware_instance_id"]
-    assert slot_info.model_dump()["labware"]["user_assigned_name"] == "Reagent Plate 1"
+    assert slot_info.resource is not None
+    assert slot_info.resource.resource_instance_id == resource_data["resource_instance_id"]
+    assert slot_info.model_dump()["resource"]["user_assigned_name"] == "Reagent Plate 1"
 
 def test_deck_state_response_model():
-    slot_data = {"name": "A1", "labware": None}
+    slot_data = {"name": "A1", "resource": None}
     data = {
         "deck_id": 1,
         "user_friendly_name": "Main Deck",
-        "pylabrobot_class_name": "pylabrobot.resources.Deck",
+        "python_fqn": "pylabrobot.resources.Deck",
         "size_x_mm": 500.0,
         "size_y_mm": 300.0,
         "size_z_mm": 20.0,
@@ -92,26 +92,26 @@ def test_deck_state_response_model():
     assert deck_state.deck_id == data["deck_id"]
     assert len(deck_state.slots) == 1
     assert deck_state.slots[0].name == slot_data["name"]
-    assert deck_state.model_dump()["slots"][0]["labware"] is None
+    assert deck_state.model_dump()["slots"][0]["resource"] is None
 
 def test_deck_update_message_model():
-    labware_data = {
-        "labware_instance_id": 10, "user_assigned_name": "Tip Box",
+    resource_data = {
+        "resource_instance_id": 10, "user_assigned_name": "Tip Box",
         "pylabrobot_definition_name": "opentrons_96_tiprack_300ul",
         "python_fqn": "pylabrobot.resources.TipRack", "category": "TIP_RACK"
     }
     data = {
         "deck_id": 1,
-        "update_type": "labware_added",
+        "update_type": "resource_added",
         "slot_name": "B2",
-        "labware_info": labware_data,
+        "resource_info": resource_data,
         # Timestamp will be auto-generated if not provided
     }
     deck_update = DeckUpdateMessage.model_validate(data)
     assert deck_update.deck_id == data["deck_id"]
     assert deck_update.update_type == data["update_type"]
-    assert deck_update.labware_info is not None
-    assert deck_update.labware_info.category == "TIP_RACK" # Check enum-like string
+    assert deck_update.resource_info is not None
+    assert deck_update.resource_info.category == "TIP_RACK" # Check enum-like string
     assert deck_update.model_dump()["timestamp"] is not None # Check timestamp is generated
 
     # Test with explicit timestamp
@@ -173,14 +173,14 @@ def setup_basic_devices(db_session: Session) -> None:
     deck_device = ManagedDeviceOrm(
         id=VALID_DECK_ID,
         user_friendly_name="Test Deck 1",
-        pylabrobot_class_name="pylabrobot.resources.Deck",
+        python_fqn="pylabrobot.resources.Deck",
         praxis_device_category=PraxisDeviceCategoryEnum.DECK,
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
     non_deck_device = ManagedDeviceOrm(
         id=VALID_NON_DECK_ID,
         user_friendly_name="Test Heater 1",
-        pylabrobot_class_name="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
+        python_fqn="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
         praxis_device_category=PraxisDeviceCategoryEnum.GENERIC_DEVICE, # Or another non-DECK category
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
@@ -206,7 +206,7 @@ def test_list_available_decks_with_data(client: TestClient, db_session: Session,
     deck_info = data[0]
     assert deck_info["id"] == VALID_DECK_ID
     assert deck_info["user_friendly_name"] == "Test Deck 1"
-    assert deck_info["pylabrobot_class_name"] == "pylabrobot.resources.Deck"
+    assert deck_info["python_fqn"] == "pylabrobot.resources.Deck"
     assert deck_info["current_status"] == "ONLINE" # Enum .name or .value
 
 def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session):
@@ -224,10 +224,10 @@ def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Sess
 
 
 @pytest.fixture(scope="function")
-def setup_deck_with_labware(db_session: Session, setup_basic_devices: None) -> None:
-    """Fixture to set up a deck with some labware on it."""
-    # Labware Definition
-    plate_def = LabwareDefinitionCatalogOrm(
+def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> None:
+    """Fixture to set up a deck with some resource on it."""
+    # Resource Definition
+    plate_def = ResourceDefinitionCatalogOrm(
         id=1,
         user_friendly_name="Standard 96 Well Plate Def",
         pylabrobot_definition_name="corning_96_wellplate_360ul_flat",
@@ -236,7 +236,7 @@ def setup_deck_with_labware(db_session: Session, setup_basic_devices: None) -> N
         size_x_mm=127.76, size_y_mm=85.48, size_z_mm=14.35,
         nominal_volume_ul=380.0
     )
-    tip_rack_def = LabwareDefinitionCatalogOrm(
+    tip_rack_def = ResourceDefinitionCatalogOrm(
         id=2,
         user_friendly_name="Standard 300ul Tip Rack Def",
         pylabrobot_definition_name="opentrons_96_tiprack_300ul",
@@ -246,71 +246,71 @@ def setup_deck_with_labware(db_session: Session, setup_basic_devices: None) -> N
     db_session.add_all([plate_def, tip_rack_def])
     db_session.commit() # Commit definitions so they can be referenced
 
-    # Labware Instances
-    plate_instance = LabwareInstanceOrm(
+    # Resource Instances
+    plate_instance = ResourceInstanceOrm(
         id=1,
         user_assigned_name="PlateOnDeck",
-        labware_definition_id=plate_def.id,
+        resource_definition_id=plate_def.id,
         location_device_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="A1",
-        current_status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+        current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
         properties_json={"sample_type": "plasma"}
     )
-    tip_rack_instance = LabwareInstanceOrm(
+    tip_rack_instance = ResourceInstanceOrm(
         id=2,
         user_assigned_name="TipsOnDeck",
-        labware_definition_id=tip_rack_def.id,
+        resource_definition_id=tip_rack_def.id,
         location_device_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="B2",
-        current_status=LabwareInstanceStatusEnum.AVAILABLE_ON_DECK,
+        current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
     )
-    # Labware not on this deck
-    other_plate_instance = LabwareInstanceOrm(
+    # Resource not on this deck
+    other_plate_instance = ResourceInstanceOrm(
         id=3,
         user_assigned_name="PlateInStorage",
-        labware_definition_id=plate_def.id,
+        resource_definition_id=plate_def.id,
         location_device_id=None, # Not on any deck
-        current_status=LabwareInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+        current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
     db_session.add_all([plate_instance, tip_rack_instance, other_plate_instance])
     db_session.commit()
 
 
-def test_get_specific_deck_state_with_labware(client: TestClient, db_session: Session, setup_deck_with_labware: None):
-    """Test GET /api/workcell/decks/{deck_id}/state for a deck with labware."""
+def test_get_specific_deck_state_with_resource(client: TestClient, db_session: Session, setup_deck_with_resource: None):
+    """Test GET /api/workcell/decks/{deck_id}/state for a deck with resource."""
     response = client.get(f"/api/workcell/decks/{VALID_DECK_ID}/state")
     assert response.status_code == 200
     data = response.json()
 
     assert data["deck_id"] == VALID_DECK_ID
     assert data["user_friendly_name"] == "Test Deck 1"
-    assert data["pylabrobot_class_name"] == "pylabrobot.resources.Deck"
+    assert data["python_fqn"] == "pylabrobot.resources.Deck"
     # Placeholder dimensions might be None or specific values if set in WorkcellRuntime
     assert "size_x_mm" in data
     assert "slots" in data
 
-    slots_with_labware = {slot["name"]: slot["labware"] for slot in data["slots"] if slot["labware"]}
-    assert len(slots_with_labware) == 2 # PlateOnDeck and TipsOnDeck
+    slots_with_resource = {slot["name"]: slot["resource"] for slot in data["slots"] if slot["resource"]}
+    assert len(slots_with_resource) == 2 # PlateOnDeck and TipsOnDeck
 
     # Check PlateOnDeck in A1
-    assert "A1" in slots_with_labware
-    plate_info = slots_with_labware["A1"]
+    assert "A1" in slots_with_resource
+    plate_info = slots_with_resource["A1"]
     assert plate_info["user_assigned_name"] == "PlateOnDeck"
     assert plate_info["pylabrobot_definition_name"] == "corning_96_wellplate_360ul_flat"
     assert plate_info["category"] == "PLATE"
     assert plate_info["properties_json"] == {"sample_type": "plasma"}
 
     # Check TipsOnDeck in B2
-    assert "B2" in slots_with_labware
-    tip_rack_info = slots_with_labware["B2"]
+    assert "B2" in slots_with_resource
+    tip_rack_info = slots_with_resource["B2"]
     assert tip_rack_info["user_assigned_name"] == "TipsOnDeck"
     assert tip_rack_info["pylabrobot_definition_name"] == "opentrons_96_tiprack_300ul"
     assert tip_rack_info["category"] == "TIP_RACK"
 
-    # Ensure no other labware is reported for this deck
-    all_labware_names_on_deck = [lw["user_assigned_name"] for lw in slots_with_labware.values()]
-    assert "PlateInStorage" not in all_labware_names_on_deck
+    # Ensure no other resource is reported for this deck
+    all_resource_names_on_deck = [lw["user_assigned_name"] for lw in slots_with_resource.values()]
+    assert "PlateInStorage" not in all_resource_names_on_deck
 
     # TODO: Add checks for empty slots if get_deck_state_representation is updated to include them.
 
@@ -321,9 +321,9 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
     with client.websocket_connect(f"/ws/decks/{VALID_DECK_ID}/updates") as websocket:
         # Test broadcast
         test_message_payload = {
-            "message_type": "labware_updated",
+            "message_type": "resource_updated",
             "slot_name": "C3",
-            "labware_name": "NewTipBox"
+            "resource_name": "NewTipBox"
         }
         response = client.post(f"/ws/test_broadcast/{VALID_DECK_ID}", json=test_message_payload) # Send JSON payload
         assert response.status_code == 200 # Assuming POST request for test broadcast
@@ -338,8 +338,8 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
         assert message_data["update_type"] == test_message_payload["message_type"]
         assert message_data["slot_name"] == test_message_payload["slot_name"]
 
-        assert message_data["labware_info"] is not None
-        assert message_data["labware_info"]["user_assigned_name"] == test_message_payload["labware_name"]
+        assert message_data["resource_info"] is not None
+        assert message_data["resource_info"]["user_assigned_name"] == test_message_payload["resource_name"]
         assert "timestamp" in message_data
 
         websocket.close()
@@ -388,7 +388,7 @@ Here's a summary of what's been done in this step:
     *   `praxis/backend/tests/api/test_workcell_api.py` has been created.
 
 2.  **Pydantic Model Unit Tests:**
-    *   Added tests for `DeckInfo`, `LabwareInfo`, `SlotInfo`, `DeckStateResponse`, and `DeckUpdateMessage`.
+    *   Added tests for `DeckInfo`, `ResourceInfo`, `SlotInfo`, `DeckStateResponse`, and `DeckUpdateMessage`.
     *   These tests validate model creation from dictionary data and check basic field assignments. They also implicitly test `model_dump()` (serialization) by accessing dictionary keys on the dumped model.
 
 3.  **Pytest Fixtures:**
@@ -396,7 +396,7 @@ Here's a summary of what's been done in this step:
     *   `db_session()`: A function-scoped fixture that provides a transactional database session. It begins a transaction before yielding the session and rolls it back afterwards, ensuring test isolation.
     *   `client(db_session)`: A function-scoped fixture that provides a `TestClient` for the FastAPI application. It overrides the `get_db` dependency to use the transactional `db_session` fixture.
     *   `setup_basic_devices(db_session)`: A function-scoped fixture to populate the database with a DECK device (`id=VALID_DECK_ID`) and a non-DECK device (`id=VALID_NON_DECK_ID`).
-    *   `setup_deck_with_labware(db_session, setup_basic_devices)`: A function-scoped fixture that builds upon `setup_basic_devices`. It adds labware definitions and instances, placing some labware onto the `VALID_DECK_ID` at specific slots (`A1`, `B2`).
+    *   `setup_deck_with_resource(db_session, setup_basic_devices)`: A function-scoped fixture that builds upon `setup_basic_devices`. It adds resource definitions and instances, placing some resource onto the `VALID_DECK_ID` at specific slots (`A1`, `B2`).
 
 4.  **HTTP Endpoint Tests (Initial Structure):**
     *   **`GET /api/workcell/decks`:**
@@ -405,7 +405,7 @@ Here's a summary of what's been done in this step:
     *   **`GET /api/workcell/decks/{deck_id}/state`:**
         *   `test_get_specific_deck_state_not_found`: Tests with an ID that doesn't exist.
         *   `test_get_specific_deck_state_not_a_deck`: Tests with an ID of a device that isn't a DECK.
-        *   `test_get_specific_deck_state_with_labware`: Tests with a valid DECK ID that has labware placed on it (using `setup_deck_with_labware` fixture). It verifies the returned deck structure, slot information, and details of the labware on the slots.
+        *   `test_get_specific_deck_state_with_resource`: Tests with a valid DECK ID that has resource placed on it (using `setup_deck_with_resource` fixture). It verifies the returned deck structure, slot information, and details of the resource on the slots.
 
 5.  **WebSocket Endpoint Tests (Initial Structure):**
     *   `test_websocket_deck_updates_connection_and_broadcast`: Tests successful WebSocket connection, then uses the `POST /ws/test_broadcast/{deck_id}` endpoint to send a message, and verifies the WebSocket client receives and can parse this message.

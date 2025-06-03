@@ -496,7 +496,7 @@ class PraxisDBService:
     expiry_date: Optional[Any] = None,
     current_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.UNKNOWN,
   ) -> int:
-    """Add a new labware asset instance or update an existing one.
+    """Add a new resource asset instance or update an existing one.
 
     If an asset with the given `user_assigned_name` already exists, its
     details will be updated. Otherwise, a new asset instance will be created.
@@ -566,7 +566,7 @@ class PraxisDBService:
       await session.refresh(asset_orm)
       if asset_orm.id is None:
         error_message = (
-          f"Failed to add/update labware instance '{user_assigned_name}': "
+          f"Failed to add/update resource instance '{user_assigned_name}': "
           "no ID returned."
         )
         logger.error(error_message)
@@ -577,7 +577,7 @@ class PraxisDBService:
   async def get_asset_instance(
     self, user_assigned_name: str
   ) -> Optional[Dict[str, Any]]:
-    """Retrieve details of a specific labware asset instance by its name.
+    """Retrieve details of a specific resource asset instance by its name.
 
     Args:
         user_assigned_name (str): The user-friendly name of the asset
@@ -618,7 +618,7 @@ class PraxisDBService:
             asset_orm.current_status.name if asset_orm.current_status else None
           ),
           "status_details": asset_orm.status_details,
-          "current_deck_pose_name": asset_orm.current_deck_pose_name,
+          "current_deck_position_name": asset_orm.current_deck_position_name,
           "location_machine_id": asset_orm.location_machine_id,
           "physical_location_description": (asset_orm.physical_location_description),
           "properties_json": asset_orm.properties_json,
@@ -775,10 +775,10 @@ class PraxisDBService:
       await self._keycloak_pool.close()  # type: ignore
       logger.info("Keycloak database pool closed.")
     # The SQLAlchemy engine (from which AsyncSessionLocal is derived) should
-    # be disposed of at the application level if it's managed globally.
+    # be dispositiond of at the application level if it's managed globally.
     # If AsyncSessionLocal is derived from create_async_engine(),
     # e.g. engine = create_async_engine(...); AsyncSessionLocal =
-    # async_sessionmaker(engine) then engine.dispose() should be called
+    # async_sessionmaker(engine) then engine.disposition() should be called
     # elsewhere (e.g., application shutdown).
     logger.info("PraxisDBService resources closed.")
 

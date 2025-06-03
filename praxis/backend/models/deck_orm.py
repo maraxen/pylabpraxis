@@ -53,7 +53,7 @@ class DeckConfigurationOrm(Base):
       created_at (Optional[datetime]): Timestamp when the record was created.
       updated_at (Optional[datetime]): Timestamp when the record was last updated.
       deck_machine (relationship): Establishes a relationship to the
-          `MachineOrm` representing the deck.
+          `MachineOrm` representing the deck parent.
       position_items (relationship): Establishes a one-to-many relationship to
           `DeckConfigurationPositionItemOrm` instances, representing the resources
           placed on this deck configuration.
@@ -65,6 +65,14 @@ class DeckConfigurationOrm(Base):
   id: Mapped[int] = mapped_column(
     Integer, primary_key=True, index=True
   )  # praxis_deck_config_id
+
+  python_fqn: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    index=True,
+    comment="The fully qualified Python name of the deck class.",
+  )
+
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
   deck_id: Mapped[int] = mapped_column(
@@ -83,7 +91,7 @@ class DeckConfigurationOrm(Base):
     ForeignKey("deck_type_definitions.id"), nullable=True, index=True
   )
 
-  deck_machine = relationship("MachineOrm", back_populates="deck_configurations")
+  deck_parent_machine = relationship("MachineOrm", back_populates="deck_configurations")
 
   position_items = relationship(
     "DeckConfigurationPositionItemOrm",
@@ -217,15 +225,9 @@ class DeckPositionDefinitionOrm(Base):
     ForeignKey("deck_type_definitions.id"), nullable=False
   )
   position_id: Mapped[str] = mapped_column(String, nullable=False)
-  nominal_x_mm: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True
-  )  # From plan, but PLR might always provide these
-  nominal_y_mm: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True
-  )  # From plan
-  nominal_z_mm: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True
-  )  # From plan
+  nominal_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  nominal_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  nominal_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
   accepted_resource_categories_json: Mapped[Optional[list[str]]] = mapped_column(
     JSON, nullable=True
   )

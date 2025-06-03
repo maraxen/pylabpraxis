@@ -19,8 +19,8 @@ class AssetManagementScreen extends StatelessWidget {
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Instruments'),
-              Tab(text: 'Labware Instances'),
-              Tab(text: 'Labware Definitions'),
+              Tab(text: 'Resource Instances'),
+              Tab(text: 'Resource Definitions'),
             ],
           ),
         ),
@@ -28,14 +28,14 @@ class AssetManagementScreen extends StatelessWidget {
           children: [
             // Placeholder for Instruments content
             Center(child: Placeholder(child: Text('Instruments Tab Content'))),
-            // Placeholder for Labware Instances content
+            // Placeholder for Resource Instances content
             Center(
-              child: Placeholder(child: Text('Labware Instances Tab Content')),
+              child: Placeholder(child: Text('Resource Instances Tab Content')),
             ),
-            // Placeholder for Labware Definitions content
+            // Placeholder for Resource Definitions content
             Center(
               child: Placeholder(
-                child: Text('Labware Definitions Tab Content'),
+                child: Text('Resource Definitions Tab Content'),
               ),
             ),
           ],

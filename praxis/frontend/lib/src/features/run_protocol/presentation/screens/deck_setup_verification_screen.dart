@@ -44,7 +44,7 @@ class DeckSetupVerificationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16), // Added some spacing
             // TODO(user): Add other UI elements for deck setup verification if needed.
-            // For example, a list of required labware vs actual detected labware.
+            // For example, a list of required resource vs actual detected resource.
             const SizedBox(height: 16), // Added some spacing
             OverflowBar(
               alignment: MainAxisAlignment.spaceBetween,

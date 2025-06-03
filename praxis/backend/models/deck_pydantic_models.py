@@ -89,6 +89,7 @@ class DeckBase(BaseModel):
 
   deck_name: str
   deck_id: int
+  python_fqn: str
   description: Optional[str] = None
 
   class Config:
@@ -216,8 +217,8 @@ class DeckTypeDefinitionBase(BaseModel):
   and methods for position-to-location mapping, along with descriptive metadata.
   """
 
-  pylabrobot_class_name: str
-  praxis_deck_type_name: str
+  python_fqn: str
+  deck_type: str
   positioning_config: Optional[PositioningConfig] = Field(
     None,
     description="Configuration for the primary method to calculate positions on this \
@@ -269,8 +270,8 @@ class DeckTypeDefinitionUpdate(BaseModel):
   own CRUD operations or through `DeckTypeDefinitionCreate`.
   """
 
-  pylabrobot_class_name: Optional[str] = None
-  praxis_deck_type_name: Optional[str] = None
+  python_fqn: Optional[str] = None
+  deck_type: Optional[str] = None
   positioning_config: Optional[PositioningConfig] = None
   description: Optional[str] = None
   manufacturer: Optional[str] = None
@@ -283,7 +284,7 @@ class DeckInfo(BaseModel):
 
   id: int = Field(description="ORM ID of the MachineOrm for the deck")
   user_friendly_name: str = Field(description="User-assigned name for the deck")
-  pylabrobot_class_name: str = Field(
+  python_fqn: str = Field(
     description="PyLabRobot class name for the deck (e.g., 'Deck')"
   )
   current_status: str = Field(
@@ -347,17 +348,17 @@ class DeckPositionInfo(BaseModel):
     description="Z coordinate of the position's origin relative to the deck, in "
     "millimeters (often the deck surface at this position)",
   )
-  labware: Optional[DeckResourceInfo] = Field(
+  resource: Optional[DeckResourceInfo] = Field(
     None, description="Resource instance currently occupying this position, if any"
   )
 
 
 class DeckStateResponse(BaseModel):
-  """Represents the complete state of a deck, including its positions and labware."""
+  """Represents the complete state of a deck, including its positions and resource."""
 
   deck_id: int = Field(description="ORM ID of the MachineOrm for the deck")
-  user_friendly_name: str = Field(description="User-assigned name for the deck")
-  pylabrobot_class_name: str = Field(description="PyLabRobot class name for the deck")
+  name: str = Field(description="User-assigned name for the deck")
+  python_fqn: str = Field(description="PyLabRobot class name for the deck")
   size_x_mm: Optional[float] = Field(
     None, description="Overall physical dimension X of the deck in millimeters"
   )
@@ -379,15 +380,15 @@ class DeckUpdateMessage(BaseModel):
 
   deck_id: int = Field(description="ORM ID of the deck that was updated")
   update_type: str = Field(
-    description="Type of update (e.g., 'labware_added', 'labware_removed', "
-    "'labware_updated', 'position_cleared')"
+    description="Type of update (e.g., 'resource_added', 'resource_removed', "
+    "'resource_updated', 'position_cleared')"
   )
   position_name: Optional[str] = Field(
     None, description="Name of the position affected by the update, if applicable"
   )
-  labware_info: Optional[DeckResourceInfo] = Field(
+  resource_info: Optional[DeckResourceInfo] = Field(
     None,
-    description="The new state of the labware in the position, or null if labware was "
+    description="The new state of the resource in the position, or null if resource was "
     "removed",
   )
   timestamp: str = Field(

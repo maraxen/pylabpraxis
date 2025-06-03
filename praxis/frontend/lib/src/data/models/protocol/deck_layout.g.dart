@@ -32,12 +32,12 @@ Map<String, dynamic> _$DeckLayoutToJson(_DeckLayout instance) =>
 _DeckItem _$DeckItemFromJson(Map<String, dynamic> json) => _DeckItem(
   id: json['id'] as String,
   slot: json['slot'] as String,
-  labwareDefinitionId: json['labware_definition_id'] as String,
-  labwareDefinition:
-      json['labware_definition'] == null
+  resourceDefinitionId: json['resource_definition_id'] as String,
+  resourceDefinition:
+      json['resource_definition'] == null
           ? null
-          : LabwareDefinition.fromJson(
-            json['labware_definition'] as Map<String, dynamic>,
+          : ResourceDefinition.fromJson(
+            json['resource_definition'] as Map<String, dynamic>,
           ),
   displayName: json['display_name'] as String?,
 );
@@ -45,7 +45,7 @@ _DeckItem _$DeckItemFromJson(Map<String, dynamic> json) => _DeckItem(
 Map<String, dynamic> _$DeckItemToJson(_DeckItem instance) => <String, dynamic>{
   'id': instance.id,
   'slot': instance.slot,
-  'labware_definition_id': instance.labwareDefinitionId,
-  'labware_definition': instance.labwareDefinition,
+  'resource_definition_id': instance.resourceDefinitionId,
+  'resource_definition': instance.resourceDefinition,
   'display_name': instance.displayName,
 };

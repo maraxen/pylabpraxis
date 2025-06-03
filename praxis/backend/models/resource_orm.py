@@ -325,7 +325,7 @@ class ResourceInstanceOrm(Base):
   )
 
   deck_configuration_items = relationship(
-    "DeckConfigurationPoseItemOrm", back_populates="resource_instance"
+    "DeckConfigurationPositionItemOrm", back_populates="resource_instance"
   )
 
   def __repr__(self):

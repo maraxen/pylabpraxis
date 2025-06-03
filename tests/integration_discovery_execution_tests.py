@@ -35,9 +35,9 @@ except ImportError: # pragma: no cover
 from unittest.mock import call, patch # Ensure patch is imported
 from praxis.backend.protocol_core.protocol_definition_models import ParameterMetadataModel, AssetRequirementModel
 from praxis.backend.database_models.asset_management_orm import (
-    LabwareInstanceStatusEnum, ManagedDeviceStatusEnum,
-    LabwareDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
-    LabwareInstanceOrm as LabwareInstanceOrmReal
+    ResourceInstanceStatusEnum, ManagedDeviceStatusEnum,
+    ResourceDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
+    ResourceInstanceOrm as ResourceInstanceOrmReal
 )
 # Import WorkcellRuntime to patch its methods (though we'll mock its instance methods)
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
@@ -45,8 +45,8 @@ from praxis.backend.core.workcell_runtime import WorkcellRuntime
 # Module-level Mock Objects for PLR Live Resources
 MOCK_LIVE_DEVICE = MagicMock(name="MockLivePLRDevice_Global")
 MOCK_LIVE_DEVICE.name = "MockLivePLRDeviceInstance_Global"
-MOCK_LIVE_LABWARE = MagicMock(name="MockLivePLRLabware_Global")
-MOCK_LIVE_LABWARE.name = "MockLivePLRLabwareInstance_Global"
+MOCK_LIVE_LABWARE = MagicMock(name="MockLivePLRResource_Global")
+MOCK_LIVE_LABWARE.name = "MockLivePLRResourceInstance_Global"
 
 
 # Dummy PLR resource for type hinting in test protocols

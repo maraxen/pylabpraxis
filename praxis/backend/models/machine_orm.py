@@ -82,7 +82,7 @@ class MachineOrm(Base):
   user_friendly_name: Mapped[str] = mapped_column(
     String, nullable=False, unique=True, index=True
   )
-  pylabrobot_class_name: Mapped[str] = mapped_column(
+  python_fqn: Mapped[str] = mapped_column(
     String,
     nullable=False,
     comment="Fully qualified PyLabRobot class name \
@@ -167,4 +167,4 @@ class MachineOrm(Base):
   def __repr__(self):
     """Render a string representation of the MachineOrm instance."""
     return f"<MachineOrm(id={self.id}, name='{self.user_friendly_name}', \
-          type='{self.pylabrobot_class_name}')>"
+          type='{self.python_fqn}')>"

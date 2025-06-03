@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 
 // Assuming mock_services.mocks.dart is generated in praxis/frontend/test/mocks/
@@ -24,14 +24,14 @@ void main() {
       metadata: {},
       isAvailable: true,
     );
-    final labwareDef1 = LabwareDefinitionCatalogOrm(
+    final resourceDef1 = ResourceDefinitionCatalogOrm(
       pylabrobotDefinitionName:
           'lwDef1', // TODO: replace with actual definition name
-      pythonFqn: 'com.praxis.labware.LabwareDef1',
+      pythonFqn: 'com.praxis.resource.ResourceDef1',
     );
-    final labwareInstance1 = LabwareInstanceOrm(
-      userAssignedName: 'Labware Instance 1',
-      pylabrobotDefinitionName: labwareDef1.pylabrobotDefinitionName,
+    final resourceInstance1 = ResourceInstanceOrm(
+      userAssignedName: 'Resource Instance 1',
+      pylabrobotDefinitionName: resourceDef1.pylabrobotDefinitionName,
     );
     final deckLayout1 = DeckLayoutOrm(
       id: 1,
@@ -41,10 +41,10 @@ void main() {
     );
 
     final List<ManagedDeviceOrm> mockDevices = [device1];
-    final List<LabwareDefinitionCatalogOrm> mockLabwareDefinitions = [
-      labwareDef1,
+    final List<ResourceDefinitionCatalogOrm> mockResourceDefinitions = [
+      resourceDef1,
     ];
-    final List<LabwareInstanceOrm> mockLabwareInstances = [labwareInstance1];
+    final List<ResourceInstanceOrm> mockResourceInstances = [resourceInstance1];
     final List<DeckLayoutOrm> mockDeckLayouts = [deckLayout1];
 
     test('initial state is AssetManagementInitial', () {
@@ -62,11 +62,11 @@ void main() {
             mockAssetApiService.getDevices(),
           ).thenAnswer((_) async => mockDevices);
           when(
-            mockAssetApiService.getLabwareDefinitions(),
-          ).thenAnswer((_) async => mockLabwareDefinitions);
+            mockAssetApiService.getResourceDefinitions(),
+          ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getLabwareInstances(),
-          ).thenAnswer((_) async => mockLabwareInstances);
+            mockAssetApiService.getResourceInstances(),
+          ).thenAnswer((_) async => mockResourceInstances);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -78,15 +78,15 @@ void main() {
               const AssetManagementLoadInProgress(),
               AssetManagementLoadSuccess(
                 devices: mockDevices,
-                labwareDefinitions: mockLabwareDefinitions,
-                labwareInstances: mockLabwareInstances,
+                resourceDefinitions: mockResourceDefinitions,
+                resourceInstances: mockResourceInstances,
                 deckLayouts: mockDeckLayouts,
               ),
             ],
         verify: (_) {
           verify(mockAssetApiService.getDevices()).called(1);
-          verify(mockAssetApiService.getLabwareDefinitions()).called(1);
-          verify(mockAssetApiService.getLabwareInstances()).called(1);
+          verify(mockAssetApiService.getResourceDefinitions()).called(1);
+          verify(mockAssetApiService.getResourceInstances()).called(1);
           verify(mockAssetApiService.getDeckLayouts()).called(1);
         },
       );
@@ -99,11 +99,11 @@ void main() {
           ).thenThrow(Exception('Failed to fetch devices'));
           // Mock other calls if they would happen before the failing one
           when(
-            mockAssetApiService.getLabwareDefinitions(),
-          ).thenAnswer((_) async => mockLabwareDefinitions);
+            mockAssetApiService.getResourceDefinitions(),
+          ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getLabwareInstances(),
-          ).thenAnswer((_) async => mockLabwareInstances);
+            mockAssetApiService.getResourceInstances(),
+          ).thenAnswer((_) async => mockResourceInstances);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -144,11 +144,11 @@ void main() {
             mockAssetApiService.getDevices(),
           ).thenAnswer((_) async => [newDevice]); // Assume it's now in the list
           when(
-            mockAssetApiService.getLabwareDefinitions(),
-          ).thenAnswer((_) async => mockLabwareDefinitions);
+            mockAssetApiService.getResourceDefinitions(),
+          ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getLabwareInstances(),
-          ).thenAnswer((_) async => mockLabwareInstances);
+            mockAssetApiService.getResourceInstances(),
+          ).thenAnswer((_) async => mockResourceInstances);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -162,8 +162,8 @@ void main() {
               const AssetManagementLoadInProgress(), // Due to add(AssetManagementLoadStarted())
               AssetManagementLoadSuccess(
                 devices: [newDevice],
-                labwareDefinitions: mockLabwareDefinitions,
-                labwareInstances: mockLabwareInstances,
+                resourceDefinitions: mockResourceDefinitions,
+                resourceInstances: mockResourceInstances,
                 deckLayouts: mockDeckLayouts,
               ),
             ],

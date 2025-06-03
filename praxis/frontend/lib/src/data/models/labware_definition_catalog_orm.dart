@@ -1,4 +1,4 @@
-class LabwareDefinitionCatalogOrm {
+class ResourceDefinitionCatalogOrm {
   final String pylabrobotDefinitionName;
   final String pythonFqn;
   final double? sizeXmm;
@@ -7,7 +7,7 @@ class LabwareDefinitionCatalogOrm {
   final String? plrCategory;
   final String? model;
   final Map<String, dynamic>? rotationJson;
-  final String? praxisLabwareTypeName;
+  final String? praxisResourceTypeName;
   final String? description;
   final bool? isConsumable;
   final double? nominalVolumeUl;
@@ -17,7 +17,7 @@ class LabwareDefinitionCatalogOrm {
   final String? createdAt; // DateTime as String
   final String? updatedAt; // DateTime as String
 
-  LabwareDefinitionCatalogOrm({
+  ResourceDefinitionCatalogOrm({
     required this.pylabrobotDefinitionName,
     required this.pythonFqn,
     this.sizeXmm,
@@ -26,7 +26,7 @@ class LabwareDefinitionCatalogOrm {
     this.plrCategory,
     this.model,
     this.rotationJson,
-    this.praxisLabwareTypeName,
+    this.praxisResourceTypeName,
     this.description,
     this.isConsumable,
     this.nominalVolumeUl,
@@ -37,8 +37,8 @@ class LabwareDefinitionCatalogOrm {
     this.updatedAt,
   });
 
-  factory LabwareDefinitionCatalogOrm.fromJson(Map<String, dynamic> json) {
-    return LabwareDefinitionCatalogOrm(
+  factory ResourceDefinitionCatalogOrm.fromJson(Map<String, dynamic> json) {
+    return ResourceDefinitionCatalogOrm(
       pylabrobotDefinitionName: json['pylabrobot_definition_name'] as String,
       pythonFqn: json['python_fqn'] as String,
       sizeXmm: (json['size_x_mm'] as num?)?.toDouble(),
@@ -50,7 +50,7 @@ class LabwareDefinitionCatalogOrm {
           json['rotation_json'] != null
               ? json['rotation_json'] as Map<String, dynamic>
               : null,
-      praxisLabwareTypeName: json['praxis_labware_type_name'] as String?,
+      praxisResourceTypeName: json['praxis_resource_type_name'] as String?,
       description: json['description'] as String?,
       isConsumable: json['is_consumable'] as bool?,
       nominalVolumeUl: (json['nominal_volume_ul'] as num?)?.toDouble(),
@@ -75,7 +75,7 @@ class LabwareDefinitionCatalogOrm {
       'plr_category': plrCategory,
       'model': model,
       'rotation_json': rotationJson,
-      'praxis_labware_type_name': praxisLabwareTypeName,
+      'praxis_resource_type_name': praxisResourceTypeName,
       'description': description,
       'is_consumable': isConsumable,
       'nominal_volume_ul': nominalVolumeUl,

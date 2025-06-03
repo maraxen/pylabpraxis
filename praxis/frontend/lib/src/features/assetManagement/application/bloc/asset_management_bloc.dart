@@ -2,8 +2,8 @@ import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
 
 part 'asset_management_bloc.freezed.dart';
@@ -21,12 +21,12 @@ class AssetManagementBloc
     on<ConnectDeviceStarted>(_onConnectDeviceStarted);
     on<InitializeDeviceStarted>(_onInitializeDeviceStarted);
     on<DisconnectDeviceStarted>(_onDisconnectDeviceStarted);
-    on<AddLabwareDefinitionStarted>(_onAddLabwareDefinitionStarted);
-    on<UpdateLabwareDefinitionStarted>(_onUpdateLabwareDefinitionStarted);
-    on<DeleteLabwareDefinitionStarted>(_onDeleteLabwareDefinitionStarted);
-    on<AddLabwareInstanceStarted>(_onAddLabwareInstanceStarted);
-    on<UpdateLabwareInstanceStarted>(_onUpdateLabwareInstanceStarted);
-    on<DeleteLabwareInstanceStarted>(_onDeleteLabwareInstanceStarted);
+    on<AddResourceDefinitionStarted>(_onAddResourceDefinitionStarted);
+    on<UpdateResourceDefinitionStarted>(_onUpdateResourceDefinitionStarted);
+    on<DeleteResourceDefinitionStarted>(_onDeleteResourceDefinitionStarted);
+    on<AddResourceInstanceStarted>(_onAddResourceInstanceStarted);
+    on<UpdateResourceInstanceStarted>(_onUpdateResourceInstanceStarted);
+    on<DeleteResourceInstanceStarted>(_onDeleteResourceInstanceStarted);
     on<AddDeckLayoutStarted>(_onAddDeckLayoutStarted);
     on<UpdateDeckLayoutStarted>(_onUpdateDeckLayoutStarted);
     on<DeleteDeckLayoutStarted>(_onDeleteDeckLayoutStarted);
@@ -40,14 +40,15 @@ class AssetManagementBloc
     try {
       // TODO(user): Replace with actual API calls when available
       final devices = await _assetApiService.getDevices();
-      final labwareDefinitions = await _assetApiService.getLabwareDefinitions();
-      final labwareInstances = await _assetApiService.getLabwareInstances();
+      final resourceDefinitions =
+          await _assetApiService.getResourceDefinitions();
+      final resourceInstances = await _assetApiService.getResourceInstances();
       final deckLayouts = await _assetApiService.getDeckLayouts();
       emit(
         AssetManagementLoadSuccess(
           devices: devices,
-          labwareDefinitions: labwareDefinitions,
-          labwareInstances: labwareInstances,
+          resourceDefinitions: resourceDefinitions,
+          resourceInstances: resourceInstances,
           deckLayouts: deckLayouts,
         ),
       );
@@ -140,13 +141,13 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onAddLabwareDefinitionStarted(
-    AddLabwareDefinitionStarted event,
+  Future<void> _onAddResourceDefinitionStarted(
+    AddResourceDefinitionStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.createLabwareDefinition(event.labwareDefinition);
+      await _assetApiService.createResourceDefinition(event.resourceDefinition);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -154,15 +155,15 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onUpdateLabwareDefinitionStarted(
-    UpdateLabwareDefinitionStarted event,
+  Future<void> _onUpdateResourceDefinitionStarted(
+    UpdateResourceDefinitionStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.updateLabwareDefinition(
-        event.labwareDefinitionId,
-        event.labwareDefinition,
+      await _assetApiService.updateResourceDefinition(
+        event.resourceDefinitionId,
+        event.resourceDefinition,
       );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
@@ -171,13 +172,15 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onDeleteLabwareDefinitionStarted(
-    DeleteLabwareDefinitionStarted event,
+  Future<void> _onDeleteResourceDefinitionStarted(
+    DeleteResourceDefinitionStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.deleteLabwareDefinition(event.labwareDefinitionId);
+      await _assetApiService.deleteResourceDefinition(
+        event.resourceDefinitionId,
+      );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -185,13 +188,13 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onAddLabwareInstanceStarted(
-    AddLabwareInstanceStarted event,
+  Future<void> _onAddResourceInstanceStarted(
+    AddResourceInstanceStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.createLabwareInstance(event.labwareInstance);
+      await _assetApiService.createResourceInstance(event.resourceInstance);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -199,15 +202,15 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onUpdateLabwareInstanceStarted(
-    UpdateLabwareInstanceStarted event,
+  Future<void> _onUpdateResourceInstanceStarted(
+    UpdateResourceInstanceStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.updateLabwareInstance(
+      await _assetApiService.updateResourceInstance(
         event.instanceId,
-        event.labwareInstance,
+        event.resourceInstance,
       );
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
@@ -216,13 +219,13 @@ class AssetManagementBloc
     }
   }
 
-  Future<void> _onDeleteLabwareInstanceStarted(
-    DeleteLabwareInstanceStarted event,
+  Future<void> _onDeleteResourceInstanceStarted(
+    DeleteResourceInstanceStarted event,
     Emitter<AssetManagementState> emit,
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.deleteLabwareInstance(event.instanceId);
+      await _assetApiService.deleteResourceInstance(event.instanceId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -294,26 +297,26 @@ abstract class AssetManagementEvent with _$AssetManagementEvent {
       InitializeDeviceStarted;
   const factory AssetManagementEvent.disconnectDeviceStarted(String deviceId) =
       DisconnectDeviceStarted;
-  const factory AssetManagementEvent.addLabwareDefinitionStarted(
-    LabwareDefinitionCatalogOrm labwareDefinition,
-  ) = AddLabwareDefinitionStarted;
-  const factory AssetManagementEvent.updateLabwareDefinitionStarted(
-    String labwareDefinitionId,
-    LabwareDefinitionCatalogOrm labwareDefinition,
-  ) = UpdateLabwareDefinitionStarted;
-  const factory AssetManagementEvent.deleteLabwareDefinitionStarted(
-    String labwareDefinitionId,
-  ) = DeleteLabwareDefinitionStarted;
-  const factory AssetManagementEvent.addLabwareInstanceStarted(
-    LabwareInstanceOrm labwareInstance,
-  ) = AddLabwareInstanceStarted;
-  const factory AssetManagementEvent.updateLabwareInstanceStarted(
+  const factory AssetManagementEvent.addResourceDefinitionStarted(
+    ResourceDefinitionCatalogOrm resourceDefinition,
+  ) = AddResourceDefinitionStarted;
+  const factory AssetManagementEvent.updateResourceDefinitionStarted(
+    String resourceDefinitionId,
+    ResourceDefinitionCatalogOrm resourceDefinition,
+  ) = UpdateResourceDefinitionStarted;
+  const factory AssetManagementEvent.deleteResourceDefinitionStarted(
+    String resourceDefinitionId,
+  ) = DeleteResourceDefinitionStarted;
+  const factory AssetManagementEvent.addResourceInstanceStarted(
+    ResourceInstanceOrm resourceInstance,
+  ) = AddResourceInstanceStarted;
+  const factory AssetManagementEvent.updateResourceInstanceStarted(
     String instanceId,
-    LabwareInstanceOrm labwareInstance,
-  ) = UpdateLabwareInstanceStarted;
-  const factory AssetManagementEvent.deleteLabwareInstanceStarted(
+    ResourceInstanceOrm resourceInstance,
+  ) = UpdateResourceInstanceStarted;
+  const factory AssetManagementEvent.deleteResourceInstanceStarted(
     String instanceId,
-  ) = DeleteLabwareInstanceStarted;
+  ) = DeleteResourceInstanceStarted;
   const factory AssetManagementEvent.addDeckLayoutStarted(
     DeckLayoutOrm deckLayout,
   ) = AddDeckLayoutStarted;
@@ -334,8 +337,8 @@ abstract class AssetManagementState with _$AssetManagementState {
       AssetManagementLoadInProgress;
   const factory AssetManagementState.loadSuccess({
     required List<ManagedDeviceOrm> devices,
-    required List<LabwareDefinitionCatalogOrm> labwareDefinitions,
-    required List<LabwareInstanceOrm> labwareInstances,
+    required List<ResourceDefinitionCatalogOrm> resourceDefinitions,
+    required List<ResourceInstanceOrm> resourceInstances,
     required List<DeckLayoutOrm> deckLayouts,
   }) = AssetManagementLoadSuccess;
   const factory AssetManagementState.loadFailure(String error) =

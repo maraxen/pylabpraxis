@@ -265,7 +265,7 @@ class ParameterDefinitionOrm(Base):
 class AssetDefinitionOrm(Base):
   """SQLAlchemy ORM model for defining assets required by a function protocol.
 
-  This model describes the assets (e.g., labware, instruments) a protocol function
+  This model describes the assets (e.g., resource, instruments) a protocol function
   expects, including their names, type hints, and descriptions.
   """
 

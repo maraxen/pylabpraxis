@@ -1,26 +1,26 @@
-// FILE: lib/src/data/models/protocol/labware_definition.dart
-// Purpose: Defines the structure for a labware definition.
-// Corresponds to: LabwareDefinition in protocol.models.ts
+// FILE: lib/src/data/models/protocol/resource_definition.dart
+// Purpose: Defines the structure for a resource definition.
+// Corresponds to: ResourceDefinition in protocol.models.ts
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'labware_definition.freezed.dart';
-part 'labware_definition.g.dart';
+part 'resource_definition.freezed.dart';
+part 'resource_definition.g.dart';
 
 @freezed
-abstract class LabwareDefinition with _$LabwareDefinition {
-  const factory LabwareDefinition({
-    // Unique identifier for the labware definition (e.g., 'opentrons_96_tiprack_300ul').
+abstract class ResourceDefinition with _$ResourceDefinition {
+  const factory ResourceDefinition({
+    // Unique identifier for the resource definition (e.g., 'opentrons_96_tiprack_300ul').
     required String id,
     // Human-readable display name.
     @JsonKey(name: 'display_name') String? displayName,
-    // Version of the labware definition.
+    // Version of the resource definition.
     int? version,
-    // Namespace of the labware (e.g., 'opentrons').
+    // Namespace of the resource (e.g., 'opentrons').
     String? namespace,
-    // Category of labware (e.g., 'tipRack', 'wellPlate', 'reservoir').
+    // Category of resource (e.g., 'tipRack', 'wellPlate', 'reservoir').
     String? category,
-    // Dimensions of the labware.
+    // Dimensions of the resource.
     Map<String, double>?
     dimensions, // e.g., { "xDimension": 127.76, "yDimension": 85.48, "zDimension": 14.7 }
     // Well definitions (if applicable).
@@ -29,14 +29,14 @@ abstract class LabwareDefinition with _$LabwareDefinition {
     List<List<String>>? ordering,
     // Generic metadata.
     Map<String, dynamic>? metadata,
-    // Brand of the labware.
+    // Brand of the resource.
     String? brand,
     // Specific model or part number.
     String? model,
-  }) = _LabwareDefinition;
+  }) = _ResourceDefinition;
 
-  factory LabwareDefinition.fromJson(Map<String, dynamic> json) =>
-      _$LabwareDefinitionFromJson(json);
+  factory ResourceDefinition.fromJson(Map<String, dynamic> json) =>
+      _$ResourceDefinitionFromJson(json);
 }
 
 @freezed
@@ -54,11 +54,11 @@ abstract class WellDefinition with _$WellDefinition {
     double? xDimension,
     // Y dimension of the well in mm (if rectangular).
     double? yDimension,
-    // X-coordinate of the well's center relative to the labware origin.
+    // X-coordinate of the well's center relative to the resource origin.
     required double x,
-    // Y-coordinate of the well's center relative to the labware origin.
+    // Y-coordinate of the well's center relative to the resource origin.
     required double y,
-    // Z-coordinate of the well's bottom relative to the labware origin.
+    // Z-coordinate of the well's bottom relative to the resource origin.
     double? z,
   }) = _WellDefinition;
 

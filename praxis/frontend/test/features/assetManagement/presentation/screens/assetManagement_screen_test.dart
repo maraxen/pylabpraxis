@@ -33,8 +33,8 @@ void main() {
       const AssetManagementLoadSuccess(
         // Or AssetManagementInitial() if UI doesn't depend on data for tabs
         devices: [],
-        labwareDefinitions: [],
-        labwareInstances: [],
+        resourceDefinitions: [],
+        resourceInstances: [],
         deckLayouts: [],
       ),
     );
@@ -46,8 +46,8 @@ void main() {
         const AssetManagementLoadSuccess(
           // Keep it consistent with .state
           devices: [],
-          labwareDefinitions: [],
-          labwareInstances: [],
+          resourceDefinitions: [],
+          resourceInstances: [],
           deckLayouts: [],
         ),
       ),
@@ -75,35 +75,35 @@ void main() {
 
     // Verify Tab texts
     expect(find.text('Instruments'), findsOneWidget);
-    expect(find.text('Labware Instances'), findsOneWidget);
-    expect(find.text('Labware Definitions'), findsOneWidget);
+    expect(find.text('Resource Instances'), findsOneWidget);
+    expect(find.text('Resource Definitions'), findsOneWidget);
 
     // Verify initial tab content (Placeholder texts)
     // This assumes the first tab ('Instruments') is active by default.
     expect(find.text('Instruments Tab Content'), findsOneWidget);
     expect(
-      find.text('Labware Instances Tab Content'),
+      find.text('Resource Instances Tab Content'),
       findsNothing,
     ); // Not visible initially
     expect(
-      find.text('Labware Definitions Tab Content'),
+      find.text('Resource Definitions Tab Content'),
       findsNothing,
     ); // Not visible initially
 
-    // Simulate tapping the 'Labware Instances' tab
-    await tester.tap(find.text('Labware Instances'));
+    // Simulate tapping the 'Resource Instances' tab
+    await tester.tap(find.text('Resource Instances'));
     await tester.pumpAndSettle(); // Let animations and transitions finish
 
     expect(find.text('Instruments Tab Content'), findsNothing);
-    expect(find.text('Labware Instances Tab Content'), findsOneWidget);
-    expect(find.text('Labware Definitions Tab Content'), findsNothing);
+    expect(find.text('Resource Instances Tab Content'), findsOneWidget);
+    expect(find.text('Resource Definitions Tab Content'), findsNothing);
 
-    // Simulate tapping the 'Labware Definitions' tab
-    await tester.tap(find.text('Labware Definitions'));
+    // Simulate tapping the 'Resource Definitions' tab
+    await tester.tap(find.text('Resource Definitions'));
     await tester.pumpAndSettle();
 
     expect(find.text('Instruments Tab Content'), findsNothing);
-    expect(find.text('Labware Instances Tab Content'), findsNothing);
-    expect(find.text('Labware Definitions Tab Content'), findsOneWidget);
+    expect(find.text('Resource Instances Tab Content'), findsNothing);
+    expect(find.text('Resource Definitions Tab Content'), findsOneWidget);
   });
 }

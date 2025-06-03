@@ -202,8 +202,8 @@ class ResourceInstanceSharedFields(BaseModel):
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = "unknown"
-  current_parent_pose_id: Optional[int] = None
-  current_position_in_pose: Optional[str] = None
+  current_parentposition_id: Optional[int] = None
+  current_position_inposition: Optional[str] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
 
@@ -262,8 +262,8 @@ class ResourceInstanceUpdate(BaseModel):
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = None
-  current_parent_pose_id: Optional[int] = None
-  current_position_in_pose: Optional[str] = None
+  current_parentposition_id: Optional[int] = None
+  current_position_inposition: Optional[str] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None

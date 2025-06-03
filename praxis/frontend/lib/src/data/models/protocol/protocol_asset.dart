@@ -1,6 +1,6 @@
 // Represents an asset required by a protocol.
 //
-// Assets can be physical items like labware, reagents, or digital files
+// Assets can be physical items like resource, reagents, or digital files
 // like calibration data or deck layouts.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -11,7 +11,7 @@ part 'protocol_asset.g.dart';
 
 /// Represents an asset required by a protocol.
 ///
-/// Assets can be physical items like labware, reagents, or digital files
+/// Assets can be physical items like resource, reagents, or digital files
 /// like calibration data or deck layouts.
 @freezed
 abstract class ProtocolAsset with _$ProtocolAsset {
@@ -19,7 +19,7 @@ abstract class ProtocolAsset with _$ProtocolAsset {
   ///
   /// Parameters:
   ///   [name] - The name of the asset.
-  ///   [type] - The type of the asset (e.g., 'labware', 'reagent', 'file').
+  ///   [type] - The type of the asset (e.g., 'resource', 'reagent', 'file').
   ///   [description] - An optional description of the asset.
   ///   [required] - A boolean indicating if the asset is mandatory for the protocol.
   ///   [validationConfig] - Optional [ParameterConfig] defining constraints for selecting

@@ -3,7 +3,7 @@
 // Corresponds to: DeckLayout in protocol.models.ts
 
 import 'package:freezed_annotation/freezed_annotation.dart';
-import './labware_definition.dart'; // Assuming LabwareDefinition is in a separate file
+import './resource_definition.dart'; // Assuming ResourceDefinition is in a separate file
 
 part 'deck_layout.freezed.dart';
 part 'deck_layout.g.dart';
@@ -15,7 +15,7 @@ abstract class DeckLayout with _$DeckLayout {
     String? id,
     // Human-readable name for the deck layout.
     String? name,
-    // List of labware items placed on the deck.
+    // List of resource items placed on the deck.
     List<DeckItem>? items,
     // Optional: schema version for the deck layout definition.
     String? schemaVersion,
@@ -38,11 +38,13 @@ abstract class DeckItem with _$DeckItem {
     required String id,
     // The slot on the deck where this item is placed (e.g., "1", "A1").
     required String slot,
-    // The ID of the labware definition being used.
-    @JsonKey(name: 'labware_definition_id') required String labwareDefinitionId,
-    // Optional: A specific labware definition, if not just referencing by ID.
+    // The ID of the resource definition being used.
+    @JsonKey(name: 'resource_definition_id')
+    required String resourceDefinitionId,
+    // Optional: A specific resource definition, if not just referencing by ID.
     // This could be embedded or fetched separately.
-    @JsonKey(name: 'labware_definition') LabwareDefinition? labwareDefinition,
+    @JsonKey(name: 'resource_definition')
+    ResourceDefinition? resourceDefinition,
     // Human-readable display name for this item in this context.
     @JsonKey(name: 'display_name') String? displayName,
   }) = _DeckItem;

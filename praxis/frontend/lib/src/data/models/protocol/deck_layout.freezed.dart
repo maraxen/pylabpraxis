@@ -18,7 +18,7 @@ mixin _$DeckLayout {
 
 // Unique identifier for this deck layout configuration.
  String? get id;// Human-readable name for the deck layout.
- String? get name;// List of labware items placed on the deck.
+ String? get name;// List of resource items placed on the deck.
  List<DeckItem>? get items;// Optional: schema version for the deck layout definition.
  String? get schemaVersion;// Optional: metadata about the robot or deck type.
  Map<String, dynamic>? get robot;// e.g., { "model": "OT-2", "deckId": "ot2_standard" }
@@ -98,9 +98,9 @@ class _DeckLayout implements DeckLayout {
 @override final  String? id;
 // Human-readable name for the deck layout.
 @override final  String? name;
-// List of labware items placed on the deck.
+// List of resource items placed on the deck.
  final  List<DeckItem>? _items;
-// List of labware items placed on the deck.
+// List of resource items placed on the deck.
 @override List<DeckItem>? get items {
   final value = _items;
   if (value == null) return null;
@@ -205,10 +205,10 @@ mixin _$DeckItem {
 
 // Unique ID for this item on the deck.
  String get id;// The slot on the deck where this item is placed (e.g., "1", "A1").
- String get slot;// The ID of the labware definition being used.
-@JsonKey(name: 'labware_definition_id') String get labwareDefinitionId;// Optional: A specific labware definition, if not just referencing by ID.
+ String get slot;// The ID of the resource definition being used.
+@JsonKey(name: 'resource_definition_id') String get resourceDefinitionId;// Optional: A specific resource definition, if not just referencing by ID.
 // This could be embedded or fetched separately.
-@JsonKey(name: 'labware_definition') LabwareDefinition? get labwareDefinition;// Human-readable display name for this item in this context.
+@JsonKey(name: 'resource_definition') ResourceDefinition? get resourceDefinition;// Human-readable display name for this item in this context.
 @JsonKey(name: 'display_name') String? get displayName;
 /// Create a copy of DeckItem
 /// with the given fields replaced by the non-null parameter values.
@@ -222,16 +222,16 @@ $DeckItemCopyWith<DeckItem> get copyWith => _$DeckItemCopyWithImpl<DeckItem>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.labwareDefinitionId, labwareDefinitionId) || other.labwareDefinitionId == labwareDefinitionId)&&(identical(other.labwareDefinition, labwareDefinition) || other.labwareDefinition == labwareDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,slot,labwareDefinitionId,labwareDefinition,displayName);
+int get hashCode => Object.hash(runtimeType,id,slot,resourceDefinitionId,resourceDefinition,displayName);
 
 @override
 String toString() {
-  return 'DeckItem(id: $id, slot: $slot, labwareDefinitionId: $labwareDefinitionId, labwareDefinition: $labwareDefinition, displayName: $displayName)';
+  return 'DeckItem(id: $id, slot: $slot, resourceDefinitionId: $resourceDefinitionId, resourceDefinition: $resourceDefinition, displayName: $displayName)';
 }
 
 
@@ -242,11 +242,11 @@ abstract mixin class $DeckItemCopyWith<$Res>  {
   factory $DeckItemCopyWith(DeckItem value, $Res Function(DeckItem) _then) = _$DeckItemCopyWithImpl;
 @useResult
 $Res call({
- String id, String slot,@JsonKey(name: 'labware_definition_id') String labwareDefinitionId,@JsonKey(name: 'labware_definition') LabwareDefinition? labwareDefinition,@JsonKey(name: 'display_name') String? displayName
+ String id, String slot,@JsonKey(name: 'resource_definition_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
 });
 
 
-$LabwareDefinitionCopyWith<$Res>? get labwareDefinition;
+$ResourceDefinitionCopyWith<$Res>? get resourceDefinition;
 
 }
 /// @nodoc
@@ -259,13 +259,13 @@ class _$DeckItemCopyWithImpl<$Res>
 
 /// Create a copy of DeckItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? slot = null,Object? labwareDefinitionId = null,Object? labwareDefinition = freezed,Object? displayName = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? slot = null,Object? resourceDefinitionId = null,Object? resourceDefinition = freezed,Object? displayName = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,slot: null == slot ? _self.slot : slot // ignore: cast_nullable_to_non_nullable
-as String,labwareDefinitionId: null == labwareDefinitionId ? _self.labwareDefinitionId : labwareDefinitionId // ignore: cast_nullable_to_non_nullable
-as String,labwareDefinition: freezed == labwareDefinition ? _self.labwareDefinition : labwareDefinition // ignore: cast_nullable_to_non_nullable
-as LabwareDefinition?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,resourceDefinitionId: null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
+as String,resourceDefinition: freezed == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable
+as ResourceDefinition?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -273,13 +273,13 @@ as String?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$LabwareDefinitionCopyWith<$Res>? get labwareDefinition {
-    if (_self.labwareDefinition == null) {
+$ResourceDefinitionCopyWith<$Res>? get resourceDefinition {
+    if (_self.resourceDefinition == null) {
     return null;
   }
 
-  return $LabwareDefinitionCopyWith<$Res>(_self.labwareDefinition!, (value) {
-    return _then(_self.copyWith(labwareDefinition: value));
+  return $ResourceDefinitionCopyWith<$Res>(_self.resourceDefinition!, (value) {
+    return _then(_self.copyWith(resourceDefinition: value));
   });
 }
 }
@@ -289,18 +289,18 @@ $LabwareDefinitionCopyWith<$Res>? get labwareDefinition {
 @JsonSerializable()
 
 class _DeckItem implements DeckItem {
-  const _DeckItem({required this.id, required this.slot, @JsonKey(name: 'labware_definition_id') required this.labwareDefinitionId, @JsonKey(name: 'labware_definition') this.labwareDefinition, @JsonKey(name: 'display_name') this.displayName});
+  const _DeckItem({required this.id, required this.slot, @JsonKey(name: 'resource_definition_id') required this.resourceDefinitionId, @JsonKey(name: 'resource_definition') this.resourceDefinition, @JsonKey(name: 'display_name') this.displayName});
   factory _DeckItem.fromJson(Map<String, dynamic> json) => _$DeckItemFromJson(json);
 
 // Unique ID for this item on the deck.
 @override final  String id;
 // The slot on the deck where this item is placed (e.g., "1", "A1").
 @override final  String slot;
-// The ID of the labware definition being used.
-@override@JsonKey(name: 'labware_definition_id') final  String labwareDefinitionId;
-// Optional: A specific labware definition, if not just referencing by ID.
+// The ID of the resource definition being used.
+@override@JsonKey(name: 'resource_definition_id') final  String resourceDefinitionId;
+// Optional: A specific resource definition, if not just referencing by ID.
 // This could be embedded or fetched separately.
-@override@JsonKey(name: 'labware_definition') final  LabwareDefinition? labwareDefinition;
+@override@JsonKey(name: 'resource_definition') final  ResourceDefinition? resourceDefinition;
 // Human-readable display name for this item in this context.
 @override@JsonKey(name: 'display_name') final  String? displayName;
 
@@ -317,16 +317,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.labwareDefinitionId, labwareDefinitionId) || other.labwareDefinitionId == labwareDefinitionId)&&(identical(other.labwareDefinition, labwareDefinition) || other.labwareDefinition == labwareDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,slot,labwareDefinitionId,labwareDefinition,displayName);
+int get hashCode => Object.hash(runtimeType,id,slot,resourceDefinitionId,resourceDefinition,displayName);
 
 @override
 String toString() {
-  return 'DeckItem(id: $id, slot: $slot, labwareDefinitionId: $labwareDefinitionId, labwareDefinition: $labwareDefinition, displayName: $displayName)';
+  return 'DeckItem(id: $id, slot: $slot, resourceDefinitionId: $resourceDefinitionId, resourceDefinition: $resourceDefinition, displayName: $displayName)';
 }
 
 
@@ -337,11 +337,11 @@ abstract mixin class _$DeckItemCopyWith<$Res> implements $DeckItemCopyWith<$Res>
   factory _$DeckItemCopyWith(_DeckItem value, $Res Function(_DeckItem) _then) = __$DeckItemCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String slot,@JsonKey(name: 'labware_definition_id') String labwareDefinitionId,@JsonKey(name: 'labware_definition') LabwareDefinition? labwareDefinition,@JsonKey(name: 'display_name') String? displayName
+ String id, String slot,@JsonKey(name: 'resource_definition_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
 });
 
 
-@override $LabwareDefinitionCopyWith<$Res>? get labwareDefinition;
+@override $ResourceDefinitionCopyWith<$Res>? get resourceDefinition;
 
 }
 /// @nodoc
@@ -354,13 +354,13 @@ class __$DeckItemCopyWithImpl<$Res>
 
 /// Create a copy of DeckItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? slot = null,Object? labwareDefinitionId = null,Object? labwareDefinition = freezed,Object? displayName = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? slot = null,Object? resourceDefinitionId = null,Object? resourceDefinition = freezed,Object? displayName = freezed,}) {
   return _then(_DeckItem(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,slot: null == slot ? _self.slot : slot // ignore: cast_nullable_to_non_nullable
-as String,labwareDefinitionId: null == labwareDefinitionId ? _self.labwareDefinitionId : labwareDefinitionId // ignore: cast_nullable_to_non_nullable
-as String,labwareDefinition: freezed == labwareDefinition ? _self.labwareDefinition : labwareDefinition // ignore: cast_nullable_to_non_nullable
-as LabwareDefinition?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String,resourceDefinitionId: null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
+as String,resourceDefinition: freezed == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable
+as ResourceDefinition?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -369,13 +369,13 @@ as String?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$LabwareDefinitionCopyWith<$Res>? get labwareDefinition {
-    if (_self.labwareDefinition == null) {
+$ResourceDefinitionCopyWith<$Res>? get resourceDefinition {
+    if (_self.resourceDefinition == null) {
     return null;
   }
 
-  return $LabwareDefinitionCopyWith<$Res>(_self.labwareDefinition!, (value) {
-    return _then(_self.copyWith(labwareDefinition: value));
+  return $ResourceDefinitionCopyWith<$Res>(_self.resourceDefinition!, (value) {
+    return _then(_self.copyWith(resourceDefinition: value));
   });
 }
 }

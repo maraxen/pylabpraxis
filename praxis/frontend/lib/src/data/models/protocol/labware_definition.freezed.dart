@@ -4,7 +4,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'labware_definition.dart';
+part of 'resource_definition.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -14,35 +14,35 @@ part of 'labware_definition.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
-mixin _$LabwareDefinition {
+mixin _$ResourceDefinition {
 
-// Unique identifier for the labware definition (e.g., 'opentrons_96_tiprack_300ul').
+// Unique identifier for the resource definition (e.g., 'opentrons_96_tiprack_300ul').
  String get id;// Human-readable display name.
-@JsonKey(name: 'display_name') String? get displayName;// Version of the labware definition.
- int? get version;// Namespace of the labware (e.g., 'opentrons').
- String? get namespace;// Category of labware (e.g., 'tipRack', 'wellPlate', 'reservoir').
- String? get category;// Dimensions of the labware.
+@JsonKey(name: 'display_name') String? get displayName;// Version of the resource definition.
+ int? get version;// Namespace of the resource (e.g., 'opentrons').
+ String? get namespace;// Category of resource (e.g., 'tipRack', 'wellPlate', 'reservoir').
+ String? get category;// Dimensions of the resource.
  Map<String, double>? get dimensions;// e.g., { "xDimension": 127.76, "yDimension": 85.48, "zDimension": 14.7 }
 // Well definitions (if applicable).
  Map<String, WellDefinition>? get wells;// Keyed by well name e.g., "A1"
 // Ordering of wells (e.g., column-wise or row-wise).
  List<List<String>>? get ordering;// Generic metadata.
- Map<String, dynamic>? get metadata;// Brand of the labware.
+ Map<String, dynamic>? get metadata;// Brand of the resource.
  String? get brand;// Specific model or part number.
  String? get model;
-/// Create a copy of LabwareDefinition
+/// Create a copy of ResourceDefinition
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$LabwareDefinitionCopyWith<LabwareDefinition> get copyWith => _$LabwareDefinitionCopyWithImpl<LabwareDefinition>(this as LabwareDefinition, _$identity);
+$ResourceDefinitionCopyWith<ResourceDefinition> get copyWith => _$ResourceDefinitionCopyWithImpl<ResourceDefinition>(this as ResourceDefinition, _$identity);
 
-  /// Serializes this LabwareDefinition to a JSON map.
+  /// Serializes this ResourceDefinition to a JSON map.
   Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LabwareDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.dimensions, dimensions)&&const DeepCollectionEquality().equals(other.wells, wells)&&const DeepCollectionEquality().equals(other.ordering, ordering)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResourceDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.dimensions, dimensions)&&const DeepCollectionEquality().equals(other.wells, wells)&&const DeepCollectionEquality().equals(other.ordering, ordering)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -51,15 +51,15 @@ int get hashCode => Object.hash(runtimeType,id,displayName,version,namespace,cat
 
 @override
 String toString() {
-  return 'LabwareDefinition(id: $id, displayName: $displayName, version: $version, namespace: $namespace, category: $category, dimensions: $dimensions, wells: $wells, ordering: $ordering, metadata: $metadata, brand: $brand, model: $model)';
+  return 'ResourceDefinition(id: $id, displayName: $displayName, version: $version, namespace: $namespace, category: $category, dimensions: $dimensions, wells: $wells, ordering: $ordering, metadata: $metadata, brand: $brand, model: $model)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $LabwareDefinitionCopyWith<$Res>  {
-  factory $LabwareDefinitionCopyWith(LabwareDefinition value, $Res Function(LabwareDefinition) _then) = _$LabwareDefinitionCopyWithImpl;
+abstract mixin class $ResourceDefinitionCopyWith<$Res>  {
+  factory $ResourceDefinitionCopyWith(ResourceDefinition value, $Res Function(ResourceDefinition) _then) = _$ResourceDefinitionCopyWithImpl;
 @useResult
 $Res call({
  String id,@JsonKey(name: 'display_name') String? displayName, int? version, String? namespace, String? category, Map<String, double>? dimensions, Map<String, WellDefinition>? wells, List<List<String>>? ordering, Map<String, dynamic>? metadata, String? brand, String? model
@@ -70,14 +70,14 @@ $Res call({
 
 }
 /// @nodoc
-class _$LabwareDefinitionCopyWithImpl<$Res>
-    implements $LabwareDefinitionCopyWith<$Res> {
-  _$LabwareDefinitionCopyWithImpl(this._self, this._then);
+class _$ResourceDefinitionCopyWithImpl<$Res>
+    implements $ResourceDefinitionCopyWith<$Res> {
+  _$ResourceDefinitionCopyWithImpl(this._self, this._then);
 
-  final LabwareDefinition _self;
-  final $Res Function(LabwareDefinition) _then;
+  final ResourceDefinition _self;
+  final $Res Function(ResourceDefinition) _then;
 
-/// Create a copy of LabwareDefinition
+/// Create a copy of ResourceDefinition
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = freezed,Object? version = freezed,Object? namespace = freezed,Object? category = freezed,Object? dimensions = freezed,Object? wells = freezed,Object? ordering = freezed,Object? metadata = freezed,Object? brand = freezed,Object? model = freezed,}) {
   return _then(_self.copyWith(
@@ -102,23 +102,23 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
-class _LabwareDefinition implements LabwareDefinition {
-  const _LabwareDefinition({required this.id, @JsonKey(name: 'display_name') this.displayName, this.version, this.namespace, this.category, final  Map<String, double>? dimensions, final  Map<String, WellDefinition>? wells, final  List<List<String>>? ordering, final  Map<String, dynamic>? metadata, this.brand, this.model}): _dimensions = dimensions,_wells = wells,_ordering = ordering,_metadata = metadata;
-  factory _LabwareDefinition.fromJson(Map<String, dynamic> json) => _$LabwareDefinitionFromJson(json);
+class _ResourceDefinition implements ResourceDefinition {
+  const _ResourceDefinition({required this.id, @JsonKey(name: 'display_name') this.displayName, this.version, this.namespace, this.category, final  Map<String, double>? dimensions, final  Map<String, WellDefinition>? wells, final  List<List<String>>? ordering, final  Map<String, dynamic>? metadata, this.brand, this.model}): _dimensions = dimensions,_wells = wells,_ordering = ordering,_metadata = metadata;
+  factory _ResourceDefinition.fromJson(Map<String, dynamic> json) => _$ResourceDefinitionFromJson(json);
 
-// Unique identifier for the labware definition (e.g., 'opentrons_96_tiprack_300ul').
+// Unique identifier for the resource definition (e.g., 'opentrons_96_tiprack_300ul').
 @override final  String id;
 // Human-readable display name.
 @override@JsonKey(name: 'display_name') final  String? displayName;
-// Version of the labware definition.
+// Version of the resource definition.
 @override final  int? version;
-// Namespace of the labware (e.g., 'opentrons').
+// Namespace of the resource (e.g., 'opentrons').
 @override final  String? namespace;
-// Category of labware (e.g., 'tipRack', 'wellPlate', 'reservoir').
+// Category of resource (e.g., 'tipRack', 'wellPlate', 'reservoir').
 @override final  String? category;
-// Dimensions of the labware.
+// Dimensions of the resource.
  final  Map<String, double>? _dimensions;
-// Dimensions of the labware.
+// Dimensions of the resource.
 @override Map<String, double>? get dimensions {
   final value = _dimensions;
   if (value == null) return null;
@@ -164,25 +164,25 @@ class _LabwareDefinition implements LabwareDefinition {
   return EqualUnmodifiableMapView(value);
 }
 
-// Brand of the labware.
+// Brand of the resource.
 @override final  String? brand;
 // Specific model or part number.
 @override final  String? model;
 
-/// Create a copy of LabwareDefinition
+/// Create a copy of ResourceDefinition
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$LabwareDefinitionCopyWith<_LabwareDefinition> get copyWith => __$LabwareDefinitionCopyWithImpl<_LabwareDefinition>(this, _$identity);
+_$ResourceDefinitionCopyWith<_ResourceDefinition> get copyWith => __$ResourceDefinitionCopyWithImpl<_ResourceDefinition>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$LabwareDefinitionToJson(this, );
+  return _$ResourceDefinitionToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LabwareDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other._dimensions, _dimensions)&&const DeepCollectionEquality().equals(other._wells, _wells)&&const DeepCollectionEquality().equals(other._ordering, _ordering)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResourceDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other._dimensions, _dimensions)&&const DeepCollectionEquality().equals(other._wells, _wells)&&const DeepCollectionEquality().equals(other._ordering, _ordering)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -191,15 +191,15 @@ int get hashCode => Object.hash(runtimeType,id,displayName,version,namespace,cat
 
 @override
 String toString() {
-  return 'LabwareDefinition(id: $id, displayName: $displayName, version: $version, namespace: $namespace, category: $category, dimensions: $dimensions, wells: $wells, ordering: $ordering, metadata: $metadata, brand: $brand, model: $model)';
+  return 'ResourceDefinition(id: $id, displayName: $displayName, version: $version, namespace: $namespace, category: $category, dimensions: $dimensions, wells: $wells, ordering: $ordering, metadata: $metadata, brand: $brand, model: $model)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$LabwareDefinitionCopyWith<$Res> implements $LabwareDefinitionCopyWith<$Res> {
-  factory _$LabwareDefinitionCopyWith(_LabwareDefinition value, $Res Function(_LabwareDefinition) _then) = __$LabwareDefinitionCopyWithImpl;
+abstract mixin class _$ResourceDefinitionCopyWith<$Res> implements $ResourceDefinitionCopyWith<$Res> {
+  factory _$ResourceDefinitionCopyWith(_ResourceDefinition value, $Res Function(_ResourceDefinition) _then) = __$ResourceDefinitionCopyWithImpl;
 @override @useResult
 $Res call({
  String id,@JsonKey(name: 'display_name') String? displayName, int? version, String? namespace, String? category, Map<String, double>? dimensions, Map<String, WellDefinition>? wells, List<List<String>>? ordering, Map<String, dynamic>? metadata, String? brand, String? model
@@ -210,17 +210,17 @@ $Res call({
 
 }
 /// @nodoc
-class __$LabwareDefinitionCopyWithImpl<$Res>
-    implements _$LabwareDefinitionCopyWith<$Res> {
-  __$LabwareDefinitionCopyWithImpl(this._self, this._then);
+class __$ResourceDefinitionCopyWithImpl<$Res>
+    implements _$ResourceDefinitionCopyWith<$Res> {
+  __$ResourceDefinitionCopyWithImpl(this._self, this._then);
 
-  final _LabwareDefinition _self;
-  final $Res Function(_LabwareDefinition) _then;
+  final _ResourceDefinition _self;
+  final $Res Function(_ResourceDefinition) _then;
 
-/// Create a copy of LabwareDefinition
+/// Create a copy of ResourceDefinition
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = freezed,Object? version = freezed,Object? namespace = freezed,Object? category = freezed,Object? dimensions = freezed,Object? wells = freezed,Object? ordering = freezed,Object? metadata = freezed,Object? brand = freezed,Object? model = freezed,}) {
-  return _then(_LabwareDefinition(
+  return _then(_ResourceDefinition(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,version: freezed == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
@@ -249,9 +249,9 @@ mixin _$WellDefinition {
  String? get shape;// Diameter of the well in mm (if circular).
  double? get diameter;// X dimension of the well in mm (if rectangular).
  double? get xDimension;// Y dimension of the well in mm (if rectangular).
- double? get yDimension;// X-coordinate of the well's center relative to the labware origin.
- double get x;// Y-coordinate of the well's center relative to the labware origin.
- double get y;// Z-coordinate of the well's bottom relative to the labware origin.
+ double? get yDimension;// X-coordinate of the well's center relative to the resource origin.
+ double get x;// Y-coordinate of the well's center relative to the resource origin.
+ double get y;// Z-coordinate of the well's bottom relative to the resource origin.
  double? get z;
 /// Create a copy of WellDefinition
 /// with the given fields replaced by the non-null parameter values.
@@ -339,11 +339,11 @@ class _WellDefinition implements WellDefinition {
 @override final  double? xDimension;
 // Y dimension of the well in mm (if rectangular).
 @override final  double? yDimension;
-// X-coordinate of the well's center relative to the labware origin.
+// X-coordinate of the well's center relative to the resource origin.
 @override final  double x;
-// Y-coordinate of the well's center relative to the labware origin.
+// Y-coordinate of the well's center relative to the resource origin.
 @override final  double y;
-// Z-coordinate of the well's bottom relative to the labware origin.
+// Z-coordinate of the well's bottom relative to the resource origin.
 @override final  double? z;
 
 /// Create a copy of WellDefinition

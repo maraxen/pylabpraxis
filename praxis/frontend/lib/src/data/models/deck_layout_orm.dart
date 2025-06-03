@@ -3,16 +3,16 @@ class DeckConfigurationSlotItemOrm {
   final int? id;
   final int deckConfigurationId;
   final String slotName;
-  final int labwareInstanceId; // FK to LabwareInstanceOrm.id
+  final int resourceInstanceId; // FK to ResourceInstanceOrm.id
   final String?
-  expectedLabwareDefinitionName; // FK to LabwareDefinitionCatalogOrm.pylabrobot_definition_name
+  expectedResourceDefinitionName; // FK to ResourceDefinitionCatalogOrm.pylabrobot_definition_name
 
   DeckConfigurationSlotItemOrm({
     this.id,
     required this.deckConfigurationId,
     required this.slotName,
-    required this.labwareInstanceId,
-    this.expectedLabwareDefinitionName,
+    required this.resourceInstanceId,
+    this.expectedResourceDefinitionName,
   });
 
   factory DeckConfigurationSlotItemOrm.fromJson(Map<String, dynamic> json) {
@@ -20,9 +20,9 @@ class DeckConfigurationSlotItemOrm {
       id: json['id'] as int?,
       deckConfigurationId: json['deck_configuration_id'] as int,
       slotName: json['slot_name'] as String,
-      labwareInstanceId: json['labware_instance_id'] as int,
-      expectedLabwareDefinitionName:
-          json['expected_labware_definition_name'] as String?,
+      resourceInstanceId: json['resource_instance_id'] as int,
+      expectedResourceDefinitionName:
+          json['expected_resource_definition_name'] as String?,
     );
   }
 
@@ -31,8 +31,8 @@ class DeckConfigurationSlotItemOrm {
       'id': id,
       'deck_configuration_id': deckConfigurationId,
       'slot_name': slotName,
-      'labware_instance_id': labwareInstanceId,
-      'expected_labware_definition_name': expectedLabwareDefinitionName,
+      'resource_instance_id': resourceInstanceId,
+      'expected_resource_definition_name': expectedResourceDefinitionName,
     };
   }
 }

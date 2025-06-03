@@ -40,6 +40,7 @@ async def create_deck(
   db: AsyncSession,
   name: str,
   deck_id: int,
+  python_fqn: str,
   description: Optional[str] = None,
   position_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckConfigurationOrm:
@@ -53,10 +54,12 @@ async def create_deck(
     db (AsyncSession): The database session.
     name (str): The name of the deck layout.
     deck_id (int): The ID of the deck to associate with this layout.
+    python_fqn (str): The fully qualified name of the Python class representing the
+    deck.
     description (Optional[str], optional): Description of the deck layout.
       Defaults to None.
-    position_items_data (Optional[List[Dict[str, Any]]], optional): List of position items
-      data. Each dictionary in the list should contain:
+    position_items_data (Optional[List[Dict[str, Any]]], optional): List of position
+    items data. Each dictionary in the list should contain:
       - 'position_name' (str): The name of the position.
       - 'resource_instance_id' (Optional[int]): The ID of the resource instance
         associated with this position (optional).
@@ -98,6 +101,7 @@ async def create_deck(
     name=name,
     deck_id=deck_id,
     description=description,
+    python_fqn=python_fqn,
   )
   db.add(deck_orm)
 
@@ -571,8 +575,8 @@ async def delete_deck(db: AsyncSession, deck_id: int) -> bool:
 
 async def add_or_update_deck_type_definition(
   db: AsyncSession,
-  pylabrobot_class_name: str,
-  praxis_deck_type_name: str,
+  python_fqn: str,
+  deck_type: str,
   deck_type_id: Optional[int] = None,
   description: Optional[str] = None,
   manufacturer: Optional[str] = None,
@@ -592,19 +596,19 @@ async def add_or_update_deck_type_definition(
   """Add a new deck type definition or updates an existing one.
 
   This function creates a new `DeckTypeDefinitionOrm` if `deck_type_id` is not
-  provided and no existing definition matches `pylabrobot_class_name`. If
+  provided and no existing definition matches `python_fqn`. If
   `deck_type_id` is provided, it attempts to update the existing definition.
   If `position_definitions_data` is provided, all existing position definitions for this
   deck type will be deleted and replaced with the new ones.
 
   Args:
     db (AsyncSession): The database session.
-    pylabrobot_class_name (str): The fully qualified name of the PyLabRobot deck
+    python_fqn (str): The fully qualified name of the PyLabRobot deck
       class (e.g., "pylabrobot.resources.Deck").
-    praxis_deck_type_name (str): A human-readable display name for the deck type.
+    deck_type (str): A human-readable display name for the deck type.
     deck_type_id (Optional[int], optional): The ID of an existing deck type definition
       to update. If None, a new definition will be created or an existing one
-      looked up by `pylabrobot_class_name`. Defaults to None.
+      looked up by `python_fqn`. Defaults to None.
     description (Optional[str], optional): A description of the deck type.
       This will be stored in `additional_properties_json`. Defaults to None.
     manufacturer (Optional[str], optional): The manufacturer of the deck type.
@@ -660,13 +664,13 @@ async def add_or_update_deck_type_definition(
   Raises:
     ValueError: If:
       - `deck_type_id` is provided but no matching deck type is found.
-      - A deck type definition with the same `pylabrobot_class_name` already exists
+      - A deck type definition with the same `python_fqn` already exists
         during creation.
       - A position definition with a conflicting name is attempted to be added.
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Type Definition (FQN: '{pylabrobot_class_name}', ID: \
+  log_prefix = f"Deck Type Definition (FQN: '{python_fqn}', ID: \
     {deck_type_id or 'new'}):"
   logger.info("%s Attempting to add or update.", log_prefix)
 
@@ -689,7 +693,7 @@ async def add_or_update_deck_type_definition(
     result = await db.execute(
       select(DeckTypeDefinitionOrm)
       .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
-      .filter(DeckTypeDefinitionOrm.pylabrobot_deck_fqn == pylabrobot_class_name)
+      .filter(DeckTypeDefinitionOrm.pylabrobot_deck_fqn == python_fqn)
     )
     deck_type_orm = result.scalar_one_or_none()
     if deck_type_orm:
@@ -699,7 +703,7 @@ async def add_or_update_deck_type_definition(
       )
     else:
       logger.info("%s No existing deck type found, creating new.", log_prefix)
-      deck_type_orm = DeckTypeDefinitionOrm(pylabrobot_deck_fqn=pylabrobot_class_name)
+      deck_type_orm = DeckTypeDefinitionOrm(pylabrobot_deck_fqn=python_fqn)
       db.add(deck_type_orm)
 
   if deck_type_orm is None:
@@ -709,8 +713,8 @@ async def add_or_update_deck_type_definition(
     raise ValueError(error_message)
 
   # Update attributes
-  deck_type_orm.pylabrobot_deck_fqn = pylabrobot_class_name  # Ensure FQN is consistent
-  deck_type_orm.display_name = praxis_deck_type_name
+  deck_type_orm.pylabrobot_deck_fqn = python_fqn  # Ensure FQN is consistent
+  deck_type_orm.display_name = deck_type
   deck_type_orm.plr_category = plr_category
   deck_type_orm.default_size_x_mm = default_size_x_mm
   deck_type_orm.default_size_y_mm = default_size_y_mm
@@ -841,7 +845,7 @@ async def add_or_update_deck_type_definition(
     if "uq_deck_type_definitions_pylabrobot_deck_fqn" in str(e.orig):
       error_message = (
         f"{log_prefix} A deck type definition with PyLabRobot FQN "
-        f"'{pylabrobot_class_name}' already exists. Details: {e}"
+        f"'{python_fqn}' already exists. Details: {e}"
       )
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e

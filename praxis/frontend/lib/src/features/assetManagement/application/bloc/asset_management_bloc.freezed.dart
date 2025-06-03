@@ -47,7 +47,7 @@ $AssetManagementEventCopyWith(AssetManagementEvent _, $Res Function(AssetManagem
 
 class AssetManagementLoadStarted implements AssetManagementEvent {
   const AssetManagementLoadStarted();
-  
+
 
 
 
@@ -79,7 +79,7 @@ String toString() {
 
 class AddDeviceStarted implements AssetManagementEvent {
   const AddDeviceStarted(this.device);
-  
+
 
  final  ManagedDeviceOrm device;
 
@@ -145,7 +145,7 @@ as ManagedDeviceOrm,
 
 class UpdateDeviceStarted implements AssetManagementEvent {
   const UpdateDeviceStarted(this.deviceId, this.device);
-  
+
 
  final  String deviceId;
  final  ManagedDeviceOrm device;
@@ -213,7 +213,7 @@ as ManagedDeviceOrm,
 
 class DeleteDeviceStarted implements AssetManagementEvent {
   const DeleteDeviceStarted(this.deviceId);
-  
+
 
  final  String deviceId;
 
@@ -279,7 +279,7 @@ as String,
 
 class ConnectDeviceStarted implements AssetManagementEvent {
   const ConnectDeviceStarted(this.deviceId);
-  
+
 
  final  String deviceId;
 
@@ -345,7 +345,7 @@ as String,
 
 class InitializeDeviceStarted implements AssetManagementEvent {
   const InitializeDeviceStarted(this.deviceId);
-  
+
 
  final  String deviceId;
 
@@ -411,7 +411,7 @@ as String,
 
 class DisconnectDeviceStarted implements AssetManagementEvent {
   const DisconnectDeviceStarted(this.deviceId);
-  
+
 
  final  String deviceId;
 
@@ -475,43 +475,43 @@ as String,
 /// @nodoc
 
 
-class AddLabwareDefinitionStarted implements AssetManagementEvent {
-  const AddLabwareDefinitionStarted(this.labwareDefinition);
-  
+class AddResourceDefinitionStarted implements AssetManagementEvent {
+  const AddResourceDefinitionStarted(this.resourceDefinition);
 
- final  LabwareDefinitionCatalogOrm labwareDefinition;
+
+ final  ResourceDefinitionCatalogOrm resourceDefinition;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$AddLabwareDefinitionStartedCopyWith<AddLabwareDefinitionStarted> get copyWith => _$AddLabwareDefinitionStartedCopyWithImpl<AddLabwareDefinitionStarted>(this, _$identity);
+$AddResourceDefinitionStartedCopyWith<AddResourceDefinitionStarted> get copyWith => _$AddResourceDefinitionStartedCopyWithImpl<AddResourceDefinitionStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddLabwareDefinitionStarted&&(identical(other.labwareDefinition, labwareDefinition) || other.labwareDefinition == labwareDefinition));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddResourceDefinitionStarted&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,labwareDefinition);
+int get hashCode => Object.hash(runtimeType,resourceDefinition);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.addLabwareDefinitionStarted(labwareDefinition: $labwareDefinition)';
+  return 'AssetManagementEvent.addResourceDefinitionStarted(resourceDefinition: $resourceDefinition)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $AddLabwareDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $AddLabwareDefinitionStartedCopyWith(AddLabwareDefinitionStarted value, $Res Function(AddLabwareDefinitionStarted) _then) = _$AddLabwareDefinitionStartedCopyWithImpl;
+abstract mixin class $AddResourceDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $AddResourceDefinitionStartedCopyWith(AddResourceDefinitionStarted value, $Res Function(AddResourceDefinitionStarted) _then) = _$AddResourceDefinitionStartedCopyWithImpl;
 @useResult
 $Res call({
- LabwareDefinitionCatalogOrm labwareDefinition
+ ResourceDefinitionCatalogOrm resourceDefinition
 });
 
 
@@ -519,19 +519,19 @@ $Res call({
 
 }
 /// @nodoc
-class _$AddLabwareDefinitionStartedCopyWithImpl<$Res>
-    implements $AddLabwareDefinitionStartedCopyWith<$Res> {
-  _$AddLabwareDefinitionStartedCopyWithImpl(this._self, this._then);
+class _$AddResourceDefinitionStartedCopyWithImpl<$Res>
+    implements $AddResourceDefinitionStartedCopyWith<$Res> {
+  _$AddResourceDefinitionStartedCopyWithImpl(this._self, this._then);
 
-  final AddLabwareDefinitionStarted _self;
-  final $Res Function(AddLabwareDefinitionStarted) _then;
+  final AddResourceDefinitionStarted _self;
+  final $Res Function(AddResourceDefinitionStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? labwareDefinition = null,}) {
-  return _then(AddLabwareDefinitionStarted(
-null == labwareDefinition ? _self.labwareDefinition : labwareDefinition // ignore: cast_nullable_to_non_nullable
-as LabwareDefinitionCatalogOrm,
+@pragma('vm:prefer-inline') $Res call({Object? resourceDefinition = null,}) {
+  return _then(AddResourceDefinitionStarted(
+null == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable
+as ResourceDefinitionCatalogOrm,
   ));
 }
 
@@ -541,44 +541,44 @@ as LabwareDefinitionCatalogOrm,
 /// @nodoc
 
 
-class UpdateLabwareDefinitionStarted implements AssetManagementEvent {
-  const UpdateLabwareDefinitionStarted(this.labwareDefinitionId, this.labwareDefinition);
-  
+class UpdateResourceDefinitionStarted implements AssetManagementEvent {
+  const UpdateResourceDefinitionStarted(this.resourceDefinitionId, this.resourceDefinition);
 
- final  String labwareDefinitionId;
- final  LabwareDefinitionCatalogOrm labwareDefinition;
+
+ final  String resourceDefinitionId;
+ final  ResourceDefinitionCatalogOrm resourceDefinition;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$UpdateLabwareDefinitionStartedCopyWith<UpdateLabwareDefinitionStarted> get copyWith => _$UpdateLabwareDefinitionStartedCopyWithImpl<UpdateLabwareDefinitionStarted>(this, _$identity);
+$UpdateResourceDefinitionStartedCopyWith<UpdateResourceDefinitionStarted> get copyWith => _$UpdateResourceDefinitionStartedCopyWithImpl<UpdateResourceDefinitionStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateLabwareDefinitionStarted&&(identical(other.labwareDefinitionId, labwareDefinitionId) || other.labwareDefinitionId == labwareDefinitionId)&&(identical(other.labwareDefinition, labwareDefinition) || other.labwareDefinition == labwareDefinition));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateResourceDefinitionStarted&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,labwareDefinitionId,labwareDefinition);
+int get hashCode => Object.hash(runtimeType,resourceDefinitionId,resourceDefinition);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.updateLabwareDefinitionStarted(labwareDefinitionId: $labwareDefinitionId, labwareDefinition: $labwareDefinition)';
+  return 'AssetManagementEvent.updateResourceDefinitionStarted(resourceDefinitionId: $resourceDefinitionId, resourceDefinition: $resourceDefinition)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $UpdateLabwareDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $UpdateLabwareDefinitionStartedCopyWith(UpdateLabwareDefinitionStarted value, $Res Function(UpdateLabwareDefinitionStarted) _then) = _$UpdateLabwareDefinitionStartedCopyWithImpl;
+abstract mixin class $UpdateResourceDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $UpdateResourceDefinitionStartedCopyWith(UpdateResourceDefinitionStarted value, $Res Function(UpdateResourceDefinitionStarted) _then) = _$UpdateResourceDefinitionStartedCopyWithImpl;
 @useResult
 $Res call({
- String labwareDefinitionId, LabwareDefinitionCatalogOrm labwareDefinition
+ String resourceDefinitionId, ResourceDefinitionCatalogOrm resourceDefinition
 });
 
 
@@ -586,20 +586,20 @@ $Res call({
 
 }
 /// @nodoc
-class _$UpdateLabwareDefinitionStartedCopyWithImpl<$Res>
-    implements $UpdateLabwareDefinitionStartedCopyWith<$Res> {
-  _$UpdateLabwareDefinitionStartedCopyWithImpl(this._self, this._then);
+class _$UpdateResourceDefinitionStartedCopyWithImpl<$Res>
+    implements $UpdateResourceDefinitionStartedCopyWith<$Res> {
+  _$UpdateResourceDefinitionStartedCopyWithImpl(this._self, this._then);
 
-  final UpdateLabwareDefinitionStarted _self;
-  final $Res Function(UpdateLabwareDefinitionStarted) _then;
+  final UpdateResourceDefinitionStarted _self;
+  final $Res Function(UpdateResourceDefinitionStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? labwareDefinitionId = null,Object? labwareDefinition = null,}) {
-  return _then(UpdateLabwareDefinitionStarted(
-null == labwareDefinitionId ? _self.labwareDefinitionId : labwareDefinitionId // ignore: cast_nullable_to_non_nullable
-as String,null == labwareDefinition ? _self.labwareDefinition : labwareDefinition // ignore: cast_nullable_to_non_nullable
-as LabwareDefinitionCatalogOrm,
+@pragma('vm:prefer-inline') $Res call({Object? resourceDefinitionId = null,Object? resourceDefinition = null,}) {
+  return _then(UpdateResourceDefinitionStarted(
+null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
+as String,null == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable
+as ResourceDefinitionCatalogOrm,
   ));
 }
 
@@ -609,43 +609,43 @@ as LabwareDefinitionCatalogOrm,
 /// @nodoc
 
 
-class DeleteLabwareDefinitionStarted implements AssetManagementEvent {
-  const DeleteLabwareDefinitionStarted(this.labwareDefinitionId);
-  
+class DeleteResourceDefinitionStarted implements AssetManagementEvent {
+  const DeleteResourceDefinitionStarted(this.resourceDefinitionId);
 
- final  String labwareDefinitionId;
+
+ final  String resourceDefinitionId;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DeleteLabwareDefinitionStartedCopyWith<DeleteLabwareDefinitionStarted> get copyWith => _$DeleteLabwareDefinitionStartedCopyWithImpl<DeleteLabwareDefinitionStarted>(this, _$identity);
+$DeleteResourceDefinitionStartedCopyWith<DeleteResourceDefinitionStarted> get copyWith => _$DeleteResourceDefinitionStartedCopyWithImpl<DeleteResourceDefinitionStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteLabwareDefinitionStarted&&(identical(other.labwareDefinitionId, labwareDefinitionId) || other.labwareDefinitionId == labwareDefinitionId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteResourceDefinitionStarted&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,labwareDefinitionId);
+int get hashCode => Object.hash(runtimeType,resourceDefinitionId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.deleteLabwareDefinitionStarted(labwareDefinitionId: $labwareDefinitionId)';
+  return 'AssetManagementEvent.deleteResourceDefinitionStarted(resourceDefinitionId: $resourceDefinitionId)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeleteLabwareDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $DeleteLabwareDefinitionStartedCopyWith(DeleteLabwareDefinitionStarted value, $Res Function(DeleteLabwareDefinitionStarted) _then) = _$DeleteLabwareDefinitionStartedCopyWithImpl;
+abstract mixin class $DeleteResourceDefinitionStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $DeleteResourceDefinitionStartedCopyWith(DeleteResourceDefinitionStarted value, $Res Function(DeleteResourceDefinitionStarted) _then) = _$DeleteResourceDefinitionStartedCopyWithImpl;
 @useResult
 $Res call({
- String labwareDefinitionId
+ String resourceDefinitionId
 });
 
 
@@ -653,18 +653,18 @@ $Res call({
 
 }
 /// @nodoc
-class _$DeleteLabwareDefinitionStartedCopyWithImpl<$Res>
-    implements $DeleteLabwareDefinitionStartedCopyWith<$Res> {
-  _$DeleteLabwareDefinitionStartedCopyWithImpl(this._self, this._then);
+class _$DeleteResourceDefinitionStartedCopyWithImpl<$Res>
+    implements $DeleteResourceDefinitionStartedCopyWith<$Res> {
+  _$DeleteResourceDefinitionStartedCopyWithImpl(this._self, this._then);
 
-  final DeleteLabwareDefinitionStarted _self;
-  final $Res Function(DeleteLabwareDefinitionStarted) _then;
+  final DeleteResourceDefinitionStarted _self;
+  final $Res Function(DeleteResourceDefinitionStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? labwareDefinitionId = null,}) {
-  return _then(DeleteLabwareDefinitionStarted(
-null == labwareDefinitionId ? _self.labwareDefinitionId : labwareDefinitionId // ignore: cast_nullable_to_non_nullable
+@pragma('vm:prefer-inline') $Res call({Object? resourceDefinitionId = null,}) {
+  return _then(DeleteResourceDefinitionStarted(
+null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -675,43 +675,43 @@ as String,
 /// @nodoc
 
 
-class AddLabwareInstanceStarted implements AssetManagementEvent {
-  const AddLabwareInstanceStarted(this.labwareInstance);
-  
+class AddResourceInstanceStarted implements AssetManagementEvent {
+  const AddResourceInstanceStarted(this.resourceInstance);
 
- final  LabwareInstanceOrm labwareInstance;
+
+ final  ResourceInstanceOrm resourceInstance;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$AddLabwareInstanceStartedCopyWith<AddLabwareInstanceStarted> get copyWith => _$AddLabwareInstanceStartedCopyWithImpl<AddLabwareInstanceStarted>(this, _$identity);
+$AddResourceInstanceStartedCopyWith<AddResourceInstanceStarted> get copyWith => _$AddResourceInstanceStartedCopyWithImpl<AddResourceInstanceStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddLabwareInstanceStarted&&(identical(other.labwareInstance, labwareInstance) || other.labwareInstance == labwareInstance));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddResourceInstanceStarted&&(identical(other.resourceInstance, resourceInstance) || other.resourceInstance == resourceInstance));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,labwareInstance);
+int get hashCode => Object.hash(runtimeType,resourceInstance);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.addLabwareInstanceStarted(labwareInstance: $labwareInstance)';
+  return 'AssetManagementEvent.addResourceInstanceStarted(resourceInstance: $resourceInstance)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $AddLabwareInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $AddLabwareInstanceStartedCopyWith(AddLabwareInstanceStarted value, $Res Function(AddLabwareInstanceStarted) _then) = _$AddLabwareInstanceStartedCopyWithImpl;
+abstract mixin class $AddResourceInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $AddResourceInstanceStartedCopyWith(AddResourceInstanceStarted value, $Res Function(AddResourceInstanceStarted) _then) = _$AddResourceInstanceStartedCopyWithImpl;
 @useResult
 $Res call({
- LabwareInstanceOrm labwareInstance
+ ResourceInstanceOrm resourceInstance
 });
 
 
@@ -719,19 +719,19 @@ $Res call({
 
 }
 /// @nodoc
-class _$AddLabwareInstanceStartedCopyWithImpl<$Res>
-    implements $AddLabwareInstanceStartedCopyWith<$Res> {
-  _$AddLabwareInstanceStartedCopyWithImpl(this._self, this._then);
+class _$AddResourceInstanceStartedCopyWithImpl<$Res>
+    implements $AddResourceInstanceStartedCopyWith<$Res> {
+  _$AddResourceInstanceStartedCopyWithImpl(this._self, this._then);
 
-  final AddLabwareInstanceStarted _self;
-  final $Res Function(AddLabwareInstanceStarted) _then;
+  final AddResourceInstanceStarted _self;
+  final $Res Function(AddResourceInstanceStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? labwareInstance = null,}) {
-  return _then(AddLabwareInstanceStarted(
-null == labwareInstance ? _self.labwareInstance : labwareInstance // ignore: cast_nullable_to_non_nullable
-as LabwareInstanceOrm,
+@pragma('vm:prefer-inline') $Res call({Object? resourceInstance = null,}) {
+  return _then(AddResourceInstanceStarted(
+null == resourceInstance ? _self.resourceInstance : resourceInstance // ignore: cast_nullable_to_non_nullable
+as ResourceInstanceOrm,
   ));
 }
 
@@ -741,44 +741,44 @@ as LabwareInstanceOrm,
 /// @nodoc
 
 
-class UpdateLabwareInstanceStarted implements AssetManagementEvent {
-  const UpdateLabwareInstanceStarted(this.instanceId, this.labwareInstance);
-  
+class UpdateResourceInstanceStarted implements AssetManagementEvent {
+  const UpdateResourceInstanceStarted(this.instanceId, this.resourceInstance);
+
 
  final  String instanceId;
- final  LabwareInstanceOrm labwareInstance;
+ final  ResourceInstanceOrm resourceInstance;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$UpdateLabwareInstanceStartedCopyWith<UpdateLabwareInstanceStarted> get copyWith => _$UpdateLabwareInstanceStartedCopyWithImpl<UpdateLabwareInstanceStarted>(this, _$identity);
+$UpdateResourceInstanceStartedCopyWith<UpdateResourceInstanceStarted> get copyWith => _$UpdateResourceInstanceStartedCopyWithImpl<UpdateResourceInstanceStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateLabwareInstanceStarted&&(identical(other.instanceId, instanceId) || other.instanceId == instanceId)&&(identical(other.labwareInstance, labwareInstance) || other.labwareInstance == labwareInstance));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateResourceInstanceStarted&&(identical(other.instanceId, instanceId) || other.instanceId == instanceId)&&(identical(other.resourceInstance, resourceInstance) || other.resourceInstance == resourceInstance));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,instanceId,labwareInstance);
+int get hashCode => Object.hash(runtimeType,instanceId,resourceInstance);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.updateLabwareInstanceStarted(instanceId: $instanceId, labwareInstance: $labwareInstance)';
+  return 'AssetManagementEvent.updateResourceInstanceStarted(instanceId: $instanceId, resourceInstance: $resourceInstance)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $UpdateLabwareInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $UpdateLabwareInstanceStartedCopyWith(UpdateLabwareInstanceStarted value, $Res Function(UpdateLabwareInstanceStarted) _then) = _$UpdateLabwareInstanceStartedCopyWithImpl;
+abstract mixin class $UpdateResourceInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $UpdateResourceInstanceStartedCopyWith(UpdateResourceInstanceStarted value, $Res Function(UpdateResourceInstanceStarted) _then) = _$UpdateResourceInstanceStartedCopyWithImpl;
 @useResult
 $Res call({
- String instanceId, LabwareInstanceOrm labwareInstance
+ String instanceId, ResourceInstanceOrm resourceInstance
 });
 
 
@@ -786,20 +786,20 @@ $Res call({
 
 }
 /// @nodoc
-class _$UpdateLabwareInstanceStartedCopyWithImpl<$Res>
-    implements $UpdateLabwareInstanceStartedCopyWith<$Res> {
-  _$UpdateLabwareInstanceStartedCopyWithImpl(this._self, this._then);
+class _$UpdateResourceInstanceStartedCopyWithImpl<$Res>
+    implements $UpdateResourceInstanceStartedCopyWith<$Res> {
+  _$UpdateResourceInstanceStartedCopyWithImpl(this._self, this._then);
 
-  final UpdateLabwareInstanceStarted _self;
-  final $Res Function(UpdateLabwareInstanceStarted) _then;
+  final UpdateResourceInstanceStarted _self;
+  final $Res Function(UpdateResourceInstanceStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? instanceId = null,Object? labwareInstance = null,}) {
-  return _then(UpdateLabwareInstanceStarted(
+@pragma('vm:prefer-inline') $Res call({Object? instanceId = null,Object? resourceInstance = null,}) {
+  return _then(UpdateResourceInstanceStarted(
 null == instanceId ? _self.instanceId : instanceId // ignore: cast_nullable_to_non_nullable
-as String,null == labwareInstance ? _self.labwareInstance : labwareInstance // ignore: cast_nullable_to_non_nullable
-as LabwareInstanceOrm,
+as String,null == resourceInstance ? _self.resourceInstance : resourceInstance // ignore: cast_nullable_to_non_nullable
+as ResourceInstanceOrm,
   ));
 }
 
@@ -809,9 +809,9 @@ as LabwareInstanceOrm,
 /// @nodoc
 
 
-class DeleteLabwareInstanceStarted implements AssetManagementEvent {
-  const DeleteLabwareInstanceStarted(this.instanceId);
-  
+class DeleteResourceInstanceStarted implements AssetManagementEvent {
+  const DeleteResourceInstanceStarted(this.instanceId);
+
 
  final  String instanceId;
 
@@ -819,13 +819,13 @@ class DeleteLabwareInstanceStarted implements AssetManagementEvent {
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DeleteLabwareInstanceStartedCopyWith<DeleteLabwareInstanceStarted> get copyWith => _$DeleteLabwareInstanceStartedCopyWithImpl<DeleteLabwareInstanceStarted>(this, _$identity);
+$DeleteResourceInstanceStartedCopyWith<DeleteResourceInstanceStarted> get copyWith => _$DeleteResourceInstanceStartedCopyWithImpl<DeleteResourceInstanceStarted>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteLabwareInstanceStarted&&(identical(other.instanceId, instanceId) || other.instanceId == instanceId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteResourceInstanceStarted&&(identical(other.instanceId, instanceId) || other.instanceId == instanceId));
 }
 
 
@@ -834,15 +834,15 @@ int get hashCode => Object.hash(runtimeType,instanceId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.deleteLabwareInstanceStarted(instanceId: $instanceId)';
+  return 'AssetManagementEvent.deleteResourceInstanceStarted(instanceId: $instanceId)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeleteLabwareInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
-  factory $DeleteLabwareInstanceStartedCopyWith(DeleteLabwareInstanceStarted value, $Res Function(DeleteLabwareInstanceStarted) _then) = _$DeleteLabwareInstanceStartedCopyWithImpl;
+abstract mixin class $DeleteResourceInstanceStartedCopyWith<$Res> implements $AssetManagementEventCopyWith<$Res> {
+  factory $DeleteResourceInstanceStartedCopyWith(DeleteResourceInstanceStarted value, $Res Function(DeleteResourceInstanceStarted) _then) = _$DeleteResourceInstanceStartedCopyWithImpl;
 @useResult
 $Res call({
  String instanceId
@@ -853,17 +853,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$DeleteLabwareInstanceStartedCopyWithImpl<$Res>
-    implements $DeleteLabwareInstanceStartedCopyWith<$Res> {
-  _$DeleteLabwareInstanceStartedCopyWithImpl(this._self, this._then);
+class _$DeleteResourceInstanceStartedCopyWithImpl<$Res>
+    implements $DeleteResourceInstanceStartedCopyWith<$Res> {
+  _$DeleteResourceInstanceStartedCopyWithImpl(this._self, this._then);
 
-  final DeleteLabwareInstanceStarted _self;
-  final $Res Function(DeleteLabwareInstanceStarted) _then;
+  final DeleteResourceInstanceStarted _self;
+  final $Res Function(DeleteResourceInstanceStarted) _then;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? instanceId = null,}) {
-  return _then(DeleteLabwareInstanceStarted(
+  return _then(DeleteResourceInstanceStarted(
 null == instanceId ? _self.instanceId : instanceId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -877,7 +877,7 @@ as String,
 
 class AddDeckLayoutStarted implements AssetManagementEvent {
   const AddDeckLayoutStarted(this.deckLayout);
-  
+
 
  final  DeckLayoutOrm deckLayout;
 
@@ -943,7 +943,7 @@ as DeckLayoutOrm,
 
 class UpdateDeckLayoutStarted implements AssetManagementEvent {
   const UpdateDeckLayoutStarted(this.deckLayoutId, this.deckLayout);
-  
+
 
  final  String deckLayoutId;
  final  DeckLayoutOrm deckLayout;
@@ -1011,7 +1011,7 @@ as DeckLayoutOrm,
 
 class DeleteDeckLayoutStarted implements AssetManagementEvent {
   const DeleteDeckLayoutStarted(this.deckLayoutId);
-  
+
 
  final  String deckLayoutId;
 
@@ -1107,7 +1107,7 @@ $AssetManagementStateCopyWith(AssetManagementState _, $Res Function(AssetManagem
 
 class AssetManagementInitial implements AssetManagementState {
   const AssetManagementInitial();
-  
+
 
 
 
@@ -1139,7 +1139,7 @@ String toString() {
 
 class AssetManagementLoadInProgress implements AssetManagementState {
   const AssetManagementLoadInProgress();
-  
+
 
 
 
@@ -1170,8 +1170,8 @@ String toString() {
 
 
 class AssetManagementLoadSuccess implements AssetManagementState {
-  const AssetManagementLoadSuccess({required final  List<ManagedDeviceOrm> devices, required final  List<LabwareDefinitionCatalogOrm> labwareDefinitions, required final  List<LabwareInstanceOrm> labwareInstances, required final  List<DeckLayoutOrm> deckLayouts}): _devices = devices,_labwareDefinitions = labwareDefinitions,_labwareInstances = labwareInstances,_deckLayouts = deckLayouts;
-  
+  const AssetManagementLoadSuccess({required final  List<ManagedDeviceOrm> devices, required final  List<ResourceDefinitionCatalogOrm> resourceDefinitions, required final  List<ResourceInstanceOrm> resourceInstances, required final  List<DeckLayoutOrm> deckLayouts}): _devices = devices,_resourceDefinitions = resourceDefinitions,_resourceInstances = resourceInstances,_deckLayouts = deckLayouts;
+
 
  final  List<ManagedDeviceOrm> _devices;
  List<ManagedDeviceOrm> get devices {
@@ -1180,18 +1180,18 @@ class AssetManagementLoadSuccess implements AssetManagementState {
   return EqualUnmodifiableListView(_devices);
 }
 
- final  List<LabwareDefinitionCatalogOrm> _labwareDefinitions;
- List<LabwareDefinitionCatalogOrm> get labwareDefinitions {
-  if (_labwareDefinitions is EqualUnmodifiableListView) return _labwareDefinitions;
+ final  List<ResourceDefinitionCatalogOrm> _resourceDefinitions;
+ List<ResourceDefinitionCatalogOrm> get resourceDefinitions {
+  if (_resourceDefinitions is EqualUnmodifiableListView) return _resourceDefinitions;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_labwareDefinitions);
+  return EqualUnmodifiableListView(_resourceDefinitions);
 }
 
- final  List<LabwareInstanceOrm> _labwareInstances;
- List<LabwareInstanceOrm> get labwareInstances {
-  if (_labwareInstances is EqualUnmodifiableListView) return _labwareInstances;
+ final  List<ResourceInstanceOrm> _resourceInstances;
+ List<ResourceInstanceOrm> get resourceInstances {
+  if (_resourceInstances is EqualUnmodifiableListView) return _resourceInstances;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_labwareInstances);
+  return EqualUnmodifiableListView(_resourceInstances);
 }
 
  final  List<DeckLayoutOrm> _deckLayouts;
@@ -1212,16 +1212,16 @@ $AssetManagementLoadSuccessCopyWith<AssetManagementLoadSuccess> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssetManagementLoadSuccess&&const DeepCollectionEquality().equals(other._devices, _devices)&&const DeepCollectionEquality().equals(other._labwareDefinitions, _labwareDefinitions)&&const DeepCollectionEquality().equals(other._labwareInstances, _labwareInstances)&&const DeepCollectionEquality().equals(other._deckLayouts, _deckLayouts));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssetManagementLoadSuccess&&const DeepCollectionEquality().equals(other._devices, _devices)&&const DeepCollectionEquality().equals(other._resourceDefinitions, _resourceDefinitions)&&const DeepCollectionEquality().equals(other._resourceInstances, _resourceInstances)&&const DeepCollectionEquality().equals(other._deckLayouts, _deckLayouts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices),const DeepCollectionEquality().hash(_labwareDefinitions),const DeepCollectionEquality().hash(_labwareInstances),const DeepCollectionEquality().hash(_deckLayouts));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices),const DeepCollectionEquality().hash(_resourceDefinitions),const DeepCollectionEquality().hash(_resourceInstances),const DeepCollectionEquality().hash(_deckLayouts));
 
 @override
 String toString() {
-  return 'AssetManagementState.loadSuccess(devices: $devices, labwareDefinitions: $labwareDefinitions, labwareInstances: $labwareInstances, deckLayouts: $deckLayouts)';
+  return 'AssetManagementState.loadSuccess(devices: $devices, resourceDefinitions: $resourceDefinitions, resourceInstances: $resourceInstances, deckLayouts: $deckLayouts)';
 }
 
 
@@ -1232,7 +1232,7 @@ abstract mixin class $AssetManagementLoadSuccessCopyWith<$Res> implements $Asset
   factory $AssetManagementLoadSuccessCopyWith(AssetManagementLoadSuccess value, $Res Function(AssetManagementLoadSuccess) _then) = _$AssetManagementLoadSuccessCopyWithImpl;
 @useResult
 $Res call({
- List<ManagedDeviceOrm> devices, List<LabwareDefinitionCatalogOrm> labwareDefinitions, List<LabwareInstanceOrm> labwareInstances, List<DeckLayoutOrm> deckLayouts
+ List<ManagedDeviceOrm> devices, List<ResourceDefinitionCatalogOrm> resourceDefinitions, List<ResourceInstanceOrm> resourceInstances, List<DeckLayoutOrm> deckLayouts
 });
 
 
@@ -1249,12 +1249,12 @@ class _$AssetManagementLoadSuccessCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? devices = null,Object? labwareDefinitions = null,Object? labwareInstances = null,Object? deckLayouts = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? devices = null,Object? resourceDefinitions = null,Object? resourceInstances = null,Object? deckLayouts = null,}) {
   return _then(AssetManagementLoadSuccess(
 devices: null == devices ? _self._devices : devices // ignore: cast_nullable_to_non_nullable
-as List<ManagedDeviceOrm>,labwareDefinitions: null == labwareDefinitions ? _self._labwareDefinitions : labwareDefinitions // ignore: cast_nullable_to_non_nullable
-as List<LabwareDefinitionCatalogOrm>,labwareInstances: null == labwareInstances ? _self._labwareInstances : labwareInstances // ignore: cast_nullable_to_non_nullable
-as List<LabwareInstanceOrm>,deckLayouts: null == deckLayouts ? _self._deckLayouts : deckLayouts // ignore: cast_nullable_to_non_nullable
+as List<ManagedDeviceOrm>,resourceDefinitions: null == resourceDefinitions ? _self._resourceDefinitions : resourceDefinitions // ignore: cast_nullable_to_non_nullable
+as List<ResourceDefinitionCatalogOrm>,resourceInstances: null == resourceInstances ? _self._resourceInstances : resourceInstances // ignore: cast_nullable_to_non_nullable
+as List<ResourceInstanceOrm>,deckLayouts: null == deckLayouts ? _self._deckLayouts : deckLayouts // ignore: cast_nullable_to_non_nullable
 as List<DeckLayoutOrm>,
   ));
 }
@@ -1267,7 +1267,7 @@ as List<DeckLayoutOrm>,
 
 class AssetManagementLoadFailure implements AssetManagementState {
   const AssetManagementLoadFailure(this.error);
-  
+
 
  final  String error;
 
@@ -1333,7 +1333,7 @@ as String,
 
 class AssetManagementUpdateInProgress implements AssetManagementState {
   const AssetManagementUpdateInProgress();
-  
+
 
 
 
@@ -1365,7 +1365,7 @@ String toString() {
 
 class AssetManagementUpdateSuccess implements AssetManagementState {
   const AssetManagementUpdateSuccess();
-  
+
 
 
 
@@ -1397,7 +1397,7 @@ String toString() {
 
 class AssetManagementUpdateFailure implements AssetManagementState {
   const AssetManagementUpdateFailure(this.error);
-  
+
 
  final  String error;
 

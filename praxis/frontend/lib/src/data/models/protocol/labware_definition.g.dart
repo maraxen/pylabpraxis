@@ -1,14 +1,14 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'labware_definition.dart';
+part of 'resource_definition.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_LabwareDefinition _$LabwareDefinitionFromJson(
+_ResourceDefinition _$ResourceDefinitionFromJson(
   Map<String, dynamic> json,
-) => _LabwareDefinition(
+) => _ResourceDefinition(
   id: json['id'] as String,
   displayName: json['display_name'] as String?,
   version: (json['version'] as num?)?.toInt(),
@@ -29,7 +29,7 @@ _LabwareDefinition _$LabwareDefinitionFromJson(
   model: json['model'] as String?,
 );
 
-Map<String, dynamic> _$LabwareDefinitionToJson(_LabwareDefinition instance) =>
+Map<String, dynamic> _$ResourceDefinitionToJson(_ResourceDefinition instance) =>
     <String, dynamic>{
       'id': instance.id,
       'display_name': instance.displayName,

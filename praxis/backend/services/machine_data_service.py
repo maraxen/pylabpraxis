@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 async def add_or_update_machine(
   db: AsyncSession,
   user_friendly_name: str,
-  pylabrobot_class_name: str,
+  python_fqn: str,
   backend_config_json: Optional[Dict[str, Any]] = None,
   current_status: MachineStatusEnum = MachineStatusEnum.OFFLINE,
   status_details: Optional[str] = None,
@@ -46,7 +46,7 @@ async def add_or_update_machine(
   Args:
       db (AsyncSession): The database session.
       user_friendly_name (str): A human-readable name for the machine.
-      pylabrobot_class_name (str): The fully qualified name of the PyLabRobot
+      python_fqn (str): The fully qualified name of the PyLabRobot
           class for this machine (e.g., "pylabrobot.resources.LiquidHandler").
       backend_config_json (Optional[Dict[str, Any]], optional): JSON configuration
           for the PyLabRobot backend. Defaults to None.
@@ -112,7 +112,7 @@ async def add_or_update_machine(
     logger.critical(error_message)
     raise ValueError(error_message)
 
-  device_orm.pylabrobot_class_name = pylabrobot_class_name
+  device_orm.python_fqn = python_fqn
   device_orm.backend_config_json = backend_config_json
   device_orm.current_status = current_status
   device_orm.status_details = status_details
@@ -256,9 +256,7 @@ async def list_machines(
   if status:
     stmt = stmt.filter(MachineOrm.current_status == status)
   if pylabrobot_class_filter:
-    stmt = stmt.filter(
-      MachineOrm.pylabrobot_class_name.like(f"%{pylabrobot_class_filter}%")
-    )
+    stmt = stmt.filter(MachineOrm.python_fqn.like(f"%{pylabrobot_class_filter}%"))
   if workcell_id:
     stmt = stmt.filter(MachineOrm.workcell_id == workcell_id)
   if current_protocol_run_guid_filter:

@@ -48,8 +48,8 @@ A significant backend refactor is underway, focusing on a decorator-based, funct
 The backend (formerly "Praxis," now in the `backend` directory) serves as the central system for:
 * **Protocol Definition & Discovery:** Using a decorator-based system (`@protocol_function`) to define protocols as Python functions. A `ProtocolDiscoveryService` scans code, extracts metadata, and stores definitions in the database.
 * **Orchestration:** Managing the execution of these protocols, including state (`PraxisState`, `PraxisRunContext`), parameter handling, and interaction with the workcell.
-* **Asset Management:** Tracking physical (labware, devices) and logical assets.
-* **Workcell Interaction:** Managing live PyLabRobot objects representing instruments and labware on the deck.
+* **Asset Management:** Tracking physical (resource, devices) and logical assets.
+* **Workcell Interaction:** Managing live PyLabRobot objects representing instruments and resource on the deck.
 * **Data Logging:** Persistently logging protocol definitions, individual function calls within a run, and overall run status to the PostgreSQL database.
 
 It exposes a REST API via FastAPI for the Flutter frontend.
@@ -74,7 +74,7 @@ The Python backend logic is now contained within the `backend` directory and its
     * Database connection (`sqlalchemy.url`)
     * Redis connection (`redis_host`, `redis_port`)
     * Logging levels and handlers
-    * Paths for deck layouts, protocol definitions, labware definitions.
+    * Paths for deck layouts, protocol definitions, resource definitions.
     * Keycloak settings (`keycloak_server_url`, `keycloak_realm`, `keycloak_client_id`)
     * Workcell configuration (e.g., `workcell_config_path`)
 * `backend/configure.py`:
@@ -102,11 +102,11 @@ This module contains the fundamental logic for managing and operating the labora
 
 #### 2.1.2. `WorkcellRuntime` (`backend/core/workcell_runtime.py`) (Refactored Role)
 
-* **Purpose (Refactored):** Manages live PyLabRobot objects (backends, resources) by translating database representations (from `AssetManager`) into operational instances. Dynamically instantiates PLR backends and labware resources using their fully qualified Python class paths (FQNs). (Core instantiation logic implemented and refined).
+* **Purpose (Refactored):** Manages live PyLabRobot objects (backends, resources) by translating database representations (from `AssetManager`) into operational instances. Dynamically instantiates PLR backends and resource resources using their fully qualified Python class paths (FQNs). (Core instantiation logic implemented and refined).
 * **Key Responsibilities:**
     * Holds the live `Workcell` instance and its PyLabRobot instrument/resource objects.
     * Manages the overall state of the workcell (`WorkcellState` enum: `OFFLINE`, `ONLINE`, `INITIALIZING`, `IDLE`, `RUNNING`, `PAUSED`, `ERROR`, `MAINTENANCE`).
-    * Handles dynamic instantiation (using FQNs), initialization, and shutdown of PyLabRobot backends and labware. Corrected FQN handling for labware (using `python_fqn` from `LabwareDefinitionCatalogOrm`) is implemented.
+    * Handles dynamic instantiation (using FQNs), initialization, and shutdown of PyLabRobot backends and resource. Corrected FQN handling for resource (using `python_fqn` from `ResourceDefinitionCatalogOrm`) is implemented.
     * Provides methods for device actions (`execute_device_action`).
     * Loads and applies full deck configurations (`DeckConfigurationOrm`).
 * **TODOs:**
@@ -118,8 +118,8 @@ This module contains the fundamental logic for managing and operating the labora
     * `# TODO: Persist workcell state? (e.g., to Redis or DB)`
 * **Important Methods (Implemented, based on refactor):**
     * `initialize_device_backend(device_info: ManagedDeviceOrm) -> BaseBackend`
-    * `create_or_get_labware_plr_object(labware_definition: LabwareDefinitionCatalogOrm, labware_instance: Optional[LabwareInstanceOrm] = None) -> Resource` (Takes FQN from `labware_definition`, updates DB status via `asset_data_service`).
-    * `assign_labware_to_deck_slot(deck_slot, plr_labware_object)`
+    * `create_or_get_resource_plr_object(resource_definition: ResourceDefinitionCatalogOrm, resource_instance: Optional[ResourceInstanceOrm] = None) -> Resource` (Takes FQN from `resource_definition`, updates DB status via `asset_data_service`).
+    * `assign_resource_to_deck_slot(deck_slot, plr_resource_object)`
     * `get_instrument(self, instrument_name: str)`
 
 #### 2.1.3. `Orchestrator` (`backend/core/orchestrator.py`) (Refactored Role)
@@ -149,24 +149,24 @@ This module contains the fundamental logic for managing and operating the labora
 
 #### 2.1.4. `AssetManager` (`backend/core/asset_manager.py`) (Refactored Role)
 
-* **Purpose (Refactored):** Manages the inventory, status, and allocation of devices and labware. Bridges database definitions with live PyLabRobot objects via `WorkcellRuntime`. (Core functionalities refactored and implemented).
+* **Purpose (Refactored):** Manages the inventory, status, and allocation of devices and resource. Bridges database definitions with live PyLabRobot objects via `WorkcellRuntime`. (Core functionalities refactored and implemented).
 * **Key Responsibilities:**
     * Interfaces with `AssetDataService` for DB operations.
-    * `sync_pylabrobot_definitions()`: Populates the labware catalog by introspecting PyLabRobot (using direct module/class scanning, avoiding `ResourceLoader`). Updated to use `python_fqn` for labware definitions in `LabwareDefinitionCatalogOrm`.
-    * `acquire_device()` / `acquire_labware()`: Refactored to use `WorkcellRuntime` for PLR object instantiation and updates database status. An `acquire_asset` dispatcher method handles different asset types.
-    * `release_device()` / `release_labware()`: Basic methods implemented to update database status.
+    * `sync_pylabrobot_definitions()`: Populates the resource catalog by introspecting PyLabRobot (using direct module/class scanning, avoiding `ResourceLoader`). Updated to use `python_fqn` for resource definitions in `ResourceDefinitionCatalogOrm`.
+    * `acquire_device()` / `acquire_resource()`: Refactored to use `WorkcellRuntime` for PLR object instantiation and updates database status. An `acquire_asset` dispatcher method handles different asset types.
+    * `release_device()` / `release_resource()`: Basic methods implemented to update database status.
 * **TODOs:**
-    * `# TODO: AM-5A, AM-5B, AM-5D, AM-5E: Refine PLR introspection for sync_pylabrobot_definitions` (Ongoing: Heuristics for properties, complex `__init__`, external definitions. `python_fqn` usage for labware definition is a significant step).
-    * `# TODO: Implement versioning for labware definitions and deck layouts.`
+    * `# TODO: AM-5A, AM-5B, AM-5D, AM-5E: Refine PLR introspection for sync_pylabrobot_definitions` (Ongoing: Heuristics for properties, complex `__init__`, external definitions. `python_fqn` usage for resource definition is a significant step).
+    * `# TODO: Implement versioning for resource definitions and deck layouts.`
     * `# TODO: Add more sophisticated querying capabilities for assets.`
     * `# TODO: Integrate with inventory management features (e.g., reagent tracking, lot numbers).`
 * **Important Methods (Implemented, based on refactor):**
     * `sync_pylabrobot_definitions(self)`
     * `acquire_asset(self, asset_id: int, asset_type: str, slot_name: Optional[str] = None) -> Any` (Dispatcher method)
     * `acquire_device(self, device_id: int) -> Any`
-    * `acquire_labware(self, labware_id: int, slot_name: Optional[str] = None) -> Any`
+    * `acquire_resource(self, resource_id: int, slot_name: Optional[str] = None) -> Any`
     * `release_device(self, device_name: str)` (Basic implementation)
-    * `release_labware(self, labware_name: str)` (Basic implementation)
+    * `release_resource(self, resource_name: str)` (Basic implementation)
 
 #### 2.1.5. `Deck` (`backend/core/deck.py`)
 
@@ -176,7 +176,7 @@ This module contains the fundamental logic for managing and operating the labora
     * `Deck`: Manages `DeckSlot` objects, loads layout configurations.
 * **TODOs:**
     * `# TODO: Implement visual representation or interface for deck layout (backend provides data).`
-    * `# TODO: Add validation for labware compatibility with slots.`
+    * `# TODO: Add validation for resource compatibility with slots.`
     * **Future Goal:** Design schema to accommodate automatic deck layout generation based on workcell state and potential user prompting for setup.
 
 ### 2.2. `backend.api` - FastAPI Endpoints
@@ -185,7 +185,7 @@ Endpoints will need to align with the refactored services and data models, using
 
 #### 2.2.1. `backend.api.assets`
 
-* **Purpose:** Endpoints for managing assets (labware definitions, labware instances, deck layouts).
+* **Purpose:** Endpoints for managing assets (resource definitions, resource instances, deck layouts).
 * **Dependencies:** `AssetManager`, `AssetDataService`.
 * **TODOs:**
     * `# TODO: Add/Update endpoints for CRUD operations on all asset types, reflecting new ORM models.`
@@ -213,7 +213,7 @@ Endpoints will need to align with the refactored services and data models, using
 * **Purpose:** Endpoints for workcell status and potentially manual control.
 * **Dependencies:** `WorkcellRuntime`.
 * **TODOs:**
-    * `# COMPLETED (Phase 1): Implemented `GET /api/workcell/decks/{deck_id}/state` endpoint. Returns detailed state for a specific deck, including labware. Slot coordinates and overall deck dimensions are placeholders pending full `WorkcellRuntime` integration with live deck geometry.`
+    * `# COMPLETED (Phase 1): Implemented `GET /api/workcell/decks/{deck_id}/state` endpoint. Returns detailed state for a specific deck, including resource. Slot coordinates and overall deck dimensions are placeholders pending full `WorkcellRuntime` integration with live deck geometry.`
     * `# COMPLETED (Phase 1): Implemented WebSocket endpoint `/ws/workcell/decks/{deck_id}/updates`. Manages client connections per deck. Broadcasting actual state changes from `WorkcellRuntime`/`AssetManager` actions is a remaining integration task.`
     * `# COMPLETED: Defined Pydantic models (`DeckInfo`, `DeckStateResponse`, `DeckUpdateMessage`, etc.) in `praxis/backend/api/models/workcell_models.py` for Workcell API request/responses.`
     * `# TODO: Enhance `WorkcellRuntime.get_deck_state_representation` to populate actual slot coordinates and overall deck dimensions, potentially by interacting with live PyLabRobot Deck objects or more detailed `DeckConfigurationOrm` data.`
@@ -242,10 +242,10 @@ Endpoints will need to align with the refactored services and data models, using
 * **Purpose:** Defines SQLAlchemy ORM models for database tables. (All models inherit from a common `Base`, and table creation has been verified.)
 * **Key Files & Models:**
     * `asset_management_orm.py`:
-        * `LabwareDefinitionCatalogOrm` (formerly `LabwareDefinitionOrm`): Stores definitions of labware types, including `python_fqn` and PLR attribute details.
-        * `LabwareInstanceOrm`: Stores instances of specific labware items.
+        * `ResourceDefinitionCatalogOrm` (formerly `ResourceDefinitionOrm`): Stores definitions of resource types, including `python_fqn` and PLR attribute details.
+        * `ResourceInstanceOrm`: Stores instances of specific resource items.
         * `DeckLayoutOrm`: Stores configurations of deck layouts.
-        * `DeckSlotOrm`: Represents slots within a deck layout and their assigned labware.
+        * `DeckSlotOrm`: Represents slots within a deck layout and their assigned resource.
         * `ManagedDeviceOrm`: Stores definitions of managed devices, including the `praxis_device_category` field.
     * `user_orm.py`:
         * `UserOrm`: Represents user information, including new phone number fields.
@@ -254,7 +254,7 @@ Endpoints will need to align with the refactored services and data models, using
         * `ProtocolRunOrm`: Tracks instances of protocol executions, their parameters, and status.
         * `FunctionProtocolDefinitionOrm`, `FunctionCallLogOrm` (Implemented as per refactor, central to the new protocol system).
 * **TODOs:**
-    * `# TODO (asset_management_orm.py): Review relationships between tables (e.g., LabwareInstance to LabwareDefinitionCatalogOrm) for completeness after recent changes.`
+    * `# TODO (asset_management_orm.py): Review relationships between tables (e.g., ResourceInstance to ResourceDefinitionCatalogOrm) for completeness after recent changes.`
     * `# TODO (protocol_definitions_orm.py): Finalize schema for storing protocol run history and results (Ongoing, core elements like FunctionCallLogOrm are in place).`
 
 #### 2.3.2. `backend.db_services`
@@ -262,7 +262,7 @@ Endpoints will need to align with the refactored services and data models, using
 * **Purpose:** Provides a service layer for interacting with the database, abstracting direct ORM operations.
 * **Key Files:**
     * `asset_data_service.py` (`AssetDataService` class):
-        * Methods for CRUD operations on labware definitions, instances, and deck layouts.
+        * Methods for CRUD operations on resource definitions, instances, and deck layouts.
     * `protocol_data_service.py` (`ProtocolDataService` class):
         * Methods for CRUD operations on protocol definitions and runs.
 * **TODOs:**
@@ -343,7 +343,7 @@ This module is central to the new protocol system.
     3. description: str: A human-readable description.
     4. parameters: Optional[Dict[str, Type]]: (Likely inferred from type hints and param_metadata now) Defines expected parameters. Type hints in the function signature (e.g., param_name: int, state: PraxisState, state_dict: dict) are crucial.
     5. param_metadata: Optional[Dict[str, Dict[str, Any]]]: Additional metadata for parameters (e.g., descriptions, constraints, UI hints).
-    6. assets: Optional[List[Union[str, AssetRequirement]]]: Declares required assets (devices, labware). *This is evolving: asset requirements will increasingly be inferred from function argument type hints (e.g., pipette: Optional[Pipette], plate1: Plate) specifying PLR resources/machines.*
+    6. assets: Optional[List[Union[str, AssetRequirement]]]: Declares required assets (devices, resource). *This is evolving: asset requirements will increasingly be inferred from function argument type hints (e.g., pipette: Optional[Pipette], plate1: Plate) specifying PLR resources/machines.*
     7. constraints: Optional[Dict[str, Any]]: Defines operational constraints.
     8. is_top_level: bool = False: Flag indicating if this function can be initiated as a top-level protocol run.
     9. solo_execution: bool = False: Flag indicating if this protocol requires exclusive access to the workcell.
@@ -485,7 +485,7 @@ This package contains modules with pre-built, reusable functions for common lab 
 * Medium Priority:
   * Clarify/Refactor backend.protocol.parameter.py: Determine its final role.
   * Refine backend.utils.notify.py: Adapt for parameter-driven notification details.
-  * Address backend.utils.plr_inspection.py: Plan and begin improvements. (Partially addressed by `python_fqn` usage in `LabwareDefinitionCatalogOrm`).
+  * Address backend.utils.plr_inspection.py: Plan and begin improvements. (Partially addressed by `python_fqn` usage in `ResourceDefinitionCatalogOrm`).
 * Documentation:
   * Update backend/protocol/README.md to reflect the new decorator-based system and JSONSchema validation process. (Partially addressed by this ROADMAP update).
 
@@ -610,7 +610,7 @@ This layer is responsible for fetching, storing, and managing data for the appli
       * protocol_info.dart: Basic information about a protocol.
       * protocol_details.dart: Detailed information, including parameters, assets, steps.
       * parameter_config.dart, parameter_constraints.dart, parameter_group.dart: Describe protocol parameters.
-      * protocol_asset.dart, labware_definition.dart, deck_layout.dart: Describe assets and deck configurations.
+      * protocol_asset.dart, resource_definition.dart, deck_layout.dart: Describe assets and deck configurations.
       * protocol_prepare_request.dart: Model for sending protocol preparation requests.
       * protocol_status_response.dart: Model for receiving protocol run status.
       * protocol_step.dart: Represents a step within a protocol.
@@ -767,7 +767,7 @@ The frontend/lib/src/features/ directory organizes the application into distinct
                     *   States: `AssetManagementInitial`, `AssetManagementLoadInProgress`, `AssetManagementLoadSuccess`, `AssetManagementLoadFailure`, etc.
                 *   Depends on `AssetApiServiceImpl` (from `frontend/lib/src/data/services/asset_api_service.dart`) which has been implemented with stubbed methods for asset API endpoints.
             *   **Presentation:**
-                *   `screens/assetManagement_screen.dart` (AssetManagementScreen): Basic UI structure implemented with "Instruments", "Labware Instances", and "Labware Definitions" tabs. Placeholder content for each tab for now.
+                *   `screens/assetManagement_screen.dart` (AssetManagementScreen): Basic UI structure implemented with "Instruments", "Resource Instances", and "Resource Definitions" tabs. Placeholder content for each tab for now.
 
 ### **2.5. Settings (**frontend/lib/src/features/settings/**)**
 
@@ -819,8 +819,8 @@ This feature uses multiple BLoCs, each managing a part of the workflow or a spec
   * Uses ParameterValidationService.
   * Used by ParameterConfigurationScreen.
 * DeckConfigurationBloc (deck_configuration_bloc/):
-  * Purpose: Manages the state of deck layout selection and labware assignment to deck slots.
-  * Events: LoadDeckLayouts, SelectDeckLayout (String layoutId), AssignLabwareToSlot (String slotId, String labwareId).
+  * Purpose: Manages the state of deck layout selection and resource assignment to deck slots.
+  * Events: LoadDeckLayouts, SelectDeckLayout (String layoutId), AssignResourceToSlot (String slotId, String resourceId).
   * States: DeckConfigurationInitial, DeckConfigurationLoading, DeckConfigurationLoaded (List<DeckLayout> layouts, DeckLayout? selectedLayout, Map<String, String> slotAssignments), DeckConfigurationError.
   * Used by DeckConfigurationScreen.
 * ProtocolAssetsBloc (protocol_assets_bloc/):
@@ -864,7 +864,7 @@ This feature uses multiple BLoCs, each managing a part of the workflow or a spec
   * Uses widgets from dialogs/ (e.g., StringParameterEditScreen, DictionaryParameterEditScreen, ArrayParameterEditDialog, BasicParameterEditDialog) for editing different parameter types.
   * Implements validation logic.
 * screens/deck_configuration_screen.dart (DeckConfigurationScreen):
-  * Allows users to select a deck layout and assign labware to slots (using DeckConfigurationBloc).
+  * Allows users to select a deck layout and assign resource to slots (using DeckConfigurationBloc).
   * May visually represent the deck.
 * screens/asset_assignment_screen.dart (AssetAssignmentScreen):
   * Allows users to map required protocol assets to specific physical assets from inventory (using ProtocolAssetsBloc).

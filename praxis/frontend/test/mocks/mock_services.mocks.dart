@@ -8,9 +8,9 @@ import 'dart:async' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart'
     as _i5;
-import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart'
+import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart'
     as _i3;
-import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart'
+import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart'
     as _i4;
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart'
     as _i2;
@@ -41,15 +41,17 @@ class _FakeManagedDeviceOrm_0 extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakeLabwareDefinitionCatalogOrm_1 extends _i1.SmartFake
-    implements _i3.LabwareDefinitionCatalogOrm {
-  _FakeLabwareDefinitionCatalogOrm_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
+class _FakeResourceDefinitionCatalogOrm_1 extends _i1.SmartFake
+    implements _i3.ResourceDefinitionCatalogOrm {
+  _FakeResourceDefinitionCatalogOrm_1(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(parent, parentInvocation);
 }
 
-class _FakeLabwareInstanceOrm_2 extends _i1.SmartFake
-    implements _i4.LabwareInstanceOrm {
-  _FakeLabwareInstanceOrm_2(Object parent, Invocation parentInvocation)
+class _FakeResourceInstanceOrm_2 extends _i1.SmartFake
+    implements _i4.ResourceInstanceOrm {
+  _FakeResourceInstanceOrm_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -160,130 +162,132 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
           as _i8.Future<void>);
 
   @override
-  _i8.Future<List<_i3.LabwareDefinitionCatalogOrm>> getLabwareDefinitions() =>
+  _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>> getResourceDefinitions() =>
       (super.noSuchMethod(
-            Invocation.method(#getLabwareDefinitions, []),
+            Invocation.method(#getResourceDefinitions, []),
             returnValue:
-                _i8.Future<List<_i3.LabwareDefinitionCatalogOrm>>.value(
-                  <_i3.LabwareDefinitionCatalogOrm>[],
+                _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>>.value(
+                  <_i3.ResourceDefinitionCatalogOrm>[],
                 ),
           )
-          as _i8.Future<List<_i3.LabwareDefinitionCatalogOrm>>);
+          as _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>>);
 
   @override
-  _i8.Future<_i3.LabwareDefinitionCatalogOrm> createLabwareDefinition(
-    _i3.LabwareDefinitionCatalogOrm? labwareDefinition,
+  _i8.Future<_i3.ResourceDefinitionCatalogOrm> createResourceDefinition(
+    _i3.ResourceDefinitionCatalogOrm? resourceDefinition,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#createLabwareDefinition, [labwareDefinition]),
-            returnValue: _i8.Future<_i3.LabwareDefinitionCatalogOrm>.value(
-              _FakeLabwareDefinitionCatalogOrm_1(
+            Invocation.method(#createResourceDefinition, [resourceDefinition]),
+            returnValue: _i8.Future<_i3.ResourceDefinitionCatalogOrm>.value(
+              _FakeResourceDefinitionCatalogOrm_1(
                 this,
-                Invocation.method(#createLabwareDefinition, [
-                  labwareDefinition,
+                Invocation.method(#createResourceDefinition, [
+                  resourceDefinition,
                 ]),
               ),
             ),
           )
-          as _i8.Future<_i3.LabwareDefinitionCatalogOrm>);
+          as _i8.Future<_i3.ResourceDefinitionCatalogOrm>);
 
   @override
-  _i8.Future<_i3.LabwareDefinitionCatalogOrm> updateLabwareDefinition(
-    String? labwareDefinitionId,
-    _i3.LabwareDefinitionCatalogOrm? labwareDefinition,
+  _i8.Future<_i3.ResourceDefinitionCatalogOrm> updateResourceDefinition(
+    String? resourceDefinitionId,
+    _i3.ResourceDefinitionCatalogOrm? resourceDefinition,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#updateLabwareDefinition, [
-              labwareDefinitionId,
-              labwareDefinition,
+            Invocation.method(#updateResourceDefinition, [
+              resourceDefinitionId,
+              resourceDefinition,
             ]),
-            returnValue: _i8.Future<_i3.LabwareDefinitionCatalogOrm>.value(
-              _FakeLabwareDefinitionCatalogOrm_1(
+            returnValue: _i8.Future<_i3.ResourceDefinitionCatalogOrm>.value(
+              _FakeResourceDefinitionCatalogOrm_1(
                 this,
-                Invocation.method(#updateLabwareDefinition, [
-                  labwareDefinitionId,
-                  labwareDefinition,
+                Invocation.method(#updateResourceDefinition, [
+                  resourceDefinitionId,
+                  resourceDefinition,
                 ]),
               ),
             ),
           )
-          as _i8.Future<_i3.LabwareDefinitionCatalogOrm>);
+          as _i8.Future<_i3.ResourceDefinitionCatalogOrm>);
 
   @override
-  _i8.Future<void> deleteLabwareDefinition(String? labwareDefinitionId) =>
+  _i8.Future<void> deleteResourceDefinition(String? resourceDefinitionId) =>
       (super.noSuchMethod(
-            Invocation.method(#deleteLabwareDefinition, [labwareDefinitionId]),
+            Invocation.method(#deleteResourceDefinition, [
+              resourceDefinitionId,
+            ]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
           as _i8.Future<void>);
 
   @override
-  _i8.Future<List<_i4.LabwareInstanceOrm>> getLabwareInstances() =>
+  _i8.Future<List<_i4.ResourceInstanceOrm>> getResourceInstances() =>
       (super.noSuchMethod(
-            Invocation.method(#getLabwareInstances, []),
-            returnValue: _i8.Future<List<_i4.LabwareInstanceOrm>>.value(
-              <_i4.LabwareInstanceOrm>[],
+            Invocation.method(#getResourceInstances, []),
+            returnValue: _i8.Future<List<_i4.ResourceInstanceOrm>>.value(
+              <_i4.ResourceInstanceOrm>[],
             ),
           )
-          as _i8.Future<List<_i4.LabwareInstanceOrm>>);
+          as _i8.Future<List<_i4.ResourceInstanceOrm>>);
 
   @override
-  _i8.Future<_i4.LabwareInstanceOrm> createLabwareInstance(
-    _i4.LabwareInstanceOrm? labwareInstance,
+  _i8.Future<_i4.ResourceInstanceOrm> createResourceInstance(
+    _i4.ResourceInstanceOrm? resourceInstance,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#createLabwareInstance, [labwareInstance]),
-            returnValue: _i8.Future<_i4.LabwareInstanceOrm>.value(
-              _FakeLabwareInstanceOrm_2(
+            Invocation.method(#createResourceInstance, [resourceInstance]),
+            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
+              _FakeResourceInstanceOrm_2(
                 this,
-                Invocation.method(#createLabwareInstance, [labwareInstance]),
+                Invocation.method(#createResourceInstance, [resourceInstance]),
               ),
             ),
           )
-          as _i8.Future<_i4.LabwareInstanceOrm>);
+          as _i8.Future<_i4.ResourceInstanceOrm>);
 
   @override
-  _i8.Future<_i4.LabwareInstanceOrm> getLabwareInstanceById(
+  _i8.Future<_i4.ResourceInstanceOrm> getResourceInstanceById(
     String? instanceId,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#getLabwareInstanceById, [instanceId]),
-            returnValue: _i8.Future<_i4.LabwareInstanceOrm>.value(
-              _FakeLabwareInstanceOrm_2(
+            Invocation.method(#getResourceInstanceById, [instanceId]),
+            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
+              _FakeResourceInstanceOrm_2(
                 this,
-                Invocation.method(#getLabwareInstanceById, [instanceId]),
+                Invocation.method(#getResourceInstanceById, [instanceId]),
               ),
             ),
           )
-          as _i8.Future<_i4.LabwareInstanceOrm>);
+          as _i8.Future<_i4.ResourceInstanceOrm>);
 
   @override
-  _i8.Future<_i4.LabwareInstanceOrm> updateLabwareInstance(
+  _i8.Future<_i4.ResourceInstanceOrm> updateResourceInstance(
     String? instanceId,
-    _i4.LabwareInstanceOrm? labwareInstance,
+    _i4.ResourceInstanceOrm? resourceInstance,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#updateLabwareInstance, [
+            Invocation.method(#updateResourceInstance, [
               instanceId,
-              labwareInstance,
+              resourceInstance,
             ]),
-            returnValue: _i8.Future<_i4.LabwareInstanceOrm>.value(
-              _FakeLabwareInstanceOrm_2(
+            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
+              _FakeResourceInstanceOrm_2(
                 this,
-                Invocation.method(#updateLabwareInstance, [
+                Invocation.method(#updateResourceInstance, [
                   instanceId,
-                  labwareInstance,
+                  resourceInstance,
                 ]),
               ),
             ),
           )
-          as _i8.Future<_i4.LabwareInstanceOrm>);
+          as _i8.Future<_i4.ResourceInstanceOrm>);
 
   @override
-  _i8.Future<void> deleteLabwareInstance(String? instanceId) =>
+  _i8.Future<void> deleteResourceInstance(String? instanceId) =>
       (super.noSuchMethod(
-            Invocation.method(#deleteLabwareInstance, [instanceId]),
+            Invocation.method(#deleteResourceInstance, [instanceId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )

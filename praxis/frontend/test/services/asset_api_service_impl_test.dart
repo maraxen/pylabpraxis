@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/core/network/dio_client.dart';
@@ -328,8 +328,8 @@ void main() {
     });
   });
 
-  group('LabwareDefinitionCatalogOrm - CRUD', () {
-    final labwareDefJson = {
+  group('ResourceDefinitionCatalogOrm - CRUD', () {
+    final resourceDefJson = {
       'pylabrobot_definition_name': 'test_plate',
       'python_fqn': 'pylabrobot.resources.Plate',
       'size_x_mm': 127.0,
@@ -339,39 +339,41 @@ void main() {
       'model': 'TestModel123',
       // other fields as needed by your model ...
     };
-    final labwareDefOrm = LabwareDefinitionCatalogOrm.fromJson(labwareDefJson);
-    final assetResponseJsonForLabwareDef = {
-      'name': labwareDefOrm.pylabrobotDefinitionName,
-      'type': 'labware', // or 'resource' depending on implementation
-      'metadata': labwareDefJson, // The full labware definition
+    final resourceDefOrm = ResourceDefinitionCatalogOrm.fromJson(
+      resourceDefJson,
+    );
+    final assetResponseJsonForResourceDef = {
+      'name': resourceDefOrm.pylabrobotDefinitionName,
+      'type': 'resource', // or 'resource' depending on implementation
+      'metadata': resourceDefJson, // The full resource definition
       'is_available': true,
-      'description': labwareDefOrm.description,
+      'description': resourceDefOrm.description,
     };
 
-    group('getLabwareDefinitions', () {
-      test('returns list of LabwareDefinitionCatalogOrm on success', () async {
-        // Assumes /api/assets/types/labware returns AssetResponse which needs mapping
+    group('getResourceDefinitions', () {
+      test('returns list of ResourceDefinitionCatalogOrm on success', () async {
+        // Assumes /api/assets/types/resource returns AssetResponse which needs mapping
         final responseData = [
-          assetResponseJsonForLabwareDef,
-          assetResponseJsonForLabwareDef,
+          assetResponseJsonForResourceDef,
+          assetResponseJsonForResourceDef,
         ];
-        when(mockDio.get('/api/assets/types/labware')).thenAnswer(
+        when(mockDio.get('/api/assets/types/resource')).thenAnswer(
           (_) async => Response(
-            requestOptions: RequestOptions(path: '/api/assets/types/labware'),
+            requestOptions: RequestOptions(path: '/api/assets/types/resource'),
             data: responseData,
             statusCode: 200,
           ),
         );
 
-        final result = await assetApiService.getLabwareDefinitions();
+        final result = await assetApiService.getResourceDefinitions();
 
-        expect(result, isA<List<LabwareDefinitionCatalogOrm>>());
+        expect(result, isA<List<ResourceDefinitionCatalogOrm>>());
         expect(result.length, 2);
         expect(
           result[0].pylabrobotDefinitionName,
-          labwareDefOrm.pylabrobotDefinitionName,
+          resourceDefOrm.pylabrobotDefinitionName,
         );
-        verify(mockDio.get('/api/assets/types/labware')).called(1);
+        verify(mockDio.get('/api/assets/types/resource')).called(1);
       });
 
       test(
@@ -379,27 +381,29 @@ void main() {
         () async {
           final malformedAssetResponse = {
             'name': 'bad_def',
-            'type': 'labware',
+            'type': 'resource',
             'metadata': "not_a_map", // Incorrect metadata
             'is_available': true,
           };
-          when(mockDio.get('/api/assets/types/labware')).thenAnswer(
+          when(mockDio.get('/api/assets/types/resource')).thenAnswer(
             (_) async => Response(
-              requestOptions: RequestOptions(path: '/api/assets/types/labware'),
+              requestOptions: RequestOptions(
+                path: '/api/assets/types/resource',
+              ),
               data: [malformedAssetResponse],
               statusCode: 200,
             ),
           );
           expect(
-            () => assetApiService.getLabwareDefinitions(),
+            () => assetApiService.getResourceDefinitions(),
             throwsA(isA<DataParsingException>()),
           );
         },
       );
     });
 
-    group('createLabwareDefinition', () {
-      test('returns LabwareDefinitionCatalogOrm on success', () async {
+    group('createResourceDefinition', () {
+      test('returns ResourceDefinitionCatalogOrm on success', () async {
         // Assumes /api/assets/resource returns AssetResponse which needs mapping
         when(
           mockDio.post('/api/assets/resource', data: anyNamed('data')),
@@ -407,19 +411,19 @@ void main() {
           (_) async => Response(
             requestOptions: RequestOptions(path: '/api/assets/resource'),
             data:
-                assetResponseJsonForLabwareDef, // Backend returns AssetResponse
+                assetResponseJsonForResourceDef, // Backend returns AssetResponse
             statusCode: 200,
           ),
         );
 
-        final result = await assetApiService.createLabwareDefinition(
-          labwareDefOrm,
+        final result = await assetApiService.createResourceDefinition(
+          resourceDefOrm,
         );
 
-        expect(result, isA<LabwareDefinitionCatalogOrm>());
+        expect(result, isA<ResourceDefinitionCatalogOrm>());
         expect(
           result.pylabrobotDefinitionName,
-          labwareDefOrm.pylabrobotDefinitionName,
+          resourceDefOrm.pylabrobotDefinitionName,
         );
         verify(
           mockDio.post('/api/assets/resource', data: anyNamed('data')),
@@ -429,26 +433,26 @@ void main() {
 
     // Update and Delete are placeholders, so testing them might be limited
     // to verifying the call and mock error handling for now.
-    group('updateLabwareDefinition (placeholder)', () {
+    group('updateResourceDefinition (placeholder)', () {
       test(
         'throws ApiException as it is a placeholder for non-existent endpoint',
         () async {
           // Simulate Dio throwing an error when a non-existent endpoint is called
           when(
             mockDio.put(
-              '/api/assets/labware_definitions/some_id',
+              '/api/assets/resource_definitions/some_id',
               data: anyNamed('data'),
             ),
           ).thenThrow(
             createDioError(
               statusCode: 501,
-              path: '/api/assets/labware_definitions/some_id',
+              path: '/api/assets/resource_definitions/some_id',
             ),
           );
           expect(
-            () => assetApiService.updateLabwareDefinition(
+            () => assetApiService.updateResourceDefinition(
               "some_id",
-              labwareDefOrm,
+              resourceDefOrm,
             ),
             throwsA(isA<ApiException>()),
           );
@@ -456,20 +460,20 @@ void main() {
       );
     });
 
-    group('deleteLabwareDefinition (placeholder)', () {
+    group('deleteResourceDefinition (placeholder)', () {
       test(
         'throws ApiException as it is a placeholder for non-existent endpoint',
         () async {
           when(
-            mockDio.delete('/api/assets/labware_definitions/some_id'),
+            mockDio.delete('/api/assets/resource_definitions/some_id'),
           ).thenThrow(
             createDioError(
               statusCode: 501,
-              path: '/api/assets/labware_definitions/some_id',
+              path: '/api/assets/resource_definitions/some_id',
             ),
           );
           expect(
-            () => assetApiService.deleteLabwareDefinition("some_id"),
+            () => assetApiService.deleteResourceDefinition("some_id"),
             throwsA(isA<ApiException>()),
           );
         },
@@ -477,12 +481,12 @@ void main() {
     });
   });
 
-  group('LabwareInstanceOrm - CRUD', () {
+  group('ResourceInstanceOrm - CRUD', () {
     final inventoryDataJson = {
       'praxis_inventory_schema_version': '1.0',
       'consumable_state': 'new',
     };
-    final labwareInstanceJson = {
+    final resourceInstanceJson = {
       'id': 1,
       'user_assigned_name': 'Test LW Instance 1',
       'pylabrobot_definition_name': 'test_plate_def',
@@ -492,64 +496,69 @@ void main() {
       'workspaceId':
           'ws1', // Assuming workspaceId is part of your frontend model
     };
-    final labwareInstanceOrm = LabwareInstanceOrm.fromJson(labwareInstanceJson);
+    final resourceInstanceOrm = ResourceInstanceOrm.fromJson(
+      resourceInstanceJson,
+    );
 
-    group('getLabwareInstances (placeholder)', () {
+    group('getResourceInstances (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        when(mockDio.get('/api/assets/labware_instances')).thenThrow(
+        when(mockDio.get('/api/assets/resource_instances')).thenThrow(
           createDioError(
             statusCode: 501,
-            path: '/api/assets/labware_instances',
+            path: '/api/assets/resource_instances',
           ),
         );
         expect(
-          () => assetApiService.getLabwareInstances(),
+          () => assetApiService.getResourceInstances(),
           throwsA(isA<ApiException>()),
         );
       });
     });
 
-    group('createLabwareInstance (placeholder)', () {
+    group('createResourceInstance (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
         when(
-          mockDio.post('/api/assets/labware_instances', data: anyNamed('data')),
+          mockDio.post(
+            '/api/assets/resource_instances',
+            data: anyNamed('data'),
+          ),
         ).thenThrow(
           createDioError(
             statusCode: 501,
-            path: '/api/assets/labware_instances',
+            path: '/api/assets/resource_instances',
           ),
         );
         expect(
-          () => assetApiService.createLabwareInstance(labwareInstanceOrm),
+          () => assetApiService.createResourceInstance(resourceInstanceOrm),
           throwsA(isA<ApiException>()),
         );
       });
     });
 
-    group('getLabwareInstanceById', () {
+    group('getResourceInstanceById', () {
       test(
-        'returns LabwareInstanceOrm (from inventory data) on success',
+        'returns ResourceInstanceOrm (from inventory data) on success',
         () async {
           final instanceId =
-              labwareInstanceOrm.id!
+              resourceInstanceOrm.id!
                   .toString(); // Assuming ID is non-null for a created instance
           when(
-            mockDio.get('/api/assets/labware_instances/$instanceId/inventory'),
+            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
           ).thenAnswer(
             (_) async => Response(
               requestOptions: RequestOptions(
-                path: '/api/assets/labware_instances/$instanceId/inventory',
+                path: '/api/assets/resource_instances/$instanceId/inventory',
               ),
               data: inventoryDataJson,
               statusCode: 200,
             ),
           );
 
-          final result = await assetApiService.getLabwareInstanceById(
+          final result = await assetApiService.getResourceInstanceById(
             instanceId,
           );
 
-          expect(result, isA<LabwareInstanceOrm>());
+          expect(result, isA<ResourceInstanceOrm>());
           expect(
             result.id.toString(),
             instanceId,
@@ -560,72 +569,72 @@ void main() {
           );
           expect(result.userAssignedName, 'Instance $instanceId (Inventory)');
           verify(
-            mockDio.get('/api/assets/labware_instances/$instanceId/inventory'),
+            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
           ).called(1);
         },
       );
 
       test(
-        'throws ApiException on API error for getLabwareInstanceById',
+        'throws ApiException on API error for getResourceInstanceById',
         () async {
-          final instanceId = labwareInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.id!.toString();
           when(
-            mockDio.get('/api/assets/labware_instances/$instanceId/inventory'),
+            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
           ).thenThrow(
             createDioError(
               statusCode: 404,
-              path: '/api/assets/labware_instances/$instanceId/inventory',
+              path: '/api/assets/resource_instances/$instanceId/inventory',
             ),
           );
           expect(
-            () => assetApiService.getLabwareInstanceById(instanceId),
+            () => assetApiService.getResourceInstanceById(instanceId),
             throwsA(isA<ApiException>()),
           );
         },
       );
     });
 
-    group('updateLabwareInstance', () {
+    group('updateResourceInstance', () {
       test(
-        'returns LabwareInstanceOrm with updated inventory on success',
+        'returns ResourceInstanceOrm with updated inventory on success',
         () async {
-          final instanceId = labwareInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.id!.toString();
           final updatedInventoryJson = {
             ...inventoryDataJson,
             'consumable_state': 'used',
             'last_updated_at': DateTime.now().toIso8601String(),
           };
 
-          // Ensure the labwareInstanceOrm being updated has non-null inventoryData
+          // Ensure the resourceInstanceOrm being updated has non-null inventoryData
           final updatableInstance =
-              labwareInstanceOrm.inventoryData == null
-                  ? LabwareInstanceOrm.fromJson({
-                    ...labwareInstanceJson,
+              resourceInstanceOrm.inventoryData == null
+                  ? ResourceInstanceOrm.fromJson({
+                    ...resourceInstanceJson,
                     'properties_json': inventoryDataJson,
                   })
-                  : labwareInstanceOrm;
+                  : resourceInstanceOrm;
 
           when(
             mockDio.put(
-              '/api/assets/labware_instances/$instanceId/inventory',
+              '/api/assets/resource_instances/$instanceId/inventory',
               data: anyNamed('data'),
             ),
           ).thenAnswer(
             (_) async => Response(
               requestOptions: RequestOptions(
-                path: '/api/assets/labware_instances/$instanceId/inventory',
+                path: '/api/assets/resource_instances/$instanceId/inventory',
               ),
               data: updatedInventoryJson,
               statusCode: 200,
             ),
           );
 
-          final result = await assetApiService.updateLabwareInstance(
+          final result = await assetApiService.updateResourceInstance(
             instanceId,
             updatableInstance,
           );
 
-          expect(result, isA<LabwareInstanceOrm>());
+          expect(result, isA<ResourceInstanceOrm>());
           expect(result.id.toString(), instanceId);
           expect(
             result.inventoryData?.consumableState,
@@ -633,7 +642,7 @@ void main() {
           );
           verify(
             mockDio.put(
-              '/api/assets/labware_instances/$instanceId/inventory',
+              '/api/assets/resource_instances/$instanceId/inventory',
               data: anyNamed('data'),
             ),
           ).called(1);
@@ -641,9 +650,9 @@ void main() {
       );
 
       test(
-        'throws ArgumentError if inventoryData is null for updateLabwareInstance',
+        'throws ArgumentError if inventoryData is null for updateResourceInstance',
         () async {
-          final instanceWithoutInventory = LabwareInstanceOrm(
+          final instanceWithoutInventory = ResourceInstanceOrm(
             id: 2, // Make sure ID is int if comparing with int
             userAssignedName: "No Inventory",
             pylabrobotDefinitionName: "some_def",
@@ -651,7 +660,7 @@ void main() {
             workspaceId: "ws2", // Ensure all required fields are present
           );
           expect(
-            () => assetApiService.updateLabwareInstance(
+            () => assetApiService.updateResourceInstance(
               "2",
               instanceWithoutInventory,
             ),
@@ -661,30 +670,30 @@ void main() {
       );
 
       test(
-        'throws ApiException on API error for updateLabwareInstance',
+        'throws ApiException on API error for updateResourceInstance',
         () async {
-          final instanceId = labwareInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.id!.toString();
           final updatableInstance =
-              labwareInstanceOrm.inventoryData == null
-                  ? LabwareInstanceOrm.fromJson({
-                    ...labwareInstanceJson,
+              resourceInstanceOrm.inventoryData == null
+                  ? ResourceInstanceOrm.fromJson({
+                    ...resourceInstanceJson,
                     'properties_json': inventoryDataJson,
                   })
-                  : labwareInstanceOrm;
+                  : resourceInstanceOrm;
 
           when(
             mockDio.put(
-              '/api/assets/labware_instances/$instanceId/inventory',
+              '/api/assets/resource_instances/$instanceId/inventory',
               data: anyNamed('data'),
             ),
           ).thenThrow(
             createDioError(
               statusCode: 500,
-              path: '/api/assets/labware_instances/$instanceId/inventory',
+              path: '/api/assets/resource_instances/$instanceId/inventory',
             ),
           );
           expect(
-            () => assetApiService.updateLabwareInstance(
+            () => assetApiService.updateResourceInstance(
               instanceId,
               updatableInstance,
             ),
@@ -694,19 +703,19 @@ void main() {
       );
     });
 
-    group('deleteLabwareInstance (placeholder)', () {
+    group('deleteResourceInstance (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final instanceId = labwareInstanceOrm.id!.toString();
+        final instanceId = resourceInstanceOrm.id!.toString();
         when(
-          mockDio.delete('/api/assets/labware_instances/$instanceId'),
+          mockDio.delete('/api/assets/resource_instances/$instanceId'),
         ).thenThrow(
           createDioError(
             statusCode: 501,
-            path: '/api/assets/labware_instances/$instanceId',
+            path: '/api/assets/resource_instances/$instanceId',
           ),
         );
         expect(
-          () => assetApiService.deleteLabwareInstance(instanceId),
+          () => assetApiService.deleteResourceInstance(instanceId),
           throwsA(isA<ApiException>()),
         );
       });
@@ -718,7 +727,7 @@ void main() {
       'id': 1,
       'deck_configuration_id': 1,
       'slot_name': 'A1',
-      'labware_instance_id': 1,
+      'resource_instance_id': 1,
     };
     final deckLayoutJson = {
       'id': 1, // Ensure ID is int

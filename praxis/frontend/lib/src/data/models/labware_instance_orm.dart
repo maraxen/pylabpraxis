@@ -1,5 +1,5 @@
-// Corresponds to LabwareInventoryReagentItem in backend
-class LabwareInventoryReagentItem {
+// Corresponds to ResourceInventoryReagentItem in backend
+class ResourceInventoryReagentItem {
   final String reagentId;
   final String? reagentName;
   final String? lotNumber;
@@ -17,7 +17,7 @@ class LabwareInventoryReagentItem {
   final bool? quantityUnitIsVolume;
   final Map<String, dynamic>? customFields;
 
-  LabwareInventoryReagentItem({
+  ResourceInventoryReagentItem({
     required this.reagentId,
     this.reagentName,
     this.lotNumber,
@@ -33,8 +33,8 @@ class LabwareInventoryReagentItem {
     this.customFields,
   });
 
-  factory LabwareInventoryReagentItem.fromJson(Map<String, dynamic> json) {
-    return LabwareInventoryReagentItem(
+  factory ResourceInventoryReagentItem.fromJson(Map<String, dynamic> json) {
+    return ResourceInventoryReagentItem(
       reagentId: json['reagent_id'] as String,
       reagentName: json['reagent_name'] as String?,
       lotNumber: json['lot_number'] as String?,
@@ -70,22 +70,22 @@ class LabwareInventoryReagentItem {
   }
 }
 
-// Corresponds to LabwareInventoryItemCount in backend
-class LabwareInventoryItemCount {
+// Corresponds to ResourceInventoryItemCount in backend
+class ResourceInventoryItemCount {
   final String? itemType; // "tip", "tube", "well_used"
   final int? initialMaxItems;
   final int? currentAvailableItems;
   final List<String>? positionsUsed;
 
-  LabwareInventoryItemCount({
+  ResourceInventoryItemCount({
     this.itemType,
     this.initialMaxItems,
     this.currentAvailableItems,
     this.positionsUsed,
   });
 
-  factory LabwareInventoryItemCount.fromJson(Map<String, dynamic> json) {
-    return LabwareInventoryItemCount(
+  factory ResourceInventoryItemCount.fromJson(Map<String, dynamic> json) {
+    return ResourceInventoryItemCount(
       itemType: json['item_type'] as String?,
       initialMaxItems: json['initial_max_items'] as int?,
       currentAvailableItems: json['current_available_items'] as int?,
@@ -106,18 +106,18 @@ class LabwareInventoryItemCount {
   }
 }
 
-// Corresponds to LabwareInventoryDataIn / LabwareInventoryDataOut in backend
-class LabwareInventoryData {
+// Corresponds to ResourceInventoryDataIn / ResourceInventoryDataOut in backend
+class ResourceInventoryData {
   final String? praxisInventorySchemaVersion;
-  final List<LabwareInventoryReagentItem>? reagents;
-  final LabwareInventoryItemCount? itemCount;
+  final List<ResourceInventoryReagentItem>? reagents;
+  final ResourceInventoryItemCount? itemCount;
   final String?
   consumableState; // "new", "used", "partially_used", "empty", "contaminated"
   final String? lastUpdatedBy; // User ID or name
   final String? inventoryNotes;
   final String? lastUpdatedAt; // DateTime as String, set by server
 
-  LabwareInventoryData({
+  ResourceInventoryData({
     this.praxisInventorySchemaVersion,
     this.reagents,
     this.itemCount,
@@ -127,21 +127,21 @@ class LabwareInventoryData {
     this.lastUpdatedAt,
   });
 
-  factory LabwareInventoryData.fromJson(Map<String, dynamic> json) {
-    return LabwareInventoryData(
+  factory ResourceInventoryData.fromJson(Map<String, dynamic> json) {
+    return ResourceInventoryData(
       praxisInventorySchemaVersion:
           json['praxis_inventory_schema_version'] as String?,
       reagents:
           (json['reagents'] as List<dynamic>?)
               ?.map(
-                (e) => LabwareInventoryReagentItem.fromJson(
+                (e) => ResourceInventoryReagentItem.fromJson(
                   e as Map<String, dynamic>,
                 ),
               )
               .toList(),
       itemCount:
           json['item_count'] != null
-              ? LabwareInventoryItemCount.fromJson(
+              ? ResourceInventoryItemCount.fromJson(
                 json['item_count'] as Map<String, dynamic>,
               )
               : null,
@@ -165,15 +165,15 @@ class LabwareInventoryData {
   }
 }
 
-// Corresponds to LabwareInstanceOrm in backend database model
-class LabwareInstanceOrm {
-  final int? id; // praxis_labware_instance_id
+// Corresponds to ResourceInstanceOrm in backend database model
+class ResourceInstanceOrm {
+  final int? id; // praxis_resource_instance_id
   final String userAssignedName;
-  final String pylabrobotDefinitionName; // FK to LabwareDefinitionCatalogOrm
+  final String pylabrobotDefinitionName; // FK to ResourceDefinitionCatalogOrm
   final String? lotNumber;
   final String? expiryDate; // DateTime as String
   final String? dateAddedToInventory; // DateTime as String
-  final String? currentStatus; // LabwareInstanceStatusEnum as String
+  final String? currentStatus; // ResourceInstanceStatusEnum as String
   final String? statusDetails;
   final String? currentDeckSlotName;
   final int? locationDeviceId; // FK to ManagedDeviceOrm
@@ -184,15 +184,15 @@ class LabwareInstanceOrm {
   final String? updatedAt; // DateTime as String
 
   // Nested inventory data, maps to properties_json in backend ORM
-  // and LabwareInventoryDataIn/Out in API
-  final LabwareInventoryData? inventoryData;
+  // and ResourceInventoryDataIn/Out in API
+  final ResourceInventoryData? inventoryData;
 
   // Workspace ID is a common requirement in frontend models, though not explicitly in backend ORM shown
   // Adding it here for consistency with other ORM classes in the frontend if needed.
   // If not needed, it can be removed.
   final String? workspaceId;
 
-  LabwareInstanceOrm({
+  ResourceInstanceOrm({
     this.id,
     required this.userAssignedName,
     required this.pylabrobotDefinitionName,
@@ -212,8 +212,8 @@ class LabwareInstanceOrm {
     this.workspaceId, // Added for frontend consistency
   });
 
-  factory LabwareInstanceOrm.fromJson(Map<String, dynamic> json) {
-    return LabwareInstanceOrm(
+  factory ResourceInstanceOrm.fromJson(Map<String, dynamic> json) {
+    return ResourceInstanceOrm(
       id: json['id'] as int?,
       userAssignedName: json['user_assigned_name'] as String,
       pylabrobotDefinitionName: json['pylabrobot_definition_name'] as String,
@@ -229,14 +229,14 @@ class LabwareInstanceOrm {
       // properties_json from backend ORM maps to inventoryData here
       inventoryData:
           json['properties_json'] != null
-              ? LabwareInventoryData.fromJson(
+              ? ResourceInventoryData.fromJson(
                 json['properties_json'] as Map<String, dynamic>,
               )
               : ( // If properties_json is not present, check if inventory fields are top-level (e.g. from inventory specific endpoints)
               json.containsKey('praxis_inventory_schema_version') ||
                   json.containsKey('reagents') ||
                   json.containsKey('item_count'))
-              ? LabwareInventoryData.fromJson(
+              ? ResourceInventoryData.fromJson(
                 json,
               ) // Assume flat structure from inventory endpoint
               : null,

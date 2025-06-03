@@ -39,7 +39,7 @@ class DeckPainter extends CustomPainter {
     );
 
     // TODO(user): Implement detailed drawing logic based on deckData
-    // This will involve iterating through positions, labware, etc.
+    // This will involve iterating through positions, resource, etc.
     // and drawing them accordingly.
   }
 

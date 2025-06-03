@@ -75,7 +75,7 @@ class MachineCreate(MachineBase):
   serves as a deck.
   """
 
-  pylabrobot_class_name: str
+  python_fqn: str
   deck_type_definition_id: Optional[int] = None
 
 
@@ -88,7 +88,7 @@ class MachineResponse(MachineBase):
   """
 
   id: int
-  pylabrobot_class_name: str
+  python_fqn: str
   deck_type_definition_id: Optional[int] = None
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
@@ -102,7 +102,7 @@ class MachineUpdate(BaseModel):
   """
 
   name: Optional[str] = None
-  # pylabrobot_class_name: Optional[str] = None # Typically not updatable
+  # python_fqn: Optional[str] = None # Typically not updatable
   machine_category: Optional[str] = None
   deck_type_definition_id: Optional[int] = None
   description: Optional[str] = None

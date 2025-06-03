@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/labware_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
 import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
 import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 
@@ -23,28 +23,28 @@ abstract class AssetApiService {
   Future<void> initializeDevice(String deviceId);
   Future<void> disconnectDevice(String deviceId);
 
-  /// Labware Definitions (Labware Types)
-  Future<List<LabwareDefinitionCatalogOrm>> getLabwareDefinitions();
-  Future<LabwareDefinitionCatalogOrm> createLabwareDefinition(
-    LabwareDefinitionCatalogOrm labwareDefinition,
+  /// Resource Definitions (Resource Types)
+  Future<List<ResourceDefinitionCatalogOrm>> getResourceDefinitions();
+  Future<ResourceDefinitionCatalogOrm> createResourceDefinition(
+    ResourceDefinitionCatalogOrm resourceDefinition,
   );
-  Future<LabwareDefinitionCatalogOrm> updateLabwareDefinition(
-    String labwareDefinitionId,
-    LabwareDefinitionCatalogOrm labwareDefinition,
+  Future<ResourceDefinitionCatalogOrm> updateResourceDefinition(
+    String resourceDefinitionId,
+    ResourceDefinitionCatalogOrm resourceDefinition,
   );
-  Future<void> deleteLabwareDefinition(String labwareDefinitionId);
+  Future<void> deleteResourceDefinition(String resourceDefinitionId);
 
-  /// Labware Instances (Physical Labware Items)
-  Future<List<LabwareInstanceOrm>> getLabwareInstances();
-  Future<LabwareInstanceOrm> createLabwareInstance(
-    LabwareInstanceOrm labwareInstance,
+  /// Resource Instances (Physical Resource Items)
+  Future<List<ResourceInstanceOrm>> getResourceInstances();
+  Future<ResourceInstanceOrm> createResourceInstance(
+    ResourceInstanceOrm resourceInstance,
   );
-  Future<LabwareInstanceOrm> getLabwareInstanceById(String instanceId);
-  Future<LabwareInstanceOrm> updateLabwareInstance(
+  Future<ResourceInstanceOrm> getResourceInstanceById(String instanceId);
+  Future<ResourceInstanceOrm> updateResourceInstance(
     String instanceId,
-    LabwareInstanceOrm labwareInstance,
+    ResourceInstanceOrm resourceInstance,
   );
-  Future<void> deleteLabwareInstance(String instanceId);
+  Future<void> deleteResourceInstance(String instanceId);
 
   /// Deck Layouts
   Future<List<DeckLayoutOrm>> getDeckLayouts();
@@ -269,27 +269,27 @@ class AssetApiServiceImpl extends AssetApiService {
     await _executeDeviceAction(deviceId, 'disconnect');
   }
 
-  /// Labware Definitions (Labware Types)
+  /// Resource Definitions (Resource Types)
   @override
-  Future<List<LabwareDefinitionCatalogOrm>> getLabwareDefinitions() async {
+  Future<List<ResourceDefinitionCatalogOrm>> getResourceDefinitions() async {
     try {
-      // Using /api/assets/types/labware as per AssetResponse structure.
-      // This assumes 'labware' type assets are labware definitions and
-      // their 'metadata' field contains the LabwareDefinitionCatalogOrm data.
+      // Using /api/assets/types/resource as per AssetResponse structure.
+      // This assumes 'resource' type assets are resource definitions and
+      // their 'metadata' field contains the ResourceDefinitionCatalogOrm data.
       // This is a significant assumption and might need backend adjustments
       // for a more direct mapping or a dedicated endpoint.
-      final response = await _dioClient.dio.get('/api/assets/types/labware');
+      final response = await _dioClient.dio.get('/api/assets/types/resource');
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> jsonData = response.data as List<dynamic>;
         return jsonData.map((item) {
           final assetResponse = item as Map<String, dynamic>;
-          // Attempting to reconstruct LabwareDefinitionCatalogOrm from AssetResponse
+          // Attempting to reconstruct ResourceDefinitionCatalogOrm from AssetResponse
           // 'name' from AssetResponse is assumed to be 'pylabrobot_definition_name'
           // 'metadata' from AssetResponse is assumed to contain the rest of the fields.
-          // 'type' from AssetResponse is 'labware'.
+          // 'type' from AssetResponse is 'resource'.
           if (assetResponse['metadata'] is Map<String, dynamic>) {
             final metadata = assetResponse['metadata'] as Map<String, dynamic>;
-            return LabwareDefinitionCatalogOrm.fromJson({
+            return ResourceDefinitionCatalogOrm.fromJson({
               ...metadata, // Spread the metadata
               'pylabrobot_definition_name':
                   assetResponse['name'] ??
@@ -304,21 +304,21 @@ class AssetApiServiceImpl extends AssetApiService {
             // This indicates a mismatch that needs to be resolved (backend or frontend).
             // For now, create with available data or throw a more specific error.
             throw DataParsingException(
-              'Labware definition metadata is not in expected format for item: ${assetResponse['name']}',
+              'Resource definition metadata is not in expected format for item: ${assetResponse['name']}',
             );
           }
         }).toList();
       } else {
         throw ApiException(
           message:
-              'Failed to load labware definitions: Status code ${response.statusCode}',
+              'Failed to load resource definitions: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
       throw ApiException(message: 'API request failed: ${e.message}');
     } on FormatException catch (e) {
       throw DataParsingException(
-        'Error parsing labware definition data: ${e.message}',
+        'Error parsing resource definition data: ${e.message}',
       );
     } catch (e) {
       throw UnknownException('An unknown error occurred: ${e.toString()}');
@@ -326,52 +326,52 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<LabwareDefinitionCatalogOrm> createLabwareDefinition(
-    LabwareDefinitionCatalogOrm labwareDefinition,
+  Future<ResourceDefinitionCatalogOrm> createResourceDefinition(
+    ResourceDefinitionCatalogOrm resourceDefinition,
   ) async {
     try {
       // Using POST /api/assets/resource as per available backend endpoints.
-      // Mapping LabwareDefinitionCatalogOrm to ResourceCreationRequest.
+      // Mapping ResourceDefinitionCatalogOrm to ResourceCreationRequest.
       // This is an approximation. A dedicated endpoint would be better.
       final requestBody = {
         'name':
-            labwareDefinition
+            resourceDefinition
                 .pylabrobotDefinitionName, // Maps to ResourceCreationRequest.name
         'resourceType':
-            labwareDefinition.plrCategory ??
-            'labware_definition', // Maps to ResourceCreationRequest.resourceType
-        'description': labwareDefinition.description,
+            resourceDefinition.plrCategory ??
+            'resource_definition', // Maps to ResourceCreationRequest.resourceType
+        'description': resourceDefinition.description,
         'params':
-            labwareDefinition.toJson(), // Pass the full labware def as params
+            resourceDefinition.toJson(), // Pass the full resource def as params
       };
       final response = await _dioClient.dio.post(
         '/api/assets/resource',
         data: jsonEncode(requestBody),
       );
       if (response.statusCode == 200 && response.data != null) {
-        // The response is AssetResponse. We need to reconstruct LabwareDefinitionCatalogOrm.
+        // The response is AssetResponse. We need to reconstruct ResourceDefinitionCatalogOrm.
         // This assumes the backend, upon creating a resource of this type,
-        // stores the 'params' (which was our labwareDefinition.toJson())
+        // stores the 'params' (which was our resourceDefinition.toJson())
         // into the 'metadata' of the created asset, and returns it.
         final assetResponse = response.data as Map<String, dynamic>;
         if (assetResponse['metadata'] is Map<String, dynamic>) {
           final metadata = assetResponse['metadata'] as Map<String, dynamic>;
           // Ensure pylabrobot_definition_name from original request is used if not in metadata explicitly
-          return LabwareDefinitionCatalogOrm.fromJson({
+          return ResourceDefinitionCatalogOrm.fromJson({
             ...metadata,
             'pylabrobot_definition_name':
                 assetResponse['name'] ??
-                labwareDefinition.pylabrobotDefinitionName,
+                resourceDefinition.pylabrobotDefinitionName,
           });
         } else {
           throw DataParsingException(
-            'Created labware definition response metadata is not in expected format.',
+            'Created resource definition response metadata is not in expected format.',
           );
         }
       } else {
         throw ApiException(
           message:
-              'Failed to create labware definition: Status code ${response.statusCode}',
+              'Failed to create resource definition: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -384,31 +384,31 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<LabwareDefinitionCatalogOrm> updateLabwareDefinition(
-    String labwareDefinitionId, // This should be pylabrobot_definition_name
-    LabwareDefinitionCatalogOrm labwareDefinition,
+  Future<ResourceDefinitionCatalogOrm> updateResourceDefinition(
+    String resourceDefinitionId, // This should be pylabrobot_definition_name
+    ResourceDefinitionCatalogOrm resourceDefinition,
   ) async {
     try {
-      // Placeholder: Backend endpoint /api/assets/labware_definitions/{labwareDefinitionId} does not exist.
+      // Placeholder: Backend endpoint /api/assets/resource_definitions/{resourceDefinitionId} does not exist.
       // Assuming a standard PUT request if it were implemented.
       final response = await _dioClient.dio.put(
-        '/api/assets/labware_definitions/$labwareDefinitionId',
-        data: jsonEncode(labwareDefinition.toJson()),
+        '/api/assets/resource_definitions/$resourceDefinitionId',
+        data: jsonEncode(resourceDefinition.toJson()),
       );
       if (response.statusCode == 200 && response.data != null) {
-        return LabwareDefinitionCatalogOrm.fromJson(
+        return ResourceDefinitionCatalogOrm.fromJson(
           response.data as Map<String, dynamic>,
         );
       } else if (response.statusCode == 404) {
         throw ApiException(
           message:
-              'Labware definition not found for update: $labwareDefinitionId',
+              'Resource definition not found for update: $resourceDefinitionId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to update labware definition $labwareDefinitionId: Status code ${response.statusCode}',
+              'Failed to update resource definition $resourceDefinitionId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -421,25 +421,25 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<void> deleteLabwareDefinition(String labwareDefinitionId) async {
+  Future<void> deleteResourceDefinition(String resourceDefinitionId) async {
     try {
-      // Placeholder: Backend endpoint /api/assets/labware_definitions/{labwareDefinitionId} does not exist.
+      // Placeholder: Backend endpoint /api/assets/resource_definitions/{resourceDefinitionId} does not exist.
       // Assuming a standard DELETE request if it were implemented.
       final response = await _dioClient.dio.delete(
-        '/api/assets/labware_definitions/$labwareDefinitionId',
+        '/api/assets/resource_definitions/$resourceDefinitionId',
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
         return;
       } else if (response.statusCode == 404) {
         throw ApiException(
           message:
-              'Labware definition not found for deletion: $labwareDefinitionId',
+              'Resource definition not found for deletion: $resourceDefinitionId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to delete labware definition $labwareDefinitionId: Status code ${response.statusCode}',
+              'Failed to delete resource definition $resourceDefinitionId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -449,34 +449,34 @@ class AssetApiServiceImpl extends AssetApiService {
     }
   }
 
-  /// Labware Instances (Physical Labware Items)
+  /// Resource Instances (Physical Resource Items)
   @override
-  Future<List<LabwareInstanceOrm>> getLabwareInstances() async {
+  Future<List<ResourceInstanceOrm>> getResourceInstances() async {
     try {
-      // Placeholder: Backend endpoint /api/assets/labware_instances does not exist.
+      // Placeholder: Backend endpoint /api/assets/resource_instances does not exist.
       // Assuming a standard GET request returning a list if it were implemented.
       final response = await _dioClient.dio.get(
-        '/api/assets/labware_instances',
+        '/api/assets/resource_instances',
       );
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> jsonData = response.data as List<dynamic>;
         return jsonData
             .map(
               (item) =>
-                  LabwareInstanceOrm.fromJson(item as Map<String, dynamic>),
+                  ResourceInstanceOrm.fromJson(item as Map<String, dynamic>),
             )
             .toList();
       } else {
         throw ApiException(
           message:
-              'Failed to load labware instances: Status code ${response.statusCode}',
+              'Failed to load resource instances: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
       throw ApiException(message: 'API request failed: ${e.message}');
     } on FormatException catch (e) {
       throw DataParsingException(
-        'Error parsing labware instance data: ${e.message}',
+        'Error parsing resource instance data: ${e.message}',
       );
     } catch (e) {
       throw UnknownException('An unknown error occurred: ${e.toString()}');
@@ -484,26 +484,26 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<LabwareInstanceOrm> createLabwareInstance(
-    LabwareInstanceOrm labwareInstance,
+  Future<ResourceInstanceOrm> createResourceInstance(
+    ResourceInstanceOrm resourceInstance,
   ) async {
     try {
-      // Placeholder: Backend endpoint /api/assets/labware_instances does not exist.
+      // Placeholder: Backend endpoint /api/assets/resource_instances does not exist.
       // Assuming a standard POST request if it were implemented.
       final response = await _dioClient.dio.post(
-        '/api/assets/labware_instances',
-        data: jsonEncode(labwareInstance.toJson()),
+        '/api/assets/resource_instances',
+        data: jsonEncode(resourceInstance.toJson()),
       );
       if (response.statusCode == 200 ||
           response.statusCode == 201 && response.data != null) {
         // 201 Created
-        return LabwareInstanceOrm.fromJson(
+        return ResourceInstanceOrm.fromJson(
           response.data as Map<String, dynamic>,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to create labware instance: Status code ${response.statusCode}',
+              'Failed to create resource instance: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -516,28 +516,28 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<LabwareInstanceOrm> getLabwareInstanceById(String instanceId) async {
+  Future<ResourceInstanceOrm> getResourceInstanceById(String instanceId) async {
     try {
-      // Using GET /api/assets/labware_instances/{instanceId}/inventory
-      // This endpoint returns LabwareInventoryDataOut.
-      // The LabwareInstanceOrm.fromJson factory is designed to handle this by
+      // Using GET /api/assets/resource_instances/{instanceId}/inventory
+      // This endpoint returns ResourceInventoryDataOut.
+      // The ResourceInstanceOrm.fromJson factory is designed to handle this by
       // populating inventoryData and potentially leaving other fields null/default.
       final response = await _dioClient.dio.get(
-        '/api/assets/labware_instances/$instanceId/inventory',
+        '/api/assets/resource_instances/$instanceId/inventory',
       );
       if (response.statusCode == 200 && response.data != null) {
-        // We need to construct a LabwareInstanceOrm. Since the endpoint only returns inventory,
+        // We need to construct a ResourceInstanceOrm. Since the endpoint only returns inventory,
         // other details like user_assigned_name, pylabrobot_definition_name might be missing.
-        // The FromJson factory for LabwareInstanceOrm will need to be robust to this.
+        // The FromJson factory for ResourceInstanceOrm will need to be robust to this.
         // We'll pass the instanceId to be potentially used as 'id' or part of 'user_assigned_name' if needed.
         Map<String, dynamic> jsonData = response.data as Map<String, dynamic>;
 
         // It's possible the backend returns just the inventory data. We might need to wrap this
-        // or ensure LabwareInstanceOrm.fromJson can handle it.
-        // For now, assume LabwareInstanceOrm.fromJson can handle a map that primarily contains inventory fields.
-        // A more complete solution might involve creating a temporary LabwareInstanceOrm
+        // or ensure ResourceInstanceOrm.fromJson can handle it.
+        // For now, assume ResourceInstanceOrm.fromJson can handle a map that primarily contains inventory fields.
+        // A more complete solution might involve creating a temporary ResourceInstanceOrm
         // with a default name/type if they are not part of the response.
-        return LabwareInstanceOrm.fromJson({
+        return ResourceInstanceOrm.fromJson({
           'id': int.tryParse(instanceId), // Attempt to use instanceId as the ID
           'user_assigned_name':
               'Instance $instanceId (Inventory)', // Placeholder name
@@ -546,20 +546,20 @@ class AssetApiServiceImpl extends AssetApiService {
         });
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Labware instance inventory not found: $instanceId',
+          message: 'Resource instance inventory not found: $instanceId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to get labware instance inventory $instanceId: Status code ${response.statusCode}',
+              'Failed to get resource instance inventory $instanceId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
       throw ApiException(message: 'API request failed: ${e.message}');
     } on FormatException catch (e) {
       throw DataParsingException(
-        'Error parsing labware instance inventory data: ${e.message}',
+        'Error parsing resource instance inventory data: ${e.message}',
       );
     } catch (e) {
       throw UnknownException('An unknown error occurred: ${e.toString()}');
@@ -567,60 +567,60 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<LabwareInstanceOrm> updateLabwareInstance(
+  Future<ResourceInstanceOrm> updateResourceInstance(
     String instanceId,
-    LabwareInstanceOrm labwareInstance,
+    ResourceInstanceOrm resourceInstance,
   ) async {
     try {
-      // Using PUT /api/assets/labware_instances/{instanceId}/inventory
-      // The request body should be LabwareInventoryDataIn, which corresponds to labwareInstance.inventoryData.
-      if (labwareInstance.inventoryData == null) {
+      // Using PUT /api/assets/resource_instances/{instanceId}/inventory
+      // The request body should be ResourceInventoryDataIn, which corresponds to resourceInstance.inventoryData.
+      if (resourceInstance.inventoryData == null) {
         throw ArgumentError("Inventory data must be provided for update.");
       }
       final response = await _dioClient.dio.put(
-        '/api/assets/labware_instances/$instanceId/inventory',
-        data: jsonEncode(labwareInstance.inventoryData!.toJson()),
+        '/api/assets/resource_instances/$instanceId/inventory',
+        data: jsonEncode(resourceInstance.inventoryData!.toJson()),
       );
       if (response.statusCode == 200 && response.data != null) {
-        // The response is LabwareInventoryDataOut.
-        // We update the inventoryData of the passed labwareInstance and return it.
-        final updatedInventoryData = LabwareInventoryData.fromJson(
+        // The response is ResourceInventoryDataOut.
+        // We update the inventoryData of the passed resourceInstance and return it.
+        final updatedInventoryData = ResourceInventoryData.fromJson(
           response.data as Map<String, dynamic>,
         );
-        return LabwareInstanceOrm(
-          id: labwareInstance.id ?? int.tryParse(instanceId),
-          userAssignedName: labwareInstance.userAssignedName,
-          pylabrobotDefinitionName: labwareInstance.pylabrobotDefinitionName,
-          lotNumber: labwareInstance.lotNumber,
-          expiryDate: labwareInstance.expiryDate,
-          dateAddedToInventory: labwareInstance.dateAddedToInventory,
+        return ResourceInstanceOrm(
+          id: resourceInstance.id ?? int.tryParse(instanceId),
+          userAssignedName: resourceInstance.userAssignedName,
+          pylabrobotDefinitionName: resourceInstance.pylabrobotDefinitionName,
+          lotNumber: resourceInstance.lotNumber,
+          expiryDate: resourceInstance.expiryDate,
+          dateAddedToInventory: resourceInstance.dateAddedToInventory,
           currentStatus:
-              labwareInstance
+              resourceInstance
                   .currentStatus, // Status might change based on inventory
-          statusDetails: labwareInstance.statusDetails,
-          currentDeckSlotName: labwareInstance.currentDeckSlotName,
-          locationDeviceId: labwareInstance.locationDeviceId,
+          statusDetails: resourceInstance.statusDetails,
+          currentDeckSlotName: resourceInstance.currentDeckSlotName,
+          locationDeviceId: resourceInstance.locationDeviceId,
           physicalLocationDescription:
-              labwareInstance.physicalLocationDescription,
+              resourceInstance.physicalLocationDescription,
           inventoryData: updatedInventoryData, // Key update here
-          isPermanentFixture: labwareInstance.isPermanentFixture,
-          currentProtocolRunGuid: labwareInstance.currentProtocolRunGuid,
-          createdAt: labwareInstance.createdAt,
+          isPermanentFixture: resourceInstance.isPermanentFixture,
+          currentProtocolRunGuid: resourceInstance.currentProtocolRunGuid,
+          createdAt: resourceInstance.createdAt,
           updatedAt:
               updatedInventoryData.lastUpdatedAt ??
-              labwareInstance.updatedAt, // Use from response if available
-          workspaceId: labwareInstance.workspaceId,
+              resourceInstance.updatedAt, // Use from response if available
+          workspaceId: resourceInstance.workspaceId,
         );
       } else if (response.statusCode == 404) {
         throw ApiException(
           message:
-              'Labware instance inventory not found for update: $instanceId',
+              'Resource instance inventory not found for update: $instanceId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to update labware instance inventory $instanceId: Status code ${response.statusCode}',
+              'Failed to update resource instance inventory $instanceId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -633,25 +633,25 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<void> deleteLabwareInstance(String instanceId) async {
+  Future<void> deleteResourceInstance(String instanceId) async {
     try {
-      // Placeholder: Backend endpoint /api/assets/labware_instances/{instanceId} does not exist.
+      // Placeholder: Backend endpoint /api/assets/resource_instances/{instanceId} does not exist.
       // Assuming a standard DELETE request if it were implemented.
       final response = await _dioClient.dio.delete(
-        '/api/assets/labware_instances/$instanceId',
+        '/api/assets/resource_instances/$instanceId',
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
         // 204 No Content
         return;
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Labware instance not found for deletion: $instanceId',
+          message: 'Resource instance not found for deletion: $instanceId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to delete labware instance $instanceId: Status code ${response.statusCode}',
+              'Failed to delete resource instance $instanceId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
