@@ -2,7 +2,7 @@
 
 These models are used for data validation and serialization/deserialization of deck
 configurations, positioning with "positions" which are human accessible location guides
-(e.g., slots or rails), and layouts.
+(e.g., slots or rails), and decks.
 """
 
 import datetime
@@ -80,14 +80,14 @@ class DeckPositionItemResponse(DeckPositionItemBase):
   deck_configuration_id: int
 
 
-class DeckLayoutBase(BaseModel):
-  """Define the base properties for a deck layout.
+class DeckBase(BaseModel):
+  """Define the base properties for a deck.
 
-  This model includes fundamental attributes like layout name, associated deck,
-  and an optional description, serving as a base for more specific layout models.
+  This model includes fundamental attributes like deck name, associated deck,
+  and an optional description, serving as a base for more specific deck models.
   """
 
-  layout_name: str
+  deck_name: str
   deck_id: int
   description: Optional[str] = None
 
@@ -97,35 +97,35 @@ class DeckLayoutBase(BaseModel):
     orm_mode = True
 
 
-class DeckLayoutCreate(DeckLayoutBase):
-  """Represent a deck layout for creation requests.
+class DeckCreate(DeckBase):
+  """Represent a deck for creation requests.
 
-  This model extends `DeckLayoutBase` by allowing the inclusion of
-  `DeckPositionItemCreate` instances, enabling the definition of a layout's
+  This model extends `DeckBase` by allowing the inclusion of
+  `DeckPositionItemCreate` instances, enabling the definition of a deck's
   contents upon creation.
   """
 
   position_items: Optional[List[DeckPositionItemCreate]] = []
 
 
-class DeckLayoutUpdate(BaseModel):
-  """Represent a deck layout for update requests.
+class DeckUpdate(BaseModel):
+  """Represent a deck for update requests.
 
   This model provides optional fields for updating various properties of a
-  deck layout, including its name, associated deck, description, and
+  deck, including its name, associated deck, description, and
   its constituent position items.
   """
 
-  layout_name: Optional[str] = None
+  deck_name: Optional[str] = None
   deck_id: Optional[int] = None
   description: Optional[str] = None
   position_items: Optional[List[DeckPositionItemCreate]] = None
 
 
-class DeckLayoutResponse(DeckLayoutBase):
-  """Represent a deck layout for API responses.
+class DeckResponse(DeckBase):
+  """Represent a deck for API responses.
 
-  This model extends `DeckLayoutBase` by including system-generated identifiers,
+  This model extends `DeckBase` by including system-generated identifiers,
   associated position items (as `DeckPositionItemResponse`), and timestamps for
   creation and last update, suitable for client-facing responses.
   """

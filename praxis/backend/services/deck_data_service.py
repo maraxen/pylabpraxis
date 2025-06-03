@@ -36,9 +36,9 @@ from praxis.backend.services.resource_data_service import get_resource_definitio
 logger = logging.getLogger(__name__)
 
 
-async def create_deck_layout(
+async def create_deck(
   db: AsyncSession,
-  layout_name: str,
+  name: str,
   deck_id: int,
   description: Optional[str] = None,
   position_items_data: Optional[List[Dict[str, Any]]] = None,
@@ -51,8 +51,8 @@ async def create_deck_layout(
 
   Args:
     db (AsyncSession): The database session.
-    layout_name (str): The name of the deck layout.
-    deck_id (int): The ID of the deck machine to associate with this layout.
+    name (str): The name of the deck layout.
+    deck_id (int): The ID of the deck to associate with this layout.
     description (Optional[str], optional): Description of the deck layout.
       Defaults to None.
     position_items_data (Optional[List[Dict[str, Any]]], optional): List of position items
@@ -69,7 +69,7 @@ async def create_deck_layout(
 
   Raises:
     ValueError: If:
-      - The specified deck machine ID doesn't exist.
+      - The specified deck ID doesn't exist.
       - A deck layout with the same name already exists.
       - A specified resource instance ID doesn't exist.
       - A specified resource definition name doesn't exist.
@@ -78,7 +78,7 @@ async def create_deck_layout(
   """
   logger.info(
     "Attempting to create deck layout '%s' for machine ID %d.",
-    layout_name,
+    name,
     deck_id,
   )
 
@@ -94,26 +94,25 @@ async def create_deck_layout(
     logger.error(error_message)
     raise ValueError(error_message)
 
-  deck_layout_orm = DeckConfigurationOrm(
-    layout_name=layout_name,
+  deck_orm = DeckConfigurationOrm(
+    name=name,
     deck_id=deck_id,
     description=description,
   )
-  db.add(deck_layout_orm)
+  db.add(deck_orm)
 
   try:
     await db.flush()
-    logger.info("Successfully flushed new deck layout with name '%s'.", layout_name)
+    logger.info("Successfully flushed new deck layout with name '%s'.", name)
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"DeckConfigurationOrm with layout name '{layout_name}' "
-      f"already exists. Details: {e}"
+      f"DeckConfigurationOrm with layout name '{name}' " f"already exists. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
   except Exception as e:
-    logger.exception("Error flushing new deck layout '%s'. Rolling back.", layout_name)
+    logger.exception("Error flushing new deck layout '%s'. Rolling back.", name)
     await db.rollback()
     raise e
 
@@ -121,7 +120,7 @@ async def create_deck_layout(
     logger.info(
       "Processing %d position items for deck layout '%s'.",
       len(position_items_data),
-      layout_name,
+      name,
     )
     for item_data in position_items_data:
       position_name = item_data.get("position_name", "N/A")
@@ -154,30 +153,26 @@ async def create_deck_layout(
           raise ValueError(error_message)
 
       position_item = DeckConfigurationPositionItemOrm(
-        deck_configuration_id=deck_layout_orm.id,
+        deck_configuration_id=deck_orm.id,
         position_name=position_name,
         resource_instance_id=resource_instance_id,
         expected_resource_definition_name=expected_def_name,
       )
       db.add(position_item)
-      logger.debug(
-        "Added position item '%s' to deck layout '%s'.", position_name, layout_name
-      )
+      logger.debug("Added position item '%s' to deck layout '%s'.", position_name, name)
 
   try:
     await db.commit()
-    await db.refresh(deck_layout_orm)
-    logger.info(
-      "Successfully committed deck layout '%s' and its position items.", layout_name
-    )
+    await db.refresh(deck_orm)
+    logger.info("Successfully committed deck layout '%s' and its position items.", name)
     # Eagerly load position_items for the returned object
-    if deck_layout_orm.id:
-      return await get_deck_layout_by_id(db, deck_layout_orm.id)  # type: ignore
-    return deck_layout_orm  # Should not be reached if ID is None after flush/commit
+    if deck_orm.id:
+      return await get_deck_by_id(db, deck_orm.id)  # type: ignore
+    return deck_orm  # Should not be reached if ID is None after flush/commit
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error while creating deck layout '{layout_name}' or its position items. "
+      f"Integrity error while creating deck layout '{name}' or its position items. "
       f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -186,7 +181,7 @@ async def create_deck_layout(
     await db.rollback()
     logger.exception(
       "Unexpected error creating deck layout '%s' or its position items. Rolling back.",
-      layout_name,
+      name,
     )
     raise e
 
@@ -218,7 +213,7 @@ async def get_deck_by_parent_machine_id(
     logger.info(
       "Successfully retrieved deck configuration with parent machine ID %d: '%s'.",
       parent_machine_id,
-      deck_configuration.layout_name,
+      deck_configuration.name,
     )
   else:
     logger.info(
@@ -227,8 +222,8 @@ async def get_deck_by_parent_machine_id(
   return deck_configuration
 
 
-async def get_deck_layout_by_id(
-  db: AsyncSession, deck_layout_id: int
+async def get_deck_by_id(
+  db: AsyncSession, deck_id: int
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck layout configuration by its ID.
 
@@ -237,14 +232,14 @@ async def get_deck_layout_by_id(
 
   Args:
     db (AsyncSession): The database session.
-    deck_layout_id (int): The ID of the deck layout to retrieve.
+    deck_id (int): The ID of the deck layout to retrieve.
 
   Returns:
     Optional[DeckConfigurationOrm]: The deck layout configuration object if found,
     otherwise None.
 
   """
-  logger.info("Attempting to retrieve deck layout with ID: %d.", deck_layout_id)
+  logger.info("Attempting to retrieve deck layout with ID: %d.", deck_id)
   stmt = (
     select(DeckConfigurationOrm)
     .options(
@@ -255,23 +250,23 @@ async def get_deck_layout_by_id(
         DeckConfigurationPositionItemOrm.expected_resource_definition
       ),
     )
-    .filter(DeckConfigurationOrm.id == deck_layout_id)
+    .filter(DeckConfigurationOrm.id == deck_id)
   )
   result = await db.execute(stmt)
-  deck_layout = result.scalar_one_or_none()
-  if deck_layout:
+  deck = result.scalar_one_or_none()
+  if deck:
     logger.info(
       "Successfully retrieved deck layout ID %d: '%s'.",
-      deck_layout_id,
-      deck_layout.layout_name,
+      deck_id,
+      deck.name,
     )
   else:
-    logger.info("Deck layout with ID %d not found.", deck_layout_id)
-  return deck_layout
+    logger.info("Deck layout with ID %d not found.", deck_id)
+  return deck
 
 
-async def get_deck_layout_by_name(
-  db: AsyncSession, layout_name: str
+async def get_deck_by_name(
+  db: AsyncSession, name: str
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck layout configuration by its name.
 
@@ -280,14 +275,14 @@ async def get_deck_layout_by_name(
 
   Args:
     db (AsyncSession): The database session.
-    layout_name (str): The name of the deck layout to retrieve.
+    name (str): The name of the deck layout to retrieve.
 
   Returns:
     Optional[DeckConfigurationOrm]: The deck layout configuration object if found,
     otherwise None.
 
   """
-  logger.info("Attempting to retrieve deck layout with name: '%s'.", layout_name)
+  logger.info("Attempting to retrieve deck layout with name: '%s'.", name)
   stmt = (
     select(DeckConfigurationOrm)
     .options(
@@ -298,31 +293,31 @@ async def get_deck_layout_by_name(
         DeckConfigurationPositionItemOrm.expected_resource_definition
       ),
     )
-    .filter(DeckConfigurationOrm.layout_name == layout_name)
+    .filter(DeckConfigurationOrm.name == name)
   )
   result = await db.execute(stmt)
-  deck_layout = result.scalar_one_or_none()
-  if deck_layout:
-    logger.info("Successfully retrieved deck layout by name '%s'.", layout_name)
+  deck = result.scalar_one_or_none()
+  if deck:
+    logger.info("Successfully retrieved deck layout by name '%s'.", name)
   else:
-    logger.info("Deck layout with name '%s' not found.", layout_name)
-  return deck_layout
+    logger.info("Deck layout with name '%s' not found.", name)
+  return deck
 
 
-async def list_deck_layouts(
+async def list_decks(
   db: AsyncSession,
   deck_id: Optional[int] = None,
   limit: int = 100,
   offset: int = 0,
 ) -> List[DeckConfigurationOrm]:
-  """List all deck layouts with optional filtering by deck machine ID.
+  """List all deck layouts with optional filtering by deck ID.
 
   This function retrieves a list of deck layout configurations, including their position
   items, associated resource instances, and their definitions.
 
   Args:
     db (AsyncSession): The database session.
-    deck_id (Optional[int]): The ID of the deck machine to filter by.
+    deck_id (Optional[int]): The ID of the deck to filter by.
       Defaults to None, meaning no filtering by machine ID.
     limit (int): The maximum number of results to return. Defaults to 100.
     offset (int): The number of results to skip before returning. Defaults to 0.
@@ -347,35 +342,34 @@ async def list_deck_layouts(
   )
   if deck_id is not None:
     stmt = stmt.filter(DeckConfigurationOrm.deck_id == deck_id)
-  stmt = stmt.order_by(DeckConfigurationOrm.layout_name).limit(limit).offset(offset)
+  stmt = stmt.order_by(DeckConfigurationOrm.name).limit(limit).offset(offset)
   result = await db.execute(stmt)
-  deck_layouts = list(result.scalars().all())
-  logger.info("Found %d deck layouts.", len(deck_layouts))
-  return deck_layouts
+  decks = list(result.scalars().all())
+  logger.info("Found %d deck layouts.", len(decks))
+  return decks
 
 
-async def update_deck_layout(
+async def update_deck(
   db: AsyncSession,
-  deck_layout_id: int,
+  deck_id: int,
   name: Optional[str] = None,
   description: Optional[str] = None,
-  deck_id: Optional[int] = None,
   position_items_data: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[DeckConfigurationOrm]:
   """Update an existing deck layout configuration.
 
   Updates the specified deck layout with new values for its name, description,
-  associated deck machine, and position items. If `position_items_data` is provided,
+  associated deck, and position items. If `position_items_data` is provided,
   it will replace the existing position items for the deck layout.
 
   Args:
     db (AsyncSession): The database session.
-    deck_layout_id (int): The ID of the deck layout to update.
+    deck_id (int): The ID of the deck layout to update.
     name (Optional[str], optional): The new name for the deck layout. Defaults to None.
     description (Optional[str], optional): The new description for the deck layout.
       Defaults to None.
-    deck_id (Optional[int], optional): The ID of the new deck machine to
-      associate with this layout. Defaults to None.
+    deck_id (int): The ID of the new deck  to
+      associate with this layout.
     position_items_data (Optional[List[Dict[str, Any]]], optional): A list of new position
       items data. Each dictionary in the list should contain:
       - 'position_name' (str): The name of the position.
@@ -392,37 +386,35 @@ async def update_deck_layout(
 
   Raises:
     ValueError: If:
-      - The new deck machine ID does not exist.
+      - The new deck ID does not exist.
       - A specified resource instance ID does not exist.
       - A specified resource definition name does not exist.
     Exception: For any other unexpected errors during the process.
 
   """
-  logger.info("Attempting to update deck layout with ID: %d.", deck_layout_id)
-  deck_layout_orm = await get_deck_layout_by_id(db, deck_layout_id)
-  if not deck_layout_orm:
-    logger.warning("Deck layout with ID %d not found for update.", deck_layout_id)
+  logger.info("Attempting to update deck layout with ID: %d.", deck_id)
+  deck_orm = await get_deck_by_id(db, deck_id)
+  if not deck_orm:
+    logger.warning("Deck layout with ID %d not found for update.", deck_id)
     return None
 
-  original_layout_name = deck_layout_orm.layout_name
+  original_name = deck_orm.name
   updates_made = False
 
-  if name is not None and deck_layout_orm.layout_name != name:
-    logger.debug(
-      "Updating layout name from '%s' to '%s'.", deck_layout_orm.layout_name, name
-    )
-    deck_layout_orm.layout_name = name
+  if name is not None and deck_orm.name != name:
+    logger.debug("Updating layout name from '%s' to '%s'.", deck_orm.name, name)
+    deck_orm.name = name
     updates_made = True
-  if description is not None and deck_layout_orm.description != description:
-    logger.debug("Updating description for layout '%s'.", original_layout_name)
-    deck_layout_orm.description = description
+  if description is not None and deck_orm.description != description:
+    logger.debug("Updating description for layout '%s'.", original_name)
+    deck_orm.description = description
     updates_made = True
-  if deck_id is not None and deck_layout_orm.deck_id != deck_id:
+  if deck_id is not None and deck_orm.deck_id != deck_id:
     logger.debug(
-      "Updating deck machine ID from %d to %d for layout '%s'.",
-      deck_layout_orm.deck_id,
+      "Updating deck ID from %d to %d for layout '%s'.",
+      deck_orm.deck_id,
       deck_id,
-      original_layout_name,
+      original_name,
     )
     new_deck_machine_result = await db.execute(
       select(MachineOrm).filter(MachineOrm.id == deck_id)
@@ -430,22 +422,22 @@ async def update_deck_layout(
     if not new_deck_machine_result.scalar_one_or_none():
       error_message = (
         f"New MachineOrm (Deck Device) with id {deck_id} not found. "
-        f"Cannot update deck layout '{original_layout_name}'."
+        f"Cannot update deck layout '{original_name}'."
       )
       logger.error(error_message)
       raise ValueError(error_message)
-    deck_layout_orm.deck_id = deck_id
+    deck_orm.deck_id = deck_id
     updates_made = True
 
   if position_items_data is not None:
-    logger.info("Replacing position items for deck layout '%s'.", original_layout_name)
+    logger.info("Replacing position items for deck layout '%s'.", original_name)
     # Delete existing position items
-    if deck_layout_orm.position_items:
-      for item in deck_layout_orm.position_items:
+    if deck_orm.position_items:
+      for item in deck_orm.position_items:
         logger.debug(
           "Deleting existing position item '%s' for layout '%s'.",
           item.position_name,
-          original_layout_name,
+          original_name,
         )
         await db.delete(item)
     await db.flush()  # Process deletions before adding new ones
@@ -468,7 +460,7 @@ async def update_deck_layout(
           error_message = (
             f"ResourceInstanceOrm with id {resource_instance_id} for position "
             f"'{position_name}' not found. Rolling back update for layout "
-            f"'{original_layout_name}'."
+            f"'{original_name}'."
           )
           logger.error(error_message)
           raise ValueError(error_message)
@@ -479,13 +471,13 @@ async def update_deck_layout(
           error_message = (
             f"ResourceDefinitionCatalogOrm with name '{expected_def_name}' for position "
             f"'{position_name}' not found. Rolling back update for layout "
-            f"'{original_layout_name}'."
+            f"'{original_name}'."
           )
           logger.error(error_message)
           raise ValueError(error_message)
 
       position_item = DeckConfigurationPositionItemOrm(
-        deck_configuration_id=deck_layout_orm.id,
+        deck_configuration_id=deck_orm.id,
         position_name=position_name,
         resource_instance_id=resource_instance_id,
         expected_resource_definition_name=expected_def_name,
@@ -494,28 +486,28 @@ async def update_deck_layout(
       logger.debug(
         "Added new position item '%s' to layout '%s'.",
         position_name,
-        original_layout_name,
+        original_name,
       )
 
   if not updates_made:
     logger.info(
-      "No changes detected for deck layout ID %d. No update performed.", deck_layout_id
+      "No changes detected for deck layout ID %d. No update performed.", deck_id
     )
-    return deck_layout_orm  # Return the original object if no changes were applied
+    return deck_orm
 
   try:
     await db.commit()
-    await db.refresh(deck_layout_orm)
+    await db.refresh(deck_orm)
     logger.info(
       "Successfully updated deck layout ID %d: '%s'.",
-      deck_layout_id,
-      deck_layout_orm.layout_name,
+      deck_id,
+      deck_orm.name,
     )
-    return await get_deck_layout_by_id(db, deck_layout_id)  # Reload with all relations
+    return await get_deck_by_id(db, deck_id)  # Reload with all relations
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error while updating deck layout '{original_layout_name}' (ID: {deck_layout_id}). "
+      f"Integrity error while updating deck layout '{original_name}' (ID: {deck_id}). "
       f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -524,20 +516,20 @@ async def update_deck_layout(
     await db.rollback()
     logger.exception(
       "Unexpected error updating deck layout '%s' (ID: %d). Rolling back.",
-      original_layout_name,
-      deck_layout_id,
+      original_name,
+      deck_id,
     )
     raise e
 
 
-async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:
+async def delete_deck(db: AsyncSession, deck_id: int) -> bool:
   """Delete a specific deck layout configuration by its ID.
 
   This function deletes a deck layout configuration and all its associated position items.
 
   Args:
     db (AsyncSession): The database session.
-    deck_layout_id (int): The ID of the deck layout to delete.
+    deck_id (int): The ID of the deck layout to delete.
 
   Returns:
     bool: True if the deletion was successful, False if the layout was not found.
@@ -546,25 +538,25 @@ async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:
     Exception: For any unexpected errors during deletion.
 
   """
-  logger.info("Attempting to delete deck layout with ID: %d.", deck_layout_id)
-  deck_layout_orm = await get_deck_layout_by_id(db, deck_layout_id)
-  if not deck_layout_orm:
-    logger.warning("Deck layout with ID %d not found for deletion.", deck_layout_id)
+  logger.info("Attempting to delete deck layout with ID: %d.", deck_id)
+  deck_orm = await get_deck_by_id(db, deck_id)
+  if not deck_orm:
+    logger.warning("Deck layout with ID %d not found for deletion.", deck_id)
     return False
 
   try:
-    await db.delete(deck_layout_orm)
+    await db.delete(deck_orm)
     await db.commit()
     logger.info(
       "Successfully deleted deck layout ID %d: '%s'.",
-      deck_layout_id,
-      deck_layout_orm.layout_name,
+      deck_id,
+      deck_orm.name,
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error deleting deck layout ID {deck_layout_id}. "
+      f"Integrity error deleting deck layout ID {deck_id}. "
       f"This might be due to foreign key constraints. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -572,7 +564,7 @@ async def delete_deck_layout(db: AsyncSession, deck_layout_id: int) -> bool:
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting deck layout ID %d. Rolling back.", deck_layout_id
+      "Unexpected error deleting deck layout ID %d. Rolling back.", deck_id
     )
     raise e
 
@@ -593,7 +585,7 @@ async def add_or_update_deck_type_definition(
   positioning_config: Optional[PositioningConfig] = None,
   serialized_constructor_args_json: Optional[Dict[str, Any]] = None,
   serialized_assignment_methods_json: Optional[Dict[str, Any]] = None,
-  serialized_constructor_layout_hints_json: Optional[Dict[str, Any]] = None,
+  serialized_constructor_hints_json: Optional[Dict[str, Any]] = None,
   additional_properties_input_json: Optional[Dict[str, Any]] = None,
   position_definitions_data: Optional[List[Dict[str, Any]]] = None,
 ) -> DeckTypeDefinitionOrm:
@@ -636,7 +628,7 @@ async def add_or_update_deck_type_definition(
       string of constructor arguments for PyLabRobot instantiation. Defaults to None.
     serialized_assignment_methods_json (Optional[Dict[str, Any]], optional): JSON
       string of assignment methods for PyLabRobot instantiation. Defaults to None.
-    serialized_constructor_layout_hints_json (Optional[Dict[str, Any]], optional):
+    serialized_constructor_hints_json (Optional[Dict[str, Any]], optional):
       JSON string of layout hints for PyLabRobot instantiation. Defaults to None.
     additional_properties_input_json (Optional[Dict[str, Any]], optional): A dictionary
       of additional properties to store as JSON. Keys in this dictionary will
@@ -740,9 +732,7 @@ async def add_or_update_deck_type_definition(
 
   deck_type_orm.serialized_constructor_args_json = serialized_constructor_args_json
   deck_type_orm.serialized_assignment_methods_json = serialized_assignment_methods_json
-  deck_type_orm.serialized_constructor_layout_hints_json = (
-    serialized_constructor_layout_hints_json
-  )
+  deck_type_orm.serialized_constructor_hints_json = serialized_constructor_hints_json
 
   # Consolidate additional properties
   current_additional_properties = deck_type_orm.additional_properties_json or {}

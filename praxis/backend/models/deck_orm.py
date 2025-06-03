@@ -46,7 +46,7 @@ class DeckConfigurationOrm(Base):
 
   Attributes:
       id (int): Primary key, unique identifier for the deck configuration.
-      layout_name (str): A unique, human-readable name for the deck layout.
+      name (str): A unique, human-readable name for the deck layout.
       deck_id (int): Foreign key to the `MachineOrm` representing
           the physical deck associated with this layout.
       description (Optional[str]): An optional description of the deck layout.
@@ -65,13 +65,10 @@ class DeckConfigurationOrm(Base):
   id: Mapped[int] = mapped_column(
     Integer, primary_key=True, index=True
   )  # praxis_deck_config_id
-  layout_name: Mapped[str] = mapped_column(
-    String, nullable=False, unique=True, index=True
-  )
+  name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
-  # A Deck itself is a Machine
   deck_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("machines.id"), nullable=False
+    Integer, ForeignKey("resources.id"), nullable=False
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -82,7 +79,12 @@ class DeckConfigurationOrm(Base):
     DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
   )
 
+  deck_type_definition_id: Mapped[Optional[int]] = mapped_column(
+    ForeignKey("deck_type_definitions.id"), nullable=True, index=True
+  )
+
   deck_machine = relationship("MachineOrm", back_populates="deck_configurations")
+
   position_items = relationship(
     "DeckConfigurationPositionItemOrm",
     back_populates="deck_configuration",
@@ -91,7 +93,7 @@ class DeckConfigurationOrm(Base):
 
   def __repr__(self):
     """Render string representation of the DeckConfigurationOrm instance."""
-    return f"<DeckConfigurationOrm(id={self.id}, name='{self.layout_name}')>"
+    return f"<DeckConfigurationOrm(id={self.id}, name='{self.name}')>"
 
 
 class DeckConfigurationPositionItemOrm(Base):
@@ -279,7 +281,7 @@ class DeckTypeDefinitionOrm(Base):
       serialized_assignment_methods_json (Optional[dict[str, Any]]): A JSON
           object representing serialized assignment methods for PyLabRobot
           instantiation.
-      serialized_constructor_layout_hints_json (Optional[dict[str, Any]]): A
+      serialized_constructor_hints_json (Optional[dict[str, Any]]): A
           JSON object representing serialized layout hints for PyLabRobot
           constructor.
       additional_properties_json (Optional[dict[str, Any]]): A JSON object
@@ -315,8 +317,8 @@ class DeckTypeDefinitionOrm(Base):
   serialized_assignment_methods_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
     JSON, nullable=True
   )
-  serialized_constructor_layout_hints_json: Mapped[Optional[dict[str, Any]]] = (
-    mapped_column(JSON, nullable=True)
+  serialized_constructor_hints_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    JSON, nullable=True
   )
   additional_properties_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
     JSON, nullable=True
