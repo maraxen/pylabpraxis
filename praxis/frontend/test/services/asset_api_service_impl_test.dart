@@ -5,7 +5,7 @@ import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
-import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/core/network/dio_client.dart';
 import 'package:praxis_lab_management/src/core/error/exceptions.dart';
@@ -27,19 +27,19 @@ void main() {
   });
 
   group('ManagedDeviceOrm - CRUD and Actions', () {
-    final deviceJson = {
+    final machineJson = {
       'name': 'Test Device 1',
       'type': 'robot',
       'metadata': {'info': 'test info'},
       'is_available': true,
-      'description': 'A test device',
+      'description': 'A test machine',
     };
-    final deviceOrm = ManagedDeviceOrm.fromJson(deviceJson);
+    final machineOrm = ManagedDeviceOrm.fromJson(machineJson);
 
     // getDevices
     group('getDevices', () {
       test('returns list of ManagedDeviceOrm on success', () async {
-        final responseData = [deviceJson, deviceJson];
+        final responseData = [machineJson, machineJson];
         when(mockDio.get('/api/assets/types/machine')).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(path: '/api/assets/types/machine'),
@@ -52,7 +52,7 @@ void main() {
 
         expect(result, isA<List<ManagedDeviceOrm>>());
         expect(result.length, 2);
-        expect(result[0].name, deviceOrm.name);
+        expect(result[0].name, machineOrm.name);
         verify(mockDio.get('/api/assets/types/machine')).called(1);
       });
 
@@ -95,15 +95,15 @@ void main() {
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(path: '/api/assets/machine'),
-            data: deviceJson,
+            data: machineJson,
             statusCode: 200,
           ),
         );
 
-        final result = await assetApiService.createDevice(deviceOrm);
+        final result = await assetApiService.createDevice(machineOrm);
 
         expect(result, isA<ManagedDeviceOrm>());
-        expect(result.name, deviceOrm.name);
+        expect(result.name, machineOrm.name);
         verify(
           mockDio.post('/api/assets/machine', data: anyNamed('data')),
         ).called(1);
@@ -122,7 +122,7 @@ void main() {
           ),
         );
         expect(
-          () => assetApiService.createDevice(deviceOrm),
+          () => assetApiService.createDevice(machineOrm),
           throwsA(isA<ApiException>()),
         );
       });
@@ -131,21 +131,21 @@ void main() {
     // getDeviceById
     group('getDeviceById', () {
       test('returns ManagedDeviceOrm on success', () async {
-        when(mockDio.get('/api/assets/${deviceOrm.name}')).thenAnswer(
+        when(mockDio.get('/api/assets/${machineOrm.name}')).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/assets/${deviceOrm.name}',
+              path: '/api/assets/${machineOrm.name}',
             ),
-            data: deviceJson,
+            data: machineJson,
             statusCode: 200,
           ),
         );
 
-        final result = await assetApiService.getDeviceById(deviceOrm.name);
+        final result = await assetApiService.getDeviceById(machineOrm.name);
 
         expect(result, isA<ManagedDeviceOrm>());
-        expect(result.name, deviceOrm.name);
-        verify(mockDio.get('/api/assets/${deviceOrm.name}')).called(1);
+        expect(result.name, machineOrm.name);
+        verify(mockDio.get('/api/assets/${machineOrm.name}')).called(1);
       });
 
       test('throws ApiException on 404 error', () async {
@@ -170,29 +170,29 @@ void main() {
       test('returns ManagedDeviceOrm on success', () async {
         when(
           mockDio.put(
-            '/api/assets/machine/${deviceOrm.name}',
+            '/api/assets/machine/${machineOrm.name}',
             data: anyNamed('data'),
           ),
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/assets/machine/${deviceOrm.name}',
+              path: '/api/assets/machine/${machineOrm.name}',
             ),
-            data: deviceJson, // Assuming update returns the updated device
+            data: machineJson, // Assuming update returns the updated machine
             statusCode: 200,
           ),
         );
 
         final result = await assetApiService.updateDevice(
-          deviceOrm.name,
-          deviceOrm,
+          machineOrm.name,
+          machineOrm,
         );
 
         expect(result, isA<ManagedDeviceOrm>());
-        expect(result.name, deviceOrm.name);
+        expect(result.name, machineOrm.name);
         verify(
           mockDio.put(
-            '/api/assets/machine/${deviceOrm.name}',
+            '/api/assets/machine/${machineOrm.name}',
             data: anyNamed('data'),
           ),
         ).called(1);
@@ -203,46 +203,46 @@ void main() {
     group('deleteDevice', () {
       test('completes successfully on 200 or 204', () async {
         when(
-          mockDio.delete('/api/assets/machine/${deviceOrm.name}'),
+          mockDio.delete('/api/assets/machine/${machineOrm.name}'),
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/assets/machine/${deviceOrm.name}',
+              path: '/api/assets/machine/${machineOrm.name}',
             ),
             statusCode: 204, // No Content
           ),
         );
         await expectLater(
-          assetApiService.deleteDevice(deviceOrm.name),
+          assetApiService.deleteDevice(machineOrm.name),
           completes,
         );
         verify(
-          mockDio.delete('/api/assets/machine/${deviceOrm.name}'),
+          mockDio.delete('/api/assets/machine/${machineOrm.name}'),
         ).called(1);
       });
     });
 
     // Device Actions (connect, initialize, disconnect)
     group('_executeDeviceAction', () {
-      const deviceId = 'testDevice123';
+      const machineId = 'testDevice123';
       test('connectDevice calls _executeDeviceAction with "connect"', () async {
         when(
           mockDio.post(
-            '/api/workcell/devices/$deviceId/execute_action',
+            '/api/workcell/machines/$machineId/execute_action',
             data: anyNamed('data'),
           ),
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/workcell/devices/$deviceId/execute_action',
+              path: '/api/workcell/machines/$machineId/execute_action',
             ),
             statusCode: 200,
           ),
         );
-        await assetApiService.connectDevice(deviceId);
+        await assetApiService.connectDevice(machineId);
         verify(
           mockDio.post(
-            '/api/workcell/devices/$deviceId/execute_action',
+            '/api/workcell/machines/$machineId/execute_action',
             data:
                 '"{\\"action\\":\\"connect\\"}"', // verify specific JSON payload
           ),
@@ -254,21 +254,21 @@ void main() {
         () async {
           when(
             mockDio.post(
-              '/api/workcell/devices/$deviceId/execute_action',
+              '/api/workcell/machines/$machineId/execute_action',
               data: anyNamed('data'),
             ),
           ).thenAnswer(
             (_) async => Response(
               requestOptions: RequestOptions(
-                path: '/api/workcell/devices/$deviceId/execute_action',
+                path: '/api/workcell/machines/$machineId/execute_action',
               ),
               statusCode: 200,
             ),
           );
-          await assetApiService.initializeDevice(deviceId);
+          await assetApiService.initializeDevice(machineId);
           verify(
             mockDio.post(
-              '/api/workcell/devices/$deviceId/execute_action',
+              '/api/workcell/machines/$machineId/execute_action',
               data: '"{\\"action\\":\\"initialize\\"}"',
             ),
           ).called(1);
@@ -280,21 +280,21 @@ void main() {
         () async {
           when(
             mockDio.post(
-              '/api/workcell/devices/$deviceId/execute_action',
+              '/api/workcell/machines/$machineId/execute_action',
               data: anyNamed('data'),
             ),
           ).thenAnswer(
             (_) async => Response(
               requestOptions: RequestOptions(
-                path: '/api/workcell/devices/$deviceId/execute_action',
+                path: '/api/workcell/machines/$machineId/execute_action',
               ),
               statusCode: 200,
             ),
           );
-          await assetApiService.disconnectDevice(deviceId);
+          await assetApiService.disconnectDevice(machineId);
           verify(
             mockDio.post(
-              '/api/workcell/devices/$deviceId/execute_action',
+              '/api/workcell/machines/$machineId/execute_action',
               data: '"{\\"action\\":\\"disconnect\\"}"',
             ),
           ).called(1);
@@ -304,24 +304,24 @@ void main() {
       test('_executeDeviceAction throws ApiException on API error', () async {
         when(
           mockDio.post(
-            '/api/workcell/devices/$deviceId/execute_action',
+            '/api/workcell/machines/$machineId/execute_action',
             data: anyNamed('data'),
           ),
         ).thenThrow(
           DioException(
             requestOptions: RequestOptions(
-              path: '/api/workcell/devices/$deviceId/execute_action',
+              path: '/api/workcell/machines/$machineId/execute_action',
             ),
             response: Response(
               requestOptions: RequestOptions(
-                path: '/api/workcell/devices/$deviceId/execute_action',
+                path: '/api/workcell/machines/$machineId/execute_action',
               ),
               statusCode: 500,
             ),
           ),
         );
         expect(
-          () => assetApiService.connectDevice(deviceId),
+          () => assetApiService.connectDevice(machineId),
           throwsA(isA<ApiException>()),
         );
       });
@@ -732,7 +732,7 @@ void main() {
     final deckLayoutJson = {
       'id': 1, // Ensure ID is int
       'layout_name': 'Test Layout 1',
-      'deck_device_id': 1, // Ensure this is int
+      'deck_machine_id': 1, // Ensure this is int
       'slot_items': [slotItemJson],
       'workspace_id': 'ws1',
     };

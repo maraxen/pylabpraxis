@@ -35,12 +35,12 @@ async def add_or_update_machine(
   workcell_id: Optional[int] = None,
   physical_location_description: Optional[str] = None,
   properties_json: Optional[Dict[str, Any]] = None,
-  device_id: Optional[int] = None,
+  machine_id: Optional[int] = None,
 ) -> MachineOrm:
   """Add a new machine or updates an existing one.
 
-  This function creates a new `MachineOrm` if `device_id` is not provided and
-  no existing machine matches `user_friendly_name`. If `device_id` is provided,
+  This function creates a new `MachineOrm` if `machine_id` is not provided and
+  no existing machine matches `user_friendly_name`. If `machine_id` is provided,
   it attempts to update the existing machine.
 
   Args:
@@ -60,7 +60,7 @@ async def add_or_update_machine(
           the machine's physical location. Defaults to None.
       properties_json (Optional[Dict[str, Any]], optional): Additional properties
           for the machine stored as JSON. Defaults to None.
-      device_id (Optional[int], optional): The ID of an existing machine to update.
+      machine_id (Optional[int], optional): The ID of an existing machine to update.
           If None, a new machine will be created or an existing one looked up by
           `user_friendly_name`. Defaults to None.
 
@@ -68,23 +68,23 @@ async def add_or_update_machine(
       MachineOrm: The created or updated machine object.
 
   Raises:
-      ValueError: If `device_id` is provided but no matching machine is found,
+      ValueError: If `machine_id` is provided but no matching machine is found,
           or if a machine with the same `user_friendly_name` already exists
           during creation.
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Machine (Name: '{user_friendly_name}', ID: {device_id or 'new'}):"
+  log_prefix = f"Machine (Name: '{user_friendly_name}', ID: {machine_id or 'new'}):"
   logger.info("%s Attempting to add or update machine.", log_prefix)
 
-  device_orm: Optional[MachineOrm] = None
+  machine_orm: Optional[MachineOrm] = None
 
-  if device_id:
-    result = await db.execute(select(MachineOrm).filter(MachineOrm.id == device_id))
-    device_orm = result.scalar_one_or_none()
-    if not device_orm:
+  if machine_id:
+    result = await db.execute(select(MachineOrm).filter(MachineOrm.id == machine_id))
+    machine_orm = result.scalar_one_or_none()
+    if not machine_orm:
       error_message = (
-        f"{log_prefix} MachineOrm with id {device_id} not found for update."
+        f"{log_prefix} MachineOrm with id {machine_id} not found for update."
       )
       logger.error(error_message)
       raise ValueError(error_message)
@@ -93,41 +93,41 @@ async def add_or_update_machine(
     result = await db.execute(
       select(MachineOrm).filter(MachineOrm.user_friendly_name == user_friendly_name)
     )
-    device_orm = result.scalar_one_or_none()
-    if device_orm:
+    machine_orm = result.scalar_one_or_none()
+    if machine_orm:
       logger.info(
         "%s Found existing machine by name, updating instead of creating.",
         log_prefix,
       )
     else:
       logger.info("%s No existing machine found, creating new.", log_prefix)
-      device_orm = MachineOrm(user_friendly_name=user_friendly_name)
-      db.add(device_orm)
+      machine_orm = MachineOrm(user_friendly_name=user_friendly_name)
+      db.add(machine_orm)
 
   # This check should ideally not be needed if logic above is sound, but kept as a safeguard
-  if device_orm is None:
+  if machine_orm is None:
     error_message = (
       f"{log_prefix} Failed to initialize MachineOrm. This indicates a logic error."
     )
     logger.critical(error_message)
     raise ValueError(error_message)
 
-  device_orm.python_fqn = python_fqn
-  device_orm.backend_config_json = backend_config_json
-  device_orm.current_status = current_status
-  device_orm.status_details = status_details
-  device_orm.workcell_id = workcell_id
-  device_orm.physical_location_description = physical_location_description
-  device_orm.properties_json = properties_json
+  machine_orm.python_fqn = python_fqn
+  machine_orm.backend_config_json = backend_config_json
+  machine_orm.current_status = current_status
+  machine_orm.status_details = status_details
+  machine_orm.workcell_id = workcell_id
+  machine_orm.physical_location_description = physical_location_description
+  machine_orm.properties_json = properties_json
 
   try:
     await db.commit()
-    await db.refresh(device_orm)
+    await db.refresh(machine_orm)
     logger.info("%s Successfully committed changes.", log_prefix)
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"{log_prefix} A device with name '{user_friendly_name}' might already "
+      f"{log_prefix} A machine with name '{user_friendly_name}' might already "
       f"exist or other integrity constraint violated. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -137,31 +137,31 @@ async def add_or_update_machine(
     logger.exception("%s Unexpected error. Rolling back.", log_prefix)
     raise e
   logger.info("%s Operation completed.", log_prefix)
-  return device_orm
+  return machine_orm
 
 
-async def get_machine_by_id(db: AsyncSession, device_id: int) -> Optional[MachineOrm]:
+async def get_machine_by_id(db: AsyncSession, machine_id: int) -> Optional[MachineOrm]:
   """Retrieve a specific machine by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      device_id (int): The ID of the machine to retrieve.
+      machine_id (int): The ID of the machine to retrieve.
 
   Returns:
       Optional[MachineOrm]: The machine object if found, otherwise None.
 
   """
-  logger.info("Attempting to retrieve machine with ID: %d.", device_id)
-  result = await db.execute(select(MachineOrm).filter(MachineOrm.id == device_id))
+  logger.info("Attempting to retrieve machine with ID: %d.", machine_id)
+  result = await db.execute(select(MachineOrm).filter(MachineOrm.id == machine_id))
   machine = result.scalar_one_or_none()
   if machine:
     logger.info(
       "Successfully retrieved machine ID %d: '%s'.",
-      device_id,
+      machine_id,
       machine.user_friendly_name,
     )
   else:
-    logger.info("Machine with ID %d not found.", device_id)
+    logger.info("Machine with ID %d not found.", machine_id)
   return machine
 
 
@@ -272,7 +272,7 @@ async def list_machines(
 
 async def update_machine_status(
   db: AsyncSession,
-  device_id: int,
+  machine_id: int,
   new_status: MachineStatusEnum,
   status_details: Optional[str] = None,
   current_protocol_run_guid: Optional[str] = None,
@@ -281,7 +281,7 @@ async def update_machine_status(
 
   Args:
       db (AsyncSession): The database session.
-      device_id (int): The ID of the machine to update.
+      machine_id (int): The ID of the machine to update.
       new_status (MachineStatusEnum): The new status to set for the machine.
       status_details (Optional[str], optional): Optional details about the status.
           Defaults to None.
@@ -300,74 +300,74 @@ async def update_machine_status(
   """
   logger.info(
     "Attempting to update status for machine ID %d to '%s'.",
-    device_id,
+    machine_id,
     new_status.value,
   )
-  device_orm = await get_machine_by_id(db, device_id)
-  if not device_orm:
-    logger.warning("Machine with ID %d not found for status update.", device_id)
+  machine_orm = await get_machine_by_id(db, machine_id)
+  if not machine_orm:
+    logger.warning("Machine with ID %d not found for status update.", machine_id)
     return None
 
   logger.debug(
     "Machine '%s' (ID: %d) status changing from '%s' to '%s'.",
-    device_orm.user_friendly_name,
-    device_id,
-    device_orm.current_status.value,
+    machine_orm.user_friendly_name,
+    machine_id,
+    machine_orm.current_status.value,
     new_status.value,
   )
-  device_orm.current_status = new_status
-  device_orm.status_details = status_details
+  machine_orm.current_status = new_status
+  machine_orm.status_details = status_details
 
   if new_status == MachineStatusEnum.IN_USE:
-    device_orm.current_protocol_run_guid = current_protocol_run_guid
+    machine_orm.current_protocol_run_guid = current_protocol_run_guid
     logger.debug(
       "Machine '%s' (ID: %d) set to IN_USE with protocol run GUID: %s.",
-      device_orm.user_friendly_name,
-      device_id,
+      machine_orm.user_friendly_name,
+      machine_id,
       current_protocol_run_guid,
     )
-  elif device_orm.current_protocol_run_guid == current_protocol_run_guid:
+  elif machine_orm.current_protocol_run_guid == current_protocol_run_guid:
     # Clear GUID only if it matches the one that put it in use
-    device_orm.current_protocol_run_guid = None
+    machine_orm.current_protocol_run_guid = None
     logger.debug(
       "Machine '%s' (ID: %d) protocol run GUID cleared as it matches the "
       "current one and status is no longer IN_USE.",
-      device_orm.user_friendly_name,
-      device_id,
+      machine_orm.user_friendly_name,
+      machine_id,
     )
 
   if new_status != MachineStatusEnum.OFFLINE:
-    device_orm.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
+    machine_orm.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
     logger.debug(
       "Machine '%s' (ID: %d) last seen online updated.",
-      device_orm.user_friendly_name,
-      device_id,
+      machine_orm.user_friendly_name,
+      machine_id,
     )
 
   try:
     await db.commit()
-    await db.refresh(device_orm)
+    await db.refresh(machine_orm)
     logger.info(
       "Successfully updated status for machine ID %d to '%s'.",
-      device_id,
+      machine_id,
       new_status.value,
     )
   except Exception as e:
     await db.rollback()
     logger.exception(
       "Unexpected error updating status for machine ID %d. Rolling back.",
-      device_id,
+      machine_id,
     )
     raise e
-  return device_orm
+  return machine_orm
 
 
-async def delete_machine(db: AsyncSession, device_id: int) -> bool:
+async def delete_machine(db: AsyncSession, machine_id: int) -> bool:
   """Delete a specific machine by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      device_id (int): The ID of the machine to delete.
+      machine_id (int): The ID of the machine to delete.
 
   Returns:
       bool: True if the deletion was successful, False if the machine was not found.
@@ -378,24 +378,24 @@ async def delete_machine(db: AsyncSession, device_id: int) -> bool:
       Exception: For any other unexpected errors during deletion.
 
   """
-  logger.info("Attempting to delete machine with ID: %d.", device_id)
-  device_orm = await get_machine_by_id(db, device_id)
-  if not device_orm:
-    logger.warning("Machine with ID %d not found for deletion.", device_id)
+  logger.info("Attempting to delete machine with ID: %d.", machine_id)
+  machine_orm = await get_machine_by_id(db, machine_id)
+  if not machine_orm:
+    logger.warning("Machine with ID %d not found for deletion.", machine_id)
     return False
   try:
-    await db.delete(device_orm)
+    await db.delete(machine_orm)
     await db.commit()
     logger.info(
       "Successfully deleted machine ID %d: '%s'.",
-      device_id,
-      device_orm.user_friendly_name,
+      machine_id,
+      machine_orm.user_friendly_name,
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Cannot delete machine ID {device_id} due to existing references. "
+      f"Cannot delete machine ID {machine_id} due to existing references. "
       f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -403,6 +403,6 @@ async def delete_machine(db: AsyncSession, device_id: int) -> bool:
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting machine ID %d. Rolling back.", device_id
+      "Unexpected error deleting machine ID %d. Rolling back.", machine_id
     )
     raise e

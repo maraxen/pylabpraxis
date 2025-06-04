@@ -72,7 +72,7 @@ class ClientException extends ApiException {
   }) : super(message: message ?? 'Client Error');
 }
 
-/// Exception thrown when the device is not connected to the internet.
+/// Exception thrown when the machine is not connected to the internet.
 class NetworkException extends AppException {
   NetworkException([String? message, StackTrace? stackTrace])
     : super(message ?? 'No Internet Connection', stackTrace);

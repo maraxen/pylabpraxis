@@ -168,40 +168,40 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(scope="function")
-def setup_basic_devices(db_session: Session) -> None:
-    """Sets up a basic DECK device and a NON-DECK device."""
-    deck_device = ManagedDeviceOrm(
+def setup_basic_machines(db_session: Session) -> None:
+    """Sets up a basic DECK machine and a NON-DECK machine."""
+    deck_machine = ManagedDeviceOrm(
         id=VALID_DECK_ID,
         user_friendly_name="Test Deck 1",
         python_fqn="pylabrobot.resources.Deck",
-        praxis_device_category=PraxisDeviceCategoryEnum.DECK,
+        praxis_machine_category=PraxisDeviceCategoryEnum.DECK,
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
-    non_deck_device = ManagedDeviceOrm(
+    non_deck_machine = ManagedDeviceOrm(
         id=VALID_NON_DECK_ID,
         user_friendly_name="Test Heater 1",
         python_fqn="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
-        praxis_device_category=PraxisDeviceCategoryEnum.GENERIC_DEVICE, # Or another non-DECK category
+        praxis_machine_category=PraxisDeviceCategoryEnum.GENERIC_DEVICE, # Or another non-DECK category
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
-    db_session.add_all([deck_device, non_deck_device])
+    db_session.add_all([deck_machine, non_deck_machine])
     db_session.commit()
 
 # --- HTTP Endpoint Tests ---
 
 def test_list_available_decks_empty(client: TestClient, db_session: Session):
-    """Test GET /api/workcell/decks when no deck devices are present."""
+    """Test GET /api/workcell/decks when no deck machines are present."""
     response = client.get("/api/workcell/decks")
     assert response.status_code == 200
     assert response.json() == []
 
-def test_list_available_decks_with_data(client: TestClient, db_session: Session, setup_basic_devices: None):
-    """Test GET /api/workcell/decks with a DECK and a NON-DECK device."""
+def test_list_available_decks_with_data(client: TestClient, db_session: Session, setup_basic_machines: None):
+    """Test GET /api/workcell/decks with a DECK and a NON-DECK machine."""
     response = client.get("/api/workcell/decks")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 1 # Should only return the DECK device
+    assert len(data) == 1 # Should only return the DECK machine
 
     deck_info = data[0]
     assert deck_info["id"] == VALID_DECK_ID
@@ -216,15 +216,15 @@ def test_get_specific_deck_state_not_found(client: TestClient, db_session: Sessi
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Session, setup_basic_devices: None):
-    """Test GET /api/workcell/decks/{deck_id}/state for a device that is not a DECK."""
+def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Session, setup_basic_machines: None):
+    """Test GET /api/workcell/decks/{deck_id}/state for a machine that is not a DECK."""
     response = client.get(f"/api/workcell/decks/{VALID_NON_DECK_ID}/state")
     assert response.status_code == 404 # As per current error handling
     assert "not categorized as a deck" in response.json()["detail"].lower()
 
 
 @pytest.fixture(scope="function")
-def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> None:
+def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) -> None:
     """Fixture to set up a deck with some resource on it."""
     # Resource Definition
     plate_def = ResourceDefinitionCatalogOrm(
@@ -251,7 +251,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> 
         id=1,
         user_assigned_name="PlateOnDeck",
         resource_definition_id=plate_def.id,
-        location_device_id=VALID_DECK_ID, # Place on Test Deck 1
+        location_machine_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="A1",
         current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
         properties_json={"sample_type": "plasma"}
@@ -260,7 +260,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> 
         id=2,
         user_assigned_name="TipsOnDeck",
         resource_definition_id=tip_rack_def.id,
-        location_device_id=VALID_DECK_ID, # Place on Test Deck 1
+        location_machine_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="B2",
         current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
     )
@@ -269,7 +269,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_devices: None) -> 
         id=3,
         user_assigned_name="PlateInStorage",
         resource_definition_id=plate_def.id,
-        location_device_id=None, # Not on any deck
+        location_machine_id=None, # Not on any deck
         current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
@@ -316,7 +316,7 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
 
 # --- WebSocket Endpoint Tests ---
 
-def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_session: Session, setup_basic_devices: None):
+def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_session: Session, setup_basic_machines: None):
     """Test WebSocket connection and message broadcast."""
     with client.websocket_connect(f"/ws/decks/{VALID_DECK_ID}/updates") as websocket:
         # Test broadcast
@@ -366,8 +366,8 @@ def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, d
     # If we could access the close event details, we'd check:
     # assert exc_info.value.code == 1008 # For WebSocketDisconnect exception if it holds the code
 
-def test_websocket_connection_to_non_deck_device(client: TestClient, db_session: Session, setup_basic_devices: None):
-    """Test WebSocket connection attempt to a device that is not a DECK."""
+def test_websocket_connection_to_non_deck_machine(client: TestClient, db_session: Session, setup_basic_machines: None):
+    """Test WebSocket connection attempt to a machine that is not a DECK."""
     with pytest.raises(Exception) as exc_info:
         with client.websocket_connect(f"/ws/decks/{VALID_NON_DECK_ID}/updates") as websocket:
             pass # Expect connection to be refused/closed
@@ -395,22 +395,22 @@ Here's a summary of what's been done in this step:
     *   `setup_test_database_session()`: A session-scoped fixture to create database tables once using `create_tables_if_not_exist()` (assuming this function uses the `engine` from `utils.db` and `Base.metadata`).
     *   `db_session()`: A function-scoped fixture that provides a transactional database session. It begins a transaction before yielding the session and rolls it back afterwards, ensuring test isolation.
     *   `client(db_session)`: A function-scoped fixture that provides a `TestClient` for the FastAPI application. It overrides the `get_db` dependency to use the transactional `db_session` fixture.
-    *   `setup_basic_devices(db_session)`: A function-scoped fixture to populate the database with a DECK device (`id=VALID_DECK_ID`) and a non-DECK device (`id=VALID_NON_DECK_ID`).
-    *   `setup_deck_with_resource(db_session, setup_basic_devices)`: A function-scoped fixture that builds upon `setup_basic_devices`. It adds resource definitions and instances, placing some resource onto the `VALID_DECK_ID` at specific slots (`A1`, `B2`).
+    *   `setup_basic_machines(db_session)`: A function-scoped fixture to populate the database with a DECK machine (`id=VALID_DECK_ID`) and a non-DECK machine (`id=VALID_NON_DECK_ID`).
+    *   `setup_deck_with_resource(db_session, setup_basic_machines)`: A function-scoped fixture that builds upon `setup_basic_machines`. It adds resource definitions and instances, placing some resource onto the `VALID_DECK_ID` at specific slots (`A1`, `B2`).
 
 4.  **HTTP Endpoint Tests (Initial Structure):**
     *   **`GET /api/workcell/decks`:**
-        *   `test_list_available_decks_empty`: Tests the endpoint when no deck devices are in the DB.
-        *   `test_list_available_decks_with_data`: Tests with both a DECK and a non-DECK device, asserting only the DECK is returned and its data is correct.
+        *   `test_list_available_decks_empty`: Tests the endpoint when no deck machines are in the DB.
+        *   `test_list_available_decks_with_data`: Tests with both a DECK and a non-DECK machine, asserting only the DECK is returned and its data is correct.
     *   **`GET /api/workcell/decks/{deck_id}/state`:**
         *   `test_get_specific_deck_state_not_found`: Tests with an ID that doesn't exist.
-        *   `test_get_specific_deck_state_not_a_deck`: Tests with an ID of a device that isn't a DECK.
+        *   `test_get_specific_deck_state_not_a_deck`: Tests with an ID of a machine that isn't a DECK.
         *   `test_get_specific_deck_state_with_resource`: Tests with a valid DECK ID that has resource placed on it (using `setup_deck_with_resource` fixture). It verifies the returned deck structure, slot information, and details of the resource on the slots.
 
 5.  **WebSocket Endpoint Tests (Initial Structure):**
     *   `test_websocket_deck_updates_connection_and_broadcast`: Tests successful WebSocket connection, then uses the `POST /ws/test_broadcast/{deck_id}` endpoint to send a message, and verifies the WebSocket client receives and can parse this message.
     *   `test_websocket_deck_updates_connection_to_invalid_deck`: Tests attempting to connect to a WebSocket for a `deck_id` that doesn't exist in the database. It asserts that an exception occurs, indicating the connection was refused or closed.
-    *   `test_websocket_connection_to_non_deck_device`: Tests attempting to connect to a WebSocket for a `deck_id` that corresponds to a device not categorized as a DECK. It also asserts that an exception occurs.
+    *   `test_websocket_connection_to_non_deck_machine`: Tests attempting to connect to a WebSocket for a `deck_id` that corresponds to a machine not categorized as a DECK. It also asserts that an exception occurs.
 
 **Next Steps (Implicitly Done by the Tool in a Single Turn):**
 

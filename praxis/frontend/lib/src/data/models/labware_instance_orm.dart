@@ -223,7 +223,7 @@ class ResourceInstanceOrm {
       currentStatus: json['current_status'] as String?,
       statusDetails: json['status_details'] as String?,
       currentDeckSlotName: json['current_deck_slot_name'] as String?,
-      locationDeviceId: json['location_device_id'] as int?,
+      locationDeviceId: json['location_machine_id'] as int?,
       physicalLocationDescription:
           json['physical_location_description'] as String?,
       // properties_json from backend ORM maps to inventoryData here
@@ -260,7 +260,7 @@ class ResourceInstanceOrm {
       'current_status': currentStatus,
       'status_details': statusDetails,
       'current_deck_slot_name': currentDeckSlotName,
-      'location_device_id': locationDeviceId,
+      'location_machine_id': locationDeviceId,
       'physical_location_description': physicalLocationDescription,
       // inventoryData maps to properties_json for general instance creation/update
       // For specific inventory updates, inventoryData.toJson() will be sent directly.

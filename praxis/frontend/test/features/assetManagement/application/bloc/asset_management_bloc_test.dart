@@ -2,7 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
-import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
@@ -18,9 +18,9 @@ void main() {
   });
 
   group('AssetManagementBloc', () {
-    final device1 = ManagedDeviceOrm(
+    final machine1 = ManagedDeviceOrm(
       name: 'Device 1',
-      type: 'deviceType1',
+      type: 'machineType1',
       metadata: {},
       isAvailable: true,
     );
@@ -40,7 +40,7 @@ void main() {
       workspaceId: 'workspace1',
     );
 
-    final List<ManagedDeviceOrm> mockDevices = [device1];
+    final List<ManagedDeviceOrm> mockDevices = [machine1];
     final List<ResourceDefinitionCatalogOrm> mockResourceDefinitions = [
       resourceDef1,
     ];
@@ -77,7 +77,7 @@ void main() {
             () => [
               const AssetManagementLoadInProgress(),
               AssetManagementLoadSuccess(
-                devices: mockDevices,
+                machines: mockDevices,
                 resourceDefinitions: mockResourceDefinitions,
                 resourceInstances: mockResourceInstances,
                 deckLayouts: mockDeckLayouts,
@@ -96,7 +96,7 @@ void main() {
         build: () {
           when(
             mockAssetApiService.getDevices(),
-          ).thenThrow(Exception('Failed to fetch devices'));
+          ).thenThrow(Exception('Failed to fetch machines'));
           // Mock other calls if they would happen before the failing one
           when(
             mockAssetApiService.getResourceDefinitions(),
@@ -116,7 +116,7 @@ void main() {
               isA<AssetManagementLoadFailure>().having(
                 (s) => s.error,
                 'error',
-                'Exception: Failed to fetch devices',
+                'Exception: Failed to fetch machines',
               ),
             ],
         verify: (_) {
@@ -161,7 +161,7 @@ void main() {
               const AssetManagementUpdateSuccess(),
               const AssetManagementLoadInProgress(), // Due to add(AssetManagementLoadStarted())
               AssetManagementLoadSuccess(
-                devices: [newDevice],
+                machines: [newDevice],
                 resourceDefinitions: mockResourceDefinitions,
                 resourceInstances: mockResourceInstances,
                 deckLayouts: mockDeckLayouts,
@@ -178,7 +178,7 @@ void main() {
         build: () {
           when(
             mockAssetApiService.createDevice(any),
-          ).thenThrow(Exception('Failed to create device'));
+          ).thenThrow(Exception('Failed to create machine'));
           return AssetManagementBloc(mockAssetApiService);
         },
         act: (bloc) => bloc.add(AddDeviceStarted(newDevice)),
@@ -188,7 +188,7 @@ void main() {
               isA<AssetManagementUpdateFailure>().having(
                 (s) => s.error,
                 'error',
-                'Exception: Failed to create device',
+                'Exception: Failed to create machine',
               ),
             ],
         verify: (_) {

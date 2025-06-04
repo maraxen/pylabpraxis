@@ -12,7 +12,7 @@ import 'package:praxis_lab_management/src/data/models/resource_definition_catalo
     as _i3;
 import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart'
     as _i4;
-import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart'
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart'
     as _i2;
 import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart'
     as _i6;
@@ -84,26 +84,28 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
           as _i8.Future<List<_i2.ManagedDeviceOrm>>);
 
   @override
-  _i8.Future<_i2.ManagedDeviceOrm> createDevice(_i2.ManagedDeviceOrm? device) =>
+  _i8.Future<_i2.ManagedDeviceOrm> createDevice(
+    _i2.ManagedDeviceOrm? machine,
+  ) =>
       (super.noSuchMethod(
-            Invocation.method(#createDevice, [device]),
+            Invocation.method(#createDevice, [machine]),
             returnValue: _i8.Future<_i2.ManagedDeviceOrm>.value(
               _FakeManagedDeviceOrm_0(
                 this,
-                Invocation.method(#createDevice, [device]),
+                Invocation.method(#createDevice, [machine]),
               ),
             ),
           )
           as _i8.Future<_i2.ManagedDeviceOrm>);
 
   @override
-  _i8.Future<_i2.ManagedDeviceOrm> getDeviceById(String? deviceId) =>
+  _i8.Future<_i2.ManagedDeviceOrm> getDeviceById(String? machineId) =>
       (super.noSuchMethod(
-            Invocation.method(#getDeviceById, [deviceId]),
+            Invocation.method(#getDeviceById, [machineId]),
             returnValue: _i8.Future<_i2.ManagedDeviceOrm>.value(
               _FakeManagedDeviceOrm_0(
                 this,
-                Invocation.method(#getDeviceById, [deviceId]),
+                Invocation.method(#getDeviceById, [machineId]),
               ),
             ),
           )
@@ -111,51 +113,51 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
 
   @override
   _i8.Future<_i2.ManagedDeviceOrm> updateDevice(
-    String? deviceId,
-    _i2.ManagedDeviceOrm? device,
+    String? machineId,
+    _i2.ManagedDeviceOrm? machine,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#updateDevice, [deviceId, device]),
+            Invocation.method(#updateDevice, [machineId, machine]),
             returnValue: _i8.Future<_i2.ManagedDeviceOrm>.value(
               _FakeManagedDeviceOrm_0(
                 this,
-                Invocation.method(#updateDevice, [deviceId, device]),
+                Invocation.method(#updateDevice, [machineId, machine]),
               ),
             ),
           )
           as _i8.Future<_i2.ManagedDeviceOrm>);
 
   @override
-  _i8.Future<void> deleteDevice(String? deviceId) =>
+  _i8.Future<void> deleteDevice(String? machineId) =>
       (super.noSuchMethod(
-            Invocation.method(#deleteDevice, [deviceId]),
+            Invocation.method(#deleteDevice, [machineId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
           as _i8.Future<void>);
 
   @override
-  _i8.Future<void> connectDevice(String? deviceId) =>
+  _i8.Future<void> connectDevice(String? machineId) =>
       (super.noSuchMethod(
-            Invocation.method(#connectDevice, [deviceId]),
+            Invocation.method(#connectDevice, [machineId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
           as _i8.Future<void>);
 
   @override
-  _i8.Future<void> initializeDevice(String? deviceId) =>
+  _i8.Future<void> initializeDevice(String? machineId) =>
       (super.noSuchMethod(
-            Invocation.method(#initializeDevice, [deviceId]),
+            Invocation.method(#initializeDevice, [machineId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
           as _i8.Future<void>);
 
   @override
-  _i8.Future<void> disconnectDevice(String? deviceId) =>
+  _i8.Future<void> disconnectDevice(String? machineId) =>
       (super.noSuchMethod(
-            Invocation.method(#disconnectDevice, [deviceId]),
+            Invocation.method(#disconnectDevice, [machineId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )

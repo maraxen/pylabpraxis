@@ -4,7 +4,7 @@
 
 ## What is PyLabPraxis?
 
-PyLabPraxis is a library that interfaces with PyLabRobot to facilitate execution of experiments. Read [the PyLabRobot paper](<https://www.cell.com/device/fulltext/S2666-9986(23)00170-9>) in Device.
+PyLabPraxis is a library that interfaces with PyLabRobot to facilitate execution of experiments. Read [the PyLabRobot paper](<https://www.cell.com/machine/fulltext/S2666-9986(23)00170-9>) in Device.
 
 ### Lab Configuration
 

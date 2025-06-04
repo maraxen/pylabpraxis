@@ -12,7 +12,7 @@ sealed class DeckConfigurationEvent with _$DeckConfigurationEvent {
     String? layoutName,
   }) = DeckLayoutSelected;
 
-  /// Event triggered when a user picks a deck layout file from their device.
+  /// Event triggered when a user picks a deck layout file from their machine.
   /// [file] is the [PlatformFile] object representing the picked file.
   const factory DeckConfigurationEvent.deckFilePicked({
     required PlatformFile file,

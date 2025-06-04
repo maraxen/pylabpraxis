@@ -66,9 +66,9 @@ def mock_asset_manager():  # Removed self
   mock_am.acquire_asset.return_value = (
     MagicMock(name="live_asset"),
     123,
-    "device",
+    "machine",
   )  # live_obj, orm_id, asset_type_str
-  mock_am.release_device = MagicMock()
+  mock_am.release_machine = MagicMock()
   mock_am.release_resource = MagicMock()
   return mock_am
 
@@ -149,7 +149,7 @@ def orchestrator_instance(
     # Reset the main mock_asset_manager and its methods
     mock_asset_manager.reset_mock()
     mock_asset_manager.acquire_asset.reset_mock()
-    mock_asset_manager.release_device.reset_mock()
+    mock_asset_manager.release_machine.reset_mock()
     mock_asset_manager.release_resource.reset_mock()
 
     mock_sleep.reset_mock()
@@ -245,7 +245,7 @@ class TestOrchestratorExecutionControl:
     )
 
     acquired_assets_info = [
-      {"type": "device", "orm_id": 123, "name_in_protocol": "mock_device"}
+      {"type": "machine", "orm_id": 123, "name_in_protocol": "mock_machine"}
     ]
     orchestrator._prepare_arguments = MagicMock(
       return_value=({}, None, acquired_assets_info)
@@ -288,7 +288,7 @@ class TestOrchestratorExecutionControl:
 
     mock_protocol_wrapper_func.assert_not_called()
 
-    orchestrator.asset_manager.release_device.assert_called_once_with(device_orm_id=123)
+    orchestrator.asset_manager.release_machine.assert_called_once_with(machine_orm_id=123)
     orchestrator.asset_manager.release_resource.assert_not_called()
 
   # TODO: Add more tests here for:
@@ -979,7 +979,7 @@ class TestOrchestratorArgumentPreparation:
     assert acquired_assets[0]["name_in_protocol"] == "plate_param"
 
   @patch("praxis.backend.core.orchestrator.asset_data_service")
-  def test_infer_device_asset_from_type_hint(
+  def test_infer_machine_asset_from_type_hint(
     self,
     mock_asset_data_service_in_orchestrator,
     orchestrator_instance,
@@ -999,7 +999,7 @@ class TestOrchestratorArgumentPreparation:
 
     live_asset_mock = MagicMock(name="LivePipetteAsset")
     orchestrator.asset_manager.acquire_asset = MagicMock(
-      return_value=(live_asset_mock, 2, "device")
+      return_value=(live_asset_mock, 2, "machine")
     )
 
     final_args, _, acquired_assets = orchestrator._prepare_arguments(
@@ -1022,7 +1022,7 @@ class TestOrchestratorArgumentPreparation:
     assert called_asset_req.name == "pipette_param"
     assert (
       called_asset_req.actual_type_str == "pylabrobot.liquid_handling.pipettes.Pipette"
-    )  # FQN used for devices
+    )  # FQN used for machines
     assert not called_asset_req.optional
     assert final_args["pipette_param"] == live_asset_mock
     assert len(acquired_assets) == 1
@@ -1047,7 +1047,7 @@ class TestOrchestratorArgumentPreparation:
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
-    mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.return_value = None  # Treat as device for simplicity here
+    mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.return_value = None  # Treat as machine for simplicity here
     orchestrator.asset_manager.acquire_asset = MagicMock(
       side_effect=AssetAcquisitionError("Cannot acquire optional rack")
     )
@@ -1391,7 +1391,7 @@ class TestOrchestratorArgumentPreparation:
 
     # Simulate acquired assets for release check
     acquired_assets_info = [
-      {"type": "device", "orm_id": 789, "name_in_protocol": "test_device_cancel"}
+      {"type": "machine", "orm_id": 789, "name_in_protocol": "test_machine_cancel"}
     ]
     orchestrator._prepare_arguments = MagicMock(
       return_value=(
@@ -1443,5 +1443,5 @@ class TestOrchestratorArgumentPreparation:
     )
 
     # Check asset release
-    mock_asset_manager.release_device.assert_called_once_with(device_orm_id=789)
+    mock_asset_manager.release_machine.assert_called_once_with(machine_orm_id=789)
     mock_asset_manager.release_resource.assert_not_called()

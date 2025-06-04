@@ -78,10 +78,10 @@ String toString() {
 
 
 class AddDeviceStarted implements AssetManagementEvent {
-  const AddDeviceStarted(this.device);
+  const AddDeviceStarted(this.machine);
 
 
- final  ManagedDeviceOrm device;
+ final  ManagedDeviceOrm machine;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -93,16 +93,16 @@ $AddDeviceStartedCopyWith<AddDeviceStarted> get copyWith => _$AddDeviceStartedCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddDeviceStarted&&(identical(other.device, device) || other.device == device));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AddDeviceStarted&&(identical(other.machine, machine) || other.machine == machine));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,device);
+int get hashCode => Object.hash(runtimeType,machine);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.addDeviceStarted(device: $device)';
+  return 'AssetManagementEvent.addDeviceStarted(machine: $machine)';
 }
 
 
@@ -113,7 +113,7 @@ abstract mixin class $AddDeviceStartedCopyWith<$Res> implements $AssetManagement
   factory $AddDeviceStartedCopyWith(AddDeviceStarted value, $Res Function(AddDeviceStarted) _then) = _$AddDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- ManagedDeviceOrm device
+ ManagedDeviceOrm machine
 });
 
 
@@ -130,9 +130,9 @@ class _$AddDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? device = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machine = null,}) {
   return _then(AddDeviceStarted(
-null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+null == machine ? _self.machine : machine // ignore: cast_nullable_to_non_nullable
 as ManagedDeviceOrm,
   ));
 }
@@ -144,11 +144,11 @@ as ManagedDeviceOrm,
 
 
 class UpdateDeviceStarted implements AssetManagementEvent {
-  const UpdateDeviceStarted(this.deviceId, this.device);
+  const UpdateDeviceStarted(this.machineId, this.machine);
 
 
- final  String deviceId;
- final  ManagedDeviceOrm device;
+ final  String machineId;
+ final  ManagedDeviceOrm machine;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -160,16 +160,16 @@ $UpdateDeviceStartedCopyWith<UpdateDeviceStarted> get copyWith => _$UpdateDevice
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateDeviceStarted&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId)&&(identical(other.device, device) || other.device == device));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateDeviceStarted&&(identical(other.machineId, machineId) || other.machineId == machineId)&&(identical(other.machine, machine) || other.machine == machine));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,deviceId,device);
+int get hashCode => Object.hash(runtimeType,machineId,machine);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.updateDeviceStarted(deviceId: $deviceId, device: $device)';
+  return 'AssetManagementEvent.updateDeviceStarted(machineId: $machineId, machine: $machine)';
 }
 
 
@@ -180,7 +180,7 @@ abstract mixin class $UpdateDeviceStartedCopyWith<$Res> implements $AssetManagem
   factory $UpdateDeviceStartedCopyWith(UpdateDeviceStarted value, $Res Function(UpdateDeviceStarted) _then) = _$UpdateDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- String deviceId, ManagedDeviceOrm device
+ String machineId, ManagedDeviceOrm machine
 });
 
 
@@ -197,10 +197,10 @@ class _$UpdateDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,Object? device = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machineId = null,Object? machine = null,}) {
   return _then(UpdateDeviceStarted(
-null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
-as String,null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+null == machineId ? _self.machineId : machineId // ignore: cast_nullable_to_non_nullable
+as String,null == machine ? _self.machine : machine // ignore: cast_nullable_to_non_nullable
 as ManagedDeviceOrm,
   ));
 }
@@ -212,10 +212,10 @@ as ManagedDeviceOrm,
 
 
 class DeleteDeviceStarted implements AssetManagementEvent {
-  const DeleteDeviceStarted(this.deviceId);
+  const DeleteDeviceStarted(this.machineId);
 
 
- final  String deviceId;
+ final  String machineId;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -227,16 +227,16 @@ $DeleteDeviceStartedCopyWith<DeleteDeviceStarted> get copyWith => _$DeleteDevice
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteDeviceStarted&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeleteDeviceStarted&&(identical(other.machineId, machineId) || other.machineId == machineId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,deviceId);
+int get hashCode => Object.hash(runtimeType,machineId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.deleteDeviceStarted(deviceId: $deviceId)';
+  return 'AssetManagementEvent.deleteDeviceStarted(machineId: $machineId)';
 }
 
 
@@ -247,7 +247,7 @@ abstract mixin class $DeleteDeviceStartedCopyWith<$Res> implements $AssetManagem
   factory $DeleteDeviceStartedCopyWith(DeleteDeviceStarted value, $Res Function(DeleteDeviceStarted) _then) = _$DeleteDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- String deviceId
+ String machineId
 });
 
 
@@ -264,9 +264,9 @@ class _$DeleteDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machineId = null,}) {
   return _then(DeleteDeviceStarted(
-null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+null == machineId ? _self.machineId : machineId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -278,10 +278,10 @@ as String,
 
 
 class ConnectDeviceStarted implements AssetManagementEvent {
-  const ConnectDeviceStarted(this.deviceId);
+  const ConnectDeviceStarted(this.machineId);
 
 
- final  String deviceId;
+ final  String machineId;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -293,16 +293,16 @@ $ConnectDeviceStartedCopyWith<ConnectDeviceStarted> get copyWith => _$ConnectDev
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectDeviceStarted&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectDeviceStarted&&(identical(other.machineId, machineId) || other.machineId == machineId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,deviceId);
+int get hashCode => Object.hash(runtimeType,machineId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.connectDeviceStarted(deviceId: $deviceId)';
+  return 'AssetManagementEvent.connectDeviceStarted(machineId: $machineId)';
 }
 
 
@@ -313,7 +313,7 @@ abstract mixin class $ConnectDeviceStartedCopyWith<$Res> implements $AssetManage
   factory $ConnectDeviceStartedCopyWith(ConnectDeviceStarted value, $Res Function(ConnectDeviceStarted) _then) = _$ConnectDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- String deviceId
+ String machineId
 });
 
 
@@ -330,9 +330,9 @@ class _$ConnectDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machineId = null,}) {
   return _then(ConnectDeviceStarted(
-null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+null == machineId ? _self.machineId : machineId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -344,10 +344,10 @@ as String,
 
 
 class InitializeDeviceStarted implements AssetManagementEvent {
-  const InitializeDeviceStarted(this.deviceId);
+  const InitializeDeviceStarted(this.machineId);
 
 
- final  String deviceId;
+ final  String machineId;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -359,16 +359,16 @@ $InitializeDeviceStartedCopyWith<InitializeDeviceStarted> get copyWith => _$Init
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InitializeDeviceStarted&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InitializeDeviceStarted&&(identical(other.machineId, machineId) || other.machineId == machineId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,deviceId);
+int get hashCode => Object.hash(runtimeType,machineId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.initializeDeviceStarted(deviceId: $deviceId)';
+  return 'AssetManagementEvent.initializeDeviceStarted(machineId: $machineId)';
 }
 
 
@@ -379,7 +379,7 @@ abstract mixin class $InitializeDeviceStartedCopyWith<$Res> implements $AssetMan
   factory $InitializeDeviceStartedCopyWith(InitializeDeviceStarted value, $Res Function(InitializeDeviceStarted) _then) = _$InitializeDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- String deviceId
+ String machineId
 });
 
 
@@ -396,9 +396,9 @@ class _$InitializeDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machineId = null,}) {
   return _then(InitializeDeviceStarted(
-null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+null == machineId ? _self.machineId : machineId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -410,10 +410,10 @@ as String,
 
 
 class DisconnectDeviceStarted implements AssetManagementEvent {
-  const DisconnectDeviceStarted(this.deviceId);
+  const DisconnectDeviceStarted(this.machineId);
 
 
- final  String deviceId;
+ final  String machineId;
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -425,16 +425,16 @@ $DisconnectDeviceStartedCopyWith<DisconnectDeviceStarted> get copyWith => _$Disc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DisconnectDeviceStarted&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DisconnectDeviceStarted&&(identical(other.machineId, machineId) || other.machineId == machineId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,deviceId);
+int get hashCode => Object.hash(runtimeType,machineId);
 
 @override
 String toString() {
-  return 'AssetManagementEvent.disconnectDeviceStarted(deviceId: $deviceId)';
+  return 'AssetManagementEvent.disconnectDeviceStarted(machineId: $machineId)';
 }
 
 
@@ -445,7 +445,7 @@ abstract mixin class $DisconnectDeviceStartedCopyWith<$Res> implements $AssetMan
   factory $DisconnectDeviceStartedCopyWith(DisconnectDeviceStarted value, $Res Function(DisconnectDeviceStarted) _then) = _$DisconnectDeviceStartedCopyWithImpl;
 @useResult
 $Res call({
- String deviceId
+ String machineId
 });
 
 
@@ -462,9 +462,9 @@ class _$DisconnectDeviceStartedCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machineId = null,}) {
   return _then(DisconnectDeviceStarted(
-null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+null == machineId ? _self.machineId : machineId // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -1170,14 +1170,14 @@ String toString() {
 
 
 class AssetManagementLoadSuccess implements AssetManagementState {
-  const AssetManagementLoadSuccess({required final  List<ManagedDeviceOrm> devices, required final  List<ResourceDefinitionCatalogOrm> resourceDefinitions, required final  List<ResourceInstanceOrm> resourceInstances, required final  List<DeckLayoutOrm> deckLayouts}): _devices = devices,_resourceDefinitions = resourceDefinitions,_resourceInstances = resourceInstances,_deckLayouts = deckLayouts;
+  const AssetManagementLoadSuccess({required final  List<ManagedDeviceOrm> machines, required final  List<ResourceDefinitionCatalogOrm> resourceDefinitions, required final  List<ResourceInstanceOrm> resourceInstances, required final  List<DeckLayoutOrm> deckLayouts}): _machines = machines,_resourceDefinitions = resourceDefinitions,_resourceInstances = resourceInstances,_deckLayouts = deckLayouts;
 
 
- final  List<ManagedDeviceOrm> _devices;
- List<ManagedDeviceOrm> get devices {
-  if (_devices is EqualUnmodifiableListView) return _devices;
+ final  List<ManagedDeviceOrm> _machines;
+ List<ManagedDeviceOrm> get machines {
+  if (_machines is EqualUnmodifiableListView) return _machines;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_devices);
+  return EqualUnmodifiableListView(_machines);
 }
 
  final  List<ResourceDefinitionCatalogOrm> _resourceDefinitions;
@@ -1212,16 +1212,16 @@ $AssetManagementLoadSuccessCopyWith<AssetManagementLoadSuccess> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssetManagementLoadSuccess&&const DeepCollectionEquality().equals(other._devices, _devices)&&const DeepCollectionEquality().equals(other._resourceDefinitions, _resourceDefinitions)&&const DeepCollectionEquality().equals(other._resourceInstances, _resourceInstances)&&const DeepCollectionEquality().equals(other._deckLayouts, _deckLayouts));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssetManagementLoadSuccess&&const DeepCollectionEquality().equals(other._machines, _machines)&&const DeepCollectionEquality().equals(other._resourceDefinitions, _resourceDefinitions)&&const DeepCollectionEquality().equals(other._resourceInstances, _resourceInstances)&&const DeepCollectionEquality().equals(other._deckLayouts, _deckLayouts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices),const DeepCollectionEquality().hash(_resourceDefinitions),const DeepCollectionEquality().hash(_resourceInstances),const DeepCollectionEquality().hash(_deckLayouts));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_machines),const DeepCollectionEquality().hash(_resourceDefinitions),const DeepCollectionEquality().hash(_resourceInstances),const DeepCollectionEquality().hash(_deckLayouts));
 
 @override
 String toString() {
-  return 'AssetManagementState.loadSuccess(devices: $devices, resourceDefinitions: $resourceDefinitions, resourceInstances: $resourceInstances, deckLayouts: $deckLayouts)';
+  return 'AssetManagementState.loadSuccess(machines: $machines, resourceDefinitions: $resourceDefinitions, resourceInstances: $resourceInstances, deckLayouts: $deckLayouts)';
 }
 
 
@@ -1232,7 +1232,7 @@ abstract mixin class $AssetManagementLoadSuccessCopyWith<$Res> implements $Asset
   factory $AssetManagementLoadSuccessCopyWith(AssetManagementLoadSuccess value, $Res Function(AssetManagementLoadSuccess) _then) = _$AssetManagementLoadSuccessCopyWithImpl;
 @useResult
 $Res call({
- List<ManagedDeviceOrm> devices, List<ResourceDefinitionCatalogOrm> resourceDefinitions, List<ResourceInstanceOrm> resourceInstances, List<DeckLayoutOrm> deckLayouts
+ List<ManagedDeviceOrm> machines, List<ResourceDefinitionCatalogOrm> resourceDefinitions, List<ResourceInstanceOrm> resourceInstances, List<DeckLayoutOrm> deckLayouts
 });
 
 
@@ -1249,9 +1249,9 @@ class _$AssetManagementLoadSuccessCopyWithImpl<$Res>
 
 /// Create a copy of AssetManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? devices = null,Object? resourceDefinitions = null,Object? resourceInstances = null,Object? deckLayouts = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? machines = null,Object? resourceDefinitions = null,Object? resourceInstances = null,Object? deckLayouts = null,}) {
   return _then(AssetManagementLoadSuccess(
-devices: null == devices ? _self._devices : devices // ignore: cast_nullable_to_non_nullable
+machines: null == machines ? _self._machines : machines // ignore: cast_nullable_to_non_nullable
 as List<ManagedDeviceOrm>,resourceDefinitions: null == resourceDefinitions ? _self._resourceDefinitions : resourceDefinitions // ignore: cast_nullable_to_non_nullable
 as List<ResourceDefinitionCatalogOrm>,resourceInstances: null == resourceInstances ? _self._resourceInstances : resourceInstances // ignore: cast_nullable_to_non_nullable
 as List<ResourceInstanceOrm>,deckLayouts: null == deckLayouts ? _self._deckLayouts : deckLayouts // ignore: cast_nullable_to_non_nullable

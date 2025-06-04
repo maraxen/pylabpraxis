@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
-import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 
 import 'package:praxis_lab_management/src/core/network/dio_client.dart';
@@ -12,16 +12,16 @@ import 'package:praxis_lab_management/src/core/network/dio_client.dart';
 abstract class AssetApiService {
   /// Devices (Instruments)
   Future<List<ManagedDeviceOrm>> getDevices();
-  Future<ManagedDeviceOrm> createDevice(ManagedDeviceOrm device);
-  Future<ManagedDeviceOrm> getDeviceById(String deviceId);
+  Future<ManagedDeviceOrm> createDevice(ManagedDeviceOrm machine);
+  Future<ManagedDeviceOrm> getDeviceById(String machineId);
   Future<ManagedDeviceOrm> updateDevice(
-    String deviceId,
-    ManagedDeviceOrm device,
+    String machineId,
+    ManagedDeviceOrm machine,
   );
-  Future<void> deleteDevice(String deviceId);
-  Future<void> connectDevice(String deviceId);
-  Future<void> initializeDevice(String deviceId);
-  Future<void> disconnectDevice(String deviceId);
+  Future<void> deleteDevice(String machineId);
+  Future<void> connectDevice(String machineId);
+  Future<void> initializeDevice(String machineId);
+  Future<void> disconnectDevice(String machineId);
 
   /// Resource Definitions (Resource Types)
   Future<List<ResourceDefinitionCatalogOrm>> getResourceDefinitions();
@@ -78,7 +78,8 @@ class AssetApiServiceImpl extends AssetApiService {
             .toList();
       } else {
         throw ApiException(
-          message: 'Failed to load devices: Status code ${response.statusCode}',
+          message:
+              'Failed to load machines: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -86,7 +87,7 @@ class AssetApiServiceImpl extends AssetApiService {
       throw ApiException(message: 'API request failed: ${e.message}');
     } on FormatException catch (e) {
       // Handle errors in parsing JSON
-      throw DataParsingException('Error parsing device data: ${e.message}');
+      throw DataParsingException('Error parsing machine data: ${e.message}');
     } catch (e) {
       // Handle any other errors
       throw UnknownException('An unknown error occurred: ${e.toString()}');
@@ -94,18 +95,18 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<ManagedDeviceOrm> createDevice(ManagedDeviceOrm device) async {
+  Future<ManagedDeviceOrm> createDevice(ManagedDeviceOrm machine) async {
     try {
       // The backend expects MachineCreationRequest model
       // which includes name, machineType, backend, description, params.
       // We need to adapt ManagedDeviceOrm to this structure.
       final requestBody = {
-        'name': device.name,
-        'machineType': device.type,
+        'name': machine.name,
+        'machineType': machine.type,
         // 'backend': null, // Assuming no specific backend for now, can be added if needed
-        'description': device.description,
+        'description': machine.description,
         'params':
-            device
+            machine
                 .metadata, // Assuming metadata in ManagedDeviceOrm maps to params
       };
       final response = await _dioClient.dio.post(
@@ -117,7 +118,7 @@ class AssetApiServiceImpl extends AssetApiService {
       } else {
         throw ApiException(
           message:
-              'Failed to create device: Status code ${response.statusCode}',
+              'Failed to create machine: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -130,26 +131,26 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<ManagedDeviceOrm> getDeviceById(String deviceId) async {
+  Future<ManagedDeviceOrm> getDeviceById(String machineId) async {
     try {
-      final response = await _dioClient.dio.get('/api/assets/$deviceId');
+      final response = await _dioClient.dio.get('/api/assets/$machineId');
       if (response.statusCode == 200 && response.data != null) {
         return ManagedDeviceOrm.fromJson(response.data as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Device not found: $deviceId',
+          message: 'Device not found: $machineId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to get device $deviceId: Status code ${response.statusCode}',
+              'Failed to get machine $machineId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
       throw ApiException(message: 'API request failed: ${e.message}');
     } on FormatException catch (e) {
-      throw DataParsingException('Error parsing device data: ${e.message}');
+      throw DataParsingException('Error parsing machine data: ${e.message}');
     } catch (e) {
       throw UnknownException('An unknown error occurred: ${e.toString()}');
     }
@@ -157,30 +158,30 @@ class AssetApiServiceImpl extends AssetApiService {
 
   @override
   Future<ManagedDeviceOrm> updateDevice(
-    String deviceId,
-    ManagedDeviceOrm device,
+    String machineId,
+    ManagedDeviceOrm machine,
   ) async {
     try {
-      // Assuming a PUT request to /api/assets/machine/{deviceId}
+      // Assuming a PUT request to /api/assets/machine/{machineId}
       // The backend assets.py doesn't have this, so this is a placeholder.
       // The request body structure might need to align with MachineCreationRequest
       // or a new MachineUpdateRequest model if defined in backend.
-      final requestBody = device.toJson(); // Send full device data for update
+      final requestBody = machine.toJson(); // Send full machine data for update
       final response = await _dioClient.dio.put(
-        '/api/assets/machine/$deviceId',
+        '/api/assets/machine/$machineId',
         data: jsonEncode(requestBody),
       );
       if (response.statusCode == 200 && response.data != null) {
         return ManagedDeviceOrm.fromJson(response.data as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Device not found for update: $deviceId',
+          message: 'Device not found for update: $machineId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to update device $deviceId: Status code ${response.statusCode}',
+              'Failed to update machine $machineId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -193,25 +194,25 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<void> deleteDevice(String deviceId) async {
+  Future<void> deleteDevice(String machineId) async {
     try {
-      // Assuming a DELETE request to /api/assets/machine/{deviceId}
+      // Assuming a DELETE request to /api/assets/machine/{machineId}
       // The backend assets.py doesn't have this, so this is a placeholder.
       final response = await _dioClient.dio.delete(
-        '/api/assets/machine/$deviceId',
+        '/api/assets/machine/$machineId',
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
         // 204 No Content is also a success
         return;
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Device not found for deletion: $deviceId',
+          message: 'Device not found for deletion: $machineId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to delete device $deviceId: Status code ${response.statusCode}',
+              'Failed to delete machine $machineId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -221,10 +222,10 @@ class AssetApiServiceImpl extends AssetApiService {
     }
   }
 
-  Future<void> _executeDeviceAction(String deviceId, String action) async {
+  Future<void> _executeDeviceAction(String machineId, String action) async {
     try {
       final response = await _dioClient.dio.post(
-        '/api/workcell/devices/$deviceId/execute_action',
+        '/api/workcell/machines/$machineId/execute_action',
         data: jsonEncode({'action': action}),
       );
       // Assuming 200 or 202 (Accepted) for successful action submission
@@ -234,13 +235,13 @@ class AssetApiServiceImpl extends AssetApiService {
         return;
       } else if (response.statusCode == 404) {
         throw ApiException(
-          message: 'Device not found for action $action: $deviceId',
+          message: 'Device not found for action $action: $machineId',
           statusCode: 404,
         );
       } else {
         throw ApiException(
           message:
-              'Failed to execute $action for device $deviceId: Status code ${response.statusCode}',
+              'Failed to execute $action for machine $machineId: Status code ${response.statusCode}',
         );
       }
     } on DioException catch (e) {
@@ -255,18 +256,18 @@ class AssetApiServiceImpl extends AssetApiService {
   }
 
   @override
-  Future<void> connectDevice(String deviceId) async {
-    await _executeDeviceAction(deviceId, 'connect');
+  Future<void> connectDevice(String machineId) async {
+    await _executeDeviceAction(machineId, 'connect');
   }
 
   @override
-  Future<void> initializeDevice(String deviceId) async {
-    await _executeDeviceAction(deviceId, 'initialize');
+  Future<void> initializeDevice(String machineId) async {
+    await _executeDeviceAction(machineId, 'initialize');
   }
 
   @override
-  Future<void> disconnectDevice(String deviceId) async {
-    await _executeDeviceAction(deviceId, 'disconnect');
+  Future<void> disconnectDevice(String machineId) async {
+    await _executeDeviceAction(machineId, 'disconnect');
   }
 
   /// Resource Definitions (Resource Types)

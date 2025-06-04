@@ -22,11 +22,11 @@ def mock_plr_resource_class():
     return klass
 
 @pytest.fixture
-def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it can be a Resource
-    # A PLR "device backend" can be a machine that is also a Resource, or just a backend class
+def mock_plr_machine_backend_class(mock_plr_resource_class: MagicMock): # So it can be a Resource
+    # A PLR "machine backend" can be a machine that is also a Resource, or just a backend class
     # Let's make it behave like a machine with a setup method
     klass = MagicMock()
-    instance = MagicMock(name="mock_plr_device_instance")
+    instance = MagicMock(name="mock_plr_machine_instance")
     instance.setup = MagicMock()
     instance.stop = MagicMock()
     # If it's also a Deck, it needs deck methods
@@ -36,10 +36,10 @@ def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it c
 
     # Make it an instance of the mocked Resource class for isinstance checks if needed
     # This is a bit of a hack for isinstance(backend_instance, Deck)
-    # A better way might be to have different fixtures for Deck vs non-Deck devices.
+    # A better way might be to have different fixtures for Deck vs non-Deck machines.
     # For now, let's assume it can be identified  if needed by checking class name.
     def_instance = klass.return_value
-    def_instance.name = "mock_plr_device_instance"
+    def_instance.name = "mock_plr_machine_instance"
     def_instance.setup = MagicMock()
     def_instance.stop = MagicMock()
     def_instance.assign_child_resource = MagicMock()
@@ -51,23 +51,23 @@ def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it c
 
 
 @pytest.fixture
-def mock_plr_deck_class(mock_plr_device_backend_class: MagicMock): # Inherits general device behavior
-    # Specifically for Deck. The instance from mock_plr_device_backend_class can serve as this.
+def mock_plr_deck_class(mock_plr_machine_backend_class: MagicMock): # Inherits general machine behavior
+    # Specifically for Deck. The instance from mock_plr_machine_backend_class can serve as this.
     # We ensure its type name implies it's a Deck for isinstance checks in WCR.
     # WorkcellRuntime uses isinstance(backend_instance, Deck).
     # We will patch Deck from pylabrobot.resources for this test.
     with patch('praxis.backend.core.workcell_runtime.Deck', spec=True) as MockDeckSpec:
-        # Make our mock_plr_device_backend_class's instance also an instance of this MockDeckSpec
+        # Make our mock_plr_machine_backend_class's instance also an instance of this MockDeckSpec
         # This is tricky. A simpler way is to check class name if isinstance is problematic with mocks.
         # Or, the _get_class_from_fqn can return this MockDeckSpec if FQN matches a deck.
-        MockDeckSpec.return_value = mock_plr_device_backend_class.return_value # Share the same instance
-        yield mock_plr_device_backend_class # Returns the constructor mock
+        MockDeckSpec.return_value = mock_plr_machine_backend_class.return_value # Share the same instance
+        yield mock_plr_machine_backend_class # Returns the constructor mock
 
 @pytest.fixture
 def mock_ads_service_wcr():
     # Patch 'ads' where it's used inside workcell_runtime.py
     with patch('praxis.backend.core.workcell_runtime.ads') as mock_ads:
-        mock_ads.update_managed_device_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
+        mock_ads.update_managed_machine_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
         mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrmMock)
         yield mock_ads
 
@@ -79,30 +79,30 @@ def workcell_runtime(mock_ads_service_wcr: MagicMock):
 class TestWorkcellRuntimeDeviceHandling:
 
     @patch('praxis.backend.core.workcell_runtime._get_class_from_fqn')
-    def test_initialize_device_backend_success(
-        self, mock_get_class: MagicMock, mock_plr_device_backend_class: MagicMock,
+    def test_initialize_machine_backend_success(
+        self, mock_get_class: MagicMock, mock_plr_machine_backend_class: MagicMock,
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
-        mock_get_class.return_value = mock_plr_device_backend_class
-        device_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", python_fqn="some.DeviceClass", backend_config_json={"param": "value"})
+        mock_get_class.return_value = mock_plr_machine_backend_class
+        machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", python_fqn="some.DeviceClass", backend_config_json={"param": "value"})
 
-        backend_instance = workcell_runtime.initialize_device_backend(device_orm)
+        backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
         mock_get_class.assert_called_once_with("some.DeviceClass")
         # Check if constructor was called with name and params from backend_config_json
         # This depends on how _get_class_from_fqn and constructor inspection work.
-        # For now, assume it's called. A more specific check would be on mock_plr_device_backend_class.
-        mock_plr_device_backend_class.assert_called_with(name="Device1", param="value") # Assuming name is passed, and param from config
+        # For now, assume it's called. A more specific check would be on mock_plr_machine_backend_class.
+        mock_plr_machine_backend_class.assert_called_with(name="Device1", param="value") # Assuming name is passed, and param from config
 
         assert backend_instance is not None
         assert backend_instance.setup.called # Check if setup was called
-        assert workcell_runtime._active_device_backends[1] is backend_instance
-        mock_ads_service_wcr.update_managed_device_status.assert_called_once_with(
+        assert workcell_runtime._active_machine_backends[1] is backend_instance
+        mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
             workcell_runtime.db_session, 1, ManagedDeviceStatusEnum.AVAILABLE, "Backend initialized."
         )
 
     @patch('praxis.backend.core.workcell_runtime._get_class_from_fqn')
-    def test_initialize_device_backend_is_deck(
+    def test_initialize_machine_backend_is_deck(
         self, mock_get_class: MagicMock, mock_plr_deck_class: MagicMock, # Use deck-specific mock
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
@@ -124,39 +124,39 @@ class TestWorkcellRuntimeDeviceHandling:
             # To make isinstance(mock_plr_deck_class.return_value, ActualDeckClassMocked) true:
             mock_plr_deck_class.return_value.__class__ = ActualDeckClassMocked # Make the instance's class the mocked Deck
 
-            device_orm = ManagedDeviceOrmMock(id=2, user_friendly_name="MainDeck", python_fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
+            machine_orm = ManagedDeviceOrmMock(id=2, user_friendly_name="MainDeck", python_fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
 
-            backend_instance = workcell_runtime.initialize_device_backend(device_orm)
+            backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
             assert workcell_runtime._main_deck_plr_object is backend_instance
-            assert workcell_runtime._main_deck_device_orm_id == 2
+            assert workcell_runtime._main_deck_machine_orm_id == 2
 
 
     @patch('praxis.backend.core.workcell_runtime._get_class_from_fqn')
-    def test_initialize_device_backend_failure(
+    def test_initialize_machine_backend_failure(
         self, mock_get_class: MagicMock, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.side_effect = ImportError("Module not found")
-        device_orm = ManagedDeviceOrmMock(id=3, user_friendly_name="ErrorDevice", python_fqn="bad.fqn.Device")
+        machine_orm = ManagedDeviceOrmMock(id=3, user_friendly_name="ErrorDevice", python_fqn="bad.fqn.Device")
 
-        backend_instance = workcell_runtime.initialize_device_backend(device_orm)
+        backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
         assert backend_instance is None
-        assert 3 not in workcell_runtime._active_device_backends
-        mock_ads_service_wcr.update_managed_device_status.assert_called_once_with(
+        assert 3 not in workcell_runtime._active_machine_backends
+        mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
             workcell_runtime.db_session, 3, ManagedDeviceStatusEnum.ERROR, "Backend init failed: Module not found"
         )
 
-    def test_shutdown_device_backend(self, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock):
+    def test_shutdown_machine_backend(self, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock):
         mock_backend_instance = MagicMock()
         mock_backend_instance.stop = MagicMock()
-        workcell_runtime._active_device_backends[1] = mock_backend_instance
+        workcell_runtime._active_machine_backends[1] = mock_backend_instance
 
-        workcell_runtime.shutdown_device_backend(1)
+        workcell_runtime.shutdown_machine_backend(1)
 
-        assert 1 not in workcell_runtime._active_device_backends
+        assert 1 not in workcell_runtime._active_machine_backends
         mock_backend_instance.stop.assert_called_once()
-        mock_ads_service_wcr.update_managed_device_status.assert_called_once_with(
+        mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
             workcell_runtime.db_session, 1, ManagedDeviceStatusEnum.OFFLINE, "Backend shut down."
         )
 
@@ -207,7 +207,7 @@ class TestWorkcellRuntimeResourceHandling:
         mock_deck_instance.name = "TestDeck"
         mock_deck_instance.assign_child_resource = MagicMock()
 
-        workcell_runtime._active_device_backends[10] = mock_deck_instance # Assume deck device ID 10 is active
+        workcell_runtime._active_machine_backends[10] = mock_deck_instance # Assume deck machine ID 10 is active
 
         mock_resource_plr_obj = MagicMock(spec=workcell_runtime.Resource) # from praxis.backend.core.workcell_runtime
         resource_instance_id = 1
@@ -217,14 +217,14 @@ class TestWorkcellRuntimeResourceHandling:
         mock_deck_instance.assign_child_resource.assert_called_once_with(resource=mock_resource_plr_obj, slot="A1")
         mock_ads_service_wcr.update_resource_instance_location_and_status.assert_called_once_with(
             workcell_runtime.db_session, resource_instance_id, ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
-            location_device_id=10, current_deck_slot_name="A1"
+            location_machine_id=10, current_deck_slot_name="A1"
         )
 
 # TODO: More tests:
-# - get_active_device_backend, get_active_resource_plr_object
+# - get_active_machine_backend, get_active_resource_plr_object
 # - clear_deck_slot
-# - execute_device_action (basic getattr call)
+# - execute_machine_action (basic getattr call)
 # - shutdown_all_backends
 # - get_main_deck_plr_object (interaction with ads if deck not active)
-# - Complex constructor inspection in initialize_device_backend
+# - Complex constructor inspection in initialize_machine_backend
 ```

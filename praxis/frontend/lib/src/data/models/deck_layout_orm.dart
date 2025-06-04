@@ -41,7 +41,7 @@ class DeckConfigurationSlotItemOrm {
 class DeckLayoutOrm {
   final int? id; // praxis_deck_config_id
   final String layoutName;
-  final int deckDeviceId; // FK to ManagedDeviceOrm.id (the deck device itself)
+  final int deckDeviceId; // FK to ManagedDeviceOrm.id (the deck machine itself)
   final String? description;
   final List<DeckConfigurationSlotItemOrm>? slotItems;
   final String? createdAt; // DateTime as String
@@ -78,7 +78,7 @@ class DeckLayoutOrm {
     return DeckLayoutOrm(
       id: json['id'] as int?,
       layoutName: json['layout_name'] as String,
-      deckDeviceId: json['deck_device_id'] as int,
+      deckDeviceId: json['deck_machine_id'] as int,
       description: json['description'] as String?,
       slotItems: slotItems,
       createdAt: json['created_at'] as String?,
@@ -94,7 +94,7 @@ class DeckLayoutOrm {
     return {
       'id': id,
       'layout_name': layoutName,
-      'deck_device_id': deckDeviceId,
+      'deck_machine_id': deckDeviceId,
       'description': description,
       'slot_items': slotItems?.map((item) => item.toJson()).toList(),
       'workspace_id': workspaceId,

@@ -4,7 +4,7 @@ import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
-import 'package:praxis_lab_management/src/data/models/managed_device_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 
 part 'asset_management_bloc.freezed.dart';
 
@@ -39,14 +39,14 @@ class AssetManagementBloc
     emit(const AssetManagementLoadInProgress());
     try {
       // TODO(user): Replace with actual API calls when available
-      final devices = await _assetApiService.getDevices();
+      final machines = await _assetApiService.getDevices();
       final resourceDefinitions =
           await _assetApiService.getResourceDefinitions();
       final resourceInstances = await _assetApiService.getResourceInstances();
       final deckLayouts = await _assetApiService.getDeckLayouts();
       emit(
         AssetManagementLoadSuccess(
-          devices: devices,
+          machines: machines,
           resourceDefinitions: resourceDefinitions,
           resourceInstances: resourceInstances,
           deckLayouts: deckLayouts,
@@ -63,7 +63,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.createDevice(event.device);
+      await _assetApiService.createDevice(event.machine);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -77,7 +77,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.updateDevice(event.deviceId, event.device);
+      await _assetApiService.updateDevice(event.machineId, event.machine);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -91,7 +91,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.deleteDevice(event.deviceId);
+      await _assetApiService.deleteDevice(event.machineId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -105,7 +105,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.connectDevice(event.deviceId);
+      await _assetApiService.connectDevice(event.machineId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -119,7 +119,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.initializeDevice(event.deviceId);
+      await _assetApiService.initializeDevice(event.machineId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -133,7 +133,7 @@ class AssetManagementBloc
   ) async {
     emit(const AssetManagementUpdateInProgress());
     try {
-      await _assetApiService.disconnectDevice(event.deviceId);
+      await _assetApiService.disconnectDevice(event.machineId);
       emit(const AssetManagementUpdateSuccess());
       add(const AssetManagementLoadStarted()); // Reload data
     } catch (e) {
@@ -283,19 +283,20 @@ class AssetManagementBloc
 @freezed
 abstract class AssetManagementEvent with _$AssetManagementEvent {
   const factory AssetManagementEvent.loadStarted() = AssetManagementLoadStarted;
-  const factory AssetManagementEvent.addDeviceStarted(ManagedDeviceOrm device) =
-      AddDeviceStarted;
+  const factory AssetManagementEvent.addDeviceStarted(
+    ManagedDeviceOrm machine,
+  ) = AddDeviceStarted;
   const factory AssetManagementEvent.updateDeviceStarted(
-    String deviceId,
-    ManagedDeviceOrm device,
+    String machineId,
+    ManagedDeviceOrm machine,
   ) = UpdateDeviceStarted;
-  const factory AssetManagementEvent.deleteDeviceStarted(String deviceId) =
+  const factory AssetManagementEvent.deleteDeviceStarted(String machineId) =
       DeleteDeviceStarted;
-  const factory AssetManagementEvent.connectDeviceStarted(String deviceId) =
+  const factory AssetManagementEvent.connectDeviceStarted(String machineId) =
       ConnectDeviceStarted;
-  const factory AssetManagementEvent.initializeDeviceStarted(String deviceId) =
+  const factory AssetManagementEvent.initializeDeviceStarted(String machineId) =
       InitializeDeviceStarted;
-  const factory AssetManagementEvent.disconnectDeviceStarted(String deviceId) =
+  const factory AssetManagementEvent.disconnectDeviceStarted(String machineId) =
       DisconnectDeviceStarted;
   const factory AssetManagementEvent.addResourceDefinitionStarted(
     ResourceDefinitionCatalogOrm resourceDefinition,
@@ -336,7 +337,7 @@ abstract class AssetManagementState with _$AssetManagementState {
   const factory AssetManagementState.loadInProgress() =
       AssetManagementLoadInProgress;
   const factory AssetManagementState.loadSuccess({
-    required List<ManagedDeviceOrm> devices,
+    required List<ManagedDeviceOrm> machines,
     required List<ResourceDefinitionCatalogOrm> resourceDefinitions,
     required List<ResourceInstanceOrm> resourceInstances,
     required List<DeckLayoutOrm> deckLayouts,

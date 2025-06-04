@@ -163,19 +163,19 @@ async def list_available_decks(
   db: AsyncSession = Depends(get_db),
 ):  # MODIFIED: AsyncSession
   try:
-    deck_devices_orm = await ads.list_managed_devices(  # MODIFIED: await
+    deck_machines_orm = await ads.list_managed_machines(  # MODIFIED: await
       db_session=db,  # db is already AsyncSession
       praxis_category_filter=PraxisDeviceCategoryEnum.DECK,  # Ensure enum value is passed if service expects it
     )
     available_decks = []
-    for device_orm in deck_devices_orm:
+    for machine_orm in deck_machines_orm:
       status_name = "UNKNOWN"
-      if device_orm.current_status:  # current_status is already Enum
-        status_name = device_orm.current_status.name
+      if machine_orm.current_status:  # current_status is already Enum
+        status_name = machine_orm.current_status.name
       deck_info = DeckInfo(
-        id=device_orm.id,
-        user_friendly_name=device_orm.user_friendly_name or f"Deck_{device_orm.id}",
-        python_fqn=device_orm.python_fqn or "UnknownType",
+        id=machine_orm.id,
+        user_friendly_name=machine_orm.user_friendly_name or f"Deck_{machine_orm.id}",
+        python_fqn=machine_orm.python_fqn or "UnknownType",
         current_status=status_name,
       )
       available_decks.append(deck_info)
@@ -189,7 +189,7 @@ async def list_available_decks(
   "/decks/{deck_id}/state", response_model=DeckStateResponse, tags=["Workcell API"]
 )
 async def get_specific_deck_state(
-  deck_id: int = Path(..., title="The ID of the deck device", ge=1),
+  deck_id: int = Path(..., title="The ID of the deck machine", ge=1),
   workcell_runtime: WorkcellRuntime = Depends(
     get_workcell_runtime
   ),  # workcell_runtime already injected
@@ -198,7 +198,7 @@ async def get_specific_deck_state(
     # Assuming get_deck_state_representation is async or can be called from async
     # If it needs db session, WorkcellRuntime should get it via its own dependencies or initialization
     deck_state_data = workcell_runtime.get_deck_state_representation(
-      deck_device_orm_id=deck_id
+      deck_machine_orm_id=deck_id
     )
     return deck_state_data
   except WorkcellRuntimeError as wre:
@@ -226,17 +226,17 @@ async def websocket_deck_updates(
   # We need to manage session manually or pass it if manager methods need it.
 ):
   # For initial validation, we'd manually acquire a session if needed.
-  # However, ads.get_managed_device_by_id is async and needs an AsyncSession.
+  # However, ads.get_managed_machine_by_id is async and needs an AsyncSession.
   # The simplest is to acquire one for the validation check.
   db_session_for_validation: Optional[AsyncSession] = None
   try:
     async with AsyncSessionLocal() as db_session_for_validation:  # Manually create session for validation
-      deck_device = await ads.get_managed_device_by_id(
+      deck_machine = await ads.get_managed_machine_by_id(
         db_session_for_validation, deck_id
       )
       if (
-        not deck_device
-        or deck_device.praxis_device_category != PraxisDeviceCategoryEnum.DECK
+        not deck_machine
+        or deck_machine.praxis_machine_category != PraxisDeviceCategoryEnum.DECK
       ):
         print(f"INFO: WebSocket attempt to invalid deck_id {deck_id}. Closing.")
         await websocket.close(code=1008)

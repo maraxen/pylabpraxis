@@ -32,7 +32,7 @@ void main() {
     when(mockAssetManagementBloc.state).thenReturn(
       const AssetManagementLoadSuccess(
         // Or AssetManagementInitial() if UI doesn't depend on data for tabs
-        devices: [],
+        machines: [],
         resourceDefinitions: [],
         resourceInstances: [],
         deckLayouts: [],
@@ -45,7 +45,7 @@ void main() {
       (_) => Stream.value(
         const AssetManagementLoadSuccess(
           // Keep it consistent with .state
-          devices: [],
+          machines: [],
           resourceDefinitions: [],
           resourceInstances: [],
           deckLayouts: [],

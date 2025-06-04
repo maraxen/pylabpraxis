@@ -501,7 +501,7 @@ async def create_deck_layout_endpoint(
     created_layout = await svc.create_deck_layout(
       db=db,
       layout_name=deck_layout_in.layout_name,
-      deck_device_id=deck_layout_in.deck_device_id,
+      deck_machine_id=deck_layout_in.deck_machine_id,
       description=deck_layout_in.description,
       slot_items_data=slot_items_data,
     )
@@ -519,13 +519,13 @@ async def create_deck_layout_endpoint(
   "/deck_layouts", response_model=List[DeckLayoutResponse], tags=["Deck Layouts"]
 )
 async def list_deck_layouts_endpoint(
-  deck_device_id: Optional[int] = None,
+  deck_machine_id: Optional[int] = None,
   limit: int = 100,
   offset: int = 0,
   db: AsyncSession = Depends(get_db),
 ):
   layouts = await svc.list_deck_layouts(
-    db, deck_device_id=deck_device_id, limit=limit, offset=offset
+    db, deck_machine_id=deck_machine_id, limit=limit, offset=offset
   )
   return layouts
 
@@ -566,7 +566,7 @@ async def update_deck_layout_endpoint(
       deck_layout_id=deck_layout_id,
       name=deck_layout_update.layout_name,
       description=deck_layout_update.description,
-      deck_device_id=deck_layout_update.deck_device_id,
+      deck_machine_id=deck_layout_update.deck_machine_id,
       slot_items_data=slot_items_data,
     )
     if not updated_layout:

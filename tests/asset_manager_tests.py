@@ -331,16 +331,16 @@ def mock_db_session():
 @pytest.fixture
 def mock_workcell_runtime():
     m = MagicMock()
-    m.initialize_device_backend.return_value = MagicMock(name="live_mock_device")
+    m.initialize_machine_backend.return_value = MagicMock(name="live_mock_machine")
     m.create_or_get_resource_plr_object.return_value = MagicMock(name="live_mock_resource")
     return m
 
 @pytest.fixture
 def mock_ads_service():
     with patch('praxis.backend.core.asset_manager.ads') as mock_ads:
-        mock_ads.list_managed_devices.return_value = []
-        mock_ads.get_managed_device_by_id.return_value = None
-        mock_ads.update_managed_device_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
+        mock_ads.list_managed_machines.return_value = []
+        mock_ads.get_managed_machine_by_id.return_value = None
+        mock_ads.update_managed_machine_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
 
         mock_ads.list_resource_instances.return_value = []
         mock_ads.get_resource_instance_by_id.return_value = None
@@ -356,53 +356,53 @@ def asset_manager(mock_db_session: MagicMock, mock_workcell_runtime: MagicMock, 
 
 class TestAssetManagerAcquireDevice:
 
-    def test_acquire_device_success(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
-        mock_device_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", python_fqn="SomeDeviceClass")
-        mock_ads_service.list_managed_devices.return_value = [mock_device_orm]
-        updated_mock_device_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", current_status=ManagedDeviceStatusEnum.IN_USE)
-        mock_ads_service.update_managed_device_status.return_value = updated_mock_device_orm
+    def test_acquire_machine_success(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
+        mock_machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", python_fqn="SomeDeviceClass")
+        mock_ads_service.list_managed_machines.return_value = [mock_machine_orm]
+        updated_mock_machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", current_status=ManagedDeviceStatusEnum.IN_USE)
+        mock_ads_service.update_managed_machine_status.return_value = updated_mock_machine_orm
 
-        live_device, orm_id, dev_type = asset_manager.acquire_device(
+        live_machine, orm_id, dev_type = asset_manager.acquire_machine(
             protocol_run_guid="run123",
             requested_asset_name_in_protocol="dev_in_proto",
             python_fqn_constraint="SomeDeviceClass"
         )
 
-        mock_ads_service.list_managed_devices.assert_called_once_with(
+        mock_ads_service.list_managed_machines.assert_called_once_with(
             asset_manager.db,
             status=ManagedDeviceStatusEnum.AVAILABLE,
             pylabrobot_class_filter="SomeDeviceClass"
         )
-        mock_workcell_runtime.initialize_device_backend.assert_called_once_with(mock_device_orm)
-        mock_ads_service.update_managed_device_status.assert_called_once_with(
+        mock_workcell_runtime.initialize_machine_backend.assert_called_once_with(mock_machine_orm)
+        mock_ads_service.update_managed_machine_status.assert_called_once_with(
             asset_manager.db, 1, ManagedDeviceStatusEnum.IN_USE,
             current_protocol_run_guid="run123",
             status_details="In use by run run123"
         )
-        assert live_device is mock_workcell_runtime.initialize_device_backend.return_value
+        assert live_machine is mock_workcell_runtime.initialize_machine_backend.return_value
         assert orm_id == 1
-        assert dev_type == "device"
+        assert dev_type == "machine"
 
-    def test_acquire_device_no_device_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
-        mock_ads_service.list_managed_devices.return_value = []
-        with pytest.raises(AssetAcquisitionError, match="No device found matching type constraint 'SomeDeviceClass' and status AVAILABLE."):
-            asset_manager.acquire_device("run123", "dev", "SomeDeviceClass")
+    def test_acquire_machine_no_machine_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
+        mock_ads_service.list_managed_machines.return_value = []
+        with pytest.raises(AssetAcquisitionError, match="No machine found matching type constraint 'SomeDeviceClass' and status AVAILABLE."):
+            asset_manager.acquire_machine("run123", "dev", "SomeDeviceClass")
 
-    def test_acquire_device_backend_init_fails(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
-        mock_device_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1")
-        mock_ads_service.list_managed_devices.return_value = [mock_device_orm]
-        mock_workcell_runtime.initialize_device_backend.return_value = None
+    def test_acquire_machine_backend_init_fails(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
+        mock_machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1")
+        mock_ads_service.list_managed_machines.return_value = [mock_machine_orm]
+        mock_workcell_runtime.initialize_machine_backend.return_value = None
 
-        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for device 'Device1'"):
-            asset_manager.acquire_device("run123", "dev", "SomeDeviceClass")
+        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for machine 'Device1'"):
+            asset_manager.acquire_machine("run123", "dev", "SomeDeviceClass")
 
-    def test_acquire_device_db_status_update_fails_after_init(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
-        mock_device_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1")
-        mock_ads_service.list_managed_devices.return_value = [mock_device_orm]
-        mock_ads_service.update_managed_device_status.return_value = None
+    def test_acquire_machine_db_status_update_fails_after_init(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
+        mock_machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1")
+        mock_ads_service.list_managed_machines.return_value = [mock_machine_orm]
+        mock_ads_service.update_managed_machine_status.return_value = None
 
         with pytest.raises(AssetAcquisitionError, match="CRITICAL: Device 'Device1' backend is live, but FAILED to update its DB status to IN_USE"):
-            asset_manager.acquire_device("run123", "dev", "SomeDeviceClass")
+            asset_manager.acquire_machine("run123", "dev", "SomeDeviceClass")
 
 
 class TestAssetManagerAcquireResource:
@@ -456,7 +456,7 @@ class TestAssetManagerAcquireResource:
 
         mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_orm]
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_orm]
         mock_ads_service.update_resource_instance_location_and_status.return_value = mock_lw_instance_orm
 
         location_constraints = {"deck_name": "MainDeck", "slot_name": "A1"}
@@ -467,11 +467,11 @@ class TestAssetManagerAcquireResource:
             location_constraints=location_constraints
         )
 
-        mock_ads_service.list_managed_devices.assert_called_once_with(
+        mock_ads_service.list_managed_machines.assert_called_once_with(
             asset_manager.db, user_friendly_name_filter="MainDeck", praxis_category_filter=PraxisDeviceCategoryEnum.DECK
         )
         mock_workcell_runtime.assign_resource_to_deck_slot.assert_called_once_with(
-            deck_device_orm_id=mock_deck_orm.id,
+            deck_machine_orm_id=mock_deck_orm.id,
             slot_name="A1",
             resource_plr_object=mock_workcell_runtime.create_or_get_resource_plr_object.return_value,
             resource_instance_orm_id=mock_lw_instance_orm.id
@@ -511,15 +511,15 @@ class TestAssetManagerAcquireResource:
 
 class TestAssetManagerRelease:
 
-    def test_release_device(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
-        mock_device_after_shutdown = ManagedDeviceOrmMock(id=1, current_status=ManagedDeviceStatusEnum.OFFLINE)
-        mock_ads_service.get_managed_device_by_id.return_value = mock_device_after_shutdown
+    def test_release_machine(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
+        mock_machine_after_shutdown = ManagedDeviceOrmMock(id=1, current_status=ManagedDeviceStatusEnum.OFFLINE)
+        mock_ads_service.get_managed_machine_by_id.return_value = mock_machine_after_shutdown
 
-        asset_manager.release_device(device_orm_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE)
+        asset_manager.release_machine(machine_orm_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE)
 
-        mock_workcell_runtime.shutdown_device_backend.assert_called_once_with(1)
-        mock_ads_service.get_managed_device_by_id.assert_called_once_with(asset_manager.db, 1)
-        mock_ads_service.update_managed_device_status.assert_called_with(
+        mock_workcell_runtime.shutdown_machine_backend.assert_called_once_with(1)
+        mock_ads_service.get_managed_machine_by_id.assert_called_once_with(asset_manager.db, 1)
+        mock_ads_service.update_managed_machine_status.assert_called_with(
             asset_manager.db, 1, ManagedDeviceStatusEnum.AVAILABLE,
             status_details="Released from run", current_protocol_run_guid=None
         )
@@ -537,7 +537,7 @@ class TestAssetManagerRelease:
             asset_manager.db, 1,
             new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
             properties_json_update=None,
-            location_device_id=None,
+            location_machine_id=None,
             current_deck_slot_name=None,
             current_protocol_run_guid=None,
             status_details="Stored after run"
@@ -549,18 +549,18 @@ class TestAssetManagerRelease:
         asset_manager.release_resource(
             resource_instance_orm_id=1,
             final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
-            clear_from_deck_device_id=10,
+            clear_from_deck_machine_id=10,
             clear_from_slot_name="A1",
             status_details="Cleared from deck and stored"
         )
         mock_workcell_runtime.clear_deck_slot.assert_called_once_with(
-            deck_device_orm_id=10, slot_name="A1", resource_instance_orm_id=1
+            deck_machine_orm_id=10, slot_name="A1", resource_instance_orm_id=1
         )
         mock_ads_service.update_resource_instance_location_and_status.assert_called_once_with(
             asset_manager.db, 1,
             new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
             properties_json_update=None,
-            location_device_id=None,
+            location_machine_id=None,
             current_deck_slot_name=None,
             current_protocol_run_guid=None,
             status_details="Cleared from deck and stored"
@@ -970,18 +970,18 @@ class TestAssetManagerDeckLoading:
         deck_layout = MagicMock(spec=DeckLayoutOrm)
         deck_layout.id = 1
         deck_layout.name = "TestDeckLayout"
-        # deck_layout.managing_device_id = 50 # Assuming a link if needed, or handled by name+category
+        # deck_layout.managing_machine_id = 50 # Assuming a link if needed, or handled by name+category
         return deck_layout
 
     @pytest.fixture
-    def mock_deck_device_orm(self):
-        deck_device = MagicMock(spec=ManagedDeviceOrm)
-        deck_device.id = 50
-        deck_device.user_friendly_name = "TestDeckLayout" # Matching layout name
-        deck_device.praxis_device_category = PraxisDeviceCategoryEnum.DECK
-        deck_device.current_status = ManagedDeviceStatusEnum.AVAILABLE
-        deck_device.current_protocol_run_guid = None
-        return deck_device
+    def mock_deck_machine_orm(self):
+        deck_machine = MagicMock(spec=ManagedDeviceOrm)
+        deck_machine.id = 50
+        deck_machine.user_friendly_name = "TestDeckLayout" # Matching layout name
+        deck_machine.praxis_machine_category = PraxisDeviceCategoryEnum.DECK
+        deck_machine.current_status = ManagedDeviceStatusEnum.AVAILABLE
+        deck_machine.current_protocol_run_guid = None
+        return deck_machine
 
     @pytest.fixture
     def mock_slot_orm(self, mock_resource_instance_orm):
@@ -1000,7 +1000,7 @@ class TestAssetManagerDeckLoading:
         lw_instance.name = "test_plate_def_name"
         lw_instance.current_status = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
         lw_instance.current_protocol_run_guid = None
-        lw_instance.location_device_id = None
+        lw_instance.location_machine_id = None
         lw_instance.current_deck_slot_name = None
         return lw_instance
 
@@ -1016,44 +1016,44 @@ class TestAssetManagerDeckLoading:
         with pytest.raises(AssetAcquisitionError, match="Deck layout 'NonExistentLayout' not found"):
             asset_manager.apply_deck_configuration("NonExistentLayout", "run123")
 
-    def test_deck_device_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
+    def test_deck_machine_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [] # No deck device found
+        mock_ads_service.list_managed_machines.return_value = [] # No deck machine found
         with pytest.raises(AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK"):
             asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
-        mock_ads_service.list_managed_devices.assert_called_once_with(
+        mock_ads_service.list_managed_machines.assert_called_once_with(
             asset_manager.db,
             user_friendly_name_filter="TestDeckLayout",
             praxis_category_filter=PraxisDeviceCategoryEnum.DECK
         )
 
-    def test_deck_device_init_fails(
+    def test_deck_machine_init_fails(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
-        mock_deck_layout_orm, mock_deck_device_orm, mock_workcell_runtime: MagicMock
+        mock_deck_layout_orm, mock_deck_machine_orm, mock_workcell_runtime: MagicMock
     ):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
-        mock_workcell_runtime.initialize_device_backend.return_value = None # Deck init fails
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
+        mock_workcell_runtime.initialize_machine_backend.return_value = None # Deck init fails
 
-        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck device 'TestDeckLayout'"):
+        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck machine 'TestDeckLayout'"):
             asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
-        mock_workcell_runtime.initialize_device_backend.assert_called_once_with(mock_deck_device_orm)
+        mock_workcell_runtime.initialize_machine_backend.assert_called_once_with(mock_deck_machine_orm)
 
     def test_successful_deck_config_no_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
-        mock_deck_layout_orm, mock_deck_device_orm, mock_workcell_runtime: MagicMock
+        mock_deck_layout_orm, mock_deck_machine_orm, mock_workcell_runtime: MagicMock
     ):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         live_plr_deck_obj = MagicMock(name="LiveDeck")
-        mock_workcell_runtime.initialize_device_backend.return_value = live_plr_deck_obj
+        mock_workcell_runtime.initialize_machine_backend.return_value = live_plr_deck_obj
         mock_ads_service.get_deck_slots_for_layout.return_value = [] # No slots with resource
 
         returned_deck = asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
 
         assert returned_deck == live_plr_deck_obj
-        mock_ads_service.update_managed_device_status.assert_called_once_with(
-            asset_manager.db, mock_deck_device_orm.id, ManagedDeviceStatusEnum.IN_USE,
+        mock_ads_service.update_managed_machine_status.assert_called_once_with(
+            asset_manager.db, mock_deck_machine_orm.id, ManagedDeviceStatusEnum.IN_USE,
             current_protocol_run_guid="run123",
             status_details="Deck 'TestDeckLayout' in use by run run123"
         )
@@ -1061,13 +1061,13 @@ class TestAssetManagerDeckLoading:
 
     def test_successful_deck_config_with_one_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
-        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
         mock_resource_instance_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
     ):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         live_plr_deck_obj = MagicMock(name="LiveDeck")
-        mock_workcell_runtime.initialize_device_backend.return_value = live_plr_deck_obj
+        mock_workcell_runtime.initialize_machine_backend.return_value = live_plr_deck_obj
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
         mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
@@ -1084,7 +1084,7 @@ class TestAssetManagerDeckLoading:
             resource_definition_fqn=mock_resource_def_catalog_orm.python_fqn
         )
         mock_workcell_runtime.assign_resource_to_deck_slot.assert_called_once_with(
-            deck_device_orm_id=mock_deck_device_orm.id,
+            deck_machine_orm_id=mock_deck_machine_orm.id,
             slot_name=mock_slot_orm.slot_name,
             resource_plr_object=live_plr_resource_obj,
             resource_instance_orm_id=mock_resource_instance_orm.id
@@ -1094,7 +1094,7 @@ class TestAssetManagerDeckLoading:
             resource_instance_id=mock_resource_instance_orm.id,
             new_status=ResourceInstanceStatusEnum.IN_USE,
             current_protocol_run_guid="run123",
-            location_device_id=mock_deck_device_orm.id,
+            location_machine_id=mock_deck_machine_orm.id,
             current_deck_slot_name=mock_slot_orm.slot_name,
             deck_slot_orm_id=mock_slot_orm.id,
             status_details=f"On deck '{mock_deck_layout_orm.name}' slot '{mock_slot_orm.slot_name}' for run run123"
@@ -1102,15 +1102,15 @@ class TestAssetManagerDeckLoading:
 
     def test_resource_instance_not_available_for_slot(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
-        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
         mock_resource_instance_orm, mock_workcell_runtime: MagicMock
     ):
         mock_resource_instance_orm.current_status = ResourceInstanceStatusEnum.IN_USE # Not available
         mock_resource_instance_orm.current_protocol_run_guid = "another_run"
 
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
-        mock_workcell_runtime.initialize_device_backend.return_value = MagicMock()
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
+        mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
         mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
 
@@ -1119,14 +1119,14 @@ class TestAssetManagerDeckLoading:
 
     def test_resource_def_fqn_not_found_for_slot_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
-        mock_deck_layout_orm, mock_deck_device_orm, mock_slot_orm,
+        mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
         mock_resource_instance_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
     ):
         mock_resource_def_catalog_orm.python_fqn = None # FQN missing
 
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_devices.return_value = [mock_deck_device_orm]
-        mock_workcell_runtime.initialize_device_backend.return_value = MagicMock()
+        mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
+        mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
         mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm

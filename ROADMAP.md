@@ -48,7 +48,7 @@ A significant backend refactor is underway, focusing on a decorator-based, funct
 The backend (formerly "Praxis," now in the `backend` directory) serves as the central system for:
 * **Protocol Definition & Discovery:** Using a decorator-based system (`@protocol_function`) to define protocols as Python functions. A `ProtocolDiscoveryService` scans code, extracts metadata, and stores definitions in the database.
 * **Orchestration:** Managing the execution of these protocols, including state (`PraxisState`, `PraxisRunContext`), parameter handling, and interaction with the workcell.
-* **Asset Management:** Tracking physical (resource, devices) and logical assets.
+* **Asset Management:** Tracking physical (resource, machines) and logical assets.
 * **Workcell Interaction:** Managing live PyLabRobot objects representing instruments and resource on the deck.
 * **Data Logging:** Persistently logging protocol definitions, individual function calls within a run, and overall run status to the PostgreSQL database.
 
@@ -90,11 +90,11 @@ This module contains the fundamental logic for managing and operating the labora
 * **Purpose:** Represents the physical laboratory workcell, including its instruments. (Role might be evolving with `WorkcellRuntime` taking more dynamic control of PyLabRobot objects).
 * **Key Classes:**
     * `Workcell`:
-        * Manages a collection of instrument drivers (potentially less direct management post-refactor, with `WorkcellRuntime` handling PyLabRobot instances).
-        * Loads static workcell configuration.
+        * Manages a collection of instrument PyLabRobot objects, enabling interfacing with PLR
+        state management and serialization paradigms.
 * **TODOs (from original analysis, context may change with refactor):**
-    * `# TODO: Add more sophisticated error handling and recovery for driver initialization.`
-    * `# TODO: Implement dynamic loading/unloading of drivers if needed in the future.` (Partially addressed by `WorkcellRuntime`'s dynamic instantiation).
+    * `# TODO: Add more sophisticated error handling and recovery for  initialization.`
+    * `# TODO: Implement dynamic loading/unloading of instruments if needed in the future.` (Partially addressed by `WorkcellRuntime`'s dynamic instantiation).
 * **Important Methods (original analysis):**
     * `__init__(self, config_path: str, settings: Settings)`
     * `initialize_drivers(self)`
@@ -107,17 +107,17 @@ This module contains the fundamental logic for managing and operating the labora
     * Holds the live `Workcell` instance and its PyLabRobot instrument/resource objects.
     * Manages the overall state of the workcell (`WorkcellState` enum: `OFFLINE`, `ONLINE`, `INITIALIZING`, `IDLE`, `RUNNING`, `PAUSED`, `ERROR`, `MAINTENANCE`).
     * Handles dynamic instantiation (using FQNs), initialization, and shutdown of PyLabRobot backends and resource. Corrected FQN handling for resource (using `python_fqn` from `ResourceDefinitionCatalogOrm`) is implemented.
-    * Provides methods for device actions (`execute_device_action`).
+    * Provides methods for machine actions (`execute_machine_action`).
     * Loads and applies full deck configurations (`DeckConfigurationOrm`).
 * **TODOs:**
-    * `# TODO: WCR-3: load main deck configuration` (Refactor document)
-    * `# TODO: WCR-6: execute_device_action` (Refactor document)
-    * `# TODO: WCR-7: load/apply full DeckConfigurationOrm` (Refactor document)
-    * `# TODO: Define workcell states more granularly.` (Partially addressed)
+    * `# DONE: WCR-3: load main deck configuration` (Refactor document)
+    * `# DONE: WCR-6: execute_machine_action` (Refactor document, PARTIALLY)
+    * `# IN_PROGRESS: WCR-7: load/apply full DeckConfigurationOrm` (Refactor document)
+    * `# TODO: Define workcell states more granularly. Should interface with Workcell` (Partially addressed)
     * `# TODO: Implement robust state transition logic and error handling.`
-    * `# TODO: Persist workcell state? (e.g., to Redis or DB)`
+    * `# TODO: Persist workcell state? (e.g., to DB, with Redis managing Runtime states)`
 * **Important Methods (Implemented, based on refactor):**
-    * `initialize_device_backend(device_info: ManagedDeviceOrm) -> BaseBackend`
+    * `initialize_machine_backend(machine_info: ManagedDeviceOrm) -> BaseBackend`
     * `create_or_get_resource_plr_object(resource_definition: ResourceDefinitionCatalogOrm, resource_instance: Optional[ResourceInstanceOrm] = None) -> Resource` (Takes FQN from `resource_definition`, updates DB status via `asset_data_service`).
     * `assign_resource_to_deck_slot(deck_slot, plr_resource_object)`
     * `get_instrument(self, instrument_name: str)`
@@ -135,7 +135,8 @@ This module contains the fundamental logic for managing and operating the labora
     * Handles overall run status logging to `ProtocolRunOrm` (e.g., start/end times, status, inputs/outputs, state snapshots).
     * Interacts with the refined `AssetManager` to acquire/release assets during protocol execution. (Basic integration for acquiring/releasing assets is functional).
 * **TODOs:**
-    * `# TODO: ORCH-1: Integrate AssetManager` (Significantly progressed: Basic integration for acquiring/releasing assets is functional via refined `AssetManager`)
+    * `# TODO: ORCH-1: Integrate AssetManager` (Significantly progressed: Basic integration for acquiring/releasing assets is functional via refined `AssetManager`, this seems like it may
+    be managed in congress with Workcell Runtime, I should determine the optimal approach)
     * `# TODO: ORCH-4: Git Operations` (Refactor document - robust Git clone/fetch/checkout)
     * `# TODO: ORCH-5, ORCH-6: Parameter Validation & Type Casting` (Largely complete: JSONSchema-based validation is integrated via refactored `jsonschema_utils`)
     * `# TODO: ORCH-7: Deck Loading for preconfigure_deck=True protocols` (Refactor document)
@@ -149,13 +150,15 @@ This module contains the fundamental logic for managing and operating the labora
 
 #### 2.1.4. `AssetManager` (`backend/core/asset_manager.py`) (Refactored Role)
 
-* **Purpose (Refactored):** Manages the inventory, status, and allocation of devices and resource. Bridges database definitions with live PyLabRobot objects via `WorkcellRuntime`. (Core functionalities refactored and implemented).
+* **Purpose (Refactored):** Manages the inventory, status, and allocation of machines and resource. Bridges database definitions with live PyLabRobot objects via `WorkcellRuntime`. (Core functionalities refactored and implemented).
 * **Key Responsibilities:**
     * Interfaces with `AssetDataService` for DB operations.
     * `sync_pylabrobot_definitions()`: Populates the resource catalog by introspecting PyLabRobot (using direct module/class scanning, avoiding `ResourceLoader`). Updated to use `python_fqn` for resource definitions in `ResourceDefinitionCatalogOrm`.
-    * `acquire_device()` / `acquire_resource()`: Refactored to use `WorkcellRuntime` for PLR object instantiation and updates database status. An `acquire_asset` dispatcher method handles different asset types.
-    * `release_device()` / `release_resource()`: Basic methods implemented to update database status.
+    * `acquire_machine()` / `acquire_resource()`: Refactored to use `WorkcellRuntime` for PLR object instantiation and updates database status. An `acquire_asset` dispatcher method handles different asset types.
+    * `release_machine()` / `release_resource()`: Basic methods implemented to update database status.
 * **TODOs:**
+    * `# TODO: Needs to interface with my ORMs, data services, and Pydantic + API.
+
     * `# TODO: AM-5A, AM-5B, AM-5D, AM-5E: Refine PLR introspection for sync_pylabrobot_definitions` (Ongoing: Heuristics for properties, complex `__init__`, external definitions. `python_fqn` usage for resource definition is a significant step).
     * `# TODO: Implement versioning for resource definitions and deck layouts.`
     * `# TODO: Add more sophisticated querying capabilities for assets.`
@@ -163,9 +166,9 @@ This module contains the fundamental logic for managing and operating the labora
 * **Important Methods (Implemented, based on refactor):**
     * `sync_pylabrobot_definitions(self)`
     * `acquire_asset(self, asset_id: int, asset_type: str, slot_name: Optional[str] = None) -> Any` (Dispatcher method)
-    * `acquire_device(self, device_id: int) -> Any`
+    * `acquire_machine(self, machine_id: int) -> Any`
     * `acquire_resource(self, resource_id: int, slot_name: Optional[str] = None) -> Any`
-    * `release_device(self, device_name: str)` (Basic implementation)
+    * `release_machine(self, machine_name: str)` (Basic implementation)
     * `release_resource(self, resource_name: str)` (Basic implementation)
 
 #### 2.1.5. `Deck` (`backend/core/deck.py`)
@@ -246,7 +249,7 @@ Endpoints will need to align with the refactored services and data models, using
         * `ResourceInstanceOrm`: Stores instances of specific resource items.
         * `DeckLayoutOrm`: Stores configurations of deck layouts.
         * `DeckSlotOrm`: Represents slots within a deck layout and their assigned resource.
-        * `ManagedDeviceOrm`: Stores definitions of managed devices, including the `praxis_device_category` field.
+        * `ManagedDeviceOrm`: Stores definitions of managed machines, including the `praxis_machine_category` field.
     * `user_orm.py`:
         * `UserOrm`: Represents user information, including new phone number fields.
     * `protocol_definitions_orm.py`:
@@ -343,7 +346,7 @@ This module is central to the new protocol system.
     3. description: str: A human-readable description.
     4. parameters: Optional[Dict[str, Type]]: (Likely inferred from type hints and param_metadata now) Defines expected parameters. Type hints in the function signature (e.g., param_name: int, state: PraxisState, state_dict: dict) are crucial.
     5. param_metadata: Optional[Dict[str, Dict[str, Any]]]: Additional metadata for parameters (e.g., descriptions, constraints, UI hints).
-    6. assets: Optional[List[Union[str, AssetRequirement]]]: Declares required assets (devices, resource). *This is evolving: asset requirements will increasingly be inferred from function argument type hints (e.g., pipette: Optional[Pipette], plate1: Plate) specifying PLR resources/machines.*
+    6. assets: Optional[List[Union[str, AssetRequirement]]]: Declares required assets (machines, resource). *This is evolving: asset requirements will increasingly be inferred from function argument type hints (e.g., pipette: Optional[Pipette], plate1: Plate) specifying PLR resources/machines.*
     7. constraints: Optional[Dict[str, Any]]: Defines operational constraints.
     8. is_top_level: bool = False: Flag indicating if this function can be initiated as a top-level protocol run.
     9. solo_execution: bool = False: Flag indicating if this protocol requires exclusive access to the workcell.

@@ -392,7 +392,7 @@ class Orchestrator:
                     asset_type_str_for_model = resource_def_orm.name
                     print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as LABWARE, maps to definition '{asset_type_str_for_model}'.")
                 else:
-                    asset_type_str_for_model = fqn # Assume it's a device FQN
+                    asset_type_str_for_model = fqn # Assume it's a machine FQN
                     print(f"DEBUG: ORCH-ARG-INFER: Inferred '{param_name}' as DEVICE with FQN '{asset_type_str_for_model}'.")
 
                 inferred_req = AssetRequirementModel(
@@ -693,8 +693,8 @@ class Orchestrator:
                             orm_id = asset_info.get("orm_id")
                             name_in_protocol = asset_info.get("name_in_protocol", "UnknownAsset")
 
-                            if asset_type == "device":
-                                self.asset_manager.release_device(device_orm_id=orm_id) # type: ignore
+                            if asset_type == "machine":
+                                self.asset_manager.release_machine(machine_orm_id=orm_id) # type: ignore
                             elif asset_type == "resource":
                                 self.asset_manager.release_resource(
                                     resource_instance_orm_id=orm_id, # type: ignore
