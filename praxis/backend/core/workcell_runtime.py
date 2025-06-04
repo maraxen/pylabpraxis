@@ -45,9 +45,11 @@ from praxis.backend.models import (
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
-from praxis.backend.utils.errors import WorkcellRuntimeError, log_async_runtime_errors
+from praxis.backend.utils.errors import WorkcellRuntimeError
 
-logger = logging.getLogger(__name__)
+from praxis.backend.utils.logging import log_async_runtime_errors, get_logger
+
+logger = get_logger(__name__)
 
 log_workcell_runtime_errors = partial(
   log_async_runtime_errors,
