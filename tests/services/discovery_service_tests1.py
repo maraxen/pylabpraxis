@@ -9,10 +9,10 @@ from unittest.mock import MagicMock, patch
 from praxis.backend.services.discovery_service import ProtocolDiscoveryService
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
 from praxis.backend.core.decorators import protocol_function # To create decorated funcs
-from praxis.backend.core.run_context import PraxisState, PlrResource # For type hints in dummy protocols
+from praxis.backend.core.run_context import PraxisState, Resource # For type hints in dummy protocols
 
 # Dummy PLR resource for type hinting in test protocols
-class DummyTestPipette(PlrResource):
+class DummyTestPipette(Resource):
     def __init__(self, name: str, **kwargs):
         super().__init__(name=name, size_x=1, size_y=1, size_z=1, **kwargs)
 

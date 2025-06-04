@@ -1,70 +1,68 @@
 # pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-locals, too-many-branches, too-many-statements, E501, line-too-long
-"""
+"""Manages the lifecycle and allocation of physical laboratory assets.
+
 praxis/core/asset_manager.py
 
 The AssetManager is responsible for managing the lifecycle and allocation
 of physical laboratory assets (machines and resource instances). It interacts
-with the AssetDataService for persistence and the WorkcellRuntime for
-live PyLabRobot object interactions.
+with the AssetDataService for persistence and infers changes passed from
+WorkcellRuntime to the database for live PyLabRobot object status updates.
 
-Version 9: Refactored to align more closely with PyLabRobot ontology.
-           - Simplifies data extraction using Resource.serialize().
-           - Standardizes use of 'category' and 'model' from serialized data.
-           - Removes redundant _extract_* methods.
+
 """
 
-from typing import Dict, Any, Optional, List, Type, Tuple, Set, Union
 import importlib
 import inspect
-import pkgutil
 import logging
+import pkgutil
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
+import pylabrobot.resources
+
+# Import Machine base class for future use in machine discovery
+from pylabrobot.machines.machine import Machine
+from pylabrobot.resources import (
+  Carrier,
+  Container,
+  Coordinate,
+  Deck,  # PyLabRobot's Deck
+  ItemizedResource,
+  Lid,
+  Plate,
+  PlateAdapter,
+  PlateCarrier,
+  Resource,
+  TipCarrier,
+  TipRack,
+  Trash,
+  Well,
+)
+from pylabrobot.resources import (
+  Trough as PlrTrough,
+)
+from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
+from pylabrobot.resources.plate import Plate as PlrPlate
+from pylabrobot.resources.tip import Tip as PlrTip
+from pylabrobot.resources.tip_rack import TipRack as PlrTipRack
+from pylabrobot.resources.tube import Tube as PlrTube
+from pylabrobot.resources.tube_rack import TubeRack as PlrTubeRack
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import praxis.backend.services as svc
-from praxis.backend.models import (
-  MachineOrm,
-  ResourceInstanceOrm,
-  ResourceDefinitionCatalogOrm,
-  MachineStatusEnum,
-  ResourceInstanceStatusEnum,
-  MachineCategoryEnum,
-  AssetRequirementModel,
-)
-from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
 from praxis.backend.core.run_context import (
-  PlrDeck as ProtocolPlrDeck,
+  Deck as ProtocolDeck,
 )  # Alias to avoid confusion
-
-import pylabrobot.resources
-from pylabrobot.resources import (
-  Resource as PlrResource,
-  Lid,
-  Carrier,
-  Deck as PlrDeck,  # PyLabRobot's Deck
-  Well,
-  Container,
-  Coordinate,
-  PlateCarrier,
-  TipCarrier,
-  Trash,
-  ItemizedResource,
-  PlateAdapter,
-  TipRack,
-  Plate,
-  Trough as PlrTrough,
+from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.models import (
+  AssetRequirementModel,
+  MachineCategoryEnum,
+  MachineOrm,
+  MachineStatusEnum,
+  ResourceDefinitionCatalogOrm,
+  ResourceInstanceOrm,
+  ResourceInstanceStatusEnum,
 )
-from pylabrobot.resources.plate import Plate as PlrPlate
-from pylabrobot.resources.tip_rack import TipRack as PlrTipRack
-from pylabrobot.resources.tube_rack import TubeRack as PlrTubeRack
-from pylabrobot.resources.tube import Tube as PlrTube
-from pylabrobot.resources.tip import Tip as PlrTip
-from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
-
-# Import Machine base class for future use in machine discovery
-from pylabrobot.machines.machine import Machine as PlrMachine
-
+from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
 
 # Setup logger for this module
 logger = logging.getLogger(__name__)
@@ -75,13 +73,10 @@ class AssetAcquisitionError(RuntimeError):
 
 
 class AssetManager:
-  """
-  Manages the lifecycle and allocation of assets.
-  """
+  """Manages the lifecycle and allocation of assets."""
 
   def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime):
-    """
-    Initializes the AssetManager.
+    """Initialize the AssetManager.
 
     Args:
         db_session: The SQLAlchemy async session.
@@ -90,30 +85,38 @@ class AssetManager:
     self.db: AsyncSession = db_session
     self.workcell_runtime = workcell_runtime
 
-    # Classes to exclude from automatic cataloging if they are too generic or abstract.
-    self.EXCLUDED_BASE_CLASSES: List[Type[PlrResource]] = [
-      PlrResource,  # Too generic
-      Container,  # Abstract base for wells, tubes, etc.
-      ItemizedResource,  # Abstract base for resources composed of items
-      Well,  # Typically part of a plate/rack, not cataloged standalone
-      PlrDeck,  # Generic deck, specific decks (e.g., HamiltonDeck) are preferred
+    self.EXCLUDED_BASE_CLASSES: List[Type[Resource]] = [
+      Resource,
+      Container,
+      ItemizedResource,
+      Well,
+      Deck,
     ]
-    # Specific class names to exclude by name.
+
     self.EXCLUDED_CLASS_NAMES: Set[str] = {
-      "WellCreator",  # Utility class
-      "TipCreator",  # Utility class
-      "CarrierSite",  # Part of a carrier, not standalone resource
-      "ResourceStack",  # Utility for stacking resources
+      "WellCreator",
+      "TipCreator",
+      "CarrierSite",
+      "ResourceStack",
     }
 
   def _extract_num_items(
     self,
-    resource_class: Type[PlrResource],  # For logging context
+    resource_class: Type[Resource],  # For logging context
     details: Optional[Dict[str, Any]],
   ) -> Optional[int]:
-    """
-    Extracts the number of items (e.g., tips, wells, tubes) from serialized details.
-    This is relevant for ItemizedResource types.
+    """Extract the number of items (e.g., tips, wells, tubes) from serialized details.
+
+    Relevant for ItemizedResource types.
+    It checks for 'num_items', 'items', 'capacity', or 'wells' in serialized details.
+
+    Args:
+        resource_class: The class of the resource being processed, for logging context.
+        details: The serialized details of the resource instance.
+
+    Returns:
+        An integer representing the number of items, or None if not found.
+
     """
     num_items_value = None
     if not details:
@@ -141,6 +144,13 @@ class AssetManager:
           f"{resource_class.__name__}"
         )
         num_items_value = len(details["wells"])
+      elif "capacity " in details and isinstance(details["capacity"], int):
+        # Some resources might have a 'capacity' field indicating the number of items
+        logger.debug(
+          f"AM_EXTRACT_NUM: Extracted from details['capacity'] for "
+          f"{resource_class.__name__}"
+        )
+        num_items_value = int(details["capacity"])
 
       if num_items_value is None:
         logger.debug(
@@ -155,7 +165,7 @@ class AssetManager:
 
   def _extract_ordering(
     self,
-    resource_class: Type[PlrResource],  # For logging context
+    resource_class: Type[Resource],  # For logging context
     details: Optional[Dict[str, Any]],
   ) -> Optional[str]:
     """
@@ -236,8 +246,8 @@ class AssetManager:
     Returns:
         True if the class should be cataloged, False otherwise.
     """
-    if not inspect.isclass(plr_class) or not issubclass(plr_class, PlrResource):
-      return False  # Must be a class and a subclass of PlrResource
+    if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
+      return False  # Must be a class and a subclass of Resource
     if inspect.isabstract(plr_class):
       return False  # Skip abstract classes
     if plr_class in self.EXCLUDED_BASE_CLASSES:
@@ -252,21 +262,25 @@ class AssetManager:
   async def sync_pylabrobot_definitions(
     self, plr_resources_package=pylabrobot.resources
   ) -> Tuple[int, int]:
-    """
-    Scans PyLabRobot's resources by introspecting modules and classes,
-    then populates/updates the ResourceDefinitionCatalogOrm.
-    This method focuses on PLR Resources (resource). Machine discovery might be separate.
+    """Scan and sync PyLabRobot resource definitions.
+
+    Scan PyLabRobot's resources by introspecting modules and classes,
+    then populate/update the ResourceDefinitionCatalogOrm.
+    This method focuses on PLR Resources (resource). Machine discovery is separate.
 
     Args:
-        plr_resources_package: The base PyLabRobot package to scan (default: pylabrobot.resources).
+        plr_resources_package: The base PyLabRobot package to scan
+        (default: pylabrobot.resources).
 
     Returns:
         A tuple (added_count, updated_count) of resource definitions.
+
     """
     logger.info(
       f"AM_SYNC: Starting PyLabRobot resource definition sync from package: "
       f"{plr_resources_package.__name__}"
     )
+
     added_count = 0
     updated_count = 0
     processed_fqns: Set[str] = set()
@@ -295,11 +309,10 @@ class AssetManager:
           continue
 
         logger.debug(f"AM_SYNC: Processing potential resource class: {fqn}")
-        temp_instance: Optional[PlrResource] = None
+        temp_instance: Optional[Resource] = None
         serialized_data: Optional[Dict[str, Any]] = None
         can_instantiate = True
 
-        # Prepare kwargs for instantiation, attempting to satisfy required constructor args.
         kwargs_for_instantiation: Dict[str, Any] = {
           "name": f"praxis_sync_temp_{class_name}"
         }
@@ -315,7 +328,7 @@ class AssetManager:
               continue
             if param_info["required"] and param_info["default"] is None:
               param_type_str = param_info["type"].lower()
-              # Provide sensible defaults for common types
+              # Sensible defaults for common types
               if "optional[" in param_type_str:
                 kwargs_for_instantiation[param_name] = None
               elif "str" in param_type_str:
@@ -492,14 +505,13 @@ class AssetManager:
     return added_count, updated_count
 
   async def apply_deck_configuration(
-    self, deck_identifier: Union[str, ProtocolPlrDeck], protocol_run_guid: str
-  ) -> PlrDeck:
-    """
-    Applies a deck configuration by initializing the deck machine and assigning pre-configured
-    resource.
+    self, deck_identifier: Union[str, ProtocolDeck], protocol_run_guid: str
+  ) -> Deck:
+    """Apply a deck configuration by initializing the deck machine and assigning
+    pre-configured resources.
 
     Args:
-        deck_identifier: The name of the deck layout or a ProtocolPlrDeck object.
+        deck_identifier: The name of the deck layout or a ProtocolDeck object.
         protocol_run_guid: The GUID of the current protocol run.
 
     Returns:
@@ -507,16 +519,17 @@ class AssetManager:
 
     Raises:
         AssetAcquisitionError: If the deck or its components cannot be configured.
+
     """
     deck_name: str
-    if isinstance(deck_identifier, ProtocolPlrDeck):  # From protocol definition
+    if isinstance(deck_identifier, ProtocolDeck):  # From protocol definition
       deck_name = deck_identifier.name
     elif isinstance(deck_identifier, str):  # From name string
       deck_name = deck_identifier
     else:
       raise TypeError(
         f"Unsupported deck_identifier type: {type(deck_identifier)}. Expected str or "
-        f"ProtocolPlrDeck."
+        f"ProtocolDeck."
       )
 
     logger.info(
@@ -542,7 +555,7 @@ class AssetManager:
           module_path, class_n = dev_orm.python_fqn.rsplit(".", 1)
           module = importlib.import_module(module_path)
           cls_obj = getattr(module, class_n)
-          if issubclass(cls_obj, PlrDeck):
+          if issubclass(cls_obj, Deck):
             actual_deck_machine_orm = dev_orm
             break
         except (ImportError, AttributeError, ValueError) as e:
@@ -569,9 +582,9 @@ class AssetManager:
 
     # Initialize the deck machine through WorkcellRuntime
     live_plr_deck_object = self.workcell_runtime.initialize_machine(deck_machine_orm)
-    if not live_plr_deck_object or not isinstance(live_plr_deck_object, PlrDeck):
+    if not live_plr_deck_object or not isinstance(live_plr_deck_object, Deck):
       raise AssetAcquisitionError(
-        f"Failed to initialize backend for deck machine '{deck_name}' (ID: {deck_machine_orm.id}) or it's not a PlrDeck. Check WorkcellRuntime."
+        f"Failed to initialize backend for deck machine '{deck_name}' (ID: {deck_machine_orm.id}) or it's not a Deck. Check WorkcellRuntime."
       )
 
     await svc.update_machine_status(

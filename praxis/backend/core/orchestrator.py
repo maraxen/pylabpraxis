@@ -29,9 +29,9 @@ from praxis.backend.utils.run_control import get_control_command, clear_control_
 from praxis.backend.utils.state import State as PraxisState
 from praxis.backend.core.run_context import (
     PraxisRunContext,  # ADDED
-    PlrDeck,  # ADDED
+    Deck,  # ADDED
     DeckInputType,  # ADDED
-    PlrResource,  # ADDED
+    Resource,  # ADDED
     PROTOCOL_REGISTRY,  # ADDED
 )
 
@@ -479,16 +479,16 @@ class Orchestrator:
                 configured_plr_deck_obj = self.asset_manager.apply_deck_configuration(
                     deck_identifier=deck_input, protocol_run_guid=canonical_run_state.run_guid)
                 deck_to_pass_to_protocol = configured_plr_deck_obj
-            elif isinstance(deck_input, PlrDeck): # praxis.protocol_core.definitions.PlrDeck
+            elif isinstance(deck_input, Deck): # praxis.protocol_core.definitions.Deck
                 deck_layout_name = deck_input.name
-                print(f"INFO: ORCH-DECK: Deck preconfiguration with PlrDeck object (layout: '{deck_layout_name}'). Applying...")
+                print(f"INFO: ORCH-DECK: Deck preconfiguration with Deck object (layout: '{deck_layout_name}'). Applying...")
                 if not hasattr(self.asset_manager, 'apply_deck_configuration'): # pragma: no cover
                     raise NotImplementedError("AssetManager does not have 'apply_deck_configuration' method.")
                 configured_plr_deck_obj = self.asset_manager.apply_deck_configuration(
                     deck_identifier=deck_layout_name, protocol_run_guid=canonical_run_state.run_guid)
                 deck_to_pass_to_protocol = configured_plr_deck_obj
             elif deck_input is not None:
-                 raise ValueError(f"Unsupported type for deck param '{protocol_def_orm.deck_param_name}': {type(deck_input)}. Expected str or PlrDeck.")
+                 raise ValueError(f"Unsupported type for deck param '{protocol_def_orm.deck_param_name}': {type(deck_input)}. Expected str or Deck.")
 
             if deck_to_pass_to_protocol:
                 final_args[protocol_def_orm.deck_param_name] = deck_to_pass_to_protocol

@@ -14,7 +14,7 @@ from praxis.backend.database_models.protocol_definitions_orm import (
 )
 from praxis.backend.utils.state import State as PraxisState
 from praxis.backend.core.run_context import (
-  PlrDeck,
+  Deck,
   PraxisRunContext,
 )  # ADDED for DeckLoading tests in Orchestrator
 from praxis.backend.protocol_core.protocol_definition_models import (
@@ -697,7 +697,7 @@ class TestOrchestratorArgumentPreparation:
     protocol_def.deck_param_name = "my_deck"
     decorator_meta["parameters"]["my_deck"] = {
       "name": "my_deck",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": False,
       "is_deck_param": True,
     }
@@ -735,16 +735,16 @@ class TestOrchestratorArgumentPreparation:
     protocol_def.deck_param_name = "the_deck"
     decorator_meta["parameters"]["the_deck"] = {
       "name": "the_deck",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": False,
       "is_deck_param": True,
     }
 
-    # Using praxis.protocol_core.definitions.PlrDeck for the input
-    input_plr_deck = PlrDeck(name="MyPlrDeckLayoutName")
+    # Using praxis.protocol_core.definitions.Deck for the input
+    input_plr_deck = Deck(name="MyDeckLayoutName")
     user_input_params = {"the_deck": input_plr_deck}
 
-    mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromPlrDeck")
+    mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromDeck")
     orchestrator.asset_manager.apply_deck_configuration = MagicMock(
       return_value=mock_live_deck_obj
     )
@@ -758,7 +758,7 @@ class TestOrchestratorArgumentPreparation:
     )
 
     orchestrator.asset_manager.apply_deck_configuration.assert_called_once_with(
-      deck_identifier="MyPlrDeckLayoutName",  # Name is extracted
+      deck_identifier="MyDeckLayoutName",  # Name is extracted
       protocol_run_guid="test_run_plr",
     )
     assert final_args["the_deck"] == mock_live_deck_obj
@@ -778,7 +778,7 @@ class TestOrchestratorArgumentPreparation:
     # Ensure it's in decorator_meta as non-optional
     decorator_meta["parameters"]["mandatory_deck"] = {
       "name": "mandatory_deck",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": False,
       "is_deck_param": True,
     }
@@ -812,7 +812,7 @@ class TestOrchestratorArgumentPreparation:
     protocol_def.deck_param_name = "optional_deck"
     decorator_meta["parameters"]["optional_deck"] = {
       "name": "optional_deck",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": True,
       "is_deck_param": True,
     }
@@ -847,7 +847,7 @@ class TestOrchestratorArgumentPreparation:
     protocol_def.deck_param_name = "deck_will_fail"
     decorator_meta["parameters"]["deck_will_fail"] = {
       "name": "deck_will_fail",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": False,
       "is_deck_param": True,
     }
@@ -883,12 +883,12 @@ class TestOrchestratorArgumentPreparation:
     # Still need it in parameters if it's expected in the signature
     decorator_meta["parameters"]["my_deck_no_config"] = {
       "name": "my_deck_no_config",
-      "type_str": "PlrDeck",
+      "type_str": "Deck",
       "optional": False,
       "is_deck_param": True,
     }
 
-    input_plr_deck = PlrDeck(name="DeckInputButNoConfigure")
+    input_plr_deck = Deck(name="DeckInputButNoConfigure")
     user_input_params = {"my_deck_no_config": input_plr_deck}
     orchestrator.asset_manager.apply_deck_configuration = MagicMock()
 
@@ -901,7 +901,7 @@ class TestOrchestratorArgumentPreparation:
     )
 
     orchestrator.asset_manager.apply_deck_configuration.assert_not_called()
-    # The original PlrDeck input should be passed through if preconfigure_deck is false
+    # The original Deck input should be passed through if preconfigure_deck is false
     # BUT, current logic in _prepare_arguments for deck handling is inside the
     # `if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:` block.
     # If preconfigure_deck is False, this block is skipped.
@@ -917,7 +917,7 @@ class TestOrchestratorArgumentPreparation:
     # If it were NOT is_deck_param, it would be treated as a normal parameter.
     # This test highlights that is_deck_param without preconfigure_deck=True means it's ignored.
 
-    # If the intention is that a PlrDeck object passed when preconfigure_deck=False should still be passed to the protocol:
+    # If the intention is that a Deck object passed when preconfigure_deck=False should still be passed to the protocol:
     # Option 1: The decorator should not mark it as is_deck_param if preconfigure_deck=False
     # Option 2: _prepare_arguments needs adjustment.
     # Based on current _prepare_arguments, if is_deck_param=True, it's only handled by preconfigure_deck logic.

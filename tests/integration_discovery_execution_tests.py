@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session as DbSession # For type hinting if needed
 from praxis.backend.services.discovery_service import ProtocolDiscoveryService
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.decorators import protocol_function
-from praxis.backend.core.run_context import PraxisState, PraxisRunContext, PlrResource
+from praxis.backend.core.run_context import PraxisState, PraxisRunContext, Resource
 from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
 from praxis.backend.database_models.protocol_definitions_orm import (
     FunctionProtocolDefinitionOrm, ParameterDefinitionOrm, AssetDefinitionOrm,
@@ -50,7 +50,7 @@ MOCK_LIVE_LABWARE.name = "MockLivePLRResourceInstance_Global"
 
 
 # Dummy PLR resource for type hinting in test protocols
-class IntegrationPipette(PlrResource):
+class IntegrationPipette(Resource):
     def __init__(self, name: str, **kwargs):
         super().__init__(name=name, size_x=1, size_y=1, size_z=1, **kwargs)
     def pick_up_tip(self):
@@ -261,7 +261,7 @@ class TestIntegrationDiscoveryExecution:
             run_guid=test_run_guid,
             top_level_protocol_definition_id=main_proto_orm_mock.id,
             status=ProtocolRunStatusEnum.PREPARING,
-            input_parameters_json=json.dumps(user_params, default=lambda o: o.name if isinstance(o, PlrResource) else str(o)),
+            input_parameters_json=json.dumps(user_params, default=lambda o: o.name if isinstance(o, Resource) else str(o)),
             initial_state_json=json.dumps(initial_state)
         )
 

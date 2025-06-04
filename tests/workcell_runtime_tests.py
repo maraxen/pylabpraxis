@@ -22,22 +22,22 @@ def mock_plr_resource_class():
     return klass
 
 @pytest.fixture
-def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it can be a PlrResource
+def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it can be a Resource
     # A PLR "device backend" can be a machine that is also a Resource, or just a backend class
     # Let's make it behave like a machine with a setup method
     klass = MagicMock()
     instance = MagicMock(name="mock_plr_device_instance")
     instance.setup = MagicMock()
     instance.stop = MagicMock()
-    # If it's also a PlrDeck, it needs deck methods
+    # If it's also a Deck, it needs deck methods
     instance.assign_child_resource = MagicMock()
     instance.unassign_child_resource = MagicMock()
     instance.__getitem__ = MagicMock(return_value=None) # For deck[slot] access
 
-    # Make it an instance of the mocked PlrResource class for isinstance checks if needed
-    # This is a bit of a hack for isinstance(backend_instance, PlrDeck)
+    # Make it an instance of the mocked Resource class for isinstance checks if needed
+    # This is a bit of a hack for isinstance(backend_instance, Deck)
     # A better way might be to have different fixtures for Deck vs non-Deck devices.
-    # For now, let's assume it can be identified as PlrDeck if needed by checking class name.
+    # For now, let's assume it can be identified  if needed by checking class name.
     def_instance = klass.return_value
     def_instance.name = "mock_plr_device_instance"
     def_instance.setup = MagicMock()
@@ -52,15 +52,15 @@ def mock_plr_device_backend_class(mock_plr_resource_class: MagicMock): # So it c
 
 @pytest.fixture
 def mock_plr_deck_class(mock_plr_device_backend_class: MagicMock): # Inherits general device behavior
-    # Specifically for PlrDeck. The instance from mock_plr_device_backend_class can serve as this.
+    # Specifically for Deck. The instance from mock_plr_device_backend_class can serve as this.
     # We ensure its type name implies it's a Deck for isinstance checks in WCR.
-    # WorkcellRuntime uses isinstance(backend_instance, PlrDeck).
-    # We will patch PlrDeck from pylabrobot.resources for this test.
-    with patch('praxis.backend.core.workcell_runtime.PlrDeck', spec=True) as MockPlrDeckSpec:
-        # Make our mock_plr_device_backend_class's instance also an instance of this MockPlrDeckSpec
+    # WorkcellRuntime uses isinstance(backend_instance, Deck).
+    # We will patch Deck from pylabrobot.resources for this test.
+    with patch('praxis.backend.core.workcell_runtime.Deck', spec=True) as MockDeckSpec:
+        # Make our mock_plr_device_backend_class's instance also an instance of this MockDeckSpec
         # This is tricky. A simpler way is to check class name if isinstance is problematic with mocks.
-        # Or, the _get_class_from_fqn can return this MockPlrDeckSpec if FQN matches a deck.
-        MockPlrDeckSpec.return_value = mock_plr_device_backend_class.return_value # Share the same instance
+        # Or, the _get_class_from_fqn can return this MockDeckSpec if FQN matches a deck.
+        MockDeckSpec.return_value = mock_plr_device_backend_class.return_value # Share the same instance
         yield mock_plr_device_backend_class # Returns the constructor mock
 
 @pytest.fixture
@@ -107,22 +107,22 @@ class TestWorkcellRuntimeDeviceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         # For this test, we need _get_class_from_fqn to return a class that, when instantiated,
-        # IS a PlrDeck. We mock PlrDeck itself for the isinstance check.
-        with patch('praxis.backend.core.workcell_runtime.PlrDeck', spec=True) as ActualPlrDeckClassMocked:
-            # Make our mock_plr_deck_class's instance appear as an instance of the actual (mocked) PlrDeck
+        # IS a Deck. We mock Deck itself for the isinstance check.
+        with patch('praxis.backend.core.workcell_runtime.Deck', spec=True) as ActualDeckClassMocked:
+            # Make our mock_plr_deck_class's instance appear as an instance of the actual (mocked) Deck
             mock_instance = mock_plr_deck_class.return_value # This is the instance of MagicMock that is the "class"
-            mock_instance.name = "TestDeckInstance" # Ensure it has a name attribute like a PlrResource
+            mock_instance.name = "TestDeckInstance" # Ensure it has a name attribute like a Resource
 
             # Configure _get_class_from_fqn to return our mock_plr_deck_class (which is a MagicMock itself)
             mock_get_class.return_value = mock_plr_deck_class
 
-            # Make instances created by mock_plr_deck_class also be instances of ActualPlrDeckClassMocked
+            # Make instances created by mock_plr_deck_class also be instances of ActualDeckClassMocked
             # This is the tricky part for isinstance checks with mocks.
             # A simpler way if this fails is to check the class_name string.
-            # For now, we rely on the spec of PlrDeck making isinstance work with its instances.
-            # The worker's report on WCR v3 said "isinstance(backend_instance, PlrDeck)" is used.
-            # To make isinstance(mock_plr_deck_class.return_value, ActualPlrDeckClassMocked) true:
-            mock_plr_deck_class.return_value.__class__ = ActualPlrDeckClassMocked # Make the instance's class the mocked PlrDeck
+            # For now, we rely on the spec of Deck making isinstance work with its instances.
+            # The worker's report on WCR v3 said "isinstance(backend_instance, Deck)" is used.
+            # To make isinstance(mock_plr_deck_class.return_value, ActualDeckClassMocked) true:
+            mock_plr_deck_class.return_value.__class__ = ActualDeckClassMocked # Make the instance's class the mocked Deck
 
             device_orm = ManagedDeviceOrmMock(id=2, user_friendly_name="MainDeck", python_fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
 
@@ -197,19 +197,19 @@ class TestWorkcellRuntimeResourceHandling:
         )
 
 
-    @patch('praxis.backend.core.workcell_runtime.PlrDeck', spec=True) # Mock the PlrDeck class itself for isinstance checks
+    @patch('praxis.backend.core.workcell_runtime.Deck', spec=True) # Mock the Deck class itself for isinstance checks
     def test_assign_resource_to_deck_slot(
-        self, MockActualPlrDeck: MagicMock, # This is the mocked PlrDeck class from the patch
+        self, MockActualDeck: MagicMock, # This is the mocked Deck class from the patch
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
-        # Setup a mock deck object that is an instance of the (mocked) PlrDeck
-        mock_deck_instance = MagicMock(spec=MockActualPlrDeck) # Instance that passes isinstance checks
+        # Setup a mock deck object that is an instance of the (mocked) Deck
+        mock_deck_instance = MagicMock(spec=MockActualDeck) # Instance that passes isinstance checks
         mock_deck_instance.name = "TestDeck"
         mock_deck_instance.assign_child_resource = MagicMock()
 
         workcell_runtime._active_device_backends[10] = mock_deck_instance # Assume deck device ID 10 is active
 
-        mock_resource_plr_obj = MagicMock(spec=workcell_runtime.PlrResource) # from praxis.backend.core.workcell_runtime
+        mock_resource_plr_obj = MagicMock(spec=workcell_runtime.Resource) # from praxis.backend.core.workcell_runtime
         resource_instance_id = 1
 
         workcell_runtime.assign_resource_to_deck_slot(10, "A1", mock_resource_plr_obj, resource_instance_id)

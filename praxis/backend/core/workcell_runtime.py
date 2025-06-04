@@ -1070,7 +1070,7 @@ class WorkcellRuntime:
   # - Clearing all existing resource from the live deck (if any).
   # - Iterating through DeckPositionOrm entries in the DeckConfigurationOrm.
   # - For each position with assigned resource:
-  #   - Get/create the PlrResource for the ResourceInstanceOrm.
+  #   - Get/create the Resource for the ResourceInstanceOrm.
   #   - Call assign_resource_to_deck_position with the target deck's ORM ID.
   # - This would be the primary way to set up a live deck to match a saved
   # configuration.
