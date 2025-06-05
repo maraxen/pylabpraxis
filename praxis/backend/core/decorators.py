@@ -1,59 +1,60 @@
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,fixme,logging-fstring-interpolation
-"""
+"""Decorator for defining Praxis protocol functionality.
+
 praxis/protocol_core/decorators.py
 
-Decorator for defining PylabPraxis protocol functions.
-Version 5: Refactored for asynchronous operation.
 """
 
-import inspect
-import functools
-import re
-import time  # Keep for perf_counter, but replace time.sleep
 import asyncio  # Added for asyncio.sleep and other async utilities
-import uuid
+import functools
+import inspect
 import json
+import re
+import time
 import traceback
-from typing import Callable, Optional, Any, Dict, Union, List, get_origin, get_args
+from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin
 
+import uuid_utils as uuid
+from pydantic import BaseModel as PydanticBaseModel  # For explicit Pydantic model check
+
+from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import (
   PROTOCOL_REGISTRY,
-  Resource,
   Deck,
-  PraxisState,
   PraxisRunContext,
+  PraxisState,
+  Resource,
   serialize_arguments,
 )
 from praxis.backend.models import (
+  AssetRequirementModel,
   FunctionCallStatusEnum,
   FunctionProtocolDefinitionModel,
   ParameterMetadataModel,
-  AssetRequirementModel,
-  UIHint,
   ProtocolRunStatusEnum,
+  UIHint,
 )
 from praxis.backend.services.protocol_data_service import (
-  log_function_call_start,
   log_function_call_end,
+  log_function_call_start,
   update_protocol_run_status,
 )
-
+from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import (
-  get_control_command,
-  clear_control_command,
   ALLOWED_COMMANDS,
+  clear_control_command,
+  get_control_command,
 )
-from praxis.backend.core.orchestrator import ProtocolCancelledError
-
-from pydantic import BaseModel as PydanticBaseModel  # For explicit Pydantic model check
 
 DEFAULT_DECK_PARAM_NAME = "deck"
 DEFAULT_STATE_PARAM_NAME = "state"
 TOP_LEVEL_NAME_REGEX = r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$"
 
+logger = get_logger(__name__)
 
-# Helper Functions (remain synchronous as they are pure Python logic)
+
 def is_pylabrobot_resource(obj_type: Any) -> bool:
+  """Check if the given type is a Pylabrobot Resource or Union of Resources."""
   if obj_type is inspect.Parameter.empty:
     return False
   origin = get_origin(obj_type)
@@ -69,6 +70,7 @@ def is_pylabrobot_resource(obj_type: Any) -> bool:
 
 
 def get_actual_type_str_from_hint(type_hint: Any) -> str:
+  """Get the actual type string from a type hint."""
   if type_hint == inspect.Parameter.empty:
     return "Any"
   actual_type = type_hint
@@ -94,12 +96,14 @@ def get_actual_type_str_from_hint(type_hint: Any) -> str:
 
 
 def serialize_type_hint_str(type_hint: Any) -> str:
+  """Serialize a type hint to a string representation."""
   if type_hint == inspect.Parameter.empty:
     return "Any"
   return str(type_hint)
 
 
 # --- End Helper Functions ---
+# TODO: add decorators for deck construction and state management
 
 
 async def protocol_function(
@@ -116,6 +120,29 @@ async def protocol_function(
   tags: Optional[List[str]] = None,
   top_level_name_format: Optional[str] = TOP_LEVEL_NAME_REGEX,
 ):
+  """Decorate a function for use as a Praxis protocol.
+
+  This decorator registers the function as a protocol with metadata and
+  allows it to be executed within the Praxis orchestrator context.
+
+  Args:
+    name (Optional[str]): Name of the protocol function. If not provided,
+      the function's name will be used.
+    version (str): Version of the protocol function.
+    description (Optional[str]): Description of the protocol function.
+    solo (bool): If True, the protocol can be executed independently.
+    is_top_level (bool): If True, this is a top-level protocol that can be
+      called directly by the orchestrator.
+    preconfigure_deck (bool): If True, the protocol expects a deck parameter
+      for preconfiguration.
+    deck_param_name (str): Name of the deck parameter if preconfigure_deck is True.
+    state_param_name (str): Name of the state parameter for top-level protocols.
+    param_metadata (Optional[Dict[str, Dict[str, Any]]]): Metadata for parameters.
+    category (Optional[str]): Category for organizing protocols.
+    tags (Optional[List[str]]): Tags for additional categorization.
+    top_level_name_format (Optional[str]): Regex format for top-level protocol names.
+
+  """
   actual_param_metadata = param_metadata or {}
   actual_tags = tags or []
 
@@ -123,7 +150,8 @@ async def protocol_function(
     resolved_name = name or func.__name__
     if not resolved_name:
       raise ValueError(
-        "Protocol function name cannot be empty (either provide 'name' argument or use a named function)."
+        "Protocol function name cannot be empty (either provide 'name' argument or use "
+        "a named function)."
       )
     if (
       is_top_level
@@ -131,7 +159,8 @@ async def protocol_function(
       and not re.match(top_level_name_format, resolved_name)
     ):
       raise ValueError(
-        f"Top-level protocol name '{resolved_name}' does not match format: {top_level_name_format}"
+        f"Top-level protocol name '{resolved_name}' does not match format: "
+        f"{top_level_name_format}"
       )
 
     protocol_unique_key = f"{resolved_name}_v{version}"
@@ -206,11 +235,13 @@ async def protocol_function(
 
     if preconfigure_deck and not found_deck_param:
       raise TypeError(
-        f"Protocol '{resolved_name}' (preconfigure_deck=True) missing '{deck_param_name}' param."
+        f"Protocol '{resolved_name}' (preconfigure_deck=True) missing "
+        f"'{deck_param_name}' param."
       )
     if is_top_level and not found_state_param_details_for_wrapper:
       raise TypeError(
-        f"Top-level protocol '{resolved_name}' must define a '{state_param_name}' parameter."
+        f"Top-level protocol '{resolved_name}' must define a '{state_param_name}' "
+        f"parameter."
       )
 
     protocol_definition = FunctionProtocolDefinitionModel(
@@ -244,7 +275,7 @@ async def protocol_function(
     PROTOCOL_REGISTRY[protocol_unique_key] = legacy_protocol_metadata
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):  # MODIFIED: async def
+    async def wrapper(*args, **kwargs):
       current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
       if not current_meta:
         raise RuntimeError(f"Protocol metadata not found for {protocol_unique_key}")
@@ -256,12 +287,12 @@ async def protocol_function(
       _found_state_param_details_wrapper = current_meta.get("found_state_param_details")
 
       if not isinstance(praxis_run_context, PraxisRunContext):
-        run_guid = "direct_call_" + str(uuid.uuid4())[:8]
+        run_guid = uuid.uuid7()
         print(
-          f"WARNING: Protocol '{current_meta['name']} v{current_meta['version']}' called outside orchestrated context."
+          f"WARNING: Protocol '{current_meta['name']} v{current_meta['version']}' "
+          f"called outside orchestrated context."
         )
         praxis_run_context = PraxisRunContext(
-          protocol_run_db_id=0,
           run_guid=run_guid,
           canonical_state=PraxisState(run_guid=run_guid),
           current_db_session=None,
@@ -273,10 +304,7 @@ async def protocol_function(
 
       if _found_state_param_details_wrapper:
         state_arg_name_in_sig = _found_state_param_details_wrapper["name"]
-        if (
-          state_arg_name_in_sig in processed_kwargs
-          and praxis_run_context.protocol_run_db_id != 0
-        ):
+        if state_arg_name_in_sig in processed_kwargs:
           del processed_kwargs[state_arg_name_in_sig]
         if _found_state_param_details_wrapper["expects_praxis_state"]:
           processed_kwargs[state_arg_name_in_sig] = praxis_run_context.canonical_state
@@ -288,7 +316,7 @@ async def protocol_function(
               else {}
             )
 
-      current_call_log_db_id_for_this_func: Optional[int] = None
+      current_call_log_db_id_for_this_func: Optional[uuid.UUID] = None
       parent_log_id_for_this_call = praxis_run_context.current_call_log_db_id
 
       if praxis_run_context.current_db_session and this_function_def_db_id is not None:
@@ -300,7 +328,7 @@ async def protocol_function(
           # MODIFIED: await the async DB call
           call_log_entry_orm = await log_function_call_start(
             db=praxis_run_context.current_db_session,
-            protocol_run_orm_id=praxis_run_context.protocol_run_db_id,
+            protocol_run_orm_id=praxis_run_context.run_guid,
             function_definition_id=this_function_def_db_id,
             sequence_in_run=sequence_val,
             input_args_json=serialized_input_args,
@@ -308,12 +336,13 @@ async def protocol_function(
           )
           current_call_log_db_id_for_this_func = call_log_entry_orm.id
         except Exception as log_e:  # pragma: no cover
-          print(
-            f"ERROR: Failed to log_function_call_start for '{current_meta['name']}': {log_e}"
+          logger.error(
+            f"Failed to log_function_call_start for '{current_meta['name']}': {log_e}",
+            exc_info=True,
           )
       else:  # pragma: no cover
-        print(
-          f"[ConsoleLog] START Call: {current_meta['name']} v{current_meta['version']} (DefID: {this_function_def_db_id}, Run: {praxis_run_context.run_guid}, ParentLog:{parent_log_id_for_this_call}) Args: Shortened"
+        logger.info(
+          f"START Call: {current_meta['name']} v{current_meta['version']} (DefID: {this_function_def_db_id}, Run: {praxis_run_context.run_guid}, ParentLog:{parent_log_id_for_this_call}) Args: Shortened"
         )
 
       context_for_user_code = praxis_run_context.create_context_for_nested_call(
@@ -328,14 +357,11 @@ async def protocol_function(
       start_time_perf = time.perf_counter()  # Use perf_counter for duration
 
       run_guid = praxis_run_context.run_guid
-      current_protocol_run_db_id = praxis_run_context.protocol_run_db_id
       current_db_session = praxis_run_context.current_db_session
 
       # Command checking loop
       while True:
-        # Assuming get_control_command is non-blocking or will be made async.
-        # If it's a blocking call, this loop will block the event loop.
-        command = get_control_command(run_guid)
+        command = await get_control_command(run_guid)
         if not command:
           break  # No command, proceed with execution
 
@@ -343,25 +369,24 @@ async def protocol_function(
           print(
             f"Warning: Invalid control command '{command}' for run {run_guid}. Clearing."
           )
-          clear_control_command(run_guid)
+          await clear_control_command(run_guid)
           continue
 
         if command == "PAUSE":
-          clear_control_command(run_guid)
+          await clear_control_command(run_guid)
           print(f"INFO: Protocol run {run_guid} PAUSING.")
-          if current_db_session and current_protocol_run_db_id:
-            await update_protocol_run_status(
-              current_db_session,
-              current_protocol_run_db_id,
-              ProtocolRunStatusEnum.PAUSING,
-            )
-            await current_db_session.commit()
-            await update_protocol_run_status(
-              current_db_session,
-              current_protocol_run_db_id,
-              ProtocolRunStatusEnum.PAUSED,
-            )
-            await current_db_session.commit()
+          await update_protocol_run_status(
+            current_db_session,
+            run_guid,
+            ProtocolRunStatusEnum.PAUSING,
+          )
+          await current_db_session.commit()
+          await update_protocol_run_status(
+            current_db_session,
+            run_guid,
+            ProtocolRunStatusEnum.PAUSED,
+          )
+          await current_db_session.commit()
 
           pause_loop_command_after_resume = None
           while True:
@@ -370,41 +395,39 @@ async def protocol_function(
             pause_loop_command_after_resume = pause_loop_command
 
             if pause_loop_command == "RESUME":
-              clear_control_command(run_guid)
+              await clear_control_command(run_guid)
               print(f"INFO: Protocol run {run_guid} RESUMING.")
-              if current_db_session and current_protocol_run_db_id:
-                await update_protocol_run_status(
-                  current_db_session,
-                  current_protocol_run_db_id,
-                  ProtocolRunStatusEnum.RESUMING,
-                )
-                await current_db_session.commit()
-                await update_protocol_run_status(
-                  current_db_session,
-                  current_protocol_run_db_id,
-                  ProtocolRunStatusEnum.RUNNING,
-                )
-                await current_db_session.commit()
+              await update_protocol_run_status(
+                current_db_session,
+                run_guid,
+                ProtocolRunStatusEnum.RESUMING,
+              )
+              await current_db_session.commit()
+              await update_protocol_run_status(
+                current_db_session,
+                run_guid,
+                ProtocolRunStatusEnum.RUNNING,
+              )
+              await current_db_session.commit()
               break
             elif pause_loop_command == "CANCEL":
-              clear_control_command(run_guid)
+              await clear_control_command(run_guid)
               print(f"INFO: Protocol run {run_guid} CANCELLING during pause.")
-              if current_db_session and current_protocol_run_db_id:
-                await update_protocol_run_status(
-                  current_db_session,
-                  current_protocol_run_db_id,
-                  ProtocolRunStatusEnum.CANCELING,
-                )
-                await current_db_session.commit()
-                await update_protocol_run_status(
-                  current_db_session,
-                  current_protocol_run_db_id,
-                  ProtocolRunStatusEnum.CANCELLED,
-                  output_data_json=json.dumps(
-                    {"status": "Cancelled by user (from PAUSED)."}
-                  ),
-                )
-                await current_db_session.commit()
+              await update_protocol_run_status(
+                current_db_session,
+                run_guid,
+                ProtocolRunStatusEnum.CANCELING,
+              )
+              await current_db_session.commit()
+              await update_protocol_run_status(
+                current_db_session,
+                run_guid,
+                ProtocolRunStatusEnum.CANCELLED,
+                output_data_json=json.dumps(
+                  {"status": "Cancelled by user (from PAUSED)."}
+                ),
+              )
+              await current_db_session.commit()
               raise ProtocolCancelledError(
                 f"Run {run_guid} cancelled by user (from PAUSED)."
               )
@@ -415,28 +438,27 @@ async def protocol_function(
               print(
                 f"Warning: Invalid command '{pause_loop_command}' while PAUSED for run {run_guid}. Clearing."
               )
-              clear_control_command(run_guid)
+              await clear_control_command(run_guid)
 
           if pause_loop_command_after_resume == "RESUME":
             break  # Break outer command check loop
 
         elif command == "CANCEL":
-          clear_control_command(run_guid)
+          await clear_control_command(run_guid)
           print(f"INFO: Protocol run {run_guid} CANCELLING.")
-          if current_db_session and current_protocol_run_db_id:
-            await update_protocol_run_status(
-              current_db_session,
-              current_protocol_run_db_id,
-              ProtocolRunStatusEnum.CANCELING,
-            )
-            await current_db_session.commit()
-            await update_protocol_run_status(
-              current_db_session,
-              current_protocol_run_db_id,
-              ProtocolRunStatusEnum.CANCELLED,
-              output_data_json=json.dumps({"status": "Cancelled by user."}),
-            )
-            await current_db_session.commit()
+          await update_protocol_run_status(
+            current_db_session,
+            run_guid,
+            ProtocolRunStatusEnum.CANCELING,
+          )
+          await current_db_session.commit()
+          await update_protocol_run_status(
+            current_db_session,
+            run_guid,
+            ProtocolRunStatusEnum.CANCELLED,
+            output_data_json=json.dumps({"status": "Cancelled by user."}),
+          )
+          await current_db_session.commit()
           raise ProtocolCancelledError(f"Run {run_guid} cancelled by user.")
 
       # Actual function execution

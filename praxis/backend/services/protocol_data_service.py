@@ -458,8 +458,8 @@ async def upsert_function_protocol_definition(
 
 async def create_protocol_run(
   db: AsyncSession,
-  run_guid: str,
-  top_level_protocol_definition_id: int,
+  run_guid: uuid.UUID,
+  top_level_protocol_definition_id: uuid.UUID,
   status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
   input_parameters_json: Optional[str] = None,
   initial_state_json: Optional[str] = None,
@@ -468,8 +468,8 @@ async def create_protocol_run(
 
   Args:
       db (AsyncSession): The database session.
-      run_guid (str): A unique GUID for this protocol run.
-      top_level_protocol_definition_id (int): The ID of the top-level
+      run_guid (uuid.UUID): A unique GUID for this protocol run.
+      top_level_protocol_definition_id (uuid.UUID): The ID of the top-level
           protocol definition this run is based on.
       status (ProtocolRunStatusEnum, optional): The initial status of the run.
           Defaults to `ProtocolRunStatusEnum.PENDING`.
@@ -531,7 +531,7 @@ async def create_protocol_run(
 
 async def update_protocol_run_status(
   db: AsyncSession,
-  protocol_run_id: int,
+  protocol_run_id: uuid.UUID,
   new_status: ProtocolRunStatusEnum,
   output_data_json: Optional[str] = None,
   final_state_json: Optional[str] = None,
@@ -637,11 +637,11 @@ async def update_protocol_run_status(
 # --- Function Call Log Management ---
 async def log_function_call_start(
   db: AsyncSession,
-  protocol_run_orm_id: int,
-  function_definition_id: int,
+  protocol_run_orm_id: uuid.UUID,
+  function_definition_id: uuid.UUID,
   sequence_in_run: int,
   input_args_json: str,
-  parent_function_call_log_id: Optional[int] = None,
+  parent_function_call_log_id: Optional[uuid.UUID] = None,
 ) -> FunctionCallLogOrm:
   """Log the start of a function call within a protocol run.
 
@@ -702,7 +702,7 @@ async def log_function_call_start(
 
 async def log_function_call_end(
   db: AsyncSession,
-  function_call_log_id: int,
+  function_call_log_id: uuid.UUID,
   status: FunctionCallStatusEnum,
   return_value_json: Optional[str] = None,
   error_message: Optional[str] = None,
@@ -783,13 +783,13 @@ async def log_function_call_end(
 # --- Query Functions ---
 async def get_protocol_definition_by_id(
   db: AsyncSession,
-  definition_id: int,
+  definition_id: uuid.UUID,
 ) -> Optional[FunctionProtocolDefinitionOrm]:
   """Retrieve a protocol definition by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      definition_id (int): The ID of the protocol definition to retrieve.
+      definition_id (uuid.UUID): The ID of the protocol definition to retrieve.
 
   Returns:
       Optional[FunctionProtocolDefinitionOrm]: The protocol definition object
@@ -1025,7 +1025,7 @@ async def list_protocol_definitions(
 
 
 async def get_protocol_run_by_guid(
-  db: AsyncSession, run_guid: str
+  db: AsyncSession, run_guid: uuid.UUID
 ) -> Optional[ProtocolRunOrm]:
   """Retrieve a protocol run by its unique GUID.
 
@@ -1034,7 +1034,7 @@ async def get_protocol_run_by_guid(
 
   Args:
       db (AsyncSession): The database session.
-      run_guid (str): The unique GUID of the protocol run.
+      run_guid (uuid.UUID): The unique GUID of the protocol run.
 
   Returns:
       Optional[ProtocolRunOrm]: The protocol run object if found, otherwise None.
@@ -1067,7 +1067,7 @@ async def list_protocol_runs(
   db: AsyncSession,
   limit: int = 100,
   offset: int = 0,
-  protocol_definition_id: Optional[int] = None,
+  protocol_definition_id: Optional[uuid.UUID] = None,
   protocol_name: Optional[str] = None,
   status: Optional[ProtocolRunStatusEnum] = None,
 ) -> List[ProtocolRunOrm]:
@@ -1079,7 +1079,7 @@ async def list_protocol_runs(
           Defaults to 100.
       offset (int, optional): The number of results to skip before returning.
           Defaults to 0.
-      protocol_definition_id (Optional[int], optional): Filter runs by the ID
+      protocol_definition_id (Optional[uuid.UUID], optional): Filter runs by the ID
           of their top-level protocol definition. Defaults to None.
       protocol_name (Optional[str], optional): Filter runs by the name of
           their top-level protocol. Defaults to None.
@@ -1132,20 +1132,20 @@ async def list_protocol_runs(
 
 async def get_function_call_logs_for_run(
   db: AsyncSession,
-  protocol_run_id: int,
+  protocol_run_id: uuid.UUID,
 ) -> List[FunctionCallLogOrm]:
   """Retrieve all function call logs for a specific protocol run.
 
   Args:
       db (AsyncSession): The database session.
-      protocol_run_id (int): The ID of the protocol run to retrieve logs for.
+      protocol_run_id (uuid.UUID): The ID of the protocol run to retrieve logs for.
 
   Returns:
       List[FunctionCallLogOrm]: A list of function call log objects, ordered
       by their sequence in the run. Returns an empty list if no logs are found.
 
   """
-  logger.info("Retrieving function call logs for protocol run ID: %d.", protocol_run_id)
+  logger.info("Retrieving function call logs for protocol run ID: %s.", protocol_run_id)
   stmt = (
     select(FunctionCallLogOrm)
     .options(selectinload(FunctionCallLogOrm.executed_function_definition))
@@ -1155,7 +1155,7 @@ async def get_function_call_logs_for_run(
   result = await db.execute(stmt)
   function_calls = list(result.scalars().all())
   logger.info(
-    "Found %d function call logs for protocol run ID %d.",
+    "Found %d function call logs for protocol run ID %s.",
     len(function_calls),
     protocol_run_id,
   )

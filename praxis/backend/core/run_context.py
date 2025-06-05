@@ -24,8 +24,10 @@ import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
+import uuid_utils as uuid
 from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.utils.state import State as PraxisState
 
@@ -44,17 +46,16 @@ class PraxisRunContext:
   """
 
   # Identifiers for the overall run
-  protocol_run_db_id: int  # Integer PK of the ProtocolRunOrm entry
-  run_guid: str  # User-facing unique ID (e.g. UUID) of the ProtocolRunOrm entry
+  run_guid: uuid.UUID  # User-facing unique ID (e.g. UUID) of the ProtocolRunOrm entry
 
   # Core shared objects for the run
   canonical_state: PraxisState
-  current_db_session: Any  # SQLAlchemy session
+  current_db_session: AsyncSession  # SQLAlchemy session
 
   # For call logging - these track the *current* state of the call stack
   # This is the FunctionCallLogOrm.id of the *currently executing* function's log entry.
   # For the next nested call, this becomes the parent_function_call_log_db_id.
-  current_call_log_db_id: Optional[int] = None
+  current_call_log_db_id: Optional[uuid.UUID] = None
 
   # Sequence counter for calls within this run_guid
   # This should be managed carefully to ensure it's unique and ordered for a given run.
@@ -69,7 +70,7 @@ class PraxisRunContext:
     return current_val
 
   def create_context_for_nested_call(
-    self, new_parent_call_log_db_id: Optional[int]
+    self, new_parent_call_log_db_id: Optional[uuid.UUID]
   ) -> "PraxisRunContext":
     """Prepare context for a nested function call.
 
@@ -87,7 +88,6 @@ class PraxisRunContext:
 
     """
     nested_ctx = PraxisRunContext(
-      protocol_run_db_id=self.protocol_run_db_id,
       run_guid=self.run_guid,
       canonical_state=self.canonical_state,
       current_db_session=self.current_db_session,
