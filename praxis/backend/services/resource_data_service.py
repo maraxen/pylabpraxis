@@ -387,7 +387,7 @@ async def add_resource_instance(
       Exception: For any other unexpected errors during the process.
 
   """
-  from praxis.backend.models import MachineStatusEnum
+  from praxis.backend.models import MachineStatusEnum  # noqa: F401
 
   log_prefix = (
     f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{name}'):"
@@ -540,6 +540,8 @@ async def list_resource_instances(
   status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_id: Optional[int] = None,
   on_deck_position: Optional[str] = None,
+  property_filters: Optional[Dict[str, Any]] = None,  # Added parameter
+  current_protocol_run_guid_filter: Optional[str] = None,  # Added parameter
   limit: int = 100,
   offset: int = 0,
 ) -> List[ResourceInstanceOrm]:
@@ -555,6 +557,12 @@ async def list_resource_instances(
           ID of the machine they are currently located on. Defaults to None.
       on_deck_position (Optional[str], optional): Filter instances by the name of
           the deck position they are currently in. Defaults to None.
+      property_filters (Optional[Dict[str, Any]], optional): Filter instances
+          by properties contained within their JSONB `properties_json` field.
+          Defaults to None.
+      current_protocol_run_guid_filter (Optional[str], optional): Filter instances
+          by the GUID of the protocol run they are currently associated with.
+          Defaults to None.
       limit (int): The maximum number of results to return. Defaults to 100.
       offset (int): The number of results to skip before returning. Defaults to 0.
 
@@ -565,11 +573,14 @@ async def list_resource_instances(
   """
   logger.info(
     "Listing resource instances with filters: def_name='%s', status=%s, "
-    "machine_id=%s, deck_position='%s', limit=%d, offset=%d.",
+    "machine_id=%s, deck_position='%s', property_filters=%s, run_guid_filter=%s, "
+    "limit=%d, offset=%d.",
     name,
     status,
     location_machine_id,
     on_deck_position,
+    property_filters,
+    current_protocol_run_guid_filter,
     limit,
     offset,
   )
@@ -592,6 +603,20 @@ async def list_resource_instances(
       ResourceInstanceOrm.current_deck_position_name == on_deck_position
     )
     logger.debug("Filtering by deck position: '%s'.", on_deck_position)
+  if property_filters:
+    # This assumes a simple key-value equality check for top-level JSONB properties
+    # For more complex queries, you'd need to use JSONB operators
+    # (e.g., .op('?') or .op('@>'))
+    for key, value in property_filters.items():
+      stmt = stmt.filter(ResourceInstanceOrm.properties_json[key].astext == str(value))
+    logger.debug("Filtering by properties: %s.", property_filters)
+  if current_protocol_run_guid_filter:
+    stmt = stmt.filter(
+      ResourceInstanceOrm.current_protocol_run_guid == current_protocol_run_guid_filter
+    )
+    logger.debug(
+      "Filtering by current_protocol_run_guid: %s.", current_protocol_run_guid_filter
+    )
 
   stmt = (
     stmt.order_by(ResourceInstanceOrm.user_assigned_name).limit(limit).offset(offset)

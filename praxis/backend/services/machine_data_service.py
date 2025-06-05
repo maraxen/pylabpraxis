@@ -268,6 +268,7 @@ async def list_machines(
   pylabrobot_class_filter: Optional[str] = None,
   workcell_id: Optional[int] = None,
   current_protocol_run_guid_filter: Optional[str] = None,
+  user_friendly_name_filter: Optional[str] = None,  # Added parameter
   limit: int = 100,
   offset: int = 0,
 ) -> List[MachineOrm]:
@@ -284,6 +285,9 @@ async def list_machines(
       current_protocol_run_guid_filter (Optional[str], optional): Filter machines
           by the GUID of the protocol run they are currently associated with.
           Defaults to None.
+      user_friendly_name_filter (Optional[str], optional): Filter machines by a
+          substring of their user-friendly name (case-insensitive partial match).
+          Defaults to None.
       limit (int): The maximum number of results to return. Defaults to 100.
       offset (int): The number of results to skip before returning. Defaults to 0.
 
@@ -293,11 +297,13 @@ async def list_machines(
   """
   logger.info(
     "Listing machines with filters: status=%s, pylabrobot_class_filter='%s', "
-    "workcell_id=%s, protocol_run_guid_filter=%s, limit=%d, offset=%d.",
+    "workcell_id=%s, protocol_run_guid_filter=%s, user_friendly_name_filter='%s', "
+    "limit=%d, offset=%d.",
     status,
     pylabrobot_class_filter,
     workcell_id,
     current_protocol_run_guid_filter,
+    user_friendly_name_filter,
     limit,
     offset,
   )
@@ -311,6 +317,10 @@ async def list_machines(
   if current_protocol_run_guid_filter:
     stmt = stmt.filter(
       MachineOrm.current_protocol_run_guid == current_protocol_run_guid_filter
+    )
+  if user_friendly_name_filter:
+    stmt = stmt.filter(
+      MachineOrm.user_friendly_name.ilike(f"%{user_friendly_name_filter}%")
     )
   stmt = stmt.order_by(MachineOrm.user_friendly_name).limit(limit).offset(offset)
   result = await db.execute(stmt)
@@ -370,13 +380,12 @@ async def update_machine_status(
   if new_status == MachineStatusEnum.IN_USE:
     machine_orm.current_protocol_run_guid = current_protocol_run_guid
     logger.debug(
-      "Machine '%s' (ID: %d) set to IN_USE with protocol run GUID: %d.",
+      "Machine '%s' (ID: %d) set to IN_USE with protocol run GUID: %s.",
       machine_orm.user_friendly_name,
       machine_id,
       current_protocol_run_guid,
     )
   elif machine_orm.current_protocol_run_guid == current_protocol_run_guid:
-    # Clear GUID only if it matches the one that put it in use
     machine_orm.current_protocol_run_guid = None
     logger.debug(
       "Machine '%s' (ID: %d) protocol run GUID cleared as it matches the "

@@ -128,6 +128,26 @@ class ParameterMetadataModel(BaseModel):
   ui_hint: UIHint = Field(default_factory=UIHint)
 
 
+class LocationConstraintsModel(BaseModel):
+  """Defines constraints for the location of an asset in a protocol.
+
+  This includes required locations, optional locations, and any specific
+  location-related constraints.
+  """
+
+  location_requirements: List[str] = Field(default_factory=list)
+  on_resource_type: str = Field(default="")
+  stack: bool = Field(default=False)
+  directly_position: bool = Field(default=False)
+  position_condition: List[str] = Field(default_factory=list)
+
+  class Config:
+    """Pydantic configuration for LocationConstraintsModel."""
+
+    from_attributes = True
+    validate_assignment = True
+
+
 class AssetConstraintsModel(BaseModel):
   """Defines constraints for an asset required by a protocol."""
 
@@ -151,6 +171,9 @@ class AssetRequirementModel(BaseModel):
   default_value_repr: Optional[str] = None
   description: Optional[str] = None
   constraints: AssetConstraintsModel = Field(default_factory=AssetConstraintsModel)
+  location_constraints: LocationConstraintsModel = Field(
+    default_factory=LocationConstraintsModel
+  )
 
 
 class FunctionProtocolDefinitionModel(BaseModel):

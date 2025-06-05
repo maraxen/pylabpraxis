@@ -19,7 +19,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pylabrobot.resources
 
-# Import Machine base class for future use in machine discovery
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import (
   Carrier,
@@ -73,7 +72,6 @@ from praxis.backend.utils.logging import (
 )
 from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
 
-# Setup logger for this module
 logger = get_logger(__name__)
 
 async_asset_manager_errors = partial(
@@ -135,7 +133,7 @@ class AssetManager:
   )
   def _extract_num_items(
     self,
-    resource_class: Type[Resource],  # For logging context
+    resource_class: Type[Resource],
     details: Optional[Dict[str, Any]],
   ) -> Optional[int]:
     """Extract the number of items (e.g., tips, wells, tubes) from serialized details.
@@ -157,35 +155,33 @@ class AssetManager:
       return None
     if "num_items" in details and isinstance(details["num_items"], int):
       logger.debug(
-        f"AM_EXTRACT_NUM: Extracted from details['num_items'] for "
-        f"{resource_class.__name__}"
+        "AM_EXTRACT_NUM: Extracted from details['num_items'] for %s",
+        resource_class.__name__,
       )
       num_items_value = int(details["num_items"])
     elif "items" in details and isinstance(details["items"], list):
       logger.debug(
-        f"AM_EXTRACT_NUM: Extracted from len(details['items']) for "
-        f"{resource_class.__name__}"
+        "AM_EXTRACT_NUM: Extracted from len(details['items']) for %s",
+        resource_class.__name__,
       )
       num_items_value = len(details["items"])
-    elif "wells" in details and isinstance(
-      details["wells"], list
-    ):  # Common for plates/racks
+    elif "wells" in details and isinstance(details["wells"], list):
       logger.debug(
-        f"AM_EXTRACT_NUM: Extracted from len(details['wells']) for "
-        f"{resource_class.__name__}"
+        "AM_EXTRACT_NUM: Extracted from len(details['wells']) for %s",
+        resource_class.__name__,
       )
       num_items_value = len(details["wells"])
     elif "capacity " in details and isinstance(details["capacity"], int):
       logger.debug(
-        f"AM_EXTRACT_NUM: Extracted from details['capacity'] for "
-        f"{resource_class.__name__}"
+        "AM_EXTRACT_NUM: Extracted from details['capacity'] for %s",
+        resource_class.__name__,
       )
       num_items_value = int(details["capacity"])
 
     if num_items_value is None:
       logger.debug(
-        f"AM_EXTRACT_NUM: Number of items not found in details for "
-        f"{resource_class.__name__}."
+        "AM_EXTRACT_NUM: Number of items not found in details for %s.",
+        resource_class.__name__,
       )
 
     return num_items_value
@@ -195,7 +191,7 @@ class AssetManager:
   )
   def _extract_ordering(
     self,
-    resource_class: Type[Resource],  # For logging context
+    resource_class: Type[Resource],
     details: Optional[Dict[str, Any]],
   ) -> Optional[str]:
     """Extract item names if ordered (e.g., wells in a plate) from serialized details.
@@ -214,40 +210,37 @@ class AssetManager:
       logger.debug("AM_EXTRACT_ORDER: No details provided for extraction.")
       return None
     try:
-      # Check if 'ordering' is directly provided (less common in standard PLR serialize)
       if "ordering" in details and isinstance(details["ordering"], str):
         logger.debug(
-          f"AM_EXTRACT_ORDER: Extracted from details['ordering'] for "
-          f"{resource_class.__name__}"
+          "AM_EXTRACT_ORDER: Extracted from details['ordering'] for %s",
+          resource_class.__name__,
         )
         ordering_value = details["ordering"]
-      # If 'wells' (or 'items') are detailed as a list of dicts, each with a 'name'
       elif "wells" in details and isinstance(details["wells"], list):
         if all(isinstance(w, dict) and "name" in w for w in details["wells"]):
           logger.debug(
-            f"AM_EXTRACT_ORDER: Extracted from names in details['wells'] for "
-            f"{resource_class.__name__}"
+            "AM_EXTRACT_ORDER: Extracted from names in details['wells'] for %s",
+            resource_class.__name__,
           )
           ordering_value = ",".join([w["name"] for w in details["wells"]])
-      elif "items" in details and isinstance(
-        details["items"], list
-      ):  # General case for ItemizedResource
+      elif "items" in details and isinstance(details["items"], list):
         if all(isinstance(i, dict) and "name" in i for i in details["items"]):
           logger.debug(
-            f"AM_EXTRACT_ORDER: Extracted from names in details['items'] for "
-            f"{resource_class.__name__}"
+            "AM_EXTRACT_ORDER: Extracted from names in details['items'] for %s",
+            resource_class.__name__,
           )
           ordering_value = ",".join([i["name"] for i in details["items"]])
 
       if ordering_value is None:
         logger.debug(
-          f"AM_EXTRACT_ORDER: Ordering not found in details for "
-          f"{resource_class.__name__}."
+          "AM_EXTRACT_ORDER: Ordering not found in details for %s.",
+          resource_class.__name__,
         )
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:
       logger.exception(
-        f"AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: "
-        f"{e}"
+        "AM_EXTRACT_ORDER: Error extracting ordering for %s: %s",
+        resource_class.__name__,
+        e,
       )
     return ordering_value
 
@@ -269,7 +262,7 @@ class AssetManager:
     if inspect.isabstract(plr_class):
       return False
     if plr_class in self.EXCLUDED_BASE_CLASSES:
-      return False  # should be redundant with the above
+      return False
     if not plr_class.__module__.startswith("pylabrobot.resources"):
       return False
     return True
@@ -295,8 +288,8 @@ class AssetManager:
 
     """
     logger.info(
-      f"AM_SYNC: Starting PyLabRobot resource definition sync from package: "
-      f"{plr_resources_package.__name__}"
+      "AM_SYNC: Starting PyLabRobot resource definition sync from package: %s",
+      plr_resources_package.__name__,
     )
 
     added_count = 0
@@ -306,12 +299,14 @@ class AssetManager:
     for _, modname, _ in pkgutil.walk_packages(
       path=plr_resources_package.__path__,  # type: ignore
       prefix=plr_resources_package.__name__ + ".",
-      onerror=lambda x: logger.error(f"AM_SYNC: Error walking package {x}"),
+      onerror=lambda x: logger.error("AM_SYNC: Error walking package %s", x),
     ):
       try:
         module = importlib.import_module(modname)
       except ImportError as e:
-        logger.warning(f"AM_SYNC: Could not import module {modname} during sync: {e}")
+        logger.warning(
+          "AM_SYNC: Could not import module %s during sync: %s", modname, e
+        )
         continue
 
       for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
@@ -320,13 +315,15 @@ class AssetManager:
           continue
         processed_fqns.add(fqn)
 
-        logger.debug(f"AM_SYNC: Found class {fqn}. Checking if catalogable resource...")
+        logger.debug(
+          "AM_SYNC: Found class %s. Checking if catalogable resource...", fqn
+        )
 
         if not self._can_catalog_resource(plr_class_obj):
-          logger.debug(f"AM_SYNC: Skipping {fqn} - not a catalogable resource class.")
+          logger.debug("AM_SYNC: Skipping %s - not a catalogable resource class.", fqn)
           continue
 
-        logger.debug(f"AM_SYNC: Processing potential resource class: {fqn}")
+        logger.debug("AM_SYNC: Processing potential resource class: %s", fqn)
         temp_instance: Optional[Resource] = None
         serialized_data: Optional[Dict[str, Any]] = None
         can_instantiate = True
@@ -342,11 +339,10 @@ class AssetManager:
               "name",
               "category",
               "model",
-            ]:  # 'name' is handled, category/model come from serialize
+            ]:
               continue
             if param_info["required"] and param_info["default"] is None:
               param_type_str = param_info["type"].lower()
-              # Sensible defaults for common types
               if "optional[" in param_type_str:
                 kwargs_for_instantiation[param_name] = None
               elif "str" in param_type_str:
@@ -363,48 +359,54 @@ class AssetManager:
                 kwargs_for_instantiation[param_name] = {}
               else:
                 logger.info(
-                  f"AM_SYNC: Cannot auto-default required parameter "
-                  f"'{param_name}' of type '{param_info['type']}' for {fqn}. "
-                  f"Instantiation might fail or be skipped."
+                  "AM_SYNC: Cannot auto-default required parameter '%s' of type '%s' for %s. "
+                  "Instantiation might fail or be skipped.",
+                  param_name,
+                  param_info["type"],
+                  fqn,
                 )
           if can_instantiate:
             logger.debug(
-              f"AM_SYNC: Attempting instantiation of {fqn} with kwargs: "
-              f"{kwargs_for_instantiation}"
+              "AM_SYNC: Attempting instantiation of %s with kwargs: %s",
+              fqn,
+              kwargs_for_instantiation,
             )
             temp_instance = plr_class_obj(**kwargs_for_instantiation)
             if temp_instance is None:
               logger.warning(
-                f"AM_SYNC: Instantiation of {fqn} returned None. This might"
-                f" indicate an issue with the class or its constructor."
+                "AM_SYNC: Instantiation of %s returned None. This might"
+                " indicate an issue with the class or its constructor.",
+                fqn,
               )
               can_instantiate = False
             else:
               logger.debug(
-                f"AM_SYNC: Successfully instantiated {fqn} with name: "
-                f"{temp_instance.name}"
+                "AM_SYNC: Successfully instantiated %s with name: %s",
+                fqn,
+                temp_instance.name,
               )
               serialized_data = temp_instance.serialize()
-              if "name" in serialized_data:  # Remove the temporary name
+              if "name" in serialized_data:
                 del serialized_data["name"]
-        except Exception as inst_err:  # pylint: disable=broad-except
+        except Exception as inst_err:
           logger.warning(
-            f"AM_SYNC: Instantiation or serialization of {fqn} failed: {inst_err}. "
-            f"Will attempt to proceed with class-level data if possible, but some "
-            f"attributes might be missing.",
+            "AM_SYNC: Instantiation or serialization of %s failed: %s. "
+            "Will attempt to proceed with class-level data if possible, but some "
+            "attributes might be missing.",
+            fqn,
+            inst_err,
             exc_info=True,
           )
-          temp_instance = None  # Ensure it's None if instantiation failed
+          temp_instance = None
           serialized_data = None
 
-        # --- Extract data primarily from serialized_data ---
         size_x = serialized_data.get("size_x") if serialized_data else None
         size_y = serialized_data.get("size_y") if serialized_data else None
         size_z = serialized_data.get("size_z") if serialized_data else None
 
         nominal_volume_ul: Optional[float] = None
         if serialized_data:
-          if "max_volume" in serialized_data:  # e.g. for a single Well or Tube
+          if "max_volume" in serialized_data:
             nominal_volume_ul = float(serialized_data["max_volume"])
           elif (
             "wells" in serialized_data
@@ -418,42 +420,31 @@ class AssetManager:
             "items" in serialized_data
             and isinstance(serialized_data["items"], list)
             and serialized_data["items"]
-          ):  # for TipRacks
+          ):
             first_item = serialized_data["items"][0]
-            if (
-              isinstance(first_item, dict) and "volume" in first_item
-            ):  # Tips have 'volume'
+            if isinstance(first_item, dict) and "volume" in first_item:
               nominal_volume_ul = float(first_item["volume"])
 
         model_name = serialized_data.get("model") if serialized_data else None
         if not model_name and serialized_data and serialized_data.get("type"):
-          model_name = serialized_data.get(
-            "type"
-          )  # Use class name as model if no explicit model
-        elif not model_name:  # Fallback if no serialized_data or model/type in it
+          model_name = serialized_data.get("type")
+        elif not model_name:
           model_name = class_name
 
-        # pylabrobot_def_name: Unique identifier for the resource type in Praxis.
-        # Prioritize model, then type (class name from serialization), then FQN.
-        pylabrobot_def_name = (
-          model_name  # Start with model_name (which might be class_name)
-        )
-        if (
-          not pylabrobot_def_name
-        ):  # Should not happen if model_name has fallback to class_name
+        pylabrobot_def_name = model_name
+        if not pylabrobot_def_name:
           pylabrobot_def_name = fqn
           logger.warning(
-            f"AM_SYNC: Using FQN '{fqn}' as pylabrobot_def_name for {class_name} "
-            f"due to missing model/type."
+            "AM_SYNC: Using FQN '%s' as pylabrobot_def_name for %s due to missing model/type.",
+            fqn,
+            class_name,
           )
 
-        # Category: Directly from serialized_data['category'] if available
         category = serialized_data.get("category") if serialized_data else None
-        if not category:  # Fallback if not in serialized data
-          category = ResourceCategoryEnum.OTHER.value  # Default to OTHER
-          logger.debug(f"AM_SYNC: Used fallback category '{category}' for {fqn}")
+        if not category:
+          category = ResourceCategoryEnum.OTHER.value
+          logger.debug("AM_SYNC: Used fallback category '%s' for %s", category, fqn)
 
-        # Num items and Ordering (for ItemizedResources)
         num_items = self._extract_num_items(plr_class_obj, serialized_data)
         ordering_str = self._extract_ordering(plr_class_obj, serialized_data)
 
@@ -465,19 +456,25 @@ class AssetManager:
         ):
           details_for_db["praxis_extracted_ordering"] = ordering_str
 
-        # Description
         description = inspect.getdoc(plr_class_obj) or fqn
 
-        # Is consumable
         is_consumable = category in ResourceCategoryEnum.consumables()
 
         praxis_type_name = model_name
 
         logger.debug(
-          f"AM_SYNC: Preparing to save/update {pylabrobot_def_name} (FQN: {fqn}): "
-          f"Category={category}, Model={model_name}, Vol={nominal_volume_ul}, "
-          f"X={size_x}, Y={size_y}, Z={size_z}, NumItems={num_items}, "
-          f"Ordering={'Present' if ordering_str else 'N/A'}..."
+          "AM_SYNC: Preparing to save/update %s (FQN: %s): Category=%s, Model=%s, Vol=%s, "
+          "X=%s, Y=%s, Z=%s, NumItems=%s, Ordering=%s...",
+          pylabrobot_def_name,
+          fqn,
+          category,
+          model_name,
+          nominal_volume_ul,
+          size_x,
+          size_y,
+          size_z,
+          num_items,
+          "Present" if ordering_str else "N/A",
         )
 
         try:
@@ -498,18 +495,20 @@ class AssetManager:
           if not existing_def_orm:
             added_count += 1
             logger.info(
-              f"AM_SYNC: Added new resource definition: {pylabrobot_def_name}"
+              "AM_SYNC: Added new resource definition: %s", pylabrobot_def_name
             )
           else:
             updated_count += 1
             logger.info(
-              f"AM_SYNC: Updated existing resource definition: {pylabrobot_def_name}"
+              "AM_SYNC: Updated existing resource definition: %s", pylabrobot_def_name
             )
 
-        except Exception as e_proc:  # pylint: disable=broad-except
+        except Exception as e_proc:
           logger.exception(
-            f"AM_SYNC: Could not process or save PLR class '{fqn}' (Def Name: "
-            f"{pylabrobot_def_name}): {e_proc}"
+            "AM_SYNC: Could not process or save PLR class '%s' (Def Name: %s): %s",
+            fqn,
+            pylabrobot_def_name,
+            e_proc,
           )
         finally:
           if temp_instance:
@@ -517,8 +516,9 @@ class AssetManager:
             del serialized_data
 
     logger.info(
-      f"AM_SYNC: Resource definition sync complete. Added: {added_count}, Updated: "
-      f"{updated_count}"
+      "AM_SYNC: Resource definition sync complete. Added: %d, Updated: %d",
+      added_count,
+      updated_count,
     )
     return added_count, updated_count
 
@@ -541,8 +541,9 @@ class AssetManager:
 
     """
     logger.info(
-      f"AM_DECK_CONFIG: Applying deck configuration for '{deck_orm_id}', run_guid: "
-      f"{protocol_run_guid}"
+      "AM_DECK_CONFIG: Applying deck configuration for '%s', run_guid: %s",
+      deck_orm_id,
+      protocol_run_guid,
     )
 
     deck_orm = await svc.get_deck_by_id(self.db, deck_orm_id)
@@ -551,14 +552,10 @@ class AssetManager:
 
     deck_machines_orm = await svc.list_machines(self.db)
 
-    # Filter for actual decks
     actual_deck_machine_orm: Optional[MachineOrm] = None
     for dev_orm in deck_machines_orm:
-      # This check might be too simplistic if the FQN is for a generic Deck
-      # and the actual instance is, e.g., a HamiltonStarDeck.
       # TODO: Refine deck identification.
-      if "Deck" in dev_orm.python_fqn:  # Basic check
-        # Check if it's a PLR Deck or subclass by trying to import and check inheritance
+      if "Deck" in dev_orm.python_fqn:
         try:
           module_path, class_n = dev_orm.python_fqn.rsplit(".", 1)
           module = importlib.import_module(module_path)
@@ -568,8 +565,10 @@ class AssetManager:
             break
         except (ImportError, AttributeError, ValueError) as e:
           logger.warning(
-            f"Could not verify class for machine {dev_orm.user_friendly_name} (FQN: "
-            f"{dev_orm.python_fqn}): {e}"
+            "Could not verify class for machine %s (FQN: %s): %s",
+            dev_orm.user_friendly_name,
+            dev_orm.python_fqn,
+            e,
           )
 
     if not actual_deck_machine_orm:
@@ -588,10 +587,9 @@ class AssetManager:
         f"another run '{deck_machine_orm.current_protocol_run_guid}'."
       )
 
-    # Initialize the deck through WorkcellRuntime
     live_plr_deck_object = await self.workcell_runtime.initialize_machine(
       deck_machine_orm
-    )  # Refactored
+    )
     if not live_plr_deck_object or not isinstance(live_plr_deck_object, Deck):
       raise AssetAcquisitionError(
         f"Failed to initialize backend for deck '{deck_orm.name}' (ID: "
@@ -606,25 +604,30 @@ class AssetManager:
       status_details=f"Deck '{deck_orm.name}' in use by run {protocol_run_guid}",
     )
     logger.info(
-      f"AM_DECK_CONFIG: Deck machine '{deck_orm.name}' (ID: {deck_machine_orm.id}) "
-      f"backend initialized and marked IN_USE."
+      "AM_DECK_CONFIG: Deck machine '%s' (ID: %s) backend initialized and marked IN_USE.",
+      deck_orm.name,
+      deck_machine_orm.id,
     )
 
-    # Get DeckSlotOrm entries associated with the DeckLayoutOrm
     deck_positions_orm = await svc.get_position_definitions_for_deck_type(
       self.db, deck_orm.id
     )
     logger.info(
-      f"AM_DECK_CONFIG: Found {len(deck_positions_orm)} positions for deck layout "
-      f"'{deck_orm.name}' (Layout ID: {deck_orm.id})."
+      "AM_DECK_CONFIG: Found %d positions for deck layout '%s' (Layout ID: %s).",
+      len(deck_positions_orm),
+      deck_orm.name,
+      deck_orm.id,
     )
 
     for position_orm in deck_positions_orm:
-      if position_orm.resource_instance_id:
-        resource_instance_id = position_orm.resource_instance_id
+      # Pylance reports "resource_instance_id" is unknown on DeckPositionDefinitionOrm.
+      # Assuming it should exist and is used for linking.
+      if position_orm.resource_instance_id:  # type: ignore
+        resource_instance_id = position_orm.resource_instance_id  # type: ignore
         logger.info(
-          f"AM_DECK_CONFIG: Processing position '{position_orm.position_id}' "
-          f"with pre-assigned resource ID: {resource_instance_id}."
+          "AM_DECK_CONFIG: Processing position '%s' with pre-assigned resource ID: %s.",
+          position_orm.position_id,
+          resource_instance_id,
         )
 
         resource_instance_orm = await svc.get_resource_instance_by_id(
@@ -632,8 +635,9 @@ class AssetManager:
         )
         if not resource_instance_orm:
           logger.error(
-            f"Resource instance {resource_instance_id} for position "
-            f"'{position_orm.position_id}' not found. Skipping."
+            "Resource instance %s for position '%s' not found. Skipping.",
+            resource_instance_id,
+            position_orm.position_id,
           )
           continue
 
@@ -645,8 +649,9 @@ class AssetManager:
           == position_orm.position_id
         ):
           logger.info(
-            f"Resource {resource_instance_id} already configured at "
-            f"'{position_orm.position_id}' for this run."
+            "Resource %s already configured at '%s' for this run.",
+            resource_instance_id,
+            position_orm.position_id,
           )
           continue
 
@@ -679,13 +684,14 @@ class AssetManager:
           )
 
         logger.info(
-          f"Assigning resource '{live_plr_resource.name}' to position "
-          f"'{position_orm.position_id}'."
+          "Assigning resource '%s' to position '%s'.",
+          live_plr_resource.name,
+          position_orm.position_id,
         )
 
         await self.workcell_runtime.assign_resource_to_deck(
           resource_instance_orm_id=resource_instance_id,
-          target=deck_machine_orm.id,
+          target=deck_machine_orm.id,  # Ensured target is int
           position_id=position_orm.position_id,
         )
 
@@ -700,11 +706,13 @@ class AssetManager:
           f"'{position_orm.position_id}' for run {protocol_run_guid}",
         )
         logger.info(
-          f"Resource {resource_instance_id} configured at '{position_orm.position_id}'."
+          "Resource %s configured at '%s'.",
+          resource_instance_id,
+          position_orm.position_id,
         )
 
     logger.info(
-      f"AM_DECK_CONFIG: Deck configuration for '{deck_orm.name}' applied successfully."
+      "AM_DECK_CONFIG: Deck configuration for '%s' applied successfully.", deck_orm.name
     )
     return live_plr_deck_object
 
@@ -712,7 +720,7 @@ class AssetManager:
     self,
     protocol_run_guid: str,
     requested_asset_name_in_protocol: str,
-    python_fqn_constraint: str,  # This should be the FQN of the PLR Machine class
+    python_fqn_constraint: str,
     constraints: Optional[Dict[str, Any]] = None,
   ) -> Tuple[Any, int, str]:
     """Acquire a Machine that is available or already in use by the current run.
@@ -730,13 +738,15 @@ class AssetManager:
         AssetAcquisitionError: If no suitable machine can be acquired or initialized.
     """
     logger.info(
-      f"AM_ACQUIRE_DEVICE: Acquiring machine '{requested_asset_name_in_protocol}' "
-      f"(PLR Class FQN: '{python_fqn_constraint}') for run '{protocol_run_guid}'. "
-      f"Constraints: {constraints}"
+      "AM_ACQUIRE_DEVICE: Acquiring machine '%s' (PLR Class FQN: '%s') for run '%s'. "
+      "Constraints: %s",
+      requested_asset_name_in_protocol,
+      python_fqn_constraint,
+      protocol_run_guid,
+      constraints,
     )
 
     # TODO: Implement constraint matching if `constraints` are provided (e.g., serial_number)
-    # For now, we pick the first available or one already in use by this run.
 
     selected_machine_orm: Optional[MachineOrm] = None
 
@@ -746,14 +756,15 @@ class AssetManager:
       pylabrobot_class_filter=python_fqn_constraint,
       status=MachineStatusEnum.IN_USE,
       current_protocol_run_guid_filter=protocol_run_guid,
+      # property_filters is not supported on svc.list_machines currently
     )
     if in_use_by_this_run_list:
-      selected_machine_orm = in_use_by_this_run_list[
-        0
-      ]  # Assuming one machine of this type per run for now
+      selected_machine_orm = in_use_by_this_run_list[0]
       logger.info(
-        f"AM_ACQUIRE_DEVICE: Device '{selected_machine_orm.user_friendly_name}' (ID: {selected_machine_orm.id}) "
-        f"is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) is already IN_USE by this run '%s'. Re-acquiring.",
+        selected_machine_orm.user_friendly_name,
+        selected_machine_orm.id,
+        protocol_run_guid,
       )
     else:
       # 2. If not, find an available one
@@ -761,11 +772,14 @@ class AssetManager:
         self.db,
         status=MachineStatusEnum.AVAILABLE,
         pylabrobot_class_filter=python_fqn_constraint,
+        # property_filters is not supported on svc.list_machines currently
       )
       if available_machines_list:
-        selected_machine_orm = available_machines_list[0]  # Pick the first available
+        selected_machine_orm = available_machines_list[0]
         logger.info(
-          f"AM_ACQUIRE_DEVICE: Found available machine '{selected_machine_orm.user_friendly_name}' (ID: {selected_machine_orm.id})."
+          "AM_ACQUIRE_DEVICE: Found available machine '%s' (ID: %s).",
+          selected_machine_orm.user_friendly_name,
+          selected_machine_orm.id,
         )
       else:
         raise AssetAcquisitionError(
@@ -773,18 +787,18 @@ class AssetManager:
           "nor already in use by this run."
         )
 
-    if (
-      not selected_machine_orm
-    ):  # Should be caught by the logic above, but as a safeguard.
+    if not selected_machine_orm:  # Pylance might still warn here, but logic handles it
       raise AssetAcquisitionError(
         f"Device selection failed for '{requested_asset_name_in_protocol}'."
       )
 
     logger.info(
-      f"AM_ACQUIRE_DEVICE: Attempting to initialize backend for selected machine '{selected_machine_orm.user_friendly_name}' "
-      f"(ID: {selected_machine_orm.id}) via WorkcellRuntime."
+      "AM_ACQUIRE_DEVICE: Attempting to initialize backend for selected machine '%s' "
+      "(ID: %s) via WorkcellRuntime.",
+      selected_machine_orm.user_friendly_name,
+      selected_machine_orm.id,
     )
-    live_plr_machine = await self.workcell_runtime.initialize_machine(  # Refactored
+    live_plr_machine = await self.workcell_runtime.initialize_machine(
       selected_machine_orm
     )
 
@@ -794,7 +808,6 @@ class AssetManager:
         f"(ID: {selected_machine_orm.id}). Check WorkcellRuntime logs and machine status in DB."
       )
       logger.error(error_msg)
-      # Optionally set machine status to ERROR in DB here
       await svc.update_machine_status(
         self.db,
         selected_machine_orm.id,
@@ -804,8 +817,10 @@ class AssetManager:
       raise AssetAcquisitionError(error_msg)
 
     logger.info(
-      f"AM_ACQUIRE_DEVICE: Backend for machine '{selected_machine_orm.user_friendly_name}' initialized. "
-      f"Marking as IN_USE for run '{protocol_run_guid}' (if not already)."
+      "AM_ACQUIRE_DEVICE: Backend for machine '%s' initialized. "
+      "Marking as IN_USE for run '%s' (if not already).",
+      selected_machine_orm.user_friendly_name,
+      protocol_run_guid,
     )
 
     if (
@@ -825,16 +840,18 @@ class AssetManager:
           f"but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'."
         )
         logger.error(critical_error_msg)
-        # Potentially try to shut down the backend if DB update fails?
         raise AssetAcquisitionError(critical_error_msg)
       logger.info(
-        f"AM_ACQUIRE_DEVICE: Device '{updated_machine_orm.user_friendly_name}' (ID: {updated_machine_orm.id}) "
-        f"successfully acquired and backend initialized for run '{protocol_run_guid}'."
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) successfully acquired and backend initialized for run '%s'.",
+        updated_machine_orm.user_friendly_name,
+        updated_machine_orm.id,
+        protocol_run_guid,
       )
     else:
       logger.info(
-        f"AM_ACQUIRE_DEVICE: Device '{selected_machine_orm.user_friendly_name}' (ID: {selected_machine_orm.id}) "
-        f"was already correctly marked IN_USE by this run."
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) was already correctly marked IN_USE by this run.",
+        selected_machine_orm.user_friendly_name,
+        selected_machine_orm.id,
       )
 
     return live_plr_machine, selected_machine_orm.id, "machine"
@@ -843,12 +860,10 @@ class AssetManager:
     self,
     protocol_run_guid: str,
     requested_asset_name_in_protocol: str,
-    name_constraint: str,  # Key from ResourceDefinitionCatalogOrm
+    name_constraint: str,
     user_choice_instance_id: Optional[int] = None,
-    location_constraints: Optional[
-      Dict[str, Any]
-    ] = None,  # e.g., {"deck_name": "deck1", "position_name": "A1"}
-    property_constraints: Optional[Dict[str, Any]] = None,  # e.g., {"is_sterile": True}
+    location_constraints: Optional[Dict[str, Any]] = None,
+    property_constraints: Optional[Dict[str, Any]] = None,
   ) -> Tuple[Any, int, str]:
     """Acquire a resource instance that is available or in use by the current run.
 
@@ -871,10 +886,14 @@ class AssetManager:
 
     """
     logger.info(
-      f"AM_ACQUIRE_LABWARE: Acquiring resource '{requested_asset_name_in_protocol}' "
-      f"(PLR Def Name Constraint: '{name_constraint}') for run '{protocol_run_guid}'. "
-      f"User Choice ID: {user_choice_instance_id}, Location Constraints: "
-      f"{location_constraints}, Property Constraints: {property_constraints}"
+      "AM_ACQUIRE_LABWARE: Acquiring resource '%s' (PLR Def Name Constraint: '%s') for run '%s'. "
+      "User Choice ID: %s, Location Constraints: %s, Property Constraints: %s",
+      requested_asset_name_in_protocol,
+      name_constraint,
+      protocol_run_guid,
+      user_choice_instance_id,
+      location_constraints,
+      property_constraints,
     )
 
     resource_instance_to_acquire: Optional[ResourceInstanceOrm] = None
@@ -893,7 +912,6 @@ class AssetManager:
           f"'{instance_orm.name}') does not match definition constraint "
           f"'{name_constraint}'."
         )
-      # Check status for user_choice_instance_id
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
         if instance_orm.current_protocol_run_guid != protocol_run_guid:
           raise AssetAcquisitionError(
@@ -901,8 +919,9 @@ class AssetManager:
             f"another run ('{instance_orm.current_protocol_run_guid}')."
           )
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource instance ID {user_choice_instance_id} is "
-          f"already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+          "AM_ACQUIRE_LABWARE: Resource instance ID %s is already IN_USE by this run '%s'. Re-acquiring.",
+          user_choice_instance_id,
+          protocol_run_guid,
         )
         resource_instance_to_acquire = instance_orm
       elif instance_orm.current_status not in [
@@ -914,26 +933,24 @@ class AssetManager:
           f"(status: {instance_orm.current_status.name})."
         )
       else:
-        resource_instance_to_acquire = instance_orm  # It's available
+        resource_instance_to_acquire = instance_orm
     else:
-      # 1. Check if already in use by this run
       in_use_list = await svc.list_resource_instances(
         self.db,
         name=name_constraint,
         status=ResourceInstanceStatusEnum.IN_USE,
         current_protocol_run_guid_filter=protocol_run_guid,
-        property_filters=property_constraints,  # Apply property filters if any
+        property_filters=property_constraints,
       )
       if in_use_list:
-        resource_instance_to_acquire = in_use_list[0]  # Assuming one for now
+        resource_instance_to_acquire = in_use_list[0]
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource instance"
-          f" '{resource_instance_to_acquire.user_assigned_name}' (ID: "
-          f"{resource_instance_to_acquire.id}) is already IN_USE by this run "
-          f"'{protocol_run_guid}'. Re-acquiring."
+          "AM_ACQUIRE_LABWARE: Resource instance '%s' (ID: %s) is already IN_USE by this run '%s'. Re-acquiring.",
+          resource_instance_to_acquire.user_assigned_name,
+          resource_instance_to_acquire.id,
+          protocol_run_guid,
         )
       else:
-        # 2. Check if available on deck
         on_deck_list = await svc.list_resource_instances(
           self.db,
           name=name_constraint,
@@ -943,7 +960,6 @@ class AssetManager:
         if on_deck_list:
           resource_instance_to_acquire = on_deck_list[0]
         else:
-          # 3. Check if available in storage
           in_storage_list = await svc.list_resource_instances(
             self.db,
             name=name_constraint,
@@ -960,11 +976,10 @@ class AssetManager:
           f"by this run."
         )
 
-    # At this point, resource_instance_to_acquire should be set if one was found
-    if not resource_instance_to_acquire:  # Safeguard, should be caught above
-      raise AssetAcquisitionError(
-        f"Resource acquisition failed for {requested_asset_name_in_protocol}."
-      )
+    # Assert that resource_instance_to_acquire is not None after selection logic
+    assert (
+      resource_instance_to_acquire is not None
+    ), f"Resource acquisition failed for {requested_asset_name_in_protocol} after selection."
 
     resource_def_orm = await svc.get_resource_definition(
       self.db, resource_instance_to_acquire.name
@@ -973,7 +988,7 @@ class AssetManager:
       error_msg = (
         f"Python FQN not found for resource definition "
         f"'{resource_instance_to_acquire.name}' for instance ID "
-        and f"{resource_instance_to_acquire.id}."
+        f"{resource_instance_to_acquire.id}."
       )
       logger.error(error_msg)
       await svc.update_resource_instance_location_and_status(
@@ -986,15 +1001,14 @@ class AssetManager:
     resource_fqn = resource_def_orm.python_fqn
 
     logger.info(
-      f"AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for resource instance "
-      f"'{resource_instance_to_acquire.user_assigned_name}' (ID: "
-      f"{resource_instance_to_acquire.id}) using FQN '{resource_fqn}'."
+      "AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for resource instance '%s' (ID: %s) using FQN '%s'.",
+      resource_instance_to_acquire.user_assigned_name,
+      resource_instance_to_acquire.id,
+      resource_fqn,
     )
-    live_plr_resource = (
-      await self.workcell_runtime.create_or_get_resource(  # Refactored
-        resource_instance_orm=resource_instance_to_acquire,
-        resource_definition_fqn=resource_fqn,
-      )
+    live_plr_resource = await self.workcell_runtime.create_or_get_resource(
+      resource_instance_orm=resource_instance_to_acquire,
+      resource_definition_fqn=resource_fqn,
     )
     if not live_plr_resource:
       error_msg = (
@@ -1003,7 +1017,6 @@ class AssetManager:
         f"{resource_instance_to_acquire.id}). Check WorkcellRuntime logs."
       )
       logger.error(error_msg)
-      # Optionally set resource status to ERROR
       await svc.update_resource_instance_location_and_status(
         db=self.db,
         resource_instance_id=resource_instance_to_acquire.id,
@@ -1013,9 +1026,9 @@ class AssetManager:
       raise AssetAcquisitionError(error_msg)
 
     logger.info(
-      f"AM_ACQUIRE_LABWARE: PLR object for resource "
-      f"'{resource_instance_to_acquire.user_assigned_name}' created/retrieved. "
-      f"Updating status to IN_USE (if not already by this run) and handling location."
+      "AM_ACQUIRE_LABWARE: PLR object for resource '%s' created/retrieved. "
+      "Updating status to IN_USE (if not already by this run) and handling location.",
+      resource_instance_to_acquire.user_assigned_name,
     )
 
     target_deck_orm_id: Optional[int] = None
@@ -1027,23 +1040,23 @@ class AssetManager:
       position_name = location_constraints.get("position_name")
       if deck_name and position_name:
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_resource.name}' "
-          f"on deck '{deck_name}' position '{position_name}'."
+          "AM_ACQUIRE_LABWARE: Location constraint: place '%s' on deck '%s' position '%s'.",
+          live_plr_resource.name,
+          deck_name,
+          position_name,
         )
-        # Find the deck ORM
         deck_machines = await svc.list_machines(
           self.db, user_friendly_name_filter=deck_name
-        )  # Assuming deck name is unique for Machine
+        )
         if not deck_machines:
           raise AssetAcquisitionError(
             f"Deck machine '{deck_name}' specified in location_constraints not found."
           )
-        deck_machine_orm = deck_machines[0]  # Assuming first one is correct if multiple
+        deck_machine_orm = deck_machines[0]
         target_deck_orm_id = deck_machine_orm.id
         target_position_name = position_name
 
-        # Assign to PLR Deck object via WorkcellRuntime
-        await self.workcell_runtime.assign_resource_to_deck(  # Refactored
+        await self.workcell_runtime.assign_resource_to_deck(
           resource_instance_orm_id=resource_instance_to_acquire.id,
           target=target_deck_orm_id,
           position_id=target_position_name,
@@ -1051,10 +1064,12 @@ class AssetManager:
         final_status_details = f"On deck '{deck_name}' position '{position_name}' for \
           run {protocol_run_guid}"
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource assigned to deck '{deck_name}' position "
-          f"'{position_name}' in WorkcellRuntime."
+          "AM_ACQUIRE_LABWARE: Resource assigned to deck '%s' position '%s' in "
+          "WorkcellRuntime.",
+          deck_name,
+          position_name,
         )
-      elif deck_name or position_name:  # Partial constraint
+      elif deck_name or position_name:
         raise AssetAcquisitionError(
           f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both "
           f"'deck_name' and 'position_name' required if placing on deck."
@@ -1093,19 +1108,22 @@ class AssetManager:
         logger.error(critical_error_msg)
         raise AssetAcquisitionError(critical_error_msg)
       logger.info(
-        f"AM_ACQUIRE_LABWARE: Resource "
-        f"'{updated_resource_instance_orm.user_assigned_name}' (ID: "
-        f"{updated_resource_instance_orm.id}) "
-        f"successfully acquired for run '{protocol_run_guid}'. Status: IN_USE. "
-        f"Location Device ID: {target_deck_orm_id}, Slot: {target_position_name}."
+        "AM_ACQUIRE_LABWARE: Resource '%s' (ID: %s) successfully acquired for run '%s'."
+        "Status: IN_USE. "
+        "Location Device ID: %s, Slot: %s.",
+        updated_resource_instance_orm.user_assigned_name,
+        updated_resource_instance_orm.id,
+        protocol_run_guid,
+        target_deck_orm_id,
+        target_position_name,
       )
     else:
       logger.info(
-        f"AM_ACQUIRE_LABWARE: Resource "
-        f"'{resource_instance_to_acquire.user_assigned_name}' (ID: "
-        f"{resource_instance_to_acquire.id}) "
-        f"was already correctly set as IN_USE by this run, and at the target location "
-        f"if specified."
+        "AM_ACQUIRE_LABWARE: Resource '%s' (ID: %s) was already correctly set as "
+        "IN_USE by this run, "
+        "and at the target location if specified.",
+        resource_instance_to_acquire.user_assigned_name,
+        resource_instance_to_acquire.id,
       )
 
     return live_plr_resource, resource_instance_to_acquire.id, "resource"
@@ -1128,33 +1146,35 @@ class AssetManager:
 
     """
     logger.info(
-      f"AM_RELEASE_DEVICE: Releasing machine ID {machine_orm_id}. Target status: "
-      f"{final_status.name}. Details: {status_details}"
+      "AM_RELEASE_DEVICE: Releasing machine ID %s. Target status: %s. Details: %s",
+      machine_orm_id,
+      final_status.name,
+      status_details,
     )
-    # Call WorkcellRuntime to shut down the backend first
-    await self.workcell_runtime.shutdown_machine(machine_orm_id)  # Refactored
+    await self.workcell_runtime.shutdown_machine(machine_orm_id)
     logger.info(
-      f"AM_RELEASE_DEVICE: WorkcellRuntime shutdown initiated for machine ID "
-      f"{machine_orm_id}."
+      "AM_RELEASE_DEVICE: WorkcellRuntime shutdown initiated for machine ID %s.",
+      machine_orm_id,
     )
 
-    # Update the status in the database
     updated_machine = await svc.update_machine_status(
       self.db,
       machine_orm_id,
       final_status,
       status_details=status_details,
-      current_protocol_run_guid=None,  # Clear the run GUID
+      current_protocol_run_guid=None,
     )
     if not updated_machine:
       logger.error(
-        f"AM_RELEASE_DEVICE: Failed to update status for machine ID "
-        f"{machine_orm_id} in DB after backend shutdown."
+        "AM_RELEASE_DEVICE: Failed to update status for machine ID %s in DB after "
+        "backend shutdown.",
+        machine_orm_id,
       )
     else:
       logger.info(
-        f"AM_RELEASE_DEVICE: Device ID {machine_orm_id} "
-        f"status updated to {final_status.name} in DB."
+        "AM_RELEASE_DEVICE: Device ID %s status updated to %s in DB.",
+        machine_orm_id,
+        final_status.name,
       )
 
   async def release_resource(
@@ -1162,7 +1182,7 @@ class AssetManager:
     resource_instance_orm_id: int,
     final_status: ResourceInstanceStatusEnum,
     final_properties_json_update: Optional[Dict[str, Any]] = None,
-    clear_from_deck_machine_id: Optional[int] = None,  # ID of the deck MachineOrm
+    clear_from_deck_machine_id: Optional[int] = None,
     clear_from_position_name: Optional[str] = None,
     status_details: Optional[str] = "Released from run",
   ):
@@ -1184,37 +1204,39 @@ class AssetManager:
 
     """
     logger.info(
-      f"AM_RELEASE_LABWARE: Releasing resource ID {resource_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}"
+      "AM_RELEASE_LABWARE: Releasing resource ID %s. Target status: %s. Details: %s",
+      resource_instance_orm_id,
+      final_status.name,
+      status_details,
     )
     if final_properties_json_update:
       logger.info(
-        f"AM_RELEASE_LABWARE: Update properties for instance ID {resource_instance_orm_id}: {final_properties_json_update}"
+        "AM_RELEASE_LABWARE: Update properties for instance ID %s: %s",
+        resource_instance_orm_id,
+        final_properties_json_update,
       )
 
-    # If the resource was on a deck, clear it from WorkcellRuntime's view of that deck
     if clear_from_deck_machine_id is not None and clear_from_position_name is not None:
       logger.info(
-        f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck ID {clear_from_deck_machine_id}, position '{clear_from_position_name}' via WorkcellRuntime."
+        "AM_RELEASE_LABWARE: Clearing resource ID %s from deck ID %s, position '%s' "
+        "via WorkcellRuntime.",
+        resource_instance_orm_id,
+        clear_from_deck_machine_id,
+        clear_from_position_name,
       )
-      await self.workcell_runtime.clear_deck_position(  # Refactored
+      await self.workcell_runtime.clear_deck_position(
         deck_machine_orm_id=clear_from_deck_machine_id,
         position_name=clear_from_position_name,
         resource_instance_orm_id=resource_instance_orm_id,
       )
     else:
-      # If not clearing from a specific deck, ensure it's cleared from any WCR internal cache if it was a general acquisition
-      await self.workcell_runtime.clear_resource_instance(
-        resource_instance_orm_id
-      )  # Refactored
+      await self.workcell_runtime.clear_resource_instance(resource_instance_orm_id)
 
-    # Determine final location for DB update
     final_location_machine_id_for_ads: Optional[int] = None
     final_deck_position_name_for_ads: Optional[str] = None
-    # If final status is AVAILABLE_ON_DECK, it implies it remains on 'clear_from_deck_machine_id'
     if final_status == ResourceInstanceStatusEnum.AVAILABLE_ON_DECK:
       final_location_machine_id_for_ads = clear_from_deck_machine_id
       final_deck_position_name_for_ads = clear_from_position_name
-    # If AVAILABLE_IN_STORAGE or CONSUMED, location is cleared.
 
     updated_resource = await svc.update_resource_instance_location_and_status(
       self.db,
@@ -1223,60 +1245,84 @@ class AssetManager:
       properties_json_update=final_properties_json_update,
       location_machine_id=final_location_machine_id_for_ads,
       current_deck_position_name=final_deck_position_name_for_ads,
-      current_protocol_run_guid=None,  # Clear the run GUID
+      current_protocol_run_guid=None,
       status_details=status_details,
     )
     if not updated_resource:
       logger.error(
-        f"AM_RELEASE_LABWARE: Failed to update final status/location for resource ID {resource_instance_orm_id} in DB."
+        "AM_RELEASE_LABWARE: Failed to update final status/location for resource ID %s "
+        "in DB.",
+        resource_instance_orm_id,
       )
     else:
       logger.info(
-        f"AM_RELEASE_LABWARE: Resource ID {resource_instance_orm_id} status updated to {final_status.name} in DB."
+        "AM_RELEASE_LABWARE: Resource ID %s status updated to %s in DB.",
+        resource_instance_orm_id,
+        final_status.name,
       )
 
   async def acquire_asset(
     self, protocol_run_guid: str, asset_requirement: AssetRequirementModel
   ) -> Tuple[Any, int, str]:
-    """
-    Dispatches asset acquisition to either acquire_machine or acquire_resource based on the asset type.
+    """Dispatch asset acquisition to either acquire_machine or acquire_resource.
+
     The `asset_requirement.actual_type_str` is key:
     - If it matches a `name` in `ResourceDefinitionCatalogOrm`, it's resource.
     - Otherwise, it's assumed to be a PLR Machine FQN (machine).
+
+    Args:
+        protocol_run_guid: GUID of the protocol run.
+        asset_requirement: The asset requirement model containing details.
+
+    Returns:
+        A tuple (live_plr_object, asset_orm_id, "machine" or "resource").
+
     """
     logger.info(
-      f"AM_ACQUIRE_ASSET: Acquiring asset '{asset_requirement.name}' "
-      f"(Type/Def Name: '{asset_requirement.actual_type_str}') for run '{protocol_run_guid}'. "
-      f"Constraints: {asset_requirement.constraints_json}"
+      "AM_ACQUIRE_ASSET: Acquiring asset '%s' (Type/Def Name: '%s') for run '%s'. "
+      "Constraints: %s",
+      asset_requirement.name,
+      asset_requirement.actual_type_str,
+      protocol_run_guid,
+      asset_requirement.constraints.model_dump()
+      if hasattr(asset_requirement.constraints, "model_dump")
+      else dict(asset_requirement.constraints),
     )
 
-    # Check if actual_type_str corresponds to a known resource definition name
     resource_def_check = await svc.get_resource_definition(
       self.db, asset_requirement.actual_type_str
     )
 
     if resource_def_check:
       logger.debug(
-        f"AM_ACQUIRE_ASSET: Identified '{asset_requirement.actual_type_str}' as LABWARE "
-        f"(matches ResourceDefinitionCatalog). Dispatching to acquire_resource for '{asset_requirement.name}'."
+        "AM_ACQUIRE_ASSET: Identified '%s' as LABWARE (matches "
+        "ResourceDefinitionCatalog). Dispatching to acquire_resource for '%s'.",
+        asset_requirement.actual_type_str,
+        asset_requirement.name,
       )
       return await self.acquire_resource(
         protocol_run_guid=protocol_run_guid,
         requested_asset_name_in_protocol=asset_requirement.name,
-        name_constraint=asset_requirement.actual_type_str,  # This is the key for ResourceDefinitionCatalogOrm
-        property_constraints=asset_requirement.constraints_json,  # Pass all constraints as property constraints for resource
-        location_constraints=asset_requirement.location_constraints_json,  # Specific for resource placement
+        name_constraint=asset_requirement.actual_type_str,
+        property_constraints=asset_requirement.constraints.model_dump()
+        if hasattr(asset_requirement.constraints, "model_dump")
+        else dict(asset_requirement.constraints),
+        location_constraints=asset_requirement.location_constraints.model_dump()
+        if hasattr(asset_requirement.location_constraints, "model_dump")
+        else dict(asset_requirement.location_constraints),
       )
     else:
-      # Assume it's a machine/machine FQN
       logger.debug(
-        f"AM_ACQUIRE_ASSET: Did not find '{asset_requirement.actual_type_str}' in ResourceDefinitionCatalog. "
-        f"Assuming it's a DEVICE (PLR Machine FQN). Dispatching to acquire_machine for '{asset_requirement.name}'."
+        "AM_ACQUIRE_ASSET: Did not find '%s' in ResourceDefinitionCatalog. "
+        "Assuming it's a Machine. Dispatching to acquire_machine for '%s'.",
+        asset_requirement.actual_type_str,
+        asset_requirement.name,
       )
-      # For machines, constraints_json are general constraints.
       return await self.acquire_machine(
         protocol_run_guid=protocol_run_guid,
         requested_asset_name_in_protocol=asset_requirement.name,
-        python_fqn_constraint=asset_requirement.actual_type_str,  # This is the FQN for the PLR Machine class
-        constraints=asset_requirement.constraints_json,
+        python_fqn_constraint=asset_requirement.actual_type_str,
+        constraints=asset_requirement.constraints.model_dump()
+        if hasattr(asset_requirement.constraints, "model_dump")
+        else dict(asset_requirement.constraints),
       )
