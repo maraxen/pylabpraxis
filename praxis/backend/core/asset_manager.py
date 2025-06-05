@@ -55,6 +55,8 @@ import praxis.backend.services as svc
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   AssetRequirementModel,
+  DeckConfigurationPositionItemOrm,
+  DeckPositionDefinitionOrm,
   MachineCategoryEnum,
   MachineOrm,
   MachineStatusEnum,
@@ -572,7 +574,7 @@ class AssetManager:
 
     if not actual_deck_machine_orm:
       raise AssetAcquisitionError(
-        f"No Machine found and verified as a PLR Deck for deck name '{deck_name}'."
+        f"No Machine found and verified as a PLR Deck for deck name '{deck_orm.name}'."
       )
 
     deck_machine_orm = actual_deck_machine_orm
@@ -582,15 +584,18 @@ class AssetManager:
       and deck_machine_orm.current_protocol_run_guid != protocol_run_guid
     ):
       raise AssetAcquisitionError(
-        f"Deck machine '{deck_name}' (ID: {deck_machine_orm.id}) is already in use by "
+        f"Deck machine '{deck_orm.name}' (ID: {deck_machine_orm.id}) is already in use by "
         f"another run '{deck_machine_orm.current_protocol_run_guid}'."
       )
 
     # Initialize the deck through WorkcellRuntime
-    live_plr_deck_object = self.workcell_runtime.initialize_machine(deck_machine_orm)
+    live_plr_deck_object = await self.workcell_runtime.initialize_machine(
+      deck_machine_orm
+    )  # Refactored
     if not live_plr_deck_object or not isinstance(live_plr_deck_object, Deck):
       raise AssetAcquisitionError(
-        f"Failed to initialize backend for deck '{deck_name}' (ID: {deck_machine_orm.id}) or it's not a Deck. Check WorkcellRuntime."
+        f"Failed to initialize backend for deck '{deck_orm.name}' (ID: "
+        f"{deck_machine_orm.id}) or it's not a Deck. Check WorkcellRuntime."
       )
 
     await svc.update_machine_status(
@@ -598,23 +603,28 @@ class AssetManager:
       deck_machine_orm.id,
       MachineStatusEnum.IN_USE,
       current_protocol_run_guid=protocol_run_guid,
-      status_details=f"Deck '{deck_name}' in use by run {protocol_run_guid}",
+      status_details=f"Deck '{deck_orm.name}' in use by run {protocol_run_guid}",
     )
     logger.info(
-      f"AM_DECK_CONFIG: Deck machine '{deck_name}' (ID: {deck_machine_orm.id}) backend initialized and marked IN_USE."
+      f"AM_DECK_CONFIG: Deck machine '{deck_orm.name}' (ID: {deck_machine_orm.id}) "
+      f"backend initialized and marked IN_USE."
     )
 
     # Get DeckSlotOrm entries associated with the DeckLayoutOrm
-    deck_slots_orm = await svc.get_deckpositions_for_layout(self.db, deck_layout_orm.id)
+    deck_positions_orm = await svc.get_position_definitions_for_deck_type(
+      self.db, deck_orm.id
+    )
     logger.info(
-      f"AM_DECK_CONFIG: Found {len(deck_slots_orm)} slots for deck layout '{deck_name}' (Layout ID: {deck_layout_orm.id})."
+      f"AM_DECK_CONFIG: Found {len(deck_positions_orm)} positions for deck layout "
+      f"'{deck_orm.name}' (Layout ID: {deck_orm.id})."
     )
 
-    for slot_orm in deck_slots_orm:
-      if slot_orm.pre_assigned_resource_instance_id:
-        resource_instance_id = slot_orm.pre_assigned_resource_instance_id
+    for position_orm in deck_positions_orm:
+      if position_orm.resource_instance_id:
+        resource_instance_id = position_orm.resource_instance_id
         logger.info(
-          f"AM_DECK_CONFIG: Slot '{slot_orm.slot_name}' (Slot ID: {slot_orm.id}) has pre-assigned resource instance ID: {resource_instance_id}."
+          f"AM_DECK_CONFIG: Processing position '{position_orm.position_id}' "
+          f"with pre-assigned resource ID: {resource_instance_id}."
         )
 
         resource_instance_orm = await svc.get_resource_instance_by_id(
@@ -622,23 +632,22 @@ class AssetManager:
         )
         if not resource_instance_orm:
           logger.error(
-            f"Resource instance ID {resource_instance_id} for slot '{slot_orm.slot_name}' not found. Skipping assignment."
+            f"Resource instance {resource_instance_id} for position "
+            f"'{position_orm.position_id}' not found. Skipping."
           )
-          continue  # Or raise error, depending on desired strictness
+          continue
 
-        # Check resource status
         if (
           resource_instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE
           and resource_instance_orm.current_protocol_run_guid == protocol_run_guid
           and resource_instance_orm.location_machine_id == deck_machine_orm.id
-          and resource_instance_orm.current_deck_slot_name == slot_orm.slot_name
+          and resource_instance_orm.current_deck_position_name
+          == position_orm.position_id
         ):
-          logger.warning(
-            f"AM_DECK_CONFIG: Resource instance {resource_instance_id} in slot '{slot_orm.slot_name}' is already IN_USE by this run and at this location. Assuming already configured."
+          logger.info(
+            f"Resource {resource_instance_id} already configured at "
+            f"'{position_orm.position_id}' for this run."
           )
-          # Ensure it's in WorkcellRuntime's view of the deck
-          # This might involve re-asserting the assignment in WorkcellRuntime if it clears state.
-          # For now, we assume if DB state is correct, WCR will reflect it or re-establish.
           continue
 
         if resource_instance_orm.current_status not in [
@@ -646,8 +655,8 @@ class AssetManager:
           ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
         ]:
           raise AssetAcquisitionError(
-            f"Resource instance ID {resource_instance_id} for slot '{slot_orm.slot_name}' is not available "
-            f"(status: {resource_instance_orm.current_status}, run: {resource_instance_orm.current_protocol_run_guid})."
+            f"Resource {resource_instance_id} for position '{position_orm.position_id}' "
+            f"unavailable (status: {resource_instance_orm.current_status})."
           )
 
         resource_def_orm = await svc.get_resource_definition(
@@ -655,45 +664,47 @@ class AssetManager:
         )
         if not resource_def_orm or not resource_def_orm.python_fqn:
           raise AssetAcquisitionError(
-            f"Python FQN not found for resource definition '{resource_instance_orm.name}' (instance ID {resource_instance_id})."
+            f"Python FQN not found for resource definition '{resource_instance_orm.name}' "
+            f"(instance {resource_instance_id})."
           )
 
-        live_plr_resource = self.workcell_runtime.create_or_get_resource_plr_object(
+        live_plr_resource = await self.workcell_runtime.create_or_get_resource(
           resource_instance_orm=resource_instance_orm,
           resource_definition_fqn=resource_def_orm.python_fqn,
         )
         if not live_plr_resource:
           raise AssetAcquisitionError(
-            f"Failed to create PLR object for resource instance ID {resource_instance_id} in slot '{slot_orm.slot_name}'."
+            f"Failed to create PLR object for resource {resource_instance_id} "
+            f"at '{position_orm.position_id}'."
           )
 
         logger.info(
-          f"AM_DECK_CONFIG: Assigning resource '{live_plr_resource.name}' (Instance ID: {resource_instance_id}) to deck '{deck_name}' slot '{slot_orm.slot_name}'."
+          f"Assigning resource '{live_plr_resource.name}' to position "
+          f"'{position_orm.position_id}'."
         )
-        # Assign to PLR Deck object via WorkcellRuntime
-        self.workcell_runtime.assign_resource_to_deck_slot(
-          deck_machine_orm_id=deck_machine_orm.id,  # Pass the MachineOrm ID of the deck
-          slot_name=slot_orm.slot_name,
-          resource_plr_object=live_plr_resource,
+
+        await self.workcell_runtime.assign_resource_to_deck(
           resource_instance_orm_id=resource_instance_id,
+          target=deck_machine_orm.id,
+          position_id=position_orm.position_id,
         )
-        # Update ResourceInstanceOrm status and location
+
         await svc.update_resource_instance_location_and_status(
           db=self.db,
           resource_instance_id=resource_instance_id,
           new_status=ResourceInstanceStatusEnum.IN_USE,
           current_protocol_run_guid=protocol_run_guid,
-          location_machine_id=deck_machine_orm.id,  # Its location is now this deck
-          current_deck_slot_name=slot_orm.slot_name,
-          deck_slot_orm_id=slot_orm.id,
-          status_details=f"On deck '{deck_name}' slot '{slot_orm.slot_name}' for run {protocol_run_guid}",
+          location_machine_id=deck_machine_orm.id,
+          current_deck_position_name=position_orm.position_id,
+          status_details=f"On deck '{deck_orm.name}' position "
+          f"'{position_orm.position_id}' for run {protocol_run_guid}",
         )
         logger.info(
-          f"AM_DECK_CONFIG: Resource instance ID {resource_instance_id} marked IN_USE on slot '{slot_orm.slot_name}'."
+          f"Resource {resource_instance_id} configured at '{position_orm.position_id}'."
         )
 
     logger.info(
-      f"AM_DECK_CONFIG: Deck configuration for '{deck_name}' applied successfully."
+      f"AM_DECK_CONFIG: Deck configuration for '{deck_orm.name}' applied successfully."
     )
     return live_plr_deck_object
 
@@ -704,8 +715,7 @@ class AssetManager:
     python_fqn_constraint: str,  # This should be the FQN of the PLR Machine class
     constraints: Optional[Dict[str, Any]] = None,
   ) -> Tuple[Any, int, str]:
-    """
-    Acquires a machine (PLR Machine) that is available or already in use by the current run.
+    """Acquire a Machine that is available or already in use by the current run.
 
     Args:
         protocol_run_guid: GUID of the protocol run.
@@ -774,7 +784,7 @@ class AssetManager:
       f"AM_ACQUIRE_DEVICE: Attempting to initialize backend for selected machine '{selected_machine_orm.user_friendly_name}' "
       f"(ID: {selected_machine_orm.id}) via WorkcellRuntime."
     )
-    live_plr_machine = self.workcell_runtime.initialize_machine_backend(
+    live_plr_machine = await self.workcell_runtime.initialize_machine(  # Refactored
       selected_machine_orm
     )
 
@@ -837,18 +847,20 @@ class AssetManager:
     user_choice_instance_id: Optional[int] = None,
     location_constraints: Optional[
       Dict[str, Any]
-    ] = None,  # e.g., {"deck_name": "deck1", "slot_name": "A1"}
+    ] = None,  # e.g., {"deck_name": "deck1", "position_name": "A1"}
     property_constraints: Optional[Dict[str, Any]] = None,  # e.g., {"is_sterile": True}
   ) -> Tuple[Any, int, str]:
-    """
-    Acquires a resource instance that is available or already in use by the current run.
+    """Acquire a resource instance that is available or in use by the current run.
 
     Args:
         protocol_run_guid: GUID of the protocol run.
-        requested_asset_name_in_protocol: Name of the asset as requested in the protocol.
+        requested_asset_name_in_protocol: Name of the asset as requested in the
+        protocol.
         name_constraint: The `name` from `ResourceDefinitionCatalogOrm`.
-        user_choice_instance_id: Optional specific ID of the resource instance to acquire.
-        location_constraints: Optional constraints on where the resource should be (primarily for deck assignment).
+        user_choice_instance_id: Optional specific ID of the resource instance to
+        acquire.
+        location_constraints: Optional constraints on where the resource should be
+        (primarily for deck assignment).
         property_constraints: Optional constraints on resource properties.
 
     Returns:
@@ -856,11 +868,13 @@ class AssetManager:
 
     Raises:
         AssetAcquisitionError: If no suitable resource can be acquired or initialized.
+
     """
     logger.info(
       f"AM_ACQUIRE_LABWARE: Acquiring resource '{requested_asset_name_in_protocol}' "
       f"(PLR Def Name Constraint: '{name_constraint}') for run '{protocol_run_guid}'. "
-      f"User Choice ID: {user_choice_instance_id}, Location Constraints: {location_constraints}, Property Constraints: {property_constraints}"
+      f"User Choice ID: {user_choice_instance_id}, Location Constraints: "
+      f"{location_constraints}, Property Constraints: {property_constraints}"
     )
 
     resource_instance_to_acquire: Optional[ResourceInstanceOrm] = None
@@ -875,17 +889,20 @@ class AssetManager:
         )
       if instance_orm.name != name_constraint:
         raise AssetAcquisitionError(
-          f"Chosen resource instance ID {user_choice_instance_id} (Definition: '{instance_orm.name}') "
-          f"does not match definition constraint '{name_constraint}'."
+          f"Chosen resource instance ID {user_choice_instance_id} (Definition: "
+          f"'{instance_orm.name}') does not match definition constraint "
+          f"'{name_constraint}'."
         )
       # Check status for user_choice_instance_id
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
         if instance_orm.current_protocol_run_guid != protocol_run_guid:
           raise AssetAcquisitionError(
-            f"Chosen resource instance ID {user_choice_instance_id} is IN_USE by another run ('{instance_orm.current_protocol_run_guid}')."
+            f"Chosen resource instance ID {user_choice_instance_id} is IN_USE by "
+            f"another run ('{instance_orm.current_protocol_run_guid}')."
           )
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource instance ID {user_choice_instance_id} is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+          f"AM_ACQUIRE_LABWARE: Resource instance ID {user_choice_instance_id} is "
+          f"already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
         )
         resource_instance_to_acquire = instance_orm
       elif instance_orm.current_status not in [
@@ -893,7 +910,8 @@ class AssetManager:
         ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
       ]:
         raise AssetAcquisitionError(
-          f"Chosen resource instance ID {user_choice_instance_id} is not available (status: {instance_orm.current_status.name})."
+          f"Chosen resource instance ID {user_choice_instance_id} is not available "
+          f"(status: {instance_orm.current_status.name})."
         )
       else:
         resource_instance_to_acquire = instance_orm  # It's available
@@ -909,8 +927,10 @@ class AssetManager:
       if in_use_list:
         resource_instance_to_acquire = in_use_list[0]  # Assuming one for now
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource instance '{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) "
-          f"is already IN_USE by this run '{protocol_run_guid}'. Re-acquiring."
+          f"AM_ACQUIRE_LABWARE: Resource instance"
+          f" '{resource_instance_to_acquire.user_assigned_name}' (ID: "
+          f"{resource_instance_to_acquire.id}) is already IN_USE by this run "
+          f"'{protocol_run_guid}'. Re-acquiring."
         )
       else:
         # 2. Check if available on deck
@@ -936,7 +956,8 @@ class AssetManager:
       if not resource_instance_to_acquire:
         raise AssetAcquisitionError(
           f"No resource instance found matching definition '{name_constraint}' "
-          f"and properties {property_constraints} that is available or already in use by this run."
+          f"and properties {property_constraints} that is available or already in use "
+          f"by this run."
         )
 
     # At this point, resource_instance_to_acquire should be set if one was found
@@ -950,8 +971,9 @@ class AssetManager:
     )
     if not resource_def_orm or not resource_def_orm.python_fqn:
       error_msg = (
-        f"Python FQN not found for resource definition '{resource_instance_to_acquire.name}' "
-        f"for instance ID {resource_instance_to_acquire.id}."
+        f"Python FQN not found for resource definition "
+        f"'{resource_instance_to_acquire.name}' for instance ID "
+        and f"{resource_instance_to_acquire.id}."
       )
       logger.error(error_msg)
       await svc.update_resource_instance_location_and_status(
@@ -965,16 +987,20 @@ class AssetManager:
 
     logger.info(
       f"AM_ACQUIRE_LABWARE: Attempting to create/get PLR object for resource instance "
-      f"'{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) using FQN '{resource_fqn}'."
+      f"'{resource_instance_to_acquire.user_assigned_name}' (ID: "
+      f"{resource_instance_to_acquire.id}) using FQN '{resource_fqn}'."
     )
-    live_plr_resource = self.workcell_runtime.create_or_get_resource_plr_object(
-      resource_instance_orm=resource_instance_to_acquire,
-      resource_definition_fqn=resource_fqn,
+    live_plr_resource = (
+      await self.workcell_runtime.create_or_get_resource(  # Refactored
+        resource_instance_orm=resource_instance_to_acquire,
+        resource_definition_fqn=resource_fqn,
+      )
     )
     if not live_plr_resource:
       error_msg = (
-        f"Failed to create/get PLR object for resource '{resource_instance_to_acquire.user_assigned_name}' "
-        f"(ID: {resource_instance_to_acquire.id}). Check WorkcellRuntime logs."
+        f"Failed to create/get PLR object for resource "
+        f"'{resource_instance_to_acquire.user_assigned_name}' (ID: "
+        f"{resource_instance_to_acquire.id}). Check WorkcellRuntime logs."
       )
       logger.error(error_msg)
       # Optionally set resource status to ERROR
@@ -987,20 +1013,22 @@ class AssetManager:
       raise AssetAcquisitionError(error_msg)
 
     logger.info(
-      f"AM_ACQUIRE_LABWARE: PLR object for resource '{resource_instance_to_acquire.user_assigned_name}' created/retrieved. "
+      f"AM_ACQUIRE_LABWARE: PLR object for resource "
+      f"'{resource_instance_to_acquire.user_assigned_name}' created/retrieved. "
       f"Updating status to IN_USE (if not already by this run) and handling location."
     )
 
     target_deck_orm_id: Optional[int] = None
-    target_slot_name: Optional[str] = None
+    target_position_name: Optional[str] = None
     final_status_details = f"In use by run {protocol_run_guid}"
 
     if location_constraints and isinstance(location_constraints, dict):
       deck_name = location_constraints.get("deck_name")
-      slot_name = location_constraints.get("slot_name")
-      if deck_name and slot_name:
+      position_name = location_constraints.get("position_name")
+      if deck_name and position_name:
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_resource.name}' on deck '{deck_name}' slot '{slot_name}'."
+          f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_resource.name}' "
+          f"on deck '{deck_name}' position '{position_name}'."
         )
         # Find the deck ORM
         deck_machines = await svc.list_machines(
@@ -1012,27 +1040,26 @@ class AssetManager:
           )
         deck_machine_orm = deck_machines[0]  # Assuming first one is correct if multiple
         target_deck_orm_id = deck_machine_orm.id
-        target_slot_name = slot_name
+        target_position_name = position_name
 
         # Assign to PLR Deck object via WorkcellRuntime
-        self.workcell_runtime.assign_resource_to_deck_slot(
-          deck_machine_orm_id=target_deck_orm_id,
-          slot_name=target_slot_name,
-          resource_plr_object=live_plr_resource,
+        await self.workcell_runtime.assign_resource_to_deck(  # Refactored
           resource_instance_orm_id=resource_instance_to_acquire.id,
+          target=target_deck_orm_id,
+          position_id=target_position_name,
         )
-        final_status_details = (
-          f"On deck '{deck_name}' slot '{slot_name}' for run {protocol_run_guid}"
-        )
+        final_status_details = f"On deck '{deck_name}' position '{position_name}' for \
+          run {protocol_run_guid}"
         logger.info(
-          f"AM_ACQUIRE_LABWARE: Resource assigned to deck '{deck_name}' slot '{slot_name}' in WorkcellRuntime."
+          f"AM_ACQUIRE_LABWARE: Resource assigned to deck '{deck_name}' position "
+          f"'{position_name}' in WorkcellRuntime."
         )
-      elif deck_name or slot_name:  # Partial constraint
+      elif deck_name or position_name:  # Partial constraint
         raise AssetAcquisitionError(
-          f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both 'deck_name' and 'slot_name' required if placing on deck."
+          f"Partial location constraint for '{requested_asset_name_in_protocol}'. Both "
+          f"'deck_name' and 'position_name' required if placing on deck."
         )
 
-    # Update ResourceInstanceOrm status and location, only if it's not already correctly set
     if not (
       resource_instance_to_acquire.current_status == ResourceInstanceStatusEnum.IN_USE
       and resource_instance_to_acquire.current_protocol_run_guid == protocol_run_guid
@@ -1041,34 +1068,44 @@ class AssetManager:
         or resource_instance_to_acquire.location_machine_id == target_deck_orm_id
       )
       and (
-        not target_slot_name
-        or resource_instance_to_acquire.current_deck_slot_name == target_slot_name
+        not target_position_name
+        or resource_instance_to_acquire.current_deck_position_name
+        == target_position_name
       )
     ):
-      updated_resource_instance_orm = await svc.update_resource_instance_location_and_status(
-        self.db,
-        resource_instance_id=resource_instance_to_acquire.id,
-        new_status=ResourceInstanceStatusEnum.IN_USE,
-        current_protocol_run_guid=protocol_run_guid,
-        location_machine_id=target_deck_orm_id,  # Null if not placed on a specific deck
-        current_deck_slot_name=target_slot_name,  # Null if not in a specific slot
-        status_details=final_status_details,
+      updated_resource_instance_orm = (
+        await svc.update_resource_instance_location_and_status(
+          self.db,
+          resource_instance_id=resource_instance_to_acquire.id,
+          new_status=ResourceInstanceStatusEnum.IN_USE,
+          current_protocol_run_guid=protocol_run_guid,
+          location_machine_id=target_deck_orm_id,
+          current_deck_position_name=target_position_name,
+          status_details=final_status_details,
+        )
       )
       if not updated_resource_instance_orm:
         critical_error_msg = (
-          f"CRITICAL: Resource '{resource_instance_to_acquire.user_assigned_name}' PLR object created/assigned, "
+          f"CRITICAL: Resource '{resource_instance_to_acquire.user_assigned_name}' PLR "
+          f"object created/assigned, "
           f"but FAILED to update its DB status/location for run '{protocol_run_guid}'."
         )
         logger.error(critical_error_msg)
         raise AssetAcquisitionError(critical_error_msg)
       logger.info(
-        f"AM_ACQUIRE_LABWARE: Resource '{updated_resource_instance_orm.user_assigned_name}' (ID: {updated_resource_instance_orm.id}) "
-        f"successfully acquired for run '{protocol_run_guid}'. Status: IN_USE. Location Device ID: {target_deck_orm_id}, Slot: {target_slot_name}."
+        f"AM_ACQUIRE_LABWARE: Resource "
+        f"'{updated_resource_instance_orm.user_assigned_name}' (ID: "
+        f"{updated_resource_instance_orm.id}) "
+        f"successfully acquired for run '{protocol_run_guid}'. Status: IN_USE. "
+        f"Location Device ID: {target_deck_orm_id}, Slot: {target_position_name}."
       )
     else:
       logger.info(
-        f"AM_ACQUIRE_LABWARE: Resource '{resource_instance_to_acquire.user_assigned_name}' (ID: {resource_instance_to_acquire.id}) "
-        f"was already correctly set as IN_USE by this run, and at the target location if specified."
+        f"AM_ACQUIRE_LABWARE: Resource "
+        f"'{resource_instance_to_acquire.user_assigned_name}' (ID: "
+        f"{resource_instance_to_acquire.id}) "
+        f"was already correctly set as IN_USE by this run, and at the target location "
+        f"if specified."
       )
 
     return live_plr_resource, resource_instance_to_acquire.id, "resource"
@@ -1079,16 +1116,26 @@ class AssetManager:
     final_status: MachineStatusEnum = MachineStatusEnum.AVAILABLE,
     status_details: Optional[str] = "Released from run",
   ):
-    """
-    Releases a machine, updating its status and shutting down its backend via WorkcellRuntime.
+    """Release a machine, update status, and shut down its backend via WorkcellRuntime.
+
+    Args:
+        machine_orm_id: The ORM ID of the machine to release.
+        final_status: The status to set after release (default: AVAILABLE).
+        status_details: Optional details about the release.
+
+    Raises:
+        AssetReleaseError: If the machine cannot be released or updated in the DB.
+
     """
     logger.info(
-      f"AM_RELEASE_DEVICE: Releasing machine ID {machine_orm_id}. Target status: {final_status.name}. Details: {status_details}"
+      f"AM_RELEASE_DEVICE: Releasing machine ID {machine_orm_id}. Target status: "
+      f"{final_status.name}. Details: {status_details}"
     )
     # Call WorkcellRuntime to shut down the backend first
-    self.workcell_runtime.shutdown_machine_backend(machine_orm_id)
+    await self.workcell_runtime.shutdown_machine(machine_orm_id)  # Refactored
     logger.info(
-      f"AM_RELEASE_DEVICE: WorkcellRuntime shutdown initiated for machine ID {machine_orm_id}."
+      f"AM_RELEASE_DEVICE: WorkcellRuntime shutdown initiated for machine ID "
+      f"{machine_orm_id}."
     )
 
     # Update the status in the database
@@ -1101,12 +1148,13 @@ class AssetManager:
     )
     if not updated_machine:
       logger.error(
-        f"AM_RELEASE_DEVICE: Failed to update status for machine ID {machine_orm_id} in DB after backend shutdown."
+        f"AM_RELEASE_DEVICE: Failed to update status for machine ID "
+        f"{machine_orm_id} in DB after backend shutdown."
       )
-      # Potentially raise an error or handle this case (e.g., machine backend might be down, but DB state is inconsistent)
     else:
       logger.info(
-        f"AM_RELEASE_DEVICE: Device ID {machine_orm_id} status updated to {final_status.name} in DB."
+        f"AM_RELEASE_DEVICE: Device ID {machine_orm_id} "
+        f"status updated to {final_status.name} in DB."
       )
 
   async def release_resource(
@@ -1115,12 +1163,25 @@ class AssetManager:
     final_status: ResourceInstanceStatusEnum,
     final_properties_json_update: Optional[Dict[str, Any]] = None,
     clear_from_deck_machine_id: Optional[int] = None,  # ID of the deck MachineOrm
-    clear_from_slot_name: Optional[str] = None,
+    clear_from_position_name: Optional[str] = None,
     status_details: Optional[str] = "Released from run",
   ):
-    """
-    Releases a resource instance, updating its status and properties,
-    and clearing it from a deck slot via WorkcellRuntime if specified.
+    """Release a resource instance.
+
+    Release resource, updating its status and properties,
+    and clearing it from a deck position via WorkcellRuntime if specified.
+
+    Args:
+        resource_instance_orm_id: The ORM ID of the resource instance to release.
+        final_status: The status to set after release (e.g., AVAILABLE_IN_STORAGE).
+        final_properties_json_update: Optional properties to update in JSON format.
+        clear_from_deck_machine_id: Optional ID of the deck MachineOrm to clear from.
+        clear_from_position_name: Optional position name on the deck to clear from.
+        status_details: Optional details about the release.
+
+    Raises:
+        AssetReleaseError: If the resource cannot be released or updated in the DB.
+
     """
     logger.info(
       f"AM_RELEASE_LABWARE: Releasing resource ID {resource_instance_orm_id}. Target status: {final_status.name}. Details: {status_details}"
@@ -1131,26 +1192,28 @@ class AssetManager:
       )
 
     # If the resource was on a deck, clear it from WorkcellRuntime's view of that deck
-    if clear_from_deck_machine_id is not None and clear_from_slot_name is not None:
+    if clear_from_deck_machine_id is not None and clear_from_position_name is not None:
       logger.info(
-        f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck ID {clear_from_deck_machine_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
+        f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck ID {clear_from_deck_machine_id}, position '{clear_from_position_name}' via WorkcellRuntime."
       )
-      self.workcell_runtime.clear_deck_slot(
+      await self.workcell_runtime.clear_deck_position(  # Refactored
         deck_machine_orm_id=clear_from_deck_machine_id,
-        slot_name=clear_from_slot_name,
+        position_name=clear_from_position_name,
         resource_instance_orm_id=resource_instance_orm_id,
       )
     else:
       # If not clearing from a specific deck, ensure it's cleared from any WCR internal cache if it was a general acquisition
-      self.workcell_runtime.clear_general_resource_instance(resource_instance_orm_id)
+      await self.workcell_runtime.clear_resource_instance(
+        resource_instance_orm_id
+      )  # Refactored
 
     # Determine final location for DB update
     final_location_machine_id_for_ads: Optional[int] = None
-    final_deck_slot_name_for_ads: Optional[str] = None
+    final_deck_position_name_for_ads: Optional[str] = None
     # If final status is AVAILABLE_ON_DECK, it implies it remains on 'clear_from_deck_machine_id'
     if final_status == ResourceInstanceStatusEnum.AVAILABLE_ON_DECK:
       final_location_machine_id_for_ads = clear_from_deck_machine_id
-      final_deck_slot_name_for_ads = clear_from_slot_name
+      final_deck_position_name_for_ads = clear_from_position_name
     # If AVAILABLE_IN_STORAGE or CONSUMED, location is cleared.
 
     updated_resource = await svc.update_resource_instance_location_and_status(
@@ -1159,7 +1222,7 @@ class AssetManager:
       new_status=final_status,
       properties_json_update=final_properties_json_update,
       location_machine_id=final_location_machine_id_for_ads,
-      current_deck_slot_name=final_deck_slot_name_for_ads,
+      current_deck_position_name=final_deck_position_name_for_ads,
       current_protocol_run_guid=None,  # Clear the run GUID
       status_details=status_details,
     )

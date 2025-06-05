@@ -267,7 +267,7 @@ async def list_machines(
   status: Optional[MachineStatusEnum] = None,
   pylabrobot_class_filter: Optional[str] = None,
   workcell_id: Optional[int] = None,
-  current_protocol_run_guid_filter: Optional[int] = None,
+  current_protocol_run_guid_filter: Optional[str] = None,
   limit: int = 100,
   offset: int = 0,
 ) -> List[MachineOrm]:
@@ -281,7 +281,7 @@ async def list_machines(
           substring of their PyLabRobot class name. Defaults to None.
       workcell_id (Optional[int], optional): Filter machines by the ID of the
           workcell they belong to. Defaults to None.
-      current_protocol_run_guid_filter (Optional[int], optional): Filter machines
+      current_protocol_run_guid_filter (Optional[str], optional): Filter machines
           by the GUID of the protocol run they are currently associated with.
           Defaults to None.
       limit (int): The maximum number of results to return. Defaults to 100.
@@ -370,7 +370,7 @@ async def update_machine_status(
   if new_status == MachineStatusEnum.IN_USE:
     machine_orm.current_protocol_run_guid = current_protocol_run_guid
     logger.debug(
-      "Machine '%s' (ID: %d) set to IN_USE with protocol run GUID: %s.",
+      "Machine '%s' (ID: %d) set to IN_USE with protocol run GUID: %d.",
       machine_orm.user_friendly_name,
       machine_id,
       current_protocol_run_guid,
