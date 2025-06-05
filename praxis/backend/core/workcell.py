@@ -1,28 +1,24 @@
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.resources.deck import Deck
-from typing import Optional, Any, Literal, cast, Self, Set, Dict
-
 import asyncio
 import json
+from typing import Any, Dict, Literal, Optional, Self, Set, cast, runtime_checkable
+from typing import Protocol as TypeProtocol
 
-from pylabrobot.machines.machine import Machine
-from pylabrobot.resources.resource import Resource
-from pylabrobot.resources import Deck
-from pylabrobot.pumps import Pump, PumpArray
-from pylabrobot.plate_reading import PlateReader
 from pylabrobot.heating_shaking import HeaterShaker
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.machines.machine import Machine
+from pylabrobot.plate_reading import PlateReader
 from pylabrobot.powder_dispensing import PowderDispenser
+from pylabrobot.pumps import Pump, PumpArray
+from pylabrobot.resources import Deck
+from pylabrobot.resources.resource import Resource
 from pylabrobot.scales import Scale
 from pylabrobot.shaking import Shaker
 from pylabrobot.temperature_controlling import TemperatureController
 
 # TODO: make different asset types from inspection of PLR
-
 from ..configure import PraxisConfiguration
+from ..interfaces import WorkcellAssetsInterface, WorkcellInterface
 from ..utils import DatabaseManager, db
-
-from ..interfaces import WorkcellInterface, WorkcellAssetsInterface
-from typing import Protocol as TypeProtocol, runtime_checkable
 
 
 @runtime_checkable
