@@ -280,24 +280,11 @@ async def protocol_function(
       if not current_meta:
         raise RuntimeError(f"Protocol metadata not found for {protocol_unique_key}")
 
-      praxis_run_context: Optional[PraxisRunContext] = kwargs.pop(
+      praxis_run_context: PraxisRunContext = kwargs.pop(
         "__praxis_run_context__", None
       )
       this_function_def_db_id = current_meta.get("db_id")
       _found_state_param_details_wrapper = current_meta.get("found_state_param_details")
-
-      if not isinstance(praxis_run_context, PraxisRunContext):
-        run_guid = uuid.uuid7()
-        print(
-          f"WARNING: Protocol '{current_meta['name']} v{current_meta['version']}' "
-          f"called outside orchestrated context."
-        )
-        praxis_run_context = PraxisRunContext(
-          run_guid=run_guid,
-          canonical_state=PraxisState(run_guid=run_guid),
-          current_db_session=None,
-          current_call_log_db_id=None,
-        )
 
       processed_args = list(args)
       processed_kwargs = dict(kwargs)
