@@ -28,6 +28,7 @@ from typing import (
   cast,
 )
 
+import uuid_utils as uuid
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines import Machine
 from pylabrobot.resources import Coordinate, Deck, Resource
@@ -84,11 +85,11 @@ class WorkcellRuntime:
 
     """
     self.db_session = db_session
-    self._active_machines: Dict[int, Machine] = {}
-    self._active_resources: Dict[int, Resource] = {}
-    self._active_decks: Dict[int, Deck] = {}
+    self._active_machines: Dict[uuid.UUID, Machine] = {}
+    self._active_resources: Dict[uuid.UUID, Resource] = {}
+    self._active_decks: Dict[uuid.UUID, Deck] = {}
     self._last_initialized_deck_object: Optional[Deck] = None
-    self._last_initialized_deck_orm_id: Optional[int] = None
+    self._last_initialized_deck_orm_id: Optional[uuid.UUID] = None
     logger.info("WorkcellRuntime initialized with db_session: %s", db_session)
 
   @log_workcell_runtime_errors(
@@ -98,8 +99,8 @@ class WorkcellRuntime:
   async def _get_calculated_location(
     self,
     target_deck: Deck,
-    deck_type_definition_id: int,
-    position_id: Union[str, int],
+    deck_type_definition_id: uuid.UUID,
+    position_id: Union[str, int, uuid.UUID],
     positioning_config: Optional[PositioningConfig],
   ) -> Coordinate:
     """Calculate the PyLabRobot Coordinate for a given position_id.
@@ -113,8 +114,8 @@ class WorkcellRuntime:
 
     Args:
         target_deck (Deck): The live PyLabRobot Deck object.
-        deck_type_definition_id (int): The ID of the associated DeckTypeDefinition.
-        position_id (Union[str, int]): The human-interpretable identifier for the
+        deck_type_definition_id (uuid.UUID): The ID of the associated DeckTypeDefinition.
+        position_id (Union[str, int, uuid.UUID]): The human-interpretable identifier for the
         position.
         positioning_config (Optional[PositioningConfig]): The general positioning
             configuration for the deck type.
@@ -132,7 +133,7 @@ class WorkcellRuntime:
         f"No general positioning config for deck type ID {deck_type_definition_id},"
         " attempting to find position in DeckPositionDefinitionOrm."
       )
-      if isinstance(position_id, (str, int)):
+      if isinstance(position_id, (str, int, uuid.UUID)):
         if self.db_session is not None:
           all_deck_position_definitions = (
             await svc.get_position_definitions_for_deck_type(
@@ -602,7 +603,7 @@ class WorkcellRuntime:
         )
     return resource_instance
 
-  def get_active_machine(self, machine_orm_id: int) -> Machine:
+  def get_active_machine(self, machine_orm_id: uuid.UUID) -> Machine:
     """Retrieve an active PyLabRobot machine instance by its ORM ID.
 
     Args:
@@ -627,7 +628,7 @@ class WorkcellRuntime:
       )
     return machine
 
-  def get_active_machine_id(self, machine: Machine) -> int:
+  def get_active_machine_id(self, machine: Machine) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot machine instance.
 
     Args:
@@ -647,14 +648,14 @@ class WorkcellRuntime:
       f"Machine instance {machine} not found in active resources."
     )
 
-  def get_active_deck_id(self, deck: Deck) -> int:
+  def get_active_deck_id(self, deck: Deck) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot Deck instance.
 
     Args:
       deck (Deck): The PyLabRobot Deck instance.
 
     Returns:
-      int: The ORM ID of the deck.
+      uuid.UUID: The ORM ID of the deck.
 
     Raises:
       WorkcellRuntimeError: If the deck is not found in the active decks.
@@ -665,7 +666,7 @@ class WorkcellRuntime:
         return orm_id
     raise WorkcellRuntimeError(f"Deck instance {deck} not found in active resources.")
 
-  def get_active_resource(self, resource_instance_orm_id: int) -> Resource:
+  def get_active_resource(self, resource_instance_orm_id: uuid.UUID) -> Resource:
     """Retrieve an active PyLabRobot resource object by its ORM ID.
 
     Args:
@@ -688,7 +689,7 @@ class WorkcellRuntime:
       )
     return resource
 
-  def get_active_resource_id(self, resource: Resource) -> int:
+  def get_active_resource_id(self, resource: Resource) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot resource object.
 
     Args:
@@ -703,7 +704,7 @@ class WorkcellRuntime:
         return orm_id
     raise WorkcellRuntimeError(f"Resource instance {resource}")
 
-  def get_active_deck(self, deck_orm_id: int) -> Deck:
+  def get_active_deck(self, deck_orm_id: uuid.UUID) -> Deck:
     """Retrieve an active PyLabRobot Deck instance by its ORM ID.
 
     Args:
@@ -729,7 +730,7 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error shutting down machine",
     suffix=" - Ensure the machine ORM ID is valid and the machine is active.",
   )
-  async def shutdown_machine(self, machine_orm_id: int):
+  async def shutdown_machine(self, machine_orm_id: uuid.UUID):
     """Shut down and removes a live PyLabRobot machine instance.
 
     Args:
@@ -800,20 +801,20 @@ class WorkcellRuntime:
   )
   async def assign_resource_to_deck(
     self,
-    resource_instance_orm_id: int,
-    target: int,
+    resource_instance_orm_id: uuid.UUID,
+    target: uuid.UUID,
     location: Optional[Union[Coordinate, tuple[float, float, float]]] = None,
-    position_id: Optional[Union[str, int]] = None,
+    position_id: Optional[Union[str, int, uuid.UUID]] = None,
   ):
     """Assign a live Resource to a specific location or position on a deck.
 
     Args:
       resource (Resource): The PyLabRobot Resource instance to assign.
-      resource_instance_orm_id (int): The ID of the resource instance ORM object.
+      resource_instance_orm_id (uuid.UUID): The ID of the resource instance ORM object.
       location (Optional[Union[Coordinate, tuple[float, float, float]]]): The
         explicit location coordinates on the deck.
-      position_id (Optional[Union[str, int]]): The position ID on the deck.
-      target (int): The target deck or machine ORM ID.
+      position_id (Optional[Union[str, int, uuid.UUID]]): The position ID on the deck.
+      target (uuid.UUID): The target deck or machine ORM ID.
 
     Raises:
       WorkcellRuntimeError: If neither location nor position_id is provided, or if
@@ -841,10 +842,10 @@ class WorkcellRuntime:
 
     match inferred_target_type:
       case "deck_orm_id":
-        deck_orm_id = cast(int, target)
+        deck_orm_id = cast(uuid.UUID, target)
         target_deck = self.get_active_deck(deck_orm_id)
       case "machine_orm_id":
-        machine_orm_id = cast(int, target)
+        machine_orm_id = cast(uuid.UUID, target)
         target_machine = self.get_active_machine(machine_orm_id)
         target_deck = getattr(target_machine, "deck", None)
         if not isinstance(target_deck, Deck):
@@ -925,9 +926,9 @@ class WorkcellRuntime:
   )
   async def clear_deck_position(
     self,
-    deck_machine_orm_id: int,
+    deck_machine_orm_id: uuid.UUID,
     position_name: str,
-    resource_instance_orm_id: Optional[int] = None,
+    resource_instance_orm_id: Optional[uuid.UUID] = None,
   ):
     """Clear a resource from a specific position on a live deck.
 
@@ -951,7 +952,7 @@ class WorkcellRuntime:
         " should not be in the active decks."
       )
     logger.info(
-      "WorkcellRuntime: Clearing position '%s' on deck ID %d.",
+      "WorkcellRuntime: Clearing position '%s' on deck ID %s.",
       position_name,
       deck_machine_orm_id,
     )
@@ -961,7 +962,7 @@ class WorkcellRuntime:
       deck.unassign_child_resource(resource_in_position)
     else:
       logger.warning(
-        "No specific resource found in position '%s' on deck ID %d to unassign."
+        "No specific resource found in position '%s' on deck ID %s to unassign."
         " Assuming position is already clear or unassignment by name is sufficient.",
         position_name,
         deck_machine_orm_id,
@@ -982,7 +983,7 @@ class WorkcellRuntime:
   )
   async def execute_machine_action(
     self,
-    machine_orm_id: int,
+    machine_orm_id: uuid.UUID,
     action_name: str,
     params: Optional[Dict[str, Any]] = None,
   ) -> Any:
@@ -1057,7 +1058,9 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error getting deck state representation",
     suffix=" - Ensure the deck ORM ID is valid and the deck is active.",
   )
-  async def get_deck_state_representation(self, deck_orm_id: int) -> Dict[str, Any]:
+  async def get_deck_state_representation(
+    self, deck_orm_id: uuid.UUID
+  ) -> Dict[str, Any]:
     """Construct a dictionary representing the state of a specific deck.
 
     This representation is suitable for serialization into `DeckStateResponse`.
@@ -1175,7 +1178,7 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error clearing resource",
     suffix=" - Ensure the resource is valid and exists in active resources.",
   )
-  async def clear_resource_instance(self, resource_orm_id: int):
+  async def clear_resource_instance(self, resource_orm_id: uuid.UUID):
     """Clear a resource from the workcell runtime.
 
     Args:

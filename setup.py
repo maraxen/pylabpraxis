@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages # type: ignore
+from setuptools import setup, find_packages  # type: ignore
 
 from .__version__ import __version__
 
@@ -6,49 +6,42 @@ with open("README.md", "r", encoding="utf-8") as f:
   long_description = f.read()
 
 
-extras_fw = [
-  "pyusb"
-]
+extras_fw = ["pyusb"]
 
-extras_http = [
-  "requests",
-  "types-requests"
-]
+extras_http = ["requests", "types-requests"]
 
 extras_plate_reading = [
   "pylibftdi",
 ]
 
-extras_websockets = [
-  "websockets"
-]
+extras_websockets = ["websockets"]
 
 extras_visualizer = extras_websockets
 
-extras_opentrons = [
-  "opentrons-http-api-client",
-  "opentrons-shared-data"
-]
+extras_opentrons = ["opentrons-http-api-client", "opentrons-shared-data"]
 
 extras_server = [
   "flask[async]",
 ]
 
 
-extras_inheco = [
-  "hid"
-]
+extras_inheco = ["hid"]
 
-extras_agrow = [
-  "pymodbus"
-]
+extras_agrow = ["pymodbus"]
 
-extras_email = [
-  "boto3"
-]
+extras_email = ["boto3"]
 
-extras_dev = extras_fw + extras_http + extras_plate_reading + extras_websockets + \
-    extras_visualizer + extras_opentrons + extras_server + extras_inheco + extras_agrow + [
+extras_dev = (
+  extras_fw
+  + extras_http
+  + extras_plate_reading
+  + extras_websockets
+  + extras_visualizer
+  + extras_opentrons
+  + extras_server
+  + extras_inheco
+  + extras_agrow
+  + [
     "sphinx_book_theme",
     "myst_nb",
     "sphinx_copybutton",
@@ -56,8 +49,9 @@ extras_dev = extras_fw + extras_http + extras_plate_reading + extras_websockets 
     "pytest-timeout",
     "pylint",
     "mypy",
-    "responses"
+    "responses",
   ]
+)
 
 # Some extras are not available on all platforms. `dev` should be available everywhere
 extras_all = extras_dev
@@ -76,8 +70,8 @@ setup(
     "sqlalchemy[asyncio]",
     "asyncpg>0.27.0",
     "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0"
-    ],
+    "uvicorn[standard]>=0.34.0" "uuid-utils>=0.11.0",
+  ],
   url="https://github.com/maraxen/pylabpraxis.git",
-  author="Marielle Russo"
+  author="Marielle Russo",
 )

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
   from .resource_orm import ResourceInstanceOrm
 
+import uuid_utils as uuid
 from sqlalchemy import (
   JSON,
   UUID,
@@ -100,7 +101,7 @@ class MachineOrm(Base):
 
   __tablename__ = "machines"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   user_friendly_name: Mapped[str] = mapped_column(
     String, nullable=False, unique=True, index=True
   )
@@ -125,9 +126,8 @@ class MachineOrm(Base):
     comment="Runtime configuration and defaults from introspection",
   )
 
-  deck_type_definition_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID,
-    ForeignKey("deck_type_definitions.id"), nullable=True, index=True
+  deck_type_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("deck_type_definitions.id"), nullable=True, index=True
   )
 
   current_status: Mapped[MachineStatusEnum] = mapped_column(
@@ -138,14 +138,14 @@ class MachineOrm(Base):
   status_details: Mapped[Optional[str]] = mapped_column(
     Text, nullable=True, comment="More details on error or current operation"
   )
-  current_protocol_run_guid: Mapped[Optional[UUID]] = mapped_column(
+  current_protocol_run_guid: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
     ForeignKey("protocol_runs.run_guid", ondelete="SET NULL"),
     nullable=True,
     index=True,
   )  # Link to ProtocolRunOrm.run_guid
 
-  workcell_id: Mapped[Optional[UUID]] = mapped_column(
+  workcell_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
     ForeignKey("workcells.id"),
     nullable=True,
@@ -185,7 +185,7 @@ class MachineOrm(Base):
     comment="Indicates if this machine is a resource (e.g., a lab instrument)",
   )
 
-  resource_counterpart_id: Mapped[Optional[UUID]] = mapped_column(
+  resource_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
     ForeignKey("resource_instances.id", ondelete="SET NULL"),
     nullable=True,

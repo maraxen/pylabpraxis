@@ -27,6 +27,7 @@ from typing import (
   get_origin,
 )
 
+import uuid_utils as uuid
 from pylabrobot.resources import Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # MODIFIED
 
@@ -315,9 +316,9 @@ class ProtocolDiscoveryService:
   async def discover_and_upsert_protocols(
     self,
     search_paths: Union[str, List[str]],
-    source_repository_id: Optional[int] = None,
+    source_repository_id: Optional[uuid.UUID] = None,
     commit_hash: Optional[str] = None,
-    file_system_source_id: Optional[int] = None,
+    file_system_source_id: Optional[uuid.UUID] = None,
   ) -> List[Any]:
     """Discover protocol functions in the given paths and upsert them to the DB.
 
@@ -332,9 +333,11 @@ class ProtocolDiscoveryService:
 
     Args:
       search_paths: A single path or a list of paths to search for protocol files.
-      source_repository_id: Optional; ID of the source repository to link definitions.
-      commit_hash: Optional; commit hash to link definitions to a specific commit.
-      file_system_source_id: Optional; ID of the file system source to link definitions.
+      source_repository_id: Optional[uuid.UUID]; ID of the source repository to link
+      definitions.
+      commit_hash: Optional[str]; commit hash to link definitions to a specific commit.
+      file_system_source_id: Optional[uuid.UUID]; ID of the file system source to link
+      definitions.
 
     Returns:
       A list of upserted protocol definitions as ORM objects, or an empty list if none
@@ -373,16 +376,15 @@ class ProtocolDiscoveryService:
       for protocol_pydantic_model, func_ref in extracted_definitions:
         protocol_name_for_error = protocol_pydantic_model.name
         protocol_version_for_error = protocol_pydantic_model.version
-        try:
+        try:  # TODO: have these pull from the protocol database  ORM
           if source_repository_id and commit_hash:
             protocol_pydantic_model.source_repository_name = str(source_repository_id)
             protocol_pydantic_model.commit_hash = commit_hash
           elif file_system_source_id:
             protocol_pydantic_model.file_system_source_name = str(file_system_source_id)
 
-          # MODIFIED: await the call to async version of upsert
           def_orm = await upsert_function_protocol_definition(
-            db=session,  # MODIFIED: pass async session
+            db=session,
             protocol_pydantic=protocol_pydantic_model,
             source_repository_id=source_repository_id,
             commit_hash=commit_hash,

@@ -170,6 +170,7 @@ async def update_workcell(
   Raises:
     ValueError: If a workcell with the new name already exists.
     Exception: For any other unexpected errors during the process.
+
   """
   logger.info("Attempting to update workcell with ID: %d.", workcell_id)
   workcell_orm = await get_workcell_by_id(db, workcell_id)
@@ -240,31 +241,32 @@ async def delete_workcell(db: AsyncSession, workcell_id: int) -> bool:
 
   Raises:
     Exception: For any unexpected errors during deletion.
+
   """
-  logger.info("Attempting to delete workcell with ID: %d.", workcell_id)
+  logger.info("Attempting to delete workcell with ID: %s.", workcell_id)
   workcell_orm = await get_workcell_by_id(db, workcell_id)
   if not workcell_orm:
-    logger.warning("Workcell with ID %d not found for deletion.", workcell_id)
+    logger.warning("Workcell with ID %s not found for deletion.", workcell_id)
     return False
 
   try:
     await db.delete(workcell_orm)
     await db.commit()
     logger.info(
-      "Successfully deleted workcell ID %d: '%s'.", workcell_id, workcell_orm.name
+      "Successfully deleted workcell ID %s: '%s'.", workcell_id, workcell_orm.name
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
       f"Integrity error deleting workcell ID {workcell_id}. This might be due to"
-      " foreign key constraints, e.g., associated machines. Details: {e}"
+      f" foreign key constraints, e.g., associated machines. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     return False
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting workcell ID %d. Rolling back.", workcell_id
+      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_id
     )
     raise e

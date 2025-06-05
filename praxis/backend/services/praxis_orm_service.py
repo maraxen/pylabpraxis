@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional
 
 import asyncpg  # For Keycloak database
+import uuid_utils as uuid
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import (
   AsyncSession,
@@ -495,7 +496,7 @@ class PraxisDBService:
     lot_number: Optional[str] = None,
     expiry_date: Optional[Any] = None,
     current_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.UNKNOWN,
-  ) -> int:
+  ) -> uuid.UUID:
     """Add a new resource asset instance or update an existing one.
 
     If an asset with the given `user_assigned_name` already exists, its
@@ -568,7 +569,7 @@ class PraxisDBService:
         )
         logger.error(error_message)
         raise ValueError(error_message)
-      logger.info("%s Operation completed. ID: %d.", log_prefix, asset_orm.id)
+      logger.info("%s Operation completed. ID: %s.", log_prefix, asset_orm.id)
       return asset_orm.id
 
   async def get_asset_instance(

@@ -11,6 +11,7 @@ import datetime
 from functools import partial
 from typing import Any, Dict, List, Optional, Sequence
 
+import uuid_utils as uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,12 +47,12 @@ async def add_or_update_machine(
   backend_config_json: Optional[Dict[str, Any]] = None,
   current_status: MachineStatusEnum = MachineStatusEnum.OFFLINE,
   status_details: Optional[str] = None,
-  workcell_id: Optional[int] = None,
+  workcell_id: Optional[uuid.UUID] = None,
   physical_location_description: Optional[str] = None,
   properties_json: Optional[Dict[str, Any]] = None,
-  machine_id: Optional[int] = None,
+  machine_id: Optional[uuid.UUID] = None,
   is_resource: bool = False,
-  resource_counterpart_id: Optional[int] = None,
+  resource_counterpart_id: Optional[uuid.UUID] = None,
   resource_def_name: Optional[str] = None,
   resource_properties_json: Optional[Dict[str, Any]] = None,
   resource_initial_status: Optional["ResourceInstanceStatusEnum"] = None,  # type: ignore # noqa: F821
@@ -182,7 +183,9 @@ async def add_or_update_machine(
   return machine_orm
 
 
-async def get_machine_by_id(db: AsyncSession, machine_id: int) -> Optional[MachineOrm]:
+async def get_machine_by_id(
+  db: AsyncSession, machine_id: uuid.UUID
+) -> Optional[MachineOrm]:
   """Retrieve a specific machine by its ID.
 
   Args:
@@ -331,20 +334,20 @@ async def list_machines(
 
 async def update_machine_status(
   db: AsyncSession,
-  machine_id: int,
+  machine_id: uuid.UUID,
   new_status: MachineStatusEnum,
   status_details: Optional[str] = None,
-  current_protocol_run_guid: Optional[str] = None,
+  current_protocol_run_guid: Optional[uuid.UUID] = None,
 ) -> Optional[MachineOrm]:
   """Update the status of a specific machine.
 
   Args:
       db (AsyncSession): The database session.
-      machine_id (int): The ID of the machine to update.
+      machine_id (uuid.UUID): The ID of the machine to update.
       new_status (MachineStatusEnum): The new status to set for the machine.
       status_details (Optional[str], optional): Optional details about the status.
           Defaults to None.
-      current_protocol_run_guid (Optional[str], optional): The GUID of the
+      current_protocol_run_guid (Optional[uuid.UUID], optional): The GUID of the
           protocol run if the machine is becoming `IN_USE`. If the machine's
           status is changing from `IN_USE` and this GUID matches, it will be
           cleared. Defaults to None.
@@ -358,7 +361,7 @@ async def update_machine_status(
 
   """
   logger.info(
-    "Attempting to update status for machine ID %d to '%s'.",
+    "Attempting to update status for machine ID %s to '%s'.",
     machine_id,
     new_status.value,
   )
@@ -420,7 +423,7 @@ async def update_machine_status(
   return machine_orm
 
 
-async def delete_machine(db: AsyncSession, machine_id: int) -> bool:
+async def delete_machine(db: AsyncSession, machine_id: uuid.UUID) -> bool:
   """Delete a specific machine by its ID.
 
   Args:

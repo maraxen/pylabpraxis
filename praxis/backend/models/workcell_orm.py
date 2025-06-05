@@ -7,6 +7,7 @@ including their names, descriptions, and relationships to associated machines.
 from datetime import datetime
 from typing import Optional
 
+import uuid_utils as uuid
 from sqlalchemy import UUID, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -50,7 +51,7 @@ class WorkcellOrm(Base):
 
   __tablename__ = "workcells"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
   physical_location: Mapped[Optional[str]] = mapped_column(

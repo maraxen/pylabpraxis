@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
   from .machine_orm import MachineOrm
 
+import uuid_utils as uuid
 from sqlalchemy import (
   JSON,
   UUID,
@@ -269,7 +270,7 @@ class ResourceInstanceOrm(Base):
 
   __tablename__ = "resource_instances"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   user_assigned_name: Mapped[str] = mapped_column(
     String,
     nullable=False,
@@ -309,7 +310,7 @@ class ResourceInstanceOrm(Base):
     String, nullable=True, comment="If on a deck, the position name (e.g., A1, SLOT_7)"
   )
 
-  location_machine_id: Mapped[Optional[UUID]] = mapped_column(
+  location_machine_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
     ForeignKey("machines.id"),
     nullable=True,
@@ -332,8 +333,8 @@ class ResourceInstanceOrm(Base):
     Boolean, default=False, comment="e.g., built-in waste chute"
   )
 
-  current_protocol_run_guid: Mapped[Optional[str]] = mapped_column(
-    String,
+  current_protocol_run_guid: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID,
     ForeignKey("protocol_runs.run_guid", ondelete="SET NULL"),
     nullable=True,
     index=True,
@@ -366,7 +367,7 @@ class ResourceInstanceOrm(Base):
     Boolean, default=False, comment="True if this instance is a machine (e.g., shaker)"
   )
 
-  machine_counterpart_id: Mapped[Optional[UUID]] = mapped_column(
+  machine_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
     ForeignKey("machines.id", ondelete="SET NULL"),
     nullable=True,

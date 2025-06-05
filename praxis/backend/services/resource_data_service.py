@@ -12,6 +12,7 @@ import datetime
 from functools import partial
 from typing import Any, Dict, List, Optional
 
+import uuid_utils as uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -335,7 +336,7 @@ async def add_resource_instance(
   physical_location_description: Optional[str] = None,
   is_permanent_fixture: bool = False,
   is_machine: bool = False,
-  machine_counterpart_id: Optional[int] = None,
+  machine_counterpart_id: Optional[uuid.UUID] = None,
   # Parameters for creating a new Machine if machine_counterpart_id is None
   machine_user_friendly_name: Optional[str] = None,
   machine_python_fqn: Optional[str] = None,
@@ -404,6 +405,7 @@ async def add_resource_instance(
     raise ValueError(error_message)
 
   instance_orm = ResourceInstanceOrm(
+    id=uuid.uuid7(),
     user_assigned_name=user_assigned_name,
     name=name,
     resource_definition=definition,
@@ -433,8 +435,7 @@ async def add_resource_instance(
       f"{log_prefix} Error linking MachineOrm counterpart: {e}", exc_info=True
     )
     raise ValueError(
-      f"Failed to link machine counterpart for resource instance '{user_assigned_name}'\
-        ."
+      f"Failed to link machine counterpart for resource instance '{user_assigned_name}'."
     ) from e
 
   try:
@@ -443,7 +444,7 @@ async def add_resource_instance(
     if instance_orm.machine_counterpart:
       await db.refresh(instance_orm.machine_counterpart)
     logger.info(
-      "%s Successfully added resource instance (ID: %d).",
+      "%s Successfully added resource instance (ID: %s).",
       log_prefix,
       instance_orm.id,
     )
@@ -461,20 +462,20 @@ async def add_resource_instance(
 
 
 async def get_resource_instance_by_id(
-  db: AsyncSession, instance_id: int
+  db: AsyncSession, instance_id: uuid.UUID
 ) -> Optional[ResourceInstanceOrm]:
   """Retrieve a resource instance by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      instance_id (int): The ID of the resource instance to retrieve.
+      instance_id (uuid.UUID): The ID of the resource instance to retrieve.
 
   Returns:
       Optional[ResourceInstanceOrm]: The resource instance object if found,
       otherwise None.
 
   """
-  logger.info("Retrieving resource instance with ID: %d.", instance_id)
+  logger.info("Retrieving resource instance with ID: %s.", instance_id)
   stmt = (
     select(ResourceInstanceOrm)
     .options(
@@ -488,7 +489,7 @@ async def get_resource_instance_by_id(
   instance = result.scalar_one_or_none()
   if instance:
     logger.info(
-      "Found resource instance ID %d: '%s'.",
+      "Found resource instance ID %s: '%s'.",
       instance_id,
       instance.user_assigned_name,
     )
@@ -538,7 +539,7 @@ async def list_resource_instances(
   db: AsyncSession,
   name: Optional[str] = None,
   status: Optional[ResourceInstanceStatusEnum] = None,
-  location_machine_id: Optional[int] = None,
+  location_machine_id: Optional[uuid.UUID] = None,
   on_deck_position: Optional[str] = None,
   property_filters: Optional[Dict[str, Any]] = None,  # Added parameter
   current_protocol_run_guid_filter: Optional[str] = None,  # Added parameter
@@ -553,7 +554,7 @@ async def list_resource_instances(
           by their PyLabRobot definition name. Defaults to None.
       status (Optional[ResourceInstanceStatusEnum], optional): Filter instances
           by their current status. Defaults to None.
-      location_machine_id (Optional[int], optional): Filter instances by the
+      location_machine_id (Optional[uuid.UUID], optional): Filter instances by the
           ID of the machine they are currently located on. Defaults to None.
       on_deck_position (Optional[str], optional): Filter instances by the name of
           the deck position they are currently in. Defaults to None.
@@ -629,23 +630,23 @@ async def list_resource_instances(
 
 async def update_resource_instance_location_and_status(
   db: AsyncSession,
-  resource_instance_id: int,
+  resource_instance_id: uuid.UUID,
   new_status: Optional[ResourceInstanceStatusEnum] = None,
-  location_machine_id: Optional[int] = None,
+  location_machine_id: Optional[uuid.UUID] = None,
   current_deck_position_name: Optional[str] = None,
   physical_location_description: Optional[str] = None,
   properties_json_update: Optional[Dict[str, Any]] = None,
-  current_protocol_run_guid: Optional[str] = None,
+  current_protocol_run_guid: Optional[uuid.UUID] = None,
   status_details: Optional[str] = None,
 ) -> Optional[ResourceInstanceOrm]:
   """Update the location, status, and other details of a resource instance.
 
   Args:
       db (AsyncSession): The database session.
-      resource_instance_id (int): The ID of the resource instance to update.
+      resource_instance_id (uuid.UUID): The ID of the resource instance to update.
       new_status (Optional[ResourceInstanceStatusEnum], optional): The new
           status for the resource instance. Defaults to None.
-      location_machine_id (Optional[int], optional): The ID of the machine
+      location_machine_id (Optional[uuid.UUID], optional): The ID of the machine
           where the resource is now located. Defaults to None.
       current_deck_position_name (Optional[str], optional): The name of the deck
           position where the resource is now located. Defaults to None.
@@ -654,7 +655,7 @@ async def update_resource_instance_location_and_status(
       properties_json_update (Optional[Dict[str, Any]], optional): A dictionary
           of properties to merge into the existing `properties_json`.
           Defaults to None.
-      current_protocol_run_guid (Optional[str], optional): The GUID of the
+      current_protocol_run_guid (Optional[uuid.UUID], optional): The GUID of the
           protocol run currently using this resource. If the status is changing
           to `IN_USE`, this should be provided. If the status is changing
           from `IN_USE`, this will be cleared. Defaults to None.
@@ -702,6 +703,7 @@ async def update_resource_instance_location_and_status(
         current_deck_position_name,
         physical_location_description,
       )
+
       instance_orm.location_machine_id = location_machine_id
       instance_orm.current_deck_position_name = current_deck_position_name
       instance_orm.physical_location_description = physical_location_description

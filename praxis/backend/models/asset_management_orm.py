@@ -11,6 +11,7 @@ including:
 from datetime import datetime
 from typing import Optional
 
+import uuid_utils as uuid
 from sqlalchemy import (
   JSON,
   UUID,
@@ -33,11 +34,11 @@ class AssetInstanceOrm(Base):
 
   __tablename__ = "asset_instances"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   asset_type: Mapped[str] = mapped_column(
     String, nullable=False, index=True
   )  # 'machine', 'resource', etc.
-  asset_id: Mapped[UUID] = mapped_column(
+  asset_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, index=True
   )  # FK to concrete asset table (interpreted based on asset_type)
 

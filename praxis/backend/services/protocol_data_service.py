@@ -14,6 +14,7 @@ import json
 import logging
 from typing import Dict, List, Optional, Union
 
+import uuid_utils as uuid
 from sqlalchemy import desc, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +45,7 @@ async def add_or_update_protocol_source_repository(
   local_checkout_path: Optional[str] = None,
   status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE,
   auto_sync_enabled: bool = True,
-  source_id: Optional[int] = None,
+  source_id: Optional[uuid.UUID] = None,
 ) -> ProtocolSourceRepositoryOrm:
   """Add a new protocol source repository or update an existing one.
 
@@ -154,7 +155,7 @@ async def add_or_update_file_system_protocol_source(
   base_path: str,
   is_recursive: bool = True,
   status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE,
-  source_id: Optional[int] = None,
+  source_id: Optional[uuid.UUID] = None,
 ) -> FileSystemProtocolSourceOrm:
   """Add a new file system protocol source or update an existing one.
 
@@ -255,9 +256,9 @@ async def add_or_update_file_system_protocol_source(
 async def upsert_function_protocol_definition(
   db: AsyncSession,
   protocol_pydantic: FunctionProtocolDefinitionModel,
-  source_repository_id: Optional[int] = None,
+  source_repository_id: Optional[uuid.UUID] = None,
   commit_hash: Optional[str] = None,
-  file_system_source_id: Optional[int] = None,
+  file_system_source_id: Optional[uuid.UUID] = None,
 ) -> FunctionProtocolDefinitionOrm:
   """Add or update a function protocol definition.
 
@@ -293,7 +294,7 @@ async def upsert_function_protocol_definition(
   )
   logger.info("%s Attempting to upsert.", log_prefix)
 
-  query_filter_dict: dict[str, Union[str, int]] = {
+  query_filter_dict: dict[str, Union[str, uuid.UUID]] = {
     "name": protocol_pydantic.name,
     "version": protocol_pydantic.version,
   }
@@ -301,7 +302,7 @@ async def upsert_function_protocol_definition(
     query_filter_dict["source_repository_id"] = source_repository_id
     query_filter_dict["commit_hash"] = commit_hash
     logger.debug(
-      "%s Linking to Git source (ID: %d, Commit: %s).",
+      "%s Linking to Git source (ID: %s, Commit: %s).",
       log_prefix,
       source_repository_id,
       commit_hash,
@@ -310,7 +311,7 @@ async def upsert_function_protocol_definition(
     query_filter_dict["file_system_source_id"] = file_system_source_id
     query_filter_dict["source_file_path"] = protocol_pydantic.source_file_path
     logger.debug(
-      "%s Linking to File System source (ID: %d, Path: %s).",
+      "%s Linking to File System source (ID: %s, Path: %s).",
       log_prefix,
       file_system_source_id,
       protocol_pydantic.source_file_path,

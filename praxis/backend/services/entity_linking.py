@@ -4,6 +4,7 @@ import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+import uuid_utils as uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -64,7 +65,7 @@ async def _create_or_link_resource_counterpart_for_machine(
   db: AsyncSession,
   machine_orm: "MachineOrm",
   is_resource: bool,
-  resource_counterpart_id: Optional[int],
+  resource_counterpart_id: Optional[uuid.UUID],
   resource_def_name: Optional[str] = None,  # Needed if creating a new resource
   resource_properties_json: Optional[
     Dict[str, Any]
@@ -244,7 +245,7 @@ async def _create_or_link_machine_counterpart_for_resource(
   db: AsyncSession,
   resource_instance_orm: "ResourceInstanceOrm",
   is_machine: bool,
-  machine_counterpart_id: Optional[int],
+  machine_counterpart_id: Optional[uuid.UUID] = None,
   machine_user_friendly_name: Optional[str] = None,
   machine_python_fqn: Optional[str] = None,
   machine_properties_json: Optional[Dict[str, Any]] = None,

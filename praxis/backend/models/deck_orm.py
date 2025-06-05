@@ -21,6 +21,7 @@ ORM models include:
 from datetime import datetime
 from typing import Any, Optional
 
+import uuid_utils as uuid
 from sqlalchemy import (
   JSON,
   UUID,
@@ -63,7 +64,7 @@ class DeckConfigurationOrm(Base):
 
   __tablename__ = "deck_configurations"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
 
   python_fqn: Mapped[str] = mapped_column(
     String,
@@ -74,7 +75,7 @@ class DeckConfigurationOrm(Base):
 
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
-  deck_id: Mapped[UUID] = mapped_column(
+  deck_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resources.id"), nullable=False
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -86,7 +87,7 @@ class DeckConfigurationOrm(Base):
     DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
   )
 
-  deck_type_definition_id: Mapped[Optional[UUID]] = mapped_column(
+  deck_type_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID, ForeignKey("deck_type_definitions.id"), nullable=True, index=True
   )
 
@@ -138,8 +139,8 @@ class DeckConfigurationPositionItemOrm(Base):
 
   __tablename__ = "deck_configuration_position_items"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
-  deck_configuration_id: Mapped[UUID] = mapped_column(
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  deck_configuration_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("deck_configurations.id"), nullable=False
   )
   position_id: Mapped[str] = mapped_column(
@@ -147,19 +148,19 @@ class DeckConfigurationPositionItemOrm(Base):
   )
 
   # This links to a specific physical piece of resource
-  resource_instance_id: Mapped[UUID] = mapped_column(
+  resource_instance_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resource_instances.id"), nullable=False
   )
 
   # Optional: for validation, store the expected type of resource for this
   # position in this layout
-  expected_resource_definition_name: Mapped[Optional[UUID]] = mapped_column(
-    UUID,
+  expected_resource_definition_name: Mapped[Optional[str]] = mapped_column(
+    String,
     ForeignKey("resource_definition_catalog.name"),
     nullable=True,
   )
 
-  deck_position_definition_id: Mapped[Optional[UUID]] = mapped_column(
+  deck_position_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID, ForeignKey("deck_position_definitions.id"), nullable=True, index=True
   )
 
@@ -220,11 +221,11 @@ class DeckPositionDefinitionOrm(Base):
 
   __tablename__ = "deck_position_definitions"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
-  deck_type_definition_id: Mapped[UUID] = mapped_column(
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
+  deck_type_definition_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("deck_type_definitions.id"), nullable=False
   )
-  position_id: Mapped[UUID] = mapped_column(UUID, nullable=False)
+  position_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
   nominal_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
   nominal_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
   nominal_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -295,7 +296,7 @@ class DeckTypeDefinitionOrm(Base):
 
   __tablename__ = "deck_type_definitions"
 
-  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
   pylabrobot_deck_fqn: Mapped[str] = mapped_column(
     String, unique=True, nullable=False, index=True
   )
