@@ -23,6 +23,7 @@ from typing import Any, Optional
 
 from sqlalchemy import (
   JSON,
+  UUID,
   DateTime,
   Float,
   ForeignKey,
@@ -47,7 +48,7 @@ class DeckConfigurationOrm(Base):
   Attributes:
       id (int): Primary key, unique identifier for the deck configuration.
       name (str): A unique, human-readable name for the deck layout.
-      deck_id (int): Foreign key to the `MachineOrm` representing
+      deck_id (UUID): Foreign key to the `MachineOrm` representing
           the physical deck associated with this layout.
       description (Optional[str]): An optional description of the deck layout.
       created_at (Optional[datetime]): Timestamp when the record was created.
@@ -75,9 +76,7 @@ class DeckConfigurationOrm(Base):
 
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
-  deck_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("resources.id"), nullable=False
-  )
+  deck_id: Mapped[int] = mapped_column(UUID, ForeignKey("resources.id"), nullable=False)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
   created_at: Mapped[Optional[datetime]] = mapped_column(
@@ -110,7 +109,7 @@ class DeckConfigurationPositionItemOrm(Base):
   This ORM model links a `ResourceInstanceOrm` to a particular `position_id`
   (e.g., "A1", "SLOT_7") within a `DeckConfigurationOrm`. It can also
   optionally store the `expected_resource_definition_name` for validation
-  purpositions.
+  purposes.
 
   Attributes:
       id (int): Primary key, unique identifier for the position item.

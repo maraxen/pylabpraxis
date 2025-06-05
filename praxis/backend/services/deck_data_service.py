@@ -573,6 +573,216 @@ async def delete_deck(db: AsyncSession, deck_id: int) -> bool:
     )
     raise e
 
+async def create_deck_position_item(
+  db: AsyncSession,
+  deck_id: int,
+  position_name: str,
+  resource_instance_id: Optional[int] = None,
+  expected_resource_definition_name: Optional[str] = None,
+) -> Optional[DeckConfigurationPositionItemOrm]:
+  """Add a new position item to a deck configuration.
+
+  Args:
+    db (AsyncSession): The database session.
+    deck_id (int): The ID of the deck configuration to which
+      to add the position item.
+    position_name (str): The name of the position for this item.
+    resource_instance_id (Optional[int], optional): The ID of the resource instance
+      associated with this position item. Defaults to None.
+    expected_resource_definition_name (Optional[str], optional): The name of the
+      expected resource definition for this position item. Defaults to None.
+
+  Returns:
+    DeckConfigurationPositionItemOrm: The newly created position item object.
+
+  Raises:
+    ValueError: If the `deck_id` does not exist, or if a specified
+      resource instance ID or resource definition name does not exist.
+    Exception: For any other unexpected errors during the process.
+
+  """
+  logger.info(
+    "Attempting to add position item '%s' to deck configuration ID %d.",
+    position_name,
+    deck_id,
+  )
+
+  # Check if the parent DeckConfigurationOrm exists
+  deck_config_result = await db.execute(
+    select(DeckConfigurationOrm).filter(
+      DeckConfigurationOrm.id == deck_id
+    )
+  )
+  deck_config_orm = deck_config_result.scalar_one_or_none()
+
+  if not deck_config_orm:
+    error_message = (
+      f"DeckConfigurationOrm with id {deck_id} not found. "
+      "Cannot add position item."
+    )
+    logger.error(error_message)
+    raise ValueError(error_message)
+
+  # Validate resource instance if provided
+  if resource_instance_id is not None:
+    resource_instance_result = await db.execute(
+      select(ResourceInstanceOrm).filter(
+        ResourceInstanceOrm.id == resource_instance_id
+      )
+    )
+    if not resource_instance_result.scalar_one_or_none():
+      error_message = (
+        f"ResourceInstanceOrm with id {resource_instance_id} not found. "
+        "Cannot add position item."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+
+  # Validate expected resource definition if provided
+  if expected_resource_definition_name is not None:
+    if not await get_resource_definition(db, expected_resource_definition_name):
+      error_message = (
+        f"ResourceDefinitionCatalogOrm with name '{expected_resource_definition_name}' "
+        "not found. Cannot add position item."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+  # Create the new position item
+  position_item = DeckConfigurationPositionItemOrm(
+    deck_configuration_id=deck_id,
+    position_name=position_name,
+    resource_instance_id=resource_instance_id,
+    expected_resource_definition_name=expected_resource_definition_name,
+  )
+  db.add(position_item)
+  await db.flush()  # Ensure the item is added before commit
+
+  try:
+    await db.commit()
+    await db.refresh(position_item)  # Refresh to get the latest state
+    logger.info(
+      "Successfully added position item '%s' to deck configuration ID %d.",
+      position_name,
+      deck_id,
+    )
+    return position_item
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"Integrity error adding position item '{position_name}' to deck configuration ID"
+      f" {deck_id}. Details: {e}"
+    )
+    logger.error(error_message)
+    return None
+
+async def update_deck_position_item(
+  db: AsyncSession,
+  position_item_id: int,
+  position_id: Optional[int] = None,
+  resource_instance_id: Optional[int] = None,
+  expected_resource_definition_name: Optional[str] = None,
+) -> Optional[DeckConfigurationPositionItemOrm]:
+  """Update an existing position item in a deck configuration.
+
+  Args:
+    db (AsyncSession): The database session.
+    position_item_id (int): The ID of the position item to update.
+    position_id (Optional[int], optional): The new position ID for the position item.
+      Defaults to None.
+    resource_instance_id (Optional[int], optional): The new resource instance ID
+      associated with this position item. Defaults to None.
+    expected_resource_definition_name (Optional[str], optional): The new expected
+      resource definition name for this position item. Defaults to None.
+
+  Returns:
+    Optional[DeckConfigurationPositionItemOrm]: The updated position item object if
+    successful, otherwise None if the item was not found.
+
+  Raises:
+    ValueError: If the specified position item ID does not exist, or if a specified
+      resource instance ID or resource definition name does not exist.
+    Exception: For any other unexpected errors during the process.
+
+  """
+  logger.info(
+    "Attempting to update position item ID %d.", position_item_id
+  )
+  result = await db.execute(
+    select(DeckConfigurationPositionItemOrm).filter(
+      DeckConfigurationPositionItemOrm.id == position_item_id
+    )
+  )
+  position_item = result.scalar_one_or_none()
+
+  if not position_item:
+    logger.warning("Position item with ID %d not found for update.", position_item_id)
+    return None
+
+  original_position_id = position_item.position_id
+
+  if position_id is not None and position_item.position_id != position_id:
+    logger.debug(
+      "Updating position ID from '%s' to '%s'.",
+      original_position_id,
+      position_id,
+    )
+    position_item.position_id = position_id
+
+  if resource_instance_id is not None and (
+    not position_item.resource_instance_id
+    or position_item.resource_instance_id != resource_instance_id
+  ):
+    resource_instance_result = await db.execute(
+      select(ResourceInstanceOrm).filter(
+        ResourceInstanceOrm.id == resource_instance_id
+      )
+    )
+    if not resource_instance_result.scalar_one_or_none():
+      error_message = (
+        f"ResourceInstanceOrm with id {resource_instance_id} not found. "
+        "Cannot update position item."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    logger.debug(
+      "Updating resource instance ID from %s to %s.",
+      position_item.resource_instance_id,
+      resource_instance_id,
+    )
+    position_item.resource_instance_id = resource_instance_id
+  if expected_resource_definition_name is not None and (
+    not position_item.expected_resource_definition_name
+    or position_item.expected_resource_definition_name
+    != expected_resource_definition_name
+  ):
+    if not await get_resource_definition(db, expected_resource_definition_name):
+      error_message = (
+        f"ResourceDefinitionCatalogOrm with name '{expected_resource_definition_name}' "
+        "not found. Cannot update position item."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    logger.debug(
+      "Updating expected resource definition name from '%s' to '%s'.",
+      position_item.expected_resource_definition_name,
+      expected_resource_definition_name,
+    )
+    position_item.expected_resource_definition_name = expected_resource_definition_name
+  try:
+    await db.commit()
+    await db.refresh(position_item)  # Refresh to get the latest state
+    logger.info(
+      "Successfully updated position item ID %d.", position_item_id
+    )
+    return position_item
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"Integrity error updating position item ID {position_item_id}. "
+      f"Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    return None
 
 async def add_or_update_deck_type_definition(
   db: AsyncSession,
@@ -987,7 +1197,8 @@ async def add_deck_position_definitions(
       - 'location_z_mm' (Optional[float]): Nominal Z coordinate of the position.
       - 'allowed_resource_categories' (Optional[List[str]]): List of resource
         categories allowed at this position.
-      - 'pylabrobot_position_type_name' (Optional[str]): PyLabRobot specific position type.
+      - 'pylabrobot_position_type_name' (Optional[str]): PyLabRobot specific position
+      type.
       - 'allowed_resource_definition_names' (Optional[List[str]]): Specific
         resource definition names allowed.
       - 'accepts_tips' (Optional[bool]): If the position accepts tips.
@@ -1104,7 +1315,6 @@ async def add_deck_position_definitions(
     raise e
 
   return created_positions
-
 
 async def get_position_definitions_for_deck_type(
   db: AsyncSession, deck_type_definition_id: int

@@ -1,4 +1,5 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-locals, too-many-branches, too-many-statements, E501, line-too-long
+# noqa: F401
+# pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 """Manages the lifecycle and allocation of physical laboratory assets.
 
 praxis/core/asset_manager.py
@@ -18,7 +19,6 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pylabrobot.resources
-
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import (
   Carrier,
@@ -359,8 +359,8 @@ class AssetManager:
                 kwargs_for_instantiation[param_name] = {}
               else:
                 logger.info(
-                  "AM_SYNC: Cannot auto-default required parameter '%s' of type '%s' for %s. "
-                  "Instantiation might fail or be skipped.",
+                  "AM_SYNC: Cannot auto-default required parameter '%s' of type '%s' "
+                  "for %s. Instantiation might fail or be skipped.",
                   param_name,
                   param_info["type"],
                   fqn,
@@ -435,7 +435,8 @@ class AssetManager:
         if not pylabrobot_def_name:
           pylabrobot_def_name = fqn
           logger.warning(
-            "AM_SYNC: Using FQN '%s' as pylabrobot_def_name for %s due to missing model/type.",
+            "AM_SYNC: Using FQN '%s' as pylabrobot_def_name for %s due to missing "
+            "model/type.",
             fqn,
             class_name,
           )
@@ -463,8 +464,8 @@ class AssetManager:
         praxis_type_name = model_name
 
         logger.debug(
-          "AM_SYNC: Preparing to save/update %s (FQN: %s): Category=%s, Model=%s, Vol=%s, "
-          "X=%s, Y=%s, Z=%s, NumItems=%s, Ordering=%s...",
+          "AM_SYNC: Preparing to save/update %s (FQN: %s): Category=%s, Model=%s, "
+          "Vol=%s, X=%s, Y=%s, Z=%s, NumItems=%s, Ordering=%s...",
           pylabrobot_def_name,
           fqn,
           category,
@@ -583,8 +584,8 @@ class AssetManager:
       and deck_machine_orm.current_protocol_run_guid != protocol_run_guid
     ):
       raise AssetAcquisitionError(
-        f"Deck machine '{deck_orm.name}' (ID: {deck_machine_orm.id}) is already in use by "
-        f"another run '{deck_machine_orm.current_protocol_run_guid}'."
+        f"Deck machine '{deck_orm.name}' (ID: {deck_machine_orm.id}) is already in use "
+        f"by another run '{deck_machine_orm.current_protocol_run_guid}'."
       )
 
     live_plr_deck_object = await self.workcell_runtime.initialize_machine(
@@ -604,13 +605,15 @@ class AssetManager:
       status_details=f"Deck '{deck_orm.name}' in use by run {protocol_run_guid}",
     )
     logger.info(
-      "AM_DECK_CONFIG: Deck machine '%s' (ID: %s) backend initialized and marked IN_USE.",
+      "AM_DECK_CONFIG: Deck machine '%s' (ID: %s) backend initialized and marked "
+      "IN_USE.",
       deck_orm.name,
       deck_machine_orm.id,
     )
 
-    deck_positions_orm = await svc.get_position_definitions_for_deck_type(
-      self.db, deck_orm.id
+    deck_positions_orm: List[DeckPositionDefinitionOrm] = \
+        await svc.get_position_definitions_for_deck_type(
+        self.db, deck_orm.id
     )
     logger.info(
       "AM_DECK_CONFIG: Found %d positions for deck layout '%s' (Layout ID: %s).",
@@ -620,10 +623,8 @@ class AssetManager:
     )
 
     for position_orm in deck_positions_orm:
-      # Pylance reports "resource_instance_id" is unknown on DeckPositionDefinitionOrm.
-      # Assuming it should exist and is used for linking.
-      if position_orm.resource_instance_id:  # type: ignore
-        resource_instance_id = position_orm.resource_instance_id  # type: ignore
+      if position_orm.resource_instance_id:
+        resource_instance_id = position_orm.resource_instance_id
         logger.info(
           "AM_DECK_CONFIG: Processing position '%s' with pre-assigned resource ID: %s.",
           position_orm.position_id,
@@ -736,6 +737,7 @@ class AssetManager:
 
     Raises:
         AssetAcquisitionError: If no suitable machine can be acquired or initialized.
+
     """
     logger.info(
       "AM_ACQUIRE_DEVICE: Acquiring machine '%s' (PLR Class FQN: '%s') for run '%s'. "
@@ -746,33 +748,31 @@ class AssetManager:
       constraints,
     )
 
-    # TODO: Implement constraint matching if `constraints` are provided (e.g., serial_number)
+    # TODO: Implement constraint matching if `constraints` are provided
+    # (e.g., serial_number)
 
     selected_machine_orm: Optional[MachineOrm] = None
 
-    # 1. Check if a suitable machine is already in use by this run
     in_use_by_this_run_list = await svc.list_machines(
       self.db,
       pylabrobot_class_filter=python_fqn_constraint,
       status=MachineStatusEnum.IN_USE,
       current_protocol_run_guid_filter=protocol_run_guid,
-      # property_filters is not supported on svc.list_machines currently
     )
     if in_use_by_this_run_list:
       selected_machine_orm = in_use_by_this_run_list[0]
       logger.info(
-        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) is already IN_USE by this run '%s'. Re-acquiring.",
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) is already IN_USE by this run '%s'. "
+        "Re-acquiring.",
         selected_machine_orm.user_friendly_name,
         selected_machine_orm.id,
         protocol_run_guid,
       )
     else:
-      # 2. If not, find an available one
       available_machines_list = await svc.list_machines(
         self.db,
         status=MachineStatusEnum.AVAILABLE,
         pylabrobot_class_filter=python_fqn_constraint,
-        # property_filters is not supported on svc.list_machines currently
       )
       if available_machines_list:
         selected_machine_orm = available_machines_list[0]
@@ -783,11 +783,11 @@ class AssetManager:
         )
       else:
         raise AssetAcquisitionError(
-          f"No machine found matching PLR class FQN '{python_fqn_constraint}' with status AVAILABLE, "
-          "nor already in use by this run."
+          f"No machine found matching PLR class FQN '{python_fqn_constraint}' with "
+          "status AVAILABLE, nor already in use by this run."
         )
 
-    if not selected_machine_orm:  # Pylance might still warn here, but logic handles it
+    if not selected_machine_orm:
       raise AssetAcquisitionError(
         f"Device selection failed for '{requested_asset_name_in_protocol}'."
       )
@@ -804,15 +804,18 @@ class AssetManager:
 
     if not live_plr_machine:
       error_msg = (
-        f"Failed to initialize backend for machine '{selected_machine_orm.user_friendly_name}' "
-        f"(ID: {selected_machine_orm.id}). Check WorkcellRuntime logs and machine status in DB."
+        f"Failed to initialize backend for machine "
+        f"'{selected_machine_orm.user_friendly_name}' "
+        f"(ID: {selected_machine_orm.id}). Check WorkcellRuntime logs and machine "
+        f"status in DB."
       )
       logger.error(error_msg)
       await svc.update_machine_status(
         self.db,
         selected_machine_orm.id,
         MachineStatusEnum.ERROR,
-        status_details=f"Backend initialization failed for run {protocol_run_guid}: {error_msg[:200]}",
+        status_details=f"Backend initialization failed for run {protocol_run_guid}: "
+        f"{error_msg[:200]}",
       )
       raise AssetAcquisitionError(error_msg)
 
@@ -836,20 +839,23 @@ class AssetManager:
       )
       if not updated_machine_orm:
         critical_error_msg = (
-          f"CRITICAL: Device '{selected_machine_orm.user_friendly_name}' backend is live, "
-          f"but FAILED to update its DB status to IN_USE for run '{protocol_run_guid}'."
+          f"CRITICAL: Device '{selected_machine_orm.user_friendly_name}' backend is"
+          f" live, but FAILED to update its DB status to IN_USE for run "
+          f"'{protocol_run_guid}'."
         )
         logger.error(critical_error_msg)
         raise AssetAcquisitionError(critical_error_msg)
       logger.info(
-        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) successfully acquired and backend initialized for run '%s'.",
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) successfully acquired "
+        "and backend initialized for run '%s'.",
         updated_machine_orm.user_friendly_name,
         updated_machine_orm.id,
         protocol_run_guid,
       )
     else:
       logger.info(
-        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) was already correctly marked IN_USE by this run.",
+        "AM_ACQUIRE_DEVICE: Device '%s' (ID: %s) was already correctly marked "
+        "IN_USE by this run.",
         selected_machine_orm.user_friendly_name,
         selected_machine_orm.id,
       )
