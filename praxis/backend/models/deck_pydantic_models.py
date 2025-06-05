@@ -39,7 +39,7 @@ class PositioningConfig(BaseModel):
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
 
 
 class DeckPositionItemBase(BaseModel):
@@ -56,7 +56,7 @@ class DeckPositionItemBase(BaseModel):
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
 
 
 class DeckPositionItemCreate(DeckPositionItemBase):
@@ -95,7 +95,7 @@ class DeckBase(BaseModel):
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
 
 
 class DeckCreate(DeckBase):
@@ -160,7 +160,7 @@ class DeckPositionDefinitionBase(BaseModel):
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True
 
 
@@ -232,7 +232,7 @@ class DeckTypeDefinitionBase(BaseModel):
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True
 
 

@@ -15,7 +15,10 @@ These models define the database schema for:
 
 import enum
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+  from .machine_orm import MachineOrm
 
 from sqlalchemy import (
   JSON,
@@ -74,9 +77,6 @@ class ResourceCategoryEnum(enum.Enum):
 
   # Subcategories (can be used for more granular classification if needed)
   # Arm
-  ARTICULATED_ARM = "ArticulatedArm"
-  CARTESIAN_ARM = "CartesianArm"
-  SCARA = "SCARA"
 
   # Carrier
   MFX_CARRIER = "MFXCarrier"
@@ -103,6 +103,17 @@ class ResourceCategoryEnum(enum.Enum):
 
   # ResourceHolder
   PLATE_HOLDER = "PlateHolder"
+
+  # Machines
+  SHAKER = "Shaker"
+  HEATERSHAKER = "HeaterShaker"
+  PLATE_READER = "PlateReader"
+  TEMPERATURE_CONTROLLER = "TemperatureController"
+  CENTRIFUGE = "Centrifuge"
+  INCUBATOR = "Incubator"
+  TILTER = "Tilter"
+  THERMOCYCLER = "Thermocycler"  # not yet available in standard PLR
+  SCALE = "Scale"
 
   @classmethod
   def choices(cls) -> List[str]:
@@ -138,6 +149,22 @@ class ResourceCategoryEnum(enum.Enum):
       cls.TIP_RACK.value,
       cls.TUBE_RACK.value,
       cls.LID.value,
+    ]
+
+  @classmethod
+  def machines(cls) -> List[str]:
+    """Return a list of resources that are also machines."""
+    return [
+      cls.ARM.value,
+      cls.SHAKER.value,
+      cls.HEATERSHAKER.value,
+      cls.PLATE_READER.value,
+      cls.TEMPERATURE_CONTROLLER.value,
+      cls.CENTRIFUGE.value,
+      cls.INCUBATOR.value,
+      cls.TILTER.value,
+      cls.THERMOCYCLER.value,  # not yet pulled in PLR
+      cls.SCALE.value,
     ]
 
 
@@ -222,6 +249,8 @@ class ResourceDefinitionCatalogOrm(Base):
   resource_instances = relationship(
     "ResourceInstanceOrm", back_populates="resource_definition"
   )
+
+  is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
 
   def __repr__(self):
     """Return a string representation of the ResourceDefinitionCatalogOrm object."""
@@ -320,6 +349,7 @@ class ResourceInstanceOrm(Base):
   resource_definition = relationship(
     "ResourceDefinitionCatalogOrm", back_populates="resource_instances"
   )
+
   location_machine = relationship(
     "MachineOrm", back_populates="located_resource_instances"
   )
@@ -328,9 +358,33 @@ class ResourceInstanceOrm(Base):
     "DeckConfigurationPositionItemOrm", back_populates="resource_instance"
   )
 
+  is_consumable: Mapped[bool] = mapped_column(
+    Boolean, default=True, comment="True if this instance is a consumable item"
+  )
+
+  is_machine: Mapped[bool] = mapped_column(
+    Boolean, default=False, comment="True if this instance is a machine (e.g., shaker)"
+  )
+
+  machine_counterpart_id: Mapped[Optional[int]] = mapped_column(
+    ForeignKey("machines.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="If this resource instance is a machine, links to the MachineOrm entry",
+  )
+
+  machine_counterpart: Mapped[Optional["MachineOrm"]] = relationship(
+    "MachineOrm",
+    back_populates="resource_counterpart",
+    foreign_keys=[machine_counterpart_id],
+    uselist=False,
+    cascade="all, delete-orphan",
+    comment="If this resource instance is a machine, links to the MachineOrm entry",
+  )
+
   def __repr__(self):
     """Return a string representation of the ResourceInstanceOrm object."""
     return (
       f"<ResourceInstanceOrm(id={self.id}, name='{self.user_assigned_name}',"
-      f" type='{self.name}')>"
+      f" type='{self.name}', is_machine={self.is_machine})>"
     )

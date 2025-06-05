@@ -1,10 +1,5 @@
 """Custom exceptions and logging utility for Praxis backend."""
 
-import logging
-import traceback
-from functools import wraps
-from typing import Any, Callable, Type
-
 
 class PraxisError(Exception):
   """Base exception for all custom Praxis backend errors.

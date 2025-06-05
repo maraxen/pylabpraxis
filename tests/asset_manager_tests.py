@@ -1018,7 +1018,7 @@ class TestAssetManagerDeckLoading:
 
     def test_deck_machine_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
-        mock_ads_service.list_managed_machines.return_value = [] # No deck machine found
+        mock_ads_service.list_managed_machines.return_value = [] # No deck found
         with pytest.raises(AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK"):
             asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
         mock_ads_service.list_managed_machines.assert_called_once_with(
@@ -1035,7 +1035,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         mock_workcell_runtime.initialize_machine_backend.return_value = None # Deck init fails
 
-        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck machine 'TestDeckLayout'"):
+        with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck 'TestDeckLayout'"):
             asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
         mock_workcell_runtime.initialize_machine_backend.assert_called_once_with(mock_deck_machine_orm)
 

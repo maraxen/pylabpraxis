@@ -41,7 +41,7 @@ class DeckConfigurationOrm(Base):
   """Represent a named deck layout configuration.
 
   This ORM model defines a specific arrangement of resources on a deck,
-  associating it with a physical deck machine and containing a collection
+  associating it with a physical deck and containing a collection
   of `DeckConfigurationPositionItemOrm` entries.
 
   Attributes:
@@ -159,6 +159,7 @@ class DeckConfigurationPositionItemOrm(Base):
     ForeignKey("resource_definition_catalog.name"),
     nullable=True,
   )
+
   deck_position_definition_id: Mapped[Optional[int]] = mapped_column(
     ForeignKey("deck_position_definitions.id"), nullable=True, index=True
   )

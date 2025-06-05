@@ -40,6 +40,7 @@ class ResourceDefinitionBase(BaseModel):
   resource_type: Optional[str] = None
   description: Optional[str] = None
   is_consumable: bool = True
+  is_machine: bool = False
   nominal_volume_ul: Optional[float] = None
   material: Optional[str] = None
   manufacturer: Optional[str] = None
@@ -52,7 +53,7 @@ class ResourceDefinitionBase(BaseModel):
   class Config:
     """Pydantic configuration for ResourceDefinitionBase."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True
 
 
@@ -76,7 +77,6 @@ class ResourceDefinitionUpdate(BaseModel):
   python_fqn: Optional[str] = None
   resource_type: Optional[str] = None
   description: Optional[str] = None
-  is_consumable: Optional[bool] = None
   nominal_volume_ul: Optional[float] = None
   material: Optional[str] = None
   manufacturer: Optional[str] = None
@@ -206,11 +206,20 @@ class ResourceInstanceSharedFields(BaseModel):
   current_position_inposition: Optional[str] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
+  is_machine: bool = Field(
+    default=False,
+    description="True if this resource instance is also registered as a machine.",
+  )
+  machine_counterpart_id: Optional[int] = Field(
+    default=None,
+    description="ID of the associated MachineOrm if this resource instance is a \
+      machine.",
+  )
 
   class Config:
     """Pydantic configuration for ResourceInstanceSharedFields."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True
 
 
@@ -267,9 +276,18 @@ class ResourceInstanceUpdate(BaseModel):
   inventory_data: Optional[ResourceInventoryDataIn] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
+  is_machine: Optional[bool] = Field(
+    default=None,
+    description="True if this resource instance is also registered as a machine.",
+  )
+  machine_counterpart_id: Optional[int] = Field(
+    default=None,
+    description="ID of the associated MachineOrm if this resource instance is a \
+      machine.",
+  )
 
   class Config:
     """Pydantic configuration for ResourceInstanceUpdate."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True

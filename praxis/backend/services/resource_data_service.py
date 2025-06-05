@@ -9,7 +9,7 @@ This includes Resource Definitions, Resource Instances, and their management.
 """
 
 import datetime
-import logging
+from functools import partial
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, select, update
@@ -23,12 +23,29 @@ from praxis.backend.models import (
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
+from praxis.backend.services.entity_linking import (
+  _create_or_link_machine_counterpart_for_resource,
+)
+from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
-logger = logging.getLogger(__name__)
-
-# --- Resource Definition Catalog Services ---
+logger = get_logger(__name__)
 
 
+log_resource_data_service_errors = partial(
+  log_async_runtime_errors,
+  logger_instance=logger,
+  exception_type=ValueError,
+  raises=True,
+  raises_exception=ValueError,
+)
+
+
+@log_resource_data_service_errors(
+  prefix="Resource Definition Error: Error while adding or updating resource definition\
+    .",
+  suffix=" Please ensure the parameters are correct and the resource definition exists\
+    .",
+)
 async def add_or_update_resource_definition(
   db: AsyncSession,
   name: str,
@@ -302,17 +319,28 @@ async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
     raise e
 
 
-# --- Resource Instance Services ---
+@log_resource_data_service_errors(
+  prefix="Resource Instance Error: Error while adding resource instance.",
+  suffix=" Please ensure the parameters are correct and the resource definition exists.\
+    ",
+)
 async def add_resource_instance(
   db: AsyncSession,
   user_assigned_name: str,
   name: str,
-  initial_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+  initial_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,  # noqa: E501
   lot_number: Optional[str] = None,
   expiry_date: Optional[datetime.datetime] = None,
   properties_json: Optional[Dict[str, Any]] = None,
   physical_location_description: Optional[str] = None,
   is_permanent_fixture: bool = False,
+  is_machine: bool = False,
+  machine_counterpart_id: Optional[int] = None,
+  # Parameters for creating a new Machine if machine_counterpart_id is None
+  machine_user_friendly_name: Optional[str] = None,
+  machine_python_fqn: Optional[str] = None,
+  machine_properties_json: Optional[Dict[str, Any]] = None,
+  machine_current_status: Optional["MachineStatusEnum"] = None,  # type: ignore # noqa: F821
 ) -> ResourceInstanceOrm:
   """Add a new resource instance to the inventory.
 
@@ -337,6 +365,17 @@ async def add_resource_instance(
           of the physical location of the resource. Defaults to None.
       is_permanent_fixture (bool, optional): Indicates if this resource
           instance is a permanent fixture (e.g., a deck). Defaults to False.
+      is_machine (bool): True if this instance is a machine.
+      machine_counterpart_id (Optional[int]): ID of the associated MachineOrm if this
+      resource is a machine.
+          If `is_machine` is True and this is None, a new MachineOrm will be created.
+      machine_user_friendly_name (Optional[str]): Required if creating a new MachineOrm.
+      machine_python_fqn (Optional[str]): Required if creating a new MachineOrm.
+      machine_properties_json (Optional[Dict[str, Any]]): Optional properties for a new
+      MachineOrm.
+      machine_current_status (Optional[MachineStatusEnum]): Initial status for a new
+      MachineOrm.
+
 
   Returns:
       ResourceInstanceOrm: The newly created resource instance object.
@@ -348,6 +387,8 @@ async def add_resource_instance(
       Exception: For any other unexpected errors during the process.
 
   """
+  from praxis.backend.models import MachineStatusEnum
+
   log_prefix = (
     f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{name}'):"
   )
@@ -365,6 +406,7 @@ async def add_resource_instance(
   instance_orm = ResourceInstanceOrm(
     user_assigned_name=user_assigned_name,
     name=name,
+    resource_definition=definition,
     current_status=initial_status,
     lot_number=lot_number,
     expiry_date=expiry_date,
@@ -373,9 +415,33 @@ async def add_resource_instance(
     is_permanent_fixture=is_permanent_fixture,
   )
   db.add(instance_orm)
+  await db.flush()
+
+  try:
+    await _create_or_link_machine_counterpart_for_resource(
+      db=db,
+      resource_instance_orm=instance_orm,
+      is_machine=is_machine,
+      machine_counterpart_id=machine_counterpart_id,
+      machine_user_friendly_name=machine_user_friendly_name,
+      machine_python_fqn=machine_python_fqn,
+      machine_properties_json=machine_properties_json,
+      machine_current_status=machine_current_status,
+    )
+  except Exception as e:
+    logger.error(
+      f"{log_prefix} Error linking MachineOrm counterpart: {e}", exc_info=True
+    )
+    raise ValueError(
+      f"Failed to link machine counterpart for resource instance '{user_assigned_name}'\
+        ."
+    ) from e
+
   try:
     await db.commit()
     await db.refresh(instance_orm)
+    if instance_orm.machine_counterpart:
+      await db.refresh(instance_orm.machine_counterpart)
     logger.info(
       "%s Successfully added resource instance (ID: %d).",
       log_prefix,
@@ -383,12 +449,10 @@ async def add_resource_instance(
     )
   except IntegrityError as e:
     await db.rollback()
-    error_message = (
+    raise ValueError(
       f"{log_prefix} Integrity error. A resource instance with name "
       f"'{user_assigned_name}' might already exist. Details: {e}"
-    )
-    logger.error(error_message, exc_info=True)
-    raise ValueError(error_message) from e
+    ) from e
   except Exception as e:
     await db.rollback()
     logger.exception("%s Unexpected error. Rolling back.", log_prefix)
@@ -416,6 +480,7 @@ async def get_resource_instance_by_id(
     .options(
       joinedload(ResourceInstanceOrm.resource_definition),
       joinedload(ResourceInstanceOrm.location_machine),
+      joinedload(ResourceInstanceOrm.machine_counterpart),
     )
     .filter(ResourceInstanceOrm.id == instance_id)
   )
@@ -456,6 +521,7 @@ async def get_resource_instance_by_name(
     .options(
       joinedload(ResourceInstanceOrm.resource_definition),
       joinedload(ResourceInstanceOrm.location_machine),
+      joinedload(ResourceInstanceOrm.machine_counterpart),
     )
     .filter(ResourceInstanceOrm.user_assigned_name == user_assigned_name)
   )
@@ -510,6 +576,7 @@ async def list_resource_instances(
   stmt = select(ResourceInstanceOrm).options(
     joinedload(ResourceInstanceOrm.resource_definition),
     joinedload(ResourceInstanceOrm.location_machine),
+    joinedload(ResourceInstanceOrm.machine_counterpart),
   )
   if name:
     stmt = stmt.filter(ResourceInstanceOrm.name == name)

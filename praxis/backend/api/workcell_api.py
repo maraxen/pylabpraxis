@@ -189,7 +189,7 @@ async def list_available_decks(
   "/decks/{deck_id}/state", response_model=DeckStateResponse, tags=["Workcell API"]
 )
 async def get_specific_deck_state(
-  deck_id: int = Path(..., title="The ID of the deck machine", ge=1),
+  deck_id: int = Path(..., title="The ID of the deck", ge=1),
   workcell_runtime: WorkcellRuntime = Depends(
     get_workcell_runtime
   ),  # workcell_runtime already injected

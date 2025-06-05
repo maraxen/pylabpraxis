@@ -39,7 +39,7 @@ class WorkcellBase(BaseModel):
   class Config:
     """Pydantic configuration for WorkcellBase."""
 
-    orm_mode = True
+    from_attributes = True
 
 
 class WorkcellCreate(WorkcellBase):

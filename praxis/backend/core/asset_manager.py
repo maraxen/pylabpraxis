@@ -13,8 +13,8 @@ WorkcellRuntime to the database for live PyLabRobot object status updates.
 
 import importlib
 import inspect
-import logging
 import pkgutil
+from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pylabrobot.resources
@@ -25,51 +25,66 @@ from pylabrobot.resources import (
   Carrier,
   Container,
   Coordinate,
-  Deck,  # PyLabRobot's Deck
+  Deck,
   ItemizedResource,
   Lid,
+  MFXCarrier,
+  PetriDish,
   Plate,
   PlateAdapter,
   PlateCarrier,
+  PlateHolder,
   Resource,
+  ResourceHolder,
+  ResourceStack,
+  Tip,
   TipCarrier,
   TipRack,
+  TipSpot,
   Trash,
+  Trough,
+  TroughCarrier,
+  Tube,
+  TubeCarrier,
+  TubeRack,
   Well,
 )
-from pylabrobot.resources import (
-  Trough as PlrTrough,
-)
-from pylabrobot.resources.petri_dish import PetriDish as PlrPetriDish
-from pylabrobot.resources.plate import Plate as PlrPlate
-from pylabrobot.resources.tip import Tip as PlrTip
-from pylabrobot.resources.tip_rack import TipRack as PlrTipRack
-from pylabrobot.resources.tube import Tube as PlrTube
-from pylabrobot.resources.tube_rack import TubeRack as PlrTubeRack
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import praxis.backend.services as svc
-from praxis.backend.core.run_context import (
-  Deck as ProtocolDeck,
-)  # Alias to avoid confusion
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   AssetRequirementModel,
   MachineCategoryEnum,
   MachineOrm,
   MachineStatusEnum,
+  ResourceCategoryEnum,
   ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
+from praxis.backend.utils.errors import AssetAcquisitionError
+from praxis.backend.utils.logging import (
+  get_logger,
+  log_async_runtime_errors,
+  log_runtime_errors,
+)
 from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
 
 # Setup logger for this module
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
+async_asset_manager_errors = partial(
+  log_async_runtime_errors,
+  logger_instance=logger,
+  raises_exception=AssetAcquisitionError,
+)
 
-class AssetAcquisitionError(RuntimeError):
-  """Custom exception for errors during asset acquisition."""
+asset_manager_errors = partial(
+  log_runtime_errors,
+  logger_instance=logger,
+  raises_exception=AssetAcquisitionError,
+)
 
 
 class AssetManager:
@@ -81,25 +96,41 @@ class AssetManager:
     Args:
         db_session: The SQLAlchemy async session.
         workcell_runtime: The WorkcellRuntime instance for live PLR object interaction.
+
     """
     self.db: AsyncSession = db_session
     self.workcell_runtime = workcell_runtime
 
     self.EXCLUDED_BASE_CLASSES: List[Type[Resource]] = [
-      Resource,
+      Carrier,
       Container,
-      ItemizedResource,
-      Well,
       Deck,
+      ItemizedResource,
+      Lid,
+      MFXCarrier,
+      PetriDish,
+      Plate,
+      PlateAdapter,
+      PlateCarrier,
+      PlateHolder,
+      Resource,
+      ResourceHolder,
+      ResourceStack,
+      TipCarrier,
+      TipRack,
+      TipSpot,
+      Trash,
+      Trough,
+      TroughCarrier,
+      Tube,
+      TubeCarrier,
+      TubeRack,
+      Well,
     ]
 
-    self.EXCLUDED_CLASS_NAMES: Set[str] = {
-      "WellCreator",
-      "TipCreator",
-      "CarrierSite",
-      "ResourceStack",
-    }
-
+  @asset_manager_errors(
+    prefix="AM_EXTRACT_NUM: ", suffix=" - Error extracting num_items"
+  )
   def _extract_num_items(
     self,
     resource_class: Type[Resource],  # For logging context
@@ -115,65 +146,70 @@ class AssetManager:
         details: The serialized details of the resource instance.
 
     Returns:
-        An integer representing the number of items, or None if not found.
+        An integer representing the number of items, or None.
 
     """
-    num_items_value = None
+    num_items_value: Optional[int] = None
     if not details:
+      logger.debug("AM_EXTRACT_NUM: No details provided for extraction.")
       return None
-    try:
-      # PLR's ItemizedResource.serialize() might include 'num_items'
-      # or a list of 'items' or 'wells'.
-      if "num_items" in details and isinstance(details["num_items"], int):
-        logger.debug(
-          f"AM_EXTRACT_NUM: Extracted from details['num_items'] for "
-          f"{resource_class.__name__}"
-        )
-        num_items_value = int(details["num_items"])
-      elif "items" in details and isinstance(details["items"], list):
-        logger.debug(
-          f"AM_EXTRACT_NUM: Extracted from len(details['items']) for "
-          f"{resource_class.__name__}"
-        )
-        num_items_value = len(details["items"])
-      elif "wells" in details and isinstance(
-        details["wells"], list
-      ):  # Common for plates/racks
-        logger.debug(
-          f"AM_EXTRACT_NUM: Extracted from len(details['wells']) for "
-          f"{resource_class.__name__}"
-        )
-        num_items_value = len(details["wells"])
-      elif "capacity " in details and isinstance(details["capacity"], int):
-        # Some resources might have a 'capacity' field indicating the number of items
-        logger.debug(
-          f"AM_EXTRACT_NUM: Extracted from details['capacity'] for "
-          f"{resource_class.__name__}"
-        )
-        num_items_value = int(details["capacity"])
-
-      if num_items_value is None:
-        logger.debug(
-          f"AM_EXTRACT_NUM: Number of items not found in details for "
-          f"{resource_class.__name__}."
-        )
-    except Exception as e:  # pylint: disable=broad-except
-      logger.exception(
-        f"AM_EXTRACT_NUM: Error extracting num_items for {resource_class.__name__}: {e}"
+    if "num_items" in details and isinstance(details["num_items"], int):
+      logger.debug(
+        f"AM_EXTRACT_NUM: Extracted from details['num_items'] for "
+        f"{resource_class.__name__}"
       )
+      num_items_value = int(details["num_items"])
+    elif "items" in details and isinstance(details["items"], list):
+      logger.debug(
+        f"AM_EXTRACT_NUM: Extracted from len(details['items']) for "
+        f"{resource_class.__name__}"
+      )
+      num_items_value = len(details["items"])
+    elif "wells" in details and isinstance(
+      details["wells"], list
+    ):  # Common for plates/racks
+      logger.debug(
+        f"AM_EXTRACT_NUM: Extracted from len(details['wells']) for "
+        f"{resource_class.__name__}"
+      )
+      num_items_value = len(details["wells"])
+    elif "capacity " in details and isinstance(details["capacity"], int):
+      logger.debug(
+        f"AM_EXTRACT_NUM: Extracted from details['capacity'] for "
+        f"{resource_class.__name__}"
+      )
+      num_items_value = int(details["capacity"])
+
+    if num_items_value is None:
+      logger.debug(
+        f"AM_EXTRACT_NUM: Number of items not found in details for "
+        f"{resource_class.__name__}."
+      )
+
     return num_items_value
 
+  @asset_manager_errors(
+    prefix="AM_EXTRACT_ORDER: ", suffix=" - Error extracting ordering"
+  )
   def _extract_ordering(
     self,
     resource_class: Type[Resource],  # For logging context
     details: Optional[Dict[str, Any]],
   ) -> Optional[str]:
-    """
-    Extracts a comma-separated string of item names if ordered (e.g., wells in a plate)
-    from serialized details.
+    """Extract item names if ordered (e.g., wells in a plate) from serialized details.
+
+    Args:
+        resource_class: The class of the resource being processed, for logging context.
+        details: The serialized details of the resource instance.
+
+    Returns:
+        A comma-separated string of item names if ordered, or an empty string if
+        not found.
+
     """
     ordering_value = None
     if not details:
+      logger.debug("AM_EXTRACT_ORDER: No details provided for extraction.")
       return None
     try:
       # Check if 'ordering' is directly provided (less common in standard PLR serialize)
@@ -203,62 +239,42 @@ class AssetManager:
 
       if ordering_value is None:
         logger.debug(
-          f"AM_EXTRACT_ORDER: Ordering not found in details for {resource_class.__name__}."
+          f"AM_EXTRACT_ORDER: Ordering not found in details for "
+          f"{resource_class.__name__}."
         )
     except Exception as e:  # pylint: disable=broad-except
       logger.exception(
-        f"AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: {e}"
+        f"AM_EXTRACT_ORDER: Error extracting ordering for {resource_class.__name__}: "
+        f"{e}"
       )
     return ordering_value
 
-  def _get_category_from_plr_object_fallback(self, plr_object_class_name: str) -> str:
-    """
-    Infers string category from a PyLabRobot class name if not directly available.
-    This is a fallback mechanism.
-    """
-    name_lower = plr_object_class_name.lower()
-    # Simplified matching based on common PLR naming patterns
-    if "plate" in name_lower and "carrier" not in name_lower:
-      return CATEGORY_PLATE
-    if "tiprack" in name_lower or ("tip" in name_lower and "rack" in name_lower):
-      return CATEGORY_TIP_RACK
-    if "lid" in name_lower:
-      return CATEGORY_LID
-    if "trough" in name_lower:
-      return CATEGORY_TROUGH
-    if "tuberack" in name_lower or ("tube" in name_lower and "rack" in name_lower):
-      return CATEGORY_TUBE_RACK
-    if "petridish" in name_lower or ("petri" in name_lower and "dish" in name_lower):
-      return CATEGORY_PETRI_DISH
-    if "tube" in name_lower and "rack" not in name_lower:
-      return CATEGORY_TUBE  # Avoid matching TubeRack as Tube
-    if "trash" in name_lower:
-      return CATEGORY_WASTE
-    if "carrier" in name_lower or "adapter" in name_lower:
-      return CATEGORY_CARRIER  # PlateAdapter is a carrier type
-    return CATEGORY_OTHER
+  @asset_manager_errors(
+    prefix="AM_GET_CATEGORY: ", suffix=" - Error getting category from PLR object"
+  )
+  def _can_catalog_resource(self, plr_class: Type[Any]) -> bool:
+    """Determine if a PyLabRobot class represents a resource definition to catalog.
 
-  def _is_catalogable_resource_class(self, plr_class: Type[Any]) -> bool:
-    """
-    Determines if a PyLabRobot class represents a primary, catalogable resource definition.
     Args:
         plr_class: The class to check.
+
     Returns:
         True if the class should be cataloged, False otherwise.
+
     """
     if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
-      return False  # Must be a class and a subclass of Resource
+      return False
     if inspect.isabstract(plr_class):
-      return False  # Skip abstract classes
+      return False
     if plr_class in self.EXCLUDED_BASE_CLASSES:
-      return False  # Skip explicitly excluded base/generic classes
-    if plr_class.__name__ in self.EXCLUDED_CLASS_NAMES:
-      return False  # Skip explicitly excluded class names
-    # Ensure it's from a PLR resources module (or sub-modules)
+      return False  # should be redundant with the above
     if not plr_class.__module__.startswith("pylabrobot.resources"):
       return False
     return True
 
+  @async_asset_manager_errors(
+    prefix="AM_SYNC: ", suffix=" - Error syncing PyLabRobot definitions"
+  )
   async def sync_pylabrobot_definitions(
     self, plr_resources_package=pylabrobot.resources
   ) -> Tuple[int, int]:
@@ -304,7 +320,7 @@ class AssetManager:
 
         logger.debug(f"AM_SYNC: Found class {fqn}. Checking if catalogable resource...")
 
-        if not self._is_catalogable_resource_class(plr_class_obj):
+        if not self._can_catalog_resource(plr_class_obj):
           logger.debug(f"AM_SYNC: Skipping {fqn} - not a catalogable resource class.")
           continue
 
@@ -432,7 +448,7 @@ class AssetManager:
         # Category: Directly from serialized_data['category'] if available
         category = serialized_data.get("category") if serialized_data else None
         if not category:  # Fallback if not in serialized data
-          category = self._get_category_from_plr_object_fallback(class_name)
+          category = ResourceCategoryEnum.OTHER.value  # Default to OTHER
           logger.debug(f"AM_SYNC: Used fallback category '{category}' for {fqn}")
 
         # Num items and Ordering (for ItemizedResources)
@@ -451,7 +467,7 @@ class AssetManager:
         description = inspect.getdoc(plr_class_obj) or fqn
 
         # Is consumable
-        is_consumable = category in CONSUMABLE_CATEGORIES
+        is_consumable = category in ResourceCategoryEnum.consumables()
 
         praxis_type_name = model_name
 
@@ -505,13 +521,14 @@ class AssetManager:
     return added_count, updated_count
 
   async def apply_deck_configuration(
-    self, deck_identifier: Union[str, ProtocolDeck], protocol_run_guid: str
+    self, deck_orm_id: int, protocol_run_guid: str
   ) -> Deck:
-    """Apply a deck configuration by initializing the deck machine and assigning
-    pre-configured resources.
+    """Apply a deck configuration.
+
+    Initialize the deck and assign pre-configured resources.
 
     Args:
-        deck_identifier: The name of the deck layout or a ProtocolDeck object.
+        deck_orm_id: The ORM ID of the deck.
         protocol_run_guid: The GUID of the current protocol run.
 
     Returns:
@@ -521,34 +538,23 @@ class AssetManager:
         AssetAcquisitionError: If the deck or its components cannot be configured.
 
     """
-    deck_name: str
-    if isinstance(deck_identifier, ProtocolDeck):  # From protocol definition
-      deck_name = deck_identifier.name
-    elif isinstance(deck_identifier, str):  # From name string
-      deck_name = deck_identifier
-    else:
-      raise TypeError(
-        f"Unsupported deck_identifier type: {type(deck_identifier)}. Expected str or "
-        f"ProtocolDeck."
-      )
-
     logger.info(
-      f"AM_DECK_CONFIG: Applying deck configuration for '{deck_name}', run_guid: "
+      f"AM_DECK_CONFIG: Applying deck configuration for '{deck_orm_id}', run_guid: "
       f"{protocol_run_guid}"
     )
 
-    deck_layout_orm = await svc.get_deck_layout_by_name(self.db, deck_name)
-    if not deck_layout_orm:
-      raise AssetAcquisitionError(f"Deck layout '{deck_name}' not found in database.")
+    deck_orm = await svc.get_deck_by_id(self.db, deck_orm_id)
+    if not deck_orm:
+      raise AssetAcquisitionError(f"Deck '{deck_orm_id}' not found in database.")
 
     deck_machines_orm = await svc.list_machines(self.db)
 
-    # Filter for actual deck machines
+    # Filter for actual decks
     actual_deck_machine_orm: Optional[MachineOrm] = None
     for dev_orm in deck_machines_orm:
       # This check might be too simplistic if the FQN is for a generic Deck
       # and the actual instance is, e.g., a HamiltonStarDeck.
-      # TODO: Refine deck machine identification.
+      # TODO: Refine deck identification.
       if "Deck" in dev_orm.python_fqn:  # Basic check
         # Check if it's a PLR Deck or subclass by trying to import and check inheritance
         try:
@@ -580,11 +586,11 @@ class AssetManager:
         f"another run '{deck_machine_orm.current_protocol_run_guid}'."
       )
 
-    # Initialize the deck machine through WorkcellRuntime
+    # Initialize the deck through WorkcellRuntime
     live_plr_deck_object = self.workcell_runtime.initialize_machine(deck_machine_orm)
     if not live_plr_deck_object or not isinstance(live_plr_deck_object, Deck):
       raise AssetAcquisitionError(
-        f"Failed to initialize backend for deck machine '{deck_name}' (ID: {deck_machine_orm.id}) or it's not a Deck. Check WorkcellRuntime."
+        f"Failed to initialize backend for deck '{deck_name}' (ID: {deck_machine_orm.id}) or it's not a Deck. Check WorkcellRuntime."
       )
 
     await svc.update_machine_status(
@@ -677,7 +683,7 @@ class AssetManager:
           resource_instance_id=resource_instance_id,
           new_status=ResourceInstanceStatusEnum.IN_USE,
           current_protocol_run_guid=protocol_run_guid,
-          location_machine_id=deck_machine_orm.id,  # Its location is now this deck machine
+          location_machine_id=deck_machine_orm.id,  # Its location is now this deck
           current_deck_slot_name=slot_orm.slot_name,
           deck_slot_orm_id=slot_orm.id,
           status_details=f"On deck '{deck_name}' slot '{slot_orm.slot_name}' for run {protocol_run_guid}",
@@ -996,7 +1002,7 @@ class AssetManager:
         logger.info(
           f"AM_ACQUIRE_LABWARE: Location constraint: place '{live_plr_resource.name}' on deck '{deck_name}' slot '{slot_name}'."
         )
-        # Find the deck machine ORM
+        # Find the deck ORM
         deck_machines = await svc.list_machines(
           self.db, user_friendly_name_filter=deck_name
         )  # Assuming deck name is unique for Machine
@@ -1044,7 +1050,7 @@ class AssetManager:
         resource_instance_id=resource_instance_to_acquire.id,
         new_status=ResourceInstanceStatusEnum.IN_USE,
         current_protocol_run_guid=protocol_run_guid,
-        location_machine_id=target_deck_orm_id,  # Null if not placed on a specific deck machine
+        location_machine_id=target_deck_orm_id,  # Null if not placed on a specific deck
         current_deck_slot_name=target_slot_name,  # Null if not in a specific slot
         status_details=final_status_details,
       )
@@ -1127,7 +1133,7 @@ class AssetManager:
     # If the resource was on a deck, clear it from WorkcellRuntime's view of that deck
     if clear_from_deck_machine_id is not None and clear_from_slot_name is not None:
       logger.info(
-        f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck machine ID {clear_from_deck_machine_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
+        f"AM_RELEASE_LABWARE: Clearing resource ID {resource_instance_orm_id} from deck ID {clear_from_deck_machine_id}, slot '{clear_from_slot_name}' via WorkcellRuntime."
       )
       self.workcell_runtime.clear_deck_slot(
         deck_machine_orm_id=clear_from_deck_machine_id,

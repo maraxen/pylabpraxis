@@ -8,7 +8,7 @@ enabling robust data validation and serialization for API interactions.
 import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MachineTypeInfo(BaseModel):
@@ -59,11 +59,20 @@ class MachineBase(BaseModel):
   connection_info: Optional[Dict[str, Any]] = None
   is_simulation_override: Optional[bool] = None
   custom_fields: Optional[Dict[str, Any]] = None
+  is_resource: bool = Field(
+    default=False,
+    description="Indicates if this machine is also registered as a resource instance.",
+  )
+  resource_counterpart_id: Optional[int] = Field(
+    default=None,
+    description="ID of the associated ResourceInstanceOrm if this machine is a \
+        resource.",
+  )
 
   class Config:
     """Configuration for Pydantic model behavior."""
 
-    orm_mode = True
+    from_attributes = True
     use_enum_values = True
 
 
@@ -115,3 +124,12 @@ class MachineUpdate(BaseModel):
   connection_info: Optional[Dict[str, Any]] = None
   is_simulation_override: Optional[bool] = None
   custom_fields: Optional[Dict[str, Any]] = None
+  is_resource: Optional[bool] = Field(
+    default=None,
+    description="Indicates if this machine is also registered as a resource instance.",
+  )
+  resource_counterpart_id: Optional[int] = Field(
+    default=None,
+    description="ID of the associated ResourceInstanceOrm if this machine is a \
+      resource.",
+  )

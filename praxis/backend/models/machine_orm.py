@@ -11,10 +11,14 @@ SQLAlchemy ORM models for Machine Management, including:
 
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+  from .resource_orm import ResourceInstanceOrm
 
 from sqlalchemy import (
   JSON,
+  Boolean,
   DateTime,
   ForeignKey,
   Integer,
@@ -67,6 +71,24 @@ class MachineCategoryEnum(enum.Enum):
   GENERAL_AUTOMATION_DEVICE = "GeneralAutomationDevice"
   OTHER_INSTRUMENT = "OtherInstrument"
   UNKNOWN = "Unknown"
+
+  @classmethod
+  def resources(cls):
+    """Return a list of resource categories that map to this enum."""
+    return [
+      cls.PLATE_READER,
+      cls.INCUBATOR,
+      cls.SHAKER,
+      cls.HEATER_SHAKER,
+      cls.TEMPERATURE_CONTROLLER,
+      cls.TILTING,
+      cls.THERMOCYCLER,
+      cls.FLOW_CYTOMETER,
+      cls.SCALE,
+      cls.CENTRIFUGE,
+      cls.ARM,
+      cls.GENERAL_AUTOMATION_DEVICE,
+    ]
 
 
 class MachineOrm(Base):
@@ -153,6 +175,28 @@ class MachineOrm(Base):
     DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
   )
 
+  is_resource: Mapped[bool] = mapped_column(
+    "is_resource",
+    Boolean,
+    default=False,
+    nullable=False,
+    comment="Indicates if this machine is a resource (e.g., a lab instrument)",
+  )
+
+  resource_counterpart_id: Mapped[Optional[int]] = mapped_column(
+    ForeignKey("resource_instances.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="Link to ResourceInstanceOrm if this machine is a resource",
+  )
+
+  resource_counterpart: Mapped[Optional["ResourceInstanceOrm"]] = relationship(
+    "ResourceInstanceOrm",
+    foreign_keys=[resource_counterpart_id],
+    back_populates="machine_counterpart",
+    uselist=False,
+  )
+
   # Relationships
   # deck_type_definition: Mapped[Optional["DeckTypeDefinitionOrm"]] = relationship(
   #    back_populates="machines"
@@ -160,6 +204,7 @@ class MachineOrm(Base):
   deck_configurations = relationship(
     "DeckConfigurationOrm", back_populates="deck_machine"
   )
+
   located_resource_instances = relationship(
     "ResourceInstanceOrm", back_populates="location_machine"
   )

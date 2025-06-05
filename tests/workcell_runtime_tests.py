@@ -207,7 +207,7 @@ class TestWorkcellRuntimeResourceHandling:
         mock_deck_instance.name = "TestDeck"
         mock_deck_instance.assign_child_resource = MagicMock()
 
-        workcell_runtime._active_machine_backends[10] = mock_deck_instance # Assume deck machine ID 10 is active
+        workcell_runtime._active_machine_backends[10] = mock_deck_instance # Assume deck ID 10 is active
 
         mock_resource_plr_obj = MagicMock(spec=workcell_runtime.Resource) # from praxis.backend.core.workcell_runtime
         resource_instance_id = 1

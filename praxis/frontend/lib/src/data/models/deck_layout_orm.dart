@@ -41,7 +41,7 @@ class DeckConfigurationSlotItemOrm {
 class DeckLayoutOrm {
   final int? id; // praxis_deck_config_id
   final String layoutName;
-  final int deckDeviceId; // FK to ManagedDeviceOrm.id (the deck machine itself)
+  final int deckDeviceId; // FK to ManagedDeviceOrm.id (the deck itself)
   final String? description;
   final List<DeckConfigurationSlotItemOrm>? slotItems;
   final String? createdAt; // DateTime as String

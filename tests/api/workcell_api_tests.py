@@ -190,7 +190,7 @@ def setup_basic_machines(db_session: Session) -> None:
 # --- HTTP Endpoint Tests ---
 
 def test_list_available_decks_empty(client: TestClient, db_session: Session):
-    """Test GET /api/workcell/decks when no deck machines are present."""
+    """Test GET /api/workcell/decks when no decks are present."""
     response = client.get("/api/workcell/decks")
     assert response.status_code == 200
     assert response.json() == []
@@ -400,7 +400,7 @@ Here's a summary of what's been done in this step:
 
 4.  **HTTP Endpoint Tests (Initial Structure):**
     *   **`GET /api/workcell/decks`:**
-        *   `test_list_available_decks_empty`: Tests the endpoint when no deck machines are in the DB.
+        *   `test_list_available_decks_empty`: Tests the endpoint when no decks are in the DB.
         *   `test_list_available_decks_with_data`: Tests with both a DECK and a non-DECK machine, asserting only the DECK is returned and its data is correct.
     *   **`GET /api/workcell/decks/{deck_id}/state`:**
         *   `test_get_specific_deck_state_not_found`: Tests with an ID that doesn't exist.

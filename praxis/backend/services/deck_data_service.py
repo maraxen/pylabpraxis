@@ -32,8 +32,9 @@ from praxis.backend.models import (
   ResourceInstanceOrm,
 )
 from praxis.backend.services.resource_data_service import get_resource_definition
+from praxis.backend.utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def create_deck(

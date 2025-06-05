@@ -468,75 +468,128 @@ class WorkcellRuntime:
           raise WorkcellRuntimeError(error_message) from db_error
       raise WorkcellRuntimeError(error_message) from e
 
-  def get_active_machine(self, machine_orm_id: int) -> Optional[Machine]:
+  def get_active_machine(self, machine_orm_id: int) -> Machine:
     """Retrieve an active PyLabRobot machine instance by its ORM ID.
 
     Args:
       machine_orm_id (int): The ID of the machine ORM object.
 
     Returns:
-      Optional[Machine]: The active PyLabRobot machine instance, or None if not found.
+      Machine: The active PyLabRobot machine instance.
+
+    Raises:
+      WorkcellRuntimeError: If the machine is not found in the active machines.
 
     """
-    return self._active_machines.get(machine_orm_id)
+    machine = self._active_machines.get(machine_orm_id)
+    if machine is None:
+      raise WorkcellRuntimeError(
+        f"Machine with ORM ID {machine_orm_id} not found in active resources."
+      )
+    if not isinstance(machine, Machine):
+      raise TypeError(
+        f"Machine with ORM ID {machine_orm_id} is not a valid Machine instance."
+        f" Type is {type(machine)}."
+      )
+    return machine
 
-  def get_active_machine_id(self, machine: Machine) -> Optional[int]:
+  def get_active_machine_id(self, machine: Machine) -> int:
     """Retrieve the ORM ID of an active PyLabRobot machine instance.
 
     Args:
       machine (Machine): The PyLabRobot Machine instance.
 
     Returns:
-      Optional[int]: The ORM ID of the machine, or None if not found in active machines.
+      int: The ORM ID of the machine.
+
+    Raises:
+      WorkcellRuntimeError: If the machine is not found in the active machines.
 
     """
     for orm_id, active_machine in self._active_machines.items():
       if active_machine is machine:
         return orm_id
-    return None
+    raise WorkcellRuntimeError(
+      f"Machine instance {machine} not found in active resources."
+    )
 
-  def get_active_deck_id(self, deck: Deck) -> Optional[int]:
+  def get_active_deck_id(self, deck: Deck) -> int:
     """Retrieve the ORM ID of an active PyLabRobot Deck instance.
 
     Args:
       deck (Deck): The PyLabRobot Deck instance.
 
     Returns:
-      Optional[int]: The ORM ID of the deck, or None if not found in active decks.
+      int: The ORM ID of the deck.
+
+    Raises:
+      WorkcellRuntimeError: If the deck is not found in the active decks.
 
     """
     for orm_id, active_deck in self._active_decks.items():
       if active_deck is deck:
         return orm_id
-    return None
+    raise WorkcellRuntimeError(f"Deck instance {deck} not found in active resources.")
 
-  def get_active_resource_id(self, resource: Resource) -> Optional[int]:
+  def get_active_resource(self, resource_instance_orm_id: int) -> Resource:
+    """Retrieve an active PyLabRobot resource object by its ORM ID.
+
+    Args:
+      resource_instance_orm_id (int): The ID of the resource instance ORM object.
+
+    Returns:
+      Resource: The active PyLabRobot resource object.
+
+    """
+    resource = self._active_resources.get(resource_instance_orm_id)
+    if resource is None:
+      raise WorkcellRuntimeError(
+        f"Resource instance with ORM ID {resource_instance_orm_id} not found in active \
+          resources."
+      )
+    if not isinstance(resource, Resource):
+      raise TypeError(
+        f"Resource instance with ORM ID {resource_instance_orm_id} is not a valid \
+          PyLabRobot Resource instance. Type is {type(resource)}."
+      )
+    return resource
+
+  def get_active_resource_id(self, resource: Resource) -> int:
     """Retrieve the ORM ID of an active PyLabRobot resource object.
 
     Args:
       resource (Resource): The PyLabRobot Resource instance.
 
     Returns:
-      Optional[int]: The ORM ID of the resource, or None if not found in active
-      resources.
+      int: The ORM ID of the resource.
 
     """
     for orm_id, active_resource in self._active_resources.items():
       if active_resource is resource:
         return orm_id
-    return None
+    raise WorkcellRuntimeError(f"Resource instance {resource}")
 
-  def get_active_deck(self, deck_orm_id: int) -> Optional[Deck]:
+  def get_active_deck(self, deck_orm_id: int) -> Deck:
     """Retrieve an active PyLabRobot Deck instance by its ORM ID.
 
     Args:
       deck_orm_id (int): The ID of the deck ORM object.
 
     Returns:
-      Optional[Deck]: The active PyLabRobot Deck instance, or None if not found.
+      Deck: The active PyLabRobot Deck instance.
 
     """
-    return self._active_decks.get(deck_orm_id)
+    deck = self._active_decks.get(deck_orm_id)
+    if deck is None:
+      raise WorkcellRuntimeError(
+        f"Deck with ORM ID {deck_orm_id} not found in active decks."
+      )
+    if not isinstance(deck, Deck):
+      raise TypeError(
+        f"Deck with ORM ID {deck_orm_id} is not a valid PyLabRobot Deck instance."
+        f" Type is {type(deck)}."
+      )
+    return deck
 
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error shutting down machine",
@@ -607,27 +660,14 @@ class WorkcellRuntime:
       raise WorkcellRuntimeError(f"Error shutting down machine ID {machine_orm_id}: \
         {str(e)[:250]}") from e
 
-  def get_active_resource(self, resource_instance_orm_id: int) -> Optional[Resource]:
-    """Retrieve an active PyLabRobot resource object by its ORM ID.
-
-    Args:
-      resource_instance_orm_id (int): The ID of the resource instance ORM object.
-
-    Returns:
-      Optional[Resource]: The active PyLabRobot resource object, or None if not found.
-
-    """
-    return self._active_resources.get(resource_instance_orm_id)
-
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error assigning resource to deck",
     suffix=" - Ensure the resource and deck are valid and connected.",
   )
   async def assign_resource_to_deck(
     self,
-    resource: Resource,
     resource_instance_orm_id: int,
-    target: int | Machine | Deck,
+    target: int,
     location: Optional[Union[Coordinate, tuple[float, float, float]]] = None,
     position_id: Optional[Union[str, int]] = None,
   ):
@@ -639,9 +679,7 @@ class WorkcellRuntime:
       location (Optional[Union[Coordinate, tuple[float, float, float]]]): The
         explicit location coordinates on the deck.
       position_id (Optional[Union[str, int]]): The position ID on the deck.
-      target (int | Machine | Deck): The target deck or machine ORM ID, or the
-        live PyLabRobot Deck or Machine instance.
-
+      target (int): The target deck or machine ORM ID.
 
     Raises:
       WorkcellRuntimeError: If neither location nor position_id is provided, or if
@@ -656,83 +694,35 @@ class WorkcellRuntime:
         " to a deck."
       )
 
-    if not isinstance(resource, Resource):
-      raise TypeError(f"Resource instance ID {resource_instance_orm_id} is not a valid \
-        PyLabRobot Resource object. Type is {type(resource)}.")
-
-    if isinstance(target, Machine):
-      inferred_target_type = "Machine"
-    elif isinstance(target, Deck):
-      inferred_target_type = "Deck"
-    elif isinstance(target, int):
-      if target in self._active_machines.keys():
-        inferred_target_type = "machine_orm_id"
-      elif target in self._active_decks.keys():
-        inferred_target_type = "deck_orm_id"
-      else:
-        raise WorkcellRuntimeError(
-          f"Target ORM ID {target} not found in active machines or decks."
-        )
+    if target in self._active_machines.keys():
+      inferred_target_type = "machine_orm_id"
+    elif target in self._active_decks.keys():
+      inferred_target_type = "deck_orm_id"
     else:
-      raise TypeError(
-        f"Target must be a Machine, Deck, or ORM ID (int), but got {type(target)}."
-      )
+      raise WorkcellRuntimeError(
+        f"Target ORM ID {target} not found in active machines or decks."
+      )  # pragma: no cover
+
+    resource = self.get_active_resource(resource_instance_orm_id)
 
     match inferred_target_type:
-      case "Machine":
-        if not isinstance(target, Machine):
-          raise TypeError(f"Target is a Machine instance, but type is {type(target)}.")
-        parent_machine_orm_id = self.get_active_machine_id(target)
-        if parent_machine_orm_id is None:
-          raise WorkcellRuntimeError(
-            f"Machine {target} is not an active machine with a valid ORM ID."
-          )
-        target_deck = getattr(target, "deck", None)
-        if target_deck is None or not isinstance(target_deck, Deck):
-          raise WorkcellRuntimeError(
-            f"Machine ID {target} does not have an associated deck."
-          )
-        fetched_target = self.get_active_deck_id(target_deck)
-        if fetched_target is None:
-          raise WorkcellRuntimeError(
-            f"Machine ID {target} is not an active machine with a valid deck."
-          )
-        deck_orm_id = fetched_target
-      case "Deck":
-        target_deck = target
-        if not isinstance(target_deck, Deck):
-          raise TypeError(
-            f"Target is a Deck instance, but type is {type(target_deck)}."
-          )
-        deck_orm_id = self.get_active_deck_id(target_deck)
-        if deck_orm_id is None:
-          raise WorkcellRuntimeError(f"Deck {target_deck} is not an active deck.")
       case "deck_orm_id":
         deck_orm_id = cast(int, target)
         target_deck = self.get_active_deck(deck_orm_id)
-        if target_deck is None:
-          raise WorkcellRuntimeError(f"Deck ID {deck_orm_id} is not an active deck.")
       case "machine_orm_id":
         machine_orm_id = cast(int, target)
         target_machine = self.get_active_machine(machine_orm_id)
-        if target_machine is None:
-          raise WorkcellRuntimeError(
-            f"Machine ID {machine_orm_id} is not an active machine."
-          )
         target_deck = getattr(target_machine, "deck", None)
-        if target_deck is None or not isinstance(target_deck, Deck):
+        if not isinstance(target_deck, Deck):
           raise WorkcellRuntimeError(
             f"Machine ID {machine_orm_id} does not have an associated deck."
           )
         deck_orm_id = self.get_active_deck_id(target_deck)
       case _:
         raise WorkcellRuntimeError(
-          f"Unexpected target type: {inferred_target_type}. Expected Machine, Deck, or \
-            int ORM ID."
+          f"Unexpected target type: {inferred_target_type}. Expected deck_orm_id or \
+            machine_orm_id."
         )
-
-    if deck_orm_id is None:
-      raise WorkcellRuntimeError("Deck ORM ID could not be determined from the target.")
 
     deck_orm = await svc.get_deck_by_id(self.db_session, deck_orm_id)
     if deck_orm is None:
@@ -797,7 +787,7 @@ class WorkcellRuntime:
 
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error clearing deck position",
-    suffix=" - Ensure the deck machine ORM ID and position name are valid.",
+    suffix=" - Ensure the deck ORM ID and position name are valid.",
   )
   async def clear_deck_position(
     self,
@@ -808,22 +798,17 @@ class WorkcellRuntime:
     """Clear a resource from a specific position on a live deck.
 
     Args:
-      deck_machine_orm_id (int): The ORM ID of the deck machine.
+      deck_machine_orm_id (int): The ORM ID of the deck.
       position_name (str): The name of the position to clear.
       resource_instance_orm_id (Optional[int]): The ORM ID of the resource
         instance that was in the position, if known. Used for updating DB status.
 
     Raises:
-      WorkcellRuntimeError: If the deck machine is not active, not a Deck
+      WorkcellRuntimeError: If the deck is not active, not a Deck
         instance, or if there's an error during unassignment.
 
     """
     deck = self.get_active_deck(deck_machine_orm_id)
-
-    if deck is None:
-      raise WorkcellRuntimeError(
-        f"Deck machine ID {deck_machine_orm_id} is not currently active."
-      )
 
     if not isinstance(deck, Deck):
       raise WorkcellRuntimeError(
@@ -885,16 +870,6 @@ class WorkcellRuntime:
 
     """
     machine = self.get_active_machine(machine_orm_id)
-    if machine is None:
-      raise WorkcellRuntimeError(
-        f"WorkcellRuntime: Machine ID {machine_orm_id} machine not active."
-      )
-
-    if not isinstance(machine, Machine):
-      raise WorkcellRuntimeError(
-        f"WorkcellRuntime: Machine ID {machine_orm_id} is not a valid PyLabRobot"
-        f" Machine instance, but {type(machine).__name__}."
-      )
     logger.info(
       "WorkcellRuntime: Executing action '%s' on machine ID %d with params: %s",
       action_name,
@@ -931,7 +906,7 @@ class WorkcellRuntime:
   async def shutdown_all_machines(self):
     """Shut down all currently active PyLabRobot machine instances."""
     logger.info("WorkcellRuntime: Shutting down all active machines...")
-    for machine_id in list(self._active_machines.keys()):
+    for machine_id, _ in list(self._active_machines.items()):
       try:
         logger.info("WorkcellRuntime: Shutting down machine ID %d...", machine_id)
         await self.shutdown_machine(machine_id)
@@ -946,7 +921,7 @@ class WorkcellRuntime:
 
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error getting deck state representation",
-    suffix=" - Ensure the deck machine ORM ID is valid and the deck is active.",
+    suffix=" - Ensure the deck ORM ID is valid and the deck is active.",
   )
   async def get_deck_state_representation(self, deck_orm_id: int) -> Dict[str, Any]:
     """Construct a dictionary representing the state of a specific deck.
@@ -955,17 +930,18 @@ class WorkcellRuntime:
     It uses a database-first approach for resources located on the deck.
 
     Args:
-      deck_orm_id (int): The ORM ID of the deck machine.
+      deck_orm_id (int): The ORM ID of the deck.
 
     Returns:
       Dict[str, Any]: A dictionary representing the deck's current state.
 
     Raises:
       WorkcellRuntimeError: If the database session or service is unavailable,
-        the deck machine is not found in the database, or the machine is not
+        the deck is not found in the database, or the machine is not
         categorized as a DECK.
 
     """
+
     deck_orm = await svc.get_deck_by_id(self.db_session, deck_orm_id)
 
     if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.id is None:
@@ -993,11 +969,6 @@ class WorkcellRuntime:
         lw_def = lw_instance.resource_definition
 
         lw_active_instance = self.get_active_resource(lw_instance.id)
-        if lw_active_instance is None or not isinstance(lw_active_instance, Resource):
-          raise WorkcellRuntimeError(
-            f"Resource instance ID {lw_instance.id} identified in deck {deck_orm.id} "
-            "is not an active resource."
-          )
 
         lw_active_coords = lw_active_instance.get_absolute_location()
 
@@ -1067,12 +1038,32 @@ class WorkcellRuntime:
       return self._last_initialized_deck_object
     return None
 
-  # TODO: WCR-7: Add methods for loading/applying full DeckConfigurationOrm to
-  # the live deck. This would involve:
-  # - Clearing all existing resource from the live deck (if any).
-  # - Iterating through DeckPositionOrm entries in the DeckConfigurationOrm.
-  # - For each position with assigned resource:
-  #   - Get/create the Resource for the ResourceInstanceOrm.
-  #   - Call assign_resource_to_deck_position with the target deck's ORM ID.
-  # - This would be the primary way to set up a live deck to match a saved
-  # configuration.
+  @log_workcell_runtime_errors(
+    prefix="WorkcellRuntime: Error clearing resource",
+    suffix=" - Ensure the resource is valid and exists in active resources.",
+  )
+  async def clear_resource_instance(self, resource_orm_id: int):
+    """Clear a resource from the workcell runtime.
+
+    Args:
+      resource (Resource | int | str): The resource to clear, which can be a
+        Resource instance, an ORM ID (int), or a user-assigned name (str).
+
+    Raises:
+      WorkcellRuntimeError: If the resource is  not found in active resources.
+
+    """
+    if resource_orm_id in self._active_resources:
+      del self._active_resources[resource_orm_id]
+
+    await svc.update_resource_instance_location_and_status(
+      self.db_session,
+      resource_instance_id=resource_orm_id,
+      new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+      status_details="Resource cleared from active resources.",
+    )
+
+    logger.info(
+      "WorkcellRuntime: Cleared resource with ORM ID %d from active resources.",
+      resource_orm_id,
+    )
