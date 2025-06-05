@@ -316,6 +316,8 @@ class ResourceInstanceOrm(Base):
     nullable=True,
     comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
   )
+
+
   physical_location_description: Mapped[Optional[str]] = mapped_column(
     String, nullable=True, comment="General storage location if not on a machine"
   )

@@ -19,6 +19,7 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pylabrobot.resources
+import uuid_utils as uuid
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import (
   Carrier,
@@ -524,7 +525,7 @@ class AssetManager:
     return added_count, updated_count
 
   async def apply_deck_configuration(
-    self, deck_orm_id: int, protocol_run_guid: str
+    self, deck_orm_id: uuid.UUID, protocol_run_guid: uuid.UUID
   ) -> Deck:
     """Apply a deck configuration.
 
@@ -611,10 +612,9 @@ class AssetManager:
       deck_machine_orm.id,
     )
 
-    deck_positions_orm: List[DeckPositionDefinitionOrm] = \
-        await svc.get_position_definitions_for_deck_type(
-        self.db, deck_orm.id
-    )
+    deck_positions_orm: List[
+      DeckPositionDefinitionOrm
+    ] = await svc.get_deck(self.db, deck_orm.id)
     logger.info(
       "AM_DECK_CONFIG: Found %d positions for deck layout '%s' (Layout ID: %s).",
       len(deck_positions_orm),
@@ -670,8 +670,8 @@ class AssetManager:
         )
         if not resource_def_orm or not resource_def_orm.python_fqn:
           raise AssetAcquisitionError(
-            f"Python FQN not found for resource definition '{resource_instance_orm.name}' "
-            f"(instance {resource_instance_id})."
+            f"Python FQN not found for resource definition "
+            f"'{resource_instance_orm.name}' (instance {resource_instance_id})."
           )
 
         live_plr_resource = await self.workcell_runtime.create_or_get_resource(
@@ -702,7 +702,7 @@ class AssetManager:
           new_status=ResourceInstanceStatusEnum.IN_USE,
           current_protocol_run_guid=protocol_run_guid,
           location_machine_id=deck_machine_orm.id,
-          current_deck_position_name=position_orm.position_id,
+          current_deck_position_name=position_orm.name,
           status_details=f"On deck '{deck_orm.name}' position "
           f"'{position_orm.position_id}' for run {protocol_run_guid}",
         )

@@ -114,9 +114,10 @@ class WorkcellRuntime:
 
     Args:
         target_deck (Deck): The live PyLabRobot Deck object.
-        deck_type_definition_id (uuid.UUID): The ID of the associated DeckTypeDefinition.
-        position_id (Union[str, int, uuid.UUID]): The human-interpretable identifier for the
-        position.
+        deck_type_definition_id (uuid.UUID): The ID of the associated
+        DeckTypeDefinition.
+        position_id (Union[str, int, uuid.UUID]): The human-interpretable identifier for
+        the position.
         positioning_config (Optional[PositioningConfig]): The general positioning
             configuration for the deck type.
 
@@ -430,7 +431,7 @@ class WorkcellRuntime:
           f"but it is not a Deck instance. Type is {type(machine_deck)}."
         )
 
-      deck_orm_entry = await svc.get_deck_by_parent_machine_id(
+      deck_orm_entry = await svc.get_deck_config_by_parent_machine_id(
         self.db_session, machine_orm.id
       )
 
@@ -859,7 +860,7 @@ class WorkcellRuntime:
             machine_orm_id."
         )
 
-    deck_orm = await svc.get_deck_by_id(self.db_session, deck_orm_id)
+    deck_orm = await svc.get_deck_config_by_id(self.db_session, deck_orm_id)
     if deck_orm is None:
       raise WorkcellRuntimeError(f"Deck ORM ID {deck_orm_id} not found in database.")
     deck_orm_type_definition_id = deck_orm.deck_type_definition_id
@@ -1078,7 +1079,7 @@ class WorkcellRuntime:
         categorized as a DECK.
 
     """
-    deck_orm = await svc.get_deck_by_id(self.db_session, deck_orm_id)
+    deck_orm = await svc.get_deck_config_by_id(self.db_session, deck_orm_id)
 
     if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.id is None:
       raise WorkcellRuntimeError(f"Deck ORM ID {deck_orm_id} not found in database.")
@@ -1182,11 +1183,10 @@ class WorkcellRuntime:
     """Clear a resource from the workcell runtime.
 
     Args:
-      resource (Resource | int | str): The resource to clear, which can be a
-        Resource instance, an ORM ID (int), or a user-assigned name (str).
+      resource_orm_id (uuid.UUID): The ORM ID of the resource instance to clear.
 
     Raises:
-      WorkcellRuntimeError: If the resource is  not found in active resources.
+      WorkcellRuntimeError: If the resource is not found in active resources.
 
     """
     if resource_orm_id in self._active_resources:

@@ -147,6 +147,12 @@ class DeckConfigurationPositionItemOrm(Base):
     String, nullable=False, comment="Position name on the deck (e.g., A1, SLOT_7)"
   )
 
+  position_name: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    index=True,
+    comment="Unique name for this position within the deck configuration",
+  )
   # This links to a specific physical piece of resource
   resource_instance_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resource_instances.id"), nullable=False
@@ -226,6 +232,9 @@ class DeckPositionDefinitionOrm(Base):
     UUID, ForeignKey("deck_type_definitions.id"), nullable=False
   )
   position_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
+  name: Mapped[str] = mapped_column(
+    String, nullable=False, index=True, comment="Unique name for this position"
+  )
   nominal_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
   nominal_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
   nominal_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

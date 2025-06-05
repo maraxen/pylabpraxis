@@ -633,7 +633,7 @@ async def update_resource_instance_location_and_status(
   resource_instance_id: uuid.UUID,
   new_status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_id: Optional[uuid.UUID] = None,
-  current_deck_position_name: Optional[str] = None,
+  current_deck_position_name: Optional[str] = None,  # TODO: perhaps change to uuid
   physical_location_description: Optional[str] = None,
   properties_json_update: Optional[Dict[str, Any]] = None,
   current_protocol_run_guid: Optional[uuid.UUID] = None,
@@ -649,6 +649,8 @@ async def update_resource_instance_location_and_status(
       location_machine_id (Optional[uuid.UUID], optional): The ID of the machine
           where the resource is now located. Defaults to None.
       current_deck_position_name (Optional[str], optional): The name of the deck
+          position where the resource is now located. Defaults to None.
+      current_deck_position_id (Optional[uuid.UUID], optional): The ID of the deck
           position where the resource is now located. Defaults to None.
       physical_location_description (Optional[str], optional): An updated
           description of the physical location. Defaults to None.
@@ -752,12 +754,12 @@ async def update_resource_instance_location_and_status(
   return None
 
 
-async def delete_resource_instance(db: AsyncSession, instance_id: int) -> bool:
+async def delete_resource_instance(db: AsyncSession, instance_id: uuid.UUID) -> bool:
   """Delete a specific resource instance.
 
   Args:
       db (AsyncSession): The database session.
-      instance_id (int): The ID of the resource instance to delete.
+      instance_id (uuid.UUID): The ID of the resource instance to delete.
 
   Returns:
       bool: True if the deletion was successful, False if the instance was
@@ -769,19 +771,19 @@ async def delete_resource_instance(db: AsyncSession, instance_id: int) -> bool:
       Exception: For any other unexpected errors during deletion.
 
   """
-  logger.info("Attempting to delete resource instance with ID: %d.", instance_id)
+  logger.info("Attempting to delete resource instance with ID: %s.", instance_id)
   stmt = select(ResourceInstanceOrm).filter(ResourceInstanceOrm.id == instance_id)
   result = await db.execute(stmt)
   instance_orm = result.scalar_one_or_none()
 
   if not instance_orm:
-    logger.warning("Resource instance ID %d not found for deletion.", instance_id)
+    logger.warning("Resource instance ID %s not found for deletion.", instance_id)
     return False
 
   try:
     await db.delete(instance_orm)
     await db.commit()
-    logger.info("Successfully deleted resource instance ID %d.", instance_id)
+    logger.info("Successfully deleted resource instance ID %s.", instance_id)
     return True
   except IntegrityError as e:
     await db.rollback()

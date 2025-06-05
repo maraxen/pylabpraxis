@@ -175,7 +175,7 @@ async def create_deck_config(
     logger.info("Successfully committed deck config '%s' and its position items.", name)
     # Eagerly load position_items for the returned object
     if deck_orm.id:
-      return await get_deck_by_id(db, deck_orm.id)  # type: ignore
+      return await get_deck_config_by_id(db, deck_orm.id)  # type: ignore
     return deck_orm  # Should not be reached if ID is None after flush/commit
   except IntegrityError as e:
     await db.rollback()
@@ -194,14 +194,14 @@ async def create_deck_config(
     raise e
 
 
-async def get_deck_by_parent_machine_id(
+async def get_deck_config_by_parent_machine_id(
   db: AsyncSession, parent_machine_id: UUID
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck configuration by its parent machine ID.
 
   Args:
     db (AsyncSession): The database session.
-    parent_machine_id (int): The ID of the parent machine.
+    parent_machine_id (UUID): The ID of the parent machine.
 
   Returns:
     Optional[DeckConfigurationOrm]: The deck configuration object if found,
@@ -230,7 +230,7 @@ async def get_deck_by_parent_machine_id(
   return deck_configuration
 
 
-async def get_deck_by_id(
+async def get_deck_config_by_id(
   db: AsyncSession, deck_id: UUID
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck config configuration by its ID.
@@ -273,7 +273,7 @@ async def get_deck_by_id(
   return deck
 
 
-async def get_deck_by_name(
+async def get_deck_config_by_name(
   db: AsyncSession, name: str
 ) -> Optional[DeckConfigurationOrm]:
   """Retrieve a specific deck config configuration by its name.
@@ -312,7 +312,7 @@ async def get_deck_by_name(
   return deck
 
 
-async def list_decks(
+async def list_deck_configs(
   db: AsyncSession,
   deck_id: Optional[int] = None,
   limit: int = 100,
@@ -357,7 +357,7 @@ async def list_decks(
   return decks
 
 
-async def update_deck(
+async def update_deck_config(
   db: AsyncSession,
   deck_id: UUID,
   name: Optional[str] = None,
@@ -401,7 +401,7 @@ async def update_deck(
 
   """
   logger.info("Attempting to update deck config with ID: %s.", deck_id)
-  deck_orm = await get_deck_by_id(db, deck_id)
+  deck_orm = await get_deck_config_by_id(db, deck_id)
   if not deck_orm:
     logger.warning("Deck config with ID %s not found for update.", deck_id)
     return None
@@ -511,7 +511,7 @@ async def update_deck(
       deck_id,
       deck_orm.name,
     )
-    return await get_deck_by_id(db, deck_id)  # Reload with all relations
+    return await get_deck_config_by_id(db, deck_id)  # Reload with all relations
   except IntegrityError as e:
     await db.rollback()
     error_message = (
@@ -530,7 +530,7 @@ async def update_deck(
     raise e
 
 
-async def delete_deck(db: AsyncSession, deck_id: UUID) -> bool:
+async def delete_deck_config(db: AsyncSession, deck_id: UUID) -> bool:
   """Delete a specific deck config configuration by its ID.
 
   This function deletes a deck config configuration and all its associated position
@@ -548,7 +548,7 @@ async def delete_deck(db: AsyncSession, deck_id: UUID) -> bool:
 
   """
   logger.info("Attempting to delete deck config with ID: %s.", deck_id)
-  deck_orm = await get_deck_by_id(db, deck_id)
+  deck_orm = await get_deck_config_by_id(db, deck_id)
   if not deck_orm:
     logger.warning("Deck config with ID %s not found for deletion.", deck_id)
     return False
@@ -676,6 +676,39 @@ async def create_deck_position_item(
     return None
 
 
+async def get_deck_position_item(
+  db: AsyncSession,
+  position_item_id: UUID,
+) -> Optional[DeckConfigurationPositionItemOrm]:
+  """Retrieve a specific position item by its ID.
+
+  Args:
+    db (AsyncSession): The database session.
+    position_item_id (UUID): The ID of the position item to retrieve.
+
+  Returns:
+    Optional[DeckConfigurationPositionItemOrm]: The position item object if found,
+    otherwise None.
+
+  """
+  logger.info("Attempting to retrieve position item with ID: %s.", position_item_id)
+  result = await db.execute(
+    select(DeckConfigurationPositionItemOrm).filter(
+      DeckConfigurationPositionItemOrm.id == position_item_id
+    )
+  )
+  position_item = result.scalar_one_or_none()
+  if position_item:
+    logger.info(
+      "Successfully retrieved position item ID %s: '%s'.",
+      position_item_id,
+      position_item.position_name,
+    )
+  else:
+    logger.info("Position item with ID %s not found.", position_item_id)
+  return position_item
+
+
 async def update_deck_position_item(
   db: AsyncSession,
   position_item_id: UUID,
@@ -777,6 +810,49 @@ async def update_deck_position_item(
     )
     logger.error(error_message, exc_info=True)
     return None
+
+
+async def delete_deck_position_item(db: AsyncSession, position_item_id: UUID) -> bool:
+  """Delete a specific position item by its ID.
+
+  This function deletes a position item from a deck configuration.
+
+  Args:
+    db (AsyncSession): The database session.
+    position_item_id (UUID): The ID of the position item to delete.
+
+  Returns:
+    bool: True if the deletion was successful, False if the item was not found.
+
+  Raises:
+    Exception: For any unexpected errors during deletion.
+
+  """
+  logger.info("Attempting to delete position item with ID: %s.", position_item_id)
+  position_item = await get_deck_position_item(db, position_item_id)
+  if not position_item:
+    logger.warning("Position item with ID %s not found for deletion.", position_item_id)
+    return False
+
+  try:
+    await db.delete(position_item)
+    await db.commit()
+    logger.info("Successfully deleted position item ID %s.", position_item_id)
+    return True
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"Integrity error deleting position item ID {position_item_id}. "
+      f"This might be due to foreign key constraints. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    return False  # Return False as deletion failed due to integrity
+  except Exception as e:
+    await db.rollback()
+    logger.exception(
+      "Unexpected error deleting position item ID %s. Rolling back.", position_item_id
+    )
+    raise e
 
 
 async def add_or_update_deck_type_definition(
@@ -1208,6 +1284,7 @@ async def add_deck_position_definitions(
     ValueError: If the `deck_type_definition_id` does not exist, or if a position
       name conflict occurs during addition.
     Exception: For any other unexpected errors during the process.
+
   """
   log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_definition_id}):"
   logger.info(
