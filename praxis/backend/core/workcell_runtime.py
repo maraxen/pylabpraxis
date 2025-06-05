@@ -927,14 +927,14 @@ class WorkcellRuntime:
   )
   async def clear_deck_position(
     self,
-    deck_machine_orm_id: uuid.UUID,
+    deck_orm_id: uuid.UUID,
     position_name: str,
     resource_instance_orm_id: Optional[uuid.UUID] = None,
   ):
     """Clear a resource from a specific position on a live deck.
 
     Args:
-      deck_machine_orm_id (int): The ORM ID of the deck.
+      deck_orm_id (int): The ORM ID of the deck.
       position_name (str): The name of the position to clear.
       resource_instance_orm_id (Optional[int]): The ORM ID of the resource
         instance that was in the position, if known. Used for updating DB status.
@@ -944,7 +944,7 @@ class WorkcellRuntime:
         instance, or if there's an error during unassignment.
 
     """
-    deck = self.get_active_deck(deck_machine_orm_id)
+    deck = self.get_active_deck(deck_orm_id)
 
     if not isinstance(deck, Deck):
       raise WorkcellRuntimeError(
@@ -955,7 +955,7 @@ class WorkcellRuntime:
     logger.info(
       "WorkcellRuntime: Clearing position '%s' on deck ID %s.",
       position_name,
-      deck_machine_orm_id,
+      deck_orm_id,
     )
 
     resource_in_position = deck.get_resource(position_name)
@@ -966,7 +966,7 @@ class WorkcellRuntime:
         "No specific resource found in position '%s' on deck ID %s to unassign."
         " Assuming position is already clear or unassignment by name is sufficient.",
         position_name,
-        deck_machine_orm_id,
+        deck_orm_id,
       )
 
     if resource_instance_orm_id:

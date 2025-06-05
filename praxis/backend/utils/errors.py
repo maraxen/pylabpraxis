@@ -116,6 +116,29 @@ class AssetAcquisitionError(RuntimeError):
     return f"{self.message}"
 
 
+class AssetReleaseError(RuntimeError):
+  """Exception raised when there is an issue releasing or returning assets.
+
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the AssetReleaseError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    self.message = message
+    super().__init__(self.message)
+
+  def __str__(self) -> str:
+    """Return the string representation of the error."""
+    return f"{self.message}"
+
+
 class ProtocolCancelledError(Exception):
   """Exception raised when a protocol run is explicitly cancelled.
 

@@ -270,7 +270,7 @@ async def list_machines(
   status: Optional[MachineStatusEnum] = None,
   pylabrobot_class_filter: Optional[str] = None,
   workcell_id: Optional[int] = None,
-  current_protocol_run_guid_filter: Optional[str] = None,
+  current_protocol_run_guid_filter: Optional[uuid.UUID] = None,
   user_friendly_name_filter: Optional[str] = None,  # Added parameter
   limit: int = 100,
   offset: int = 0,
