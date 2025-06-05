@@ -1,5 +1,112 @@
 The PylabPraxis backend is a sophisticated Python-based platform, built with FastAPI, designed to automate laboratory workflows. It focuses on orchestrating experimental protocols, managing physical and logical laboratory assets, and maintaining a real-time interface with PyLabRobot-controlled hardware.
 
+graph TD
+    subgraph Frontend
+        Flutter_Frontend[Flutter Frontend]
+    end
+
+    subgraph Backend (Python FastAPI)
+        API_Layer[FastAPI API Layer]
+        Orchestrator[Orchestrator]
+        AssetManager[AssetManager]
+        WorkcellRuntime[WorkcellRuntime]
+        Workcell[Workcell (PLR Object Container)]
+        DataServices[Data Services]
+        Models[ORM Models]
+        ProtocolDiscoveryService[Protocol Discovery Service]
+        PraxisState[PraxisState (Runtime Data)]
+        PraxisRunContext[PraxisRunContext (Execution Context)]
+        UtilityModules[Utility Modules]
+    end
+
+    subgraph External Services
+        PostgreSQL[PostgreSQL Database]
+        Keycloak[Keycloak (Auth Server)]
+        Redis[Redis (Cache/State/Locks)]
+        PyLabRobot[PyLabRobot]
+        Protocol_Files[Protocol Files (Python Code)]
+    end
+
+    Flutter_Frontend -- HTTP/REST --> API_Layer
+    Flutter_Frontend -- WebSockets --> API_Layer
+
+    API_Layer -- calls --> Orchestrator
+    API_Layer -- calls --> AssetManager
+    API_Layer -- calls --> WorkcellRuntime
+    API_Layer -- queries --> ProtocolDiscoveryService
+
+    Orchestrator -- manages execution --> AssetManager
+    Orchestrator -- manages execution --> WorkcellRuntime
+    Orchestrator -- logs via --> DataServices
+    Orchestrator -- uses for state --> Redis
+    Orchestrator -- fetches definitions --> DataServices
+    Orchestrator -- loads functions from --> Protocol_Files
+    Orchestrator -- manages --> PraxisState
+    Orchestrator -- passes --> PraxisRunContext
+    Orchestrator -- uses --> UtilityModules
+
+    AssetManager -- manages live PLR --> WorkcellRuntime
+    AssetManager -- persists via --> DataServices
+    AssetManager -- uses for locking --> Redis
+    AssetManager -- interacts with --> Workcell
+    AssetManager -- uses --> UtilityModules
+
+    WorkcellRuntime -- controls hardware --> PyLabRobot
+    WorkcellRuntime -- updates/fetches state --> DataServices
+    WorkcellRuntime -- manages live objects from --> Workcell
+    WorkcellRuntime -- uses --> UtilityModules
+
+    ProtocolDiscoveryService -- scans --> Protocol_Files
+    ProtocolDiscoveryService -- stores definitions --> DataServices
+    ProtocolDiscoveryService -- populates registry --> Orchestrator
+    ProtocolDiscoveryService -- uses --> UtilityModules
+
+    PraxisState -- stores data in --> Redis
+    PraxisRunContext -- carries --> PraxisState
+    PraxisRunContext -- carries --> DataServices (session)
+
+    DataServices -- interacts with --> PostgreSQL
+    DataServices -- uses --> Models
+
+    PostgreSQL -- stores data --> Models
+
+    Keycloak -- provides auth to --> API_Layer
+    Keycloak -- manages user data --> PostgreSQL (Keycloak's own DB)
+
+    Redis -- stores runtime state/locks --> Orchestrator
+    Redis -- stores runtime state/locks --> AssetManager
+    Redis -- stores runtime state/locks --> PraxisState
+    Redis -- used by --> UtilityModules
+
+    PyLabRobot -- provides objects & control --> WorkcellRuntime
+    PyLabRobot -- introspection for --> ProtocolDiscoveryService
+    PyLabRobot -- introspection for --> AssetManager
+
+    UtilityModules -- provides helpers to --> Orchestrator
+    UtilityModules -- provides helpers to --> AssetManager
+    UtilityModules -- provides helpers to --> WorkcellRuntime
+    UtilityModules -- provides helpers to --> ProtocolDiscoveryService
+    UtilityModules -- interacts with --> Redis
+    UtilityModules -- interacts with --> PostgreSQL (for db setup)
+
+    style Orchestrator fill:#f9f,stroke:#333,stroke-width:2px
+    style AssetManager fill:#f9f,stroke:#333,stroke-width:2px
+    style WorkcellRuntime fill:#f9f,stroke:#333,stroke-width:2px
+    style Workcell fill:#ccf,stroke:#333,stroke-width:2px
+    style API_Layer fill:#bbf,stroke:#333,stroke-width:2px
+    style DataServices fill:#ddf,stroke:#333,stroke-width:2px
+    style Models fill:#eef,stroke:#333,stroke-width:2px
+    style PostgreSQL fill:#afa,stroke:#333,stroke-width:2px
+    style Keycloak fill:#ffc,stroke:#333,stroke-width:2px
+    style Redis fill:#ffc,stroke:#333,stroke-width:2px
+    style PyLabRobot fill:#cfa,stroke:#333,stroke-width:2px
+    style ProtocolDiscoveryService fill:#f9f,stroke:#333,stroke-width:2px
+    style Protocol_Files fill:#e0e0e0,stroke:#333,stroke-width:2px
+    style PraxisState fill:#ffd,stroke:#333,stroke-width:2px
+    style PraxisRunContext fill:#ffd,stroke:#333,stroke-width:2px
+    style UtilityModules fill:#ddd,stroke:#333,stroke-width:2px
+
+
 ### **High-Level Backend Overview**
 
 Core Architectural Principles:
