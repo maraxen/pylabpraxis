@@ -13,7 +13,7 @@ Models included:
 import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID7, BaseModel, Field
 
 from praxis.backend.models.deck_pydantic_models import DeckStateResponse
 from praxis.backend.models.machine_pydantic_models import MachineResponse
@@ -28,7 +28,7 @@ class WorkcellBase(BaseModel):
   """
 
   name: str = Field(description="The unique name of the workcell.")
-  id: Optional[int] = Field(
+  id: Optional[UUID7] = Field(
     None, description="The unique identifier for the workcell (optional for creation)."
   )
   description: Optional[str] = Field(None, description="A description of the workcell.")
@@ -76,7 +76,7 @@ class WorkcellResponse(WorkcellBase):
   responses.
   """
 
-  db_id: int = Field(description="The unique database ID of the workcell.")
+  db_id: UUID7 = Field(description="The unique database ID of the workcell.")
   created_at: Optional[datetime.datetime] = Field(
     None, description="Timestamp when the workcell was created (UTC)."
   )

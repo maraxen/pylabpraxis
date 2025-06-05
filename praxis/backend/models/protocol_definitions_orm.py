@@ -17,6 +17,7 @@ from typing import Optional
 
 from sqlalchemy import (
   JSON,
+  UUID,
   Boolean,
   DateTime,
   ForeignKey,
@@ -73,7 +74,7 @@ class ProtocolSourceRepositoryOrm(Base):
   """
 
   __tablename__ = "protocol_source_repositories"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   git_url: Mapped[str] = mapped_column(String, nullable=False)
   default_ref: Mapped[str] = mapped_column(String, nullable=False, default="main")
@@ -109,7 +110,7 @@ class FileSystemProtocolSourceOrm(Base):
   """
 
   __tablename__ = "file_system_protocol_sources"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   base_path: Mapped[str] = mapped_column(String, nullable=False)
   is_recursive: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -142,7 +143,7 @@ class FunctionProtocolDefinitionOrm(Base):
   """
 
   __tablename__ = "function_protocol_definitions"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   version: Mapped[str] = mapped_column(String, nullable=False, default="0.1.0")
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -233,7 +234,7 @@ class ParameterDefinitionOrm(Base):
   """
 
   __tablename__ = "parameter_definitions"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   protocol_definition_id: Mapped[int] = mapped_column(
     Integer, ForeignKey("function_protocol_definitions.id"), nullable=False
   )
@@ -270,7 +271,7 @@ class AssetDefinitionOrm(Base):
   """
 
   __tablename__ = "asset_definitions"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   protocol_definition_id: Mapped[int] = mapped_column(
     Integer, ForeignKey("function_protocol_definitions.id"), nullable=False
   )
@@ -306,8 +307,8 @@ class ProtocolRunOrm(Base):
   """
 
   __tablename__ = "protocol_runs"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-  run_guid: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  run_guid: Mapped[UUID] = mapped_column(UUID, nullable=False, unique=True, index=True)
   top_level_protocol_definition_id: Mapped[int] = mapped_column(
     Integer, ForeignKey("function_protocol_definitions.id"), nullable=False
   )
@@ -361,16 +362,16 @@ class FunctionCallLogOrm(Base):
   """
 
   __tablename__ = "function_call_logs"
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-  protocol_run_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("protocol_runs.id"), nullable=False, index=True
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
+  protocol_run_id: Mapped[UUID] = mapped_column(
+    UUID, ForeignKey("protocol_runs.id"), nullable=False, index=True
   )
   sequence_in_run: Mapped[int] = mapped_column(Integer, nullable=False)
-  function_protocol_definition_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("function_protocol_definitions.id"), nullable=False
+  function_protocol_definition_id: Mapped[UUID] = mapped_column(
+    UUID, ForeignKey("function_protocol_definitions.id"), nullable=False
   )
-  parent_function_call_log_id: Mapped[Optional[int]] = mapped_column(
-    Integer, ForeignKey("function_call_logs.id"), nullable=True
+  parent_function_call_log_id: Mapped[Optional[UUID]] = mapped_column(
+    UUID, ForeignKey("function_call_logs.id"), nullable=True
   )
   start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
   end_time: Mapped[Optional[datetime]] = mapped_column(

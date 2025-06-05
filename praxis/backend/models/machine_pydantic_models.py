@@ -8,7 +8,7 @@ enabling robust data validation and serialization for API interactions.
 import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID7, BaseModel, Field
 
 
 class MachineTypeInfo(BaseModel):
@@ -63,7 +63,7 @@ class MachineBase(BaseModel):
     default=False,
     description="Indicates if this machine is also registered as a resource instance.",
   )
-  resource_counterpart_id: Optional[int] = Field(
+  resource_counterpart_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated ResourceInstanceOrm if this machine is a \
         resource.",
@@ -84,8 +84,9 @@ class MachineCreate(MachineBase):
   serves as a deck.
   """
 
+  id: Optional[UUID7] = None
   python_fqn: str
-  deck_type_definition_id: Optional[int] = None
+  deck_type_definition_id: Optional[UUID7] = None
 
 
 class MachineResponse(MachineBase):
@@ -96,7 +97,7 @@ class MachineResponse(MachineBase):
   and timestamps for creation and last update.
   """
 
-  id: int
+  id: UUID7
   python_fqn: str
   deck_type_definition_id: Optional[int] = None
   created_at: Optional[datetime.datetime] = None

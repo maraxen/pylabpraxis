@@ -25,7 +25,7 @@ Models included:
 import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID7, BaseModel, Field
 
 
 class ResourceDefinitionBase(BaseModel):
@@ -105,7 +105,7 @@ class ResourceInventoryReagentItem(BaseModel):
   expiry, and quantities, for inventory tracking.
   """
 
-  reagent_id: str
+  reagent_id: UUID7
   reagent_name: Optional[str] = None
   lot_number: Optional[str] = None
   expiry_date: Optional[str] = None
@@ -199,18 +199,19 @@ class ResourceInstanceSharedFields(BaseModel):
   attributes of a physical resource item, such as status and location.
   """
 
+  id: UUID7
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = "unknown"
-  current_parentposition_id: Optional[int] = None
-  current_position_inposition: Optional[str] = None
+  current_parent_id: Optional[UUID7] = None
+  current_position_id: Optional[UUID7] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
   is_machine: bool = Field(
     default=False,
     description="True if this resource instance is also registered as a machine.",
   )
-  machine_counterpart_id: Optional[int] = Field(
+  machine_counterpart_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated MachineOrm if this resource instance is a \
       machine.",
@@ -233,7 +234,7 @@ class ResourceInstanceCreate(ResourceInstanceSharedFields):
 
   instance_name: Optional[str] = None
   name: str
-  resource_definition_id: Optional[int] = None
+  resource_definition_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   date_added_to_inventory: Optional[datetime.datetime] = Field(
     default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
@@ -248,8 +249,8 @@ class ResourceInstanceResponse(ResourceInstanceSharedFields):
   and timestamps for creation and last update.
   """
 
-  id: int
-  resource_definition_id: int
+  id: UUID7
+  resource_definition_id: Optional[UUID7]
   name: str
 
   instance_name: str
@@ -271,8 +272,8 @@ class ResourceInstanceUpdate(BaseModel):
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = None
-  current_parentposition_id: Optional[int] = None
-  current_position_inposition: Optional[str] = None
+  current_parent_id: Optional[UUID7] = None
+  current_position_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
@@ -280,7 +281,7 @@ class ResourceInstanceUpdate(BaseModel):
     default=None,
     description="True if this resource instance is also registered as a machine.",
   )
-  machine_counterpart_id: Optional[int] = Field(
+  machine_counterpart_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated MachineOrm if this resource instance is a \
       machine.",

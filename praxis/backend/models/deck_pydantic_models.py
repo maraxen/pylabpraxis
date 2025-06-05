@@ -8,7 +8,7 @@ configurations, positioning with "positions" which are human accessible location
 import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID7, BaseModel, Field
 
 
 class PositioningConfig(BaseModel):
@@ -49,9 +49,9 @@ class DeckPositionItemBase(BaseModel):
   including its position identifier and optional associated resource details.
   """
 
-  position_id: str | int
-  resource_instance_id: Optional[int] = None
-  expected_resource_definition_name: Optional[str] = None
+  position_id: str | int | UUID7
+  resource_instance_id: Optional[UUID7] = None
+  expected_resource_definition_name: Optional[UUID7] = None
 
   class Config:
     """Configuration for Pydantic model behavior."""
@@ -76,8 +76,8 @@ class DeckPositionItemResponse(DeckPositionItemBase):
   suitable for client-facing responses.
   """
 
-  item_id: int
-  deck_configuration_id: int
+  item_id: UUID7
+  deck_configuration_id: UUID7
 
 
 class DeckBase(BaseModel):
@@ -88,7 +88,7 @@ class DeckBase(BaseModel):
   """
 
   deck_name: str
-  deck_id: int
+  deck_id: UUID7
   python_fqn: str
   description: Optional[str] = None
 
@@ -118,7 +118,7 @@ class DeckUpdate(BaseModel):
   """
 
   deck_name: Optional[str] = None
-  deck_id: Optional[int] = None
+  deck_id: Optional[UUID7] = None
   description: Optional[str] = None
   position_items: Optional[List[DeckPositionItemCreate]] = None
 
@@ -131,7 +131,7 @@ class DeckResponse(DeckBase):
   creation and last update, suitable for client-facing responses.
   """
 
-  id: int
+  id: UUID7
   position_items: List[DeckPositionItemResponse] = []
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
@@ -146,9 +146,10 @@ class DeckPositionDefinitionBase(BaseModel):
   """
 
   position_id: str | int
+  uuid: Optional[UUID7] = None
   pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
-  allowed_resource_definition_names: Optional[List[str]] = None
+  allowed_resource_definition_names: Optional[List[UUID7]] = None
   accepts_tips: Optional[bool] = None
   accepts_plates: Optional[bool] = None
   accepts_tubes: Optional[bool] = None
@@ -196,10 +197,10 @@ class DeckPositionDefinitionUpdate(BaseModel):
   and physical location details.
   """
 
-  position_id: Optional[str | int] = None
+  position_id: Optional[str | int | UUID7] = None
   pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
-  allowed_resource_definition_names: Optional[List[str]] = None
+  allowed_resource_definition_names: Optional[List[UUID7]] = None
   accepts_tips: Optional[bool] = None
   accepts_plates: Optional[bool] = None
   accepts_tubes: Optional[bool] = None
@@ -217,6 +218,7 @@ class DeckTypeDefinitionBase(BaseModel):
   and methods for position-to-location mapping, along with descriptive metadata.
   """
 
+  id: Optional[UUID7] = None
   python_fqn: str
   deck_type: str
   positioning_config: Optional[PositioningConfig] = Field(
@@ -255,7 +257,6 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
   and timestamps for creation and last update, suitable for client-facing responses.
   """
 
-  id: int
   position_definitions: List[DeckPositionDefinitionResponse] = []
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
@@ -282,7 +283,7 @@ class DeckTypeDefinitionUpdate(BaseModel):
 class DeckInfo(BaseModel):
   """Basic information about a deck."""
 
-  id: int = Field(description="ORM ID of the MachineOrm for the deck")
+  id: UUID7 = Field(description="ORM ID of the MachineOrm for the deck")
   user_friendly_name: str = Field(description="User-assigned name for the deck")
   python_fqn: str = Field(
     description="PyLabRobot class name for the deck (e.g., 'Deck')"
@@ -296,7 +297,7 @@ class DeckInfo(BaseModel):
 class DeckResourceInfo(BaseModel):
   """Detailed information about a resource instance on the deck."""
 
-  resource_instance_id: int = Field(description="ORM ID of the ResourceInstanceOrm")
+  resource_instance_id: UUID7 = Field(description="ORM ID of the ResourceInstanceOrm")
   user_assigned_name: str = Field(
     description="User-assigned name for this specific resource instance"
   )
@@ -356,7 +357,7 @@ class DeckPositionInfo(BaseModel):
 class DeckStateResponse(BaseModel):
   """Represents the complete state of a deck, including its positions and resource."""
 
-  deck_id: int = Field(description="ORM ID of the MachineOrm for the deck")
+  deck_id: UUID7 = Field(description="ORM ID of the MachineOrm for the deck")
   name: str = Field(description="User-assigned name for the deck")
   python_fqn: str = Field(description="PyLabRobot class name for the deck")
   size_x_mm: Optional[float] = Field(
@@ -378,7 +379,7 @@ class DeckStateResponse(BaseModel):
 class DeckUpdateMessage(BaseModel):
   """Model for WebSocket messages broadcasting updates to the deck state."""
 
-  deck_id: int = Field(description="ORM ID of the deck that was updated")
+  deck_id: UUID7 = Field(description="ORM ID of the deck that was updated")
   update_type: str = Field(
     description="Type of update (e.g., 'resource_added', 'resource_removed', "
     "'resource_updated', 'position_cleared')"

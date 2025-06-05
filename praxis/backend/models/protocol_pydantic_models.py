@@ -21,7 +21,7 @@ Models included:
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
 
@@ -38,8 +38,8 @@ class ProtocolStartRequest(BaseModel):
   parameters: Optional[Dict[str, Any]] = None
   assets: Optional[Dict[str, str]] = None
   deck_configuration: Optional[str] = None
-  workcell_id: Optional[int] = None
-  protocol_definition_id: Optional[int] = None
+  workcell_id: Optional[UUID7] = None
+  protocol_definition_id: Optional[UUID7] = None
   config_data: Dict[str, Any]
   kwargs: Optional[Dict[str, Any]] = None
 
@@ -82,7 +82,7 @@ class ProtocolInfo(BaseModel):
   has_assets: Optional[bool] = False
   has_parameters: Optional[bool] = False
   version: Optional[str] = None
-  protocol_definition_id: Optional[int] = None
+  protocol_definition_id: Optional[UUID7] = None
 
 
 class UIHint(BaseModel):
@@ -208,7 +208,7 @@ class FunctionProtocolDefinitionModel(BaseModel):
   parameters: List[ParameterMetadataModel] = Field(default_factory=list)
   assets: List[AssetRequirementModel] = Field(default_factory=list)
 
-  db_id: Optional[int] = None
+  db_id: Optional[UUID7] = None
 
   class Config:
     """Pydantic configuration for FunctionProtocolDefinitionModel."""

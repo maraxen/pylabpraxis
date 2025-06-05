@@ -14,6 +14,7 @@ It also includes functions to manage position definitions for deck types.
 
 import datetime
 import logging
+import uuid
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import delete, select, update
@@ -573,6 +574,7 @@ async def delete_deck(db: AsyncSession, deck_id: int) -> bool:
     )
     raise e
 
+
 async def create_deck_position_item(
   db: AsyncSession,
   deck_id: int,
@@ -609,16 +611,13 @@ async def create_deck_position_item(
 
   # Check if the parent DeckConfigurationOrm exists
   deck_config_result = await db.execute(
-    select(DeckConfigurationOrm).filter(
-      DeckConfigurationOrm.id == deck_id
-    )
+    select(DeckConfigurationOrm).filter(DeckConfigurationOrm.id == deck_id)
   )
   deck_config_orm = deck_config_result.scalar_one_or_none()
 
   if not deck_config_orm:
     error_message = (
-      f"DeckConfigurationOrm with id {deck_id} not found. "
-      "Cannot add position item."
+      f"DeckConfigurationOrm with id {deck_id} not found. " "Cannot add position item."
     )
     logger.error(error_message)
     raise ValueError(error_message)
@@ -626,9 +625,7 @@ async def create_deck_position_item(
   # Validate resource instance if provided
   if resource_instance_id is not None:
     resource_instance_result = await db.execute(
-      select(ResourceInstanceOrm).filter(
-        ResourceInstanceOrm.id == resource_instance_id
-      )
+      select(ResourceInstanceOrm).filter(ResourceInstanceOrm.id == resource_instance_id)
     )
     if not resource_instance_result.scalar_one_or_none():
       error_message = (
@@ -675,6 +672,7 @@ async def create_deck_position_item(
     logger.error(error_message)
     return None
 
+
 async def update_deck_position_item(
   db: AsyncSession,
   position_item_id: int,
@@ -704,9 +702,7 @@ async def update_deck_position_item(
     Exception: For any other unexpected errors during the process.
 
   """
-  logger.info(
-    "Attempting to update position item ID %d.", position_item_id
-  )
+  logger.info("Attempting to update position item ID %d.", position_item_id)
   result = await db.execute(
     select(DeckConfigurationPositionItemOrm).filter(
       DeckConfigurationPositionItemOrm.id == position_item_id
@@ -733,9 +729,7 @@ async def update_deck_position_item(
     or position_item.resource_instance_id != resource_instance_id
   ):
     resource_instance_result = await db.execute(
-      select(ResourceInstanceOrm).filter(
-        ResourceInstanceOrm.id == resource_instance_id
-      )
+      select(ResourceInstanceOrm).filter(ResourceInstanceOrm.id == resource_instance_id)
     )
     if not resource_instance_result.scalar_one_or_none():
       error_message = (
@@ -771,18 +765,16 @@ async def update_deck_position_item(
   try:
     await db.commit()
     await db.refresh(position_item)  # Refresh to get the latest state
-    logger.info(
-      "Successfully updated position item ID %d.", position_item_id
-    )
+    logger.info("Successfully updated position item ID %d.", position_item_id)
     return position_item
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error updating position item ID {position_item_id}. "
-      f"Details: {e}"
+      f"Integrity error updating position item ID {position_item_id}. " f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     return None
+
 
 async def add_or_update_deck_type_definition(
   db: AsyncSession,
@@ -1315,6 +1307,7 @@ async def add_deck_position_definitions(
     raise e
 
   return created_positions
+
 
 async def get_position_definitions_for_deck_type(
   db: AsyncSession, deck_type_definition_id: int

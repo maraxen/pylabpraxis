@@ -7,7 +7,7 @@ including their names, descriptions, and relationships to associated machines.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import UUID, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.utils.db import Base
@@ -50,7 +50,7 @@ class WorkcellOrm(Base):
 
   __tablename__ = "workcells"
 
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
   physical_location: Mapped[Optional[str]] = mapped_column(

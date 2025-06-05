@@ -22,11 +22,11 @@ if TYPE_CHECKING:
 
 from sqlalchemy import (
   JSON,
+  UUID,
   Boolean,
   DateTime,
   Float,
   ForeignKey,
-  Integer,
   String,
   Text,
 )
@@ -269,7 +269,7 @@ class ResourceInstanceOrm(Base):
 
   __tablename__ = "resource_instances"
 
-  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  id: Mapped[UUID] = mapped_column(UUID, primary_key=True, index=True)
   user_assigned_name: Mapped[str] = mapped_column(
     String,
     nullable=False,
@@ -309,8 +309,8 @@ class ResourceInstanceOrm(Base):
     String, nullable=True, comment="If on a deck, the position name (e.g., A1, SLOT_7)"
   )
 
-  location_machine_id: Mapped[Optional[int]] = mapped_column(
-    Integer,
+  location_machine_id: Mapped[Optional[UUID]] = mapped_column(
+    UUID,
     ForeignKey("machines.id"),
     nullable=True,
     comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
@@ -366,7 +366,8 @@ class ResourceInstanceOrm(Base):
     Boolean, default=False, comment="True if this instance is a machine (e.g., shaker)"
   )
 
-  machine_counterpart_id: Mapped[Optional[int]] = mapped_column(
+  machine_counterpart_id: Mapped[Optional[UUID]] = mapped_column(
+    UUID,
     ForeignKey("machines.id", ondelete="SET NULL"),
     nullable=True,
     index=True,
