@@ -58,7 +58,6 @@ graph TD
 
     ProtocolDiscoveryService -- scans --> Protocol_Files
     ProtocolDiscoveryService -- stores definitions --> DataServices
-    ProtocolDiscoveryService -- populates registry --> Orchestrator
     ProtocolDiscoveryService -- uses --> UtilityModules
 
     PraxisState -- stores data in --> Redis
@@ -133,10 +132,22 @@ Key Backend Components & Their Roles:
      * User File Uploads: Allowing users to upload custom deck layout files.
      * In-Function Layout Generation with @deck\_layout Decorator: Enabling programmatic definition of deck layouts directly within protocol files using a new @deck\_layout decorator.
    * Protocol Definition & Discovery: This crucial aspect of the backend enables the system to understand and manage executable laboratory protocols:
-     * @protocol\_function Decorator: Developers define protocols as standard Python functions, annotated with this decorator (e.g., in backend/protocol\_core/decorators.py). This decorator is used to embed rich metadata (name, version, description, parameters with type hints and constraints, required assets, execution flags like is\_top\_level) directly within the function's code. It also wraps the original function to inject execution context (PraxisRunContext) and enable automatic logging of function calls.
+     * @protocol\_function Decorator: Developers define protocols as standard Python functions, annotated with this decorator (e.g., in backend/protocol\_core/decorators.py). This decorator is used to embed rich metadata (name, version, description, parameters with type hints and constraints, required assets, execution flags like is\_top\_level) directly within the function's code. It also wraps the original function with an async-capable executor that:
+      * Enforces that the protocol is only run via an Orchestrator that provides a valid PraxisRunContext.
+      * Injects shared run state into the function based on its signature.
+      * Handles automatic logging and run-control commands (pause, resume, cancel).
+      * Allows both async and sync functions to be decorated, safely running synchronous
+        code in a separate thread to prevent blocking.
      * ProtocolDiscoveryService: This service (in backend/protocol\_core/discovery\_service.py) is responsible for scanning configured Python code sources (Git repositories or local file system paths). It identifies @protocol\_function decorated functions, extracts their embedded metadata, and for undecorated functions, attempts to infer basic protocol information from their signatures. This collected metadata is then converted into structured Pydantic models.
      * FunctionProtocolDefinitionOrm (ORM Models): The structured metadata extracted by the ProtocolDiscoveryService is persisted into the PostgreSQL database using the FunctionProtocolDefinitionOrm SQLAlchemy ORM model (defined in backend/models/protocol\_definitions\_orm.py). This model, along with related ParameterDefinitionOrm and AssetDefinitionOrm, stores a canonical, static definition of each discoverable protocol.
-     * Orchestrator's Role in Inspection & Execution: When a protocol run is initiated, the Orchestrator retrieves the relevant FunctionProtocolDefinitionOrm from the database. Its \_prepare\_protocol\_code method dynamically loads the Python module and accesses the actual function (which retains its protocol\_metadata attribute from the decorator). The \_prepare\_arguments method then uses this live metadata and the function's signature to validate user input, resolve and acquire necessary assets via AssetManager, and prepare the final arguments for the protocol function's execution.
+     * Orchestrator's Role in Inspection & Execution:
+      At startup, the Orchestrator is responsible for populating an in-memory PROTOCOL_REGISTRY. It does this by fetching all FunctionProtocolDefinitionOrm records from the database and creating a ProtocolRuntimeInfo object for each, which holds the function's definition, its database ID, and a reference to the actual Python function object.
+
+      When a protocol run is initiated, the Orchestrator's primary role is to create the initial PraxisRunContext and set it as the active context using Python's contextvars module. This makes the context implicitly available to the entire downstream async call stack. It then invokes the top-level protocol function.
+     When a protocol run is initiated, the Orchestrator retrieves the relevant FunctionProtocolDefinitionOrm from the database, which includes its unique database ID. The Orchestrator's _prepare_protocol_code method dynamically loads the Python module to get a reference to the decorated function.
+      The _prepare_arguments method then prepares the arguments for the protocol's execution wrapper. Crucially, this now includes two special keyword arguments:
+      `__praxis_run_context__`: The fully-formed PraxisRunContext for the run.
+      `__function_db_id__`: The database ID of the FunctionProtocolDefinitionOrm being executed.
    * Protocol Run Context & State Management (backend/core/run\_context.py, backend/utils/state.py):
      * PraxisState: This class (from backend/utils/state.py) represents the *canonical, mutable shared state* for a single top-level protocol run. It is designed to hold all experimental parameters, intermediate results, and tracking information that needs to persist across different steps or function calls within a run. It is backed by Redis for efficient runtime in-memory access and persistence, allowing for robust state management even across application restarts (for pause/resume scenarios). The Orchestrator manages the lifecycle of a PraxisState instance for each run.
      * PraxisRunContext: This immutable object (from backend/core/run\_context.py) is the central carrier of essential execution and logging information that is passed down the call stack of @protocol\_function calls. For each function call, the PraxisRunContext provides:
@@ -147,6 +158,21 @@ Key Backend Components & Their Roles:
        * db\_session: The SQLAlchemy session for database interactions within the function's scope (e.g., for logging).
        * canonical\_state: A reference to the mutable PraxisState object for the current run.
          The @protocol\_function decorator is responsible for creating and propagating updated PraxisRunContext instances to maintain the correct call hierarchy and context for nested protocol function calls.
+      Note: The database ID of the currently executing function is now passed explicitly to the decorator wrapper by the caller (i.e., the Orchestrator or the context's nested call method) alongside the context itself.
+    * Implicit Nested Call Tracking
+    A primary design goal of Praxis is to allow protocol authors to write simple, standard Python code. The framework is architected to automatically track the full hierarchy of nested calls without requiring special syntax from the user.
+
+    This is achieved through a combination of the in-memory PROTOCOL_REGISTRY and contextvars:
+
+    When a decorated function like await some_other_function() is called, its @protocol_function wrapper executes.
+    The wrapper looks up its own metadata (including its database ID) from the PROTOCOL_REGISTRY.
+    It retrieves the caller's PraxisRunContext from the active ContextVar. This gives it the parent's identity for logging.
+    It logs its own execution, creating a parent-child link in the database, and allows for
+    run related statistics (failure modes, time to run, etc.) to be tracked, with different
+    versions cleanly separted.
+    It then creates a new context for its own execution scope and sets this as the new active context in the ContextVar before running the user's code.
+    When the function completes, the wrapper restores the ContextVar to its previous state.
+    This process ensures every call is automatically logged and tracked in the correct hierarchy, allowing developers to write natural Python code.
 3. Data Service Layer (backend/services/)
    * This package provides a crucial abstraction layer, encapsulating all direct database interactions. Instead of direct ORM manipulation in business logic, components interact with dedicated service classes.
    * protocol\_data\_service.py: Manages CRUD operations for protocol definitions, protocol run instances, and detailed function call logs.

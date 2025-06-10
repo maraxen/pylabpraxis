@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.utils.state import State as PraxisState
 
-PROTOCOL_REGISTRY: Dict[str, Dict[str, Any]] = {}
+PROTOCOL_REGISTRY: Dict[str, Any] = {}
 DeckInputType = Union[str, os.PathLike, io.IOBase, Deck]
 
 logger = logging.getLogger(__name__)

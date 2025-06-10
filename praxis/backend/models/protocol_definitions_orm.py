@@ -58,6 +58,7 @@ class ProtocolRunStatusEnum(enum.Enum):
   FAILED = "failed"
   CANCELING = "canceling"
   CANCELLED = "cancelled"
+  INTERVENING = "intervening"
 
 
 class FunctionCallStatusEnum(enum.Enum):
