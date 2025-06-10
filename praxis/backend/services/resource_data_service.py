@@ -461,6 +461,124 @@ async def add_resource_instance(
   return instance_orm
 
 
+async def update_resource_instance(
+  db: AsyncSession,
+  instance_id: uuid.UUID,
+  user_assigned_name: Optional[str] = None,
+  name: Optional[str] = None,
+  lot_number: Optional[str] = None,
+  expiry_date: Optional[datetime.datetime] = None,
+  properties_json: Optional[Dict[str, Any]] = None,
+  physical_location_description: Optional[str] = None,
+  is_permanent_fixture: Optional[bool] = None,
+  is_machine: Optional[bool] = None,
+  machine_counterpart_id: Optional[uuid.UUID] = None,
+) -> Optional[ResourceInstanceOrm]:
+  """Update an existing resource instance.
+
+  Args:
+    db (AsyncSession): The database session.
+    instance_id (uuid.UUID): The ID of the resource instance to update.
+    user_assigned_name (Optional[str], optional): New user-assigned name for the
+      resource instance. Defaults to None.
+    name (Optional[str], optional): New PyLabRobot definition name for the
+      resource instance. Defaults to None.
+    lot_number (Optional[str], optional): New lot number for the resource.
+      Defaults to None.
+    expiry_date (Optional[datetime.datetime], optional): New expiry date
+      for the resource. Defaults to None.
+    properties_json (Optional[Dict[str, Any]], optional): New properties
+      for the resource instance as a JSON-serializable dictionary. Defaults to None.
+    physical_location_description (Optional[str], optional): New description
+      of the physical location of the resource. Defaults to None.
+    is_permanent_fixture (Optional[bool], optional): Indicates if this resource
+      instance is a permanent fixture. Defaults to None.
+    is_machine (Optional[bool]): True if this instance is a machine, False otherwise.
+    machine_counterpart_id (Optional[uuid.UUID]): ID of the associated MachineOrm if this
+        resource is a machine.
+
+  Returns:
+    Optional[ResourceInstanceOrm]: The updated resource instance object if
+    the update was successful, otherwise None.
+
+  Raises:
+    ValueError: If the resource instance with the given ID does not exist,
+      or if an error occurs while updating the instance.
+    Exception: For any other unexpected errors during the update process.
+
+  """
+  logger.info("Updating resource instance with ID: %s.", instance_id)
+  instance_orm = await get_resource_instance_by_id(db, instance_id)
+  if not instance_orm:
+    logger.warning("Resource instance with ID %s not found for update.", instance_id)
+    return None
+  log_prefix = f"Resource Instance (ID: {instance_orm.id}, Name: \
+    {instance_orm.user_assigned_name}):"
+  logger.info("%s Attempting to update resource instance.", log_prefix)
+  # Update the fields of the resource instance as needed
+  if user_assigned_name:
+    instance_orm.user_assigned_name = user_assigned_name
+  if name:
+    instance_orm.name = name
+  if lot_number:
+    instance_orm.lot_number = lot_number
+  if expiry_date:
+    instance_orm.expiry_date = expiry_date
+  if properties_json:
+    instance_orm.properties_json = properties_json
+  if physical_location_description:
+    instance_orm.physical_location_description = physical_location_description
+  if is_permanent_fixture:
+    instance_orm.is_permanent_fixture = is_permanent_fixture
+  if is_machine:
+    instance_orm.is_machine = is_machine
+  if machine_counterpart_id:
+    instance_orm.machine_counterpart_id = machine_counterpart_id
+    # If the machine counterpart ID is provided, we assume it is being updated
+    # and we need to ensure the machine counterpart is linked correctly.
+  if machine_counterpart_id is not None:
+    try:
+      logger.info(
+        "%s Linking MachineOrm counterpart (ID: %s).",
+        log_prefix,
+        machine_counterpart_id,
+      )
+      if not is_machine:
+        logger.warning(
+          "%s Machine counterpart ID provided but is_machine is False. "
+          "This may lead to inconsistencies.",
+          log_prefix,
+        )
+        is_machine = (
+          True  # Ensure is_machine is True if a machine counterpart ID is provided
+        )
+      await _create_or_link_machine_counterpart_for_resource(
+        db=db,
+        resource_instance_orm=instance_orm,
+        is_machine=is_machine,
+        machine_counterpart_id=machine_counterpart_id,
+      )
+    except Exception as e:
+      logger.error(
+        f"{log_prefix} Error linking MachineOrm counterpart: {e}", exc_info=True
+      )
+      raise ValueError(
+        f"Failed to link machine counterpart for resource instance "
+        f"'{instance_orm.user_assigned_name}'."
+      ) from e
+
+  try:
+    await db.commit()
+    await db.refresh(instance_orm)
+    logger.info("%s Successfully updated resource instance.", log_prefix)
+  except Exception as e:
+    await db.rollback()
+    logger.error("%s Error updating resource instance: %s", log_prefix, e)
+    raise
+
+  return instance_orm
+
+
 async def get_resource_instance_by_id(
   db: AsyncSession, instance_id: uuid.UUID
 ) -> Optional[ResourceInstanceOrm]:
@@ -798,5 +916,57 @@ async def delete_resource_instance(db: AsyncSession, instance_id: uuid.UUID) -> 
     logger.exception(
       "Unexpected error deleting resource instance ID %d. Rolling back.",
       instance_id,
+    )
+    raise e
+
+
+async def delete_resource_instance_by_name(
+  db: AsyncSession, user_assigned_name: str
+) -> bool:
+  """Delete a resource instance by its unique name.
+
+  Args:
+      db (AsyncSession): The database session.
+      user_assigned_name (str): The unique name of the resource
+          instance to delete.
+
+  Returns:
+      bool: True if the deletion was successful, False if the instance was
+      not found.
+
+  """
+  logger.info(
+    "Attempting to delete resource instance with name: '%s'.", user_assigned_name
+  )
+  instance_orm = await get_resource_instance_by_name(
+    db, user_assigned_name=user_assigned_name
+  )
+  if not instance_orm:
+    logger.warning(
+      "Resource instance with name '%s' not found for deletion.",
+      user_assigned_name,
+    )
+    return False
+  try:
+    await db.delete(instance_orm)
+    await db.commit()
+    logger.info(
+      "Successfully deleted resource instance with name '%s'.",
+      user_assigned_name,
+    )
+    return True
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"Cannot delete resource instance '{user_assigned_name}' due to existing "
+      f"references (e.g., in deck layouts). Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
+  except Exception as e:
+    await db.rollback()
+    logger.exception(
+      "Unexpected error deleting resource instance with name '%s'. Rolling back.",
+      user_assigned_name,
     )
     raise e

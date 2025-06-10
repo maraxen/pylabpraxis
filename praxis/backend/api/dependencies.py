@@ -34,3 +34,4 @@ def get_workcell_runtime(request: Request) -> WorkcellRuntime:
             detail="WorkcellRuntime not initialized. Application startup may have failed.",
         )
     return workcell_runtime
+  

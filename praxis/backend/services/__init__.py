@@ -79,6 +79,7 @@ from .resource_data_service import (
   get_resource_instance_by_name,
   list_resource_definitions,
   list_resource_instances,
+  update_resource_instance,
   update_resource_instance_location_and_status,
 )
 from .workcell_data_service import (

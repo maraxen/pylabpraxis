@@ -234,3 +234,21 @@ class PyLabRobotGenericError(PylabRobotError):
   ):
     """Initialize a new instance of the PyLabRobotGenericError."""
     super().__init__(message, original_plr_exception)
+
+
+class PraxisAPIError(PraxisError):
+  """Base exception for errors in the Praxis API.
+
+  Attributes:
+    message (str): The error message.
+
+  """
+
+  def __init__(self, message: str):
+    """Initialize a new instance of the PraxisAPIError.
+
+    Args:
+      message (str): The detailed error message.
+
+    """
+    super().__init__(message)

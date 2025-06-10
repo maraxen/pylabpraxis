@@ -178,6 +178,7 @@ class ResourceDefinitionCatalogOrm(Base):
 
   __tablename__ = "resource_definition_catalog"
 
+  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(
     String,
     primary_key=True,
@@ -316,7 +317,6 @@ class ResourceInstanceOrm(Base):
     nullable=True,
     comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
   )
-
 
   physical_location_description: Mapped[Optional[str]] = mapped_column(
     String, nullable=True, comment="General storage location if not on a machine"

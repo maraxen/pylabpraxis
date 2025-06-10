@@ -200,6 +200,11 @@ class ResourceInstanceSharedFields(BaseModel):
   """
 
   id: UUID7
+  user_assigned_name: str = Field(
+    ...,
+    description="A user-friendly name for the resource instance, which can be \
+      different from the PyLabRobot definition name.",
+  )
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = "unknown"
@@ -232,7 +237,6 @@ class ResourceInstanceCreate(ResourceInstanceSharedFields):
   to a resource definition.
   """
 
-  instance_name: Optional[str] = None
   name: str
   resource_definition_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None

@@ -14,7 +14,7 @@ from praxis.backend.database_models.asset_management_orm import (
 )
 
 # Import Pydantic models from API layer for constructing test data
-from praxis.backend.api.assets import ResourceInventoryDataIn
+from praxis.backend.api.resources import ResourceInventoryDataIn
 
 # For flag_modified
 from sqlalchemy.orm.attributes import flag_modified

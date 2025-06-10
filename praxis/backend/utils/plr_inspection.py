@@ -52,8 +52,7 @@ def get_class_fqn(klass: Type[Any]) -> str:
 def get_module_classes(
   module: Any, parent_class: Optional[Type[Any]] = None, concrete_only: bool = False
 ) -> Dict[str, Type[Any]]:
-  """
-  Get all classes from a module that are subclasses of parent_class.
+  """Get all classes from a module that are subclasses of parent_class.
 
   Args:
       module: The module to inspect.
@@ -62,6 +61,7 @@ def get_module_classes(
 
   Returns:
       A dictionary of class names to class objects.
+
   """
   classes = {}
   for name, obj in inspect.getmembers(module, inspect.isclass):
@@ -92,8 +92,7 @@ def get_module_classes(
 def get_constructor_params_with_defaults(
   klass: Type[Any], required_only: bool = False
 ) -> Dict[str, Any]:
-  """
-  Get the constructor parameters and their default values for a class.
+  """Get the constructor parameters and their default values for a class.
 
   Args:
       klass: The class to inspect.
@@ -102,6 +101,7 @@ def get_constructor_params_with_defaults(
   Returns:
       A dictionary of parameter names to their default values
       (or inspect.Parameter.empty if no default).
+
   """
   params = {}
   try:
@@ -153,8 +153,17 @@ def _discover_classes_in_module_recursive(
   concrete_only: bool,
   visited_modules: Set[str],
 ) -> Dict[str, Type[Any]]:
-  """
-  Recursively discover classes in a module and its submodules.
+  """Discover classes in a module and its submodules recursively.
+
+  Args:
+    module_name: The name of the module to inspect.
+    parent_class: The parent class to filter by. If None, all classes are returned.
+    concrete_only: If True, only return non-abstract classes.
+    visited_modules: A set to track visited modules to avoid circular imports.
+
+  Returns:
+    A dictionary of fully qualified class names to class objects.
+
   """
   if module_name in visited_modules:
     return {}
@@ -190,13 +199,21 @@ def _discover_classes_in_module_recursive(
   return found_classes
 
 
-def get_all_plr_classes(
+def get_all_classes(
   base_module_names: Union[str, List[str]] = "pylabrobot",
   parent_class: Optional[Type[Any]] = None,
   concrete_only: bool = False,
 ) -> Dict[str, Type[Any]]:
-  """
-  Get all PyLabRobot classes from base module(s) and their submodules.
+  """Get all PyLabRobot classes from base module(s) and their submodules.
+
+  Args:
+    base_module_names: A single module name or a list of names to start discovery.
+    parent_class: The parent class to filter by. If None, all classes are returned.
+    concrete_only: If True, only return non-abstract classes.
+
+  Returns:
+    A dictionary of fully qualified class names to class objects.
+
   """
   all_classes: Dict[str, Type[Any]] = {}
   visited_modules: Set[str] = set()
@@ -212,10 +229,10 @@ def get_all_plr_classes(
   return all_classes
 
 
-def get_all_plr_resource_classes(
+def get_resource_classes(
   concrete_only: bool = True,
 ) -> Dict[str, Type[Resource]]:
-  return get_all_plr_classes(  # type: ignore
+  return get_all_classes(  # type: ignore
     base_module_names=[
       "pylabrobot.resources",
       "pylabrobot.liquid_handling.resources",
@@ -225,18 +242,18 @@ def get_all_plr_resource_classes(
   )
 
 
-def get_all_plr_machine_classes(
+def get_machine_classes(
   concrete_only: bool = True,
 ) -> Dict[str, Type[Machine]]:
-  return get_all_plr_classes(  # type: ignore
+  return get_all_classes(  # type: ignore
     base_module_names="pylabrobot.machines",
     parent_class=Machine,
     concrete_only=concrete_only,
   )
 
 
-def get_all_plr_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
-  all_decks = get_all_plr_classes(  # type: ignore
+def get_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
+  all_decks = get_all_classes(  # type: ignore
     base_module_names=[
       "pylabrobot.resources",
       "pylabrobot.liquid_handling.resources",
@@ -252,11 +269,11 @@ def get_all_plr_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]
 # --- Phase 1: Enhanced PyLabRobot Deck and General Asset Introspection ---
 
 
-def discover_plr_deck_classes(
+def discover_deck_classes(
   packages: Union[str, List[str]] = "pylabrobot.resources",
 ) -> Dict[str, Type[Deck]]:
   """
-  Discovers all non-abstract PLR Deck subclasses within the specified Python package(s).
+  Discover all non-abstract PLR Deck subclasses within the specified Python package(s).
   """
   package_list = [packages] if isinstance(packages, str) else list(packages)
   discovered_deck_classes: Dict[str, Type[Deck]] = {}
@@ -456,7 +473,7 @@ def get_deck_details(deck_class: Type[Deck]) -> Dict[str, Any]:
   return details
 
 
-def get_plr_asset_details(asset_fqn: str) -> Dict[str, Any]:
+def get_asset_details(asset_fqn: str) -> Dict[str, Any]:
   """
   Extracts details for any PLR Resource or Machine FQN.
   """

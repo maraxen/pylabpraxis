@@ -7,10 +7,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Router to be tested
-from praxis.backend.api.assets import router as assets_router
+from praxis.backend.api.resources import router as assets_router
 
 # Pydantic models for request/response validation and constructing test data
-from praxis.backend.api.assets import ResourceInventoryDataIn, ResourceInventoryDataOut
+from praxis.backend.api.resources import ResourceInventoryDataIn, ResourceInventoryDataOut
 
 # ORM Model mock for service layer
 from praxis.backend.database_models.asset_management_orm import ResourceInstanceOrm

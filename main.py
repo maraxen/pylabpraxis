@@ -8,7 +8,7 @@ from starlette.responses import RedirectResponse
 import logging
 
 # Praxis specific imports
-from praxis.backend.api import protocols, assets, workcell_api
+from praxis.backend.api import protocols, resources, workcell_api
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.configure import PraxisConfiguration
 
@@ -116,7 +116,7 @@ app.add_middleware(
 # API routes (remain the same)
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["protocols"])
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["workcell"])
-app.include_router(assets.router, prefix="/api/v1/assets", tags=["assets"])
+app.include_router(resources.router, prefix="/api/v1/assets", tags=["assets"])
 
 
 @app.get("/")
