@@ -1,11 +1,6 @@
-# pylint: disable=too-many-arguments,too-many-locals,broad-except,fixme,unused-argument,too-many-statements,too-many-branches
-"""
-praxis.backend.core.orchestrator
-
-The Orchestrator is responsible for managing the lifecycle of protocol runs.
-It fetches protocol definitions, prepares the execution environment (including state),
-invokes the protocol functions, and oversees logging and run control.
-"""
+# pylint: disable=too-many-arguments,too-many-locals,broad-except,fixme,\
+#   unused-argument,too-many-statements,too-many-branches
+"""The Orchestrator manages the lifecycle of protocol runs."""
 
 import asyncio
 import contextlib
@@ -62,7 +57,8 @@ def temporary_sys_path(path_to_add: Optional[str]):
   Ensures the path is removed from sys.path on exit, even if errors occur.
 
   Args:
-    path_to_add (Optional[str]): The path to add to sys.path. If None, does nothing.
+    path_to_add (Optional[str]): The path to add to sys.path. If None,
+      does nothing.
 
   Yields:
     None: Yields control back to the caller, allowing them to execute code with the
@@ -77,26 +73,30 @@ def temporary_sys_path(path_to_add: Optional[str]):
   if path_to_add and path_to_add not in sys.path:
     sys.path.insert(0, path_to_add)
     path_added_successfully = True
-    logger.debug(f"Added '{path_to_add}' to sys.path.")
+    logger.debug("Added '%s' to sys.path.", path_to_add)
   try:
     yield
   finally:
     if path_added_successfully and path_to_add:
       try:
         sys.path.remove(path_to_add)
-        logger.debug(f"Removed '{path_to_add}' from sys.path.")
+        logger.debug("Removed '%s' from sys.path.", path_to_add)
       except ValueError:  # pragma: no cover
         # Path was already removed or sys.path was modified externally
         logger.warning(
-          f"Path '{path_to_add}' was not in sys.path upon exit, restoring original."
+          "Path '%s' was not in sys.path upon exit, restoring original.",
+          path_to_add,
         )
         sys.path = original_sys_path
     elif (
       path_to_add and path_to_add in sys.path and sys.path != original_sys_path
     ):  # pragma: no cover
-      # This case handles if path_to_add was already in sys.path but sys.path got modified
+      # This case handles if path_to_add was already in sys.path
+      # but sys.path got modified
       logger.debug(
-        f"Restoring original sys.path as it was modified externally but '{path_to_add}' was originally present."
+        "Restoring original sys.path as it was modified externally but "
+        "'%s' was originally present.",
+        path_to_add,
       )
       sys.path = original_sys_path
 
@@ -158,7 +158,10 @@ class Orchestrator:
     try:
       logged_command = " ".join(command)
       logger.debug(
-        f"ORCH-GIT: Running command: {logged_command} in {cwd} with timeout {timeout}s"
+        "ORCH-GIT: Running command: %s in %s with timeout %ds",
+        logged_command,
+        cwd,
+        timeout,
       )
       process = await asyncio.to_thread(
         subprocess.run,
@@ -173,18 +176,24 @@ class Orchestrator:
         stdout_stripped = process.stdout.strip()
         stderr_stripped = process.stderr.strip()
         if stdout_stripped:
-          logger.debug(f"ORCH-GIT: STDOUT: {stdout_stripped}")
+          logger.debug("ORCH-GIT: STDOUT: %s", stdout_stripped)
         if stderr_stripped:
           logger.debug(
-            f"ORCH-GIT: STDERR: {stderr_stripped}"
+            "ORCH-GIT: STDERR: %s",
+            stderr_stripped,
           )  # Git often uses stderr for info
       return process.stdout.strip()
     except subprocess.TimeoutExpired as e:
       error_message = (
-        f"ORCH-GIT: Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds in"
-        f" {cwd}.\n"
-        f"Stderr: {e.stderr.decode(errors='ignore').strip() if e.stderr else 'N/A'}\n"
-        f"Stdout: {e.stdout.decode(errors='ignore').strip() if e.stdout else 'N/A'}"
+        "ORCH-GIT: Command '%s' timed out after %d seconds in %s.\n"
+        "Stderr: %s\n"
+        "Stdout: %s"
+      ) % (
+        " ".join(e.cmd),
+        e.timeout,
+        cwd,
+        e.stderr.decode(errors="ignore").strip() if e.stderr else "N/A",
+        e.stdout.decode(errors="ignore").strip() if e.stdout else "N/A",
       )
       logger.error(error_message)
       raise RuntimeError(error_message) from e
@@ -204,16 +213,22 @@ class Orchestrator:
         else "N/A"
       )
       error_message = (
-        f"ORCH-GIT: Command '{' '.join(e.cmd)}' failed with exit code {e.returncode} in"
-        f"{cwd}.\n"
-        f"Stderr: {stderr_output}\n"
-        f"Stdout: {stdout_output}"
+        "ORCH-GIT: Command '%s' failed with exit code %d in %s.\n"
+        "Stderr: %s\n"
+        "Stdout: %s"
+      ) % (
+        " ".join(e.cmd),
+        e.returncode,
+        cwd,
+        stderr_output,
+        stdout_output,
       )
       logger.error(error_message)
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
-      error_message = f"ORCH-GIT: Git command not found. Ensure git is installed. \
-        Command: {' '.join(command)}"
+      error_message = (
+        "ORCH-GIT: Git command not found. Ensure git is installed. " "Command: %s"
+      ) % (" ".join(command))
       logger.error(error_message)
       raise RuntimeError(error_message) from None
 
@@ -244,8 +259,11 @@ class Orchestrator:
 
     """
     logger.debug(
-      f"Fetching protocol ORM: Name='{protocol_name}', Version='{version}', "
-      f"Commit='{commit_hash}', Source='{source_name}'"
+      "Fetching protocol ORM: Name='%s', Version='%s', Commit='%s', Source='%s'",
+      protocol_name,
+      version,
+      commit_hash,
+      source_name,
     )
     return await svc.get_protocol_definition_details(
       db=db_session,
@@ -274,7 +292,9 @@ class Orchestrator:
 
     """
     logger.info(
-      f"Preparing code for protocol: {protocol_def_orm.name} v{protocol_def_orm.version}"
+      "Preparing code for protocol: %s v%s",
+      protocol_def_orm.name,
+      protocol_def_orm.version,
     )
     module_path_to_add_for_sys_path: Optional[str] = None
 
@@ -285,12 +305,15 @@ class Orchestrator:
 
       if not checkout_path or not commit_hash_to_checkout or not repo.git_url:
         raise ValueError(
-          f"Incomplete Git source info for protocol '{protocol_def_orm.name}'."
+          "Incomplete Git source info for protocol '%s'.",
+          protocol_def_orm.name,
         )
 
       await self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
       logger.info(
-        f"ORCH-GIT: Checking out commit '{commit_hash_to_checkout}' in '{checkout_path}'..."
+        "ORCH-GIT: Checking out commit '%s' in '%s'...",
+        commit_hash_to_checkout,
+        checkout_path,
       )
       await self._run_git_command(
         ["git", "checkout", commit_hash_to_checkout], cwd=checkout_path
@@ -306,11 +329,17 @@ class Orchestrator:
       )
       if current_commit != resolved_target_commit:
         raise RuntimeError(
-          f"Failed to checkout commit '{commit_hash_to_checkout}'. HEAD is at '{current_commit}', "
-          f"expected '{resolved_target_commit}'. Repo: '{repo.name}'"
+          "Failed to checkout commit '%s'. HEAD is at '%s', expected '%s'."
+          " Repo: '%s'",
+          commit_hash_to_checkout,
+          current_commit,
+          resolved_target_commit,
+          repo.name,
         )
       logger.info(
-        f"ORCH-GIT: Successfully checked out '{commit_hash_to_checkout}' (resolved to '{current_commit}')."
+        "ORCH-GIT: Successfully checked out '%s' (resolved to '%s').",
+        commit_hash_to_checkout,
+        current_commit,
       )
       module_path_to_add_for_sys_path = checkout_path
 
@@ -318,26 +347,31 @@ class Orchestrator:
       fs_source = protocol_def_orm.file_system_source
       if not os.path.isdir(fs_source.base_path):
         raise ValueError(
-          f"Invalid base path '{fs_source.base_path}' for FS source '{fs_source.name}'."
+          "Invalid base path '%s' for FS source '%s'.",
+          fs_source.base_path,
+          fs_source.name,
         )
       module_path_to_add_for_sys_path = fs_source.base_path
     else:
       logger.warning(
-        f"Protocol '{protocol_def_orm.name}' has no linked source. Attempting direct import."
+        "Protocol '%s' has no linked source. Attempting direct import.",
+        protocol_def_orm.name,
       )
 
     with temporary_sys_path(module_path_to_add_for_sys_path):
       if protocol_def_orm.module_name in sys.modules:
         module = importlib.reload(sys.modules[protocol_def_orm.module_name])
-        logger.debug(f"Reloaded module: {protocol_def_orm.module_name}")
+        logger.debug("Reloaded module: %s", protocol_def_orm.module_name)
       else:
         module = importlib.import_module(protocol_def_orm.module_name)
-        logger.debug(f"Imported module: {protocol_def_orm.module_name}")
+        logger.debug("Imported module: %s", protocol_def_orm.module_name)
 
     if not hasattr(module, protocol_def_orm.function_name):
       raise AttributeError(
-        f"Function '{protocol_def_orm.function_name}' not found in module "
-        f"'{protocol_def_orm.module_name}' from path '{module_path_to_add_for_sys_path or 'PYTHONPATH'}'."
+        "Function '%s' not found in module '%s' from path '%s'.",
+        protocol_def_orm.function_name,
+        protocol_def_orm.module_name,
+        module_path_to_add_for_sys_path or "PYTHONPATH",
       )
 
     func_wrapper = getattr(module, protocol_def_orm.function_name)
@@ -349,8 +383,10 @@ class Orchestrator:
       pydantic_def, FunctionProtocolDefinitionModel
     ):
       raise AttributeError(
-        f"Function '{protocol_def_orm.function_name}' in '{protocol_def_orm.module_name}' "
-        "is not a valid @protocol_function (missing or invalid _protocol_definition attribute)."
+        "Function '%s' in '%s' is not a valid @protocol_function "
+        "(missing or invalid _protocol_definition attribute).",
+        protocol_def_orm.function_name,
+        protocol_def_orm.module_name,
       )
 
     if protocol_def_orm.id and (
@@ -358,7 +394,9 @@ class Orchestrator:
     ):
       pydantic_def.db_id = protocol_def_orm.id  # type: ignore[assignment]
       logger.debug(
-        f"Updated Pydantic definition DB ID for '{pydantic_def.name}' to {protocol_def_orm.id}"
+        "Updated Pydantic definition DB ID for '%s' to %s",
+        pydantic_def.name,
+        protocol_def_orm.id,
       )
 
     return func_wrapper, pydantic_def
@@ -378,12 +416,18 @@ class Orchestrator:
         is_git_repo = result == "true"
         if not is_git_repo:
           logger.warning(
-            f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists but is not a git work-tree root."
+            "ORCH-GIT: Path '%s' for repo '%s' exists but is not a git "
+            "work-tree root.",
+            checkout_path,
+            repo_name_for_logging,
           )
       except RuntimeError:
         is_git_repo = False
         logger.info(
-          f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' is not a git repository or git command failed."
+          "ORCH-GIT: Path '%s' for repo '%s' is not a git repository or git "
+          "command failed.",
+          checkout_path,
+          repo_name_for_logging,
         )
 
     if is_git_repo:
@@ -395,17 +439,25 @@ class Orchestrator:
         )
         if current_remote_url != git_url:
           raise ValueError(
-            f"Path '{checkout_path}' for repo '{repo_name_for_logging}' is a Git repository, "
-            f"but its remote 'origin' URL ('{current_remote_url}') does not match the expected URL ('{git_url}'). "
-            "Manual intervention required."
+            "Path '%s' for repo '%s' is a Git repository, but its remote "
+            "'origin' URL ('%s') does not match the expected URL ('%s'). "
+            "Manual intervention required.",
+            checkout_path,
+            repo_name_for_logging,
+            current_remote_url,
+            git_url,
           )
       except RuntimeError as e:
         raise ValueError(
-          f"Failed to verify remote URL for existing repo at '{checkout_path}'. Error: {e}"
+          "Failed to verify remote URL for existing repo at '%s'. Error: %s",
+          checkout_path,
+          e,
         ) from e
 
       logger.info(
-        f"ORCH-GIT: '{checkout_path}' is existing repo for '{repo_name_for_logging}'. Fetching origin..."
+        "ORCH-GIT: '%s' is existing repo for '%s'. Fetching origin...",
+        checkout_path,
+        repo_name_for_logging,
       )
       await self._run_git_command(
         ["git", "fetch", "origin", "--prune"], cwd=checkout_path
@@ -414,21 +466,34 @@ class Orchestrator:
       if os.path.exists(checkout_path):
         if os.listdir(checkout_path):
           raise ValueError(
-            f"Path '{checkout_path}' for repo '{repo_name_for_logging}' exists, is not Git, and not empty. Cannot clone."
+            "Path '%s' for repo '%s' exists, is not Git, and not empty. "
+            "Cannot clone.",
+            checkout_path,
+            repo_name_for_logging,
           )
         logger.info(
-          f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists and is empty. Cloning into it."
+          "ORCH-GIT: Path '%s' for repo '%s' exists and is empty. " "Cloning into it.",
+          checkout_path,
+          repo_name_for_logging,
         )
       else:
         logger.info(
-          f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' does not exist. Creating and cloning..."
+          "ORCH-GIT: Path '%s' for repo '%s' does not exist. "
+          "Creating and cloning...",
+          checkout_path,
+          repo_name_for_logging,
         )
         try:
           os.makedirs(checkout_path, exist_ok=True)
         except OSError as e:
-          raise ValueError(f"Failed to create directory '{checkout_path}': {e}") from e
+          raise ValueError(
+            "Failed to create directory '%s': %s", checkout_path, e
+          ) from e
       logger.info(
-        f"ORCH-GIT: Cloning repository '{git_url}' into '{checkout_path}' for repo '{repo_name_for_logging}'..."
+        "ORCH-GIT: Cloning repository '%s' into '%s' for repo '%s'...",
+        git_url,
+        checkout_path,
+        repo_name_for_logging,
       )
       await self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
 
@@ -442,7 +507,7 @@ class Orchestrator:
     protocol_run_guid: uuid.UUID,
   ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], Dict[uuid.UUID, Any]]:
     """Prepare arguments for protocol execution, including acquiring assets."""
-    logger.info(f"Preparing arguments for protocol: {protocol_pydantic_def.name}")
+    logger.info("Preparing arguments for protocol: %s", protocol_pydantic_def.name)
     final_args: Dict[str, Any] = {}
     state_dict_to_pass: Optional[Dict[str, Any]] = None
     acquired_assets_details: Dict[uuid.UUID, Any] = {}
@@ -455,13 +520,15 @@ class Orchestrator:
 
       if param_meta.name in user_input_params:
         final_args[param_meta.name] = user_input_params[param_meta.name]
-        logger.debug(f"Using user input for param '{param_meta.name}'.")
+        logger.debug("Using user input for param '%s'.", param_meta.name)
       elif not param_meta.optional:
         raise ValueError(
-          f"Mandatory parameter '{param_meta.name}' missing for protocol '{protocol_pydantic_def.name}'."
+          "Mandatory parameter '%s' missing for protocol '%s'.",
+          param_meta.name,
+          protocol_pydantic_def.name,
         )
       else:
-        logger.debug(f"Optional param '{param_meta.name}' not provided by user.")
+        logger.debug("Optional param '%s' not provided by user.", param_meta.name)
 
     if protocol_pydantic_def.state_param_name:
       state_param_meta = next(
@@ -476,29 +543,36 @@ class Orchestrator:
         if "PraxisState" in state_param_meta.actual_type_str:
           final_args[protocol_pydantic_def.state_param_name] = praxis_state
           logger.debug(
-            f"Injecting PraxisState object for param '{protocol_pydantic_def.state_param_name}'."
+            "Injecting PraxisState object for param '%s'.",
+            protocol_pydantic_def.state_param_name,
           )
         elif "dict" in state_param_meta.actual_type_str.lower():
           state_dict_to_pass = praxis_state.to_dict()
           final_args[protocol_pydantic_def.state_param_name] = state_dict_to_pass
           logger.debug(
-            f"Injecting state dictionary for param '{protocol_pydantic_def.state_param_name}'."
+            "Injecting state dictionary for param '%s'.",
+            protocol_pydantic_def.state_param_name,
           )
         else:
           final_args[protocol_pydantic_def.state_param_name] = praxis_state
           logger.debug(
-            f"Defaulting to injecting PraxisState object for param '{protocol_pydantic_def.state_param_name}'."
+            "Defaulting to injecting PraxisState object for param '%s'.",
+            protocol_pydantic_def.state_param_name,
           )
 
     for asset_req_model in protocol_pydantic_def.assets:
       try:
         logger.info(
-          f"ORCH-ACQUIRE: Acquiring asset '{asset_req_model.name}' "
-          f"(Type: '{asset_req_model.actual_type_str}', Optional: {asset_req_model.optional}) "
-          f"for run '{protocol_run_guid}'."
+          "ORCH-ACQUIRE: Acquiring asset '%s' (Type: '%s', Optional: %s) "
+          "for run '%s'.",
+          asset_req_model.name,
+          asset_req_model.actual_type_str,
+          asset_req_model.optional,
+          protocol_run_guid,
         )
         live_obj, orm_id, asset_kind_str = await self.asset_manager.acquire_asset(
-          protocol_run_guid=protocol_run_guid, asset_requirement=asset_req_model
+          protocol_run_guid=protocol_run_guid,
+          asset_requirement=asset_req_model,
         )
         final_args[asset_req_model.name] = live_obj
         acquired_assets_details[orm_id] = {
@@ -507,27 +581,36 @@ class Orchestrator:
           "name_in_protocol": asset_req_model.name,
         }
         logger.info(
-          f"ORCH-ACQUIRE: Asset '{asset_req_model.name}' "
-          f"(Kind: {asset_kind_str}, ORM ID: {orm_id}) acquired: {live_obj}"
+          "ORCH-ACQUIRE: Asset '%s' (Kind: %s, ORM ID: %s) acquired: %s",
+          asset_req_model.name,
+          asset_kind_str,
+          orm_id,
+          live_obj,
         )
       except AssetAcquisitionError as e:
         if asset_req_model.optional:
           logger.warning(
-            f"ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' could not be acquired: {e}. "
-            "Proceeding as it's optional."
+            "ORCH-ACQUIRE: Optional asset '%s' could not be acquired: %s."
+            " Proceeding as it's optional.",
+            asset_req_model.name,
+            e,
           )
           final_args[asset_req_model.name] = None
         else:
           error_msg = (
-            f"Failed to acquire mandatory asset '{asset_req_model.name}' for "
-            f"protocol '{protocol_pydantic_def.name}': {e}"
+            "Failed to acquire mandatory asset '%s' for protocol '%s': %s"
+          ) % (
+            asset_req_model.name,
+            protocol_pydantic_def.name,
+            e,
           )
           logger.error(error_msg)
           raise ValueError(error_msg) from e
       except Exception as e_general:
-        error_msg = (
-          f"Unexpected error acquiring asset '{asset_req_model.name}' for "
-          f"protocol '{protocol_pydantic_def.name}': {e_general}"
+        error_msg = ("Unexpected error acquiring asset '%s' for protocol '%s': %s") % (
+          asset_req_model.name,
+          protocol_pydantic_def.name,
+          e_general,
         )
         logger.error(error_msg, exc_info=True)
         raise ValueError(error_msg) from e_general
@@ -547,18 +630,23 @@ class Orchestrator:
         False,
       ):
         raise ValueError(
-          f"Mandatory deck parameter '{deck_param_name}' for preconfiguration not provided."
+          "Mandatory deck parameter '%s' for preconfiguration not provided.",
+          deck_param_name,
         )
 
       if deck_identifier_from_user is not None:
         if not isinstance(deck_identifier_from_user, (str, uuid.UUID)):
           raise ValueError(
-            f"Deck identifier for preconfiguration ('{deck_param_name}') must be a string (name) or UUID (ID), "
-            f"got {type(deck_identifier_from_user)}."
+            "Deck identifier for preconfiguration ('%s') must be a string "
+            "(name) or UUID (ID), got %s.",
+            deck_param_name,
+            type(deck_identifier_from_user),
           )
 
         logger.info(
-          f"ORCH-DECK: Applying deck configuration '{deck_identifier_from_user}' for run '{protocol_run_guid}'."
+          "ORCH-DECK: Applying deck configuration '%s' for run '%s'.",
+          deck_identifier_from_user,
+          protocol_run_guid,
         )
 
         deck_config_orm_id_to_apply: uuid.UUID
@@ -568,7 +656,8 @@ class Orchestrator:
           )
           if not deck_config_orm:
             raise ValueError(
-              f"Deck configuration named '{deck_identifier_from_user}' not found."
+              "Deck configuration named '%s' not found.",
+              deck_identifier_from_user,
             )
           deck_config_orm_id_to_apply = deck_config_orm.id
         else:
@@ -580,11 +669,15 @@ class Orchestrator:
         )
         final_args[deck_param_name] = live_deck_object
         logger.info(
-          f"ORCH-DECK: Deck '{live_deck_object.name}' configured and injected as '{deck_param_name}'."
+          "ORCH-DECK: Deck '%s' configured and injected as '%s'.",
+          live_deck_object.name,
+          deck_param_name,
         )
       elif deck_param_name in final_args:
         logger.warning(
-          f"Deck parameter '{deck_param_name}' was already processed (e.g., as an asset). Review protocol definition."
+          "Deck parameter '%s' was already processed (e.g., as an asset)."
+          " Review protocol definition.",
+          deck_param_name,
         )
 
     return final_args, state_dict_to_pass, acquired_assets_details
@@ -598,27 +691,37 @@ class Orchestrator:
     commit_hash: Optional[str] = None,
     source_name: Optional[str] = None,
   ) -> ProtocolRunOrm:
-    """
-    Executes a specified protocol.
+    """Execute a specified protocol.
 
     Args:
-        protocol_name: Name of the protocol to execute.
-        user_input_params: Dictionary of parameters provided by the user.
-        initial_state_data: Initial data for the PraxisState.
-        protocol_version: Specific version of the protocol.
-        commit_hash: Specific commit hash if from a Git source.
-        source_name: Name of the protocol source (Git repo or FS).
+      protocol_name: Name of the protocol to execute.
+      user_input_params: Dictionary of parameters provided by the user.
+      initial_state_data: Initial data for the PraxisState.
+      protocol_version: Specific version of the protocol.
+      commit_hash: Specific commit hash if from a Git source.
+      source_name: Name of the protocol source (Git repo or FS).
 
     Returns:
-        The ProtocolRunOrm object representing the completed or failed run.
+      The ProtocolRunOrm object representing the completed or failed run.
+
+    Raises:
+      ValueError: If the protocol definition is not found or invalid.
+      ProtocolCancelledError: If the protocol run is cancelled by the user.
+      RuntimeError: If there is an error during protocol execution or preparation.
+
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}
     run_guid = uuid.uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
-      f"ORCH: Initiating protocol run {run_guid} for '{protocol_name}' at {start_iso_timestamp}."
-      f" User params: {user_input_params}, Initial state: {initial_state_data}"
+      "ORCH: Initiating protocol run %s for '%s' at %s. "
+      "User params: %s, Initial state: %s",
+      run_guid,
+      protocol_name,
+      start_iso_timestamp,
+      user_input_params,
+      initial_state_data,
     )
 
     async with self.db_session_factory() as db_session:
@@ -628,9 +731,8 @@ class Orchestrator:
 
       if not protocol_def_orm or not protocol_def_orm.id:
         error_msg = (
-          f"Protocol '{protocol_name}' (v:{protocol_version}, commit:{commit_hash}, src:{source_name}) "
-          "not found or invalid DB ID."
-        )
+          "Protocol '%s' (v:%s, commit:%s, src:%s) not found or invalid DB ID."
+        ) % (protocol_name, protocol_version, commit_hash, source_name)
         logger.error(error_msg)
 
         protocol_def_id_for_error_run = (
@@ -639,8 +741,8 @@ class Orchestrator:
 
         if protocol_def_id_for_error_run is None:
           raise ProtocolCancelledError(
-            f"Protocol definition '{protocol_name}' completely not found, \
-              cannot link failed run to a definition."
+            f"Protocol definition '{protocol_name}' completely not found, cannot link "
+            f"failed run to a definition."
           )
 
         error_run_db_obj = await svc.create_protocol_run(
@@ -680,7 +782,7 @@ class Orchestrator:
 
       initial_command = await get_control_command(run_guid)
       if initial_command == "CANCEL":
-        logger.info(f"ORCH: Run {run_guid} CANCELLED before preparation.")
+        logger.info("ORCH: Run %s CANCELLED before preparation.", run_guid)
         await clear_control_command(run_guid)
         await svc.update_protocol_run_status(
           db_session,
@@ -722,7 +824,8 @@ class Orchestrator:
         "workcell_last_successful_snapshot", current_workcell_snapshot
       )
       logger.debug(
-        f"Workcell state snapshot captured and stored in PraxisState for run {run_guid}."
+        "Workcell state snapshot captured and stored in PraxisState for run %s.",
+        run_guid,
       )
 
       try:
@@ -756,7 +859,7 @@ class Orchestrator:
 
         command = await get_control_command(run_guid)
         if command == "PAUSE":
-          logger.info(f"ORCH: Run {run_guid} PAUSED before execution.")
+          logger.info("ORCH: Run %s PAUSED before execution.", run_guid)
           await clear_control_command(run_guid)
           await svc.update_protocol_run_status(
             db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSED
@@ -766,15 +869,17 @@ class Orchestrator:
             await asyncio.sleep(1)
             new_command = await get_control_command(run_guid)
             if new_command == "RESUME":
-              logger.info(f"ORCH: Run {run_guid} RESUMING.")
+              logger.info("ORCH: Run %s RESUMING.", run_guid)
               await clear_control_command(run_guid)
               await svc.update_protocol_run_status(
-                db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
+                db_session,
+                protocol_run_db_obj.id,
+                ProtocolRunStatusEnum.RUNNING,
               )
               await db_session.commit()
               break
             elif new_command == "CANCEL":
-              logger.info(f"ORCH: Run {run_guid} CANCELLED during pause.")
+              logger.info("ORCH: Run %s CANCELLED during pause.", run_guid)
               await clear_control_command(run_guid)
               await svc.update_protocol_run_status(
                 db_session,
@@ -789,7 +894,7 @@ class Orchestrator:
                 f"Run {run_guid} cancelled by user during pause."
               )
         elif command == "CANCEL":
-          logger.info(f"ORCH: Run {run_guid} CANCELLED before execution.")
+          logger.info("ORCH: Run %s CANCELLED before execution.", run_guid)
           await clear_control_command(run_guid)
           await svc.update_protocol_run_status(
             db_session,
@@ -817,7 +922,9 @@ class Orchestrator:
           await db_session.commit()
 
         logger.info(
-          f"ORCH: Executing protocol '{protocol_pydantic_def.name}' for run {run_guid}."
+          "ORCH: Executing protocol '%s' for run %s.",
+          protocol_pydantic_def.name,
+          run_guid,
         )
         result = await callable_protocol_func(
           **prepared_args,
@@ -825,7 +932,9 @@ class Orchestrator:
           __function_db_id__=protocol_def_orm.id,
         )
         logger.info(
-          f"ORCH: Protocol '{protocol_pydantic_def.name}' run {run_guid} completed successfully."
+          "ORCH: Protocol '%s' run %s completed successfully.",
+          protocol_pydantic_def.name,
+          run_guid,
         )
 
         await svc.update_protocol_run_status(
@@ -836,7 +945,7 @@ class Orchestrator:
         )
 
       except ProtocolCancelledError as pce:
-        logger.info(f"ORCH: Protocol run {run_guid} was cancelled: {pce}")
+        logger.info("ORCH: Protocol run %s was cancelled: %s", run_guid, pce)
         run_after_cancel = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
         if (
           run_after_cancel
@@ -850,7 +959,10 @@ class Orchestrator:
           )
       except Exception as e:
         logger.error(
-          f"ORCH: ERROR during protocol execution for run {run_guid} ('{protocol_def_orm.name}'): {e}",
+          "ORCH: ERROR during protocol execution for run %s ('%s'): %s",
+          run_guid,
+          protocol_def_orm.name,
+          e,
           exc_info=True,
         )
         error_info = {
@@ -866,20 +978,26 @@ class Orchestrator:
             "workcell_last_successful_snapshot", None
           )
           logger.debug(
-            f"ORCH: Clearing last successful workcell state snapshot for run {run_guid} due to error."
+            "ORCH: Clearing last successful workcell state snapshot for "
+            "run %s due to error.",
+            run_guid,
           )
           if last_good_snapshot:
             self.workcell_runtime.apply_state_snapshot(last_good_snapshot)
             logger.warning(
-              f"ORCH: Workcell state for run {run_guid} rolled back successfully."
+              "ORCH: Workcell state for run %s rolled back successfully.",
+              run_guid,
             )
           else:
             logger.warning(
-              f"ORCH: No prior workcell state snapshot found for run {run_guid} to rollback."
+              "ORCH: No prior workcell state snapshot found for run %s to" " rollback.",
+              run_guid,
             )
         except Exception as rollback_error:
           logger.critical(
-            f"ORCH: CRITICAL - Failed to rollback workcell state for run {run_guid}: {rollback_error}",
+            "ORCH: CRITICAL - Failed to rollback workcell state for run %s:" " %s",
+            run_guid,
+            rollback_error,
             exc_info=True,
           )
 
@@ -888,20 +1006,26 @@ class Orchestrator:
 
         if isinstance(e, PyLabRobotVolumeError):
           logger.info(
-            f"Specific PyLabRobot error 'VolumeError' detected for run {run_guid}. Setting status to REQUIRES_INTERVENTION."
+            "Specific PyLabRobot error 'VolumeError' detected for run %s."
+            " Setting status to REQUIRES_INTERVENTION.",
+            run_guid,
           )
           final_run_status = ProtocolRunStatusEnum.REQUIRES_INTERVENTION
           status_details = json.dumps(
             {
               "error_type": "VolumeError",
               "error_message": str(e),
-              "action_required": "User intervention needed to verify liquid levels and proceed.",
+              "action_required": (
+                "User intervention needed to verify liquid levels and" " proceed."
+              ),
               "traceback": traceback.format_exc(),
             }
           )
         elif isinstance(e, PyLabRobotGenericError):
           logger.info(
-            f"Generic PyLabRobot error detected for run {run_guid}. Setting status to FAILED."
+            "Generic PyLabRobot error detected for run %s. Setting status"
+            " to FAILED.",
+            run_guid,
           )
           final_run_status = ProtocolRunStatusEnum.FAILED
           status_details = json.dumps(
@@ -927,7 +1051,7 @@ class Orchestrator:
             output_data_json=status_details,
           )
       finally:
-        logger.info(f"ORCH: Finalizing protocol run {run_guid}.")
+        logger.info("ORCH: Finalizing protocol run %s.", run_guid)
         final_run_orm = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
         if final_run_orm:
           final_run_orm.final_state_json = praxis_state.to_dict()
@@ -944,7 +1068,9 @@ class Orchestrator:
 
           if acquired_assets_info:
             logger.info(
-              f"ORCH: Releasing {len(acquired_assets_info)} assets for run {run_guid}."
+              "ORCH: Releasing %d assets for run %s.",
+              len(acquired_assets_info),
+              run_guid,
             )
             for asset_orm_id, asset_info in acquired_assets_info.items():
               try:
@@ -959,24 +1085,31 @@ class Orchestrator:
                 elif asset_type == "resource":
                   await self.asset_manager.release_resource(
                     resource_instance_orm_id=asset_orm_id,
-                    final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+                    final_status=(ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE),
                   )
                 logger.info(
-                  f"ORCH-RELEASE: Asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {asset_orm_id}) released."
+                  "ORCH-RELEASE: Asset '%s' (Type: %s, ORM ID: %s)" " released.",
+                  name_in_protocol,
+                  asset_type,
+                  asset_orm_id,
                 )
               except Exception as release_err:
                 logger.error(
-                  f"ORCH-RELEASE: Failed to release asset '{asset_info.get('name_in_protocol', 'UnknownAsset')}' "
-                  f"(ORM ID: {asset_info.get('orm_id')}): {release_err}",
+                  "ORCH-RELEASE: Failed to release asset '%s' (ORM ID:" " %s): %s",
+                  asset_info.get("name_in_protocol", "UnknownAsset"),
+                  asset_info.get("orm_id"),
+                  release_err,
                   exc_info=True,
                 )
           await db_session.merge(final_run_orm)
         try:
           await db_session.commit()
-          logger.info(f"ORCH: Final DB commit for run {run_guid} successful.")
+          logger.info("ORCH: Final DB commit for run %s successful.", run_guid)
         except Exception as db_final_err:
           logger.error(
-            f"ORCH: CRITICAL - Failed to commit final updates for run {run_guid}: {db_final_err}",
+            "ORCH: CRITICAL - Failed to commit final updates for run %s: %s",
+            run_guid,
+            db_final_err,
             exc_info=True,
           )
           await db_session.rollback()
