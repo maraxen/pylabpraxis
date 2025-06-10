@@ -184,3 +184,53 @@ class WorkcellRuntimeError(Exception):
   def __str__(self) -> str:
     """Return the string representation of the error."""
     return f"{self.message}"
+
+
+class PylabRobotError(PraxisError):
+  """Base exception for PyLabRobot-related errors within Praxis."""
+
+  def __init__(self, message: str, original_plr_exception: Exception | None = None):
+    """Initialize a new instance of the PylabRobotError.
+
+    Args:
+      message (str): The detailed error message.
+      original_plr_exception (Exception | None): The original PyLabRobot exception, if
+      any.
+
+    """
+    super().__init__(message)
+    self.original_plr_exception = original_plr_exception
+
+
+class PyLabRobotVolumeRelatedError(PylabRobotError):
+  """Specific error for PyLabRobot 'TooLittleLiquidError' scenarios."""
+
+  def __init__(
+    self,
+    message="Too little liquid for transfer.",
+    details=None,
+    original_plr_exception: Exception | None = None,
+  ):
+    """Initialize a new instance of the PyLabRobotVolumeRelatedError.
+
+    Args:
+      message (str): The detailed error message.
+      details (dict[str, Any] | None): Additional details about the error.
+      original_plr_exception (Exception | None): The original PyLabRobot exception, if
+        any.
+
+    """
+    super().__init__(message, original_plr_exception)
+    self.details = details or {}
+
+
+class PyLabRobotGenericError(PylabRobotError):
+  """Generic placeholder for other PyLabRobot errors."""
+
+  def __init__(
+    self,
+    message="A PyLabRobot operation failed.",
+    original_plr_exception: Exception | None = None,
+  ):
+    """Initialize a new instance of the PyLabRobotGenericError."""
+    super().__init__(message, original_plr_exception)

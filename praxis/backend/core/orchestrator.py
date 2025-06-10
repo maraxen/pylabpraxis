@@ -7,49 +7,44 @@ It fetches protocol definitions, prepares the execution environment (including s
 invokes the protocol functions, and oversees logging and run control.
 """
 
-import importlib
 import asyncio
-import os
-import sys
-import json
-import datetime
-import traceback
 import contextlib
+import datetime
+import importlib
 import inspect
+import json
+import os
 import subprocess
-from typing import Dict, Any, Optional, Callable, Tuple, List, Union, cast
+import sys
+import traceback
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import uuid_utils as uuid  # For UUID type hints and generation
-
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+import praxis.backend.services as svc
 from praxis.backend.core.asset_manager import AssetManager
-from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.core.workcell import Workcell, WorkcellView
-from praxis.backend.core.run_context import PraxisRunContext, serialize_arguments
 from praxis.backend.core.decorators import (
   get_actual_type_str_from_hint,
   serialize_type_hint_str,
 )
-
-from praxis.backend.utils.state import State as PraxisState
-from praxis.backend.utils.run_control import get_control_command, clear_control_command
-from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
-from praxis.backend.utils.logging import get_logger
-
-import praxis.backend.services as svc
-
+from praxis.backend.core.run_context import PraxisRunContext, serialize_arguments
+from praxis.backend.core.workcell import Workcell, WorkcellView
+from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
-  FunctionProtocolDefinitionOrm,
+  AssetRequirementModel,  # Pydantic model from decorator
+  DeckConfigurationOrm,
   FunctionProtocolDefinitionModel,  # Pydantic model from decorator
+  FunctionProtocolDefinitionOrm,
+  MachineStatusEnum,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
-  AssetRequirementModel,  # Pydantic model from decorator
   ResourceInstanceStatusEnum,
-  MachineStatusEnum,
-  DeckConfigurationOrm,
 )
-
+from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
+from praxis.backend.utils.logging import get_logger
+from praxis.backend.utils.run_control import clear_control_command, get_control_command
+from praxis.backend.utils.state import State as PraxisState
 
 logger = get_logger(__name__)
 
