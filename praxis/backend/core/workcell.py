@@ -68,10 +68,10 @@ class Workcell:
     self.save_file = save_file
     self.backup_interval = backup_interval
     self.num_backups = num_backups
+    self.backup_num: int = 0
 
     self.refs: dict[str, dict] = {}
     self.children: list[Resource | Machine] = []
-    self.backup_task: Optional[asyncio.Task] = None
 
     for member in MachineCategoryEnum:
       attr_name = inflection.pluralize(member.name.lower())
@@ -176,31 +176,6 @@ class Workcell:
     with open(fn, "r", encoding="utf-8") as f:
       content = json.load(f)
     self.load_all_state(content)
-
-  async def _run_continuous_backup(self) -> None:
-    """Continuously saves the resource state to backup files."""
-    backup_num = 0
-    while True:
-      await asyncio.sleep(self.backup_interval)
-      self.save_state_to_file(self.save_file)
-      backup_file = self.save_file.replace(".json", f"_{backup_num}.json")
-      self.save_state_to_file(backup_file)
-      backup_num = (backup_num + 1) % self.num_backups
-
-  async def __aenter__(self):
-    """Start the continuous backup task."""
-    self.backup_task = asyncio.create_task(self._run_continuous_backup())
-    return self
-
-  async def __aexit__(self, exc_type, exc_value, traceback):
-    """Stop the backup task and save a final state."""
-    if self.backup_task:
-      self.backup_task.cancel()
-      try:
-        await self.backup_task
-      except asyncio.CancelledError:
-        pass  # Expected cancellation
-    self.save_state_to_file(self.save_file)
 
   def __contains__(self, item: str) -> bool:
     """Check if an asset with the given name exists in the workcell."""
