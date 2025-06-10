@@ -84,10 +84,13 @@ from .resource_data_service import (
 from .workcell_data_service import (
   create_workcell,
   delete_workcell,
+  get_or_create_workcell_orm,
   get_workcell_by_id,
   get_workcell_by_name,
+  get_workcell_state,
   list_workcells,
   update_workcell,
+  update_workcell_state,
 )
 
 __all__ = [
@@ -159,4 +162,7 @@ __all__ = [
   "get_deck_config_by_name",
   "get_deck_config_by_parent_machine_id",
   "create_deck_position_item",
+  "get_or_create_workcell_orm",
+  "get_workcell_state",
+  "update_workcell_state",
 ]
