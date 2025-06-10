@@ -21,6 +21,7 @@ Models included:
 
 from typing import Any, Dict, List, Optional, Union
 
+import uuid_utils as uuid
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
@@ -164,6 +165,7 @@ class AssetRequirementModel(BaseModel):
   description, and specific constraints.
   """
 
+  uuid: uuid.UUID
   name: str
   type_hint_str: str
   actual_type_str: str
