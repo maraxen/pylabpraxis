@@ -1,3 +1,5 @@
+# Praxis Overview
+
 The PylabPraxis backend is a sophisticated Python-based platform, built with FastAPI, designed to automate laboratory workflows. It focuses on orchestrating experimental protocols, managing physical and logical laboratory assets, and maintaining a real-time interface with PyLabRobot-controlled hardware.
 
 graph TD
@@ -25,6 +27,7 @@ graph TD
         Redis[Redis (Cache/State/Locks)]
         PyLabRobot[PyLabRobot]
         Protocol_Files[Protocol Files (Python Code)]
+        Docker_SMTP[Docker SMTP Server]
     end
 
     Flutter_Frontend -- HTTP/REST --> API_Layer
@@ -44,6 +47,7 @@ graph TD
     Orchestrator -- manages --> PraxisState
     Orchestrator -- passes --> PraxisRunContext
     Orchestrator -- uses --> UtilityModules
+    Orchestrator -- sends notifications via --> UtilityModules
 
     AssetManager -- manages live PLR --> WorkcellRuntime
     AssetManager -- persists via --> DataServices
@@ -87,6 +91,7 @@ graph TD
     UtilityModules -- provides helpers to --> ProtocolDiscoveryService
     UtilityModules -- interacts with --> Redis
     UtilityModules -- interacts with --> PostgreSQL (for db setup)
+    UtilityModules -- interacts with --> Docker_SMTP
 
     style Orchestrator fill:#f9f,stroke:#333,stroke-width:2px
     style AssetManager fill:#f9f,stroke:#333,stroke-width:2px
@@ -104,9 +109,9 @@ graph TD
     style PraxisState fill:#ffd,stroke:#333,stroke-width:2px
     style PraxisRunContext fill:#ffd,stroke:#333,stroke-width:2px
     style UtilityModules fill:#ddd,stroke:#333,stroke-width:2px
+    style Docker_SMTP fill:#ffb,stroke:#333,stroke-width:2px
 
-
-### **High-Level Backend Overview**
+## **High-Level Backend Overview**
 
 Core Architectural Principles:
 
@@ -133,10 +138,10 @@ Key Backend Components & Their Roles:
      * In-Function Layout Generation with @deck\_layout Decorator: Enabling programmatic definition of deck layouts directly within protocol files using a new @deck\_layout decorator.
    * Protocol Definition & Discovery: This crucial aspect of the backend enables the system to understand and manage executable laboratory protocols:
      * @protocol\_function Decorator: Developers define protocols as standard Python functions, annotated with this decorator (e.g., in backend/protocol\_core/decorators.py). This decorator is used to embed rich metadata (name, version, description, parameters with type hints and constraints, required assets, execution flags like is\_top\_level) directly within the function's code. It also wraps the original function with an async-capable executor that:
-      * Enforces that the protocol is only run via an Orchestrator that provides a valid PraxisRunContext.
-      * Injects shared run state into the function based on its signature.
-      * Handles automatic logging and run-control commands (pause, resume, cancel).
-      * Allows both async and sync functions to be decorated, safely running synchronous
+     * Enforces that the protocol is only run via an Orchestrator that provides a valid PraxisRunContext.
+     * Injects shared run state into the function based on its signature.
+     * Handles automatic logging and run-control commands (pause, resume, cancel).
+     * Allows both async and sync functions to be decorated, safely running synchronous
         code in a separate thread to prevent blocking.
      * ProtocolDiscoveryService: This service (in backend/protocol\_core/discovery\_service.py) is responsible for scanning configured Python code sources (Git repositories or local file system paths). It identifies @protocol\_function decorated functions, extracts their embedded metadata, and for undecorated functions, attempts to infer basic protocol information from their signatures. This collected metadata is then converted into structured Pydantic models.
      * FunctionProtocolDefinitionOrm (ORM Models): The structured metadata extracted by the ProtocolDiscoveryService is persisted into the PostgreSQL database using the FunctionProtocolDefinitionOrm SQLAlchemy ORM model (defined in backend/models/protocol\_definitions\_orm.py). This model, along with related ParameterDefinitionOrm and AssetDefinitionOrm, stores a canonical, static definition of each discoverable protocol.
@@ -145,7 +150,7 @@ Key Backend Components & Their Roles:
 
       When a protocol run is initiated, the Orchestrator's primary role is to create the initial PraxisRunContext and set it as the active context using Python's contextvars module. This makes the context implicitly available to the entire downstream async call stack. It then invokes the top-level protocol function.
      When a protocol run is initiated, the Orchestrator retrieves the relevant FunctionProtocolDefinitionOrm from the database, which includes its unique database ID. The Orchestrator's _prepare_protocol_code method dynamically loads the Python module to get a reference to the decorated function.
-      The _prepare_arguments method then prepares the arguments for the protocol's execution wrapper. Crucially, this now includes two special keyword arguments:
+      The_prepare_arguments method then prepares the arguments for the protocol's execution wrapper. Crucially, this now includes two special keyword arguments:
       `__praxis_run_context__`: The fully-formed PraxisRunContext for the run.
       `__function_db_id__`: The database ID of the FunctionProtocolDefinitionOrm being executed.
    * Protocol Run Context & State Management (backend/core/run\_context.py, backend/utils/state.py):
@@ -159,8 +164,8 @@ Key Backend Components & Their Roles:
        * canonical\_state: A reference to the mutable PraxisState object for the current run.
          The @protocol\_function decorator is responsible for creating and propagating updated PraxisRunContext instances to maintain the correct call hierarchy and context for nested protocol function calls.
       Note: The database ID of the currently executing function is now passed explicitly to the decorator wrapper by the caller (i.e., the Orchestrator or the context's nested call method) alongside the context itself.
-    * Implicit Nested Call Tracking
-    A primary design goal of Praxis is to allow protocol authors to write simple, standard Python code. The framework is architected to automatically track the full hierarchy of nested calls without requiring special syntax from the user.
+     * Implicit Nested Call Tracking
+        A primary design goal of Praxis is to allow protocol authors to write simple, standard Python code. The framework is architected to automatically track the full hierarchy of nested calls without requiring special syntax from the user.
 
     This is achieved through a combination of the in-memory PROTOCOL_REGISTRY and contextvars:
 
@@ -191,6 +196,14 @@ Key Backend Components & Their Roles:
    * plr\_inspection.py: Contains helper functions for introspecting PyLabRobot (PLR) classes and objects. It's used by the AssetManager (specifically in sync\_pylabrobot\_definitions) to extract metadata (like constructor parameters, resource dimensions, categories) from PLR objects, which is then used to populate the ResourceDefinitionCatalogOrm in the database.
    * redis\_lock.py: Implements a distributed locking mechanism using Redis. This utility is crucial for managing concurrent access to shared resources across different backend processes or protocol runs, preventing race conditions and ensuring data integrity. It can be used by AssetManager or Orchestrator for fine-grained control over critical sections.
    * run\_control.py: Provides functions for sending and retrieving control commands (e.g., "PAUSE", "RESUME", "CANCEL") to a running protocol. These commands are typically communicated via Redis and are actively monitored and acted upon by the Orchestrator to manage the lifecycle of a protocol run.
+   * notify.py: Provides a standardized interface for sending various types of notifications (e.g., email, SMS, push notifications). This module is primarily used by the Orchestrator to inform users about the lifecycle events of their protocol runs (start, completion, success, failure, pause, resume, cancel) and can also be used for other system-level alerts. It integrates with an external SMTP server for email delivery.
+5. External Services
+   * PostgreSQL Database: The primary persistent data store for all definitions, logs, and asset states. Available via docker.
+   * Keycloak (Auth Server): Integrated to manage user identities and access control, also managing its own user data in a PostgreSQL database. Available via Docker.
+   * Redis (Cache/State/Locks): Used for efficient runtime in-memory caching, managing shared state, and implementing distributed locking mechanisms to prevent race conditions. Available via Docker.
+   * PyLabRobot: The core library providing objects and control mechanisms for various laboratory instruments and resources.
+   * Protocol Files (Python Code): The source Python files containing the definitions of laboratory protocols, which are discovered and executed by the backend. User-provided.
+   * SMTP Server: A Simple Mail Transfer Protocol (SMTP) server (e.g., Postfix, Mailhog for development) used by the praxis.backend.utils.notify module to send email notifications. This ensures that the backend can dispatch alerts and updates to users about protocol statuses or system events. Available via Docker.
 
 Key Database Interaction Points:
 
