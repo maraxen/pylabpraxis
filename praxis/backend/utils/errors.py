@@ -202,7 +202,7 @@ class PylabRobotError(PraxisError):
     self.original_plr_exception = original_plr_exception
 
 
-class PyLabRobotVolumeRelatedError(PylabRobotError):
+class PyLabRobotVolumeError(PylabRobotError):
   """Specific error for PyLabRobot 'TooLittleLiquidError' scenarios."""
 
   def __init__(

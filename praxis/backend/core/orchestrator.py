@@ -41,7 +41,12 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ResourceInstanceStatusEnum,
 )
-from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
+from praxis.backend.utils.errors import (
+  AssetAcquisitionError,
+  ProtocolCancelledError,
+  PyLabRobotGenericError,
+  PyLabRobotVolumeError,
+)
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import clear_control_command, get_control_command
 from praxis.backend.utils.state import State as PraxisState
@@ -51,9 +56,21 @@ logger = get_logger(__name__)
 
 @contextlib.contextmanager
 def temporary_sys_path(path_to_add: Optional[str]):
-  """
+  """Add a path to sys.path temporarily.
+
   A context manager to temporarily add a path to sys.path.
   Ensures the path is removed from sys.path on exit, even if errors occur.
+
+  Args:
+    path_to_add (Optional[str]): The path to add to sys.path. If None, does nothing.
+
+  Yields:
+    None: Yields control back to the caller, allowing them to execute code with the
+    modified sys.path.
+
+  Raises:
+    ValueError: If the path_to_add is not a string or is empty.
+
   """
   original_sys_path = list(sys.path)
   path_added_successfully = False
@@ -85,8 +102,9 @@ def temporary_sys_path(path_to_add: Optional[str]):
 
 
 class Orchestrator:
-  """
-  Central component for managing and executing laboratory protocols.
+  """Central component for managing and executing laboratory protocols.
+
+  The Orchestrator is responsible for coordinating the execution of protocols.
   It coordinates asset allocation, runtime environment setup, protocol execution,
   logging, and run control.
   """
@@ -96,22 +114,22 @@ class Orchestrator:
     db_session_factory: async_sessionmaker[AsyncSession],
     asset_manager: AssetManager,
     workcell_runtime: WorkcellRuntime,
-    # workcell_name_for_state_backup: str # This is now managed by Workcell's init
   ):
-    """
-    Initializes the Orchestrator.
+    """Initialize the Orchestrator.
 
     Args:
         db_session_factory: A factory to create SQLAlchemy AsyncSession instances.
         asset_manager: An instance of AssetManager for asset allocation.
         workcell_runtime: An instance of WorkcellRuntime to manage live PLR objects.
-        # workcell_name_for_state_backup: Name for the main Workcell instance's state backup file.
+
+    Raises:
+        ValueError: If any of the arguments are invalid.
+        TypeError: If any of the arguments are of the wrong type.
+
     """
     self.db_session_factory = db_session_factory
     self.asset_manager = asset_manager
     self.workcell_runtime = workcell_runtime
-    # The main Workcell instance is now accessed via self.workcell_runtime.get_main_workcell()
-    # self.workcell_name_for_state_backup = workcell_name_for_state_backup
     logger.info("Orchestrator initialized.")
 
   async def _run_git_command(
@@ -121,8 +139,21 @@ class Orchestrator:
     suppress_output: bool = False,
     timeout: int = 300,
   ) -> str:
-    """
-    Helper to run a Git command and handle errors, including timeout.
+    """Run a Git command and handle errors, including timeout.
+
+    Args:
+      command: The Git command to run as a list of strings.
+      cwd: The working directory where the command should be executed.
+      suppress_output: If True, suppresses stdout and stderr logging.
+      timeout: Timeout in seconds for the command execution.
+
+    Returns:
+      The standard output of the command as a string.
+
+    Raises:
+      RuntimeError: If the command fails or times out.
+      FileNotFoundError: If the Git command is not found in the system path.
+
     """
     try:
       logged_command = " ".join(command)
@@ -150,7 +181,8 @@ class Orchestrator:
       return process.stdout.strip()
     except subprocess.TimeoutExpired as e:
       error_message = (
-        f"ORCH-GIT: Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds in {cwd}.\n"
+        f"ORCH-GIT: Command '{' '.join(e.cmd)}' timed out after {e.timeout} seconds in"
+        f" {cwd}.\n"
         f"Stderr: {e.stderr.decode(errors='ignore').strip() if e.stderr else 'N/A'}\n"
         f"Stdout: {e.stdout.decode(errors='ignore').strip() if e.stdout else 'N/A'}"
       )
@@ -172,14 +204,16 @@ class Orchestrator:
         else "N/A"
       )
       error_message = (
-        f"ORCH-GIT: Command '{' '.join(e.cmd)}' failed with exit code {e.returncode} in {cwd}.\n"
+        f"ORCH-GIT: Command '{' '.join(e.cmd)}' failed with exit code {e.returncode} in"
+        f"{cwd}.\n"
         f"Stderr: {stderr_output}\n"
         f"Stdout: {stdout_output}"
       )
       logger.error(error_message)
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
-      error_message = f"ORCH-GIT: Git command not found. Ensure git is installed. Command: {' '.join(command)}"
+      error_message = f"ORCH-GIT: Git command not found. Ensure git is installed. \
+        Command: {' '.join(command)}"
       logger.error(error_message)
       raise RuntimeError(error_message) from None
 
@@ -191,7 +225,24 @@ class Orchestrator:
     commit_hash: Optional[str] = None,
     source_name: Optional[str] = None,
   ) -> Optional[FunctionProtocolDefinitionOrm]:
-    """Retrieves a protocol definition ORM from the database."""
+    """Retrieve a protocol definition ORM from the database.
+
+    Args:
+      db_session: The SQLAlchemy AsyncSession to use for database operations.
+      protocol_name: The name of the protocol to fetch.
+      version: Optional version of the protocol. If None, fetches the latest version.
+      commit_hash: Optional commit hash if the protocol is from a Git source.
+      source_name: Optional name of the source (Git repo or FileSystem).
+
+    Returns:
+      An instance of FunctionProtocolDefinitionOrm if found, otherwise None.
+
+    Raises:
+      ValueError: If the protocol name is empty or invalid.
+      RuntimeError: If there is an error fetching the protocol definition from the
+      database.
+
+    """
     logger.debug(
       f"Fetching protocol ORM: Name='{protocol_name}', Version='{version}', "
       f"Commit='{commit_hash}', Source='{source_name}'"
@@ -207,9 +258,20 @@ class Orchestrator:
   async def _prepare_protocol_code(
     self, protocol_def_orm: FunctionProtocolDefinitionOrm
   ) -> Tuple[Callable, FunctionProtocolDefinitionModel]:
-    """
-    Loads the protocol code from its source (Git or FileSystem) and returns
-    the callable function and its Pydantic definition model.
+    """Load the protocol code from its source (Git or FileSystem).
+
+    Args:
+      protocol_def_orm: The ORM object representing the protocol definition.
+
+    Returns:
+      A tuple containing the callable function and its Pydantic definition model.
+
+    Raises:
+      ValueError: If the protocol definition is incomplete or invalid.
+      AttributeError: If the function or its Pydantic definition is not found.
+      RuntimeError: If there is an error checking out a Git commit or if the commit
+        does not match the expected state.
+
     """
     logger.info(
       f"Preparing code for protocol: {protocol_def_orm.name} v{protocol_def_orm.version}"
@@ -291,7 +353,6 @@ class Orchestrator:
         "is not a valid @protocol_function (missing or invalid _protocol_definition attribute)."
       )
 
-    # Ensure the Pydantic model has the DB ID if available
     if protocol_def_orm.id and (
       not pydantic_def.db_id or pydantic_def.db_id != protocol_def_orm.id
     ):
@@ -305,11 +366,10 @@ class Orchestrator:
   async def _ensure_git_repo_and_fetch(
     self, git_url: str, checkout_path: str, repo_name_for_logging: str
   ) -> None:
-    """Ensures a git repo exists at checkout_path, clones if not, and fetches updates."""
+    """Ensure a git repo exists at checkout_path, clones if not, and fetches updates."""
     is_git_repo = False
     if os.path.exists(checkout_path):
       try:
-        # Check if it's the root of a git work-tree
         result = await self._run_git_command(
           ["git", "rev-parse", "--is-inside-work-tree"],
           cwd=checkout_path,
@@ -321,7 +381,7 @@ class Orchestrator:
             f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' exists but is not a git work-tree root."
           )
       except RuntimeError:
-        is_git_repo = False  # Not a git repo or git command failed
+        is_git_repo = False
         logger.info(
           f"ORCH-GIT: Path '{checkout_path}' for repo '{repo_name_for_logging}' is not a git repository or git command failed."
         )
@@ -349,10 +409,10 @@ class Orchestrator:
       )
       await self._run_git_command(
         ["git", "fetch", "origin", "--prune"], cwd=checkout_path
-      )  # Added --prune
+      )
     else:
       if os.path.exists(checkout_path):
-        if os.listdir(checkout_path):  # Directory is not empty
+        if os.listdir(checkout_path):
           raise ValueError(
             f"Path '{checkout_path}' for repo '{repo_name_for_logging}' exists, is not Git, and not empty. Cannot clone."
           )
@@ -365,37 +425,32 @@ class Orchestrator:
         )
         try:
           os.makedirs(checkout_path, exist_ok=True)
-        except OSError as e:  # pragma: no cover
+        except OSError as e:
           raise ValueError(f"Failed to create directory '{checkout_path}': {e}") from e
       logger.info(
         f"ORCH-GIT: Cloning repository '{git_url}' into '{checkout_path}' for repo '{repo_name_for_logging}'..."
       )
-      await self._run_git_command(
-        ["git", "clone", git_url, "."], cwd=checkout_path
-      )  # Clone into the current dir (checkout_path)
+      await self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
 
   async def _prepare_arguments(
     self,
-    db_session: AsyncSession,  # Pass session explicitly
+    db_session: AsyncSession,
     protocol_pydantic_def: FunctionProtocolDefinitionModel,
     user_input_params: Dict[str, Any],
     praxis_state: PraxisState,
-    workcell_view: WorkcellView,  # For context if needed, though assets are acquired directly
+    workcell_view: WorkcellView,
     protocol_run_guid: uuid.UUID,
   ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], Dict[uuid.UUID, Any]]:
     """Prepare arguments for protocol execution, including acquiring assets."""
     logger.info(f"Preparing arguments for protocol: {protocol_pydantic_def.name}")
     final_args: Dict[str, Any] = {}
     state_dict_to_pass: Optional[Dict[str, Any]] = None
-    acquired_assets_details: Dict[uuid.UUID, Any] = {}  # Store details for release
+    acquired_assets_details: Dict[uuid.UUID, Any] = {}
 
-    # 1. Handle regular parameters
     for param_meta in protocol_pydantic_def.parameters:
-      if param_meta.is_deck_param:  # Deck handled separately if preconfigured
+      if param_meta.is_deck_param:
         continue
-      if (
-        param_meta.name == protocol_pydantic_def.state_param_name
-      ):  # State handled separately
+      if param_meta.name == protocol_pydantic_def.state_param_name:
         continue
 
       if param_meta.name in user_input_params:
@@ -406,11 +461,8 @@ class Orchestrator:
           f"Mandatory parameter '{param_meta.name}' missing for protocol '{protocol_pydantic_def.name}'."
         )
       else:
-        # For optional params not provided, they won't be in final_args,
-        # relying on Python's default argument handling in the actual function call.
         logger.debug(f"Optional param '{param_meta.name}' not provided by user.")
 
-    # 2. Handle State Parameter
     if protocol_pydantic_def.state_param_name:
       state_param_meta = next(
         (
@@ -421,27 +473,23 @@ class Orchestrator:
         None,
       )
       if state_param_meta:
-        # Determine if protocol expects PraxisState object or a dict
-        # This requires inspecting the actual function signature or relying on a convention in actual_type_str
         if "PraxisState" in state_param_meta.actual_type_str:
           final_args[protocol_pydantic_def.state_param_name] = praxis_state
           logger.debug(
             f"Injecting PraxisState object for param '{protocol_pydantic_def.state_param_name}'."
           )
         elif "dict" in state_param_meta.actual_type_str.lower():
-          state_dict_to_pass = praxis_state.to_dict()  # Pass a copy
+          state_dict_to_pass = praxis_state.to_dict()
           final_args[protocol_pydantic_def.state_param_name] = state_dict_to_pass
           logger.debug(
             f"Injecting state dictionary for param '{protocol_pydantic_def.state_param_name}'."
           )
-        else:  # Default or ambiguous, pass PraxisState
+        else:
           final_args[protocol_pydantic_def.state_param_name] = praxis_state
           logger.debug(
             f"Defaulting to injecting PraxisState object for param '{protocol_pydantic_def.state_param_name}'."
           )
 
-    # 3. Acquire Assets
-    # The WorkcellView's required_assets should align with protocol_pydantic_def.assets
     for asset_req_model in protocol_pydantic_def.assets:
       try:
         logger.info(
@@ -449,13 +497,12 @@ class Orchestrator:
           f"(Type: '{asset_req_model.actual_type_str}', Optional: {asset_req_model.optional}) "
           f"for run '{protocol_run_guid}'."
         )
-        # Pass the run_guid to AssetManager for linking assets to this run
         live_obj, orm_id, asset_kind_str = await self.asset_manager.acquire_asset(
           protocol_run_guid=protocol_run_guid, asset_requirement=asset_req_model
         )
         final_args[asset_req_model.name] = live_obj
-        acquired_assets_details[asset_req_model.uuid] = {
-          "type": asset_kind_str,  # "machine" or "resource"
+        acquired_assets_details[orm_id] = {
+          "type": asset_kind_str,
           "orm_id": orm_id,
           "name_in_protocol": asset_req_model.name,
         }
@@ -469,17 +516,15 @@ class Orchestrator:
             f"ORCH-ACQUIRE: Optional asset '{asset_req_model.name}' could not be acquired: {e}. "
             "Proceeding as it's optional."
           )
-          final_args[asset_req_model.name] = None  # Explicitly set to None
+          final_args[asset_req_model.name] = None
         else:
           error_msg = (
             f"Failed to acquire mandatory asset '{asset_req_model.name}' for "
             f"protocol '{protocol_pydantic_def.name}': {e}"
           )
           logger.error(error_msg)
-          raise ValueError(
-            error_msg
-          ) from e  # Re-raise to be caught by execute_protocol
-      except Exception as e_general:  # pragma: no cover
+          raise ValueError(error_msg) from e
+      except Exception as e_general:
         error_msg = (
           f"Unexpected error acquiring asset '{asset_req_model.name}' for "
           f"protocol '{protocol_pydantic_def.name}': {e_general}"
@@ -487,7 +532,6 @@ class Orchestrator:
         logger.error(error_msg, exc_info=True)
         raise ValueError(error_msg) from e_general
 
-    # 4. Handle Deck Preconfiguration (if applicable)
     if (
       protocol_pydantic_def.preconfigure_deck and protocol_pydantic_def.deck_param_name
     ):
@@ -507,9 +551,7 @@ class Orchestrator:
         )
 
       if deck_identifier_from_user is not None:
-        if not isinstance(
-          deck_identifier_from_user, (str, uuid.UUID)
-        ):  # Expecting DeckConfigOrm ID or name
+        if not isinstance(deck_identifier_from_user, (str, uuid.UUID)):
           raise ValueError(
             f"Deck identifier for preconfiguration ('{deck_param_name}') must be a string (name) or UUID (ID), "
             f"got {type(deck_identifier_from_user)}."
@@ -519,7 +561,6 @@ class Orchestrator:
           f"ORCH-DECK: Applying deck configuration '{deck_identifier_from_user}' for run '{protocol_run_guid}'."
         )
 
-        # Fetch DeckConfigurationOrm ID if name is given
         deck_config_orm_id_to_apply: uuid.UUID
         if isinstance(deck_identifier_from_user, str):
           deck_config_orm = await svc.get_deck_config_by_name(
@@ -529,13 +570,10 @@ class Orchestrator:
             raise ValueError(
               f"Deck configuration named '{deck_identifier_from_user}' not found."
             )
-          deck_config_orm_id_to_apply = deck_config_orm.id  # type: ignore
-        else:  # it's already a UUID
-          deck_config_orm_id_to_apply = deck_identifier_from_user  # type: ignore
+          deck_config_orm_id_to_apply = deck_config_orm.id
+        else:
+          deck_config_orm_id_to_apply = deck_identifier_from_user
 
-        # AssetManager applies the config, WorkcellRuntime makes it live.
-        # This method should ensure the deck and its resources are active in WorkcellRuntime
-        # and return the live PyLabRobot.Deck object.
         live_deck_object = await self.asset_manager.apply_deck_configuration(
           deck_config_orm_id=deck_config_orm_id_to_apply,
           protocol_run_guid=protocol_run_guid,
@@ -544,20 +582,10 @@ class Orchestrator:
         logger.info(
           f"ORCH-DECK: Deck '{live_deck_object.name}' configured and injected as '{deck_param_name}'."
         )
-      elif deck_param_name in final_args:  # pragma: no cover
+      elif deck_param_name in final_args:
         logger.warning(
           f"Deck parameter '{deck_param_name}' was already processed (e.g., as an asset). Review protocol definition."
         )
-
-    # 5. Inject WorkcellView if requested by type hint (less common, direct assets preferred)
-    # This requires inspecting the actual function signature again, which is complex here.
-    # For now, we assume assets are directly injected. If a protocol needs the full view,
-    # it would be a special case or the decorator would handle it.
-    # If a parameter is explicitly typed as WorkcellView, it could be injected:
-    # for param_meta in protocol_pydantic_def.parameters:
-    #    if "WorkcellView" in param_meta.actual_type_str: # Simplified check
-    #        final_args[param_meta.name] = workcell_view
-    #        logger.debug(f"Injecting WorkcellView as '{param_meta.name}'.")
 
     return final_args, state_dict_to_pass, acquired_assets_details
 
@@ -569,7 +597,6 @@ class Orchestrator:
     protocol_version: Optional[str] = None,
     commit_hash: Optional[str] = None,
     source_name: Optional[str] = None,
-    # workcell_name: Optional[str] = "default_workcell" # Use a default or make configurable
   ) -> ProtocolRunOrm:
     """
     Executes a specified protocol.
@@ -581,22 +608,19 @@ class Orchestrator:
         protocol_version: Specific version of the protocol.
         commit_hash: Specific commit hash if from a Git source.
         source_name: Name of the protocol source (Git repo or FS).
-        # workcell_name: The name of the workcell configuration to use. This is crucial
-        #               for the Workcell container's state backup file.
 
     Returns:
         The ProtocolRunOrm object representing the completed or failed run.
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}
-    run_guid = uuid.uuid7()  # Python's uuid for generation
+    run_guid = uuid.uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
       f"ORCH: Initiating protocol run {run_guid} for '{protocol_name}' at {start_iso_timestamp}."
       f" User params: {user_input_params}, Initial state: {initial_state_data}"
     )
 
-    # Create a new session for this protocol run
     async with self.db_session_factory() as db_session:
       protocol_def_orm = await self._get_protocol_definition_orm_from_db(
         db_session, protocol_name, protocol_version, commit_hash, source_name
@@ -614,8 +638,10 @@ class Orchestrator:
         )
 
         if protocol_def_id_for_error_run is None:
-          raise ProtocolCancelledError(f"Protocol definition '{protocol_name}' completely not found, \
-              cannot link failed run to a definition.")
+          raise ProtocolCancelledError(
+            f"Protocol definition '{protocol_name}' completely not found, \
+              cannot link failed run to a definition."
+          )
 
         error_run_db_obj = await svc.create_protocol_run(
           db=db_session,
@@ -641,7 +667,6 @@ class Orchestrator:
         await db_session.commit()
         raise ValueError(error_msg)
 
-      # Create ProtocolRunOrm entry
       protocol_run_db_obj = await svc.create_protocol_run(
         db=db_session,
         run_guid=run_guid,
@@ -650,10 +675,9 @@ class Orchestrator:
         input_parameters_json=json.dumps(user_input_params),
         initial_state_json=json.dumps(initial_state_data),
       )
-      await db_session.flush()  # Ensure ID is populated
+      await db_session.flush()
       await db_session.refresh(protocol_run_db_obj)
 
-      # Initial CANCEL check
       initial_command = await get_control_command(run_guid)
       if initial_command == "CANCEL":
         logger.info(f"ORCH: Run {run_guid} CANCELLED before preparation.")
@@ -669,17 +693,15 @@ class Orchestrator:
         await db_session.commit()
         return protocol_run_db_obj
 
-      # Initialize PraxisState for this run
-      praxis_state = PraxisState(run_guid=run_guid)  # Uses Redis
+      praxis_state = PraxisState(run_guid=run_guid)
       if initial_state_data:
         praxis_state.update(initial_state_data)
 
-      # Create PraxisRunContext
       run_context = PraxisRunContext(
         run_guid=run_guid,
         canonical_state=praxis_state,
-        current_db_session=db_session,  # Pass the active session
-        current_call_log_db_id=None,  # Top level call, no parent
+        current_db_session=db_session,
+        current_call_log_db_id=None,
       )
 
       prepared_args: Dict[str, Any] = {}
@@ -688,15 +710,20 @@ class Orchestrator:
       state_dict_passed_to_top_level: Optional[Dict[str, Any]] = None
       acquired_assets_info: Dict[uuid.UUID, dict] = {}
 
-      # Get the main Workcell instance from WorkcellRuntime
-      # This main_workcell is the container for all PLR objects managed by the runtime.
       main_workcell_container = self.workcell_runtime.get_main_workcell()
-      if (
-        not main_workcell_container
-      ):  # Should ideally not happen if WCR is initialized with one
+      if not main_workcell_container:
         raise RuntimeError(
           "Main Workcell container not available from WorkcellRuntime."
         )
+
+      # Capture snapshot of workcell state
+      current_workcell_snapshot = self.workcell_runtime.get_state_snapshot()
+      await praxis_state.set(
+        "workcell_last_successful_snapshot", current_workcell_snapshot
+      )
+      logger.debug(
+        f"Workcell state snapshot captured and stored in PraxisState for run {run_guid}."
+      )
 
       try:
         (
@@ -704,12 +731,10 @@ class Orchestrator:
           protocol_pydantic_def,
         ) = await self._prepare_protocol_code(protocol_def_orm)
 
-        # Create a WorkcellView specific to this protocol's requirements
-        # This view uses the main_workcell_container but restricts access based on protocol_pydantic_def.assets
         workcell_view_for_protocol = WorkcellView(
           parent_workcell=main_workcell_container,
           protocol_name=protocol_pydantic_def.name,
-          required_assets=protocol_pydantic_def.assets,  # List[AssetRequirementModel]
+          required_assets=protocol_pydantic_def.assets,
         )
 
         (
@@ -717,22 +742,18 @@ class Orchestrator:
           state_dict_passed_to_top_level,
           acquired_assets_info,
         ) = await self._prepare_arguments(
-          db_session=db_session,  # Pass session for any DB ops during arg prep (e.g. deck config lookup)
+          db_session=db_session,
           protocol_pydantic_def=protocol_pydantic_def,
           user_input_params=user_input_params,
           praxis_state=praxis_state,
-          workcell_view=workcell_view_for_protocol,  # Pass the view
+          workcell_view=workcell_view_for_protocol,
           protocol_run_guid=run_guid,
         )
 
-        # Store resolved assets in ProtocolRunOrm
         protocol_run_db_obj.resolved_assets_json = acquired_assets_info
-        await db_session.merge(
-          protocol_run_db_obj
-        )  # Merge changes before potential commit
+        await db_session.merge(protocol_run_db_obj)
         await db_session.flush()
 
-        # --- Pre-execution command check (PAUSE/CANCEL) ---
         command = await get_control_command(run_guid)
         if command == "PAUSE":
           logger.info(f"ORCH: Run {run_guid} PAUSED before execution.")
@@ -741,9 +762,8 @@ class Orchestrator:
             db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSED
           )
           await db_session.commit()
-          # Loop to wait for RESUME or CANCEL
-          while True:  # pragma: no cover
-            await asyncio.sleep(1)  # Check every second
+          while True:
+            await asyncio.sleep(1)
             new_command = await get_control_command(run_guid)
             if new_command == "RESUME":
               logger.info(f"ORCH: Run {run_guid} RESUMING.")
@@ -752,7 +772,7 @@ class Orchestrator:
                 db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
               )
               await db_session.commit()
-              break  # Exit pause loop and proceed to execution
+              break
             elif new_command == "CANCEL":
               logger.info(f"ORCH: Run {run_guid} CANCELLED during pause.")
               await clear_control_command(run_guid)
@@ -784,23 +804,18 @@ class Orchestrator:
             f"Run {run_guid} cancelled by user before execution."
           )
 
-        # Update status to RUNNING
-        # Check current status again in case it was PAUSED then RESUMED
-        current_run_status = await db_session.get(
+        current_run_status_orm = await db_session.get(
           ProtocolRunOrm, protocol_run_db_obj.id
         )
         if (
-          current_run_status
-          and current_run_status.status != ProtocolRunStatusEnum.RUNNING
+          current_run_status_orm
+          and current_run_status_orm.status != ProtocolRunStatusEnum.RUNNING
         ):
           await svc.update_protocol_run_status(
             db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
           )
-          await db_session.commit()  # Commit RUNNING status before execution
+          await db_session.commit()
 
-        # Execute the protocol function (which is wrapped by @protocol_function decorator)
-        # The decorator handles its own logging and context passing.
-        # The __praxis_run_context__ and __function_db_id__ are special kwargs for the decorator.
         logger.info(
           f"ORCH: Executing protocol '{protocol_pydantic_def.name}' for run {run_guid}."
         )
@@ -817,15 +832,11 @@ class Orchestrator:
           db_session,
           protocol_run_db_obj.id,
           ProtocolRunStatusEnum.COMPLETED,
-          output_data_json=json.dumps(
-            result, default=str
-          ),  # Ensure result is serializable
+          output_data_json=json.dumps(result, default=str),
         )
 
       except ProtocolCancelledError as pce:
         logger.info(f"ORCH: Protocol run {run_guid} was cancelled: {pce}")
-        # Status should have been set to CANCELLED by the point this is raised
-        # Ensure we fetch the latest status before potentially overriding it.
         run_after_cancel = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
         if (
           run_after_cancel
@@ -847,27 +858,79 @@ class Orchestrator:
           "error_message": str(e),
           "traceback": traceback.format_exc(),
         }
-        # Fetch current status before overriding
+
+        try:
+          if praxis_state is None:
+            praxis_state = PraxisState(run_guid=run_guid)
+          last_good_snapshot = await praxis_state.set(
+            "workcell_last_successful_snapshot", None
+          )
+          logger.debug(
+            f"ORCH: Clearing last successful workcell state snapshot for run {run_guid} due to error."
+          )
+          if last_good_snapshot:
+            self.workcell_runtime.apply_state_snapshot(last_good_snapshot)
+            logger.warning(
+              f"ORCH: Workcell state for run {run_guid} rolled back successfully."
+            )
+          else:
+            logger.warning(
+              f"ORCH: No prior workcell state snapshot found for run {run_guid} to rollback."
+            )
+        except Exception as rollback_error:
+          logger.critical(
+            f"ORCH: CRITICAL - Failed to rollback workcell state for run {run_guid}: {rollback_error}",
+            exc_info=True,
+          )
+
+        final_run_status = ProtocolRunStatusEnum.FAILED
+        status_details = json.dumps(error_info)
+
+        if isinstance(e, PyLabRobotVolumeError):
+          logger.info(
+            f"Specific PyLabRobot error 'VolumeError' detected for run {run_guid}. Setting status to REQUIRES_INTERVENTION."
+          )
+          final_run_status = ProtocolRunStatusEnum.REQUIRES_INTERVENTION
+          status_details = json.dumps(
+            {
+              "error_type": "VolumeError",
+              "error_message": str(e),
+              "action_required": "User intervention needed to verify liquid levels and proceed.",
+              "traceback": traceback.format_exc(),
+            }
+          )
+        elif isinstance(e, PyLabRobotGenericError):
+          logger.info(
+            f"Generic PyLabRobot error detected for run {run_guid}. Setting status to FAILED."
+          )
+          final_run_status = ProtocolRunStatusEnum.FAILED
+          status_details = json.dumps(
+            {
+              "error_type": type(e).__name__,
+              "error_message": str(e),
+              "details": "PyLabRobot operation failed.",
+              "traceback": traceback.format_exc(),
+            }
+          )
+
         run_after_error = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
         if run_after_error and run_after_error.status not in [
           ProtocolRunStatusEnum.CANCELLED,
+          ProtocolRunStatusEnum.FAILED,
+          ProtocolRunStatusEnum.REQUIRES_INTERVENTION,
           ProtocolRunStatusEnum.FAILED,
         ]:
           await svc.update_protocol_run_status(
             db_session,
             protocol_run_db_obj.id,
-            ProtocolRunStatusEnum.FAILED,
-            output_data_json=json.dumps(error_info),
+            final_run_status,
+            output_data_json=status_details,
           )
       finally:
         logger.info(f"ORCH: Finalizing protocol run {run_guid}.")
-        # Fetch the latest state of the protocol run object
         final_run_orm = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
         if final_run_orm:
-          # Save final state from PraxisState (Redis) to DB
-          final_run_orm.final_state_json = (
-            praxis_state.to_dict()
-          )  # Already JSON-serializable dict
+          final_run_orm.final_state_json = praxis_state.to_dict()
 
           if not final_run_orm.end_time:
             final_run_orm.end_time = datetime.datetime.now(datetime.timezone.utc)
@@ -879,31 +942,29 @@ class Orchestrator:
             duration = final_run_orm.end_time - final_run_orm.start_time
             final_run_orm.duration_ms = int(duration.total_seconds() * 1000)
 
-          # Release acquired assets
           if acquired_assets_info:
             logger.info(
               f"ORCH: Releasing {len(acquired_assets_info)} assets for run {run_guid}."
             )
-            for asset_uuid, asset_info in acquired_assets_info.items():
+            for asset_orm_id, asset_info in acquired_assets_info.items():
               try:
-                orm_id = asset_uuid
                 asset_type = asset_info.get("type")
                 name_in_protocol = asset_info.get("name_in_protocol", "UnknownAsset")
 
                 if asset_type == "machine":
                   await self.asset_manager.release_machine(
-                    machine_orm_id=orm_id,
+                    machine_orm_id=asset_orm_id,
                     final_status=MachineStatusEnum.AVAILABLE,
                   )
                 elif asset_type == "resource":
                   await self.asset_manager.release_resource(
-                    resource_instance_orm_id=orm_id,
+                    resource_instance_orm_id=asset_orm_id,
                     final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
                   )
                 logger.info(
-                  f"ORCH-RELEASE: Asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {orm_id}) released."
+                  f"ORCH-RELEASE: Asset '{name_in_protocol}' (Type: {asset_type}, ORM ID: {asset_orm_id}) released."
                 )
-              except Exception as release_err:  # pragma: no cover
+              except Exception as release_err:
                 logger.error(
                   f"ORCH-RELEASE: Failed to release asset '{asset_info.get('name_in_protocol', 'UnknownAsset')}' "
                   f"(ORM ID: {asset_info.get('orm_id')}): {release_err}",
@@ -913,12 +974,12 @@ class Orchestrator:
         try:
           await db_session.commit()
           logger.info(f"ORCH: Final DB commit for run {run_guid} successful.")
-        except Exception as db_final_err:  # pragma: no cover
+        except Exception as db_final_err:
           logger.error(
             f"ORCH: CRITICAL - Failed to commit final updates for run {run_guid}: {db_final_err}",
             exc_info=True,
           )
           await db_session.rollback()
 
-      await db_session.refresh(protocol_run_db_obj)  # Get the very latest state
+      await db_session.refresh(protocol_run_db_obj)
       return protocol_run_db_obj

@@ -59,6 +59,7 @@ class ProtocolRunStatusEnum(enum.Enum):
   CANCELING = "canceling"
   CANCELLED = "cancelled"
   INTERVENING = "intervening"
+  REQUIRES_INTERVENTION = "requires_intervention"
 
 
 class FunctionCallStatusEnum(enum.Enum):
