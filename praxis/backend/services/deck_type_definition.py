@@ -544,7 +544,7 @@ async def update_deck_type_definition(
   return deck_type_orm
 
 
-async def read_deck_type_definition_by_id(
+async def read_deck_type_definition(
   db: AsyncSession, deck_type_id: uuid.UUID
 ) -> Optional[DeckTypeDefinitionOrm]:
   """Retrieve a specific deck type definition by its ID.

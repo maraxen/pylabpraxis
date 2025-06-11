@@ -98,7 +98,7 @@ async def get_deck_type_definition(
 ):
   """Retrieve a deck type definition by its ID (UUID) or fully-qualified name (FQN)."""
   if isinstance(accession, UUID):
-    db_def = await svc.get_deck_type_definition_by_id(db, accession)
+    db_def = await svc.get_deck_type_definition(db, accession)
   else:
     db_def = await svc.get_deck_type_definition_by_fqn(db, accession)
 
@@ -187,7 +187,7 @@ async def list_deck_instances(
 async def get_deck_instance(accession: str | UUID, db: AsyncSession = Depends(get_db)):
   """Retrieve a deck instanceuration by its ID (UUID) or name."""
   if isinstance(accession, UUID):
-    deck = await svc.get_deck_config_by_id(db, accession)
+    deck = await svc.read_deck_instance(db, accession)
   else:
     deck = await svc.get_deck_config_by_name(db, accession)
 

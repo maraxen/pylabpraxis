@@ -48,7 +48,7 @@ log_resource_data_service_errors = partial(
   suffix=" Please ensure the parameters are correct and the resource definition exists.\
     ",
 )
-async def add_resource_instance(
+async def create_resource_instance(
   db: AsyncSession,
   user_assigned_name: str,
   name: str,
@@ -231,7 +231,7 @@ async def update_resource_instance(
 
   """
   logger.info("Updating resource instance with ID: %s.", instance_id)
-  instance_orm = await read_resource_instance_by_id(db, instance_id)
+  instance_orm = await read_resource_instance(db, instance_id)
   if not instance_orm:
     logger.warning("Resource instance with ID %s not found for update.", instance_id)
     return None
@@ -302,7 +302,7 @@ async def update_resource_instance(
   return instance_orm
 
 
-async def read_resource_instance_by_id(
+async def read_resource_instance(
   db: AsyncSession, instance_id: uuid.UUID
 ) -> Optional[ResourceInstanceOrm]:
   """Retrieve a resource instance by its ID.
@@ -521,7 +521,7 @@ async def update_resource_instance_location_and_status(
     location_machine_id,
     current_deck_position_name,
   )
-  instance_orm = await read_resource_instance_by_id(db, resource_instance_id)
+  instance_orm = await read_resource_instance(db, resource_instance_id)
   if instance_orm:
     if new_status is not None:
       logger.debug(

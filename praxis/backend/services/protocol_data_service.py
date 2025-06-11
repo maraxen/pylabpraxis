@@ -781,7 +781,7 @@ async def log_function_call_end(
 
 
 # --- Query Functions ---
-async def get_protocol_definition_by_id(
+async def read_protocol_definition(
   db: AsyncSession,
   definition_id: uuid.UUID,
 ) -> Optional[FunctionProtocolDefinitionOrm]:
@@ -821,7 +821,7 @@ async def get_protocol_definition_by_id(
   return protocol_def
 
 
-async def get_protocol_definition_details(
+async def read_protocol_definition_details(
   db: AsyncSession,
   name: str,
   version: Optional[str] = None,
@@ -1024,7 +1024,7 @@ async def list_protocol_definitions(
   return protocol_defs
 
 
-async def get_protocol_run_by_guid(
+async def read_protocol_run_by_guid(
   db: AsyncSession, run_guid: uuid.UUID
 ) -> Optional[ProtocolRunOrm]:
   """Retrieve a protocol run by its unique GUID.
@@ -1130,7 +1130,7 @@ async def list_protocol_runs(
   return protocol_runs
 
 
-async def get_function_call_logs_for_run(
+async def read_function_call_logs_for_run(
   db: AsyncSession,
   protocol_run_id: uuid.UUID,
 ) -> List[FunctionCallLogOrm]:

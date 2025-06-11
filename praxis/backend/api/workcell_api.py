@@ -226,14 +226,12 @@ async def websocket_deck_updates(
   # We need to manage session manually or pass it if manager methods need it.
 ):
   # For initial validation, we'd manually acquire a session if needed.
-  # However, ads.get_managed_machine_by_id is async and needs an AsyncSession.
+  # However, ads.get_managed_machine is async and needs an AsyncSession.
   # The simplest is to acquire one for the validation check.
   db_session_for_validation: Optional[AsyncSession] = None
   try:
     async with AsyncSessionLocal() as db_session_for_validation:  # Manually create session for validation
-      deck_machine = await ads.get_managed_machine_by_id(
-        db_session_for_validation, deck_id
-      )
+      deck_machine = await ads.get_managed_machine(db_session_for_validation, deck_id)
       if (
         not deck_machine
         or deck_machine.praxis_machine_category != PraxisDeviceCategoryEnum.DECK

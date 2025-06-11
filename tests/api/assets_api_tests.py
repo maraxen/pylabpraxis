@@ -10,7 +10,10 @@ from fastapi.testclient import TestClient
 from praxis.backend.api.resources import router as assets_router
 
 # Pydantic models for request/response validation and constructing test data
-from praxis.backend.api.resources import ResourceInventoryDataIn, ResourceInventoryDataOut
+from praxis.backend.api.resources import (
+  ResourceInventoryDataIn,
+  ResourceInventoryDataOut,
+)
 
 # ORM Model mock for service layer
 from praxis.backend.database_models.asset_management_orm import ResourceInstanceOrm
@@ -38,12 +41,12 @@ class TestResourceInstanceInventoryAPI:
     monkeypatch.setattr("praxis.backend.api.assets.get_db", mock_get_db)
 
     # Mock the asset_data_service functions used by the API
-    self.mock_get_resource_by_id = MagicMock()
+    self.mock_get_resource = MagicMock()
     self.mock_update_lw_status = MagicMock()
 
     monkeypatch.setattr(
-      "praxis.backend.api.assets.asset_data_service.get_resource_instance_by_id",
-      self.mock_get_resource_by_id,
+      "praxis.backend.api.assets.asset_data_service.get_resource_instance",
+      self.mock_get_resource,
     )
     monkeypatch.setattr(
       "praxis.backend.api.assets.asset_data_service.update_resource_instance_location_and_status",
@@ -68,12 +71,12 @@ class TestResourceInstanceInventoryAPI:
       "last_updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     mock_instance_orm.properties_json = inventory_dict
-    self.mock_get_resource_by_id.return_value = mock_instance_orm
+    self.mock_get_resource.return_value = mock_instance_orm
 
     response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
 
     assert response.status_code == 200
-    self.mock_get_resource_by_id.assert_called_once_with(
+    self.mock_get_resource.assert_called_once_with(
       self.mock_db_session, self.MOCK_INSTANCE_ID
     )
 
@@ -85,17 +88,17 @@ class TestResourceInstanceInventoryAPI:
     assert response.json() == expected_data
 
   def test_get_resource_instance_inventory_not_found(self):
-    self.mock_get_resource_by_id.return_value = None
+    self.mock_get_resource.return_value = None
     response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
     assert response.status_code == 404
-    self.mock_get_resource_by_id.assert_called_once_with(
+    self.mock_get_resource.assert_called_once_with(
       self.mock_db_session, self.MOCK_INSTANCE_ID
     )
 
   def test_get_resource_instance_inventory_empty(self):
     mock_instance_orm = MagicMock(spec=ResourceInstanceOrm)
     mock_instance_orm.properties_json = None  # Or {}
-    self.mock_get_resource_by_id.return_value = mock_instance_orm
+    self.mock_get_resource.return_value = mock_instance_orm
 
     response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
     assert response.status_code == 200
@@ -103,7 +106,7 @@ class TestResourceInstanceInventoryAPI:
     expected_empty_data = ResourceInventoryDataOut().model_dump()  # Pydantic v2
     # For Pydantic v1: expected_empty_data = ResourceInventoryDataOut().dict()
     assert response.json() == expected_empty_data
-    self.mock_get_resource_by_id.assert_called_once_with(
+    self.mock_get_resource.assert_called_once_with(
       self.mock_db_session, self.MOCK_INSTANCE_ID
     )
 
@@ -114,7 +117,7 @@ class TestResourceInstanceInventoryAPI:
       "praxis_inventory_schema_version": "1.0",
       "consumable_state": "new",
     }
-    self.mock_get_resource_by_id.return_value = mock_instance_orm_initial
+    self.mock_get_resource.return_value = mock_instance_orm_initial
 
     # This is what the service function should return
     mock_instance_orm_updated = MagicMock(spec=ResourceInstanceOrm)
@@ -152,7 +155,7 @@ class TestResourceInstanceInventoryAPI:
       )
 
     assert response.status_code == 200
-    self.mock_get_resource_by_id.assert_called_once_with(
+    self.mock_get_resource.assert_called_once_with(
       self.mock_db_session, self.MOCK_INSTANCE_ID
     )
 
@@ -176,7 +179,7 @@ class TestResourceInstanceInventoryAPI:
     assert response.json() == expected_response_data
 
   def test_update_resource_instance_inventory_not_found(self):
-    self.mock_get_resource_by_id.return_value = None
+    self.mock_get_resource.return_value = None
     request_payload_dict = {
       "consumable_state": "used",
       "last_updated_by": self.MOCK_USER_ID,
@@ -186,7 +189,7 @@ class TestResourceInstanceInventoryAPI:
       json=request_payload_dict,
     )
     assert response.status_code == 404
-    self.mock_get_resource_by_id.assert_called_once_with(
+    self.mock_get_resource.assert_called_once_with(
       self.mock_db_session, self.MOCK_INSTANCE_ID
     )
     self.mock_update_lw_status.assert_not_called()

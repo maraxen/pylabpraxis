@@ -317,7 +317,7 @@ class PraxisDBService:
       assert isinstance(new_run.id, int), "Expected integer ID for ProtocolRunOrm"
       return new_run.id
 
-  async def get_protocol_run_details(
+  async def read_protocol_run_details(
     self, protocol_run_id: int
   ) -> Optional[Dict[str, Any]]:
     """Retrieve detailed information about a specific protocol run.

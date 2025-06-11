@@ -339,11 +339,11 @@ def mock_workcell_runtime():
 def mock_ads_service():
     with patch('praxis.backend.core.asset_manager.ads') as mock_ads:
         mock_ads.list_managed_machines.return_value = []
-        mock_ads.get_managed_machine_by_id.return_value = None
+        mock_ads.get_managed_machine.return_value = None
         mock_ads.update_managed_machine_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
 
         mock_ads.list_resource_instances.return_value = []
-        mock_ads.get_resource_instance_by_id.return_value = None
+        mock_ads.get_resource_instance.return_value = None
         mock_ads.get_resource_definition.return_value = None
         mock_ads.add_or_update_resource_definition.return_value = MagicMock(spec=ResourceDefinitionCatalogOrmMock)
         mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrmMock)
@@ -513,12 +513,12 @@ class TestAssetManagerRelease:
 
     def test_release_machine(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock):
         mock_machine_after_shutdown = ManagedDeviceOrmMock(id=1, current_status=ManagedDeviceStatusEnum.OFFLINE)
-        mock_ads_service.get_managed_machine_by_id.return_value = mock_machine_after_shutdown
+        mock_ads_service.get_managed_machine.return_value = mock_machine_after_shutdown
 
         asset_manager.release_machine(machine_orm_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE)
 
         mock_workcell_runtime.shutdown_machine_backend.assert_called_once_with(1)
-        mock_ads_service.get_managed_machine_by_id.assert_called_once_with(asset_manager.db, 1)
+        mock_ads_service.get_managed_machine.assert_called_once_with(asset_manager.db, 1)
         mock_ads_service.update_managed_machine_status.assert_called_with(
             asset_manager.db, 1, ManagedDeviceStatusEnum.AVAILABLE,
             status_details="Released from run", current_protocol_run_guid=None
@@ -1069,7 +1069,7 @@ class TestAssetManagerDeckLoading:
         live_plr_deck_obj = MagicMock(name="LiveDeck")
         mock_workcell_runtime.initialize_machine_backend.return_value = live_plr_deck_obj
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
 
         live_plr_resource_obj = MagicMock(name="LiveTestPlate")
@@ -1077,7 +1077,7 @@ class TestAssetManagerDeckLoading:
 
         asset_manager.apply_deck_instance(ProtocolDeck(name="TestDeckLayout"), "run123") # Test with Deck input
 
-        mock_ads_service.get_resource_instance_by_id.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.id)
+        mock_ads_service.get_resource_instance.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.id)
         mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.name)
         mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
             resource_instance_orm=mock_resource_instance_orm,
@@ -1112,7 +1112,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
 
         with pytest.raises(AssetAcquisitionError, match="is not available"):
             asset_manager.apply_deck_instance("TestDeckLayout", "run123")
@@ -1128,7 +1128,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
 
         with pytest.raises(AssetAcquisitionError, match="Python FQN not found for resource definition"):
@@ -1171,7 +1171,7 @@ class TestAssetManagerLogging:
         # Setup for release_resource
         final_props_update = {"content_state": "empty", "cleaned": True}
 
-        # Mock the get_resource_instance_by_id call that might happen if workcell_runtime is None or other logic paths
+        # Mock the get_resource_instance call that might happen if workcell_runtime is None or other logic paths
         # For this test, we are primarily interested in the log message generated by release_resource itself.
         # The actual update logic is tested elsewhere.
         mock_ads_service.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrm)

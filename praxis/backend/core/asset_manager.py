@@ -457,36 +457,49 @@ class AssetManager:
         )
 
         try:
-          existing_def_orm = await svc.get_resource_definition(
+          existing_def_orm = await svc.read_resource_definition(
             self.db, resource_definition_name
-          )
-          # Ensure all fields expected by add_or_update_resource_definition are passed
-          await svc.add_or_update_resource_definition(
-            db=self.db,
-            name=resource_definition_name,  # PK
-            python_fqn=fqn,
-            resource_type=praxis_display_type_name,
-            description=description,
-            is_consumable=is_consumable_flag,
-            nominal_volume_ul=nominal_volume_ul,
-            plr_definition_details_json=details_for_db,
-            # TODO: The service `add_or_update_resource_definition` needs to be updated
-            # to accept these fields if they are to be stored in
-            # ResourceDefinitionCatalogOrm:
-            # size_x_mm=size_x,
-            # size_y_mm=size_y,
-            # size_z_mm=size_z,
-            # For ResourceDefinitionCatalogOrm.plr_category
-            # plr_category=plr_category_val,
-            # For ResourceDefinitionCatalogOrm.model
-            # model=model_name_from_data,
           )
           if not existing_def_orm:
             added_count += 1
             logger.info(
               "AM_SYNC: Added new resource definition: %s", resource_definition_name
             )
+            await svc.create_resource_definition(
+              db=self.db,
+              name=resource_definition_name,  # PK
+              python_fqn=fqn,
+              resource_type=praxis_display_type_name,
+              description=description,
+              is_consumable=is_consumable_flag,
+              nominal_volume_ul=nominal_volume_ul,
+              plr_definition_details_json=details_for_db,
+              # size_x_mm=size_x,
+              # size_y_mm=size_y,
+              # size_z_mm=size_z,
+              # For ResourceDefinitionCatalogOrm.plr_category
+              # plr_category=plr_category_val,
+              # For ResourceDefinitionCatalogOrm.model
+              # model=model_name_from_data,
+            )
           else:
+            await svc.update_resource_definition(
+              db=self.db,
+              name=resource_definition_name,
+              python_fqn=fqn,
+              resource_type=praxis_display_type_name,
+              description=description,
+              is_consumable=is_consumable_flag,
+              nominal_volume_ul=nominal_volume_ul,
+              plr_definition_details_json=details_for_db,
+              # size_x_mm=size_x,
+              # size_y_mm=size_y,
+              # size_z_mm=size_z,
+              # For ResourceDefinitionCatalogOrm.plr_category
+              # plr_category=plr_category_val,
+              # For ResourceDefinitionCatalogOrm.model
+              # model=model_name_from_data,
+            )
             updated_count += 1
             logger.info(
               "AM_SYNC: Updated existing resource definition: %s",
@@ -512,14 +525,14 @@ class AssetManager:
     return added_count, updated_count
 
   async def apply_deck_instance(
-    self, deck_config_orm_id: uuid.UUID, protocol_run_guid: uuid.UUID
+    self, deck_instance_orm_id: uuid.UUID, protocol_run_guid: uuid.UUID
   ) -> Deck:
     """Apply a deck instanceuration.
 
     Initialize the deck and assign pre-configured resources.
 
     Args:
-        deck_config_orm_id: The ORM ID of the deck.
+        deck_instance_orm_id: The ORM ID of the deck.
         protocol_run_guid: The GUID of the current protocol run.
 
     Returns:
@@ -531,24 +544,26 @@ class AssetManager:
     """
     logger.info(
       "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_guid: %s",
-      deck_config_orm_id,
+      deck_instance_orm_id,
       protocol_run_guid,
     )
 
-    deck_config_orm = await svc.get_deck_config_by_id(self.db, deck_config_orm_id)
-    if not deck_config_orm:
-      raise AssetAcquisitionError(f"DeckInstance ID '{deck_config_orm_id}' not found.")
+    deck_instance_orm = await svc.read_deck_instance(self.db, deck_instance_orm_id)
+    if not deck_instance_orm:
+      raise AssetAcquisitionError(
+        f"DeckInstance ID '{deck_instance_orm_id}' not found."
+      )
 
-    deck_resource_instance_orm = await svc.get_resource_instance_by_id(
-      self.db, deck_config_orm.deck_id
+    deck_resource_instance_orm = await svc.read_resource_instance(
+      self.db, deck_instance_orm.deck_id
     )  # TODO: make sure these are synced
     if not deck_resource_instance_orm:
       raise AssetAcquisitionError(
-        f"Deck ResourceInstance ID '{deck_config_orm.deck_id}' (from DeckInstance "
-        f"'{deck_config_orm.name}') not found."
+        f"Deck ResourceInstance ID '{deck_instance_orm.deck_id}' (from DeckInstance "
+        f"'{deck_instance_orm.name}') not found."
       )
 
-    deck_def_catalog_orm = await svc.get_resource_definition(
+    deck_def_catalog_orm = await svc.read_resource_definition(
       self.db, deck_resource_instance_orm.name
     )
     if not deck_def_catalog_orm or not deck_def_catalog_orm.python_fqn:
@@ -566,7 +581,7 @@ class AssetManager:
         f" another run."
       )
 
-    live_plr_deck_object = await self.workcell_runtime.create_or_get_resource(
+    live_plr_deck_object = await self.workcell_runtime.create_or_read_resource(
       resource_instance_orm=deck_resource_instance_orm,
       resource_definition_fqn=deck_def_catalog_orm.python_fqn,
     )
@@ -579,19 +594,19 @@ class AssetManager:
     # Determine parent machine for location of the deck resource itself
     parent_machine_id_for_deck: Optional[uuid.UUID] = None
     parent_machine_name_for_log = "N/A (standalone or not specified)"
-    # To access deck_config_orm.deck_parent_machine, it must be loaded by
-    # get_deck_config_by_id
+    # To access deck_instance_orm.deck_parent_machine, it must be loaded by
+    # read_deck_instance
     # For now, assuming it might not be loaded and rely on an explicit FK if it existed,
     # or leave None.
     # If DeckInstanceOrm has deck_parent_machine_id FK:
-    # if hasattr(deck_config_orm, 'deck_parent_machine_id') and
-    # deck_config_orm.deck_parent_machine_id:
-    #    parent_machine_id_for_deck = deck_config_orm.deck_parent_machine_id
+    # if hasattr(deck_instance_orm, 'deck_parent_machine_id') and
+    # deck_instance_orm.deck_parent_machine_id:
+    #    parent_machine_id_for_deck = deck_instance_orm.deck_parent_machine_id
     #    # Potentially log parent machine name
-    # elif deck_config_orm.deck_parent_machine: # If relationship is loaded
-    #    parent_machine_id_for_deck = deck_config_orm.deck_parent_machine.id
+    # elif deck_instance_orm.deck_parent_machine: # If relationship is loaded
+    #    parent_machine_id_for_deck = deck_instance_orm.deck_parent_machine.id
     #    parent_machine_name_for_log =
-    # deck_config_orm.deck_parent_machine.user_friendly_name
+    # deck_instance_orm.deck_parent_machine.user_friendly_name
 
     await svc.update_resource_instance_location_and_status(
       db=self.db,
@@ -600,7 +615,7 @@ class AssetManager:
       current_protocol_run_guid=protocol_run_guid,
       status_details=f"Deck '{deck_resource_instance_orm.user_assigned_name}' "
       f"(parent machine: {parent_machine_name_for_log}) in use for config "
-      f"'{deck_config_orm.name}' by run {protocol_run_guid}",
+      f"'{deck_instance_orm.name}' by run {protocol_run_guid}",
       location_machine_id=parent_machine_id_for_deck,
       current_deck_position_name=None,
     )
@@ -609,12 +624,10 @@ class AssetManager:
       deck_resource_instance_orm.user_assigned_name,
     )
 
-    for position_item_orm in deck_config_orm.position_items or []:
+    for position_item_orm in deck_instance_orm.position_items or []:
       if position_item_orm.resource_instance_id:
         item_to_place_id = position_item_orm.resource_instance_id
-        item_to_place_orm = await svc.get_resource_instance_by_id(
-          self.db, item_to_place_id
-        )
+        item_to_place_orm = await svc.read_resource_instance(self.db, item_to_place_id)
         if not item_to_place_orm:
           logger.error(
             "Resource instance %s for position '%s' not found. Skipping.",
@@ -649,7 +662,7 @@ class AssetManager:
             f"{item_to_place_orm.current_status})."
           )
 
-        item_def_orm = await svc.get_resource_definition(
+        item_def_orm = await svc.read_resource_definition(
           self.db, item_to_place_orm.name
         )
         if not item_def_orm or not item_def_orm.python_fqn:
@@ -657,13 +670,13 @@ class AssetManager:
             f"FQN not found for resource definition '{item_to_place_orm.name}'."
           )
 
-        await self.workcell_runtime.create_or_get_resource(
+        await self.workcell_runtime.create_or_read_resource(
           resource_instance_orm=item_to_place_orm,
           resource_definition_fqn=item_def_orm.python_fqn,
         )
         await self.workcell_runtime.assign_resource_to_deck(
           resource_instance_orm_id=item_to_place_id,
-          target=deck_config_orm_id,
+          target=deck_instance_orm_id,
           position_id=position_item_orm.position_id,
         )
         await svc.update_resource_instance_location_and_status(
@@ -684,7 +697,7 @@ class AssetManager:
         )
 
     logger.info(
-      "AM_DECK_CONFIG: Deck configuration for '%s' applied.", deck_config_orm.name
+      "AM_DECK_CONFIG: Deck configuration for '%s' applied.", deck_instance_orm.name
     )
     assert isinstance(
       live_plr_deck_object, Deck
@@ -737,7 +750,7 @@ class AssetManager:
         f"acquisition safeguard: {e}"
       )
     # Also check against resource definitions just in case it's cataloged as a deck
-    potential_deck_def = await svc.get_resource_definition_by_fqn(
+    potential_deck_def = await svc.read_resource_definition_by_fqn(
       self.db, python_fqn_constraint
     )
     if potential_deck_def and (
@@ -865,9 +878,7 @@ class AssetManager:
 
     resource_instance_to_acquire: Optional[ResourceInstanceOrm] = None
     if user_choice_instance_id:
-      instance_orm = await svc.get_resource_instance_by_id(
-        self.db, user_choice_instance_id
-      )
+      instance_orm = await svc.read_resource_instance(self.db, user_choice_instance_id)
       if not instance_orm:
         raise AssetAcquisitionError(
           f"Specified resource ID {user_choice_instance_id} not found."
@@ -926,7 +937,7 @@ class AssetManager:
         f"run '{protocol_run_guid}'."
       )
 
-    resource_def_orm = await svc.get_resource_definition(
+    resource_def_orm = await svc.read_resource_definition(
       self.db, resource_instance_to_acquire.name
     )
     if not resource_def_orm or not resource_def_orm.python_fqn:
@@ -940,7 +951,7 @@ class AssetManager:
         f"FQN not found for resource definition '{resource_instance_to_acquire.name}'."
       )
 
-    live_plr_resource = await self.workcell_runtime.create_or_get_resource(
+    live_plr_resource = await self.workcell_runtime.create_or_read_resource(
       resource_instance_orm=resource_instance_to_acquire,
       resource_definition_fqn=resource_def_orm.python_fqn,
     )
@@ -967,7 +978,7 @@ class AssetManager:
       )  # User-assigned name of the target deck resource
       position_on_deck = location_constraints.get("position_name")
       if deck_user_name and position_on_deck:
-        target_deck_instance = await svc.get_resource_instance_by_name(
+        target_deck_instance = await svc.read_resource_instance_by_name(
           self.db, deck_user_name
         )
         if not target_deck_instance:
@@ -975,7 +986,7 @@ class AssetManager:
             f"Target deck resource '{deck_user_name}' not found."
           )
         # Verify target_deck_instance is a deck
-        target_deck_def = await svc.get_resource_definition(
+        target_deck_def = await svc.read_resource_definition(
           self.db, target_deck_instance.name
         )
         if not target_deck_def or not (
@@ -1068,7 +1079,7 @@ class AssetManager:
     status_details: Optional[str] = "Released from run",
   ):
     """Release a Machine (not a Deck)."""
-    machine_to_release = await svc.get_machine_by_id(self.db, machine_orm_id)
+    machine_to_release = await svc.get_machine(self.db, machine_orm_id)
     if not machine_to_release:
       logger.warning(f"AM_RELEASE_MACHINE: Machine ID {machine_orm_id} not found.")
       return
@@ -1134,7 +1145,7 @@ class AssetManager:
         AssetReleaseError: If the resource cannot be released or updated in the DB.
 
     """
-    resource_to_release = await svc.get_resource_instance_by_id(
+    resource_to_release = await svc.read_resource_instance(
       self.db, resource_instance_orm_id
     )
     if not resource_to_release:
@@ -1151,7 +1162,7 @@ class AssetManager:
       final_status.name,
     )
 
-    resource_def_orm = await svc.get_resource_definition(
+    resource_def_orm = await svc.read_resource_definition(
       self.db, resource_to_release.name
     )
     is_releasing_a_deck_resource = False
@@ -1241,7 +1252,7 @@ class AssetManager:
       protocol_run_guid,
     )
 
-    resource_def_check = await svc.get_resource_definition(
+    resource_def_check = await svc.read_resource_definition(
       self.db, asset_type_or_def_name
     )
 

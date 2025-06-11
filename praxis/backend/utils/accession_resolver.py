@@ -17,7 +17,7 @@ async def get_id_from_accession(
   *,
   accession: str | UUID,
   db: AsyncSession,
-  get_by_id_func: Callable[[AsyncSession, UUID], Awaitable[Optional[T]]],
+  get_func: Callable[[AsyncSession, UUID], Awaitable[Optional[T]]],
   get_by_name_func: Callable[[AsyncSession, str], Awaitable[Optional[T]]],
   entity_type_name: str,
 ) -> UUID:
@@ -29,8 +29,8 @@ async def get_id_from_accession(
   Args:
       accession: The UUID or user-assigned name of the entity to resolve.
       db: The async database session.
-      get_by_id_func: The service function used to get the entity by its UUID.
-                      Example: `svc.get_resource_instance_by_id`
+      get_func: The service function used to get the entity by its UUID.
+                      Example: `svc.get_resource_instance`
       get_by_name_func: The service function used to get the entity by its name.
                         Example: `svc.get_resource_instance_by_name`
       entity_type_name: The user-friendly name of the entity type (e.g., "Resource Instance")
@@ -48,7 +48,7 @@ async def get_id_from_accession(
   obj: Optional[T] = None
   if isinstance(accession, UUID):
     # If it's already a UUID, we just need to confirm it exists.
-    obj = await get_by_id_func(db, accession)
+    obj = await get_func(db, accession)
     if obj:
       # The object exists, so the UUID is valid.
       return accession

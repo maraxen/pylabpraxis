@@ -36,7 +36,7 @@ log_entity_linking_errors = partial(
     linking.",
   suffix=" Please ensure the resource definition exists in the catalog.",
 )
-async def _get_resource_definition_for_linking(
+async def _read_resource_definition_for_linking(
   db: AsyncSession, name: str
 ) -> "ResourceDefinitionCatalogOrm":
   """Retrieve a resource definition."""
@@ -196,7 +196,7 @@ async def _create_or_link_resource_counterpart_for_machine(
         )
 
       logger.info("%s Creating new ResourceInstanceOrm as counterpart.", log_prefix)
-      definition = await _get_resource_definition_for_linking(db, resource_def_name)
+      definition = await _read_resource_definition_for_linking(db, resource_def_name)
 
       new_resource_instance = ResourceInstanceOrm(
         user_assigned_name=f"Resource for {machine_orm.user_friendly_name} (Machine ID:\

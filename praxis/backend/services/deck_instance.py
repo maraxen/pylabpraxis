@@ -182,7 +182,7 @@ async def create_deck_instance(
     )
     # Eagerly load position_items for the returned object
     if deck_orm.id:
-      return await read_deck_instance_by_id(db, deck_orm.id)  # type: ignore
+      return await read_deck_instance(db, deck_orm.id)  # type: ignore
     return deck_orm  # Should not be reached if ID is None after flush/commit
   except IntegrityError as e:
     await db.rollback()
@@ -235,7 +235,7 @@ async def read_deck_instance_by_parent_machine_id(
   return deck
 
 
-async def read_deck_instance_by_id(
+async def read_deck_instance(
   db: AsyncSession, deck_id: UUID
 ) -> Optional[DeckInstanceOrm]:
   """Retrieve a specific deck instance configuration by its ID.
@@ -406,7 +406,7 @@ async def update_deck_instance(
 
   """
   logger.info("Attempting to update deck instance with ID: %s.", deck_id)
-  deck_orm = await read_deck_instance_by_id(db, deck_id)
+  deck_orm = await read_deck_instance(db, deck_id)
   if not deck_orm:
     logger.warning("Deck config with ID %s not found for update.", deck_id)
     return None
@@ -516,7 +516,7 @@ async def update_deck_instance(
       deck_id,
       deck_orm.name,
     )
-    return await read_deck_instance_by_id(db, deck_id)  # Reload with all relations
+    return await read_deck_instance(db, deck_id)  # Reload with all relations
   except IntegrityError as e:
     await db.rollback()
     error_message = (
@@ -553,7 +553,7 @@ async def delete_deck_instance(db: AsyncSession, deck_id: UUID) -> bool:
 
   """
   logger.info("Attempting to delete deck instance with ID: %s.", deck_id)
-  deck_orm = await read_deck_instance_by_id(db, deck_id)
+  deck_orm = await read_deck_instance(db, deck_id)
   if not deck_orm:
     logger.warning("Deck instance with ID %s not found for deletion.", deck_id)
     return False

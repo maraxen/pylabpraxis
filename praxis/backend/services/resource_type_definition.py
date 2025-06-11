@@ -42,12 +42,11 @@ log_resource_data_service_errors = partial(
 
 
 @log_resource_data_service_errors(
-  prefix="Resource Definition Error: Error while adding or updating resource definition\
-    .",
-  suffix=" Please ensure the parameters are correct and the resource definition exists\
-    .",
+  prefix="Resource Definition Error: Creating resource definition - ",
+  suffix=" Please ensure the parameters are correct and the resource definition does "
+  "not already exist.",
 )
-async def add_or_update_resource_definition(
+async def create_resource_definition(
   db: AsyncSession,
   name: str,
   python_fqn: str,
@@ -59,11 +58,9 @@ async def add_or_update_resource_definition(
   manufacturer: Optional[str] = None,
   plr_definition_details_json: Optional[Dict[str, Any]] = None,
 ) -> ResourceDefinitionCatalogOrm:
-  """Add a new resource definition to the catalog or update an existing one.
+  """Add a new resource definition to the catalog.
 
-  This function creates a new `ResourceDefinitionCatalogOrm` if no existing
-  definition matches `name`. If a match is found, it
-  updates the existing definition.
+  This function creates a new `ResourceDefinitionCatalogOrm`.
 
   Args:
       db (AsyncSession): The database session.
@@ -87,17 +84,127 @@ async def add_or_update_resource_definition(
           dictionary. Defaults to None.
 
   Returns:
-      ResourceDefinitionCatalogOrm: The created or updated resource definition
-      object.
+      ResourceDefinitionCatalogOrm: The created resource definition object.
 
   Raises:
-      ValueError: If an integrity error occurs (e.g., duplicate name).
+      ValueError: If a resource definition with the same `name` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Resource Definition (Name: '{name}'):"
-  logger.info("%s Attempting to add or update.", log_prefix)
+  log_prefix = f"Resource Definition (Name: '{name}', creating new):"
+  logger.info("%s Attempting to create new resource definition.", log_prefix)
 
+  # Check if a resource definition with this name already exists
+  result = await db.execute(
+    select(ResourceDefinitionCatalogOrm).filter(
+      ResourceDefinitionCatalogOrm.name == name
+    )
+  )
+  if result.scalar_one_or_none():
+    error_message = (
+      f"{log_prefix} A resource definition with name "
+      f"'{name}' already exists. Use the update function for existing definitions."
+    )
+    logger.error(error_message)
+    raise ValueError(error_message)
+
+  # Create a new ResourceDefinitionCatalogOrm
+  def_orm = ResourceDefinitionCatalogOrm(
+    name=name,
+    python_fqn=python_fqn,
+    resource_type=resource_type,
+    description=description,
+    is_consumable=is_consumable,
+    nominal_volume_ul=nominal_volume_ul,
+    material=material,
+    manufacturer=manufacturer,
+    plr_definition_details_json=plr_definition_details_json,
+  )
+  db.add(def_orm)
+  logger.info("%s Initialized new resource definition for creation.", log_prefix)
+
+  try:
+    await db.commit()
+    await db.refresh(def_orm)
+    logger.info("%s Successfully committed new resource definition.", log_prefix)
+  except IntegrityError as e:
+    await db.rollback()
+    if "uq_resource_definitions_name" in str(
+      e.orig
+    ):  # Placeholder for actual constraint name
+      error_message = (
+        f"{log_prefix} A resource definition with name "
+        f"'{name}' already exists (integrity check failed). Details: {e}"
+      )
+      logger.error(error_message, exc_info=True)
+      raise ValueError(error_message) from e
+    error_message = (
+      f"{log_prefix} Database integrity error during creation. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
+  except Exception as e:
+    await db.rollback()
+    logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
+    raise e
+
+  logger.info("%s Creation operation completed.", log_prefix)
+  return def_orm
+
+
+@log_resource_data_service_errors(
+  prefix="Resource Definition Error: Updating resource definition - ",
+  suffix=" Please ensure the parameters are correct and the resource definition exists.",
+)
+async def update_resource_definition(
+  db: AsyncSession,
+  name: str,  # Identifier for the resource definition to update
+  python_fqn: Optional[str] = None,
+  resource_type: Optional[str] = None,
+  description: Optional[str] = None,
+  is_consumable: Optional[bool] = None,
+  nominal_volume_ul: Optional[float] = None,
+  material: Optional[str] = None,
+  manufacturer: Optional[str] = None,
+  plr_definition_details_json: Optional[Dict[str, Any]] = None,
+) -> ResourceDefinitionCatalogOrm:
+  """Update an existing resource definition in the catalog.
+
+  Args:
+      db (AsyncSession): The database session.
+      name (str): The unique PyLabRobot definition name
+          for the resource to update (e.g., "tip_rack_1000ul").
+      python_fqn (Optional[str], optional): The fully qualified Python name of the resource class.
+          Defaults to None.
+      resource_type (Optional[str], optional): A human-readable
+          name for the resource type. Defaults to None.
+      description (Optional[str], optional): A description of the resource.
+          Defaults to None.
+      is_consumable (Optional[bool], optional): Indicates if the resource is consumable.
+          Defaults to None.
+      nominal_volume_ul (Optional[float], optional): The nominal volume in
+          microliters, if applicable. Defaults to None.
+      material (Optional[str], optional): The material of the resource.
+          Defaults to None.
+      manufacturer (Optional[str], optional): The manufacturer of the resource.
+          Defaults to None.
+      plr_definition_details_json (Optional[Dict[str, Any]], optional):
+          Additional PyLabRobot specific definition details as a JSON-serializable
+          dictionary. Defaults to None.
+
+  Returns:
+      ResourceDefinitionCatalogOrm: The updated resource definition object.
+
+  Raises:
+      ValueError: If the resource definition with the provided `name` is not found,
+                  or if an integrity error occurs (e.g., duplicate FQN if `python_fqn` is changed).
+      Exception: For any other unexpected errors during the process.
+
+  """
+  log_prefix = f"Resource Definition (Name: '{name}', updating):"
+  logger.info("%s Attempting to update.", log_prefix)
+
+  # Fetch the existing resource definition
   result = await db.execute(
     select(ResourceDefinitionCatalogOrm).filter(
       ResourceDefinitionCatalogOrm.name == name
@@ -106,38 +213,48 @@ async def add_or_update_resource_definition(
   def_orm = result.scalar_one_or_none()
 
   if not def_orm:
-    def_orm = ResourceDefinitionCatalogOrm(name=name)
-    db.add(def_orm)
-    logger.info("%s No existing definition found, creating new.", log_prefix)
-  else:
-    logger.info("%s Found existing definition, updating.", log_prefix)
+    error_message = f"{log_prefix} ResourceDefinitionCatalogOrm with name '{name}' not found for update."
+    logger.error(error_message)
+    raise ValueError(error_message)
+  logger.info("%s Found existing definition for update.", log_prefix)
 
-  def_orm.python_fqn = python_fqn
-  def_orm.resource_type = resource_type
-  def_orm.description = description
-  def_orm.is_consumable = is_consumable
-  def_orm.nominal_volume_ul = nominal_volume_ul
-  def_orm.material = material
-  def_orm.manufacturer = manufacturer
-  def_orm.plr_definition_details_json = plr_definition_details_json
+  # Update attributes if provided
+  if python_fqn is not None:
+    def_orm.python_fqn = python_fqn
+  if resource_type is not None:
+    def_orm.resource_type = resource_type
+  if description is not None:
+    def_orm.description = description
+  if is_consumable is not None:
+    def_orm.is_consumable = is_consumable
+  if nominal_volume_ul is not None:
+    def_orm.nominal_volume_ul = nominal_volume_ul
+  if material is not None:
+    def_orm.material = material
+  if manufacturer is not None:
+    def_orm.manufacturer = manufacturer
+  if plr_definition_details_json is not None:
+    def_orm.plr_definition_details_json = plr_definition_details_json
+    flag_modified(def_orm, "plr_definition_details_json")  # Flag as modified
 
   try:
     await db.commit()
     await db.refresh(def_orm)
-    logger.info("%s Successfully committed changes.", log_prefix)
+    logger.info("%s Successfully committed update.", log_prefix)
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"{log_prefix} Integrity error. A resource definition with this "
-      f"name might already exist. Details: {e}"
+      f"{log_prefix} Integrity error during update. "
+      f"This might occur if a unique constraint is violated (e.g., duplicate FQN). Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
-    logger.exception("%s Unexpected error. Rolling back.", log_prefix)
+    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
     raise e
-  logger.info("%s Operation completed.", log_prefix)
+
+  logger.info("%s Update operation completed.", log_prefix)
   return def_orm
 
 

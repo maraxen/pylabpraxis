@@ -9,14 +9,17 @@ This includes Machine Definitions, Machine Instances, and Machine configurations
 
 import datetime
 from functools import partial
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 
 import uuid_utils as uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
+
+if TYPE_CHECKING:
+  from praxis.backend.models.resource_orm import ResourceInstanceStatusEnum
 
 from praxis.backend.models import MachineOrm, MachineStatusEnum
 from praxis.backend.services.entity_linking import (
@@ -37,31 +40,28 @@ machine_data_service_log = partial(
 
 
 @machine_data_service_log(
-  prefix="Machine Data Service: Adding or updating machine - ",
+  prefix="Machine Data Service: Creating machine - ",
   suffix=" - Ensure the machine data is valid and unique.",
 )
-async def add_or_update_machine(
+async def create_machine(
   db: AsyncSession,
   user_friendly_name: str,
   python_fqn: str,
   backend_config_json: Optional[Dict[str, Any]] = None,
-  current_status: MachineStatusEnum = MachineStatusEnum.OFFLINE,
+  current_status: "MachineStatusEnum" = MachineStatusEnum.OFFLINE,
   status_details: Optional[str] = None,
   workcell_id: Optional[uuid.UUID] = None,
   physical_location_description: Optional[str] = None,
   properties_json: Optional[Dict[str, Any]] = None,
-  machine_id: Optional[uuid.UUID] = None,
   is_resource: bool = False,
   resource_counterpart_id: Optional[uuid.UUID] = None,
   resource_def_name: Optional[str] = None,
   resource_properties_json: Optional[Dict[str, Any]] = None,
-  resource_initial_status: Optional["ResourceInstanceStatusEnum"] = None,  # type: ignore # noqa: F821
+  resource_initial_status: Optional["ResourceInstanceStatusEnum"] = None,
 ) -> MachineOrm:
-  """Add a new machine or updates an existing one.
+  """Add a new machine.
 
-  This function creates a new `MachineOrm` if `machine_id` is not provided and
-  no existing machine matches `user_friendly_name`. If `machine_id` is provided,
-  it attempts to update the existing machine.
+  This function creates a new `MachineOrm`.
 
   Args:
       db (AsyncSession): The database session.
@@ -74,19 +74,17 @@ async def add_or_update_machine(
           status of the machine. Defaults to `MachineStatusEnum.OFFLINE`.
       status_details (Optional[str], optional): Additional details about the
           current status. Defaults to None.
-      workcell_id (Optional[int], optional): The ID of the workcell this machine
+      workcell_id (Optional[uuid.UUID], optional): The ID of the workcell this machine
           belongs to. Defaults to None.
       physical_location_description (Optional[str], optional): A description of
           the machine's physical location. Defaults to None.
       properties_json (Optional[Dict[str, Any]], optional): Additional properties
           for the machine stored as JSON. Defaults to None.
-      machine_id (Optional[int], optional): The ID of an existing machine to update.
-          If None, a new machine will be created or an existing one looked up by
-          `user_friendly_name`. Defaults to None.
       is_resource (bool, optional): Indicates if this machine is also a resource
           instance. Defaults to False.
-      resource_counterpart_id (Optional[int], optional): If `is_resource` is True,
-          this is the ID of the associated `ResourceInstanceOrm`. Defaults to None.
+      resource_counterpart_id (Optional[uuid.UUID], optional): If `is_resource` is True,
+          and you want to link to an existing resource, this is the ID of the associated
+          `ResourceInstanceOrm`. Defaults to None.
       resource_def_name (Optional[str]): Required if creating a new ResourceInstanceOrm.
       resource_properties_json (Optional[Dict[str, Any]]): Optional properties for a new
       ResourceInstanceOrm.
@@ -95,58 +93,48 @@ async def add_or_update_machine(
 
 
   Returns:
-      MachineOrm: The created or updated machine object.
+      MachineOrm: The created machine object.
 
   Raises:
-      ValueError: If `machine_id` is provided but no matching machine is found,
-          or if a machine with the same `user_friendly_name` already exists
-          during creation.
+      ValueError: If a machine with the same `user_friendly_name` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
-  from praxis.backend.models import ResourceInstanceStatusEnum
+  log_prefix = f"Machine (Name: '{user_friendly_name}', creating new):"
+  logger.info("%s Attempting to create new machine.", log_prefix)
 
-  log_prefix = f"Machine (Name: '{user_friendly_name}', ID: {machine_id or 'new'}):"
-  logger.info("%s Attempting to add or update machine.", log_prefix)
-
-  machine_orm: Optional[MachineOrm] = None
-
-  if machine_id:
-    result = await db.execute(select(MachineOrm).filter(MachineOrm.id == machine_id))
-    machine_orm = result.scalar_one_or_none()
-    if not machine_orm:
-      raise ValueError(
-        f"{log_prefix} MachineOrm with id {machine_id} not found for update."
-      )
-    logger.info("%s Found existing machine for update.", log_prefix)
-  else:
-    result = await db.execute(
-      select(MachineOrm).filter(MachineOrm.user_friendly_name == user_friendly_name)
+  # Check if a machine with this user_friendly_name already exists
+  result = await db.execute(
+    select(MachineOrm).filter(MachineOrm.user_friendly_name == user_friendly_name)
+  )
+  if result.scalar_one_or_none():
+    error_message = (
+      f"{log_prefix} A machine with user-friendly name "
+      f"'{user_friendly_name}' already exists. Use the update function for existing "
+      f"machines."
     )
-    machine_orm = result.scalar_one_or_none()
-    if machine_orm:
-      logger.info(
-        "%s Found existing machine by name, updating instead of creating.",
-        log_prefix,
-      )
-    else:
-      logger.info("%s No existing machine found, creating new.", log_prefix)
-      machine_orm = MachineOrm(user_friendly_name=user_friendly_name)
-      db.add(machine_orm)
+    logger.error(error_message)
+    raise ValueError(error_message)
 
-  if machine_orm is None:
-    raise ValueError(f"{log_prefix} Failed to initialize MachineOrm. This indicates a \
-      logic error.")
-
-  machine_orm.python_fqn = python_fqn
-  machine_orm.backend_config_json = backend_config_json
-  machine_orm.current_status = current_status
-  machine_orm.status_details = status_details
-  machine_orm.workcell_id = workcell_id
-  machine_orm.physical_location_description = physical_location_description
-  machine_orm.properties_json = properties_json
+  # Create a new MachineOrm
+  machine_orm = MachineOrm(
+    user_friendly_name=user_friendly_name,
+    python_fqn=python_fqn,
+    backend_config_json=backend_config_json,
+    current_status=current_status,
+    status_details=status_details,
+    workcell_id=workcell_id,
+    physical_location_description=physical_location_description,
+    properties_json=properties_json,
+    is_resource=is_resource,
+  )
+  db.add(machine_orm)
+  logger.info("%s Initialized new machine for creation.", log_prefix)
 
   try:
+    await db.flush()  # Flush to get machine_orm.id if needed by resource linking
+    logger.debug("%s Flushed new machine to get ID.", log_prefix)
+
     await _create_or_link_resource_counterpart_for_machine(
       db=db,
       machine_orm=machine_orm,
@@ -156,36 +144,194 @@ async def add_or_update_machine(
       resource_properties_json=resource_properties_json,
       resource_initial_status=resource_initial_status,
     )
-  except Exception as e:
-    logger.error(
-      f"{log_prefix} Error linking ResourceInstance counterpart: {e}", exc_info=True
-    )
-    raise ValueError(f"Failed to link resource counterpart for machine \
-      '{user_friendly_name}'.") from e
 
-  try:
     await db.commit()
     await db.refresh(machine_orm)
     if machine_orm.resource_counterpart:
       await db.refresh(machine_orm.resource_counterpart)
-    logger.info("%s Successfully committed changes.", log_prefix)
+    logger.info("%s Successfully committed new machine.", log_prefix)
+
   except IntegrityError as e:
     await db.rollback()
-    raise ValueError(
-      f"{log_prefix} A machine with name '{user_friendly_name}' might already "
-      f"exist or other integrity constraint violated. Details: {e}"
-    ) from e
+    # Check for specific unique constraint violations if applicable
+    if "uq_machines_user_friendly_name" in str(
+      e.orig
+    ):  # Placeholder for actual constraint name
+      error_message = (
+        f"{log_prefix} A machine with user-friendly name "
+        f"'{user_friendly_name}' already exists (integrity check failed). Details: {e}"
+      )
+      logger.error(error_message, exc_info=True)
+      raise ValueError(error_message) from e
+    error_message = (
+      f"{log_prefix} Database integrity error during creation. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
-    logger.exception("%s Unexpected error. Rolling back.", log_prefix)
+    logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
     raise e
-  logger.info("%s Operation completed.", log_prefix)
+
+  logger.info("%s Creation operation completed.", log_prefix)
   return machine_orm
 
 
-async def read_machine_by_id(
-  db: AsyncSession, machine_id: uuid.UUID
-) -> Optional[MachineOrm]:
+@machine_data_service_log(
+  prefix="Machine Data Service: Updating machine - ",
+  suffix=" - Ensure the machine data is valid and unique.",
+)
+async def update_machine(
+  db: AsyncSession,
+  machine_id: uuid.UUID,
+  user_friendly_name: Optional[str] = None,  # Made optional for updates
+  python_fqn: Optional[str] = None,  # Made optional for updates
+  backend_config_json: Optional[Dict[str, Any]] = None,
+  current_status: Optional["MachineStatusEnum"] = None,  # Made optional for updates
+  status_details: Optional[str] = None,
+  workcell_id: Optional[uuid.UUID] = None,
+  physical_location_description: Optional[str] = None,
+  properties_json: Optional[Dict[str, Any]] = None,
+  is_resource: Optional[bool] = None,  # Made optional for updates
+  resource_counterpart_id: Optional[uuid.UUID] = None,
+  resource_def_name: Optional[str] = None,  # Only used if creating a new resource
+  resource_properties_json: Optional[Dict[str, Any]] = None,
+  resource_initial_status: Optional[
+    "ResourceInstanceStatusEnum"
+  ] = None,  # Only used if creating a new resource
+) -> MachineOrm:
+  """Update an existing machine.
+
+  Args:
+      db (AsyncSession): The database session.
+      machine_id (uuid.UUID): The ID of the existing machine to update.
+      user_friendly_name (Optional[str], optional): A human-readable name for the
+          machine. Defaults to None.
+      python_fqn (Optional[str], optional): The fully qualified name of the PyLabRobot
+          class for this machine. Defaults to None.
+      backend_config_json (Optional[Dict[str, Any]], optional): JSON configuration
+          for the PyLabRobot backend. Defaults to None.
+      current_status (Optional[MachineStatusEnum], optional): The current operational
+          status of the machine. Defaults to None.
+      status_details (Optional[str], optional): Additional details about the
+          current status. Defaults to None.
+      workcell_id (Optional[uuid.UUID], optional): The ID of the workcell this machine
+          belongs to. Defaults to None.
+      physical_location_description (Optional[str], optional): A description of
+          the machine's physical location. Defaults to None.
+      properties_json (Optional[Dict[str, Any]], optional): Additional properties
+          for the machine stored as JSON. Defaults to None.
+      is_resource (Optional[bool], optional): Indicates if this machine is also a
+          resource instance. Defaults to None.
+      resource_counterpart_id (Optional[uuid.UUID], optional): If `is_resource` is True,
+          and you want to link to an existing resource, this is the ID of the associated
+          `ResourceInstanceOrm`. Defaults to None.
+      resource_def_name (Optional[str]): Only used if creating a new
+      ResourceInstanceOrm. resource_properties_json (Optional[Dict[str, Any]]):
+      Optional properties for a new ResourceInstanceOrm.
+      resource_initial_status (Optional[ResourceInstanceStatusEnum]): Initial status for
+      a new ResourceInstanceOrm.
+
+  Returns:
+      MachineOrm: The updated machine object.
+
+  Raises:
+      ValueError: If `machine_id` is provided but no matching machine is found,
+          or if the updated `user_friendly_name` conflicts with an existing one.
+      Exception: For any other unexpected errors during the process.
+
+  """
+  log_prefix = f"Machine (ID: {machine_id}, updating):"
+  logger.info("%s Attempting to update machine.", log_prefix)
+
+  # Fetch the existing machine
+  result = await db.execute(select(MachineOrm).filter(MachineOrm.id == machine_id))
+  machine_orm = result.scalar_one_or_none()
+  if not machine_orm:
+    error_message = (
+      f"{log_prefix} MachineOrm with id {machine_id} not found for update."
+    )
+    logger.error(error_message)
+    raise ValueError(error_message)
+  logger.info("%s Found existing machine for update.", log_prefix)
+
+  # Check for user_friendly_name conflict if it's being changed
+  if (
+    user_friendly_name is not None
+    and machine_orm.user_friendly_name != user_friendly_name
+  ):
+    existing_name_check = await db.execute(
+      select(MachineOrm)
+      .filter(MachineOrm.user_friendly_name == user_friendly_name)
+      .filter(MachineOrm.id != machine_id)  # Exclude the current record
+    )
+    if existing_name_check.scalar_one_or_none():
+      error_message = (
+        f"{log_prefix} Cannot update user_friendly_name to '{user_friendly_name}' as it"
+        f" already exists for another machine."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    machine_orm.user_friendly_name = user_friendly_name
+
+  # Update attributes if provided
+  if python_fqn is not None:
+    machine_orm.python_fqn = python_fqn
+  if backend_config_json is not None:
+    machine_orm.backend_config_json = backend_config_json
+  if current_status is not None:
+    machine_orm.current_status = current_status
+  if status_details is not None:
+    machine_orm.status_details = status_details
+  if workcell_id is not None:
+    machine_orm.workcell_id = workcell_id
+  if physical_location_description is not None:
+    machine_orm.physical_location_description = physical_location_description
+  if properties_json is not None:
+    machine_orm.properties_json = properties_json
+
+  # Handle `is_resource` update and potential resource counterpart linking
+  effective_is_resource = (
+    is_resource if is_resource is not None else machine_orm.is_resource
+  )
+
+  try:
+    await _create_or_link_resource_counterpart_for_machine(
+      db=db,
+      machine_orm=machine_orm,
+      is_resource=effective_is_resource,
+      resource_counterpart_id=resource_counterpart_id,
+      resource_def_name=resource_def_name,
+      resource_properties_json=resource_properties_json,
+      resource_initial_status=resource_initial_status,
+    )
+    # Only update machine_orm.is_resource after successful resource linking/unlinking
+    if is_resource is not None:
+      machine_orm.is_resource = is_resource
+
+    await db.commit()
+    await db.refresh(machine_orm)
+    if machine_orm.resource_counterpart:
+      await db.refresh(machine_orm.resource_counterpart)
+    logger.info("%s Successfully committed updated machine.", log_prefix)
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"{log_prefix} Database integrity error during update. "
+      f"This might occur if a unique constraint is violated. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
+  except Exception as e:
+    await db.rollback()
+    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
+    raise e
+
+  logger.info("%s Update operation completed.", log_prefix)
+  return machine_orm
+
+
+async def read_machine(db: AsyncSession, machine_id: uuid.UUID) -> Optional[MachineOrm]:
   """Retrieve a specific machine by its ID.
 
   Args:
@@ -365,7 +511,7 @@ async def update_machine_status(
     machine_id,
     new_status.value,
   )
-  machine_orm = await read_machine_by_id(db, machine_id)
+  machine_orm = await read_machine(db, machine_id)
   if not machine_orm:
     logger.warning("Machine with ID %d not found for status update.", machine_id)
     return None
@@ -440,7 +586,7 @@ async def delete_machine(db: AsyncSession, machine_id: uuid.UUID) -> bool:
 
   """
   logger.info("Attempting to delete machine with ID: %d.", machine_id)
-  machine_orm = await read_machine_by_id(db, machine_id)
+  machine_orm = await read_machine(db, machine_id)
   if not machine_orm:
     logger.warning("Machine with ID %d not found for deletion.", machine_id)
     return False

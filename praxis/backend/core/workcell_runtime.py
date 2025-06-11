@@ -113,9 +113,9 @@ class WorkcellRuntime:
     """Links the in-memory Workcell to its persistent DB entry."""
     if self._workcell_db_id is None:
       async with self.db_session_factory() as db_session:
-        workcell_orm = await svc.get_or_create_workcell_orm(
+        workcell_orm = await svc.create_workcell(
           db_session,
-          workcell_name=self._main_workcell.name,
+          name=self._main_workcell.name,
           initial_state=self._main_workcell.serialize_all_state(),
         )
         await db_session.commit()
@@ -124,7 +124,7 @@ class WorkcellRuntime:
           f"Workcell '{self._main_workcell.name}' linked to DB ID: {self._workcell_db_id}"
         )
 
-        db_state = await svc.get_workcell_state(db_session, self._workcell_db_id)
+        db_state = await svc.read_workcell_state(db_session, self._workcell_db_id)
         if db_state:
           self._main_workcell.load_all_state(db_state)
           logger.info(
@@ -286,7 +286,7 @@ class WorkcellRuntime:
       if isinstance(position_id, (str, int, uuid.UUID)):
         async with self.db_session_factory() as db_session:
           all_deck_position_definitions = (
-            await svc.get_position_definitions_for_deck_type(
+            await svc.read_position_definitions_for_deck_type(
               db_session, deck_type_definition_id
             )
           )
@@ -577,7 +577,7 @@ class WorkcellRuntime:
         )
 
       async with self.db_session_factory() as db_session:
-        deck_orm_entry = await svc.get_deck_config_by_parent_machine_id(
+        deck_orm_entry = await svc.read_deck_instance_by_parent_machine_id(
           db_session, machine_orm.id
         )
 
@@ -1021,7 +1021,7 @@ class WorkcellRuntime:
         )
 
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.get_deck_config_by_id(db_session, deck_orm_id)
+      deck_orm = await svc.read_deck_instance(db_session, deck_orm_id)
       if deck_orm is None:
         raise WorkcellRuntimeError(f"Deck ORM ID {deck_orm_id} not found in database.")
       deck_orm_type_definition_id = deck_orm.deck_type_definition_id
@@ -1031,7 +1031,7 @@ class WorkcellRuntime:
           f"Deck ORM ID {deck_orm_id} does not have a valid deck type definition."
         )
 
-      deck_type_definition_orm = await svc.get_deck_type_definition_by_id(
+      deck_type_definition_orm = await svc.read_deck_type_definition(
         db_session, deck_orm_type_definition_id
       )
 
@@ -1242,7 +1242,7 @@ class WorkcellRuntime:
 
     """
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.get_deck_config_by_id(db_session, deck_orm_id)
+      deck_orm = await svc.read_deck_instance(db_session, deck_orm_id)
 
       if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.id is None:
         raise WorkcellRuntimeError(f"Deck ORM ID {deck_orm_id} not found in database.")

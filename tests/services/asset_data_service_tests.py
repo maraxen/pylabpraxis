@@ -106,7 +106,7 @@ class TestResourceInstanceInventory:
     }
 
     with patch(
-      "praxis.backend.services.asset_data_service.get_resource_instance_by_id",
+      "praxis.backend.services.asset_data_service.get_resource_instance",
       return_value=mock_instance,
     ) as mock_get_instance:
       properties_update = {

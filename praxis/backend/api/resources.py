@@ -208,7 +208,7 @@ async def get_resource_instance(
   """Retrieve a resource instance."""
   try:
     if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance_by_id(db, instance_id=accession)
+      resource = await svc.get_resource_instance(db, instance_id=accession)
     elif isinstance(accession, str):
       resource = await svc.get_resource_instance_by_name(
         db, user_assigned_name=accession
@@ -242,7 +242,7 @@ async def update_resource(
   try:
     resource = None
     if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance_by_id(db, instance_id=accession)
+      resource = await svc.get_resource_instance(db, instance_id=accession)
       if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
     elif isinstance(accession, str):
@@ -292,5 +292,3 @@ async def delete_resource(accession: str | UUID, db: AsyncSession = Depends(get_
     return None
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Failed to delete resource: {str(e)}")
-
-

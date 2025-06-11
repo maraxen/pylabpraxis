@@ -29,6 +29,7 @@ async def create_workcell(
   name: str,
   description: Optional[str] = None,
   physical_location: Optional[str] = None,
+  initial_state: Optional[dict] = None,
 ) -> WorkcellOrm:
   """Create a new workcell.
 
@@ -44,6 +45,7 @@ async def create_workcell(
   Raises:
     ValueError: If a workcell with the same name already exists.
     Exception: For any other unexpected errors during the process.
+
   """
   logger.info("Attempting to create workcell '%s'.", name)
 
@@ -52,6 +54,8 @@ async def create_workcell(
     name=name,
     description=description,
     physical_location=physical_location,
+    latest_state_json=initial_state,
+    last_state_update_time=datetime.datetime.now(datetime.timezone.utc),
   )
   db.add(workcell_orm)
 
@@ -71,7 +75,7 @@ async def create_workcell(
     raise e
 
 
-async def get_workcell_by_id(
+async def read_workcell(
   db: AsyncSession, workcell_id: uuid.UUID
 ) -> Optional[WorkcellOrm]:
   """Retrieve a specific workcell by its ID.
@@ -101,7 +105,7 @@ async def get_workcell_by_id(
   return workcell
 
 
-async def get_workcell_by_name(db: AsyncSession, name: str) -> Optional[WorkcellOrm]:
+async def read_workcell_by_name(db: AsyncSession, name: str) -> Optional[WorkcellOrm]:
   """Retrieve a specific workcell by its name.
 
   Args:
@@ -180,7 +184,7 @@ async def update_workcell(
 
   """
   logger.info("Attempting to update workcell with ID: %s.", workcell_id)
-  workcell_orm = await get_workcell_by_id(db, workcell_id)
+  workcell_orm = await read_workcell(db, workcell_id)
   if not workcell_orm:
     logger.warning("Workcell with ID %s not found for update.", workcell_id)
     return None
@@ -251,7 +255,7 @@ async def delete_workcell(db: AsyncSession, workcell_id: uuid.UUID) -> bool:
 
   """
   logger.info("Attempting to delete workcell with ID: %s.", workcell_id)
-  workcell_orm = await get_workcell_by_id(db, workcell_id)
+  workcell_orm = await read_workcell(db, workcell_id)
   if not workcell_orm:
     logger.warning("Workcell with ID %s not found for deletion.", workcell_id)
     return False
@@ -279,7 +283,7 @@ async def delete_workcell(db: AsyncSession, workcell_id: uuid.UUID) -> bool:
     raise e
 
 
-async def get_or_create_workcell_orm(
+async def read_or_create_workcell_orm(
   db_session: AsyncSession,
   workcell_name: str,
   initial_state: Optional[Dict[str, Any]] = None,
@@ -324,7 +328,7 @@ async def get_or_create_workcell_orm(
     raise
 
 
-async def get_workcell_state(
+async def read_workcell_state(
   db_session: AsyncSession, workcell_id: uuid.UUID
 ) -> Optional[Dict[str, Any]]:
   """Retrieve the latest JSON-serialized state of a workcell from the database.
