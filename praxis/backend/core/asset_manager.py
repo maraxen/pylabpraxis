@@ -55,8 +55,8 @@ import praxis.backend.services as svc
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   AssetRequirementModel,
-  DeckConfigurationOrm,
-  DeckConfigurationPositionItemOrm,
+  DeckInstanceOrm,
+  DeckInstancePositionResourceOrm,
   MachineOrm,
   MachineStatusEnum,
   ResourceCategoryEnum,  # Not directly used here, but good for context
@@ -511,10 +511,10 @@ class AssetManager:
     )
     return added_count, updated_count
 
-  async def apply_deck_configuration(
+  async def apply_deck_instance(
     self, deck_config_orm_id: uuid.UUID, protocol_run_guid: uuid.UUID
   ) -> Deck:
-    """Apply a deck configuration.
+    """Apply a deck instanceuration.
 
     Initialize the deck and assign pre-configured resources.
 
@@ -530,23 +530,21 @@ class AssetManager:
 
     """
     logger.info(
-      "AM_DECK_CONFIG: Applying deck configuration ID '%s', for run_guid: %s",
+      "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_guid: %s",
       deck_config_orm_id,
       protocol_run_guid,
     )
 
     deck_config_orm = await svc.get_deck_config_by_id(self.db, deck_config_orm_id)
     if not deck_config_orm:
-      raise AssetAcquisitionError(
-        f"DeckConfiguration ID '{deck_config_orm_id}' not found."
-      )
+      raise AssetAcquisitionError(f"DeckInstance ID '{deck_config_orm_id}' not found.")
 
     deck_resource_instance_orm = await svc.get_resource_instance_by_id(
       self.db, deck_config_orm.deck_id
     )  # TODO: make sure these are synced
     if not deck_resource_instance_orm:
       raise AssetAcquisitionError(
-        f"Deck ResourceInstance ID '{deck_config_orm.deck_id}' (from DeckConfiguration "
+        f"Deck ResourceInstance ID '{deck_config_orm.deck_id}' (from DeckInstance "
         f"'{deck_config_orm.name}') not found."
       )
 
@@ -585,7 +583,7 @@ class AssetManager:
     # get_deck_config_by_id
     # For now, assuming it might not be loaded and rely on an explicit FK if it existed,
     # or leave None.
-    # If DeckConfigurationOrm has deck_parent_machine_id FK:
+    # If DeckInstanceOrm has deck_parent_machine_id FK:
     # if hasattr(deck_config_orm, 'deck_parent_machine_id') and
     # deck_config_orm.deck_parent_machine_id:
     #    parent_machine_id_for_deck = deck_config_orm.deck_parent_machine_id
@@ -1016,7 +1014,7 @@ class AssetManager:
       # that association would typically be part of its definition or a higher-level
       # configuration.
       # For now, its location_machine_id will be set if it was part of a
-      # DeckConfigurationOrm that had a parent machine.
+      # DeckInstanceOrm that had a parent machine.
       # If acquired standalone, and it's a deck, its location_machine_id might remain
       # None unless other logic sets it.
       target_deck_resource_id = None  # Explicitly not on another deck resource

@@ -184,7 +184,7 @@ Key Backend Components & Their Roles:
    * asset\_data\_service.py: Handles broad asset-related data, including resource definitions (ResourceDefinitionCatalogOrm) and resource instances (ResourceInstanceOrm). It provides methods for creating, retrieving, updating, and listing these assets.
    * machine\_data\_service.py: Specializes in managing machine-specific data, including MachineOrm entries. It provides methods for CRUD operations on machine definitions, tracking their status (MachineStatusEnum), and managing their association with protocol runs.
    * workcell\_data\_service.py: Focuses on managing data related to the overall workcell configuration, including WorkcellOrm and potentially other high-level workcell metadata. It provides methods for defining and retrieving workcell-specific settings and configurations.
-   * deck\_data\_service.py: Handles the persistent storage and retrieval of DeckLayoutOrm and DeckSlotOrm models, managing predefined deck configurations.
+   * deck\_data\_service.py: Handles the persistent storage and retrieval of DeckLayoutOrm and DeckSlotOrm models, managing predefined deck instanceurations.
    * praxis\_orm\_service.py: Offers a more generalized interface for common database operations, used by various parts of the system.
    * All these services utilize SQLAlchemy ORM models defined in backend/models/ to interact with the PostgreSQL database.
 4. Utility Modules (backend/utils/)

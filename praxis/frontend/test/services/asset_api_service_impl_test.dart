@@ -725,7 +725,7 @@ void main() {
   group('DeckLayoutOrm - CRUD (placeholders)', () {
     final slotItemJson = {
       'id': 1,
-      'deck_configuration_id': 1,
+      'deck_instance_id': 1,
       'slot_name': 'A1',
       'resource_instance_id': 1,
     };

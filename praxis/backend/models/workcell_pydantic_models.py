@@ -93,5 +93,5 @@ class WorkcellResponse(WorkcellBase):
 
   decks: Optional[List[DeckStateResponse]] = Field(
     default_factory=list,
-    description="List of deck configurations associated with this workcell.",
+    description="List of deck instanceurations associated with this workcell.",
   )

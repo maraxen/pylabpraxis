@@ -23,7 +23,7 @@ import 'package:praxis_lab_management/src/features/splash/presentation/screens/s
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/run_protocol_workflow_screen.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/parameter_configuration_screen.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/asset_assignment_screen.dart';
-import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/deck_instance_screen.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/review_and_prepare_screen.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/presentation/screens/start_protocol_screen.dart';
 
@@ -314,7 +314,7 @@ class AppGoRouter {
               path: '/run-protocol-workflow/deck',
               name: deckConfigurationRouteName,
               builder: (BuildContext context, GoRouterState state) {
-                return const DeckConfigurationScreen();
+                return const DeckInstanceScreen();
               },
             ),
             GoRoute(

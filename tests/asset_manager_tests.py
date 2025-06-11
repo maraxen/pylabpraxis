@@ -1014,13 +1014,13 @@ class TestAssetManagerDeckLoading:
     def test_deck_layout_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
         mock_ads_service.get_deck_layout_by_name.return_value = None
         with pytest.raises(AssetAcquisitionError, match="Deck layout 'NonExistentLayout' not found"):
-            asset_manager.apply_deck_configuration("NonExistentLayout", "run123")
+            asset_manager.apply_deck_instance("NonExistentLayout", "run123")
 
     def test_deck_machine_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
         mock_ads_service.list_managed_machines.return_value = [] # No deck found
         with pytest.raises(AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK"):
-            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+            asset_manager.apply_deck_instance("TestDeckLayout", "run123")
         mock_ads_service.list_managed_machines.assert_called_once_with(
             asset_manager.db,
             user_friendly_name_filter="TestDeckLayout",
@@ -1036,7 +1036,7 @@ class TestAssetManagerDeckLoading:
         mock_workcell_runtime.initialize_machine_backend.return_value = None # Deck init fails
 
         with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck 'TestDeckLayout'"):
-            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+            asset_manager.apply_deck_instance("TestDeckLayout", "run123")
         mock_workcell_runtime.initialize_machine_backend.assert_called_once_with(mock_deck_machine_orm)
 
     def test_successful_deck_config_no_resource(
@@ -1049,7 +1049,7 @@ class TestAssetManagerDeckLoading:
         mock_workcell_runtime.initialize_machine_backend.return_value = live_plr_deck_obj
         mock_ads_service.get_deck_slots_for_layout.return_value = [] # No slots with resource
 
-        returned_deck = asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+        returned_deck = asset_manager.apply_deck_instance("TestDeckLayout", "run123")
 
         assert returned_deck == live_plr_deck_obj
         mock_ads_service.update_managed_machine_status.assert_called_once_with(
@@ -1075,7 +1075,7 @@ class TestAssetManagerDeckLoading:
         live_plr_resource_obj = MagicMock(name="LiveTestPlate")
         mock_workcell_runtime.create_or_get_resource_plr_object.return_value = live_plr_resource_obj
 
-        asset_manager.apply_deck_configuration(ProtocolDeck(name="TestDeckLayout"), "run123") # Test with Deck input
+        asset_manager.apply_deck_instance(ProtocolDeck(name="TestDeckLayout"), "run123") # Test with Deck input
 
         mock_ads_service.get_resource_instance_by_id.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.id)
         mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.name)
@@ -1115,7 +1115,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.get_resource_instance_by_id.return_value = mock_resource_instance_orm
 
         with pytest.raises(AssetAcquisitionError, match="is not available"):
-            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+            asset_manager.apply_deck_instance("TestDeckLayout", "run123")
 
     def test_resource_def_fqn_not_found_for_slot_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
@@ -1132,7 +1132,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
 
         with pytest.raises(AssetAcquisitionError, match="Python FQN not found for resource definition"):
-            asset_manager.apply_deck_configuration("TestDeckLayout", "run123")
+            asset_manager.apply_deck_instance("TestDeckLayout", "run123")
 
 # --- Tests for AssetManager Logging (New Class) ---
 class TestAssetManagerLogging:

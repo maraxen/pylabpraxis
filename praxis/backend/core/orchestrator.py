@@ -28,7 +28,7 @@ from praxis.backend.core.workcell import Workcell, WorkcellView
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   AssetRequirementModel,  # Pydantic model from decorator
-  DeckConfigurationOrm,
+  DeckInstanceOrm,
   FunctionProtocolDefinitionModel,  # Pydantic model from decorator
   FunctionProtocolDefinitionOrm,
   MachineStatusEnum,
@@ -644,7 +644,7 @@ class Orchestrator:
           )
 
         logger.info(
-          "ORCH-DECK: Applying deck configuration '%s' for run '%s'.",
+          "ORCH-DECK: Applying deck instanceuration '%s' for run '%s'.",
           deck_identifier_from_user,
           protocol_run_guid,
         )
@@ -663,7 +663,7 @@ class Orchestrator:
         else:
           deck_config_orm_id_to_apply = deck_identifier_from_user
 
-        live_deck_object = await self.asset_manager.apply_deck_configuration(
+        live_deck_object = await self.asset_manager.apply_deck_instance(
           deck_config_orm_id=deck_config_orm_id_to_apply,
           protocol_run_guid=protocol_run_guid,
         )

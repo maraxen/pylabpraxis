@@ -3,23 +3,23 @@
 
 praxis/database_models/deck_management_orm.py
 
-This module contains ORM models for managing deck configurations, positions, and types.
-These models represent the structure of deck configurations, positions within those
-configurations, and definitions of deck types, including their positions and layout
+This module contains ORM models for managing deck instanceurations, positions, and types.
+These models represent the structure of deck instanceurations, positions within those
+configurations, and definitions of deck types, including their positions and instance
 definitions. The models are designed to work with SQLAlchemy and provide a
 consistent interface for interacting with the database.
 
 ORM models include:
-- DeckConfigurationOrm: Represents a named deck layout configuration.
-- DeckConfigurationPositionItemOrm: Represents a specific resource placed at a position
-  within a deck configuration.
+- DeckInstanceOrm: Represents a named deck instance.
+- DeckInstancePositionResourceOrm: Represents a specific resource placed at a position
+  within a deck instanceuration.
 - DeckPositionDefinitionOrm: Defines a specific position (location) on a type of deck.
 - DeckTypeDefinitionOrm: Defines a type of deck, mapping to a PyLabRobot deck class.
 
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import uuid_utils as uuid
 from sqlalchemy import (
@@ -36,33 +36,38 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+if TYPE_CHECKING:
+  from praxis.backend.models.machine_orm import MachineOrm
+  from praxis.backend.models.resource_orm import ResourceInstanceOrm
+
+
 from praxis.backend.utils.db import Base
 
 
-class DeckConfigurationOrm(Base):
-  """Represent a named deck layout configuration.
+class DeckInstanceOrm(Base):
+  """Represent a named deck instance.
 
   This ORM model defines a specific arrangement of resources on a deck,
   associating it with a physical deck and containing a collection
-  of `DeckConfigurationPositionItemOrm` entries.
+  of `DeckInstancePositionResourceOrm` entries.
 
   Attributes:
-      id (int): Primary key, unique identifier for the deck configuration.
-      name (str): A unique, human-readable name for the deck layout.
+      id (int): Primary key, unique identifier for the deck instanceuration.
+      name (str): A unique, human-readable name for the deck instance.
       deck_id (UUID): Foreign key to the `MachineOrm` representing
-          the physical deck associated with this layout.
-      description (Optional[str]): An optional description of the deck layout.
+          the physical deck associated with this instance.
+      description (Optional[str]): An optional description of the deck instance.
       created_at (Optional[datetime]): Timestamp when the record was created.
       updated_at (Optional[datetime]): Timestamp when the record was last updated.
       deck_machine (relationship): Establishes a relationship to the
           `MachineOrm` representing the deck parent.
       position_items (relationship): Establishes a one-to-many relationship to
-          `DeckConfigurationPositionItemOrm` instances, representing the resources
-          placed on this deck configuration.
+          `DeckInstancePositionResourceOrm` instances, representing the resources
+          placed on this deck instanceuration.
 
   """
 
-  __tablename__ = "deck_configurations"
+  __tablename__ = "deck_instances"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
 
@@ -91,43 +96,70 @@ class DeckConfigurationOrm(Base):
     UUID, ForeignKey("deck_type_definitions.id"), nullable=True, index=True
   )
 
-  deck_parent_machine = relationship("MachineOrm", back_populates="deck_configurations")
+  deck_parent_machine_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    ForeignKey("machines.id", ondelete="CASCADE"),
+    nullable=False,
+    index=True,
+    comment="Foreign key to the MachineOrm representing the physical deck",
+  )
+  deck_parent_machine: Mapped["MachineOrm"] = relationship(
+    "MachineOrm",
+    foreign_keys=[deck_parent_machine_id],
+    back_populates="deck_instances",
+    uselist=False,
+    comment="Relationship to the MachineOrm representing the parent machine housing the"
+    " physical deck",
+  )
+
+  resource_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID,
+    ForeignKey("resource_instances.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="Link to ResourceInstanceOrm of the deck instance",
+  )
+
+  resource_counterpart: Mapped[Optional["ResourceInstanceOrm"]] = relationship(
+    "ResourceInstanceOrm",
+    back_populates="deck_instance_counterpart",
+  )
 
   position_items = relationship(
-    "DeckConfigurationPositionItemOrm",
-    back_populates="deck_configuration",
+    "DeckInstancePositionResourceOrm",
+    back_populates="deck_instance",
     cascade="all, delete-orphan",
   )
 
   def __repr__(self):
-    """Render string representation of the DeckConfigurationOrm instance."""
-    return f"<DeckConfigurationOrm(id={self.id}, name='{self.name}')>"
+    """Render string representation of the DeckInstanceOrm instance."""
+    return f"<DeckInstanceOrm(id={self.id}, name='{self.name}')>"
 
 
-class DeckConfigurationPositionItemOrm(Base):
-  """Represent a specific resource placed at a position within a deck configuration.
+class DeckInstancePositionResourceOrm(Base):
+  """Represent a specific resource placed at a position within a deck instance.
 
   This ORM model links a `ResourceInstanceOrm` to a particular `position_id`
-  (e.g., "A1", "SLOT_7") within a `DeckConfigurationOrm`. It can also
+  (e.g., "A1", "SLOT_7") within a `DeckInstanceOrm`. It can also
   optionally store the `expected_resource_definition_name` for validation
   purposes.
 
   Attributes:
       id (int): Primary key, unique identifier for the position item.
-      deck_configuration_id (int): Foreign key to the parent
-          `DeckConfigurationOrm`.
+      deck_instance_id (int): Foreign key to the parent
+          `DeckInstanceOrm`.
       position_id (str): The identifier for the position on the deck (e.g., "A1",
           "SLOT_7").
       resource_instance_id (int): Foreign key to the `ResourceInstanceOrm`
           representing the physical resource placed at this position.
       expected_resource_definition_name (Optional[str]): Foreign key to the
           `ResourceDefinitionCatalogOrm` representing the expected type of
-          resource for this position in this layout.
+          resource for this position in this instance.
       deck_position_definition_id (Optional[int]): Foreign key to a specific
           `DeckPositionDefinitionOrm` if this position item corresponds to a predefined
           position on the deck type.
-      deck_configuration (relationship): Establishes a relationship to the
-          parent `DeckConfigurationOrm`.
+      deck_instance (relationship): Establishes a relationship to the
+          parent `DeckInstanceOrm`.
       resource_instance (relationship): Establishes a relationship to the
           `ResourceInstanceOrm` placed at this position.
       expected_resource_definition (relationship): Establishes a relationship
@@ -137,11 +169,11 @@ class DeckConfigurationPositionItemOrm(Base):
 
   """
 
-  __tablename__ = "deck_configuration_position_items"
+  __tablename__ = "deck_instance_position_items"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  deck_configuration_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_configurations.id"), nullable=False
+  deck_instance_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("deck_instances.id"), nullable=False
   )
   position_id: Mapped[str] = mapped_column(
     String, nullable=False, comment="Position name on the deck (e.g., A1, SLOT_7)"
@@ -151,7 +183,7 @@ class DeckConfigurationPositionItemOrm(Base):
     String,
     nullable=False,
     index=True,
-    comment="Unique name for this position within the deck configuration",
+    comment="Unique name for this position within the deck instanceuration",
   )
   # This links to a specific physical piece of resource
   resource_instance_id: Mapped[uuid.UUID] = mapped_column(
@@ -159,7 +191,7 @@ class DeckConfigurationPositionItemOrm(Base):
   )
 
   # Optional: for validation, store the expected type of resource for this
-  # position in this layout
+  # position in this instance
   expected_resource_definition_name: Mapped[Optional[str]] = mapped_column(
     String,
     ForeignKey("resource_definition_catalog.name"),
@@ -170,11 +202,9 @@ class DeckConfigurationPositionItemOrm(Base):
     UUID, ForeignKey("deck_position_definitions.id"), nullable=True, index=True
   )
 
-  deck_configuration = relationship(
-    "DeckConfigurationOrm", back_populates="position_items"
-  )
+  deck_instance = relationship("DeckInstanceOrm", back_populates="position_items")
   resource_instance = relationship(
-    "ResourceInstanceOrm", back_populates="deck_configuration_items"
+    "ResourceInstanceOrm", back_populates="deck_instance_items"
   )
   expected_resource_definition = relationship(
     "ResourceDefinitionCatalogOrm"
@@ -182,16 +212,14 @@ class DeckConfigurationPositionItemOrm(Base):
   deck_position_definition = relationship("DeckPositionDefinitionOrm")
 
   __table_args__ = (
-    UniqueConstraint(
-      "deck_configuration_id", "position_id", name="uq_deck_position_item"
-    ),
+    UniqueConstraint("deck_instance_id", "position_id", name="uq_deck_position_item"),
   )
 
   def __repr__(self):
-    """Render string representation of the DeckConfigurationPositionItemOrm instance."""
+    """Render string representation of the DeckInstancePositionResourceOrm instance."""
     return (
-      f"<DeckConfigurationPositionItemOrm(deck_config_id="
-      f"{self.deck_configuration_id}, position='{self.position_id}', "
+      f"<DeckInstancePositionResourceOrm(deck_config_id="
+      f"{self.deck_instance_id}, position='{self.position_id}', "
       f"lw_instance_id={self.resource_instance_id})>"
     )
 
@@ -294,7 +322,7 @@ class DeckTypeDefinitionOrm(Base):
           object representing serialized assignment methods for PyLabRobot
           instantiation.
       serialized_constructor_hints_json (Optional[dict[str, Any]]): A
-          JSON object representing serialized layout hints for PyLabRobot
+          JSON object representing serialized instance hints for PyLabRobot
           constructor.
       additional_properties_json (Optional[dict[str, Any]]): A JSON object
           for additional, unstructured properties.

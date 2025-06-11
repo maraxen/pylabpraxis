@@ -4,7 +4,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'deck_configuration_bloc.dart';
+part of 'deck_instance_bloc.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -13,7 +13,7 @@ part of 'deck_configuration_bloc.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
-mixin _$DeckConfigurationEvent {
+mixin _$DeckInstanceEvent {
 
 
 
@@ -21,7 +21,7 @@ mixin _$DeckConfigurationEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationEvent);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceEvent);
 }
 
 
@@ -30,24 +30,24 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent()';
+  return 'DeckInstanceEvent()';
 }
 
 
 }
 
 /// @nodoc
-class $DeckConfigurationEventCopyWith<$Res>  {
-$DeckConfigurationEventCopyWith(DeckConfigurationEvent _, $Res Function(DeckConfigurationEvent) __);
+class $DeckInstanceEventCopyWith<$Res>  {
+$DeckInstanceEventCopyWith(DeckInstanceEvent _, $Res Function(DeckInstanceEvent) __);
 }
 
 
 /// @nodoc
 
 
-class FetchAvailableDeckLayouts implements DeckConfigurationEvent {
+class FetchAvailableDeckLayouts implements DeckInstanceEvent {
   const FetchAvailableDeckLayouts();
-  
+
 
 
 
@@ -65,7 +65,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent.fetchAvailableDeckLayouts()';
+  return 'DeckInstanceEvent.fetchAvailableDeckLayouts()';
 }
 
 
@@ -77,13 +77,13 @@ String toString() {
 /// @nodoc
 
 
-class DeckLayoutSelected implements DeckConfigurationEvent {
+class DeckLayoutSelected implements DeckInstanceEvent {
   const DeckLayoutSelected({this.layoutName});
-  
+
 
  final  String? layoutName;
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
@@ -102,14 +102,14 @@ int get hashCode => Object.hash(runtimeType,layoutName);
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent.deckLayoutSelected(layoutName: $layoutName)';
+  return 'DeckInstanceEvent.deckLayoutSelected(layoutName: $layoutName)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeckLayoutSelectedCopyWith<$Res> implements $DeckConfigurationEventCopyWith<$Res> {
+abstract mixin class $DeckLayoutSelectedCopyWith<$Res> implements $DeckInstanceEventCopyWith<$Res> {
   factory $DeckLayoutSelectedCopyWith(DeckLayoutSelected value, $Res Function(DeckLayoutSelected) _then) = _$DeckLayoutSelectedCopyWithImpl;
 @useResult
 $Res call({
@@ -128,7 +128,7 @@ class _$DeckLayoutSelectedCopyWithImpl<$Res>
   final DeckLayoutSelected _self;
   final $Res Function(DeckLayoutSelected) _then;
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? layoutName = freezed,}) {
   return _then(DeckLayoutSelected(
@@ -143,13 +143,13 @@ as String?,
 /// @nodoc
 
 
-class DeckFilePicked implements DeckConfigurationEvent {
+class DeckFilePicked implements DeckInstanceEvent {
   const DeckFilePicked({required this.file});
-  
+
 
  final  PlatformFile file;
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
@@ -168,14 +168,14 @@ int get hashCode => Object.hash(runtimeType,file);
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent.deckFilePicked(file: $file)';
+  return 'DeckInstanceEvent.deckFilePicked(file: $file)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeckFilePickedCopyWith<$Res> implements $DeckConfigurationEventCopyWith<$Res> {
+abstract mixin class $DeckFilePickedCopyWith<$Res> implements $DeckInstanceEventCopyWith<$Res> {
   factory $DeckFilePickedCopyWith(DeckFilePicked value, $Res Function(DeckFilePicked) _then) = _$DeckFilePickedCopyWithImpl;
 @useResult
 $Res call({
@@ -194,7 +194,7 @@ class _$DeckFilePickedCopyWithImpl<$Res>
   final DeckFilePicked _self;
   final $Res Function(DeckFilePicked) _then;
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? file = null,}) {
   return _then(DeckFilePicked(
@@ -209,9 +209,9 @@ as PlatformFile,
 /// @nodoc
 
 
-class ClearDeckSelection implements DeckConfigurationEvent {
+class ClearDeckSelection implements DeckInstanceEvent {
   const ClearDeckSelection();
-  
+
 
 
 
@@ -229,7 +229,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent.clearDeckSelection()';
+  return 'DeckInstanceEvent.clearDeckSelection()';
 }
 
 
@@ -241,9 +241,9 @@ String toString() {
 /// @nodoc
 
 
-class InitializeDeckConfiguration implements DeckConfigurationEvent {
-  const InitializeDeckConfiguration({this.initialSelectedLayoutName, this.initialPickedFile, final  List<String>? availableLayouts}): _availableLayouts = availableLayouts;
-  
+class InitializeDeckInstance implements DeckInstanceEvent {
+  const InitializeDeckInstance({this.initialSelectedLayoutName, this.initialPickedFile, final  List<String>? availableLayouts}): _availableLayouts = availableLayouts;
+
 
  final  String? initialSelectedLayoutName;
  final  PlatformFile? initialPickedFile;
@@ -257,17 +257,17 @@ class InitializeDeckConfiguration implements DeckConfigurationEvent {
 }
 
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$InitializeDeckConfigurationCopyWith<InitializeDeckConfiguration> get copyWith => _$InitializeDeckConfigurationCopyWithImpl<InitializeDeckConfiguration>(this, _$identity);
+$InitializeDeckInstanceCopyWith<InitializeDeckInstance> get copyWith => _$InitializeDeckInstanceCopyWithImpl<InitializeDeckInstance>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InitializeDeckConfiguration&&(identical(other.initialSelectedLayoutName, initialSelectedLayoutName) || other.initialSelectedLayoutName == initialSelectedLayoutName)&&(identical(other.initialPickedFile, initialPickedFile) || other.initialPickedFile == initialPickedFile)&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InitializeDeckInstance&&(identical(other.initialSelectedLayoutName, initialSelectedLayoutName) || other.initialSelectedLayoutName == initialSelectedLayoutName)&&(identical(other.initialPickedFile, initialPickedFile) || other.initialPickedFile == initialPickedFile)&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts));
 }
 
 
@@ -276,15 +276,15 @@ int get hashCode => Object.hash(runtimeType,initialSelectedLayoutName,initialPic
 
 @override
 String toString() {
-  return 'DeckConfigurationEvent.initializeDeckConfiguration(initialSelectedLayoutName: $initialSelectedLayoutName, initialPickedFile: $initialPickedFile, availableLayouts: $availableLayouts)';
+  return 'DeckInstanceEvent.initializeDeckInstance(initialSelectedLayoutName: $initialSelectedLayoutName, initialPickedFile: $initialPickedFile, availableLayouts: $availableLayouts)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $InitializeDeckConfigurationCopyWith<$Res> implements $DeckConfigurationEventCopyWith<$Res> {
-  factory $InitializeDeckConfigurationCopyWith(InitializeDeckConfiguration value, $Res Function(InitializeDeckConfiguration) _then) = _$InitializeDeckConfigurationCopyWithImpl;
+abstract mixin class $InitializeDeckInstanceCopyWith<$Res> implements $DeckInstanceEventCopyWith<$Res> {
+  factory $InitializeDeckInstanceCopyWith(InitializeDeckInstance value, $Res Function(InitializeDeckInstance) _then) = _$InitializeDeckInstanceCopyWithImpl;
 @useResult
 $Res call({
  String? initialSelectedLayoutName, PlatformFile? initialPickedFile, List<String>? availableLayouts
@@ -295,17 +295,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$InitializeDeckConfigurationCopyWithImpl<$Res>
-    implements $InitializeDeckConfigurationCopyWith<$Res> {
-  _$InitializeDeckConfigurationCopyWithImpl(this._self, this._then);
+class _$InitializeDeckInstanceCopyWithImpl<$Res>
+    implements $InitializeDeckInstanceCopyWith<$Res> {
+  _$InitializeDeckInstanceCopyWithImpl(this._self, this._then);
 
-  final InitializeDeckConfiguration _self;
-  final $Res Function(InitializeDeckConfiguration) _then;
+  final InitializeDeckInstance _self;
+  final $Res Function(InitializeDeckInstance) _then;
 
-/// Create a copy of DeckConfigurationEvent
+/// Create a copy of DeckInstanceEvent
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? initialSelectedLayoutName = freezed,Object? initialPickedFile = freezed,Object? availableLayouts = freezed,}) {
-  return _then(InitializeDeckConfiguration(
+  return _then(InitializeDeckInstance(
 initialSelectedLayoutName: freezed == initialSelectedLayoutName ? _self.initialSelectedLayoutName : initialSelectedLayoutName // ignore: cast_nullable_to_non_nullable
 as String?,initialPickedFile: freezed == initialPickedFile ? _self.initialPickedFile : initialPickedFile // ignore: cast_nullable_to_non_nullable
 as PlatformFile?,availableLayouts: freezed == availableLayouts ? _self._availableLayouts : availableLayouts // ignore: cast_nullable_to_non_nullable
@@ -317,7 +317,7 @@ as List<String>?,
 }
 
 /// @nodoc
-mixin _$DeckConfigurationState {
+mixin _$DeckInstanceState {
 
 
 
@@ -325,7 +325,7 @@ mixin _$DeckConfigurationState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationState);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceState);
 }
 
 
@@ -334,24 +334,24 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DeckConfigurationState()';
+  return 'DeckInstanceState()';
 }
 
 
 }
 
 /// @nodoc
-class $DeckConfigurationStateCopyWith<$Res>  {
-$DeckConfigurationStateCopyWith(DeckConfigurationState _, $Res Function(DeckConfigurationState) __);
+class $DeckInstanceStateCopyWith<$Res>  {
+$DeckInstanceStateCopyWith(DeckInstanceState _, $Res Function(DeckInstanceState) __);
 }
 
 
 /// @nodoc
 
 
-class DeckConfigurationInitial implements DeckConfigurationState {
-  const DeckConfigurationInitial();
-  
+class DeckInstanceInitial implements DeckInstanceState {
+  const DeckInstanceInitial();
+
 
 
 
@@ -360,7 +360,7 @@ class DeckConfigurationInitial implements DeckConfigurationState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationInitial);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceInitial);
 }
 
 
@@ -369,7 +369,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DeckConfigurationState.initial()';
+  return 'DeckInstanceState.initial()';
 }
 
 
@@ -381,9 +381,9 @@ String toString() {
 /// @nodoc
 
 
-class DeckConfigurationLoading implements DeckConfigurationState {
-  const DeckConfigurationLoading({final  List<String>? availableLayouts, this.selectedLayoutName, this.pickedFile}): _availableLayouts = availableLayouts;
-  
+class DeckInstanceLoading implements DeckInstanceState {
+  const DeckInstanceLoading({final  List<String>? availableLayouts, this.selectedLayoutName, this.pickedFile}): _availableLayouts = availableLayouts;
+
 
  final  List<String>? _availableLayouts;
  List<String>? get availableLayouts {
@@ -398,17 +398,17 @@ class DeckConfigurationLoading implements DeckConfigurationState {
  final  String? selectedLayoutName;
  final  PlatformFile? pickedFile;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DeckConfigurationLoadingCopyWith<DeckConfigurationLoading> get copyWith => _$DeckConfigurationLoadingCopyWithImpl<DeckConfigurationLoading>(this, _$identity);
+$DeckInstanceLoadingCopyWith<DeckInstanceLoading> get copyWith => _$DeckInstanceLoadingCopyWithImpl<DeckInstanceLoading>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationLoading&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts)&&(identical(other.selectedLayoutName, selectedLayoutName) || other.selectedLayoutName == selectedLayoutName)&&(identical(other.pickedFile, pickedFile) || other.pickedFile == pickedFile));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceLoading&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts)&&(identical(other.selectedLayoutName, selectedLayoutName) || other.selectedLayoutName == selectedLayoutName)&&(identical(other.pickedFile, pickedFile) || other.pickedFile == pickedFile));
 }
 
 
@@ -417,15 +417,15 @@ int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(
 
 @override
 String toString() {
-  return 'DeckConfigurationState.loading(availableLayouts: $availableLayouts, selectedLayoutName: $selectedLayoutName, pickedFile: $pickedFile)';
+  return 'DeckInstanceState.loading(availableLayouts: $availableLayouts, selectedLayoutName: $selectedLayoutName, pickedFile: $pickedFile)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeckConfigurationLoadingCopyWith<$Res> implements $DeckConfigurationStateCopyWith<$Res> {
-  factory $DeckConfigurationLoadingCopyWith(DeckConfigurationLoading value, $Res Function(DeckConfigurationLoading) _then) = _$DeckConfigurationLoadingCopyWithImpl;
+abstract mixin class $DeckInstanceLoadingCopyWith<$Res> implements $DeckInstanceStateCopyWith<$Res> {
+  factory $DeckInstanceLoadingCopyWith(DeckInstanceLoading value, $Res Function(DeckInstanceLoading) _then) = _$DeckInstanceLoadingCopyWithImpl;
 @useResult
 $Res call({
  List<String>? availableLayouts, String? selectedLayoutName, PlatformFile? pickedFile
@@ -436,17 +436,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$DeckConfigurationLoadingCopyWithImpl<$Res>
-    implements $DeckConfigurationLoadingCopyWith<$Res> {
-  _$DeckConfigurationLoadingCopyWithImpl(this._self, this._then);
+class _$DeckInstanceLoadingCopyWithImpl<$Res>
+    implements $DeckInstanceLoadingCopyWith<$Res> {
+  _$DeckInstanceLoadingCopyWithImpl(this._self, this._then);
 
-  final DeckConfigurationLoading _self;
-  final $Res Function(DeckConfigurationLoading) _then;
+  final DeckInstanceLoading _self;
+  final $Res Function(DeckInstanceLoading) _then;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? availableLayouts = freezed,Object? selectedLayoutName = freezed,Object? pickedFile = freezed,}) {
-  return _then(DeckConfigurationLoading(
+  return _then(DeckInstanceLoading(
 availableLayouts: freezed == availableLayouts ? _self._availableLayouts : availableLayouts // ignore: cast_nullable_to_non_nullable
 as List<String>?,selectedLayoutName: freezed == selectedLayoutName ? _self.selectedLayoutName : selectedLayoutName // ignore: cast_nullable_to_non_nullable
 as String?,pickedFile: freezed == pickedFile ? _self.pickedFile : pickedFile // ignore: cast_nullable_to_non_nullable
@@ -460,9 +460,9 @@ as PlatformFile?,
 /// @nodoc
 
 
-class DeckConfigurationLoaded implements DeckConfigurationState {
-  const DeckConfigurationLoaded({required final  List<String> availableLayouts, this.selectedLayoutName, this.pickedFile, this.isSelectionValid = false}): _availableLayouts = availableLayouts;
-  
+class DeckInstanceLoaded implements DeckInstanceState {
+  const DeckInstanceLoaded({required final  List<String> availableLayouts, this.selectedLayoutName, this.pickedFile, this.isSelectionValid = false}): _availableLayouts = availableLayouts;
+
 
  final  List<String> _availableLayouts;
  List<String> get availableLayouts {
@@ -475,17 +475,17 @@ class DeckConfigurationLoaded implements DeckConfigurationState {
  final  PlatformFile? pickedFile;
 @JsonKey() final  bool isSelectionValid;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DeckConfigurationLoadedCopyWith<DeckConfigurationLoaded> get copyWith => _$DeckConfigurationLoadedCopyWithImpl<DeckConfigurationLoaded>(this, _$identity);
+$DeckInstanceLoadedCopyWith<DeckInstanceLoaded> get copyWith => _$DeckInstanceLoadedCopyWithImpl<DeckInstanceLoaded>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationLoaded&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts)&&(identical(other.selectedLayoutName, selectedLayoutName) || other.selectedLayoutName == selectedLayoutName)&&(identical(other.pickedFile, pickedFile) || other.pickedFile == pickedFile)&&(identical(other.isSelectionValid, isSelectionValid) || other.isSelectionValid == isSelectionValid));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceLoaded&&const DeepCollectionEquality().equals(other._availableLayouts, _availableLayouts)&&(identical(other.selectedLayoutName, selectedLayoutName) || other.selectedLayoutName == selectedLayoutName)&&(identical(other.pickedFile, pickedFile) || other.pickedFile == pickedFile)&&(identical(other.isSelectionValid, isSelectionValid) || other.isSelectionValid == isSelectionValid));
 }
 
 
@@ -494,15 +494,15 @@ int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(
 
 @override
 String toString() {
-  return 'DeckConfigurationState.loaded(availableLayouts: $availableLayouts, selectedLayoutName: $selectedLayoutName, pickedFile: $pickedFile, isSelectionValid: $isSelectionValid)';
+  return 'DeckInstanceState.loaded(availableLayouts: $availableLayouts, selectedLayoutName: $selectedLayoutName, pickedFile: $pickedFile, isSelectionValid: $isSelectionValid)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeckConfigurationLoadedCopyWith<$Res> implements $DeckConfigurationStateCopyWith<$Res> {
-  factory $DeckConfigurationLoadedCopyWith(DeckConfigurationLoaded value, $Res Function(DeckConfigurationLoaded) _then) = _$DeckConfigurationLoadedCopyWithImpl;
+abstract mixin class $DeckInstanceLoadedCopyWith<$Res> implements $DeckInstanceStateCopyWith<$Res> {
+  factory $DeckInstanceLoadedCopyWith(DeckInstanceLoaded value, $Res Function(DeckInstanceLoaded) _then) = _$DeckInstanceLoadedCopyWithImpl;
 @useResult
 $Res call({
  List<String> availableLayouts, String? selectedLayoutName, PlatformFile? pickedFile, bool isSelectionValid
@@ -513,17 +513,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$DeckConfigurationLoadedCopyWithImpl<$Res>
-    implements $DeckConfigurationLoadedCopyWith<$Res> {
-  _$DeckConfigurationLoadedCopyWithImpl(this._self, this._then);
+class _$DeckInstanceLoadedCopyWithImpl<$Res>
+    implements $DeckInstanceLoadedCopyWith<$Res> {
+  _$DeckInstanceLoadedCopyWithImpl(this._self, this._then);
 
-  final DeckConfigurationLoaded _self;
-  final $Res Function(DeckConfigurationLoaded) _then;
+  final DeckInstanceLoaded _self;
+  final $Res Function(DeckInstanceLoaded) _then;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? availableLayouts = null,Object? selectedLayoutName = freezed,Object? pickedFile = freezed,Object? isSelectionValid = null,}) {
-  return _then(DeckConfigurationLoaded(
+  return _then(DeckInstanceLoaded(
 availableLayouts: null == availableLayouts ? _self._availableLayouts : availableLayouts // ignore: cast_nullable_to_non_nullable
 as List<String>,selectedLayoutName: freezed == selectedLayoutName ? _self.selectedLayoutName : selectedLayoutName // ignore: cast_nullable_to_non_nullable
 as String?,pickedFile: freezed == pickedFile ? _self.pickedFile : pickedFile // ignore: cast_nullable_to_non_nullable
@@ -538,23 +538,23 @@ as bool,
 /// @nodoc
 
 
-class DeckConfigurationError implements DeckConfigurationState {
-  const DeckConfigurationError({required this.message});
-  
+class DeckInstanceError implements DeckInstanceState {
+  const DeckInstanceError({required this.message});
+
 
  final  String message;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DeckConfigurationErrorCopyWith<DeckConfigurationError> get copyWith => _$DeckConfigurationErrorCopyWithImpl<DeckConfigurationError>(this, _$identity);
+$DeckInstanceErrorCopyWith<DeckInstanceError> get copyWith => _$DeckInstanceErrorCopyWithImpl<DeckInstanceError>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckConfigurationError&&(identical(other.message, message) || other.message == message));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckInstanceError&&(identical(other.message, message) || other.message == message));
 }
 
 
@@ -563,15 +563,15 @@ int get hashCode => Object.hash(runtimeType,message);
 
 @override
 String toString() {
-  return 'DeckConfigurationState.error(message: $message)';
+  return 'DeckInstanceState.error(message: $message)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DeckConfigurationErrorCopyWith<$Res> implements $DeckConfigurationStateCopyWith<$Res> {
-  factory $DeckConfigurationErrorCopyWith(DeckConfigurationError value, $Res Function(DeckConfigurationError) _then) = _$DeckConfigurationErrorCopyWithImpl;
+abstract mixin class $DeckInstanceErrorCopyWith<$Res> implements $DeckInstanceStateCopyWith<$Res> {
+  factory $DeckInstanceErrorCopyWith(DeckInstanceError value, $Res Function(DeckInstanceError) _then) = _$DeckInstanceErrorCopyWithImpl;
 @useResult
 $Res call({
  String message
@@ -582,17 +582,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$DeckConfigurationErrorCopyWithImpl<$Res>
-    implements $DeckConfigurationErrorCopyWith<$Res> {
-  _$DeckConfigurationErrorCopyWithImpl(this._self, this._then);
+class _$DeckInstanceErrorCopyWithImpl<$Res>
+    implements $DeckInstanceErrorCopyWith<$Res> {
+  _$DeckInstanceErrorCopyWithImpl(this._self, this._then);
 
-  final DeckConfigurationError _self;
-  final $Res Function(DeckConfigurationError) _then;
+  final DeckInstanceError _self;
+  final $Res Function(DeckInstanceError) _then;
 
-/// Create a copy of DeckConfigurationState
+/// Create a copy of DeckInstanceState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
-  return _then(DeckConfigurationError(
+  return _then(DeckInstanceError(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,
   ));

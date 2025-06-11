@@ -11,24 +11,33 @@ They are conveniently imported and re-exported in the `__init__.py` file
 to provide a single point of access for all data services.
 """
 
-from .deck_data_service import (
-  add_deck_position_definitions,
-  add_or_update_deck_type_definition,
-  create_deck_config,
-  create_deck_position_item,
-  delete_deck_config,
-  get_deck_config_by_id,
-  get_deck_config_by_name,
-  get_deck_config_by_parent_machine_id,
-  get_deck_position_item,
-  get_deck_type_definition_by_fqn,
-  get_deck_type_definition_by_id,
-  get_position_definitions_for_deck_type,
-  list_deck_configs,
-  list_deck_type_definitions,
-  update_deck_config,
-  update_deck_position_item,
+from .deck_instance import (
+  create_deck_instance,
+  read_deck_instance_by_id,
+  read_deck_instance_by_name,
+  read_deck_instance_by_parent_machine_id,
+  update_deck_instance,
+  delete_deck_instance,
+  list_deck_instances,
 )
+from .deck_position import (
+  create_deck_position_definitions,
+  create_deck_position_item,
+  read_deck_position_item,
+  read_position_definitions_for_deck_type,
+  update_deck_position_item,
+  update_deck_position_definition,
+  delete_deck_position_item,
+  delete_deck_position_item,
+)
+from .deck_type_definition import (
+  create_deck_type_definition,
+  read_deck_type_definition_by_fqn,
+  read_deck_type_definition_by_id,
+  update_deck_type_definition,
+  delete_deck_type_definition,
+)
+
 from .discovery_service import (
   get_actual_type_str_from_hint,
   get_args,
@@ -119,7 +128,7 @@ __all__ = [
   "delete_resource_instance",
   "delete_machine",
   "create_deck_config",
-  "get_deck_position_item",
+  "read_deck_position_item",
   "update_deck_position_item",
   "get_deck_type_definition_by_fqn",
   "list_deck_type_definitions",
@@ -166,4 +175,5 @@ __all__ = [
   "get_or_create_workcell_orm",
   "get_workcell_state",
   "update_workcell_state",
+  "update_resource_instance",
 ]

@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
+  from .deck_orm import DeckInstanceOrm
   from .machine_orm import MachineOrm
 
 import uuid_utils as uuid
@@ -357,8 +358,8 @@ class ResourceInstanceOrm(Base):
     "MachineOrm", back_populates="located_resource_instances"
   )
 
-  deck_configuration_items = relationship(
-    "DeckConfigurationPositionItemOrm", back_populates="resource_instance"
+  deck_instance_items = relationship(
+    "DeckInstancePositionResourceOrm", back_populates="resource_instance"
   )
 
   is_consumable: Mapped[bool] = mapped_column(
@@ -384,6 +385,25 @@ class ResourceInstanceOrm(Base):
     uselist=False,
     cascade="all, delete-orphan",
     comment="If this resource instance is a machine, links to the MachineOrm entry",
+  )
+
+  deck_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID,
+    ForeignKey("deck_instances.id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="If this resource instance is a deck instanceuration item, links to the "
+    "DeckInstanceOrm entry",
+  )
+
+  deck_counterpart: Mapped[Optional["DeckInstanceOrm"]] = relationship(
+    "DeckInstanceOrm",
+    back_populates="resource_instance",
+    foreign_keys=[deck_counterpart_id],
+    uselist=False,
+    cascade="all, delete-orphan",
+    comment="If this resource instance is a deck instanceuration item, links to the "
+    "DeckInstanceOrm entry",
   )
 
   def __repr__(self):

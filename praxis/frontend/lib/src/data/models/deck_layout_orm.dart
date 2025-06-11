@@ -1,5 +1,5 @@
-// Corresponds to DeckConfigurationSlotItemOrm in backend
-class DeckConfigurationSlotItemOrm {
+// Corresponds to DeckInstanceSlotItemOrm in backend
+class DeckInstanceSlotItemOrm {
   final int? id;
   final int deckConfigurationId;
   final String slotName;
@@ -7,7 +7,7 @@ class DeckConfigurationSlotItemOrm {
   final String?
   expectedResourceDefinitionName; // FK to ResourceDefinitionCatalogOrm.name
 
-  DeckConfigurationSlotItemOrm({
+  DeckInstanceSlotItemOrm({
     this.id,
     required this.deckConfigurationId,
     required this.slotName,
@@ -15,10 +15,10 @@ class DeckConfigurationSlotItemOrm {
     this.expectedResourceDefinitionName,
   });
 
-  factory DeckConfigurationSlotItemOrm.fromJson(Map<String, dynamic> json) {
-    return DeckConfigurationSlotItemOrm(
+  factory DeckInstanceSlotItemOrm.fromJson(Map<String, dynamic> json) {
+    return DeckInstanceSlotItemOrm(
       id: json['id'] as int?,
-      deckConfigurationId: json['deck_configuration_id'] as int,
+      deckConfigurationId: json['deck_instance_id'] as int,
       slotName: json['slot_name'] as String,
       resourceInstanceId: json['resource_instance_id'] as int,
       expectedResourceDefinitionName:
@@ -29,7 +29,7 @@ class DeckConfigurationSlotItemOrm {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'deck_configuration_id': deckConfigurationId,
+      'deck_instance_id': deckConfigurationId,
       'slot_name': slotName,
       'resource_instance_id': resourceInstanceId,
       'expected_resource_definition_name': expectedResourceDefinitionName,
@@ -37,13 +37,13 @@ class DeckConfigurationSlotItemOrm {
   }
 }
 
-// Corresponds to DeckConfigurationOrm in backend
+// Corresponds to DeckInstanceOrm in backend
 class DeckLayoutOrm {
   final int? id; // praxis_deck_config_id
   final String layoutName;
   final int deckDeviceId; // FK to ManagedDeviceOrm.id (the deck itself)
   final String? description;
-  final List<DeckConfigurationSlotItemOrm>? slotItems;
+  final List<DeckInstanceSlotItemOrm>? slotItems;
   final String? createdAt; // DateTime as String
   final String? updatedAt; // DateTime as String
   // workspaceId is required by the frontend's praxis_data DeckLayoutOrm, but not in backend ORM.
@@ -63,14 +63,13 @@ class DeckLayoutOrm {
 
   factory DeckLayoutOrm.fromJson(Map<String, dynamic> json) {
     var itemsList = json['slot_items'] as List<dynamic>?;
-    List<DeckConfigurationSlotItemOrm>? slotItems;
+    List<DeckInstanceSlotItemOrm>? slotItems;
     if (itemsList != null) {
       slotItems =
           itemsList
               .map(
-                (i) => DeckConfigurationSlotItemOrm.fromJson(
-                  i as Map<String, dynamic>,
-                ),
+                (i) =>
+                    DeckInstanceSlotItemOrm.fromJson(i as Map<String, dynamic>),
               )
               .toList();
     }

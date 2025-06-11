@@ -1,33 +1,32 @@
-// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/deck_configuration_screen.dart
+// praxis_lab_management/lib/src/features/run_protocol/presentation/screens/deck_instance_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:praxis_lab_management/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/deck_instance_bloc/deck_instance_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_workflow_bloc/protocol_workflow_bloc.dart';
 
-class DeckConfigurationScreen extends StatefulWidget {
-  const DeckConfigurationScreen({super.key});
+class DeckInstanceScreen extends StatefulWidget {
+  const DeckInstanceScreen({super.key});
 
   @override
-  State<DeckConfigurationScreen> createState() =>
-      _DeckConfigurationScreenState();
+  State<DeckInstanceScreen> createState() => _DeckInstanceScreenState();
 }
 
-class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
+class _DeckInstanceScreenState extends State<DeckInstanceScreen> {
   @override
   void initState() {
     super.initState();
     final workflowState = context.read<ProtocolWorkflowBloc>().state;
-    context.read<DeckConfigurationBloc>().add(
-      DeckConfigurationEvent.initializeDeckConfiguration(
+    context.read<DeckInstanceBloc>().add(
+      DeckInstanceEvent.initializeDeckInstance(
         // Corrected event name
         initialSelectedLayoutName: workflowState.deckLayoutName,
         initialPickedFile: workflowState.uploadedDeckFile,
         // availableLayouts: workflowState.availableLayouts, // This should be fetched by the BLoC itself
       ),
     );
-    context.read<DeckConfigurationBloc>().add(
-      const DeckConfigurationEvent.fetchAvailableDeckLayouts(),
+    context.read<DeckInstanceBloc>().add(
+      const DeckInstanceEvent.fetchAvailableDeckLayouts(),
     ); // Corrected event name
   }
 
@@ -40,8 +39,8 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
 
     if (result != null && result.files.single.path != null) {
       if (!mounted) return; // Check mounted after await
-      context.read<DeckConfigurationBloc>().add(
-        DeckConfigurationEvent.deckFilePicked(file: result.files.single),
+      context.read<DeckInstanceBloc>().add(
+        DeckInstanceEvent.deckFilePicked(file: result.files.single),
       ); // Corrected event name
     }
   }
@@ -61,16 +60,16 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
           },
         ),
       ),
-      body: BlocConsumer<DeckConfigurationBloc, DeckConfigurationState>(
+      body: BlocConsumer<DeckInstanceBloc, DeckInstanceState>(
         listener: (context, state) {
-          if (state is DeckConfigurationError) {
+          if (state is DeckInstanceError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Deck config error: ${state.message}'),
                 backgroundColor: theme.colorScheme.error,
               ),
             );
-          } else if (state is DeckConfigurationLoaded) {
+          } else if (state is DeckInstanceLoaded) {
             context.read<ProtocolWorkflowBloc>().add(
               ProtocolWorkflowEvent.updateStepValidity(
                 isValid: state.isSelectionValid,
@@ -80,17 +79,17 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
         },
         builder: (context, state) {
           return switch (state) {
-            DeckConfigurationInitial() => const Center(
-              child: Text('Initializing deck configuration...'),
+            DeckInstanceInitial() => const Center(
+              child: Text('Initializing deck instanceuration...'),
             ),
-            DeckConfigurationLoading(
+            DeckInstanceLoading(
               // Access properties if needed, e.g., to show stale data while loading
               // availableLayouts: final availableLayouts,
               // selectedLayoutName: final selectedLayoutName,
               // pickedFile: final pickedFile,
             ) =>
               const Center(child: CircularProgressIndicator()),
-            DeckConfigurationLoaded(
+            DeckInstanceLoaded(
               availableLayouts: final availableLayouts, // Corrected property name
               selectedLayoutName: final selectedLayoutName,
               pickedFile: final pickedFile, // Corrected property name
@@ -126,8 +125,8 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                                 .toList(),
                         onChanged: (value) {
                           if (value != null) {
-                            context.read<DeckConfigurationBloc>().add(
-                              DeckConfigurationEvent.deckLayoutSelected(
+                            context.read<DeckInstanceBloc>().add(
+                              DeckInstanceEvent.deckLayoutSelected(
                                 layoutName: value,
                               ),
                             ); // Corrected event name
@@ -154,8 +153,8 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                       ), // Corrected property name
                       TextButton(
                         onPressed: () {
-                          context.read<DeckConfigurationBloc>().add(
-                            const DeckConfigurationEvent.clearDeckSelection(),
+                          context.read<DeckInstanceBloc>().add(
+                            const DeckInstanceEvent.clearDeckSelection(),
                           ); // Corrected event name
                         },
                         child: const Text('Clear Uploaded File'),
@@ -184,7 +183,7 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                   ],
                 ),
               ),
-            DeckConfigurationError(message: final message) => Center(
+            DeckInstanceError(message: final message) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -197,7 +196,7 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Error with deck configuration: $message',
+                      'Error with deck instanceuration: $message',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -205,15 +204,15 @@ class _DeckConfigurationScreenState extends State<DeckConfigurationScreen> {
                       onPressed: () {
                         final wfState =
                             context.read<ProtocolWorkflowBloc>().state;
-                        context.read<DeckConfigurationBloc>().add(
-                          DeckConfigurationEvent.initializeDeckConfiguration(
+                        context.read<DeckInstanceBloc>().add(
+                          DeckInstanceEvent.initializeDeckInstance(
                             // Corrected event name
                             initialSelectedLayoutName: wfState.deckLayoutName,
                             initialPickedFile: wfState.uploadedDeckFile,
                           ),
                         );
-                        context.read<DeckConfigurationBloc>().add(
-                          const DeckConfigurationEvent.fetchAvailableDeckLayouts(),
+                        context.read<DeckInstanceBloc>().add(
+                          const DeckInstanceEvent.fetchAvailableDeckLayouts(),
                         ); // Corrected event name
                       },
                       child: const Text('Retry'),

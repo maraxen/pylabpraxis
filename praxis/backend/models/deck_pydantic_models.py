@@ -42,7 +42,7 @@ class PositioningConfig(BaseModel):
     from_attributes = True
 
 
-class DeckPositionItemBase(BaseModel):
+class DeckPositionResourceBase(BaseModel):
   """Define the base properties for an item placed on a deck position.
 
   This model captures the essential information about an item's placement,
@@ -59,29 +59,29 @@ class DeckPositionItemBase(BaseModel):
     from_attributes = True
 
 
-class DeckPositionItemCreate(DeckPositionItemBase):
+class DeckPositionResourceCreate(DeckPositionResourceBase):
   """Represent a deck position item for creation requests.
 
-  This model inherits all properties from `DeckPositionItemBase` and is used
+  This model inherits all properties from `DeckPositionResourceBase` and is used
   specifically when creating new position item entries.
   """
 
   pass
 
 
-class DeckPositionItemResponse(DeckPositionItemBase):
+class DeckPositionResourceResponse(DeckPositionResourceBase):
   """Represent a deck position item for API responses.
 
-  This model extends `DeckPositionItemBase` by adding system-generated identifiers,
+  This model extends `DeckPositionResourceBase` by adding system-generated identifiers,
   suitable for client-facing responses.
   """
 
   item_id: UUID7
-  deck_configuration_id: UUID7
+  deck_instance_id: UUID7
 
 
-class DeckBase(BaseModel):
-  """Define the base properties for a deck.
+class DeckInstanceBase(BaseModel):
+  """Define the base properties for a deck instance.
 
   This model includes fundamental attributes like deck name, associated deck,
   and an optional description, serving as a base for more specific deck models.
@@ -98,41 +98,41 @@ class DeckBase(BaseModel):
     from_attributes = True
 
 
-class DeckCreate(DeckBase):
+class DeckInstanceCreate(DeckInstanceBase):
   """Represent a deck for creation requests.
 
-  This model extends `DeckBase` by allowing the inclusion of
-  `DeckPositionItemCreate` instances, enabling the definition of a deck's
+  This model extends `DeckInstanceBase` by allowing the inclusion of
+  `DeckPositionResourceCreate` instances, enabling the definition of a deck's
   contents upon creation.
   """
 
-  position_items: Optional[List[DeckPositionItemCreate]] = []
+  position_items: Optional[List[DeckPositionResourceCreate]] = []
 
 
-class DeckUpdate(BaseModel):
-  """Represent a deck for update requests.
+class DeckInstanceUpdate(BaseModel):
+  """Represent a deck instance for update requests.
 
   This model provides optional fields for updating various properties of a
-  deck, including its name, associated deck, description, and
+  deck instance, including its name, associated deck, description, and
   its constituent position items.
   """
 
   deck_name: Optional[str] = None
   deck_id: Optional[UUID7] = None
   description: Optional[str] = None
-  position_items: Optional[List[DeckPositionItemCreate]] = None
+  position_items: Optional[List[DeckPositionResourceCreate]] = None
 
 
-class DeckResponse(DeckBase):
-  """Represent a deck for API responses.
+class DeckInstanceResponse(DeckInstanceBase):
+  """Represent a deck instance for API responses.
 
-  This model extends `DeckBase` by including system-generated identifiers,
-  associated position items (as `DeckPositionItemResponse`), and timestamps for
+  This model extends `DeckInstanceBase` by including system-generated identifiers,
+  associated position items (as `DeckPositionResourceResponse`), and timestamps for
   creation and last update, suitable for client-facing responses.
   """
 
   id: UUID7
-  position_items: List[DeckPositionItemResponse] = []
+  position_items: List[DeckPositionResourceResponse] = []
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 

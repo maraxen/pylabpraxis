@@ -38,7 +38,7 @@ class ProtocolStartRequest(BaseModel):
   description: Optional[str] = None
   parameters: Optional[Dict[str, Any]] = None
   assets: Optional[Dict[str, str]] = None
-  deck_configuration: Optional[str] = None
+  deck_instance: Optional[str] = None
   workcell_id: Optional[UUID7] = None
   protocol_definition_id: Optional[UUID7] = None
   config_data: Dict[str, Any]

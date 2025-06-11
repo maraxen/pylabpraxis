@@ -20,7 +20,7 @@ sealed class ProtocolWorkflowEvent with _$ProtocolWorkflowEvent {
     required Map<String, String> assets,
   }) = AssetsSubmittedToWorkflow;
 
-  /// Dispatched when deck configuration is submitted from the DeckConfigurationScreen.
+  /// Dispatched when deck instanceuration is submitted from the DeckInstanceScreen.
   const factory ProtocolWorkflowEvent.deckConfigSubmitted({
     String? layoutName,
     PlatformFile? uploadedFile,

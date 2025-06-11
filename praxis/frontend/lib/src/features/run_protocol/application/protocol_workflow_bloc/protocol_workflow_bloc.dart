@@ -15,7 +15,7 @@ import 'package:praxis_lab_management/src/features/run_protocol/domain/workflow_
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocols_discovery_bloc/protocols_discovery_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_parameters_bloc/protocol_parameters_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_assets_bloc/protocol_assets_bloc.dart';
-import 'package:praxis_lab_management/src/features/run_protocol/application/deck_configuration_bloc/deck_configuration_bloc.dart';
+import 'package:praxis_lab_management/src/features/run_protocol/application/deck_instance_bloc/deck_instance_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_review_bloc/protocol_review_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/application/protocol_start_bloc/protocol_start_bloc.dart';
 import 'package:praxis_lab_management/src/features/run_protocol/domain/review_data_bundle.dart';
@@ -35,7 +35,7 @@ class ProtocolWorkflowBloc
   final ProtocolsDiscoveryBloc? _protocolsDiscoveryBloc;
   final ProtocolParametersBloc _protocolParametersBloc;
   final ProtocolAssetsBloc _protocolAssetsBloc;
-  final DeckConfigurationBloc _deckConfigurationBloc;
+  final DeckInstanceBloc _deckConfigurationBloc;
   final ProtocolReviewBloc _protocolReviewBloc;
   final ProtocolStartBloc _protocolStartBloc;
 
@@ -46,7 +46,7 @@ class ProtocolWorkflowBloc
     required ProtocolsDiscoveryBloc protocolsDiscoveryBloc,
     required ProtocolParametersBloc protocolParametersBloc,
     required ProtocolAssetsBloc protocolAssetsBloc,
-    required DeckConfigurationBloc deckConfigurationBloc,
+    required DeckInstanceBloc deckConfigurationBloc,
     required ProtocolReviewBloc protocolReviewBloc,
     required ProtocolStartBloc protocolStartBloc,
   }) : _protocolRepository = protocolRepository,
@@ -177,13 +177,13 @@ class ProtocolWorkflowBloc
     }
 
     _deckConfigurationBloc.add(
-      InitializeDeckConfiguration(
+      InitializeDeckInstance(
         initialSelectedLayoutName: state.deckLayoutName,
         // uploadedDeckFile is not persisted, so it will be null here on hydration
         initialPickedFile: state.uploadedDeckFile,
       ),
     );
-    if (_deckConfigurationBloc.state is DeckConfigurationInitial ||
+    if (_deckConfigurationBloc.state is DeckInstanceInitial ||
         state.deckLayoutName == null) {
       _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
     }
@@ -361,12 +361,12 @@ class ProtocolWorkflowBloc
       add(GoToStep(targetStep: WorkflowStep.reviewAndPrepare));
     } else {
       _deckConfigurationBloc.add(
-        InitializeDeckConfiguration(
+        InitializeDeckInstance(
           initialSelectedLayoutName: state.deckLayoutName,
           initialPickedFile: null, // uploadedDeckFile is not persisted
         ),
       );
-      if (_deckConfigurationBloc.state is DeckConfigurationInitial) {
+      if (_deckConfigurationBloc.state is DeckInstanceInitial) {
         _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
       }
       add(const ProceedToNextStep());
@@ -397,8 +397,8 @@ class ProtocolWorkflowBloc
 
     if (event.uploadedFile != null) {
       // If a file was uploaded, this bloc's state.uploadedDeckFile is ignored for persistence.
-      // The DeckConfigurationBloc handles the actual upload.
-      // We might store the *name* of the uploaded file if that's useful and comes from DeckConfigurationBloc.
+      // The DeckInstanceBloc handles the actual upload.
+      // We might store the *name* of the uploaded file if that's useful and comes from DeckInstanceBloc.
     }
 
     if (returnTarget == WorkflowStep.reviewAndPrepare) {
@@ -501,12 +501,12 @@ class ProtocolWorkflowBloc
         } else {
           nextStep = WorkflowStep.deckConfiguration;
           _deckConfigurationBloc.add(
-            InitializeDeckConfiguration(
+            InitializeDeckInstance(
               initialSelectedLayoutName: state.deckLayoutName,
               initialPickedFile: null, // Not persisted
             ),
           );
-          if (_deckConfigurationBloc.state is DeckConfigurationInitial) {
+          if (_deckConfigurationBloc.state is DeckInstanceInitial) {
             _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
           }
         }
@@ -514,12 +514,12 @@ class ProtocolWorkflowBloc
       case WorkflowStep.assetAssignment:
         nextStep = WorkflowStep.deckConfiguration;
         _deckConfigurationBloc.add(
-          InitializeDeckConfiguration(
+          InitializeDeckInstance(
             initialSelectedLayoutName: state.deckLayoutName,
             initialPickedFile: null, // Not persisted
           ),
         );
-        if (_deckConfigurationBloc.state is DeckConfigurationInitial) {
+        if (_deckConfigurationBloc.state is DeckInstanceInitial) {
           _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
         }
         break;
@@ -619,21 +619,21 @@ class ProtocolWorkflowBloc
         break;
       case WorkflowStep.deckConfiguration:
         _deckConfigurationBloc.add(
-          InitializeDeckConfiguration(
+          InitializeDeckInstance(
             initialSelectedLayoutName: state.deckLayoutName,
             initialPickedFile: null, // Not persisted
           ),
         );
-        if (_deckConfigurationBloc.state is DeckConfigurationInitial ||
-            (_deckConfigurationBloc.state is DeckConfigurationLoaded &&
-                (_deckConfigurationBloc.state as DeckConfigurationLoaded)
+        if (_deckConfigurationBloc.state is DeckInstanceInitial ||
+            (_deckConfigurationBloc.state is DeckInstanceLoaded &&
+                (_deckConfigurationBloc.state as DeckInstanceLoaded)
                     .availableLayouts
                     .isEmpty)) {
           _deckConfigurationBloc.add(const FetchAvailableDeckLayouts());
         }
         final deckState = _deckConfigurationBloc.state;
         targetStepValidity =
-            deckState is DeckConfigurationLoaded && deckState.isSelectionValid;
+            deckState is DeckInstanceLoaded && deckState.isSelectionValid;
         break;
       case WorkflowStep.reviewAndPrepare:
         if (state.selectedProtocolInfo != null &&
@@ -700,7 +700,7 @@ class ProtocolWorkflowBloc
     _protocolAssetsBloc.add(
       const LoadRequiredAssets(assetsFromProtocolDetails: []),
     );
-    _deckConfigurationBloc.add(const InitializeDeckConfiguration());
+    _deckConfigurationBloc.add(const InitializeDeckInstance());
     _deckConfigurationBloc.add(
       const FetchAvailableDeckLayouts(),
     ); // Also fetch layouts

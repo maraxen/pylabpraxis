@@ -183,7 +183,7 @@ async def add_or_update_machine(
   return machine_orm
 
 
-async def get_machine_by_id(
+async def read_machine_by_id(
   db: AsyncSession, machine_id: uuid.UUID
 ) -> Optional[MachineOrm]:
   """Retrieve a specific machine by its ID.
@@ -214,7 +214,7 @@ async def get_machine_by_id(
   return machine
 
 
-async def get_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineOrm]:
+async def read_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineOrm]:
   """Retrieve a specific machine by its user-friendly name.
 
   Args:
@@ -239,7 +239,7 @@ async def get_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineOr
   return machine
 
 
-async def get_machines_by_workcell_id(
+async def read_machines_by_workcell_id(
   db: AsyncSession, workcell_id: int
 ) -> Sequence[MachineOrm]:
   """Retrieve all machines associated with a specific workcell ID.
@@ -365,7 +365,7 @@ async def update_machine_status(
     machine_id,
     new_status.value,
   )
-  machine_orm = await get_machine_by_id(db, machine_id)
+  machine_orm = await read_machine_by_id(db, machine_id)
   if not machine_orm:
     logger.warning("Machine with ID %d not found for status update.", machine_id)
     return None
@@ -440,7 +440,7 @@ async def delete_machine(db: AsyncSession, machine_id: uuid.UUID) -> bool:
 
   """
   logger.info("Attempting to delete machine with ID: %d.", machine_id)
-  machine_orm = await get_machine_by_id(db, machine_id)
+  machine_orm = await read_machine_by_id(db, machine_id)
   if not machine_orm:
     logger.warning("Machine with ID %d not found for deletion.", machine_id)
     return False

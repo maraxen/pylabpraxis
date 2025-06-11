@@ -96,7 +96,7 @@ class MachineOrm(Base):
   """SQLAlchemy ORM model representing a physical machine or instrument.
 
   This model stores details about automation hardware, including its status,
-  configuration, and relationships to deck configurations and resource instances.
+  configuration, and relationships to deck instanceurations and resource instances.
   """
 
   __tablename__ = "machines"
@@ -200,13 +200,7 @@ class MachineOrm(Base):
     uselist=False,
   )
 
-  # Relationships
-  # deck_type_definition: Mapped[Optional["DeckTypeDefinitionOrm"]] = relationship(
-  #    back_populates="machines"
-  # )
-  deck_configurations = relationship(
-    "DeckConfigurationOrm", back_populates="deck_machine"
-  )
+  deck_instances = relationship("DeckInstanceOrm", back_populates="parent_machine")
 
   located_resource_instances = relationship(
     "ResourceInstanceOrm", back_populates="location_machine"

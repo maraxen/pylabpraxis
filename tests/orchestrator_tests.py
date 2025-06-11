@@ -288,7 +288,9 @@ class TestOrchestratorExecutionControl:
 
     mock_protocol_wrapper_func.assert_not_called()
 
-    orchestrator.asset_manager.release_machine.assert_called_once_with(machine_orm_id=123)
+    orchestrator.asset_manager.release_machine.assert_called_once_with(
+      machine_orm_id=123
+    )
     orchestrator.asset_manager.release_resource.assert_not_called()
 
   # TODO: Add more tests here for:
@@ -704,7 +706,7 @@ class TestOrchestratorArgumentPreparation:
 
     user_input_params = {"my_deck": "MyDeckLayoutName"}
     mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromString")
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock(
+    orchestrator.asset_manager.apply_deck_instance = MagicMock(
       return_value=mock_live_deck_obj
     )
 
@@ -716,7 +718,7 @@ class TestOrchestratorArgumentPreparation:
       mock_protocol_wrapper_func_for_args,
     )
 
-    orchestrator.asset_manager.apply_deck_configuration.assert_called_once_with(
+    orchestrator.asset_manager.apply_deck_instance.assert_called_once_with(
       deck_identifier="MyDeckLayoutName", protocol_run_guid="test_run"
     )
     assert final_args["my_deck"] == mock_live_deck_obj
@@ -745,7 +747,7 @@ class TestOrchestratorArgumentPreparation:
     user_input_params = {"the_deck": input_plr_deck}
 
     mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromDeck")
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock(
+    orchestrator.asset_manager.apply_deck_instance = MagicMock(
       return_value=mock_live_deck_obj
     )
 
@@ -757,7 +759,7 @@ class TestOrchestratorArgumentPreparation:
       mock_protocol_wrapper_func_for_args,
     )
 
-    orchestrator.asset_manager.apply_deck_configuration.assert_called_once_with(
+    orchestrator.asset_manager.apply_deck_instance.assert_called_once_with(
       deck_identifier="MyDeckLayoutName",  # Name is extracted
       protocol_run_guid="test_run_plr",
     )
@@ -784,7 +786,7 @@ class TestOrchestratorArgumentPreparation:
     }
 
     user_input_params = {}  # Deck not provided
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock()
+    orchestrator.asset_manager.apply_deck_instance = MagicMock()
 
     with pytest.raises(
       ValueError, match="Mandatory deck parameter 'mandatory_deck' was not provided"
@@ -796,7 +798,7 @@ class TestOrchestratorArgumentPreparation:
         PraxisState(run_guid="test_run_m"),
         mock_protocol_wrapper_func_for_args,
       )
-    orchestrator.asset_manager.apply_deck_configuration.assert_not_called()
+    orchestrator.asset_manager.apply_deck_instance.assert_not_called()
 
   def test_deck_loading_deck_param_not_provided_optional(
     self,
@@ -818,7 +820,7 @@ class TestOrchestratorArgumentPreparation:
     }
 
     user_input_params = {}  # Deck not provided
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock()
+    orchestrator.asset_manager.apply_deck_instance = MagicMock()
 
     final_args, _, _ = orchestrator._prepare_arguments(
       protocol_def,
@@ -828,7 +830,7 @@ class TestOrchestratorArgumentPreparation:
       mock_protocol_wrapper_func_for_args,
     )
 
-    orchestrator.asset_manager.apply_deck_configuration.assert_not_called()
+    orchestrator.asset_manager.apply_deck_instance.assert_not_called()
     assert (
       "optional_deck" not in final_args
     )  # Or assert it's None if explicitly set for optional missing
@@ -853,7 +855,7 @@ class TestOrchestratorArgumentPreparation:
     }
 
     user_input_params = {"deck_will_fail": "SomeDeckLayout"}
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock(
+    orchestrator.asset_manager.apply_deck_instance = MagicMock(
       side_effect=AssetAcquisitionError("Deck config failed in AM")
     )
 
@@ -890,7 +892,7 @@ class TestOrchestratorArgumentPreparation:
 
     input_plr_deck = Deck(name="DeckInputButNoConfigure")
     user_input_params = {"my_deck_no_config": input_plr_deck}
-    orchestrator.asset_manager.apply_deck_configuration = MagicMock()
+    orchestrator.asset_manager.apply_deck_instance = MagicMock()
 
     final_args, _, _ = orchestrator._prepare_arguments(
       protocol_def,
@@ -900,7 +902,7 @@ class TestOrchestratorArgumentPreparation:
       mock_protocol_wrapper_func_for_args,
     )
 
-    orchestrator.asset_manager.apply_deck_configuration.assert_not_called()
+    orchestrator.asset_manager.apply_deck_instance.assert_not_called()
     # The original Deck input should be passed through if preconfigure_deck is false
     # BUT, current logic in _prepare_arguments for deck handling is inside the
     # `if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:` block.
