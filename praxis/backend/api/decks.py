@@ -18,18 +18,19 @@ from praxis.backend.api.dependencies import get_db
 
 # Import all necessary Pydantic models from the central models package
 from praxis.backend.models import (
-  DeckCreate,
+  DeckInstanceCreate,
+  DeckInstanceResponse,
+  DeckInstanceUpdate,
   DeckPositionDefinitionCreate,
   DeckPositionDefinitionResponse,
   DeckPositionDefinitionUpdate,
   DeckPositionResourceCreate,
   DeckPositionResourceResponse,
-  DeckResponse,
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
-  DeckUpdate,
 )
+from praxis.backend.utils.accession_resolver import get_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -41,6 +42,12 @@ log_deck_api_errors = partial(
 )
 
 # --- Deck Type Definition Endpoints ---
+deck_type_accession_resolver = partial(
+  get_id_from_accession,
+  get_func=svc.read_deck_type_definition,
+  get_by_name_func=svc.read_deck_type_definition_by_fqn,
+  entity_type_name="Deck Type Definition",
+)
 
 
 @log_deck_api_errors(
@@ -59,9 +66,7 @@ async def create_deck_type_definition(
 ):
   """Create a new deck type definition."""
   try:
-    return await svc.create_or_update_deck_type_definition(
-      db=db, **request.model_dump()
-    )
+    return await svc.create_deck_type_definition(db=db, **request.model_dump())
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -93,15 +98,14 @@ async def list_deck_type_definitions(
   response_model=DeckTypeDefinitionResponse,
   tags=["Deck Type Definitions"],
 )
-async def get_deck_type_definition(
+async def read_deck_type_definition(
   accession: str | UUID, db: AsyncSession = Depends(get_db)
 ):
   """Retrieve a deck type definition by its ID (UUID) or fully-qualified name (FQN)."""
-  if isinstance(accession, UUID):
-    db_def = await svc.get_deck_type_definition(db, accession)
-  else:
-    db_def = await svc.get_deck_type_definition_by_fqn(db, accession)
-
+  deck_type_definition_id = await deck_type_accession_resolver(
+    accession=accession, db=db
+  )
+  db_def = await svc.read_deck_type_definition(db, deck_type_definition_id)
   if db_def is None:
     raise HTTPException(status_code=404, detail="Deck type definition not found")
   return db_def
@@ -124,9 +128,12 @@ async def update_deck_type_definition(
 ):
   """Update an existing deck type definition."""
   update_data = request.model_dump(exclude_unset=True)
+  deck_type_definition_id = await deck_type_accession_resolver(
+    accession=accession, db=db
+  )
   try:
-    updated_def = await svc.create_or_update_deck_type_definition(
-      db=db, deck_type=accession, **update_data
+    updated_def = await svc.update_deck_type_definition(
+      db=db, deck_type_id=deck_type_definition_id, **update_data
     )
     if not updated_def:
       raise HTTPException(
@@ -137,24 +144,31 @@ async def update_deck_type_definition(
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-# --- Deck Configuration Endpoints ---
+deck_instance_accession_resolver = partial(
+  get_id_from_accession,
+  get_func=svc.read_deck_instance,
+  get_by_name_func=svc.read_deck_instance_by_name,
+  entity_type_name="Deck Instance",
+)
 
 
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to create deck instanceuration: ",
+  prefix="Failed to create deck instance: ",
 )
 @router.post(
-  "/configurations",
-  response_model=DeckResponse,
+  "/instances",
+  response_model=DeckInstanceResponse,
   status_code=status.HTTP_201_CREATED,
-  tags=["Deck Configurations"],
+  tags=["Deck Instances"],
 )
-async def create_deck_instance(request: DeckCreate, db: AsyncSession = Depends(get_db)):
-  """Create a new deck instanceuration."""
+async def create_deck_instance(
+  request: DeckInstanceCreate, db: AsyncSession = Depends(get_db)
+):
+  """Create a new deck instance."""
   try:
-    return await svc.create_deck_config(db=db, **request.model_dump())
+    return await svc.create_deck_instance(db=db, **request.model_dump())
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -162,64 +176,62 @@ async def create_deck_instance(request: DeckCreate, db: AsyncSession = Depends(g
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to list deck instanceurations: ",
+  prefix="Failed to list deck instances: ",
 )
 @router.get(
-  "/configurations", response_model=List[DeckResponse], tags=["Deck Configurations"]
+  "/instances", response_model=List[DeckInstanceResponse], tags=["Deck Instances"]
 )
 async def list_deck_instances(
   db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
 ):
-  """List all deck instanceurations."""
-  return await svc.list_deck_configs(db, limit=limit, offset=offset)
+  """List all deck instances."""
+  return await svc.list_deck_instances(db, limit=limit, offset=offset)
 
 
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to get deck instanceuration: ",
+  prefix="Failed to get deck instance: ",
 )
 @router.get(
-  "/configurations/{accession}",
-  response_model=DeckResponse,
-  tags=["Deck Configurations"],
+  "/instances/{accession}",
+  response_model=DeckInstanceResponse,
+  tags=["Deck Instances"],
 )
 async def get_deck_instance(accession: str | UUID, db: AsyncSession = Depends(get_db)):
-  """Retrieve a deck instanceuration by its ID (UUID) or name."""
-  if isinstance(accession, UUID):
-    deck = await svc.read_deck_instance(db, accession)
-  else:
-    deck = await svc.get_deck_config_by_name(db, accession)
+  """Retrieve a deck instance by its ID (UUID) or name."""
+  deck_instance_id = await deck_instance_accession_resolver(accession=accession, db=db)
+  deck = await svc.read_deck_instance(db, deck_instance_id)
 
   if not deck:
-    raise HTTPException(status_code=404, detail="Deck configuration not found")
+    raise HTTPException(status_code=404, detail="Deck instance not found")
   return deck
 
 
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to update deck instanceuration: ",
+  prefix="Failed to update deck instance: ",
 )
 @router.put(
-  "/configurations/{accession}",
-  response_model=DeckResponse,
-  tags=["Deck Configurations"],
+  "/instances/{accession}",
+  response_model=DeckInstanceResponse,
+  tags=["Deck Instances"],
 )
 async def update_deck_instance(
-  accession: str | UUID, request: DeckUpdate, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, request: DeckInstanceUpdate, db: AsyncSession = Depends(get_db)
 ):
-  """Update an existing deck instanceuration."""
+  """Update an existing deck instance."""
   update_data = request.model_dump(exclude_unset=True)
   try:
-    if not isinstance(accession, UUID) and isinstance(accession, str):
-      deck = await svc.get_deck_config_by_name(db, accession)
-      if not deck:
-        raise HTTPException(status_code=404, detail="Deck configuration not found")
-      accession = deck.id  # Convert name to UUID for update
-    updated_deck = await svc.update_deck_config(db=db, deck_id=accession, **update_data)
+    deck_instance_id = await deck_instance_accession_resolver(
+      accession=accession, db=db
+    )
+    updated_deck = await svc.update_deck_instance(
+      db=db, deck_id=deck_instance_id, **update_data
+    )
     if not updated_deck:
-      raise HTTPException(status_code=404, detail="Deck configuration not found")
+      raise HTTPException(status_code=404, detail="Deck instance not found")
     return updated_deck
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -228,51 +240,48 @@ async def update_deck_instance(
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to delete deck instanceuration: ",
+  prefix="Failed to delete deck instance: ",
 )
 @router.delete(
-  "/configurations/{accession}",
+  "/instances/{accession}",
   status_code=status.HTTP_204_NO_CONTENT,
-  tags=["Deck Configurations"],
+  tags=["Deck Instances"],
 )
 async def delete_deck_instance(
   accession: str | UUID, db: AsyncSession = Depends(get_db)
 ):
-  """Delete a deck instanceuration."""
-  if isinstance(accession, str) and not isinstance(accession, UUID):
-    deck = await svc.get_deck_config_by_name(db, accession)
-    if not deck:
-      raise HTTPException(status_code=404, detail="Deck configuration not found")
-    accession = deck.id  # Convert name to UUID for deletion
-  if not await svc.delete_deck_config(db, accession):
-    raise HTTPException(status_code=404, detail="Deck configuration not found")
+  """Delete a deck instance."""
+  deck_instance_id = await deck_instance_accession_resolver(accession=accession, db=db)
+  if not await svc.delete_deck_instance(db, deck_instance_id):
+    raise HTTPException(status_code=404, detail="Deck instance not found")
   return None
 
 
-# --- Deck Configuration Position Item Endpoints ---
+# --- Deck Instance Position Item Endpoints ---
 
 
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to create item in deck instanceuration: ",
+  prefix="Failed to create item in deck instance: ",
 )
 @router.post(
-  "/configurations/{config_accession}/positions",
+  "/instances/{instance_accession}/positions",
   response_model=DeckPositionResourceResponse,
   status_code=status.HTTP_201_CREATED,
-  tags=["Deck Configurations"],
+  tags=["Deck Instances"],
 )
-async def create_deck_instance_position_item(
-  config_accession: str | UUID,
+async def create_deck_position_item(
+  instance_accession: str | UUID,
   request: DeckPositionResourceCreate,
   db: AsyncSession = Depends(get_db),
 ):
-  """Add a resource item to a position in a deck instanceuration."""
+  """Add a resource item to a position in a deck instance."""
   try:
-    return await svc.create_deck_position_item(
-      db, config_accession, **request.model_dump()
+    instance_id = await deck_instance_accession_resolver(
+      accession=instance_accession, db=db
     )
+    return await svc.create_deck_position_item(db, instance_id, **request.model_dump())
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -280,18 +289,18 @@ async def create_deck_instance_position_item(
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to update item in deck instanceuration: ",
+  prefix="Failed to update item in deck instance: ",
 )
 @router.put(
-  "/configurations/{config_accession}/positions/{item_id}",
+  "/instances/{instance_accession}/positions/{item_id}",
   response_model=DeckPositionResourceResponse,
-  tags=["Deck Configurations"],
+  tags=["Deck Instances"],
 )
-async def update_deck_instance_position_item(
+async def update_deck_position_item(
   item_id: UUID, request: DeckPositionResourceCreate, db: AsyncSession = Depends(get_db)
 ):
-  """Update an item in a deck instanceuration position."""
-  updated_item = await svc.update_deck_instance_position_item(
+  """Update an item in a deck instance position."""
+  updated_item = await svc.update_deck_position_item(
     db, item_id, **request.model_dump(exclude_unset=True)
   )
   if not updated_item:
@@ -302,18 +311,16 @@ async def update_deck_instance_position_item(
 @log_deck_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to delete item from deck instanceuration: ",
+  prefix="Failed to delete item from deck instance: ",
 )
 @router.delete(
-  "/configurations/{config_accession}/positions/{item_id}",
+  "/instances/{instance_accession}/positions/{item_id}",
   status_code=status.HTTP_204_NO_CONTENT,
-  tags=["Deck Configurations"],
+  tags=["Deck Instances"],
 )
-async def delete_deck_instance_position_item(
-  item_id: UUID, db: AsyncSession = Depends(get_db)
-):
-  """Delete an item from a deck instanceuration position."""
-  if not await svc.delete_deck_instance_position_item(db, item_id):
+async def delete_deck_position_item(item_id: UUID, db: AsyncSession = Depends(get_db)):
+  """Delete an item from a deck instance position."""
+  if not await svc.delete_deck_position_item(db, item_id):
     raise HTTPException(status_code=404, detail="Deck position item not found")
   return None
 

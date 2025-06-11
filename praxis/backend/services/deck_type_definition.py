@@ -332,7 +332,7 @@ async def create_deck_type_definition(
 
 async def update_deck_type_definition(
   db: AsyncSession,
-  deck_type_id: int,
+  deck_type_id: UUID,
   python_fqn: str,
   deck_type: str,
   description: Optional[str] = None,
@@ -354,7 +354,7 @@ async def update_deck_type_definition(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_id (int): The ID of the existing deck type definition to update.
+    deck_type_id (UUID): The ID of the existing deck type definition to update.
     python_fqn (str): The fully qualified name of the PyLabRobot deck
       class. This will update the existing FQN.
     deck_type (str): A human-readable display name for the deck type.

@@ -581,7 +581,7 @@ class AssetManager:
         f" another run."
       )
 
-    live_plr_deck_object = await self.workcell_runtime.create_or_read_resource(
+    live_plr_deck_object = await self.workcell_runtime.create_or_get_resource(
       resource_instance_orm=deck_resource_instance_orm,
       resource_definition_fqn=deck_def_catalog_orm.python_fqn,
     )
@@ -670,7 +670,7 @@ class AssetManager:
             f"FQN not found for resource definition '{item_to_place_orm.name}'."
           )
 
-        await self.workcell_runtime.create_or_read_resource(
+        await self.workcell_runtime.create_or_get_resource(
           resource_instance_orm=item_to_place_orm,
           resource_definition_fqn=item_def_orm.python_fqn,
         )
@@ -951,7 +951,7 @@ class AssetManager:
         f"FQN not found for resource definition '{resource_instance_to_acquire.name}'."
       )
 
-    live_plr_resource = await self.workcell_runtime.create_or_read_resource(
+    live_plr_resource = await self.workcell_runtime.create_or_get_resource(
       resource_instance_orm=resource_instance_to_acquire,
       resource_definition_fqn=resource_def_orm.python_fqn,
     )
@@ -1079,7 +1079,7 @@ class AssetManager:
     status_details: Optional[str] = "Released from run",
   ):
     """Release a Machine (not a Deck)."""
-    machine_to_release = await svc.get_machine(self.db, machine_orm_id)
+    machine_to_release = await svc.read_machine(self.db, machine_orm_id)
     if not machine_to_release:
       logger.warning(f"AM_RELEASE_MACHINE: Machine ID {machine_orm_id} not found.")
       return

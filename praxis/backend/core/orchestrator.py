@@ -265,7 +265,7 @@ class Orchestrator:
       commit_hash,
       source_name,
     )
-    return await svc.get_protocol_definition_details(
+    return await svc.read_protocol_definition_details(
       db=db_session,
       name=protocol_name,
       version=version,
@@ -651,7 +651,7 @@ class Orchestrator:
 
         deck_config_orm_id_to_apply: uuid.UUID
         if isinstance(deck_identifier_from_user, str):
-          deck_config_orm = await svc.get_deck_config_by_name(
+          deck_config_orm = await svc.read_deck_instance_by_name(
             db_session, deck_identifier_from_user
           )
           if not deck_config_orm:
@@ -664,7 +664,7 @@ class Orchestrator:
           deck_config_orm_id_to_apply = deck_identifier_from_user
 
         live_deck_object = await self.asset_manager.apply_deck_instance(
-          deck_config_orm_id=deck_config_orm_id_to_apply,
+          deck_instance_orm_id=deck_config_orm_id_to_apply,
           protocol_run_guid=protocol_run_guid,
         )
         final_args[deck_param_name] = live_deck_object
