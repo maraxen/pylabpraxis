@@ -179,7 +179,7 @@ class ResourceDefinitionCatalogOrm(Base):
 
   __tablename__ = "resource_definition_catalog"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(
     String,
     primary_key=True,
@@ -272,7 +272,7 @@ class ResourceInstanceOrm(Base):
 
   __tablename__ = "resource_instances"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   user_assigned_name: Mapped[str] = mapped_column(
     String,
     nullable=False,

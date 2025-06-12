@@ -23,7 +23,7 @@ class UserOrm(Base):
 
   __tablename__ = "users"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   hashed_password: Mapped[str] = mapped_column(String, nullable=False)

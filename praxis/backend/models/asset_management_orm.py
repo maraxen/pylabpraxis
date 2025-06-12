@@ -34,11 +34,11 @@ class AssetInstanceOrm(Base):
 
   __tablename__ = "asset_instances"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   asset_type: Mapped[str] = mapped_column(
     String, nullable=False, index=True
   )  # 'machine', 'resource', etc.
-  asset_accession_id: Mapped[uuid.UUID] = mapped_column(
+  asset_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, index=True
   )  # FK to concrete asset table (interpreted based on asset_type)
 

@@ -51,7 +51,7 @@ class WorkcellOrm(Base):
 
   __tablename__ = "workcells"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
   physical_location: Mapped[Optional[str]] = mapped_column(

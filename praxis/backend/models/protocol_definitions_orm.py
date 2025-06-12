@@ -77,7 +77,9 @@ class ProtocolSourceRepositoryOrm(Base):
   """
 
   __tablename__ = "protocol_source_repositories"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   git_url: Mapped[str] = mapped_column(String, nullable=False)
   default_ref: Mapped[str] = mapped_column(String, nullable=False, default="main")
@@ -113,7 +115,9 @@ class FileSystemProtocolSourceOrm(Base):
   """
 
   __tablename__ = "file_system_protocol_sources"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   base_path: Mapped[str] = mapped_column(String, nullable=False)
   is_recursive: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -146,7 +150,9 @@ class FunctionProtocolDefinitionOrm(Base):
   """
 
   __tablename__ = "function_protocol_definitions"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   version: Mapped[str] = mapped_column(String, nullable=False, default="0.1.0")
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -237,8 +243,10 @@ class ParameterDefinitionOrm(Base):
   """
 
   __tablename__ = "parameter_definitions"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
+  protocol_definition_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   name: Mapped[str] = mapped_column(String, nullable=False)
@@ -276,8 +284,10 @@ class AssetDefinitionOrm(Base):
   """
 
   __tablename__ = "asset_definitions"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
+  protocol_definition_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   name: Mapped[str] = mapped_column(String, nullable=False)
@@ -315,8 +325,10 @@ class ProtocolRunOrm(Base):
   """
 
   __tablename__ = "protocol_runs"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  run_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
+  run_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, unique=True, index=True
   )
   top_level_protocol_definition_accession_id: Mapped[int] = mapped_column(
@@ -372,13 +384,17 @@ class FunctionCallLogOrm(Base):
   """
 
   __tablename__ = "function_call_logs"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, index=True
+  )
+  protocol_run_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("protocol_runs.accession_id"), nullable=False, index=True
   )
   sequence_in_run: Mapped[int] = mapped_column(Integer, nullable=False)
-  function_protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
+  function_protocol_definition_accession_accession_id: Mapped[uuid.UUID] = (
+    mapped_column(
+      UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
+    )
   )
   parent_function_call_log_accession_id: Mapped[Optional[UUID]] = mapped_column(
     UUID, ForeignKey("function_call_logs.accession_id"), nullable=True

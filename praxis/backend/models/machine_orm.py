@@ -101,7 +101,7 @@ class MachineOrm(Base):
 
   __tablename__ = "machines"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   user_friendly_name: Mapped[str] = mapped_column(
     String, nullable=False, unique=True, index=True
   )

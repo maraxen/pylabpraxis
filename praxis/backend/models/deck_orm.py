@@ -69,7 +69,7 @@ class DeckInstanceOrm(Base):
 
   __tablename__ = "deck_instances"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
 
   python_fqn: Mapped[str] = mapped_column(
     String,
@@ -80,7 +80,7 @@ class DeckInstanceOrm(Base):
 
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
-  deck_accession_id: Mapped[uuid.UUID] = mapped_column(
+  deck_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resources.accession_id"), nullable=False
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -96,7 +96,7 @@ class DeckInstanceOrm(Base):
     UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=True, index=True
   )
 
-  deck_parent_machine_accession_id: Mapped[uuid.UUID] = mapped_column(
+  deck_parent_machine_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("machines.accession_id", ondelete="CASCADE"),
     nullable=False,
@@ -171,8 +171,8 @@ class DeckInstancePositionResourceOrm(Base):
 
   __tablename__ = "deck_instance_position_items"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  deck_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  deck_instance_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("deck_instances.accession_id"), nullable=False
   )
   position_accession_id: Mapped[str] = mapped_column(
@@ -186,7 +186,7 @@ class DeckInstancePositionResourceOrm(Base):
     comment="Unique name for this position within the deck instanceuration",
   )
   # This links to a specific physical piece of resource
-  resource_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
+  resource_instance_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resource_instances.accession_id"), nullable=False
   )
 
@@ -262,11 +262,15 @@ class DeckPositionDefinitionOrm(Base):
 
   __tablename__ = "deck_position_definitions"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
-  deck_type_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, autoincrement=True
+  )
+  deck_type_definition_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=False
   )
-  position_accession_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
+  position_accession_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, nullable=False
+  )
   name: Mapped[str] = mapped_column(
     String, nullable=False, index=True, comment="Unique name for this position"
   )
@@ -342,7 +346,9 @@ class DeckTypeDefinitionOrm(Base):
 
   __tablename__ = "deck_type_definitions"
 
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, autoincrement=True
+  )
   pylabrobot_deck_fqn: Mapped[str] = mapped_column(
     String, unique=True, nullable=False, index=True
   )
