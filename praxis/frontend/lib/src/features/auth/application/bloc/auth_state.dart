@@ -26,7 +26,8 @@ class AuthAuthenticated extends AuthState {
   List<Object?> get props => [userProfile];
 
   @override
-  String toString() => 'AuthAuthenticated { userProfile: ${userProfile.id} }';
+  String toString() =>
+      'AuthAuthenticated { userProfile: ${userProfile.accession_id} }';
 }
 
 /// State indicating that the user is not authenticated.

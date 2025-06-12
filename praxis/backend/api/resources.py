@@ -174,7 +174,9 @@ async def create_resource_instance(
   """Create a new resource instance."""
   try:
     resource_types = await svc.list_resource_definitions(db)
-    if request.resource_definition_id not in [r.id for r in resource_types]:
+    if request.resource_definition_accession_id not in [
+      r.accession_id for r in resource_types
+    ]:
       raise HTTPException(
         status_code=400, detail=f"Unknown resource type: {request.name}"
       )
@@ -208,7 +210,7 @@ async def get_resource_instance(
   """Retrieve a resource instance."""
   try:
     if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance(db, instance_id=accession)
+      resource = await svc.get_resource_instance(db, instance_accession_id=accession)
     elif isinstance(accession, str):
       resource = await svc.get_resource_instance_by_name(
         db, user_assigned_name=accession
@@ -229,7 +231,7 @@ async def get_resource_instance(
   suffix="",
 )
 @router.put(
-  "/{instance_id}",
+  "/{instance_accession_id}",
   response_model=ResourceInstanceResponse,
   tags=["Resources"],
 )
@@ -242,7 +244,7 @@ async def update_resource(
   try:
     resource = None
     if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance(db, instance_id=accession)
+      resource = await svc.get_resource_instance(db, instance_accession_id=accession)
       if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
     elif isinstance(accession, str):
@@ -270,7 +272,7 @@ async def update_resource(
   suffix="",
 )
 @router.delete(
-  "/{instance_id}",
+  "/{instance_accession_id}",
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Resources"],
 )
@@ -279,14 +281,16 @@ async def delete_resource(accession: str | UUID, db: AsyncSession = Depends(get_
   try:
     success = False
     if isinstance(accession, UUID):
-      success = await svc.delete_resource_instance(db, instance_id=accession)
+      success = await svc.delete_resource_instance(db, instance_accession_id=accession)
     elif isinstance(accession, str):
       resource = await svc.get_resource_instance_by_name(
         db, user_assigned_name=accession
       )
       if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
-      success = await svc.delete_resource_instance(db, instance_id=resource.id)
+      success = await svc.delete_resource_instance(
+        db, instance_accession_id=resource.accession_id
+      )
     if not success:
       raise HTTPException(status_code=404, detail="Resource not found")
     return None

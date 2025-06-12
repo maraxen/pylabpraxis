@@ -110,7 +110,7 @@ async def discover_protocols(db: AsyncSession = Depends(get_db)):
         )
 
       protocol_info = ProtocolInfo(
-        protocol_definition_id=def_orm.id,
+        protocol_definition_accession_id=def_orm.accession_id,
         name=def_orm.name or "Unnamed Protocol",
         path=path_to_report,
         description=def_orm.description or "No description.",
@@ -137,28 +137,29 @@ async def get_deck_layouts(orchestrator: Orchestrator = Depends(get_orchestrator
   "/details", response_model=Dict
 )  # Keep Dict for now, but could be a Pydantic model
 async def get_protocol_details(
-  protocol_definition_id: Optional[int] = None,  # Added to fetch by ID
+  protocol_definition_accession_id: Optional[int] = None,  # Added to fetch by ID
   protocol_path: Optional[
     str
   ] = None,  # Kept for compatibility if needed, but ID is preferred
   db: AsyncSession = Depends(get_db),  # Added db session
 ) -> Dict:
   logger.info("=== Protocol Details Request ===")
-  if not protocol_definition_id and not protocol_path:
+  if not protocol_definition_accession_id and not protocol_path:
     raise HTTPException(
-      status_code=400, detail="protocol_definition_id or protocol_path is required."
+      status_code=400,
+      detail="protocol_definition_accession_id or protocol_path is required.",
     )
 
   try:
     def_orm: Optional[FunctionProtocolDefinitionOrm] = None
-    if protocol_definition_id:
+    if protocol_definition_accession_id:
       def_orm = await protocol_data_service.get_protocol_definition(
-        db, protocol_definition_id
+        db, protocol_definition_accession_id
       )
       if not def_orm:
         raise HTTPException(
           status_code=404,
-          detail=f"Protocol definition with ID {protocol_definition_id} not found.",
+          detail=f"Protocol definition with ID {protocol_definition_accession_id} not found.",
         )
       protocol_path_for_module = (
         def_orm.source_file_path
@@ -169,7 +170,7 @@ async def get_protocol_details(
       # For now, prioritize ID-based loading. If path is given, try to load module directly
       # and extract, but this bypasses some DB benefits.
       logger.warning(
-        "Fetching protocol details by path is less reliable; prefer protocol_definition_id."
+        "Fetching protocol details by path is less reliable; prefer protocol_definition_accession_id."
       )
       protocol_module = await import_protocol_module(
         protocol_path
@@ -191,7 +192,7 @@ async def get_protocol_details(
 
     # Option 1: Reconstruct details from ORM (preferred)
     details = {
-      "protocol_definition_id": def_orm.id,
+      "protocol_definition_accession_id": def_orm.accession_id,
       "name": def_orm.name,
       "path": def_orm.source_file_path,  # Or a more user-friendly representation
       "version": def_orm.version,
@@ -349,7 +350,7 @@ async def import_protocol_module(protocol_raw_path: str) -> Optional[Any]:
 
 @router.get("/schema")
 async def get_protocol_schema(
-  protocol_definition_id: Optional[int] = None,
+  protocol_definition_accession_id: Optional[int] = None,
   protocol_path: Optional[str] = None,  # Kept for legacy, prefer ID
   db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -359,14 +360,14 @@ async def get_protocol_schema(
     protocol_description = "No description."
     parameters_obj = ProtocolParameters()  # Default empty
 
-    if protocol_definition_id:
+    if protocol_definition_accession_id:
       def_orm = await protocol_data_service.get_protocol_definition(
-        db, protocol_definition_id
+        db, protocol_definition_accession_id
       )
       if not def_orm:
         raise HTTPException(
           status_code=404,
-          detail=f"Protocol definition ID {protocol_definition_id} not found.",
+          detail=f"Protocol definition ID {protocol_definition_accession_id} not found.",
         )
       protocol_name = def_orm.name or protocol_name
       protocol_description = def_orm.description or protocol_description
@@ -389,12 +390,12 @@ async def get_protocol_schema(
           )
       else:
         logger.warning(
-          f"No source_file_path for def ID {protocol_definition_id} to load module for schema."
+          f"No source_file_path for def ID {protocol_definition_accession_id} to load module for schema."
         )
 
     elif protocol_path:  # Legacy
       logger.warning(
-        "Fetching schema by path is less reliable; prefer protocol_definition_id."
+        "Fetching schema by path is less reliable; prefer protocol_definition_accession_id."
       )
       protocol_module = await import_protocol_module(protocol_path)
       if not protocol_module:
@@ -408,7 +409,8 @@ async def get_protocol_schema(
       protocol_description = getattr(protocol_module, "__doc__", protocol_description)
     else:
       raise HTTPException(
-        status_code=400, detail="protocol_definition_id or protocol_path is required."
+        status_code=400,
+        detail="protocol_definition_accession_id or protocol_path is required.",
       )
 
     if not isinstance(parameters_obj, ProtocolParameters):
@@ -461,7 +463,7 @@ async def prepare_protocol(
     def_orm: Optional[FunctionProtocolDefinitionOrm] = None
 
     # Try to find by path in DB (this is a simplification, real matching might be harder)
-    # A more robust way would be to require protocol_definition_id in ProtocolPrepareRequest
+    # A more robust way would be to require protocol_definition_accession_id in ProtocolPrepareRequest
     possible_def = await db.execute(
       select(FunctionProtocolDefinitionOrm).filter(
         FunctionProtocolDefinitionOrm.source_file_path.like(
@@ -476,7 +478,7 @@ async def prepare_protocol(
     ):  # Check if path matches somewhat
       # Use the get_protocol_details logic that constructs from ORM
       temp_details = await get_protocol_details(
-        protocol_definition_id=def_orm_candidate.id, db=db
+        protocol_definition_accession_id=def_orm_candidate.accession_id, db=db
       )
       if (
         temp_details.get("path") == request.protocol_path
@@ -534,22 +536,22 @@ async def prepare_protocol(
         # Verify assigned assets exist and are suitable (simplified here)
         for (
           req_asset_name,
-          assigned_asset_identifier,
+          assigned_asset_accession_identifier,
         ) in request.asset_assignments.items():
-          # Check if assigned_asset_identifier is a valid asset in the DB
-          # The old code used `db.get_asset(asset_id)`. asset_id was a string name.
+          # Check if assigned_asset_accession_identifier is a valid asset in the DB
+          # The old code used `db.get_asset(asset_accession_id)`. asset_accession_id was a string name.
           # This should query the generic 'assets' table if that's what it referred to.
           asset_query = """
                         SELECT name, type, metadata, is_available FROM assets WHERE name = $1
                     """
           # Parameters for PraxisDBService SQL methods should be Dict[str, Any] like {"1": value1, "2": value2}
           asset_data = await db_service.fetch_one_sql(
-            asset_query, params={"1": assigned_asset_identifier}
+            asset_query, params={"1": assigned_asset_accession_identifier}
           )
           if not asset_data:
             raise HTTPException(
               status_code=400,
-              detail=f"Assigned asset '{assigned_asset_identifier}' for requirement '{req_asset_name}' not found.",
+              detail=f"Assigned asset '{assigned_asset_accession_identifier}' for requirement '{req_asset_name}' not found.",
             )
           # Further type checking against requirement could be added here.
       else:  # No assignments, try to get suggestions (orchestrator logic)
@@ -571,10 +573,12 @@ async def prepare_protocol(
           }
         )
 
-    protocol_id_to_use = def_orm.id if def_orm else None  # For configuration
+    protocol_accession_id_to_use = (
+      def_orm.accession_id if def_orm else None
+    )  # For configuration
 
     config_to_validate = {
-      "protocol_definition_id": protocol_id_to_use,  # For orchestrator if it uses ID
+      "protocol_definition_accession_id": protocol_accession_id_to_use,  # For orchestrator if it uses ID
       "protocol_path": request.protocol_path,  # Keep original path for now
       "name": details["name"],
       "parameters": validated_params,
@@ -612,7 +616,7 @@ async def start_protocol(
 ):
   try:
     # 'config_payload' is the validated configuration from /prepare
-    # It should contain 'protocol_definition_id' or 'protocol_path'
+    # It should contain 'protocol_definition_accession_id' or 'protocol_path'
     validation = await orchestrator.validate_configuration(config_payload)
     if not validation["valid"]:
       raise HTTPException(status_code=400, detail=validation["errors"])
@@ -641,8 +645,8 @@ async def get_protocol_status(
   )  # Ensure status is string
 
 
-@router.post("/{run_guid}/command")
-async def send_control_command_to_run(run_guid: str, command: str):
+@router.post("/{run_accession_id}/command")
+async def send_control_command_to_run(run_accession_id: str, command: str):
   from praxis.backend.utils.run_control import (
     send_control_command as send_control_command_to_redis,
     ALLOWED_COMMANDS,
@@ -654,11 +658,13 @@ async def send_control_command_to_run(run_guid: str, command: str):
       status_code=400, detail=f"Invalid command. Allowed: {ALLOWED_COMMANDS}"
     )
   try:
-    success = send_control_command_to_redis(run_guid, cmd_upper)
+    success = send_control_command_to_redis(run_accession_id, cmd_upper)
     if success:
       return {"message": f"Command '{cmd_upper}' sent."}
     else:
       raise HTTPException(status_code=500, detail="Failed to send command via Redis.")
   except Exception as e:
-    logger.error(f"Error sending command to run '{run_guid}': {e}", exc_info=True)
+    logger.error(
+      f"Error sending command to run '{run_accession_id}': {e}", exc_info=True
+    )
     raise HTTPException(status_code=500, detail="Unexpected error sending command.")

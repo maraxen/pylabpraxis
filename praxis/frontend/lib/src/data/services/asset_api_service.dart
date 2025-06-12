@@ -589,7 +589,7 @@ class AssetApiServiceImpl extends AssetApiService {
           response.data as Map<String, dynamic>,
         );
         return ResourceInstanceOrm(
-          id: resourceInstance.id ?? int.tryParse(instanceId),
+          id: resourceInstance.accession_id ?? int.tryParse(instanceId),
           userAssignedName: resourceInstance.userAssignedName,
           pylabrobotDefinitionName: resourceInstance.pylabrobotDefinitionName,
           lotNumber: resourceInstance.lotNumber,

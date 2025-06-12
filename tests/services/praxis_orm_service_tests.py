@@ -117,10 +117,10 @@ async def praxis_db_service(db_session, mock_asyncpg_pool):
 
 # --- Helper Function to Create Initial Data ---
 async def create_test_user(
-  session: AsyncSession, user_id: str, username: str = "testuser"
+  session: AsyncSession, user_accession_id: str, username: str = "testuser"
 ) -> UserOrm:
   user = UserOrm(
-    id=user_id,
+    id=user_accession_id,
     username=username,
     email=f"{username}@example.com",
     first_name="Test",
@@ -146,7 +146,7 @@ async def create_test_protocol_source_repo(
 
 async def create_test_protocol_definition(
   session: AsyncSession,
-  source_repo_id: int,
+  source_repo_accession_id: int,
   name: str = "TestProtocolDef",
   version: str = "1.0.0",
   is_top_level: bool = True,
@@ -157,7 +157,7 @@ async def create_test_protocol_definition(
     source_file_path=f"protocols/{name.lower()}.py",
     module_name=f"protocols.{name.lower()}",
     function_name="run_protocol",
-    source_repository_id=source_repo_id,
+    source_repository_accession_id=source_repo_accession_id,
     is_top_level=is_top_level,
   )
   session.add(proto_def)
@@ -194,67 +194,69 @@ class TestProtocolRunManagement:
     self, praxis_db_service: PraxisDBService, db_session: AsyncSession
   ):
     """Test registering a new protocol run."""
-    test_user_id = str(uuid.uuid4())
-    await create_test_user(db_session, user_id=test_user_id)
+    test_user_accession_id = str(uuid.uuid4())
+    await create_test_user(db_session, user_accession_id=test_user_accession_id)
 
     repo = await create_test_protocol_source_repo(db_session)
     proto_def = await create_test_protocol_definition(
-      db_session, source_repo_id=repo.id
+      db_session, source_repo_accession_id=repo.accession_id
     )
 
     run_params = {"param1": "value1", "count": 10}
 
-    run_id = await praxis_db_service.register_protocol_run(
-      protocol_definition_id=proto_def.id,
-      created_by_user_id=test_user_id,
+    run_accession_id = await praxis_db_service.register_protocol_run(
+      protocol_definition_accession_id=proto_def.accession_id,
+      created_by_user_accession_id=test_user_accession_id,
       parameters=run_params,
       status=ProtocolRunStatusEnum.PENDING,
     )
-    assert isinstance(run_id, int)
+    assert isinstance(run_accession_id, int)
 
     # Verify in DB
     async with praxis_db_service.get_praxis_session() as verify_session:  # Use service's session getter
-      stmt = select(ProtocolRunOrm).where(ProtocolRunOrm.id == run_id)
+      stmt = select(ProtocolRunOrm).where(
+        ProtocolRunOrm.accession_id == run_accession_id
+      )
       result = await verify_session.execute(stmt)
       run_orm = result.scalar_one_or_none()
 
     assert run_orm is not None
-    assert run_orm.top_level_protocol_definition_id == proto_def.id
+    assert run_orm.top_level_protocol_definition_accession_id == proto_def.accession_id
     assert run_orm.created_by_user is not None
-    assert run_orm.created_by_user.get("id") == test_user_id
+    assert run_orm.created_by_user.get("id") == test_user_accession_id
     assert run_orm.status == ProtocolRunStatusEnum.PENDING
     assert run_orm.input_parameters_json == run_params
-    assert run_orm.run_guid is not None
+    assert run_orm.run_accession_id is not None
 
   async def test_get_protocol_run_details_exists(
     self, praxis_db_service: PraxisDBService, db_session: AsyncSession
   ):
     """Test retrieving details of an existing protocol run."""
-    test_user_id = str(uuid.uuid4())
+    test_user_accession_id = str(uuid.uuid4())
     user = await create_test_user(
-      db_session, user_id=test_user_id, username="details_user"
+      db_session, user_accession_id=test_user_accession_id, username="details_user"
     )
     repo = await create_test_protocol_source_repo(db_session)
     proto_def = await create_test_protocol_definition(
-      db_session, source_repo_id=repo.id
+      db_session, source_repo_accession_id=repo.accession_id
     )
-    run_params = {"sample_id": "S001"}
+    run_params = {"sample_accession_id": "S001"}
 
-    run_id = await praxis_db_service.register_protocol_run(
-      protocol_definition_id=proto_def.id,
-      created_by_user_id=test_user_id,
+    run_accession_id = await praxis_db_service.register_protocol_run(
+      protocol_definition_accession_id=proto_def.accession_id,
+      created_by_user_accession_id=test_user_accession_id,
       parameters=run_params,
     )
 
-    details = await praxis_db_service.get_protocol_run_details(run_id)
+    details = await praxis_db_service.get_protocol_run_details(run_accession_id)
 
     assert details is not None
-    assert details["protocol_run_id"] == run_id
-    assert details["protocol_definition_id"] == proto_def.id
+    assert details["protocol_run_accession_id"] == run_accession_id
+    assert details["protocol_definition_accession_id"] == proto_def.accession_id
     assert details["parameters"] == run_params
     assert details["status"] == ProtocolRunStatusEnum.PENDING.name
     assert details["user"] is not None
-    assert details["user"]["id"] == test_user_id
+    assert details["user"]["id"] == test_user_accession_id
     assert details["user"]["username"] == "details_user"
 
   async def test_get_protocol_run_details_not_exists(
@@ -268,30 +270,35 @@ class TestProtocolRunManagement:
     self, praxis_db_service: PraxisDBService, db_session: AsyncSession
   ):
     """Test updating the status of a protocol run."""
-    test_user_id = str(uuid.uuid4())
-    await create_test_user(db_session, user_id=test_user_id)
+    test_user_accession_id = str(uuid.uuid4())
+    await create_test_user(db_session, user_accession_id=test_user_accession_id)
     repo = await create_test_protocol_source_repo(db_session)
     proto_def = await create_test_protocol_definition(
-      db_session, source_repo_id=repo.id
+      db_session, source_repo_accession_id=repo.accession_id
     )
 
-    run_id = await praxis_db_service.register_protocol_run(
-      protocol_definition_id=proto_def.id, created_by_user_id=test_user_id
+    run_accession_id = await praxis_db_service.register_protocol_run(
+      protocol_definition_accession_id=proto_def.accession_id,
+      created_by_user_accession_id=test_user_accession_id,
     )
 
     await praxis_db_service.update_protocol_run_status(
-      run_id, ProtocolRunStatusEnum.RUNNING
+      run_accession_id, ProtocolRunStatusEnum.RUNNING
     )
 
-    details_after_update = await praxis_db_service.get_protocol_run_details(run_id)
+    details_after_update = await praxis_db_service.get_protocol_run_details(
+      run_accession_id
+    )
     assert details_after_update is not None
     assert details_after_update["status"] == ProtocolRunStatusEnum.RUNNING.name
     assert details_after_update["end_time"] is None  # Should not be set for RUNNING
 
     await praxis_db_service.update_protocol_run_status(
-      run_id, ProtocolRunStatusEnum.COMPLETED
+      run_accession_id, ProtocolRunStatusEnum.COMPLETED
     )
-    details_completed = await praxis_db_service.get_protocol_run_details(run_id)
+    details_completed = await praxis_db_service.get_protocol_run_details(
+      run_accession_id
+    )
     assert details_completed is not None
     assert details_completed["status"] == ProtocolRunStatusEnum.COMPLETED.name
     assert details_completed["end_time"] is not None  # Should be set for COMPLETED
@@ -300,35 +307,50 @@ class TestProtocolRunManagement:
     self, praxis_db_service: PraxisDBService, db_session: AsyncSession
   ):
     """Test listing protocol runs with various filters."""
-    user1_id = str(uuid.uuid4())
-    user2_id = str(uuid.uuid4())
-    await create_test_user(db_session, user_id=user1_id, username="user1_runs")
-    await create_test_user(db_session, user_id=user2_id, username="user2_runs")
+    user1accession_id = str(uuid.uuid4())
+    user2accession_id = str(uuid.uuid4())
+    await create_test_user(
+      db_session, user_accession_id=user1accession_id, username="user1_runs"
+    )
+    await create_test_user(
+      db_session, user_accession_id=user2accession_id, username="user2_runs"
+    )
 
     repo = await create_test_protocol_source_repo(db_session)
     proto_def1 = await create_test_protocol_definition(
-      db_session, source_repo_id=repo.id, name="ProtoDef1"
+      db_session, source_repo_accession_id=repo.accession_id, name="ProtoDef1"
     )
 
     # Run 1 (User1, Pending)
     await praxis_db_service.register_protocol_run(
-      proto_def1.id, user1_id, {"p": 1}, ProtocolRunStatusEnum.PENDING
+      proto_def1.accession_id,
+      user1accession_id,
+      {"p": 1},
+      ProtocolRunStatusEnum.PENDING,
     )
     # Run 2 (User1, Running)
     await praxis_db_service.register_protocol_run(
-      proto_def1.id, user1_id, {"p": 2}, ProtocolRunStatusEnum.RUNNING
+      proto_def1.accession_id,
+      user1accession_id,
+      {"p": 2},
+      ProtocolRunStatusEnum.RUNNING,
     )
     # Run 3 (User2, Completed)
     await praxis_db_service.register_protocol_run(
-      proto_def1.id, user2_id, {"p": 3}, ProtocolRunStatusEnum.COMPLETED
+      proto_def1.accession_id,
+      user2accession_id,
+      {"p": 3},
+      ProtocolRunStatusEnum.COMPLETED,
     )
 
     all_runs = await praxis_db_service.list_protocol_runs()
     assert len(all_runs) == 3
 
-    user1_runs = await praxis_db_service.list_protocol_runs(created_by_user_id=user1_id)
+    user1_runs = await praxis_db_service.list_protocol_runs(
+      created_by_user_accession_id=user1accession_id
+    )
     assert len(user1_runs) == 2
-    assert all(run["user"]["id"] == user1_id for run in user1_runs)
+    assert all(run["user"]["id"] == user1accession_id for run in user1_runs)
 
     pending_runs = await praxis_db_service.list_protocol_runs(
       status=ProtocolRunStatusEnum.PENDING
@@ -337,10 +359,11 @@ class TestProtocolRunManagement:
     assert pending_runs[0]["status"] == ProtocolRunStatusEnum.PENDING.name
 
     user2_completed_runs = await praxis_db_service.list_protocol_runs(
-      status=ProtocolRunStatusEnum.COMPLETED, created_by_user_id=user2_id
+      status=ProtocolRunStatusEnum.COMPLETED,
+      created_by_user_accession_id=user2accession_id,
     )
     assert len(user2_completed_runs) == 1
-    assert user2_completed_runs[0]["user"]["id"] == user2_id
+    assert user2_completed_runs[0]["user"]["id"] == user2accession_id
     assert user2_completed_runs[0]["status"] == ProtocolRunStatusEnum.COMPLETED.name
 
     empty_runs = await praxis_db_service.list_protocol_runs(
@@ -363,17 +386,19 @@ class TestAssetInstanceManagement:
     asset_name = "TestPlate001"
     properties = {"color": "blue", "well_count": 96}
 
-    asset_id = await praxis_db_service.add_asset_instance(
+    asset_accession_id = await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,
       name=lw_def_name,
       properties_json=properties,
       current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
-    assert isinstance(asset_id, int)
+    assert isinstance(asset_accession_id, int)
 
     # Verify in DB
     async with praxis_db_service.get_praxis_session() as verify_session:
-      stmt = select(ResourceInstanceOrm).where(ResourceInstanceOrm.id == asset_id)
+      stmt = select(ResourceInstanceOrm).where(
+        ResourceInstanceOrm.accession_id == asset_accession_id
+      )
       result = await verify_session.execute(stmt)
       asset_orm = result.scalar_one_or_none()
 
@@ -401,7 +426,7 @@ class TestAssetInstanceManagement:
 
     # Update
     updated_properties = {"updated": "info", "initial": "overwritten"}
-    updated_id = await praxis_db_service.add_asset_instance(
+    updated_accession_id = await praxis_db_service.add_asset_instance(
       user_assigned_name=asset_name,  # Same name
       name=lw_def_name,  # Can be same or different if type changes
       properties_json=updated_properties,
@@ -411,7 +436,7 @@ class TestAssetInstanceManagement:
 
     details = await praxis_db_service.get_asset_instance(asset_name)
     assert details is not None
-    assert details["id"] == updated_id  # Should be the same ID
+    assert details["id"] == updated_accession_id  # Should be the same ID
     assert details["properties_json"] == updated_properties
     assert details["current_status"] == ResourceInstanceStatusEnum.IN_USE.name
     assert details["lot_number"] == "LOT123"

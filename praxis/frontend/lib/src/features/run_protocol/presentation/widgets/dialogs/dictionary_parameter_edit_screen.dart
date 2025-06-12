@@ -527,7 +527,7 @@ class _DictionaryParameterEditScreenState
                       labelText: 'New Key Name',
                       hintText:
                           widget.parameterDefinition.config.examples ??
-                          'e.g., sample_id',
+                          'e.g., sample_accession_id',
                       border: const OutlineInputBorder(),
                       errorText: _addKeyValidationError,
                     ),

@@ -147,8 +147,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (event.userProfile != null) {
       // Only emit if the state is actually different or user ID changes
       if (state is! AuthAuthenticated ||
-          (state as AuthAuthenticated).userProfile.id !=
-              event.userProfile!.id) {
+          (state as AuthAuthenticated).userProfile.accession_id !=
+              event.userProfile!.accession_id) {
         emit(AuthAuthenticated(userProfile: event.userProfile!));
       }
     } else {

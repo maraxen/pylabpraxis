@@ -312,9 +312,9 @@ class ResourceInstanceOrm(Base):
     String, nullable=True, comment="If on a deck, the position name (e.g., A1, SLOT_7)"
   )
 
-  location_machine_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  location_machine_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("machines.id"),
+    ForeignKey("machines.accession_id"),
     nullable=True,
     comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
   )
@@ -336,9 +336,9 @@ class ResourceInstanceOrm(Base):
     Boolean, default=False, comment="e.g., built-in waste chute"
   )
 
-  current_protocol_run_guid: Mapped[Optional[uuid.UUID]] = mapped_column(
+  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("protocol_runs.run_guid", ondelete="SET NULL"),
+    ForeignKey("protocol_runs.run_accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
   )
@@ -370,9 +370,9 @@ class ResourceInstanceOrm(Base):
     Boolean, default=False, comment="True if this instance is a machine (e.g., shaker)"
   )
 
-  machine_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  machine_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("machines.id", ondelete="SET NULL"),
+    ForeignKey("machines.accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
     comment="If this resource instance is a machine, links to the MachineOrm entry",
@@ -381,15 +381,15 @@ class ResourceInstanceOrm(Base):
   machine_counterpart: Mapped[Optional["MachineOrm"]] = relationship(
     "MachineOrm",
     back_populates="resource_counterpart",
-    foreign_keys=[machine_counterpart_id],
+    foreign_keys=[machine_counterpart_accession_id],
     uselist=False,
     cascade="all, delete-orphan",
     comment="If this resource instance is a machine, links to the MachineOrm entry",
   )
 
-  deck_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  deck_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("deck_instances.id", ondelete="SET NULL"),
+    ForeignKey("deck_instances.accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
     comment="If this resource instance is a deck instanceuration item, links to the "
@@ -399,7 +399,7 @@ class ResourceInstanceOrm(Base):
   deck_counterpart: Mapped[Optional["DeckInstanceOrm"]] = relationship(
     "DeckInstanceOrm",
     back_populates="resource_instance",
-    foreign_keys=[deck_counterpart_id],
+    foreign_keys=[deck_counterpart_accession_id],
     uselist=False,
     cascade="all, delete-orphan",
     comment="If this resource instance is a deck instanceuration item, links to the "
@@ -409,6 +409,6 @@ class ResourceInstanceOrm(Base):
   def __repr__(self):
     """Return a string representation of the ResourceInstanceOrm object."""
     return (
-      f"<ResourceInstanceOrm(id={self.id}, name='{self.user_assigned_name}',"
+      f"<ResourceInstanceOrm(id={self.accession_id}, name='{self.user_assigned_name}',"
       f" type='{self.name}', is_machine={self.is_machine})>"
     )

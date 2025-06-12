@@ -39,8 +39,8 @@ class ProtocolStartRequest(BaseModel):
   parameters: Optional[Dict[str, Any]] = None
   assets: Optional[Dict[str, str]] = None
   deck_instance: Optional[str] = None
-  workcell_id: Optional[UUID7] = None
-  protocol_definition_id: Optional[UUID7] = None
+  workcell_accession_id: Optional[UUID7] = None
+  protocol_definition_accession_id: Optional[UUID7] = None
   config_data: Dict[str, Any]
   kwargs: Optional[Dict[str, Any]] = None
 
@@ -83,7 +83,7 @@ class ProtocolInfo(BaseModel):
   has_assets: Optional[bool] = False
   has_parameters: Optional[bool] = False
   version: Optional[str] = None
-  protocol_definition_id: Optional[UUID7] = None
+  protocol_definition_accession_id: Optional[UUID7] = None
 
 
 class UIHint(BaseModel):
@@ -210,7 +210,7 @@ class FunctionProtocolDefinitionModel(BaseModel):
   parameters: List[ParameterMetadataModel] = Field(default_factory=list)
   assets: List[AssetRequirementModel] = Field(default_factory=list)
 
-  db_id: Optional[UUID7] = None
+  db_accession_id: Optional[UUID7] = None
 
   class Config:
     """Pydantic configuration for FunctionProtocolDefinitionModel."""

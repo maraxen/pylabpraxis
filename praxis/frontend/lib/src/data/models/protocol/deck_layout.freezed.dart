@@ -35,7 +35,7 @@ $DeckLayoutCopyWith<DeckLayout> get copyWith => _$DeckLayoutCopyWithImpl<DeckLay
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.robot, robot)&&const DeepCollectionEquality().equals(other.positions, positions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckLayout&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.robot, robot)&&const DeepCollectionEquality().equals(other.positions, positions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -74,7 +74,7 @@ class _$DeckLayoutCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,Object? positions = freezed,}) {
   return _then(_self.copyWith(
-id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: freezed == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<DeckItem>?,schemaVersion: freezed == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
@@ -91,7 +91,7 @@ as List<String>?,
 @JsonSerializable()
 
 class _DeckLayout implements DeckLayout {
-  const _DeckLayout({this.id, this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot, final  List<String>? positions}): _items = items,_robot = robot,_positions = positions;
+  const _DeckLayout({this.accession_id, this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot, final  List<String>? positions}): _items = items,_robot = robot,_positions = positions;
   factory _DeckLayout.fromJson(Map<String, dynamic> json) => _$DeckLayoutFromJson(json);
 
 // Unique identifier for this deck layout configuration.
@@ -147,7 +147,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckLayout&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other._robot, _robot)&&const DeepCollectionEquality().equals(other._positions, _positions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckLayout&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other._robot, _robot)&&const DeepCollectionEquality().equals(other._positions, _positions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -186,7 +186,7 @@ class __$DeckLayoutCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? items = freezed,Object? schemaVersion = freezed,Object? robot = freezed,Object? positions = freezed,}) {
   return _then(_DeckLayout(
-id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: freezed == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,items: freezed == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<DeckItem>?,schemaVersion: freezed == schemaVersion ? _self.schemaVersion : schemaVersion // ignore: cast_nullable_to_non_nullable
@@ -206,7 +206,7 @@ mixin _$DeckItem {
 // Unique ID for this item on the deck.
  String get id;// The slot on the deck where this item is placed (e.g., "1", "A1").
  String get slot;// The ID of the resource definition being used.
-@JsonKey(name: 'resource_definition_id') String get resourceDefinitionId;// Optional: A specific resource definition, if not just referencing by ID.
+@JsonKey(name: 'resource_definition_accession_id') String get resourceDefinitionId;// Optional: A specific resource definition, if not just referencing by ID.
 // This could be embedded or fetched separately.
 @JsonKey(name: 'resource_definition') ResourceDefinition? get resourceDefinition;// Human-readable display name for this item in this context.
 @JsonKey(name: 'display_name') String? get displayName;
@@ -222,7 +222,7 @@ $DeckItemCopyWith<DeckItem> get copyWith => _$DeckItemCopyWithImpl<DeckItem>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeckItem&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -242,7 +242,7 @@ abstract mixin class $DeckItemCopyWith<$Res>  {
   factory $DeckItemCopyWith(DeckItem value, $Res Function(DeckItem) _then) = _$DeckItemCopyWithImpl;
 @useResult
 $Res call({
- String id, String slot,@JsonKey(name: 'resource_definition_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
+ String id, String slot,@JsonKey(name: 'resource_definition_accession_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
 });
 
 
@@ -261,7 +261,7 @@ class _$DeckItemCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? slot = null,Object? resourceDefinitionId = null,Object? resourceDefinition = freezed,Object? displayName = freezed,}) {
   return _then(_self.copyWith(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,slot: null == slot ? _self.slot : slot // ignore: cast_nullable_to_non_nullable
 as String,resourceDefinitionId: null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
 as String,resourceDefinition: freezed == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable
@@ -289,7 +289,7 @@ $ResourceDefinitionCopyWith<$Res>? get resourceDefinition {
 @JsonSerializable()
 
 class _DeckItem implements DeckItem {
-  const _DeckItem({required this.id, required this.slot, @JsonKey(name: 'resource_definition_id') required this.resourceDefinitionId, @JsonKey(name: 'resource_definition') this.resourceDefinition, @JsonKey(name: 'display_name') this.displayName});
+  const _DeckItem({required this.accession_id, required this.slot, @JsonKey(name: 'resource_definition_accession_id') required this.resourceDefinitionId, @JsonKey(name: 'resource_definition') this.resourceDefinition, @JsonKey(name: 'display_name') this.displayName});
   factory _DeckItem.fromJson(Map<String, dynamic> json) => _$DeckItemFromJson(json);
 
 // Unique ID for this item on the deck.
@@ -297,7 +297,7 @@ class _DeckItem implements DeckItem {
 // The slot on the deck where this item is placed (e.g., "1", "A1").
 @override final  String slot;
 // The ID of the resource definition being used.
-@override@JsonKey(name: 'resource_definition_id') final  String resourceDefinitionId;
+@override@JsonKey(name: 'resource_definition_accession_id') final  String resourceDefinitionId;
 // Optional: A specific resource definition, if not just referencing by ID.
 // This could be embedded or fetched separately.
 @override@JsonKey(name: 'resource_definition') final  ResourceDefinition? resourceDefinition;
@@ -317,7 +317,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckItem&&(identical(other.id, id) || other.id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeckItem&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.slot, slot) || other.slot == slot)&&(identical(other.resourceDefinitionId, resourceDefinitionId) || other.resourceDefinitionId == resourceDefinitionId)&&(identical(other.resourceDefinition, resourceDefinition) || other.resourceDefinition == resourceDefinition)&&(identical(other.displayName, displayName) || other.displayName == displayName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -337,7 +337,7 @@ abstract mixin class _$DeckItemCopyWith<$Res> implements $DeckItemCopyWith<$Res>
   factory _$DeckItemCopyWith(_DeckItem value, $Res Function(_DeckItem) _then) = __$DeckItemCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String slot,@JsonKey(name: 'resource_definition_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
+ String id, String slot,@JsonKey(name: 'resource_definition_accession_id') String resourceDefinitionId,@JsonKey(name: 'resource_definition') ResourceDefinition? resourceDefinition,@JsonKey(name: 'display_name') String? displayName
 });
 
 
@@ -356,7 +356,7 @@ class __$DeckItemCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? slot = null,Object? resourceDefinitionId = null,Object? resourceDefinition = freezed,Object? displayName = freezed,}) {
   return _then(_DeckItem(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,slot: null == slot ? _self.slot : slot // ignore: cast_nullable_to_non_nullable
 as String,resourceDefinitionId: null == resourceDefinitionId ? _self.resourceDefinitionId : resourceDefinitionId // ignore: cast_nullable_to_non_nullable
 as String,resourceDefinition: freezed == resourceDefinition ? _self.resourceDefinition : resourceDefinition // ignore: cast_nullable_to_non_nullable

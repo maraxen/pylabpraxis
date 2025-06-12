@@ -38,7 +38,7 @@ class AssetInstanceOrm(Base):
   asset_type: Mapped[str] = mapped_column(
     String, nullable=False, index=True
   )  # 'machine', 'resource', etc.
-  asset_id: Mapped[uuid.UUID] = mapped_column(
+  asset_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, index=True
   )  # FK to concrete asset table (interpreted based on asset_type)
 
@@ -80,10 +80,10 @@ class AssetInstanceOrm(Base):
   )
 
   __table_args__ = (
-    UniqueConstraint("asset_type", "asset_id", name="uq_asset_instance"),
+    UniqueConstraint("asset_type", "asset_accession_id", name="uq_asset_instance"),
   )
 
   def __repr__(self):
     """Render string representation of the AssetInstanceOrm."""
-    return f"<AssetInstanceOrm(id={self.id}, type='{self.asset_type}', \
-          asset_id={self.asset_id})>"
+    return f"<AssetInstanceOrm(id={self.accession_id}, type='{self.asset_type}', \
+          asset_accession_id={self.asset_accession_id})>"

@@ -65,7 +65,7 @@ async def _create_or_link_resource_counterpart_for_machine(
   db: AsyncSession,
   machine_orm: "MachineOrm",
   is_resource: bool,
-  resource_counterpart_id: Optional[uuid.UUID],
+  resource_counterpart_accession_id: Optional[uuid.UUID],
   resource_def_name: Optional[str] = None,  # Needed if creating a new resource
   resource_properties_json: Optional[
     Dict[str, Any]
@@ -82,7 +82,7 @@ async def _create_or_link_resource_counterpart_for_machine(
     db: The database session.
     machine_orm: The MachineOrm instance to link or create a resource for.
     is_resource: Whether the machine is a resource.
-    resource_counterpart_id: ID of an existing ResourceInstanceOrm to link, if any.
+    resource_counterpart_accession_id: ID of an existing ResourceInstanceOrm to link, if any.
     resource_def_name: Name of the resource definition to use if creating a new
     resource.
     resource_properties_json: Properties for the new ResourceInstanceOrm, if creating
@@ -103,50 +103,49 @@ async def _create_or_link_resource_counterpart_for_machine(
     ResourceInstanceStatusEnum,
   )  # Runtime import
 
-  log_prefix = (
-    f"Machine (ID: {machine_orm.id}, Name: '{machine_orm.user_friendly_name}'):"
-  )
+  log_prefix = f"Machine (ID: {machine_orm.accession_id}, Name: '{machine_orm.user_friendly_name}'):"
 
   current_resource_instance: Optional[ResourceInstanceOrm] = None
-  if machine_orm.resource_counterpart_id:
+  if machine_orm.resource_counterpart_accession_id:
     # Load the existing counterpart if it exists, to manage its flags
     current_resource_instance = await db.get(
       ResourceInstanceOrm,
-      machine_orm.resource_counterpart_id,
+      machine_orm.resource_counterpart_accession_id,
       options=[selectinload(ResourceInstanceOrm.machine_counterpart)],
     )
 
   if is_resource:
-    if resource_counterpart_id:
+    if resource_counterpart_accession_id:
       if (
         current_resource_instance
-        and current_resource_instance.id == resource_counterpart_id
+        and current_resource_instance.accession_id == resource_counterpart_accession_id
       ):
         logger.debug(
           "%s Already linked to ResourceInstance ID %d.",
           log_prefix,
-          resource_counterpart_id,
+          resource_counterpart_accession_id,
         )
         new_resource_instance = current_resource_instance
       else:
         new_resource_instance = await db.get(
-          ResourceInstanceOrm, resource_counterpart_id
+          ResourceInstanceOrm, resource_counterpart_accession_id
         )
         if not new_resource_instance:
           raise ValueError(
-            f"{log_prefix} ResourceInstanceOrm with ID {resource_counterpart_id} not \
+            f"{log_prefix} ResourceInstanceOrm with ID {resource_counterpart_accession_id} not \
               found for linking."
           )
         machine_orm.resource_counterpart = new_resource_instance
         logger.info(
           "%s Linked to existing ResourceInstance ID %d.",
           log_prefix,
-          new_resource_instance.id,
+          new_resource_instance.accession_id,
         )
 
       if (
         not new_resource_instance.is_machine
-        or new_resource_instance.machine_counterpart_id != machine_orm.id
+        or new_resource_instance.machine_counterpart_accession_id
+        != machine_orm.accession_id
       ):
         new_resource_instance.is_machine = True
         new_resource_instance.machine_counterpart = machine_orm
@@ -154,16 +153,17 @@ async def _create_or_link_resource_counterpart_for_machine(
         logger.debug(
           "%s Ensured reciprocal link from ResourceInstance ID %d.",
           log_prefix,
-          new_resource_instance.id,
+          new_resource_instance.accession_id,
         )
 
       if (
         current_resource_instance
-        and current_resource_instance.id != new_resource_instance.id
+        and current_resource_instance.accession_id != new_resource_instance.accession_id
       ):
         if (
           current_resource_instance.is_machine
-          and current_resource_instance.machine_counterpart_id == machine_orm.id
+          and current_resource_instance.machine_counterpart_accession_id
+          == machine_orm.accession_id
         ):
           current_resource_instance.is_machine = False
           current_resource_instance.machine_counterpart = None
@@ -171,7 +171,7 @@ async def _create_or_link_resource_counterpart_for_machine(
           logger.info(
             "%s Unlinked old ResourceInstance ID %d.",
             log_prefix,
-            current_resource_instance.id,
+            current_resource_instance.accession_id,
           )
 
       return new_resource_instance
@@ -179,19 +179,20 @@ async def _create_or_link_resource_counterpart_for_machine(
       if (
         current_resource_instance
         and current_resource_instance.is_machine
-        and current_resource_instance.machine_counterpart_id == machine_orm.id
+        and current_resource_instance.machine_counterpart_accession_id
+        == machine_orm.accession_id
       ):
         logger.debug(
           "%s Reusing existing linked ResourceInstance ID %d as no new ID provided.",
           log_prefix,
-          current_resource_instance.id,
+          current_resource_instance.accession_id,
         )
         return current_resource_instance
 
       if not resource_def_name:
         raise ValueError(
           f"{log_prefix} Cannot create new ResourceInstanceOrm: 'resource_def_name' is \
-            required when 'is_resource' is True and no 'resource_counterpart_id' is \
+            required when 'is_resource' is True and no 'resource_counterpart_accession_id' is \
               provided."
         )
 
@@ -200,7 +201,7 @@ async def _create_or_link_resource_counterpart_for_machine(
 
       new_resource_instance = ResourceInstanceOrm(
         user_assigned_name=f"Resource for {machine_orm.user_friendly_name} (Machine ID:\
-          {machine_orm.id})",
+          {machine_orm.accession_id})",
         name=definition.name,
         resource_definition=definition,
         is_machine=True,
@@ -215,19 +216,20 @@ async def _create_or_link_resource_counterpart_for_machine(
       logger.info(
         "%s Created and linked new ResourceInstanceOrm ID %d.",
         log_prefix,
-        new_resource_instance.id,
+        new_resource_instance.accession_id,
       )
       return new_resource_instance
   else:
     if current_resource_instance:
       if (
         current_resource_instance.is_machine
-        and current_resource_instance.machine_counterpart_id == machine_orm.id
+        and current_resource_instance.machine_counterpart_accession_id
+        == machine_orm.accession_id
       ):
         logger.info(
           "%s Unlinking ResourceInstance ID %d (no longer a resource).",
           log_prefix,
-          current_resource_instance.id,
+          current_resource_instance.accession_id,
         )
         current_resource_instance.is_machine = False
         current_resource_instance.machine_counterpart = None
@@ -245,7 +247,7 @@ async def _create_or_link_machine_counterpart_for_resource(
   db: AsyncSession,
   resource_instance_orm: "ResourceInstanceOrm",
   is_machine: bool,
-  machine_counterpart_id: Optional[uuid.UUID] = None,
+  machine_counterpart_accession_id: Optional[uuid.UUID] = None,
   machine_user_friendly_name: Optional[str] = None,
   machine_python_fqn: Optional[str] = None,
   machine_properties_json: Optional[Dict[str, Any]] = None,
@@ -260,7 +262,7 @@ async def _create_or_link_machine_counterpart_for_resource(
     db: The database session.
     resource_instance_orm: The ResourceInstanceOrm to link or create a machine for.
     is_machine: Whether the resource is a machine.
-    machine_counterpart_id: ID of an existing MachineOrm to link, if any.
+    machine_counterpart_accession_id: ID of an existing MachineOrm to link, if any.
     machine_user_friendly_name: User-friendly name for the new MachineOrm, if creating
     one.
     machine_python_fqn: Python FQN for the new MachineOrm, if creating one.
@@ -277,42 +279,49 @@ async def _create_or_link_machine_counterpart_for_resource(
   """
   from praxis.backend.models import MachineOrm, MachineStatusEnum
 
-  log_prefix = f"ResourceInstance (ID: {resource_instance_orm.id}, Name: '\
+  log_prefix = f"ResourceInstance (ID: {resource_instance_orm.accession_id}, Name: '\
     {resource_instance_orm.user_assigned_name}'):"
 
   current_machine_counterpart: Optional[MachineOrm] = None
-  if resource_instance_orm.machine_counterpart_id:
+  if resource_instance_orm.machine_counterpart_accession_id:
     current_machine_counterpart = await db.get(
       MachineOrm,
-      resource_instance_orm.machine_counterpart_id,
+      resource_instance_orm.machine_counterpart_accession_id,
       options=[selectinload(MachineOrm.resource_counterpart)],
     )
 
   if is_machine:
-    if machine_counterpart_id:
+    if machine_counterpart_accession_id:
       if (
         current_machine_counterpart
-        and current_machine_counterpart.id == machine_counterpart_id
+        and current_machine_counterpart.accession_id == machine_counterpart_accession_id
       ):
         logger.debug(
-          "%s Already linked to Machine ID %d.", log_prefix, machine_counterpart_id
+          "%s Already linked to Machine ID %d.",
+          log_prefix,
+          machine_counterpart_accession_id,
         )
         new_machine_counterpart = current_machine_counterpart
       else:
-        new_machine_counterpart = await db.get(MachineOrm, machine_counterpart_id)
+        new_machine_counterpart = await db.get(
+          MachineOrm, machine_counterpart_accession_id
+        )
         if not new_machine_counterpart:
           raise ValueError(
-            f"{log_prefix} MachineOrm with ID {machine_counterpart_id} not found for \
+            f"{log_prefix} MachineOrm with ID {machine_counterpart_accession_id} not found for \
               linking."
           )
         resource_instance_orm.machine_counterpart = new_machine_counterpart
         logger.info(
-          "%s Linked to existing Machine ID %d.", log_prefix, new_machine_counterpart.id
+          "%s Linked to existing Machine ID %d.",
+          log_prefix,
+          new_machine_counterpart.accession_id,
         )
 
       if (
         not new_machine_counterpart.is_resource
-        or new_machine_counterpart.resource_counterpart_id != resource_instance_orm.id
+        or new_machine_counterpart.resource_counterpart_accession_id
+        != resource_instance_orm.accession_id
       ):
         new_machine_counterpart.is_resource = True
         new_machine_counterpart.resource_counterpart = resource_instance_orm
@@ -320,23 +329,26 @@ async def _create_or_link_machine_counterpart_for_resource(
         logger.debug(
           "%s Ensured reciprocal link from Machine ID %d.",
           log_prefix,
-          new_machine_counterpart.id,
+          new_machine_counterpart.accession_id,
         )
 
       if (
         current_machine_counterpart
-        and current_machine_counterpart.id != new_machine_counterpart.id
+        and current_machine_counterpart.accession_id
+        != new_machine_counterpart.accession_id
       ):
         if (
           current_machine_counterpart.is_resource
-          and current_machine_counterpart.resource_counterpart_id
-          == resource_instance_orm.id
+          and current_machine_counterpart.resource_counterpart_accession_id
+          == resource_instance_orm.accession_id
         ):
           current_machine_counterpart.is_resource = False
           current_machine_counterpart.resource_counterpart = None
           db.add(current_machine_counterpart)
           logger.info(
-            "%s Unlinked old Machine ID %d.", log_prefix, current_machine_counterpart.id
+            "%s Unlinked old Machine ID %d.",
+            log_prefix,
+            current_machine_counterpart.accession_id,
           )
 
       return new_machine_counterpart
@@ -344,13 +356,13 @@ async def _create_or_link_machine_counterpart_for_resource(
       if (
         current_machine_counterpart
         and current_machine_counterpart.is_resource
-        and current_machine_counterpart.resource_counterpart_id
-        == resource_instance_orm.id
+        and current_machine_counterpart.resource_counterpart_accession_id
+        == resource_instance_orm.accession_id
       ):
         logger.debug(
           "%s Reusing existing linked Machine ID %d as no new ID provided.",
           log_prefix,
-          current_machine_counterpart.id,
+          current_machine_counterpart.accession_id,
         )
         return current_machine_counterpart
 
@@ -358,13 +370,13 @@ async def _create_or_link_machine_counterpart_for_resource(
         raise ValueError(
           f"{log_prefix} Cannot create new MachineOrm: 'machine_user_friendly_name' \
             and 'machine_python_fqn' are required when 'is_machine' is True and no \
-              'machine_counterpart_id' is provided."
+              'machine_counterpart_accession_id' is provided."
         )
 
       logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
       new_machine_counterpart = MachineOrm(
         user_friendly_name=f"Machine for {resource_instance_orm.user_assigned_name} \
-          (Resource ID: {resource_instance_orm.id})",
+          (Resource ID: {resource_instance_orm.accession_id})",
         python_fqn=machine_python_fqn,
         is_resource=True,
         resource_counterpart=resource_instance_orm,
@@ -377,20 +389,20 @@ async def _create_or_link_machine_counterpart_for_resource(
       logger.info(
         "%s Created and linked new MachineOrm ID %d.",
         log_prefix,
-        new_machine_counterpart.id,
+        new_machine_counterpart.accession_id,
       )
       return new_machine_counterpart
   else:
     if current_machine_counterpart:
       if (
         current_machine_counterpart.is_resource
-        and current_machine_counterpart.resource_counterpart_id
-        == resource_instance_orm.id
+        and current_machine_counterpart.resource_counterpart_accession_id
+        == resource_instance_orm.accession_id
       ):
         logger.info(
           "%s Unlinking Machine ID %d (no longer a machine).",
           log_prefix,
-          current_machine_counterpart.id,
+          current_machine_counterpart.accession_id,
         )
         current_machine_counterpart.is_resource = False
         current_machine_counterpart.resource_counterpart = None

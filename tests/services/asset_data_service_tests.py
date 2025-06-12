@@ -42,7 +42,7 @@ class TestResourceInstanceInventory:
         "praxis_inventory_schema_version": "1.0",
         "reagents": [
           {
-            "reagent_id": "R123",
+            "reagent_accession_id": "R123",
             "initial_quantity": {"value": 100, "unit": "mL"},
             "current_quantity": {"value": 90, "unit": "mL"},
           }
@@ -99,7 +99,7 @@ class TestResourceInstanceInventory:
     self, mock_flag_modified, mock_db_session, caplog
   ):
     mock_instance = MagicMock(spec=ResourceInstanceOrm)
-    mock_instance.id = 1
+    mock_instance.accession_id = 1
     mock_instance.properties_json = {
       "existing_key": "old_value",
       "consumable_state": "used",
@@ -112,7 +112,7 @@ class TestResourceInstanceInventory:
       properties_update = {
         "reagents": [
           {
-            "reagent_id": "R456",
+            "reagent_accession_id": "R456",
             "initial_quantity": {"value": 50, "unit": "uL"},
             "current_quantity": {"value": 20, "unit": "uL"},
           }
@@ -124,7 +124,7 @@ class TestResourceInstanceInventory:
       updated_instance = (
         asset_data_service.update_resource_instance_location_and_status(
           db=mock_db_session,
-          resource_instance_id=1,
+          resource_instance_accession_id=1,
           properties_json_update=properties_update,
         )
       )
@@ -137,7 +137,7 @@ class TestResourceInstanceInventory:
         "existing_key": "old_value",  # Original key should remain
         "reagents": [
           {
-            "reagent_id": "R456",
+            "reagent_accession_id": "R456",
             "initial_quantity": {"value": 50, "unit": "uL"},
             "current_quantity": {"value": 20, "unit": "uL"},
           }

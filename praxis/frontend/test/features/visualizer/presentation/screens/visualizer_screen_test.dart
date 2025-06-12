@@ -131,7 +131,7 @@ void main() {
     (WidgetTester tester) async {
       final updatedData = {
         'update': 'some_realtime_data',
-        'deckId': testDeckLayout.id,
+        'deckId': testDeckLayout.accession_id,
       };
       await tester.pumpWidget(
         createTestableVisualizerScreenWidget(

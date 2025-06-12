@@ -13,7 +13,7 @@ from uuid_utils import UUID
 T = TypeVar("T")
 
 
-async def get_id_from_accession(
+async def get_accession_id_from_accession(
   *,
   accession: str | UUID,
   db: AsyncSession,

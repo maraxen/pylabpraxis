@@ -155,8 +155,8 @@ async def discovery_service(
 def create_mock_protocol_orm_obj(
   id_val,
   pydantic_def: FunctionProtocolDefinitionModel,
-  source_repo_id=None,
-  fs_source_id=None,
+  source_repo_accession_id=None,
+  fs_source_accession_id=None,
 ):
   return MagicMock(
     spec=FunctionProtocolDefinitionOrm,
@@ -168,8 +168,8 @@ def create_mock_protocol_orm_obj(
     description=pydantic_def.description,
     is_top_level=pydantic_def.is_top_level,
     source_file_path=pydantic_def.source_file_path,
-    source_repository_id=source_repo_id,
-    file_system_source_id=fs_source_id,
+    source_repository_accession_id=source_repo_accession_id,
+    file_system_source_accession_id=fs_source_accession_id,
     commit_hash=pydantic_def.commit_hash,
     # parameters=[ParameterDefinitionOrm(...)], # If deep mocking is needed
     # assets=[AssetDefinitionOrm(...)]
@@ -272,7 +272,7 @@ class TestProtocolDiscoveryService:
         definition=protocol_def_1.model_copy(
           update={
             "commit_hash": "abcdef123",
-            "source_repository_name": str(repo_orm.id),
+            "source_repository_name": str(repo_orm.accession_id),
           }
         ),
       ),
@@ -286,26 +286,26 @@ class TestProtocolDiscoveryService:
         definition=protocol_def_2.model_copy(
           update={
             "commit_hash": "abcdef123",
-            "source_repository_name": str(repo_orm.id),
+            "source_repository_name": str(repo_orm.accession_id),
           }
         ),
       ),
     ]
 
-    # Simulate that _register_discovered_protocols sets the db_id on the returned DiscoveredFunctionProtocol objects
+    # Simulate that _register_discovered_protocols sets the db_accession_id on the returned DiscoveredFunctionProtocol objects
     # and returns the ORM objects (or their IDs) as part of its result.
-    # For this test, we care about the DiscoveredFunctionProtocol having db_id.
+    # For this test, we care about the DiscoveredFunctionProtocol having db_accession_id.
 
     # Mock return value for _register_discovered_protocols
-    # It should return (new_defs_with_db_id, updated_defs_with_db_id, failed_defs)
-    # Let's assume both are new and get db_ids 1 and 2
+    # It should return (new_defs_with_db_accession_id, updated_defs_with_db_accession_id, failed_defs)
+    # Let's assume both are new and get db_accession_ids 1 and 2
     registered_proto_1 = mock_discovered_protos_list[0].model_copy()
-    registered_proto_1.db_id = 1
-    registered_proto_1.definition.db_id = 1
+    registered_proto_1.db_accession_id = 1
+    registered_proto_1.definition.db_accession_id = 1
 
     registered_proto_2 = mock_discovered_protos_list[1].model_copy()
-    registered_proto_2.db_id = 2
-    registered_proto_2.definition.db_id = 2
+    registered_proto_2.db_accession_id = 2
+    registered_proto_2.definition.db_accession_id = 2
 
     discovery_service._sync_git_repository = AsyncMock(
       return_value=repo_orm.local_checkout_path
@@ -315,7 +315,7 @@ class TestProtocolDiscoveryService:
     )
     # _register_discovered_protocols is what eventually calls the DB upsert logic.
     # Its return value should be a tuple: (new_defs, updated_defs, failed_defs)
-    # where new_defs and updated_defs are lists of DiscoveredFunctionProtocol with db_id set.
+    # where new_defs and updated_defs are lists of DiscoveredFunctionProtocol with db_accession_id set.
     discovery_service._register_discovered_protocols = AsyncMock(
       return_value=([registered_proto_1, registered_proto_2], [], [])
     )
@@ -324,7 +324,9 @@ class TestProtocolDiscoveryService:
       new_defs,
       updated_defs,
       failed_defs,
-    ) = await discovery_service.discover_and_register_protocols_from_repo(repo_orm.id)
+    ) = await discovery_service.discover_and_register_protocols_from_repo(
+      repo_orm.accession_id
+    )
 
     assert len(new_defs) == 2
     assert len(updated_defs) == 0
@@ -338,8 +340,8 @@ class TestProtocolDiscoveryService:
     if found_protocol_1:
       assert found_protocol_1.definition.name == "MyDecoratedProtocol"
       assert found_protocol_1.definition.version == "1.0.0"
-      assert found_protocol_1.db_id == 1
-      assert found_protocol_1.definition.db_id == 1
+      assert found_protocol_1.db_accession_id == 1
+      assert found_protocol_1.definition.db_accession_id == 1
       assert (
         len(found_protocol_1.definition.parameters) == 4
       )  # state, deck, samples, comment
@@ -352,7 +354,9 @@ class TestProtocolDiscoveryService:
         for p in found_protocol_1.definition.parameters
       )
       assert found_protocol_1.source_info.commit_hash == "abcdef123"
-      assert found_protocol_1.definition.source_repository_name == str(repo_orm.id)
+      assert found_protocol_1.definition.source_repository_name == str(
+        repo_orm.accession_id
+      )
 
     # Protocol 2: AnotherProtocol
     found_protocol_2 = next(
@@ -362,12 +366,14 @@ class TestProtocolDiscoveryService:
     if found_protocol_2:
       assert found_protocol_2.definition.name == "AnotherProtocol"
       assert found_protocol_2.definition.version == "0.1.0"
-      assert found_protocol_2.db_id == 2
-      assert found_protocol_2.definition.db_id == 2
+      assert found_protocol_2.db_accession_id == 2
+      assert found_protocol_2.definition.db_accession_id == 2
       assert len(found_protocol_2.definition.parameters) == 1
       assert len(found_protocol_2.definition.assets) == 1
       assert found_protocol_2.definition.assets[0].name == "tip_box"
-      assert found_protocol_2.definition.source_repository_name == str(repo_orm.id)
+      assert found_protocol_2.definition.source_repository_name == str(
+        repo_orm.accession_id
+      )
 
     discovery_service._sync_git_repository.assert_called_once_with(repo_orm)
     discovery_service._scan_directory_for_protocols.assert_called_once_with(
@@ -492,7 +498,7 @@ class TestProtocolDiscoveryService:
           path=f"temp_protocols_test_pkg/{module_name}.py",
         ),
         definition=protocol_def_1.model_copy(
-          update={"file_system_source_name": str(fs_source_orm.id)}
+          update={"file_system_source_name": str(fs_source_orm.accession_id)}
         ),
       ),
       DiscoveredFunctionProtocol(
@@ -501,7 +507,7 @@ class TestProtocolDiscoveryService:
           path=f"temp_protocols_test_pkg/{module_name}.py",
         ),
         definition=protocol_def_2.model_copy(
-          update={"file_system_source_name": str(fs_source_orm.id)}
+          update={"file_system_source_name": str(fs_source_orm.accession_id)}
         ),
       ),
     ]
@@ -511,14 +517,14 @@ class TestProtocolDiscoveryService:
       return_value=mock_scanned_protos
     )
 
-    # Mock _register_discovered_protocols to simulate DB interaction and db_id assignment
+    # Mock _register_discovered_protocols to simulate DB interaction and db_accession_id assignment
     registered_proto_1 = mock_scanned_protos[0].model_copy()
-    registered_proto_1.db_id = 3
-    registered_proto_1.definition.db_id = 3
+    registered_proto_1.db_accession_id = 3
+    registered_proto_1.definition.db_accession_id = 3
 
     registered_proto_2 = mock_scanned_protos[1].model_copy()
-    registered_proto_2.db_id = 4
-    registered_proto_2.definition.db_id = 4
+    registered_proto_2.db_accession_id = 4
+    registered_proto_2.definition.db_accession_id = 4
 
     discovery_service._register_discovered_protocols = AsyncMock(
       return_value=([registered_proto_1, registered_proto_2], [], [])
@@ -531,7 +537,7 @@ class TestProtocolDiscoveryService:
       updated_defs,
       failed_defs,
     ) = await discovery_service.discover_and_register_protocols_from_fs(
-      fs_source_orm.id
+      fs_source_orm.accession_id
     )
 
     # 5. Assert
@@ -545,14 +551,14 @@ class TestProtocolDiscoveryService:
     assert found_protocol_1 is not None
     if found_protocol_1:
       assert found_protocol_1.definition.name == "MyDecoratedProtocol"
-      assert found_protocol_1.db_id == 3
-      assert found_protocol_1.definition.db_id == 3
+      assert found_protocol_1.db_accession_id == 3
+      assert found_protocol_1.definition.db_accession_id == 3
       assert (
         found_protocol_1.definition.module_name
         == f"temp_protocols_test_pkg.{module_name}"
       )
       assert found_protocol_1.definition.file_system_source_name == str(
-        fs_source_orm.id
+        fs_source_orm.accession_id
       )
 
     found_protocol_2 = next(
@@ -561,10 +567,10 @@ class TestProtocolDiscoveryService:
     assert found_protocol_2 is not None
     if found_protocol_2:
       assert found_protocol_2.definition.name == "AnotherProtocol"
-      assert found_protocol_2.db_id == 4
-      assert found_protocol_2.definition.db_id == 4
+      assert found_protocol_2.db_accession_id == 4
+      assert found_protocol_2.definition.db_accession_id == 4
       assert found_protocol_2.definition.file_system_source_name == str(
-        fs_source_orm.id
+        fs_source_orm.accession_id
       )
 
     # Verify mock calls

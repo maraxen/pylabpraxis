@@ -440,18 +440,18 @@ void main() {
           // Simulate Dio throwing an error when a non-existent endpoint is called
           when(
             mockDio.put(
-              '/api/assets/resource_definitions/some_id',
+              '/api/assets/resource_definitions/some_accession_id',
               data: anyNamed('data'),
             ),
           ).thenThrow(
             createDioError(
               statusCode: 501,
-              path: '/api/assets/resource_definitions/some_id',
+              path: '/api/assets/resource_definitions/some_accession_id',
             ),
           );
           expect(
             () => assetApiService.updateResourceDefinition(
-              "some_id",
+              "some_accession_id",
               resourceDefOrm,
             ),
             throwsA(isA<ApiException>()),
@@ -465,15 +465,17 @@ void main() {
         'throws ApiException as it is a placeholder for non-existent endpoint',
         () async {
           when(
-            mockDio.delete('/api/assets/resource_definitions/some_id'),
+            mockDio.delete(
+              '/api/assets/resource_definitions/some_accession_id',
+            ),
           ).thenThrow(
             createDioError(
               statusCode: 501,
-              path: '/api/assets/resource_definitions/some_id',
+              path: '/api/assets/resource_definitions/some_accession_id',
             ),
           );
           expect(
-            () => assetApiService.deleteResourceDefinition("some_id"),
+            () => assetApiService.deleteResourceDefinition("some_accession_id"),
             throwsA(isA<ApiException>()),
           );
         },
@@ -540,7 +542,7 @@ void main() {
         'returns ResourceInstanceOrm (from inventory data) on success',
         () async {
           final instanceId =
-              resourceInstanceOrm.id!
+              resourceInstanceOrm.accession_id!
                   .toString(); // Assuming ID is non-null for a created instance
           when(
             mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
@@ -560,7 +562,7 @@ void main() {
 
           expect(result, isA<ResourceInstanceOrm>());
           expect(
-            result.id.toString(),
+            result.accession_id.toString(),
             instanceId,
           ); // Compare string IDs if one is string
           expect(
@@ -577,7 +579,7 @@ void main() {
       test(
         'throws ApiException on API error for getResourceInstanceById',
         () async {
-          final instanceId = resourceInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.accession_id!.toString();
           when(
             mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
           ).thenThrow(
@@ -598,7 +600,7 @@ void main() {
       test(
         'returns ResourceInstanceOrm with updated inventory on success',
         () async {
-          final instanceId = resourceInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.accession_id!.toString();
           final updatedInventoryJson = {
             ...inventoryDataJson,
             'consumable_state': 'used',
@@ -635,7 +637,7 @@ void main() {
           );
 
           expect(result, isA<ResourceInstanceOrm>());
-          expect(result.id.toString(), instanceId);
+          expect(result.accession_id.toString(), instanceId);
           expect(
             result.inventoryData?.consumableState,
             updatedInventoryJson['consumable_state'],
@@ -672,7 +674,7 @@ void main() {
       test(
         'throws ApiException on API error for updateResourceInstance',
         () async {
-          final instanceId = resourceInstanceOrm.id!.toString();
+          final instanceId = resourceInstanceOrm.accession_id!.toString();
           final updatableInstance =
               resourceInstanceOrm.inventoryData == null
                   ? ResourceInstanceOrm.fromJson({
@@ -705,7 +707,7 @@ void main() {
 
     group('deleteResourceInstance (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final instanceId = resourceInstanceOrm.id!.toString();
+        final instanceId = resourceInstanceOrm.accession_id!.toString();
         when(
           mockDio.delete('/api/assets/resource_instances/$instanceId'),
         ).thenThrow(
@@ -725,16 +727,16 @@ void main() {
   group('DeckLayoutOrm - CRUD (placeholders)', () {
     final slotItemJson = {
       'id': 1,
-      'deck_instance_id': 1,
+      'deck_instance_accession_id': 1,
       'slot_name': 'A1',
-      'resource_instance_id': 1,
+      'resource_instance_accession_id': 1,
     };
     final deckLayoutJson = {
       'id': 1, // Ensure ID is int
       'layout_name': 'Test Layout 1',
-      'deck_machine_id': 1, // Ensure this is int
+      'deck_machine_accession_id': 1, // Ensure this is int
       'slot_items': [slotItemJson],
-      'workspace_id': 'ws1',
+      'workspace_accession_id': 'ws1',
     };
     final deckLayoutOrm = DeckLayoutOrm.fromJson(deckLayoutJson);
 
@@ -766,7 +768,7 @@ void main() {
 
     group('getDeckLayoutById (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final layoutId = deckLayoutOrm.id!.toString();
+        final layoutId = deckLayoutOrm.accession_id!.toString();
         when(mockDio.get('/api/assets/deck_layouts/$layoutId')).thenThrow(
           createDioError(
             statusCode: 501,
@@ -782,7 +784,7 @@ void main() {
 
     group('updateDeckLayout (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final layoutId = deckLayoutOrm.id!.toString();
+        final layoutId = deckLayoutOrm.accession_id!.toString();
         when(
           mockDio.put(
             '/api/assets/deck_layouts/$layoutId',
@@ -803,7 +805,7 @@ void main() {
 
     group('deleteDeckLayout (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final layoutId = deckLayoutOrm.id!.toString();
+        final layoutId = deckLayoutOrm.accession_id!.toString();
         when(mockDio.delete('/api/assets/deck_layouts/$layoutId')).thenThrow(
           createDioError(
             statusCode: 501,

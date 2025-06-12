@@ -36,13 +36,13 @@ def test_deck_info_model():
         "current_status": "ONLINE",
     }
     deck_info = DeckInfo.model_validate(data)
-    assert deck_info.id == data["id"]
+    assert deck_info.accession_id == data["id"]
     assert deck_info.user_friendly_name == data["user_friendly_name"]
     assert deck_info.model_dump()["current_status"] == "ONLINE"
 
 def test_resource_info_model():
     data = {
-        "resource_instance_id": 10,
+        "resource_instance_accession_id": 10,
         "user_assigned_name": "Reagent Plate 1",
         "name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate",
@@ -55,12 +55,12 @@ def test_resource_info_model():
         "model": "Corning-1234",
     }
     resource_info = ResourceInfo.model_validate(data)
-    assert resource_info.resource_instance_id == data["resource_instance_id"]
+    assert resource_info.resource_instance_accession_id == data["resource_instance_accession_id"]
     assert resource_info.model_dump()["category"] == "PLATE"
 
 def test_slot_info_model():
     resource_data = {
-        "resource_instance_id": 10, "user_assigned_name": "Reagent Plate 1",
+        "resource_instance_accession_id": 10, "user_assigned_name": "Reagent Plate 1",
         "name": "corning_96_wellplate_360ul_flat",
         "python_fqn": "pylabrobot.resources.Plate", "category": "PLATE"
     }
@@ -74,13 +74,13 @@ def test_slot_info_model():
     slot_info = SlotInfo.model_validate(data)
     assert slot_info.name == data["name"]
     assert slot_info.resource is not None
-    assert slot_info.resource.resource_instance_id == resource_data["resource_instance_id"]
+    assert slot_info.resource.resource_instance_accession_id == resource_data["resource_instance_accession_id"]
     assert slot_info.model_dump()["resource"]["user_assigned_name"] == "Reagent Plate 1"
 
 def test_deck_state_response_model():
     slot_data = {"name": "A1", "resource": None}
     data = {
-        "deck_id": 1,
+        "deck_accession_id": 1,
         "user_friendly_name": "Main Deck",
         "python_fqn": "pylabrobot.resources.Deck",
         "size_x_mm": 500.0,
@@ -89,26 +89,26 @@ def test_deck_state_response_model():
         "slots": [slot_data],
     }
     deck_state = DeckStateResponse.model_validate(data)
-    assert deck_state.deck_id == data["deck_id"]
+    assert deck_state.deck_accession_id == data["deck_accession_id"]
     assert len(deck_state.slots) == 1
     assert deck_state.slots[0].name == slot_data["name"]
     assert deck_state.model_dump()["slots"][0]["resource"] is None
 
 def test_deck_update_message_model():
     resource_data = {
-        "resource_instance_id": 10, "user_assigned_name": "Tip Box",
+        "resource_instance_accession_id": 10, "user_assigned_name": "Tip Box",
         "name": "opentrons_96_tiprack_300ul",
         "python_fqn": "pylabrobot.resources.TipRack", "category": "TIP_RACK"
     }
     data = {
-        "deck_id": 1,
+        "deck_accession_id": 1,
         "update_type": "resource_added",
         "slot_name": "B2",
         "resource_info": resource_data,
         # Timestamp will be auto-generated if not provided
     }
     deck_update = DeckUpdateMessage.model_validate(data)
-    assert deck_update.deck_id == data["deck_id"]
+    assert deck_update.deck_accession_id == data["deck_accession_id"]
     assert deck_update.update_type == data["update_type"]
     assert deck_update.resource_info is not None
     assert deck_update.resource_info.category == "TIP_RACK" # Check enum-like string
@@ -210,14 +210,14 @@ def test_list_available_decks_with_data(client: TestClient, db_session: Session,
     assert deck_info["current_status"] == "ONLINE" # Enum .name or .value
 
 def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session):
-    """Test GET /api/workcell/decks/{deck_id}/state for a non-existent deck."""
+    """Test GET /api/workcell/decks/{deck_accession_id}/state for a non-existent deck."""
     response = client.get(f"/api/workcell/decks/{INVALID_DEVICE_ID}/state")
     assert response.status_code == 404 # Assuming WorkcellRuntimeError leads to 404 for not found
     assert "not found" in response.json()["detail"].lower()
 
 
 def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Session, setup_basic_machines: None):
-    """Test GET /api/workcell/decks/{deck_id}/state for a machine that is not a DECK."""
+    """Test GET /api/workcell/decks/{deck_accession_id}/state for a machine that is not a DECK."""
     response = client.get(f"/api/workcell/decks/{VALID_NON_DECK_ID}/state")
     assert response.status_code == 404 # As per current error handling
     assert "not categorized as a deck" in response.json()["detail"].lower()
@@ -250,8 +250,8 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     plate_instance = ResourceInstanceOrm(
         id=1,
         user_assigned_name="PlateOnDeck",
-        resource_definition_id=plate_def.id,
-        location_machine_id=VALID_DECK_ID, # Place on Test Deck 1
+        resource_definition_accession_id=plate_def.accession_id,
+        location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="A1",
         current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
         properties_json={"sample_type": "plasma"}
@@ -259,8 +259,8 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     tip_rack_instance = ResourceInstanceOrm(
         id=2,
         user_assigned_name="TipsOnDeck",
-        resource_definition_id=tip_rack_def.id,
-        location_machine_id=VALID_DECK_ID, # Place on Test Deck 1
+        resource_definition_accession_id=tip_rack_def.accession_id,
+        location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="B2",
         current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
     )
@@ -268,8 +268,8 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     other_plate_instance = ResourceInstanceOrm(
         id=3,
         user_assigned_name="PlateInStorage",
-        resource_definition_id=plate_def.id,
-        location_machine_id=None, # Not on any deck
+        resource_definition_accession_id=plate_def.accession_id,
+        location_machine_accession_id=None, # Not on any deck
         current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
@@ -278,12 +278,12 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
 
 
 def test_get_specific_deck_state_with_resource(client: TestClient, db_session: Session, setup_deck_with_resource: None):
-    """Test GET /api/workcell/decks/{deck_id}/state for a deck with resource."""
+    """Test GET /api/workcell/decks/{deck_accession_id}/state for a deck with resource."""
     response = client.get(f"/api/workcell/decks/{VALID_DECK_ID}/state")
     assert response.status_code == 200
     data = response.json()
 
-    assert data["deck_id"] == VALID_DECK_ID
+    assert data["deck_accession_id"] == VALID_DECK_ID
     assert data["user_friendly_name"] == "Test Deck 1"
     assert data["python_fqn"] == "pylabrobot.resources.Deck"
     # Placeholder dimensions might be None or specific values if set in WorkcellRuntime
@@ -332,7 +332,7 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
         message_str = websocket.receive_text()
         message_data = json.loads(message_str)
 
-        assert message_data["deck_id"] == VALID_DECK_ID
+        assert message_data["deck_accession_id"] == VALID_DECK_ID
         # The test_broadcast endpoint sends a DeckUpdateMessage.
         # The message_type in the POST request to test_broadcast is used to construct this.
         assert message_data["update_type"] == test_message_payload["message_type"]
@@ -346,7 +346,7 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
 
 
 def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, db_session: Session):
-    """Test WebSocket connection attempt to an invalid deck_id."""
+    """Test WebSocket connection attempt to an invalid deck_accession_id."""
     with pytest.raises(Exception) as exc_info: # Catching generic Exception as TestClient might wrap WebSocketDisconnect
         with client.websocket_connect(f"/ws/decks/{INVALID_DEVICE_ID}/updates") as websocket:
             # We expect this connection to fail and be closed by the server.
@@ -402,15 +402,15 @@ Here's a summary of what's been done in this step:
     *   **`GET /api/workcell/decks`:**
         *   `test_list_available_decks_empty`: Tests the endpoint when no decks are in the DB.
         *   `test_list_available_decks_with_data`: Tests with both a DECK and a non-DECK machine, asserting only the DECK is returned and its data is correct.
-    *   **`GET /api/workcell/decks/{deck_id}/state`:**
+    *   **`GET /api/workcell/decks/{deck_accession_id}/state`:**
         *   `test_get_specific_deck_state_not_found`: Tests with an ID that doesn't exist.
         *   `test_get_specific_deck_state_not_a_deck`: Tests with an ID of a machine that isn't a DECK.
         *   `test_get_specific_deck_state_with_resource`: Tests with a valid DECK ID that has resource placed on it (using `setup_deck_with_resource` fixture). It verifies the returned deck structure, slot information, and details of the resource on the slots.
 
 5.  **WebSocket Endpoint Tests (Initial Structure):**
-    *   `test_websocket_deck_updates_connection_and_broadcast`: Tests successful WebSocket connection, then uses the `POST /ws/test_broadcast/{deck_id}` endpoint to send a message, and verifies the WebSocket client receives and can parse this message.
-    *   `test_websocket_deck_updates_connection_to_invalid_deck`: Tests attempting to connect to a WebSocket for a `deck_id` that doesn't exist in the database. It asserts that an exception occurs, indicating the connection was refused or closed.
-    *   `test_websocket_connection_to_non_deck_machine`: Tests attempting to connect to a WebSocket for a `deck_id` that corresponds to a machine not categorized as a DECK. It also asserts that an exception occurs.
+    *   `test_websocket_deck_updates_connection_and_broadcast`: Tests successful WebSocket connection, then uses the `POST /ws/test_broadcast/{deck_accession_id}` endpoint to send a message, and verifies the WebSocket client receives and can parse this message.
+    *   `test_websocket_deck_updates_connection_to_invalid_deck`: Tests attempting to connect to a WebSocket for a `deck_accession_id` that doesn't exist in the database. It asserts that an exception occurs, indicating the connection was refused or closed.
+    *   `test_websocket_connection_to_non_deck_machine`: Tests attempting to connect to a WebSocket for a `deck_accession_id` that corresponds to a machine not categorized as a DECK. It also asserts that an exception occurs.
 
 **Next Steps (Implicitly Done by the Tool in a Single Turn):**
 

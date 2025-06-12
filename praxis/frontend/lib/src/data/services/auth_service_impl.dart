@@ -184,7 +184,7 @@ class AuthServiceImpl implements AuthService {
       );
       throw AuthException('Access token is null. Cannot process credential.');
     }
-    final idTokenString = credential.idToken.toCompactSerialization();
+    final idTokenString = credential.accession_idToken.toCompactSerialization();
     if (idTokenString.isEmpty) {
       debugPrint(
         "AuthService: ID token string is empty. Cannot process credential.",
@@ -634,7 +634,7 @@ class AuthServiceImpl implements AuthService {
 
       final newAccessToken = refreshedTokenResponse.accessToken;
       final newIdTokenString =
-          refreshedTokenResponse.idToken.toCompactSerialization();
+          refreshedTokenResponse.accession_idToken.toCompactSerialization();
       final newRefreshToken = refreshedTokenResponse.refreshToken;
 
       if (newAccessToken == null) {

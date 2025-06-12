@@ -30,7 +30,7 @@ from praxis.backend.models import (
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
 )
-from praxis.backend.utils.accession_resolver import get_id_from_accession
+from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -43,7 +43,7 @@ log_deck_api_errors = partial(
 
 # --- Deck Type Definition Endpoints ---
 deck_type_accession_resolver = partial(
-  get_id_from_accession,
+  get_accession_id_from_accession,
   get_func=svc.read_deck_type_definition,
   get_by_name_func=svc.read_deck_type_definition_by_fqn,
   entity_type_name="Deck Type Definition",
@@ -102,10 +102,10 @@ async def read_deck_type_definition(
   accession: str | UUID, db: AsyncSession = Depends(get_db)
 ):
   """Retrieve a deck type definition by its ID (UUID) or fully-qualified name (FQN)."""
-  deck_type_definition_id = await deck_type_accession_resolver(
+  deck_type_definition_accession_id = await deck_type_accession_resolver(
     accession=accession, db=db
   )
-  db_def = await svc.read_deck_type_definition(db, deck_type_definition_id)
+  db_def = await svc.read_deck_type_definition(db, deck_type_definition_accession_id)
   if db_def is None:
     raise HTTPException(status_code=404, detail="Deck type definition not found")
   return db_def
@@ -128,12 +128,14 @@ async def update_deck_type_definition(
 ):
   """Update an existing deck type definition."""
   update_data = request.model_dump(exclude_unset=True)
-  deck_type_definition_id = await deck_type_accession_resolver(
+  deck_type_definition_accession_id = await deck_type_accession_resolver(
     accession=accession, db=db
   )
   try:
     updated_def = await svc.update_deck_type_definition(
-      db=db, deck_type_id=deck_type_definition_id, **update_data
+      db=db,
+      deck_type_accession_id=deck_type_definition_accession_id,
+      **update_data,
     )
     if not updated_def:
       raise HTTPException(
@@ -145,7 +147,7 @@ async def update_deck_type_definition(
 
 
 deck_instance_accession_resolver = partial(
-  get_id_from_accession,
+  get_accession_id_from_accession,
   get_func=svc.read_deck_instance,
   get_by_name_func=svc.read_deck_instance_by_name,
   entity_type_name="Deck Instance",
@@ -200,8 +202,10 @@ async def list_deck_instances(
 )
 async def get_deck_instance(accession: str | UUID, db: AsyncSession = Depends(get_db)):
   """Retrieve a deck instance by its ID (UUID) or name."""
-  deck_instance_id = await deck_instance_accession_resolver(accession=accession, db=db)
-  deck = await svc.read_deck_instance(db, deck_instance_id)
+  deck_instance_accession_id = await deck_instance_accession_resolver(
+    accession=accession, db=db
+  )
+  deck = await svc.read_deck_instance(db, deck_instance_accession_id)
 
   if not deck:
     raise HTTPException(status_code=404, detail="Deck instance not found")
@@ -224,11 +228,11 @@ async def update_deck_instance(
   """Update an existing deck instance."""
   update_data = request.model_dump(exclude_unset=True)
   try:
-    deck_instance_id = await deck_instance_accession_resolver(
+    deck_instance_accession_id = await deck_instance_accession_resolver(
       accession=accession, db=db
     )
     updated_deck = await svc.update_deck_instance(
-      db=db, deck_id=deck_instance_id, **update_data
+      db=db, deck_accession_id=deck_instance_accession_id, **update_data
     )
     if not updated_deck:
       raise HTTPException(status_code=404, detail="Deck instance not found")
@@ -251,8 +255,10 @@ async def delete_deck_instance(
   accession: str | UUID, db: AsyncSession = Depends(get_db)
 ):
   """Delete a deck instance."""
-  deck_instance_id = await deck_instance_accession_resolver(accession=accession, db=db)
-  if not await svc.delete_deck_instance(db, deck_instance_id):
+  deck_instance_accession_id = await deck_instance_accession_resolver(
+    accession=accession, db=db
+  )
+  if not await svc.delete_deck_instance(db, deck_instance_accession_id):
     raise HTTPException(status_code=404, detail="Deck instance not found")
   return None
 
@@ -278,10 +284,12 @@ async def create_deck_position_item(
 ):
   """Add a resource item to a position in a deck instance."""
   try:
-    instance_id = await deck_instance_accession_resolver(
+    instance_accession_id = await deck_instance_accession_resolver(
       accession=instance_accession, db=db
     )
-    return await svc.create_deck_position_item(db, instance_id, **request.model_dump())
+    return await svc.create_deck_position_item(
+      db, instance_accession_id, **request.model_dump()
+    )
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -292,16 +300,18 @@ async def create_deck_position_item(
   prefix="Failed to update item in deck instance: ",
 )
 @router.put(
-  "/instances/{instance_accession}/positions/{item_id}",
+  "/instances/{instance_accession}/positions/{item_accession_id}",
   response_model=DeckPositionResourceResponse,
   tags=["Deck Instances"],
 )
 async def update_deck_position_item(
-  item_id: UUID, request: DeckPositionResourceCreate, db: AsyncSession = Depends(get_db)
+  item_accession_id: UUID,
+  request: DeckPositionResourceCreate,
+  db: AsyncSession = Depends(get_db),
 ):
   """Update an item in a deck instance position."""
   updated_item = await svc.update_deck_position_item(
-    db, item_id, **request.model_dump(exclude_unset=True)
+    db, item_accession_id, **request.model_dump(exclude_unset=True)
   )
   if not updated_item:
     raise HTTPException(status_code=404, detail="Deck position item not found")
@@ -314,13 +324,15 @@ async def update_deck_position_item(
   prefix="Failed to delete item from deck instance: ",
 )
 @router.delete(
-  "/instances/{instance_accession}/positions/{item_id}",
+  "/instances/{instance_accession}/positions/{item_accession_id}",
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Deck Instances"],
 )
-async def delete_deck_position_item(item_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_deck_position_item(
+  item_accession_id: UUID, db: AsyncSession = Depends(get_db)
+):
   """Delete an item from a deck instance position."""
-  if not await svc.delete_deck_position_item(db, item_id):
+  if not await svc.delete_deck_position_item(db, item_accession_id):
     raise HTTPException(status_code=404, detail="Deck position item not found")
   return None
 
@@ -403,15 +415,15 @@ async def list_deck_position_definitions(
   prefix="Failed to get deck position definition: ",
 )
 @router.get(
-  "/types/{type_accession}/positions/{position_id}",
+  "/types/{type_accession}/positions/{position_accession_id}",
   response_model=DeckPositionDefinitionResponse,
   tags=["Deck Type Definitions"],
 )
 async def read_deck_position_definition(
-  type_accession: str | UUID, position_id: UUID, db: AsyncSession = Depends(get_db)
+  type_accession: str | UUID, position_accession_id: UUID, db: AsyncSession = Depends(get_db)
 ):
   """Retrieve a specific position definition from a deck type."""
-  position = await svc.read_deck_position_definition(db, type_accession, position_id)
+  position = await svc.read_deck_position_definition(db, type_accession, position_accession_id)
   if not position:
     raise HTTPException(status_code=404, detail="Position definition not found")
   return position
@@ -423,19 +435,19 @@ async def read_deck_position_definition(
   prefix="Failed to update deck position definition: ",
 )
 @router.put(
-  "/types/{type_accession}/positions/{position_id}",
+  "/types/{type_accession}/positions/{position_accession_id}",
   response_model=DeckPositionDefinitionResponse,
   tags=["Deck Type Definitions"],
 )
 async def update_deck_position_definition(
   type_accession: str | UUID,
-  position_id: UUID,
+  position_accession_id: UUID,
   request: DeckPositionDefinitionUpdate,
   db: AsyncSession = Depends(get_db),
 ):
   """Update an existing position definition within a deck type."""
   updated_pos = await svc.update_deck_position_definition(
-    db, type_accession, position_id, **request.model_dump(exclude_unset=True)
+    db, type_accession, position_accession_id, **request.model_dump(exclude_unset=True)
   )
   if not updated_pos:
     raise HTTPException(status_code=404, detail="Position definition not found")
@@ -448,15 +460,15 @@ async def update_deck_position_definition(
   prefix="Failed to delete deck position definition: ",
 )
 @router.delete(
-  "/types/{type_accession}/positions/{position_id}",
+  "/types/{type_accession}/positions/{position_accession_id}",
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Deck Type Definitions"],
 )
 async def delete_deck_position_definition(
-  type_accession: str | UUID, position_id: UUID, db: AsyncSession = Depends(get_db)
+  type_accession: str | UUID, position_accession_id: UUID, db: AsyncSession = Depends(get_db)
 ):
   """Delete a position definition from a deck type."""
-  if not await svc.delete_deck_position_definition(db, type_accession, position_id):
+  if not await svc.delete_deck_position_definition(db, type_accession, position_accession_id):
     raise HTTPException(status_code=404, detail="Position definition not found")
   return None
 '''

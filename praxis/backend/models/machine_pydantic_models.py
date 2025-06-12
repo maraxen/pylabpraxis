@@ -63,7 +63,7 @@ class MachineBase(BaseModel):
     default=False,
     description="Indicates if this machine is also registered as a resource instance.",
   )
-  resource_counterpart_id: Optional[UUID7] = Field(
+  resource_counterpart_accession_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated ResourceInstanceOrm if this machine is a \
         resource.",
@@ -80,13 +80,13 @@ class MachineCreate(MachineBase):
   """Represents a machine for creation requests.
 
   Extends `MachineBase` by including the PyLabRobot class name
-  and an optional link to a `deck_type_definition_id` if the machine
+  and an optional link to a `deck_type_definition_accession_id` if the machine
   serves as a deck.
   """
 
   id: Optional[UUID7] = None
   python_fqn: str
-  deck_type_definition_id: Optional[UUID7] = None
+  deck_type_definition_accession_id: Optional[UUID7] = None
 
 
 class MachineResponse(MachineBase):
@@ -99,7 +99,7 @@ class MachineResponse(MachineBase):
 
   id: UUID7
   python_fqn: str
-  deck_type_definition_id: Optional[int] = None
+  deck_type_definition_accession_id: Optional[int] = None
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 
@@ -114,7 +114,7 @@ class MachineUpdate(BaseModel):
   name: Optional[str] = None
   # python_fqn: Optional[str] = None # Typically not updatable
   machine_category: Optional[str] = None
-  deck_type_definition_id: Optional[int] = None
+  deck_type_definition_accession_id: Optional[int] = None
   description: Optional[str] = None
   manufacturer: Optional[str] = None
   model: Optional[str] = None
@@ -129,7 +129,7 @@ class MachineUpdate(BaseModel):
     default=None,
     description="Indicates if this machine is also registered as a resource instance.",
   )
-  resource_counterpart_id: Optional[int] = Field(
+  resource_counterpart_accession_id: Optional[int] = Field(
     default=None,
     description="ID of the associated ResourceInstanceOrm if this machine is a \
       resource.",

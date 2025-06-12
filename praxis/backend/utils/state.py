@@ -22,13 +22,13 @@ class State:  # This will be aliased as PraxisState
   state for different application runs.
 
   Attributes:
-    run_guid (uuid.UUID): A unique identifier for the application run.
+    run_accession_id (uuid.UUID): A unique identifier for the application run.
     redis_key (str): The key used to store the state in Redis.
     redis_client (redis.Redis): The Redis client instance.
     _data (Dict[str, Any]): The internal dictionary holding the state data.
 
   Methods:
-    __init__(self, redis_host="localhost", redis_port=6379, redis_db=0, run_guid=uuid.uuid7()):
+    __init__(self, redis_host="localhost", redis_port=6379, redis_db=0, run_accession_id=uuid.uuid7()):
       Initializes a new State instance, connecting to Redis and loading any existing state.
     _load_from_redis(self) -> Dict[str, Any]:
       Loads the state data from Redis.
@@ -62,14 +62,14 @@ class State:  # This will be aliased as PraxisState
     redis_host: str = "localhost",
     redis_port: int = 6379,
     redis_db: int = 0,
-    run_guid: uuid.UUID = uuid.uuid7(),
+    run_accession_id: uuid.UUID = uuid.uuid7(),
   ):
     """Initialize the State instance."""
-    if not isinstance(run_guid, uuid.UUID):
-      raise ValueError("run_guid must be a valid UUID.")
+    if not isinstance(run_accession_id, uuid.UUID):
+      raise ValueError("run_accession_id must be a valid UUID.")
 
-      self.run_guid: uuid.UUID = run_guid
-      self.redis_key: str = f"praxis_state:{self.run_guid}"
+      self.run_accession_id: uuid.UUID = run_accession_id
+      self.redis_key: str = f"praxis_state:{self.run_accession_id}"
 
     try:
       self.redis_client = redis.Redis(
@@ -77,16 +77,16 @@ class State:  # This will be aliased as PraxisState
       )
       self.redis_client.ping()
       logger.info(
-        "Redis client connected for PraxisState (run_guid: %s) at %s:%s/%s",
-        self.run_guid,
+        "Redis client connected for PraxisState (run_accession_id: %s) at %s:%s/%s",
+        self.run_accession_id,
         redis_host,
         redis_port,
         redis_db,
       )
     except ConnectionError as e:
       logger.error(
-        "Failed to connect to Redis for PraxisState (run_guid: %s) at %s:%s/%s: %s",
-        self.run_guid,
+        "Failed to connect to Redis for PraxisState (run_accession_id: %s) at %s:%s/%s: %s",
+        self.run_accession_id,
         redis_host,
         redis_port,
         redis_db,
@@ -109,19 +109,24 @@ class State:  # This will be aliased as PraxisState
     except json.JSONDecodeError as e:
       if serialized_state is None:
         logger.warning(
-          "No state found for run %s in Redis. Returning empty state.", self.run_guid
+          "No state found for run %s in Redis. Returning empty state.",
+          self.run_accession_id,
         )
         return {}
       else:
         logger.error(
           "JSONDecodeError while loading state for run %s from Redis: %s. Raw data: %s",
-          self.run_guid,
+          self.run_accession_id,
           e,
           serialized_state,
         )
         return {}
     except Exception as e:
-      logger.error("Failed to load state for run %s from Redis: %s", self.run_guid, e)
+      logger.error(
+        "Failed to load state for run %s from Redis: %s",
+        self.run_accession_id,
+        e,
+      )
       return {}
 
   def _save_to_redis(self):
@@ -132,19 +137,27 @@ class State:  # This will be aliased as PraxisState
       logger.error(
         "TypeError during JSON serialization for run %s: %s. State data may not be "
         "fully JSON serializable.",
-        self.run_guid,
+        self.run_accession_id,
         e,
       )
       raise
     except Exception as e:
-      logger.error("Failed to save state for run %s to Redis: %s", self.run_guid, e)
+      logger.error(
+        "Failed to save state for run %s to Redis: %s",
+        self.run_accession_id,
+        e,
+      )
       raise
 
   def __getitem__(self, key: str) -> Any:
     """Retrieve a value from the state data using the given key."""
     if key not in self._data:
-      raise KeyError(f"Key '{key}' not found in state data for run {self.run_guid}.")
-    logger.debug("Retrieving key '%s' from state for run %s", key, self.run_guid)
+      raise KeyError(
+        f"Key '{key}' not found in state data for run {self.run_accession_id}."
+      )
+    logger.debug(
+      "Retrieving key '%s' from state for run %s", key, self.run_accession_id
+    )
     return self._data[key]
 
   def __setitem__(self, key: str, value: Any):
@@ -157,7 +170,7 @@ class State:  # This will be aliased as PraxisState
       raise TypeError(
         f"Value must be a JSON-serializable type, got {type(value).__name__}."
       )
-    logger.debug("Setting key '%s' in state for run %s", key, self.run_guid)
+    logger.debug("Setting key '%s' in state for run %s", key, self.run_accession_id)
     if "_data" not in self.__dict__:
       # If _data is not initialized, initialize it
       self._data = {}
@@ -167,8 +180,10 @@ class State:  # This will be aliased as PraxisState
   def __delitem__(self, key: str):
     """Delete a value from the state data using the given key."""
     if key not in self._data:
-      raise KeyError(f"Key '{key}' not found in state data for run {self.run_guid}.")
-    logger.debug("Deleting key '%s' from state for run %s", key, self.run_guid)
+      raise KeyError(
+        f"Key '{key}' not found in state data for run {self.run_accession_id}."
+      )
+    logger.debug("Deleting key '%s' from state for run %s", key, self.run_accession_id)
     del self._data[key]
     self._save_to_redis()
 
@@ -187,7 +202,7 @@ class State:  # This will be aliased as PraxisState
 
   def to_dict(self) -> Dict[str, Any]:
     """Return a copy of the internal state data dictionary."""
-    logger.debug("Converting state to dict for run %s", self.run_guid)
+    logger.debug("Converting state to dict for run %s", self.run_accession_id)
     return self._data.copy()
 
   def clear(self):
@@ -196,7 +211,9 @@ class State:  # This will be aliased as PraxisState
     try:
       self.redis_client.delete(self.redis_key)
     except Exception as e:
-      logger.error(f"Failed to delete state for run {self.run_guid} from Redis: {e}")
+      logger.error(
+        f"Failed to delete state for run {self.run_accession_id} from Redis: {e}"
+      )
 
   def __getattr__(self, name: str) -> Any:
     """Access state data as attributes."""
@@ -218,7 +235,7 @@ class State:  # This will be aliased as PraxisState
 
   def __setattr__(self, name: str, value: Any):
     """Set state data as attributes."""
-    if name in ["run_guid", "redis_key", "redis_client", "_data"]:
+    if name in ["run_accession_id", "redis_key", "redis_client", "_data"]:
       super().__setattr__(name, value)
     else:
       if "_data" not in self.__dict__:
@@ -229,4 +246,4 @@ class State:  # This will be aliased as PraxisState
 
   def __repr__(self) -> str:
     """Return a string representation of the State instance."""
-    return f"<State(run_guid='{self.run_guid}', data={self._data})>"
+    return f"<State(run_accession_id='{self.run_accession_id}', data={self._data})>"

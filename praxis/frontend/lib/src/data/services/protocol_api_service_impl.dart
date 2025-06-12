@@ -277,7 +277,7 @@ class ProtocolApiServiceImpl implements ProtocolApiService {
     required ProtocolRunCommand command,
   }) async {
     try {
-      // Backend endpoint: POST /api/protocols/{run_guid}/command
+      // Backend endpoint: POST /api/protocols/{run_accession_id}/command
       // Backend expects a simple string for command, or Form data.
       // Sending as JSON: {"command": "THE_COMMAND_STRING"}
       final response = await _dio.post(

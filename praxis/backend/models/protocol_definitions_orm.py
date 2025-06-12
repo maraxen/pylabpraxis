@@ -77,7 +77,7 @@ class ProtocolSourceRepositoryOrm(Base):
   """
 
   __tablename__ = "protocol_source_repositories"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   git_url: Mapped[str] = mapped_column(String, nullable=False)
   default_ref: Mapped[str] = mapped_column(String, nullable=False, default="main")
@@ -101,7 +101,7 @@ class ProtocolSourceRepositoryOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the ProtocolSourceRepositoryOrm instance."""
-    return f"<ProtocolSourceRepositoryOrm(id={self.id}, name='{self.name}', \
+    return f"<ProtocolSourceRepositoryOrm(id={self.accession_id}, name='{self.name}', \
       git_url='{self.git_url}')>"
 
 
@@ -113,7 +113,7 @@ class FileSystemProtocolSourceOrm(Base):
   """
 
   __tablename__ = "file_system_protocol_sources"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
   base_path: Mapped[str] = mapped_column(String, nullable=False)
   is_recursive: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -134,7 +134,7 @@ class FileSystemProtocolSourceOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FileSystemProtocolSourceOrm instance."""
-    return f"<FileSystemProtocolSourceOrm(id={self.id}, name='{self.name}', base_path=\
+    return f"<FileSystemProtocolSourceOrm(id={self.accession_id}, name='{self.name}', base_path=\
       '{self.base_path}')>"
 
 
@@ -146,19 +146,19 @@ class FunctionProtocolDefinitionOrm(Base):
   """
 
   __tablename__ = "function_protocol_definitions"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   version: Mapped[str] = mapped_column(String, nullable=False, default="0.1.0")
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
   source_file_path: Mapped[str] = mapped_column(String, nullable=False)
   module_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   function_name: Mapped[str] = mapped_column(String, nullable=False)
-  source_repository_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("protocol_source_repositories.id"), nullable=True
+  source_repository_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("protocol_source_repositories.accession_id"), nullable=True
   )
   commit_hash: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
-  file_system_source_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("file_system_protocol_sources.id"), nullable=True
+  file_system_source_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("file_system_protocol_sources.accession_id"), nullable=True
   )
   is_top_level: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
   solo_execution: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -202,7 +202,7 @@ class FunctionProtocolDefinitionOrm(Base):
   )
   function_call_logs = relationship(
     "FunctionCallLogOrm",
-    foreign_keys="[FunctionCallLogOrm.function_protocol_definition_id]",
+    foreign_keys="[FunctionCallLogOrm.function_protocol_definition_accession_id]",
     back_populates="executed_function_definition",
   )
 
@@ -210,14 +210,14 @@ class FunctionProtocolDefinitionOrm(Base):
     UniqueConstraint(
       "name",
       "version",
-      "source_repository_id",
+      "source_repository_accession_id",
       "commit_hash",
       name="uq_repo_protocol_def_version_v3",
     ),
     UniqueConstraint(
       "name",
       "version",
-      "file_system_source_id",
+      "file_system_source_accession_id",
       "source_file_path",
       name="uq_fs_protocol_def_version_v3",
     ),
@@ -225,7 +225,7 @@ class FunctionProtocolDefinitionOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FunctionProtocolDefinitionOrm instance."""
-    return f"<FunctionProtocolDefinitionOrm(id={self.id}, name='{self.name}', \
+    return f"<FunctionProtocolDefinitionOrm(id={self.accession_id}, name='{self.name}', \
       version='{self.version}')>"
 
 
@@ -237,9 +237,9 @@ class ParameterDefinitionOrm(Base):
   """
 
   __tablename__ = "parameter_definitions"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_definition_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_protocol_definitions.id"), nullable=False
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   name: Mapped[str] = mapped_column(String, nullable=False)
   type_hint_str: Mapped[str] = mapped_column(String, nullable=False)
@@ -256,14 +256,16 @@ class ParameterDefinitionOrm(Base):
   )
   __table_args__ = (
     UniqueConstraint(
-      "protocol_definition_id", "name", name="uq_param_def_name_per_protocol_v3"
+      "protocol_definition_accession_id",
+      "name",
+      name="uq_param_def_name_per_protocol_v3",
     ),
   )
 
   def __repr__(self):
     """Return a string representation of the ParameterDefinitionOrm instance."""
     return f"<ParameterDefinitionOrm(name='{self.name}', \
-      protocol_id={self.protocol_definition_id})>"
+      protocol_accession_id={self.protocol_definition_accession_id})>"
 
 
 class AssetDefinitionOrm(Base):
@@ -274,9 +276,9 @@ class AssetDefinitionOrm(Base):
   """
 
   __tablename__ = "asset_definitions"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_definition_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_protocol_definitions.id"), nullable=False
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   name: Mapped[str] = mapped_column(String, nullable=False)
   type_hint_str: Mapped[str] = mapped_column(String, nullable=False)
@@ -290,16 +292,19 @@ class AssetDefinitionOrm(Base):
   protocol_definition = relationship(
     "FunctionProtocolDefinitionOrm", back_populates="assets"
   )
+
   __table_args__ = (
     UniqueConstraint(
-      "protocol_definition_id", "name", name="uq_asset_def_name_per_protocol_v3"
+      "protocol_definition_accession_id",
+      "name",
+      name="uq_asset_def_name_per_protocol_v3",
     ),
   )
 
   def __repr__(self):
     """Return a string representation of the AssetDefinitionOrm instance."""
     return f"<AssetDefinitionOrm(name='{self.name}', \
-      protocol_id={self.protocol_definition_id})>"
+      protocol_accession_id={self.protocol_definition_accession_id})>"
 
 
 class ProtocolRunOrm(Base):
@@ -310,12 +315,12 @@ class ProtocolRunOrm(Base):
   """
 
   __tablename__ = "protocol_runs"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  run_guid: Mapped[uuid.UUID] = mapped_column(
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, unique=True, index=True
   )
-  top_level_protocol_definition_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("function_protocol_definitions.id"), nullable=False
+  top_level_protocol_definition_accession_id: Mapped[int] = mapped_column(
+    Integer, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   status: Mapped[ProtocolRunStatusEnum] = mapped_column(
     SAEnum(ProtocolRunStatusEnum, name="protocol_run_status_enum_v3"),
@@ -355,7 +360,7 @@ class ProtocolRunOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the ProtocolRunOrm instance."""
-    return f"<ProtocolRunOrm(id={self.id}, run_guid='{self.run_guid}', \
+    return f"<ProtocolRunOrm(id={self.accession_id}, run_accession_id='{self.run_accession_id}', \
       status='{self.status.name}')>"
 
 
@@ -367,16 +372,16 @@ class FunctionCallLogOrm(Base):
   """
 
   __tablename__ = "function_call_logs"
-  id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  protocol_run_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("protocol_runs.id"), nullable=False, index=True
+  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("protocol_runs.accession_id"), nullable=False, index=True
   )
   sequence_in_run: Mapped[int] = mapped_column(Integer, nullable=False)
-  function_protocol_definition_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_protocol_definitions.id"), nullable=False
+  function_protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
-  parent_function_call_log_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID, ForeignKey("function_call_logs.id"), nullable=True
+  parent_function_call_log_accession_id: Mapped[Optional[UUID]] = mapped_column(
+    UUID, ForeignKey("function_call_logs.accession_id"), nullable=True
   )
   start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
   end_time: Mapped[Optional[datetime]] = mapped_column(
@@ -394,7 +399,7 @@ class FunctionCallLogOrm(Base):
   protocol_run = relationship("ProtocolRunOrm", back_populates="function_calls")
   executed_function_definition = relationship(
     "FunctionProtocolDefinitionOrm",
-    foreign_keys=[function_protocol_definition_id],
+    foreign_keys=[function_protocol_definition_accession_id],
     back_populates="function_call_logs",
   )
   parent_call = relationship(
@@ -403,5 +408,5 @@ class FunctionCallLogOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FunctionCallLogOrm instance."""
-    return f"<FunctionCallLogOrm(id={self.id}, run_id={self.protocol_run_id}, \
+    return f"<FunctionCallLogOrm(id={self.accession_id}, run_accession_id={self.protocol_run_accession_id}, \
       seq={self.sequence_in_run}, status='{self.status.name}')>"

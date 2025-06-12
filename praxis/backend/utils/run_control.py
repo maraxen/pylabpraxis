@@ -21,17 +21,17 @@ def _get_redis_client() -> redis.Redis:
   return redis.Redis.from_url(redis_url, decode_responses=True)
 
 
-def _get_command_key(run_guid: uuid.UUID) -> str:
-  return f"{COMMAND_KEY_PREFIX}:{run_guid}"
+def _get_command_key(run_accession_id: uuid.UUID) -> str:
+  return f"{COMMAND_KEY_PREFIX}:{run_accession_id}"
 
 
 async def send_control_command(
-  run_guid: uuid.UUID, command: str, ttl_seconds: int = 3600
+  run_accession_id: uuid.UUID, command: str, ttl_seconds: int = 3600
 ) -> bool:
   """Send a control command to the orchestrator for a specific run.
 
   Args:
-    run_guid: The unique identifier for the run.
+    run_accession_id: The unique identifier for the run.
     command: The control command to send. Must be one of ALLOWED_COMMANDS.
     ttl_seconds: Time-to-live for the command in Redis, default is 3600 seconds
     (1 hour).
@@ -43,20 +43,20 @@ async def send_control_command(
     )
   try:
     r = _get_redis_client()
-    key = _get_command_key(run_guid)
+    key = _get_command_key(run_accession_id)
     await r.set(key, command, ex=ttl_seconds)
     return True
   except RedisError as e:
     # In a real application, use a proper logger
-    print(f"RedisError sending control command for run {run_guid}: {e}")
+    print(f"RedisError sending control command for run {run_accession_id}: {e}")
     return False
 
 
-async def get_control_command(run_guid: uuid.UUID) -> Optional[str]:
+async def get_control_command(run_accession_id: uuid.UUID) -> Optional[str]:
   """Get the control command for a specific run.
 
   Args:
-    run_guid: The unique identifier for the run.
+    run_accession_id: The unique identifier for the run.
 
   Returns:
     The control command if it exists, otherwise None.
@@ -64,19 +64,19 @@ async def get_control_command(run_guid: uuid.UUID) -> Optional[str]:
   """
   try:
     r = _get_redis_client()
-    key = _get_command_key(run_guid)
+    key = _get_command_key(run_accession_id)
     command = await r.get(key)
     return command  # Returns None if key doesn't exist
   except RedisError as e:
-    print(f"RedisError getting control command for run {run_guid}: {e}")
+    print(f"RedisError getting control command for run {run_accession_id}: {e}")
     return None
 
 
-async def clear_control_command(run_guid: uuid.UUID) -> bool:
+async def clear_control_command(run_accession_id: uuid.UUID) -> bool:
   """Clear the control command for a specific run.
 
   Args:
-    run_guid: The unique identifier for the run.
+    run_accession_id: The unique identifier for the run.
 
   Returns:
     True if the command was cleared, False if it didn't exist or an error occurred.
@@ -84,9 +84,9 @@ async def clear_control_command(run_guid: uuid.UUID) -> bool:
   """
   try:
     r = _get_redis_client()
-    key = _get_command_key(run_guid)
+    key = _get_command_key(run_accession_id)
     deleted_count = await r.delete(key)
     return deleted_count > 0
   except RedisError as e:
-    print(f"RedisError clearing control command for run {run_guid}: {e}")
+    print(f"RedisError clearing control command for run {run_accession_id}: {e}")
     return False

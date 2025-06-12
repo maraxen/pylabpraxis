@@ -46,22 +46,24 @@ class PraxisRunContext:
   """
 
   # Identifiers for the overall run
-  run_guid: uuid.UUID  # User-facing unique ID (e.g. UUID) of the ProtocolRunOrm entry
+  run_accession_id: (
+    uuid.UUID
+  )  # User-facing unique ID (e.g. UUID) of the ProtocolRunOrm entry
 
   # Core shared objects for the run
   canonical_state: PraxisState
   current_db_session: AsyncSession  # SQLAlchemy session
 
   # For call logging - these track the *current* state of the call stack
-  # This is the FunctionCallLogOrm.id of the *currently executing* function's log entry.
-  # For the next nested call, this becomes the parent_function_call_log_db_id.
-  current_call_log_db_id: Optional[uuid.UUID] = None
+  # This is the FunctionCallLogOrm.accession_id of the *currently executing* function's log entry.
+  # For the next nested call, this becomes the parent_function_call_log_db_accession_id.
+  current_call_log_db_accession_id: Optional[uuid.UUID] = None
 
-  # Sequence counter for calls within this run_guid
+  # Sequence counter for calls within this run_accession_id
   # This should be managed carefully to ensure it's unique and ordered for a given run.
   _call_sequence_next_val: int = 1  # Internal counter, starts at 1
 
-  # TODO: CTX-1: Consider if user_id, workcell_id, etc., should be here.
+  # TODO: CTX-1: Consider if user_accession_id, workcell_accession_id, etc., should be here.
 
   def get_and_increment_sequence_val(self) -> int:
     """Return the current sequence value and then increment it for the next call."""
@@ -70,16 +72,16 @@ class PraxisRunContext:
     return current_val
 
   def create_context_for_nested_call(
-    self, new_parent_call_log_db_id: Optional[uuid.UUID]
+    self, new_parent_call_log_db_accession_id: Optional[uuid.UUID]
   ) -> "PraxisRunContext":
     """Prepare context for a nested function call.
 
-    Set `current_call_log_db_id` to represent the
+    Set `current_call_log_db_accession_id` to represent the
     log ID of the *calling* function, which will be the parent for the nested call.
     The sequence counter continues from the current context.
 
     Args:
-      new_parent_call_log_db_id: The ID of the FunctionCallLogOrm entry for the calling
+      new_parent_call_log_db_accession_id: The ID of the FunctionCallLogOrm entry for the calling
       function.
 
     Returns:
@@ -88,10 +90,10 @@ class PraxisRunContext:
 
     """
     nested_ctx = PraxisRunContext(
-      run_guid=self.run_guid,
+      run_accession_id=self.run_accession_id,
       canonical_state=self.canonical_state,
       current_db_session=self.current_db_session,
-      current_call_log_db_id=new_parent_call_log_db_id,
+      current_call_log_db_accession_id=new_parent_call_log_db_accession_id,
     )
     nested_ctx._call_sequence_next_val = self._call_sequence_next_val
     return nested_ctx

@@ -27,7 +27,7 @@ abstract class ProtocolPrepareRequest with _$ProtocolPrepareRequest {
   ///                        is considered an ad-hoc layout.
   const factory ProtocolPrepareRequest({
     /// The ID of the protocol to prepare.
-    @JsonKey(name: 'protocol_id') required String protocolId,
+    @JsonKey(name: 'protocol_accession_id') required String protocolId,
 
     /// Parameters for the protocol run.
     /// The key in the backend JSON is expected to be 'params'.

@@ -105,7 +105,7 @@ class ResourceInventoryReagentItem(BaseModel):
   expiry, and quantities, for inventory tracking.
   """
 
-  reagent_id: UUID7
+  reagent_accession_id: UUID7
   reagent_name: Optional[str] = None
   lot_number: Optional[str] = None
   expiry_date: Optional[str] = None
@@ -208,15 +208,15 @@ class ResourceInstanceSharedFields(BaseModel):
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = "unknown"
-  current_parent_id: Optional[UUID7] = None
-  current_position_id: Optional[UUID7] = None
+  current_parent_accession_id: Optional[UUID7] = None
+  current_position_accession_id: Optional[UUID7] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
   is_machine: bool = Field(
     default=False,
     description="True if this resource instance is also registered as a machine.",
   )
-  machine_counterpart_id: Optional[UUID7] = Field(
+  machine_counterpart_accession_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated MachineOrm if this resource instance is a \
       machine.",
@@ -238,7 +238,7 @@ class ResourceInstanceCreate(ResourceInstanceSharedFields):
   """
 
   name: str
-  resource_definition_id: Optional[UUID7] = None
+  resource_definition_accession_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   date_added_to_inventory: Optional[datetime.datetime] = Field(
     default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
@@ -254,7 +254,7 @@ class ResourceInstanceResponse(ResourceInstanceSharedFields):
   """
 
   id: UUID7
-  resource_definition_id: Optional[UUID7]
+  resource_definition_accession_id: Optional[UUID7]
   name: str
 
   instance_name: str
@@ -276,8 +276,8 @@ class ResourceInstanceUpdate(BaseModel):
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = None
-  current_parent_id: Optional[UUID7] = None
-  current_position_id: Optional[UUID7] = None
+  current_parent_accession_id: Optional[UUID7] = None
+  current_position_accession_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   custom_fields: Optional[Dict[str, Any]] = None
   date_added_to_inventory: Optional[datetime.datetime] = None
@@ -285,7 +285,7 @@ class ResourceInstanceUpdate(BaseModel):
     default=None,
     description="True if this resource instance is also registered as a machine.",
   )
-  machine_counterpart_id: Optional[UUID7] = Field(
+  machine_counterpart_accession_id: Optional[UUID7] = Field(
     default=None,
     description="ID of the associated MachineOrm if this resource instance is a \
       machine.",

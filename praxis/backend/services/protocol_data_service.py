@@ -37,7 +37,7 @@ from praxis.backend.models import (
 logger = logging.getLogger(__name__)
 
 
-async def add_or_update_protocol_source_repository(
+async def create_protocol_source_repository(
   db: AsyncSession,
   name: str,
   git_url: str,
@@ -45,13 +45,8 @@ async def add_or_update_protocol_source_repository(
   local_checkout_path: Optional[str] = None,
   status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE,
   auto_sync_enabled: bool = True,
-  source_id: Optional[uuid.UUID] = None,
 ) -> ProtocolSourceRepositoryOrm:
-  """Add a new protocol source repository or update an existing one.
-
-  This function creates a new `ProtocolSourceRepositoryOrm` if `source_id` is
-  not provided and no existing repository matches `name`. If `source_id` is
-  provided, it attempts to update the existing repository.
+  """Add a new protocol source repository.
 
   Args:
       db (AsyncSession): The database session.
@@ -65,103 +60,285 @@ async def add_or_update_protocol_source_repository(
           protocol source. Defaults to `ProtocolSourceStatusEnum.ACTIVE`.
       auto_sync_enabled (bool, optional): Whether automatic synchronization
           is enabled for this repository. Defaults to True.
-      source_id (Optional[int], optional): The ID of an existing repository
-          to update. If None, a new repository will be created or an existing
-          one looked up by `name`. Defaults to None.
 
   Returns:
-      ProtocolSourceRepositoryOrm: The created or updated protocol source
-      repository object.
+      ProtocolSourceRepositoryOrm: The created protocol source repository object.
 
   Raises:
-      ValueError: If `source_id` is provided but no matching repository is
-          found.
+      ValueError: If a repository with the same `name` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = (
-    f"Protocol Source Repository (Name: '{name}', " f"ID: {source_id or 'new'}):"
+  log_prefix = f"Protocol Source Repository (Name: '{name}', creating new):"
+  logger.info("%s Attempting to create new repository.", log_prefix)
+
+  # Check if a repository with this name already exists
+  result = await db.execute(
+    select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name)
   )
-  logger.info("%s Attempting to add or update.", log_prefix)
-
-  source_repo: Optional[ProtocolSourceRepositoryOrm] = None
-
-  if source_id:
-    result = await db.execute(
-      select(ProtocolSourceRepositoryOrm).filter(
-        ProtocolSourceRepositoryOrm.id == source_id
-      )
-    )
-    source_repo = result.scalar_one_or_none()
-    if not source_repo:
-      error_message = f"{log_prefix} Repo source id {source_id} not found."
-      logger.error(error_message)
-      raise ValueError(error_message)
-    logger.info("%s Found existing repository for update.", log_prefix)
-  else:
-    result = await db.execute(
-      select(ProtocolSourceRepositoryOrm).filter(
-        ProtocolSourceRepositoryOrm.name == name
-      )
-    )
-    source_repo = result.scalar_one_or_none()
-    if not source_repo:
-      source_repo = ProtocolSourceRepositoryOrm(name=name)
-      db.add(source_repo)
-      logger.info("%s No existing repository found, creating new.", log_prefix)
-    else:
-      logger.info(
-        "%s Found existing repository by name, updating instead of creating.",
-        log_prefix,
-      )
-
-  if source_repo is None:
+  if result.scalar_one_or_none():
     error_message = (
-      f"{log_prefix} Failed to initialize ProtocolSourceRepositoryOrm. "
-      "This indicates a logic error."
+      f"{log_prefix} A protocol source repository with name "
+      f"'{name}' already exists. Use the update function for existing repositories."
     )
-    logger.critical(error_message)
+    logger.error(error_message)
     raise ValueError(error_message)
 
-  source_repo.git_url = git_url
-  source_repo.default_ref = default_ref
-  source_repo.local_checkout_path = local_checkout_path
-  source_repo.status = status
-  source_repo.auto_sync_enabled = auto_sync_enabled
+  # Create new ProtocolSourceRepositoryOrm
+  source_repo = ProtocolSourceRepositoryOrm(
+    name=name,
+    git_url=git_url,
+    default_ref=default_ref,
+    local_checkout_path=local_checkout_path,
+    status=status,
+    auto_sync_enabled=auto_sync_enabled,
+  )
+  db.add(source_repo)
+  logger.info("%s Initialized new repository for creation.", log_prefix)
 
   try:
     await db.commit()
     await db.refresh(source_repo)
-    logger.info("%s Successfully committed changes.", log_prefix)
+    logger.info("%s Successfully committed new repository.", log_prefix)
   except IntegrityError as e:
     await db.rollback()
+    # Assuming a unique constraint on 'name' for ProtocolSourceRepositoryOrm
+    if "uq_protocol_source_repository_name" in str(e.orig):
+      error_message = (
+        f"{log_prefix} A protocol source repository with name "
+        f"'{name}' already exists (integrity check failed). Details: {e}"
+      )
+      logger.error(error_message, exc_info=True)
+      raise ValueError(error_message) from e
     error_message = (
-      f"{log_prefix} A repository with name '{name}' already exists or "
-      f"other integrity constraint violated. Details: {e}"
+      f"{log_prefix} Database integrity error during creation. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
-    logger.exception("%s Unexpected error. Rolling back.", log_prefix)
+    logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
     raise e
-  logger.info("%s Operation completed.", log_prefix)
+
+  logger.info("%s Creation operation completed.", log_prefix)
   return source_repo
 
 
-async def add_or_update_file_system_protocol_source(
+async def update_protocol_source_repository(
+  db: AsyncSession,
+  source_accession_id: uuid.UUID,  # Identifier for the repository to update
+  name: Optional[str] = None,
+  git_url: Optional[str] = None,
+  default_ref: Optional[str] = None,
+  local_checkout_path: Optional[str] = None,
+  status: Optional[ProtocolSourceStatusEnum] = None,
+  auto_sync_enabled: Optional[bool] = None,
+) -> ProtocolSourceRepositoryOrm:
+  """Update an existing protocol source repository.
+
+  Args:
+      db (AsyncSession): The database session.
+      source_accession_id (uuid.UUID): The ID of the existing repository to update.
+      name (Optional[str], optional): The unique name of the protocol source repository.
+          Defaults to None.
+      git_url (Optional[str], optional): The Git URL of the repository.
+          Defaults to None.
+      default_ref (Optional[str], optional): The default Git reference (branch/tag) to
+          use. Defaults to None.
+      local_checkout_path (Optional[str], optional): The local file system
+          path where the repository is checked out. Defaults to None.
+      status (Optional[ProtocolSourceStatusEnum], optional): The current status of the
+          protocol source. Defaults to None.
+      auto_sync_enabled (Optional[bool], optional): Whether automatic synchronization
+          is enabled for this repository. Defaults to None.
+
+  Returns:
+      ProtocolSourceRepositoryOrm: The updated protocol source repository object.
+
+  Raises:
+      ValueError: If `source_accession_id` is provided but no matching repository is found,
+                  or if the updated `name` conflicts with an existing one.
+      Exception: For any other unexpected errors during the process.
+
+  """
+  log_prefix = f"Protocol Source Repository (ID: {source_accession_id}, updating):"
+  logger.info("%s Attempting to update repository.", log_prefix)
+
+  # Fetch the existing repository
+  result = await db.execute(
+    select(ProtocolSourceRepositoryOrm).filter(
+      ProtocolSourceRepositoryOrm.accession_id == source_accession_id
+    )
+  )
+  source_repo = result.scalar_one_or_none()
+
+  if not source_repo:
+    error_message = f"{log_prefix} ProtocolSourceRepositoryOrm with ID {source_accession_id} not found for update."
+    logger.error(error_message)
+    raise ValueError(error_message)
+  logger.info("%s Found existing repository for update.", log_prefix)
+
+  # Check for name conflict if it's being changed
+  if name is not None and source_repo.name != name:
+    existing_name_check = await db.execute(
+      select(ProtocolSourceRepositoryOrm)
+      .filter(ProtocolSourceRepositoryOrm.name == name)
+      .filter(
+        ProtocolSourceRepositoryOrm.accession_id != source_accession_id
+      )  # Exclude the current record
+    )
+    if existing_name_check.scalar_one_or_none():
+      error_message = (
+        f"{log_prefix} Cannot update name to '{name}' as it already "
+        f"exists for another protocol source repository."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    source_repo.name = name
+
+  # Update attributes if provided
+  if git_url is not None:
+    source_repo.git_url = git_url
+  if default_ref is not None:
+    source_repo.default_ref = default_ref
+  if local_checkout_path is not None:
+    source_repo.local_checkout_path = local_checkout_path
+  if status is not None:
+    source_repo.status = status
+  if auto_sync_enabled is not None:
+    source_repo.auto_sync_enabled = auto_sync_enabled
+
+  try:
+    await db.commit()
+    await db.refresh(source_repo)
+    logger.info("%s Successfully committed update.", log_prefix)
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"{log_prefix} Database integrity error during update. "
+      f"This might occur if a unique constraint is violated. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
+  except Exception as e:
+    await db.rollback()
+    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
+    raise e
+
+  logger.info("%s Update operation completed.", log_prefix)
+  return source_repo
+
+
+async def read_protocol_source_repository(
+  db: AsyncSession, source_accession_id: uuid.UUID
+) -> Optional[ProtocolSourceRepositoryOrm]:
+  """Retrieve a protocol source repository by its ID.
+
+  Args:
+      db (AsyncSession): The database session.
+      source_accession_id (uuid.UUID): The ID of the protocol source repository to retrieve.
+
+  Returns:
+      Optional[ProtocolSourceRepositoryOrm]: The protocol source repository object
+      if found, otherwise None.
+
+  """
+  log_prefix = f"Protocol Source Repository (ID: {source_accession_id}):"
+  logger.info("%s Attempting to read by ID.", log_prefix)
+  result = await db.execute(
+    select(ProtocolSourceRepositoryOrm).filter(
+      ProtocolSourceRepositoryOrm.accession_id == source_accession_id
+    )
+  )
+  repo = result.scalar_one_or_none()
+  if repo:
+    logger.info("%s Found repository.", log_prefix)
+  else:
+    logger.info("%s Repository not found.", log_prefix)
+  return repo
+
+
+async def read_protocol_source_repository_by_name(
+  db: AsyncSession, name: str
+) -> Optional[ProtocolSourceRepositoryOrm]:
+  """Retrieve a protocol source repository by its unique name.
+
+  Args:
+      db (AsyncSession): The database session.
+      name (str): The unique name of the protocol source repository to retrieve.
+
+  Returns:
+      Optional[ProtocolSourceRepositoryOrm]: The protocol source repository object
+      if found, otherwise None.
+
+  """
+  log_prefix = f"Protocol Source Repository (Name: '{name}'):"
+  logger.info("%s Attempting to read by name.", log_prefix)
+  result = await db.execute(
+    select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name)
+  )
+  repo = result.scalar_one_or_none()
+  if repo:
+    logger.info("%s Found repository.", log_prefix)
+  else:
+    logger.info("%s Repository not found.", log_prefix)
+  return repo
+
+
+async def list_protocol_source_repositories(
+  db: AsyncSession,
+  status: Optional[ProtocolSourceStatusEnum] = None,
+  auto_sync_enabled: Optional[bool] = None,
+  limit: int = 100,
+  offset: int = 0,
+) -> List[ProtocolSourceRepositoryOrm]:
+  """List protocol source repositories with optional filtering and pagination.
+
+  Args:
+      db (AsyncSession): The database session.
+      status (Optional[ProtocolSourceStatusEnum], optional): Filter by status. Defaults to None.
+      auto_sync_enabled (Optional[bool], optional): Filter by auto-sync enabled status. Defaults to None.
+      limit (int): The maximum number of results to return. Defaults to 100.
+      offset (int): The number of results to skip before returning. Defaults to 0.
+
+  Returns:
+      List[ProtocolSourceRepositoryOrm]: A list of protocol source repository objects
+      matching the criteria.
+
+  """
+  logger.info(
+    "Listing protocol source repositories with filters: status=%s, "
+    "auto_sync_enabled=%s, limit=%d, offset=%d.",
+    status,
+    auto_sync_enabled,
+    limit,
+    offset,
+  )
+  stmt = select(ProtocolSourceRepositoryOrm)
+  if status is not None:
+    stmt = stmt.filter(ProtocolSourceRepositoryOrm.status == status)
+    logger.debug("Filtering by status: %s.", status)
+  if auto_sync_enabled is not None:
+    stmt = stmt.filter(
+      ProtocolSourceRepositoryOrm.auto_sync_enabled == auto_sync_enabled
+    )
+    logger.debug("Filtering by auto_sync_enabled: %s.", auto_sync_enabled)
+
+  stmt = stmt.order_by(ProtocolSourceRepositoryOrm.name).limit(limit).offset(offset)
+  result = await db.execute(stmt)
+  repositories = list(result.scalars().all())
+  logger.info("Found %d protocol source repositories.", len(repositories))
+  return repositories
+
+
+async def create_file_system_protocol_source(
   db: AsyncSession,
   name: str,
   base_path: str,
   is_recursive: bool = True,
   status: ProtocolSourceStatusEnum = ProtocolSourceStatusEnum.ACTIVE,
-  source_id: Optional[uuid.UUID] = None,
 ) -> FileSystemProtocolSourceOrm:
-  """Add a new file system protocol source or update an existing one.
-
-  This function creates a new `FileSystemProtocolSourceOrm` if `source_id` is
-  not provided and no existing source matches `name`. If `source_id` is
-  provided, it attempts to update the existing source.
+  """Add a new file system protocol source.
 
   Args:
       db (AsyncSession): The database session.
@@ -171,94 +348,171 @@ async def add_or_update_file_system_protocol_source(
           for protocols. Defaults to True.
       status (ProtocolSourceStatusEnum, optional): The current status of the
           file system source. Defaults to `ProtocolSourceStatusEnum.ACTIVE`.
-      source_id (Optional[int], optional): The ID of an existing source to
-          update. If None, a new source will be created or an existing one
-          looked up by `name`. Defaults to None.
 
   Returns:
-      FileSystemProtocolSourceOrm: The created or updated file system protocol
+      FileSystemProtocolSourceOrm: The created file system protocol
       source object.
 
   Raises:
-      ValueError: If `source_id` is provided but no matching source is found.
+      ValueError: If a file system source with the same `name` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = (
-    f"File System Protocol Source (Name: '{name}', " f"ID: {source_id or 'new'}):"
+  log_prefix = f"File System Protocol Source (Name: '{name}', creating new):"
+  logger.info("%s Attempting to create new file system source.", log_prefix)
+
+  # Check if a file system source with this name already exists
+  result = await db.execute(
+    select(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.name == name)
   )
-  logger.info("%s Attempting to add or update.", log_prefix)
-
-  fs_source: Optional[FileSystemProtocolSourceOrm] = None
-
-  if source_id:
-    result = await db.execute(
-      select(FileSystemProtocolSourceOrm).filter(
-        FileSystemProtocolSourceOrm.id == source_id
-      )
-    )
-    fs_source = result.scalar_one_or_none()
-    if not fs_source:
-      error_message = f"{log_prefix} FS source id {source_id} not found."
-      logger.error(error_message)
-      raise ValueError(error_message)
-    logger.info("%s Found existing FS source for update.", log_prefix)
-  else:
-    result = await db.execute(
-      select(FileSystemProtocolSourceOrm).filter(
-        FileSystemProtocolSourceOrm.name == name
-      )
-    )
-    fs_source = result.scalar_one_or_none()
-    if not fs_source:
-      fs_source = FileSystemProtocolSourceOrm(name=name)
-      db.add(fs_source)
-      logger.info("%s No existing FS source found, creating new.", log_prefix)
-    else:
-      logger.info(
-        "%s Found existing FS source by name, updating instead of creating.",
-        log_prefix,
-      )
-
-  if fs_source is None:
+  if result.scalar_one_or_none():
     error_message = (
-      f"{log_prefix} Failed to initialize FileSystemProtocolSourceOrm. "
-      "This indicates a logic error."
+      f"{log_prefix} A file system protocol source with name "
+      f"'{name}' already exists. Use the update function for existing sources."
     )
-    logger.critical(error_message)
+    logger.error(error_message)
     raise ValueError(error_message)
 
-  fs_source.base_path = base_path
-  fs_source.is_recursive = is_recursive
-  fs_source.status = status
+  # Create new FileSystemProtocolSourceOrm
+  fs_source = FileSystemProtocolSourceOrm(
+    name=name,
+    base_path=base_path,
+    is_recursive=is_recursive,
+    status=status,
+  )
+  db.add(fs_source)
+  logger.info("%s Initialized new file system source for creation.", log_prefix)
 
   try:
     await db.commit()
     await db.refresh(fs_source)
-    logger.info("%s Successfully committed changes.", log_prefix)
+    logger.info("%s Successfully committed new file system source.", log_prefix)
   except IntegrityError as e:
     await db.rollback()
+    # Assuming a unique constraint on 'name' for FileSystemProtocolSourceOrm
+    if "uq_file_system_protocol_source_name" in str(e.orig):
+      error_message = (
+        f"{log_prefix} A file system source with name "
+        f"'{name}' already exists (integrity check failed). Details: {e}"
+      )
+      logger.error(error_message, exc_info=True)
+      raise ValueError(error_message) from e
     error_message = (
-      f"{log_prefix} A file system source with name '{name}' already "
-      f"exists or other integrity constraint violated. Details: {e}"
+      f"{log_prefix} Database integrity error during creation. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
-    logger.exception("%s Unexpected error. Rolling back.", log_prefix)
+    logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
     raise e
-  logger.info("%s Operation completed.", log_prefix)
+
+  logger.info("%s Creation operation completed.", log_prefix)
   return fs_source
 
 
-# --- Static Protocol Definition Management ---
+async def update_file_system_protocol_source(
+  db: AsyncSession,
+  source_accession_id: uuid.UUID,  # Identifier for the source to update
+  name: Optional[str] = None,
+  base_path: Optional[str] = None,
+  is_recursive: Optional[bool] = None,
+  status: Optional[ProtocolSourceStatusEnum] = None,
+) -> FileSystemProtocolSourceOrm:
+  """Update an existing file system protocol source.
+
+  Args:
+      db (AsyncSession): The database session.
+      source_accession_id (uuid.UUID): The ID of an existing source to update.
+      name (Optional[str], optional): The unique name of the file system protocol source.
+          Defaults to None.
+      base_path (Optional[str], optional): The base file system path for protocols.
+          Defaults to None.
+      is_recursive (Optional[bool], optional): Whether to recursively scan the base path
+          for protocols. Defaults to None.
+      status (Optional[ProtocolSourceStatusEnum], optional): The current status of the
+          file system source. Defaults to None.
+
+  Returns:
+      FileSystemProtocolSourceOrm: The updated file system protocol
+      source object.
+
+  Raises:
+      ValueError: If `source_accession_id` is provided but no matching source is found,
+                  or if the updated `name` conflicts with an existing one.
+      Exception: For any other unexpected errors during the process.
+
+  """
+  log_prefix = f"File System Protocol Source (ID: {source_accession_id}, updating):"
+  logger.info("%s Attempting to update file system source.", log_prefix)
+
+  # Fetch the existing source
+  result = await db.execute(
+    select(FileSystemProtocolSourceOrm).filter(
+      FileSystemProtocolSourceOrm.accession_id == source_accession_id
+    )
+  )
+  fs_source = result.scalar_one_or_none()
+
+  if not fs_source:
+    error_message = f"{log_prefix} FileSystemProtocolSourceOrm with ID {source_accession_id} not found for update."
+    logger.error(error_message)
+    raise ValueError(error_message)
+  logger.info("%s Found existing file system source for update.", log_prefix)
+
+  # Check for name conflict if it's being changed
+  if name is not None and fs_source.name != name:
+    existing_name_check = await db.execute(
+      select(FileSystemProtocolSourceOrm)
+      .filter(FileSystemProtocolSourceOrm.name == name)
+      .filter(
+        FileSystemProtocolSourceOrm.accession_id != source_accession_id
+      )  # Exclude the current record
+    )
+    if existing_name_check.scalar_one_or_none():
+      error_message = (
+        f"{log_prefix} Cannot update name to '{name}' as it already "
+        f"exists for another file system protocol source."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+    fs_source.name = name
+
+  # Update attributes if provided
+  if base_path is not None:
+    fs_source.base_path = base_path
+  if is_recursive is not None:
+    fs_source.is_recursive = is_recursive
+  if status is not None:
+    fs_source.status = status
+
+  try:
+    await db.commit()
+    await db.refresh(fs_source)
+    logger.info("%s Successfully committed update.", log_prefix)
+  except IntegrityError as e:
+    await db.rollback()
+    error_message = (
+      f"{log_prefix} Database integrity error during update. "
+      f"This might occur if a unique constraint is violated. Details: {e}"
+    )
+    logger.error(error_message, exc_info=True)
+    raise ValueError(error_message) from e
+  except Exception as e:
+    await db.rollback()
+    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
+    raise e
+
+  logger.info("%s Update operation completed.", log_prefix)
+  return fs_source
+
+
 async def upsert_function_protocol_definition(
   db: AsyncSession,
   protocol_pydantic: FunctionProtocolDefinitionModel,
-  source_repository_id: Optional[uuid.UUID] = None,
+  source_repository_accession_id: Optional[uuid.UUID] = None,
   commit_hash: Optional[str] = None,
-  file_system_source_id: Optional[uuid.UUID] = None,
+  file_system_source_accession_id: Optional[uuid.UUID] = None,
 ) -> FunctionProtocolDefinitionOrm:
   """Add or update a function protocol definition.
 
@@ -271,11 +525,11 @@ async def upsert_function_protocol_definition(
       db (AsyncSession): The database session.
       protocol_pydantic (FunctionProtocolDefinitionModel): The Pydantic model
           representing the function protocol definition.
-      source_repository_id (Optional[int], optional): The ID of the Git
+      source_repository_accession_id (Optional[int], optional): The ID of the Git
           protocol source repository if applicable. Defaults to None.
       commit_hash (Optional[str], optional): The commit hash from the Git
           repository if applicable. Defaults to None.
-      file_system_source_id (Optional[int], optional): The ID of the file
+      file_system_source_accession_id (Optional[int], optional): The ID of the file
           system protocol source if applicable. Defaults to None.
 
   Returns:
@@ -298,22 +552,24 @@ async def upsert_function_protocol_definition(
     "name": protocol_pydantic.name,
     "version": protocol_pydantic.version,
   }
-  if source_repository_id and commit_hash:
-    query_filter_dict["source_repository_id"] = source_repository_id
+  if source_repository_accession_id and commit_hash:
+    query_filter_dict["source_repository_accession_id"] = source_repository_accession_id
     query_filter_dict["commit_hash"] = commit_hash
     logger.debug(
       "%s Linking to Git source (ID: %s, Commit: %s).",
       log_prefix,
-      source_repository_id,
+      source_repository_accession_id,
       commit_hash,
     )
-  elif file_system_source_id:
-    query_filter_dict["file_system_source_id"] = file_system_source_id
+  elif file_system_source_accession_id:
+    query_filter_dict["file_system_source_accession_id"] = (
+      file_system_source_accession_id
+    )
     query_filter_dict["source_file_path"] = protocol_pydantic.source_file_path
     logger.debug(
       "%s Linking to File System source (ID: %s, Path: %s).",
       log_prefix,
-      file_system_source_id,
+      file_system_source_accession_id,
       protocol_pydantic.source_file_path,
     )
   else:
@@ -356,9 +612,9 @@ async def upsert_function_protocol_definition(
   def_orm.deprecated = (
     False  # Assuming new/updated definitions are not deprecated by default
   )
-  def_orm.source_repository_id = source_repository_id
+  def_orm.source_repository_accession_id = source_repository_accession_id
   def_orm.commit_hash = commit_hash
-  def_orm.file_system_source_id = file_system_source_id
+  def_orm.file_system_source_accession_id = file_system_source_accession_id
   logger.debug("%s Updated core attributes.", log_prefix)
 
   # Parameters
@@ -367,14 +623,16 @@ async def upsert_function_protocol_definition(
   for param_model in protocol_pydantic.parameters:
     param_orm = current_params.pop(param_model.name, None)
     if not param_orm:
-      # Ensure def_orm.id is not None if it's a new protocol
-      if def_orm.id is None:
+      # Ensure def_orm.accession_id is not None if it's a new protocol
+      if def_orm.accession_id is None:
         await db.flush()  # Flush to get ID for new def_orm
-        if def_orm.id is None:
+        if def_orm.accession_id is None:
           raise ValueError(
             f"{log_prefix} Failed to get ID for new protocol definition."
           )
-      param_orm = ParameterDefinitionOrm(protocol_definition_id=def_orm.id)
+      param_orm = ParameterDefinitionOrm(
+        protocol_definition_accession_accession_id=def_orm.accession_id
+      )
       db.add(param_orm)  # Add new parameter to session
       logger.debug("%s Adding new parameter: %s.", log_prefix, param_model.name)
     else:
@@ -405,14 +663,16 @@ async def upsert_function_protocol_definition(
   for asset_model in protocol_pydantic.assets:
     asset_orm = current_assets.pop(asset_model.name, None)
     if not asset_orm:
-      # Ensure def_orm.id is not None if it's a new protocol
-      if def_orm.id is None:
+      # Ensure def_orm.accession_id is not None if it's a new protocol
+      if def_orm.accession_id is None:
         await db.flush()  # Flush to get ID for new def_orm
-        if def_orm.id is None:
+        if def_orm.accession_id is None:
           raise ValueError(
             f"{log_prefix} Failed to get ID for new protocol definition."
           )
-      asset_orm = AssetDefinitionOrm(protocol_definition_id=def_orm.id)
+      asset_orm = AssetDefinitionOrm(
+        protocol_definition_accession_accession_id=def_orm.accession_id
+      )
       db.add(asset_orm)  # Add new asset to session
       logger.debug("%s Adding new asset: %s.", log_prefix, asset_model.name)
     else:
@@ -458,8 +718,8 @@ async def upsert_function_protocol_definition(
 
 async def create_protocol_run(
   db: AsyncSession,
-  run_guid: uuid.UUID,
-  top_level_protocol_definition_id: uuid.UUID,
+  run_accession_accession_id: uuid.UUID,
+  top_level_protocol_definition_accession_accession_id: uuid.UUID,
   status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
   input_parameters_json: Optional[str] = None,
   initial_state_json: Optional[str] = None,
@@ -468,8 +728,8 @@ async def create_protocol_run(
 
   Args:
       db (AsyncSession): The database session.
-      run_guid (uuid.UUID): A unique GUID for this protocol run.
-      top_level_protocol_definition_id (uuid.UUID): The ID of the top-level
+      run_accession_accession_id (uuid.UUID): A unique GUID for this protocol run.
+      top_level_protocol_definition_accession_accession_id (uuid.UUID): The ID of the top-level
           protocol definition this run is based on.
       status (ProtocolRunStatusEnum, optional): The initial status of the run.
           Defaults to `ProtocolRunStatusEnum.PENDING`.
@@ -489,13 +749,13 @@ async def create_protocol_run(
   """
   logger.info(
     "Creating new protocol run with GUID '%s' for definition ID %d.",
-    run_guid,
-    top_level_protocol_definition_id,
+    run_accession_accession_id,
+    top_level_protocol_definition_accession_accession_id,
   )
   utc_now = datetime.datetime.now(datetime.timezone.utc)
   db_protocol_run = ProtocolRunOrm(
-    run_guid=run_guid,
-    top_level_protocol_definition_id=top_level_protocol_definition_id,
+    run_accession_accession_id=run_accession_accession_id,
+    top_level_protocol_definition_accession_accession_id=top_level_protocol_definition_accession_accession_id,
     status=status,
     input_parameters_json=(
       json.loads(input_parameters_json) if input_parameters_json else {}
@@ -509,13 +769,13 @@ async def create_protocol_run(
     await db.refresh(db_protocol_run)
     logger.info(
       "Successfully created protocol run (ID: %d, GUID: %s).",
-      db_protocol_run.id,
-      db_protocol_run.run_guid,
+      db_protocol_run.accession_id,
+      db_protocol_run.run_accession_accession_id,
     )
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error creating protocol run '{run_guid}'. This might "
+      f"Integrity error creating protocol run '{run_accession_accession_id}'. This might "
       f"be due to a duplicate GUID. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -523,7 +783,8 @@ async def create_protocol_run(
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error creating protocol run '%s'. Rolling back.", run_guid
+      "Unexpected error creating protocol run '%s'. Rolling back.",
+      run_accession_accession_id,
     )
     raise e
   return db_protocol_run
@@ -531,7 +792,7 @@ async def create_protocol_run(
 
 async def update_protocol_run_status(
   db: AsyncSession,
-  protocol_run_id: uuid.UUID,
+  protocol_run_accession_id: uuid.UUID,
   new_status: ProtocolRunStatusEnum,
   output_data_json: Optional[str] = None,
   final_state_json: Optional[str] = None,
@@ -547,7 +808,7 @@ async def update_protocol_run_status(
 
   Args:
       db (AsyncSession): The database session.
-      protocol_run_id (int): The ID of the protocol run to update.
+      protocol_run_accession_id (int): The ID of the protocol run to update.
       new_status (ProtocolRunStatusEnum): The new status for the protocol run.
       output_data_json (Optional[str], optional): A JSON string representing
           the output data of the run. Defaults to None.
@@ -566,10 +827,12 @@ async def update_protocol_run_status(
   """
   logger.info(
     "Updating status for protocol run ID %d to '%s'.",
-    protocol_run_id,
+    protocol_run_accession_id,
     new_status.name,
   )
-  stmt = select(ProtocolRunOrm).filter(ProtocolRunOrm.id == protocol_run_id)
+  stmt = select(ProtocolRunOrm).filter(
+    ProtocolRunOrm.accession_id == protocol_run_accession_id
+  )
   result = await db.execute(stmt)
   db_protocol_run = result.scalar_one_or_none()
 
@@ -579,7 +842,9 @@ async def update_protocol_run_status(
 
     if new_status == ProtocolRunStatusEnum.RUNNING and not db_protocol_run.start_time:
       db_protocol_run.start_time = utc_now
-      logger.debug("Protocol run ID %d started at %s.", protocol_run_id, utc_now)
+      logger.debug(
+        "Protocol run ID %d started at %s.", protocol_run_accession_id, utc_now
+      )
 
     if new_status in [
       ProtocolRunStatusEnum.COMPLETED,
@@ -589,7 +854,7 @@ async def update_protocol_run_status(
       db_protocol_run.end_time = utc_now
       logger.debug(
         "Protocol run ID %d ended at %s with status %s.",
-        protocol_run_id,
+        protocol_run_accession_id,
         utc_now,
         new_status.name,
       )
@@ -598,20 +863,26 @@ async def update_protocol_run_status(
         db_protocol_run.duration_ms = int(duration.total_seconds() * 1000)
         logger.debug(
           "Protocol run ID %d duration: %d ms.",
-          protocol_run_id,
+          protocol_run_accession_id,
           db_protocol_run.duration_ms,
         )
       if output_data_json is not None:
         db_protocol_run.output_data_json = json.loads(output_data_json)
-        logger.debug("Protocol run ID %d updated with output data.", protocol_run_id)
+        logger.debug(
+          "Protocol run ID %d updated with output data.",
+          protocol_run_accession_id,
+        )
       if final_state_json is not None:
         db_protocol_run.final_state_json = json.loads(final_state_json)
-        logger.debug("Protocol run ID %d updated with final state.", protocol_run_id)
+        logger.debug(
+          "Protocol run ID %d updated with final state.",
+          protocol_run_accession_id,
+        )
       if new_status == ProtocolRunStatusEnum.FAILED and error_info:
         db_protocol_run.output_data_json = error_info  # type: ignore
         logger.error(
           "Protocol run ID %d failed with error info: %s",
-          protocol_run_id,
+          protocol_run_accession_id,
           error_info,
         )
     try:
@@ -619,42 +890,44 @@ async def update_protocol_run_status(
       await db.refresh(db_protocol_run)
       logger.info(
         "Successfully updated protocol run ID %d status to '%s'.",
-        protocol_run_id,
+        protocol_run_accession_id,
         new_status.name,
       )
     except Exception as e:
       await db.rollback()
       logger.exception(
         "Unexpected error updating protocol run ID %d status. Rolling back.",
-        protocol_run_id,
+        protocol_run_accession_id,
       )
       raise e
     return db_protocol_run
-  logger.warning("Protocol run ID %d not found for status update.", protocol_run_id)
+  logger.warning(
+    "Protocol run ID %d not found for status update.",
+    protocol_run_accession_id,
+  )
   return None
 
 
-# --- Function Call Log Management ---
 async def log_function_call_start(
   db: AsyncSession,
-  protocol_run_orm_id: uuid.UUID,
-  function_definition_id: uuid.UUID,
+  protocol_run_orm_accession_id: uuid.UUID,
+  function_definition_accession_accession_id: uuid.UUID,
   sequence_in_run: int,
   input_args_json: str,
-  parent_function_call_log_id: Optional[uuid.UUID] = None,
+  parent_function_call_log_accession_id: Optional[uuid.UUID] = None,
 ) -> FunctionCallLogOrm:
   """Log the start of a function call within a protocol run.
 
   Args:
       db (AsyncSession): The database session.
-      protocol_run_orm_id (int): The ID of the parent protocol run.
-      function_definition_id (int): The ID of the function protocol definition
+      protocol_run_orm_accession_id (int): The ID of the parent protocol run.
+      function_definition_accession_accession_id (int): The ID of the function protocol definition
           being called.
       sequence_in_run (int): The sequential number of this function call
           within its protocol run.
       input_args_json (str): A JSON string representing the input arguments
           to the function call. Will be parsed into a dictionary.
-      parent_function_call_log_id (Optional[int], optional): The ID of the
+      parent_function_call_log_accession_id (Optional[int], optional): The ID of the
           parent function call log if this is a nested call. Defaults to None.
 
   Returns:
@@ -667,15 +940,15 @@ async def log_function_call_start(
   logger.info(
     "Logging start of function call for protocol run ID %d, function def ID %d, "
     "sequence %d.",
-    protocol_run_orm_id,
-    function_definition_id,
+    protocol_run_orm_accession_id,
+    function_definition_accession_accession_id,
     sequence_in_run,
   )
   call_log = FunctionCallLogOrm(
-    protocol_run_id=protocol_run_orm_id,
-    function_protocol_definition_id=function_definition_id,
+    protocol_run_accession_id=protocol_run_orm_accession_id,
+    function_protocol_definition_accession_accession_id=function_definition_accession_accession_id,
     sequence_in_run=sequence_in_run,
-    parent_function_call_log_id=parent_function_call_log_id,
+    parent_function_call_log_accession_id=parent_function_call_log_accession_id,
     start_time=datetime.datetime.now(datetime.timezone.utc),
     input_args_json=(json.loads(input_args_json) if input_args_json else {}),
     status=FunctionCallStatusEnum.SUCCESS,  # Initial status, will be updated on end
@@ -684,12 +957,14 @@ async def log_function_call_start(
   try:
     await db.commit()
     await db.refresh(call_log)
-    logger.info("Successfully logged function call start (ID: %d).", call_log.id)
+    logger.info(
+      "Successfully logged function call start (ID: %d).", call_log.accession_id
+    )
   except IntegrityError as e:
     await db.rollback()
     error_message = (
       f"Integrity error logging function call start for protocol run ID "
-      f"{protocol_run_orm_id}, sequence {sequence_in_run}. Details: {e}"
+      f"{protocol_run_orm_accession_id}, sequence {sequence_in_run}. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     raise ValueError(error_message) from e
@@ -702,7 +977,7 @@ async def log_function_call_start(
 
 async def log_function_call_end(
   db: AsyncSession,
-  function_call_log_id: uuid.UUID,
+  function_call_log_accession_id: uuid.UUID,
   status: FunctionCallStatusEnum,
   return_value_json: Optional[str] = None,
   error_message: Optional[str] = None,
@@ -713,7 +988,7 @@ async def log_function_call_end(
 
   Args:
       db (AsyncSession): The database session.
-      function_call_log_id (int): The ID of the function call log to update.
+      function_call_log_accession_id (int): The ID of the function call log to update.
       status (FunctionCallStatusEnum): The final status of the function call
           (e.g., `SUCCESS`, `FAILED`).
       return_value_json (Optional[str], optional): A JSON string representing
@@ -736,11 +1011,11 @@ async def log_function_call_end(
   """
   logger.info(
     "Logging end of function call ID %d with status '%s'.",
-    function_call_log_id,
+    function_call_log_accession_id,
     status.name,
   )
   stmt = select(FunctionCallLogOrm).filter(
-    FunctionCallLogOrm.id == function_call_log_id
+    FunctionCallLogOrm.accession_id == function_call_log_accession_id
   )
   result = await db.execute(stmt)
   call_log = result.scalar_one_or_none()
@@ -764,39 +1039,43 @@ async def log_function_call_end(
       await db.commit()
       await db.refresh(call_log)
       logger.info(
-        "Successfully logged function call end for ID %d.", function_call_log_id
+        "Successfully logged function call end for ID %d.",
+        function_call_log_accession_id,
       )
     except Exception as e:
       await db.rollback()
       logger.exception(
         "Unexpected error logging function call end for ID %d. Rolling back.",
-        function_call_log_id,
+        function_call_log_accession_id,
       )
       raise e
     return call_log
   logger.warning(
-    "Function call log ID %d not found for end logging.", function_call_log_id
+    "Function call log ID %d not found for end logging.",
+    function_call_log_accession_id,
   )
   return None
 
 
-# --- Query Functions ---
 async def read_protocol_definition(
   db: AsyncSession,
-  definition_id: uuid.UUID,
+  definition_accession_accession_id: uuid.UUID,
 ) -> Optional[FunctionProtocolDefinitionOrm]:
   """Retrieve a protocol definition by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      definition_id (uuid.UUID): The ID of the protocol definition to retrieve.
+      definition_accession_accession_id (uuid.UUID): The ID of the protocol definition to retrieve.
 
   Returns:
       Optional[FunctionProtocolDefinitionOrm]: The protocol definition object
       if found, otherwise None.
 
   """
-  logger.info("Retrieving protocol definition with ID: %d.", definition_id)
+  logger.info(
+    "Retrieving protocol definition with ID: %d.",
+    definition_accession_accession_id,
+  )
   stmt = (
     select(FunctionProtocolDefinitionOrm)
     .options(
@@ -805,19 +1084,23 @@ async def read_protocol_definition(
       joinedload(FunctionProtocolDefinitionOrm.source_repository),
       joinedload(FunctionProtocolDefinitionOrm.file_system_source),
     )
-    .filter(FunctionProtocolDefinitionOrm.id == definition_id)
+    .filter(
+      FunctionProtocolDefinitionOrm.accession_id == definition_accession_accession_id
+    )
   )
   result = await db.execute(stmt)
   protocol_def = result.scalar_one_or_none()
   if protocol_def:
     logger.info(
       "Found protocol definition ID %d: '%s' (Version: %s).",
-      definition_id,
+      definition_accession_accession_id,
       protocol_def.name,
       protocol_def.version,
     )
   else:
-    logger.info("Protocol definition ID %d not found.", definition_id)
+    logger.info(
+      "Protocol definition ID %d not found.", definition_accession_accession_id
+    )
   return protocol_def
 
 
@@ -880,8 +1163,8 @@ async def read_protocol_definition_details(
     if source_name:
       stmt = stmt.join(
         ProtocolSourceRepositoryOrm,
-        FunctionProtocolDefinitionOrm.source_repository_id
-        == ProtocolSourceRepositoryOrm.id,
+        FunctionProtocolDefinitionOrm.source_repository_accession_id
+        == ProtocolSourceRepositoryOrm.accession_id,
       ).filter(ProtocolSourceRepositoryOrm.name == source_name)
     logger.debug("Filtering by commit hash and Git source name.")
   elif source_name:
@@ -890,11 +1173,13 @@ async def read_protocol_definition_details(
     stmt = (
       stmt.outerjoin(
         git_source_alias,
-        FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id,
+        FunctionProtocolDefinitionOrm.source_repository_accession_id
+        == git_source_alias.accession_id,
       )
       .outerjoin(
         fs_source_alias,
-        FunctionProtocolDefinitionOrm.file_system_source_id == fs_source_alias.id,
+        FunctionProtocolDefinitionOrm.file_system_source_accession_id
+        == fs_source_alias.accession_id,
       )
       .filter(
         or_(
@@ -985,11 +1270,13 @@ async def list_protocol_definitions(
     stmt = (
       stmt.outerjoin(
         git_source_alias,
-        FunctionProtocolDefinitionOrm.source_repository_id == git_source_alias.id,
+        FunctionProtocolDefinitionOrm.source_repository_accession_id
+        == git_source_alias.accession_id,
       )
       .outerjoin(
         fs_source_alias,
-        FunctionProtocolDefinitionOrm.file_system_source_id == fs_source_alias.id,
+        FunctionProtocolDefinitionOrm.file_system_source_accession_id
+        == fs_source_alias.accession_id,
       )
       .filter(
         or_(
@@ -1024,8 +1311,8 @@ async def list_protocol_definitions(
   return protocol_defs
 
 
-async def read_protocol_run_by_guid(
-  db: AsyncSession, run_guid: uuid.UUID
+async def read_protocol_run_by_accession_accession_id(
+  db: AsyncSession, run_accession_accession_id: uuid.UUID
 ) -> Optional[ProtocolRunOrm]:
   """Retrieve a protocol run by its unique GUID.
 
@@ -1034,13 +1321,13 @@ async def read_protocol_run_by_guid(
 
   Args:
       db (AsyncSession): The database session.
-      run_guid (uuid.UUID): The unique GUID of the protocol run.
+      run_accession_accession_id (uuid.UUID): The unique GUID of the protocol run.
 
   Returns:
       Optional[ProtocolRunOrm]: The protocol run object if found, otherwise None.
 
   """
-  logger.info("Retrieving protocol run with GUID: '%s'.", run_guid)
+  logger.info("Retrieving protocol run with GUID: '%s'.", run_accession_accession_id)
   stmt = (
     select(ProtocolRunOrm)
     .options(
@@ -1052,14 +1339,14 @@ async def read_protocol_run_by_guid(
       .selectinload(FunctionProtocolDefinitionOrm.file_system_source),
       joinedload(ProtocolRunOrm.top_level_protocol_definition),
     )
-    .filter(ProtocolRunOrm.run_guid == run_guid)
+    .filter(ProtocolRunOrm.run_accession_accession_id == run_accession_accession_id)
   )
   result = await db.execute(stmt)
   protocol_run = result.scalar_one_or_none()
   if protocol_run:
-    logger.info("Found protocol run with GUID '%s'.", run_guid)
+    logger.info("Found protocol run with GUID '%s'.", run_accession_accession_id)
   else:
-    logger.info("Protocol run with GUID '%s' not found.", run_guid)
+    logger.info("Protocol run with GUID '%s' not found.", run_accession_accession_id)
   return protocol_run
 
 
@@ -1067,7 +1354,7 @@ async def list_protocol_runs(
   db: AsyncSession,
   limit: int = 100,
   offset: int = 0,
-  protocol_definition_id: Optional[uuid.UUID] = None,
+  protocol_definition_accession_accession_id: Optional[uuid.UUID] = None,
   protocol_name: Optional[str] = None,
   status: Optional[ProtocolRunStatusEnum] = None,
 ) -> List[ProtocolRunOrm]:
@@ -1079,7 +1366,7 @@ async def list_protocol_runs(
           Defaults to 100.
       offset (int, optional): The number of results to skip before returning.
           Defaults to 0.
-      protocol_definition_id (Optional[uuid.UUID], optional): Filter runs by the ID
+      protocol_definition_accession_accession_id (Optional[uuid.UUID], optional): Filter runs by the ID
           of their top-level protocol definition. Defaults to None.
       protocol_name (Optional[str], optional): Filter runs by the name of
           their top-level protocol. Defaults to None.
@@ -1091,9 +1378,9 @@ async def list_protocol_runs(
 
   """
   logger.info(
-    "Listing protocol runs with filters: def_id=%s, name='%s', status=%s, "
+    "Listing protocol runs with filters: def_accession_id=%s, name='%s', status=%s, "
     "limit=%d, offset=%d.",
-    protocol_definition_id,
+    protocol_definition_accession_accession_id,
     protocol_name,
     status,
     limit,
@@ -1103,16 +1390,20 @@ async def list_protocol_runs(
     joinedload(ProtocolRunOrm.top_level_protocol_definition)
   )
 
-  if protocol_definition_id is not None:
+  if protocol_definition_accession_accession_id is not None:
     stmt = stmt.filter(
-      ProtocolRunOrm.top_level_protocol_definition_id == protocol_definition_id
+      ProtocolRunOrm.top_level_protocol_definition_accession_accession_id
+      == protocol_definition_accession_accession_id
     )
-    logger.debug("Filtering by protocol definition ID: %d.", protocol_definition_id)
+    logger.debug(
+      "Filtering by protocol definition ID: %d.",
+      protocol_definition_accession_accession_id,
+    )
   if protocol_name is not None:
     stmt = stmt.join(
       FunctionProtocolDefinitionOrm,
-      ProtocolRunOrm.top_level_protocol_definition_id
-      == FunctionProtocolDefinitionOrm.id,
+      ProtocolRunOrm.top_level_protocol_definition_accession_accession_id
+      == FunctionProtocolDefinitionOrm.accession_id,
     ).filter(FunctionProtocolDefinitionOrm.name == protocol_name)
     logger.debug("Filtering by protocol name: '%s'.", protocol_name)
   if status is not None:
@@ -1120,7 +1411,7 @@ async def list_protocol_runs(
     logger.debug("Filtering by status: '%s'.", status.name)
 
   stmt = (
-    stmt.order_by(desc(ProtocolRunOrm.start_time), desc(ProtocolRunOrm.id))
+    stmt.order_by(desc(ProtocolRunOrm.start_time), desc(ProtocolRunOrm.accession_id))
     .limit(limit)
     .offset(offset)
   )
@@ -1132,24 +1423,27 @@ async def list_protocol_runs(
 
 async def read_function_call_logs_for_run(
   db: AsyncSession,
-  protocol_run_id: uuid.UUID,
+  protocol_run_accession_id: uuid.UUID,
 ) -> List[FunctionCallLogOrm]:
   """Retrieve all function call logs for a specific protocol run.
 
   Args:
       db (AsyncSession): The database session.
-      protocol_run_id (uuid.UUID): The ID of the protocol run to retrieve logs for.
+      protocol_run_accession_id (uuid.UUID): The ID of the protocol run to retrieve logs for.
 
   Returns:
       List[FunctionCallLogOrm]: A list of function call log objects, ordered
       by their sequence in the run. Returns an empty list if no logs are found.
 
   """
-  logger.info("Retrieving function call logs for protocol run ID: %s.", protocol_run_id)
+  logger.info(
+    "Retrieving function call logs for protocol run ID: %s.",
+    protocol_run_accession_id,
+  )
   stmt = (
     select(FunctionCallLogOrm)
     .options(selectinload(FunctionCallLogOrm.executed_function_definition))
-    .filter(FunctionCallLogOrm.protocol_run_id == protocol_run_id)
+    .filter(FunctionCallLogOrm.protocol_run_accession_id == protocol_run_accession_id)
     .order_by(FunctionCallLogOrm.sequence_in_run)
   )
   result = await db.execute(stmt)
@@ -1157,7 +1451,7 @@ async def read_function_call_logs_for_run(
   logger.info(
     "Found %d function call logs for protocol run ID %s.",
     len(function_calls),
-    protocol_run_id,
+    protocol_run_accession_id,
   )
   return function_calls
 

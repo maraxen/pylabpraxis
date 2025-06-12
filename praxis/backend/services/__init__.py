@@ -17,7 +17,7 @@ from .deck_instance import (
   list_deck_instances,
   read_deck_instance,
   read_deck_instance_by_name,
-  read_deck_instance_by_parent_machine_id,
+  read_deck_instance_by_parent_machine_accession_id,
   update_deck_instance,
 )
 from .deck_position import (
@@ -53,7 +53,7 @@ from .machine_data_service import (
   list_machines,
   read_machine,
   read_machine_by_name,
-  read_machines_by_workcell_id,
+  read_machines_by_workcell_accession_id,
   update_machine,
   update_machine_status,
 )
@@ -70,7 +70,7 @@ from .protocol_data_service import (
   read_function_call_logs_for_run,
   read_protocol_definition,
   read_protocol_definition_details,
-  read_protocol_run_by_guid,
+  read_protocol_run_by_accession_id,
   update_protocol_run_status,
 )
 from .protocol_data_service import (
@@ -159,7 +159,7 @@ __all__ = [
   "read_function_call_logs_for_run",
   "read_protocol_definition",
   "read_protocol_definition_details",
-  "read_protocol_run_by_guid",
+  "read_protocol_run_by_accession_id",
   "add_or_update_file_system_protocol_source",
   "add_or_update_protocol_source_repository",
   "list_active_protocol_sources",
@@ -177,10 +177,10 @@ __all__ = [
   "read_workcell",
   "read_workcell_by_name",
   "list_workcells",
-  "read_machines_by_workcell_id",
+  "read_machines_by_workcell_accession_id",
   "read_deck_instance",
   "read_deck_instance_by_name",
-  "read_deck_instance_by_parent_machine_id",
+  "read_deck_instance_by_parent_machine_accession_id",
   "create_deck_position_item",
   "read_or_create_workcell_orm",
   "read_workcell_state",

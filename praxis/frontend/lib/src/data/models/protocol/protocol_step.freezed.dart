@@ -45,7 +45,7 @@ $ProtocolStepCopyWith<ProtocolStep> get copyWith => _$ProtocolStepCopyWithImpl<P
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolStep&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.command, command) || other.command == command)&&const DeepCollectionEquality().equals(other.arguments, arguments)&&(identical(other.estimatedDuration, estimatedDuration) || other.estimatedDuration == estimatedDuration)&&(identical(other.order, order) || other.order == order)&&(identical(other.skipConditions, skipConditions) || other.skipConditions == skipConditions)&&const DeepCollectionEquality().equals(other.dependencies, dependencies)&&const DeepCollectionEquality().equals(other.resources, resources)&&const DeepCollectionEquality().equals(other.uiHints, uiHints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProtocolStep&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.command, command) || other.command == command)&&const DeepCollectionEquality().equals(other.arguments, arguments)&&(identical(other.estimatedDuration, estimatedDuration) || other.estimatedDuration == estimatedDuration)&&(identical(other.order, order) || other.order == order)&&(identical(other.skipConditions, skipConditions) || other.skipConditions == skipConditions)&&const DeepCollectionEquality().equals(other.dependencies, dependencies)&&const DeepCollectionEquality().equals(other.resources, resources)&&const DeepCollectionEquality().equals(other.uiHints, uiHints));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -84,7 +84,7 @@ class _$ProtocolStepCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? command = null,Object? arguments = freezed,Object? estimatedDuration = freezed,Object? order = freezed,Object? skipConditions = freezed,Object? dependencies = freezed,Object? resources = freezed,Object? uiHints = freezed,}) {
   return _then(_self.copyWith(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
@@ -106,7 +106,7 @@ as Map<String, dynamic>?,
 @JsonSerializable()
 
 class _ProtocolStep implements ProtocolStep {
-  const _ProtocolStep({required this.id, required this.name, this.description, required this.command, final  Map<String, dynamic>? arguments, @JsonKey(name: 'estimated_duration') this.estimatedDuration, this.order, this.skipConditions, final  List<String>? dependencies, final  List<String>? resources, final  Map<String, dynamic>? uiHints}): _arguments = arguments,_dependencies = dependencies,_resources = resources,_uiHints = uiHints;
+  const _ProtocolStep({required this.accession_id, required this.name, this.description, required this.command, final  Map<String, dynamic>? arguments, @JsonKey(name: 'estimated_duration') this.estimatedDuration, this.order, this.skipConditions, final  List<String>? dependencies, final  List<String>? resources, final  Map<String, dynamic>? uiHints}): _arguments = arguments,_dependencies = dependencies,_resources = resources,_uiHints = uiHints;
   factory _ProtocolStep.fromJson(Map<String, dynamic> json) => _$ProtocolStepFromJson(json);
 
 // Unique identifier for the step.
@@ -190,7 +190,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolStep&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.command, command) || other.command == command)&&const DeepCollectionEquality().equals(other._arguments, _arguments)&&(identical(other.estimatedDuration, estimatedDuration) || other.estimatedDuration == estimatedDuration)&&(identical(other.order, order) || other.order == order)&&(identical(other.skipConditions, skipConditions) || other.skipConditions == skipConditions)&&const DeepCollectionEquality().equals(other._dependencies, _dependencies)&&const DeepCollectionEquality().equals(other._resources, _resources)&&const DeepCollectionEquality().equals(other._uiHints, _uiHints));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProtocolStep&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.command, command) || other.command == command)&&const DeepCollectionEquality().equals(other._arguments, _arguments)&&(identical(other.estimatedDuration, estimatedDuration) || other.estimatedDuration == estimatedDuration)&&(identical(other.order, order) || other.order == order)&&(identical(other.skipConditions, skipConditions) || other.skipConditions == skipConditions)&&const DeepCollectionEquality().equals(other._dependencies, _dependencies)&&const DeepCollectionEquality().equals(other._resources, _resources)&&const DeepCollectionEquality().equals(other._uiHints, _uiHints));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -229,7 +229,7 @@ class __$ProtocolStepCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? command = null,Object? arguments = freezed,Object? estimatedDuration = freezed,Object? order = freezed,Object? skipConditions = freezed,Object? dependencies = freezed,Object? resources = freezed,Object? uiHints = freezed,}) {
   return _then(_ProtocolStep(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable

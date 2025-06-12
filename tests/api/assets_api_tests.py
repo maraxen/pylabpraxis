@@ -59,7 +59,7 @@ class TestResourceInstanceInventoryAPI:
       "praxis_inventory_schema_version": "1.0",
       "reagents": [
         {
-          "reagent_id": "R1",
+          "reagent_accession_id": "R1",
           "initial_quantity": {"value": 10, "unit": "ml"},
           "current_quantity": {"value": 5, "unit": "ml"},
         }
@@ -112,7 +112,7 @@ class TestResourceInstanceInventoryAPI:
 
   def test_update_resource_instance_inventory_success(self):
     mock_instance_orm_initial = MagicMock(spec=ResourceInstanceOrm)
-    mock_instance_orm_initial.id = self.MOCK_INSTANCE_ID
+    mock_instance_orm_initial.accession_id = self.MOCK_INSTANCE_ID
     mock_instance_orm_initial.properties_json = {
       "praxis_inventory_schema_version": "1.0",
       "consumable_state": "new",
@@ -121,7 +121,7 @@ class TestResourceInstanceInventoryAPI:
 
     # This is what the service function should return
     mock_instance_orm_updated = MagicMock(spec=ResourceInstanceOrm)
-    mock_instance_orm_updated.id = self.MOCK_INSTANCE_ID
+    mock_instance_orm_updated.accession_id = self.MOCK_INSTANCE_ID
 
     request_payload_dict = {
       "praxis_inventory_schema_version": "1.0",
@@ -167,7 +167,7 @@ class TestResourceInstanceInventoryAPI:
     expected_properties_for_service["last_updated_at"] = iso_now
     self.mock_update_lw_status.assert_called_once_with(
       self.mock_db_session,
-      resource_instance_id=self.MOCK_INSTANCE_ID,
+      resource_instance_accession_id=self.MOCK_INSTANCE_ID,
       properties_json_update=expected_properties_for_service,
     )
 

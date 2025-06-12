@@ -39,7 +39,7 @@ abstract class DeckItem with _$DeckItem {
     // The slot on the deck where this item is placed (e.g., "1", "A1").
     required String slot,
     // The ID of the resource definition being used.
-    @JsonKey(name: 'resource_definition_id')
+    @JsonKey(name: 'resource_definition_accession_id')
     required String resourceDefinitionId,
     // Optional: A specific resource definition, if not just referencing by ID.
     // This could be embedded or fetched separately.

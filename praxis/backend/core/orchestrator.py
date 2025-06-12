@@ -298,7 +298,10 @@ class Orchestrator:
     )
     module_path_to_add_for_sys_path: Optional[str] = None
 
-    if protocol_def_orm.source_repository_id and protocol_def_orm.source_repository:
+    if (
+      protocol_def_orm.source_repository_accession_id
+      and protocol_def_orm.source_repository
+    ):
       repo = protocol_def_orm.source_repository
       checkout_path = repo.local_checkout_path
       commit_hash_to_checkout = protocol_def_orm.commit_hash
@@ -343,7 +346,10 @@ class Orchestrator:
       )
       module_path_to_add_for_sys_path = checkout_path
 
-    elif protocol_def_orm.file_system_source_id and protocol_def_orm.file_system_source:
+    elif (
+      protocol_def_orm.file_system_source_accession_id
+      and protocol_def_orm.file_system_source
+    ):
       fs_source = protocol_def_orm.file_system_source
       if not os.path.isdir(fs_source.base_path):
         raise ValueError(
@@ -389,14 +395,15 @@ class Orchestrator:
         protocol_def_orm.module_name,
       )
 
-    if protocol_def_orm.id and (
-      not pydantic_def.db_id or pydantic_def.db_id != protocol_def_orm.id
+    if protocol_def_orm.accession_id and (
+      not pydantic_def.db_accession_id
+      or pydantic_def.db_accession_id != protocol_def_orm.accession_id
     ):
-      pydantic_def.db_id = protocol_def_orm.id  # type: ignore[assignment]
+      pydantic_def.db_accession_id = protocol_def_orm.accession_id  # type: ignore[assignment]
       logger.debug(
         "Updated Pydantic definition DB ID for '%s' to %s",
         pydantic_def.name,
-        protocol_def_orm.id,
+        protocol_def_orm.accession_id,
       )
 
     return func_wrapper, pydantic_def
@@ -504,7 +511,7 @@ class Orchestrator:
     user_input_params: Dict[str, Any],
     praxis_state: PraxisState,
     workcell_view: WorkcellView,
-    protocol_run_guid: uuid.UUID,
+    protocol_run_accession_id: uuid.UUID,
   ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], Dict[uuid.UUID, Any]]:
     """Prepare arguments for protocol execution, including acquiring assets."""
     logger.info("Preparing arguments for protocol: %s", protocol_pydantic_def.name)
@@ -568,23 +575,27 @@ class Orchestrator:
           asset_req_model.name,
           asset_req_model.actual_type_str,
           asset_req_model.optional,
-          protocol_run_guid,
+          protocol_run_accession_id,
         )
-        live_obj, orm_id, asset_kind_str = await self.asset_manager.acquire_asset(
-          protocol_run_guid=protocol_run_guid,
+        (
+          live_obj,
+          orm_accession_id,
+          asset_kind_str,
+        ) = await self.asset_manager.acquire_asset(
+          protocol_run_accession_id=protocol_run_accession_id,
           asset_requirement=asset_req_model,
         )
         final_args[asset_req_model.name] = live_obj
-        acquired_assets_details[orm_id] = {
+        acquired_assets_details[orm_accession_id] = {
           "type": asset_kind_str,
-          "orm_id": orm_id,
+          "orm_accession_id": orm_accession_id,
           "name_in_protocol": asset_req_model.name,
         }
         logger.info(
           "ORCH-ACQUIRE: Asset '%s' (Kind: %s, ORM ID: %s) acquired: %s",
           asset_req_model.name,
           asset_kind_str,
-          orm_id,
+          orm_accession_id,
           live_obj,
         )
       except AssetAcquisitionError as e:
@@ -619,9 +630,9 @@ class Orchestrator:
       protocol_pydantic_def.preconfigure_deck and protocol_pydantic_def.deck_param_name
     ):
       deck_param_name = protocol_pydantic_def.deck_param_name
-      deck_identifier_from_user = user_input_params.get(deck_param_name)
+      deck_accession_identifier_from_user = user_input_params.get(deck_param_name)
 
-      if deck_identifier_from_user is None and not next(
+      if deck_accession_identifier_from_user is None and not next(
         (
           p
           for p in protocol_pydantic_def.parameters
@@ -634,38 +645,38 @@ class Orchestrator:
           deck_param_name,
         )
 
-      if deck_identifier_from_user is not None:
-        if not isinstance(deck_identifier_from_user, (str, uuid.UUID)):
+      if deck_accession_identifier_from_user is not None:
+        if not isinstance(deck_accession_identifier_from_user, (str, uuid.UUID)):
           raise ValueError(
             "Deck identifier for preconfiguration ('%s') must be a string "
             "(name) or UUID (ID), got %s.",
             deck_param_name,
-            type(deck_identifier_from_user),
+            type(deck_accession_identifier_from_user),
           )
 
         logger.info(
           "ORCH-DECK: Applying deck instanceuration '%s' for run '%s'.",
-          deck_identifier_from_user,
-          protocol_run_guid,
+          deck_accession_identifier_from_user,
+          protocol_run_accession_id,
         )
 
-        deck_config_orm_id_to_apply: uuid.UUID
-        if isinstance(deck_identifier_from_user, str):
+        deck_config_orm_accession_id_to_apply: uuid.UUID
+        if isinstance(deck_accession_identifier_from_user, str):
           deck_config_orm = await svc.read_deck_instance_by_name(
-            db_session, deck_identifier_from_user
+            db_session, deck_accession_identifier_from_user
           )
           if not deck_config_orm:
             raise ValueError(
               "Deck configuration named '%s' not found.",
-              deck_identifier_from_user,
+              deck_accession_identifier_from_user,
             )
-          deck_config_orm_id_to_apply = deck_config_orm.id
+          deck_config_orm_accession_id_to_apply = deck_config_orm.accession_id
         else:
-          deck_config_orm_id_to_apply = deck_identifier_from_user
+          deck_config_orm_accession_id_to_apply = deck_accession_identifier_from_user
 
         live_deck_object = await self.asset_manager.apply_deck_instance(
-          deck_instance_orm_id=deck_config_orm_id_to_apply,
-          protocol_run_guid=protocol_run_guid,
+          deck_instance_orm_accession_id=deck_config_orm_accession_id_to_apply,
+          protocol_run_accession_id=protocol_run_accession_id,
         )
         final_args[deck_param_name] = live_deck_object
         logger.info(
@@ -712,12 +723,12 @@ class Orchestrator:
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}
-    run_guid = uuid.uuid7()
+    run_accession_id = uuid.uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
       "ORCH: Initiating protocol run %s for '%s' at %s. "
       "User params: %s, Initial state: %s",
-      run_guid,
+      run_accession_id,
       protocol_name,
       start_iso_timestamp,
       user_input_params,
@@ -729,17 +740,19 @@ class Orchestrator:
         db_session, protocol_name, protocol_version, commit_hash, source_name
       )
 
-      if not protocol_def_orm or not protocol_def_orm.id:
+      if not protocol_def_orm or not protocol_def_orm.accession_id:
         error_msg = (
           "Protocol '%s' (v:%s, commit:%s, src:%s) not found or invalid DB ID."
         ) % (protocol_name, protocol_version, commit_hash, source_name)
         logger.error(error_msg)
 
-        protocol_def_id_for_error_run = (
-          protocol_def_orm.id if protocol_def_orm and protocol_def_orm.id else None
+        protocol_defaccession_id_for_error_run = (
+          protocol_def_orm.accession_id
+          if protocol_def_orm and protocol_def_orm.accession_id
+          else None
         )
 
-        if protocol_def_id_for_error_run is None:
+        if protocol_defaccession_id_for_error_run is None:
           raise ProtocolCancelledError(
             f"Protocol definition '{protocol_name}' completely not found, cannot link "
             f"failed run to a definition."
@@ -747,8 +760,8 @@ class Orchestrator:
 
         error_run_db_obj = await svc.create_protocol_run(
           db=db_session,
-          run_guid=run_guid,
-          top_level_protocol_definition_id=protocol_def_id_for_error_run,
+          run_accession_id=run_accession_id,
+          top_level_protocol_definition_accession_id=protocol_defaccession_id_for_error_run,
           status=ProtocolRunStatusEnum.FAILED,
           input_parameters_json=json.dumps(user_input_params),
           initial_state_json=json.dumps(initial_state_data),
@@ -757,7 +770,7 @@ class Orchestrator:
         await db_session.refresh(error_run_db_obj)
         await svc.update_protocol_run_status(
           db=db_session,
-          protocol_run_id=error_run_db_obj.id,
+          protocol_run_accession_id=error_run_db_obj.accession_id,
           new_status=ProtocolRunStatusEnum.FAILED,
           output_data_json=json.dumps(
             {
@@ -771,8 +784,8 @@ class Orchestrator:
 
       protocol_run_db_obj = await svc.create_protocol_run(
         db=db_session,
-        run_guid=run_guid,
-        top_level_protocol_definition_id=protocol_def_orm.id,
+        run_accession_id=run_accession_id,
+        top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
         status=ProtocolRunStatusEnum.PREPARING,
         input_parameters_json=json.dumps(user_input_params),
         initial_state_json=json.dumps(initial_state_data),
@@ -780,13 +793,13 @@ class Orchestrator:
       await db_session.flush()
       await db_session.refresh(protocol_run_db_obj)
 
-      initial_command = await get_control_command(run_guid)
+      initial_command = await get_control_command(run_accession_id)
       if initial_command == "CANCEL":
-        logger.info("ORCH: Run %s CANCELLED before preparation.", run_guid)
-        await clear_control_command(run_guid)
+        logger.info("ORCH: Run %s CANCELLED before preparation.", run_accession_id)
+        await clear_control_command(run_accession_id)
         await svc.update_protocol_run_status(
           db_session,
-          protocol_run_db_obj.id,
+          protocol_run_db_obj.accession_id,
           ProtocolRunStatusEnum.CANCELLED,
           output_data_json=json.dumps(
             {"status": "Cancelled by user before preparation."}
@@ -795,15 +808,15 @@ class Orchestrator:
         await db_session.commit()
         return protocol_run_db_obj
 
-      praxis_state = PraxisState(run_guid=run_guid)
+      praxis_state = PraxisState(run_accession_id=run_accession_id)
       if initial_state_data:
         praxis_state.update(initial_state_data)
 
       run_context = PraxisRunContext(
-        run_guid=run_guid,
+        run_accession_id=run_accession_id,
         canonical_state=praxis_state,
         current_db_session=db_session,
-        current_call_log_db_id=None,
+        current_call_log_db_accession_id=None,
       )
 
       prepared_args: Dict[str, Any] = {}
@@ -825,7 +838,7 @@ class Orchestrator:
       )
       logger.debug(
         "Workcell state snapshot captured and stored in PraxisState for run %s.",
-        run_guid,
+        run_accession_id,
       )
 
       try:
@@ -850,40 +863,40 @@ class Orchestrator:
           user_input_params=user_input_params,
           praxis_state=praxis_state,
           workcell_view=workcell_view_for_protocol,
-          protocol_run_guid=run_guid,
+          protocol_run_accession_id=run_accession_id,
         )
 
         protocol_run_db_obj.resolved_assets_json = acquired_assets_info
         await db_session.merge(protocol_run_db_obj)
         await db_session.flush()
 
-        command = await get_control_command(run_guid)
+        command = await get_control_command(run_accession_id)
         if command == "PAUSE":
-          logger.info("ORCH: Run %s PAUSED before execution.", run_guid)
-          await clear_control_command(run_guid)
+          logger.info("ORCH: Run %s PAUSED before execution.", run_accession_id)
+          await clear_control_command(run_accession_id)
           await svc.update_protocol_run_status(
-            db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.PAUSED
+            db_session, protocol_run_db_obj.accession_id, ProtocolRunStatusEnum.PAUSED
           )
           await db_session.commit()
           while True:
             await asyncio.sleep(1)
-            new_command = await get_control_command(run_guid)
+            new_command = await get_control_command(run_accession_id)
             if new_command == "RESUME":
-              logger.info("ORCH: Run %s RESUMING.", run_guid)
-              await clear_control_command(run_guid)
+              logger.info("ORCH: Run %s RESUMING.", run_accession_id)
+              await clear_control_command(run_accession_id)
               await svc.update_protocol_run_status(
                 db_session,
-                protocol_run_db_obj.id,
+                protocol_run_db_obj.accession_id,
                 ProtocolRunStatusEnum.RUNNING,
               )
               await db_session.commit()
               break
             elif new_command == "CANCEL":
-              logger.info("ORCH: Run %s CANCELLED during pause.", run_guid)
-              await clear_control_command(run_guid)
+              logger.info("ORCH: Run %s CANCELLED during pause.", run_accession_id)
+              await clear_control_command(run_accession_id)
               await svc.update_protocol_run_status(
                 db_session,
-                protocol_run_db_obj.id,
+                protocol_run_db_obj.accession_id,
                 ProtocolRunStatusEnum.CANCELLED,
                 output_data_json=json.dumps(
                   {"status": "Cancelled by user during pause."}
@@ -891,14 +904,14 @@ class Orchestrator:
               )
               await db_session.commit()
               raise ProtocolCancelledError(
-                f"Run {run_guid} cancelled by user during pause."
+                f"Run {run_accession_id} cancelled by user during pause."
               )
         elif command == "CANCEL":
-          logger.info("ORCH: Run %s CANCELLED before execution.", run_guid)
-          await clear_control_command(run_guid)
+          logger.info("ORCH: Run %s CANCELLED before execution.", run_accession_id)
+          await clear_control_command(run_accession_id)
           await svc.update_protocol_run_status(
             db_session,
-            protocol_run_db_obj.id,
+            protocol_run_db_obj.accession_id,
             ProtocolRunStatusEnum.CANCELLED,
             output_data_json=json.dumps(
               {"status": "Cancelled by user before execution."}
@@ -906,61 +919,63 @@ class Orchestrator:
           )
           await db_session.commit()
           raise ProtocolCancelledError(
-            f"Run {run_guid} cancelled by user before execution."
+            f"Run {run_accession_id} cancelled by user before execution."
           )
 
         current_run_status_orm = await db_session.get(
-          ProtocolRunOrm, protocol_run_db_obj.id
+          ProtocolRunOrm, protocol_run_db_obj.accession_id
         )
         if (
           current_run_status_orm
           and current_run_status_orm.status != ProtocolRunStatusEnum.RUNNING
         ):
           await svc.update_protocol_run_status(
-            db_session, protocol_run_db_obj.id, ProtocolRunStatusEnum.RUNNING
+            db_session, protocol_run_db_obj.accession_id, ProtocolRunStatusEnum.RUNNING
           )
           await db_session.commit()
 
         logger.info(
           "ORCH: Executing protocol '%s' for run %s.",
           protocol_pydantic_def.name,
-          run_guid,
+          run_accession_id,
         )
         result = await callable_protocol_func(
           **prepared_args,
           __praxis_run_context__=run_context,
-          __function_db_id__=protocol_def_orm.id,
+          __function_db_accession_id__=protocol_def_orm.accession_id,
         )
         logger.info(
           "ORCH: Protocol '%s' run %s completed successfully.",
           protocol_pydantic_def.name,
-          run_guid,
+          run_accession_id,
         )
 
         await svc.update_protocol_run_status(
           db_session,
-          protocol_run_db_obj.id,
+          protocol_run_db_obj.accession_id,
           ProtocolRunStatusEnum.COMPLETED,
           output_data_json=json.dumps(result, default=str),
         )
 
       except ProtocolCancelledError as pce:
-        logger.info("ORCH: Protocol run %s was cancelled: %s", run_guid, pce)
-        run_after_cancel = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
+        logger.info("ORCH: Protocol run %s was cancelled: %s", run_accession_id, pce)
+        run_after_cancel = await db_session.get(
+          ProtocolRunOrm, protocol_run_db_obj.accession_id
+        )
         if (
           run_after_cancel
           and run_after_cancel.status != ProtocolRunStatusEnum.CANCELLED
         ):
           await svc.update_protocol_run_status(
             db_session,
-            protocol_run_db_obj.id,
+            protocol_run_db_obj.accession_id,
             ProtocolRunStatusEnum.CANCELLED,
             output_data_json=json.dumps({"status": str(pce)}),
           )
       except Exception as e:
         logger.error(
           "ORCH: ERROR during protocol execution for run %s ('%s'): %s",
-          run_guid,
+          run_accession_id,
           protocol_def_orm.name,
           e,
           exc_info=True,
@@ -973,30 +988,30 @@ class Orchestrator:
 
         try:
           if praxis_state is None:
-            praxis_state = PraxisState(run_guid=run_guid)
+            praxis_state = PraxisState(run_accession_id=run_accession_id)
           last_good_snapshot = await praxis_state.set(
             "workcell_last_successful_snapshot", None
           )
           logger.debug(
             "ORCH: Clearing last successful workcell state snapshot for "
             "run %s due to error.",
-            run_guid,
+            run_accession_id,
           )
           if last_good_snapshot:
             self.workcell_runtime.apply_state_snapshot(last_good_snapshot)
             logger.warning(
               "ORCH: Workcell state for run %s rolled back successfully.",
-              run_guid,
+              run_accession_id,
             )
           else:
             logger.warning(
               "ORCH: No prior workcell state snapshot found for run %s to" " rollback.",
-              run_guid,
+              run_accession_id,
             )
         except Exception as rollback_error:
           logger.critical(
             "ORCH: CRITICAL - Failed to rollback workcell state for run %s:" " %s",
-            run_guid,
+            run_accession_id,
             rollback_error,
             exc_info=True,
           )
@@ -1008,7 +1023,7 @@ class Orchestrator:
           logger.info(
             "Specific PyLabRobot error 'VolumeError' detected for run %s."
             " Setting status to REQUIRES_INTERVENTION.",
-            run_guid,
+            run_accession_id,
           )
           final_run_status = ProtocolRunStatusEnum.REQUIRES_INTERVENTION
           status_details = json.dumps(
@@ -1025,7 +1040,7 @@ class Orchestrator:
           logger.info(
             "Generic PyLabRobot error detected for run %s. Setting status"
             " to FAILED.",
-            run_guid,
+            run_accession_id,
           )
           final_run_status = ProtocolRunStatusEnum.FAILED
           status_details = json.dumps(
@@ -1037,7 +1052,9 @@ class Orchestrator:
             }
           )
 
-        run_after_error = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
+        run_after_error = await db_session.get(
+          ProtocolRunOrm, protocol_run_db_obj.accession_id
+        )
         if run_after_error and run_after_error.status not in [
           ProtocolRunStatusEnum.CANCELLED,
           ProtocolRunStatusEnum.FAILED,
@@ -1046,13 +1063,15 @@ class Orchestrator:
         ]:
           await svc.update_protocol_run_status(
             db_session,
-            protocol_run_db_obj.id,
+            protocol_run_db_obj.accession_id,
             final_run_status,
             output_data_json=status_details,
           )
       finally:
-        logger.info("ORCH: Finalizing protocol run %s.", run_guid)
-        final_run_orm = await db_session.get(ProtocolRunOrm, protocol_run_db_obj.id)
+        logger.info("ORCH: Finalizing protocol run %s.", run_accession_id)
+        final_run_orm = await db_session.get(
+          ProtocolRunOrm, protocol_run_db_obj.accession_id
+        )
         if final_run_orm:
           final_run_orm.final_state_json = praxis_state.to_dict()
 
@@ -1070,45 +1089,45 @@ class Orchestrator:
             logger.info(
               "ORCH: Releasing %d assets for run %s.",
               len(acquired_assets_info),
-              run_guid,
+              run_accession_id,
             )
-            for asset_orm_id, asset_info in acquired_assets_info.items():
+            for asset_orm_accession_id, asset_info in acquired_assets_info.items():
               try:
                 asset_type = asset_info.get("type")
                 name_in_protocol = asset_info.get("name_in_protocol", "UnknownAsset")
 
                 if asset_type == "machine":
                   await self.asset_manager.release_machine(
-                    machine_orm_id=asset_orm_id,
+                    machine_orm_accession_id=asset_orm_accession_id,
                     final_status=MachineStatusEnum.AVAILABLE,
                   )
                 elif asset_type == "resource":
                   await self.asset_manager.release_resource(
-                    resource_instance_orm_id=asset_orm_id,
+                    resource_instance_orm_accession_id=asset_orm_accession_id,
                     final_status=(ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE),
                   )
                 logger.info(
                   "ORCH-RELEASE: Asset '%s' (Type: %s, ORM ID: %s)" " released.",
                   name_in_protocol,
                   asset_type,
-                  asset_orm_id,
+                  asset_orm_accession_id,
                 )
               except Exception as release_err:
                 logger.error(
                   "ORCH-RELEASE: Failed to release asset '%s' (ORM ID:" " %s): %s",
                   asset_info.get("name_in_protocol", "UnknownAsset"),
-                  asset_info.get("orm_id"),
+                  asset_info.get("orm_accession_id"),
                   release_err,
                   exc_info=True,
                 )
           await db_session.merge(final_run_orm)
         try:
           await db_session.commit()
-          logger.info("ORCH: Final DB commit for run %s successful.", run_guid)
+          logger.info("ORCH: Final DB commit for run %s successful.", run_accession_id)
         except Exception as db_final_err:
           logger.error(
             "ORCH: CRITICAL - Failed to commit final updates for run %s: %s",
-            run_guid,
+            run_accession_id,
             db_final_err,
             exc_info=True,
           )

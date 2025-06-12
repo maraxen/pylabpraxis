@@ -152,14 +152,14 @@ Key Backend Components & Their Roles:
      When a protocol run is initiated, the Orchestrator retrieves the relevant FunctionProtocolDefinitionOrm from the database, which includes its unique database ID. The Orchestrator's _prepare_protocol_code method dynamically loads the Python module to get a reference to the decorated function.
       The_prepare_arguments method then prepares the arguments for the protocol's execution wrapper. Crucially, this now includes two special keyword arguments:
       `__praxis_run_context__`: The fully-formed PraxisRunContext for the run.
-      `__function_db_id__`: The database ID of the FunctionProtocolDefinitionOrm being executed.
+      `__function_db_accession_id__`: The database ID of the FunctionProtocolDefinitionOrm being executed.
    * Protocol Run Context & State Management (backend/core/run\_context.py, backend/utils/state.py):
      * PraxisState: This class (from backend/utils/state.py) represents the *canonical, mutable shared state* for a single top-level protocol run. It is designed to hold all experimental parameters, intermediate results, and tracking information that needs to persist across different steps or function calls within a run. It is backed by Redis for efficient runtime in-memory access and persistence, allowing for robust state management even across application restarts (for pause/resume scenarios). The Orchestrator manages the lifecycle of a PraxisState instance for each run.
      * PraxisRunContext: This immutable object (from backend/core/run\_context.py) is the central carrier of essential execution and logging information that is passed down the call stack of @protocol\_function calls. For each function call, the PraxisRunContext provides:
-       * run\_guid: The unique identifier of the top-level protocol run.
-       * protocol\_run\_db\_id: The database ID of the ProtocolRunOrm entry.
-       * function\_definition\_db\_id: The database ID of the currently executing FunctionProtocolDefinitionOrm.
-       * parent\_function\_call\_log\_id: The database ID of the calling function's log entry (for building the call hierarchy).
+       * run\_accession_id: The unique identifier of the top-level protocol run.
+       * protocol\_run\_db\accession_id: The database ID of the ProtocolRunOrm entry.
+       * function\_definition\_db\accession_id: The database ID of the currently executing FunctionProtocolDefinitionOrm.
+       * parent\_function\_call\_log\accession_id: The database ID of the calling function's log entry (for building the call hierarchy).
        * db\_session: The SQLAlchemy session for database interactions within the function's scope (e.g., for logging).
        * canonical\_state: A reference to the mutable PraxisState object for the current run.
          The @protocol\_function decorator is responsible for creating and propagating updated PraxisRunContext instances to maintain the correct call hierarchy and context for nested protocol function calls.

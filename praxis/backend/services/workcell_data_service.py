@@ -62,7 +62,9 @@ async def create_workcell(
   try:
     await db.commit()
     await db.refresh(workcell_orm)
-    logger.info("Successfully created workcell '%s' with ID %s.", name, workcell_orm.id)
+    logger.info(
+      "Successfully created workcell '%s' with ID %s.", name, workcell_orm.accession_id
+    )
     return workcell_orm
   except IntegrityError as e:
     await db.rollback()
@@ -76,32 +78,34 @@ async def create_workcell(
 
 
 async def read_workcell(
-  db: AsyncSession, workcell_id: uuid.UUID
+  db: AsyncSession, workcell_accession_id: uuid.UUID
 ) -> Optional[WorkcellOrm]:
   """Retrieve a specific workcell by its ID.
 
   Args:
     db (AsyncSession): The database session.
-    workcell_id (uuid.UUID): The ID of the workcell to retrieve.
+    workcell_accession_id (uuid.UUID): The ID of the workcell to retrieve.
 
   Returns:
     Optional[WorkcellOrm]: The workcell object if found, otherwise None.
 
   """
-  logger.info("Attempting to retrieve workcell with ID: %s.", workcell_id)
+  logger.info("Attempting to retrieve workcell with ID: %s.", workcell_accession_id)
   stmt = (
     select(WorkcellOrm)
     .options(selectinload(WorkcellOrm.machines))
-    .filter(WorkcellOrm.id == workcell_id)
+    .filter(WorkcellOrm.accession_id == workcell_accession_id)
   )
   result = await db.execute(stmt)
   workcell = result.scalar_one_or_none()
   if workcell:
     logger.info(
-      "Successfully retrieved workcell ID %s: '%s'.", workcell_id, workcell.name
+      "Successfully retrieved workcell ID %s: '%s'.",
+      workcell_accession_id,
+      workcell.name,
     )
   else:
-    logger.info("Workcell with ID %s not found.", workcell_id)
+    logger.info("Workcell with ID %s not found.", workcell_accession_id)
   return workcell
 
 
@@ -160,7 +164,7 @@ async def list_workcells(
 
 async def update_workcell(
   db: AsyncSession,
-  workcell_id: uuid.UUID,
+  workcell_accession_id: uuid.UUID,
   name: Optional[str] = None,
   description: Optional[str] = None,
   physical_location: Optional[str] = None,
@@ -169,7 +173,7 @@ async def update_workcell(
 
   Args:
     db (AsyncSession): The database session.
-    workcell_id (uuid.UUID): The ID of the workcell to update.
+    workcell_accession_id (uuid.UUID): The ID of the workcell to update.
     name (Optional[str]): The new name for the workcell.
     description (Optional[str]): The new description for the workcell.
     physical_location (Optional[str]): The new physical location for the workcell.
@@ -183,10 +187,10 @@ async def update_workcell(
     Exception: For any other unexpected errors during the process.
 
   """
-  logger.info("Attempting to update workcell with ID: %s.", workcell_id)
-  workcell_orm = await read_workcell(db, workcell_id)
+  logger.info("Attempting to update workcell with ID: %s.", workcell_accession_id)
+  workcell_orm = await read_workcell(db, workcell_accession_id)
   if not workcell_orm:
-    logger.warning("Workcell with ID %s not found for update.", workcell_id)
+    logger.warning("Workcell with ID %s not found for update.", workcell_accession_id)
     return None
 
   original_name = workcell_orm.name
@@ -210,7 +214,8 @@ async def update_workcell(
 
   if not updates_made:
     logger.info(
-      "No changes detected for workcell ID %s. No update performed.", workcell_id
+      "No changes detected for workcell ID %s. No update performed.",
+      workcell_accession_id,
     )
     return workcell_orm
 
@@ -218,7 +223,9 @@ async def update_workcell(
     await db.commit()
     await db.refresh(workcell_orm)
     logger.info(
-      "Successfully updated workcell ID %s: '%s'.", workcell_id, workcell_orm.name
+      "Successfully updated workcell ID %s: '%s'.",
+      workcell_accession_id,
+      workcell_orm.name,
     )
     return workcell_orm
   except IntegrityError as e:
@@ -231,21 +238,21 @@ async def update_workcell(
     logger.exception(
       "Unexpected error updating workcell '%s' (ID: %s). Rolling back.",
       original_name,
-      workcell_id,
+      workcell_accession_id,
     )
     raise e
 
 
-async def delete_workcell(db: AsyncSession, workcell_id: uuid.UUID) -> bool:
+async def delete_workcell(db: AsyncSession, workcell_accession_id: uuid.UUID) -> bool:
   """Delete a specific workcell by its ID.
 
   This function deletes a workcell. Note that if there are machines
   linked to this workcell, the foreign key constraint might prevent deletion
-  or require handling (e.g., setting `workcell_id` to NULL in `MachineOrm`).
+  or require handling (e.g., setting `workcell_accession_id` to NULL in `MachineOrm`).
 
   Args:
     db (AsyncSession): The database session.
-    workcell_id (uuid.UUID): The ID of the workcell to delete.
+    workcell_accession_id (uuid.UUID): The ID of the workcell to delete.
 
   Returns:
     bool: True if the deletion was successful, False if the workcell was not found.
@@ -254,23 +261,25 @@ async def delete_workcell(db: AsyncSession, workcell_id: uuid.UUID) -> bool:
     Exception: For any unexpected errors during deletion.
 
   """
-  logger.info("Attempting to delete workcell with ID: %s.", workcell_id)
-  workcell_orm = await read_workcell(db, workcell_id)
+  logger.info("Attempting to delete workcell with ID: %s.", workcell_accession_id)
+  workcell_orm = await read_workcell(db, workcell_accession_id)
   if not workcell_orm:
-    logger.warning("Workcell with ID %s not found for deletion.", workcell_id)
+    logger.warning("Workcell with ID %s not found for deletion.", workcell_accession_id)
     return False
 
   try:
     await db.delete(workcell_orm)
     await db.commit()
     logger.info(
-      "Successfully deleted workcell ID %s: '%s'.", workcell_id, workcell_orm.name
+      "Successfully deleted workcell ID %s: '%s'.",
+      workcell_accession_id,
+      workcell_orm.name,
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error deleting workcell ID {workcell_id}. This might be due to"
+      f"Integrity error deleting workcell ID {workcell_accession_id}. This might be due to"
       f" foreign key constraints, e.g., associated machines. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -278,7 +287,7 @@ async def delete_workcell(db: AsyncSession, workcell_id: uuid.UUID) -> bool:
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_id
+      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_accession_id
     )
     raise e
 
@@ -329,13 +338,13 @@ async def read_or_create_workcell_orm(
 
 
 async def read_workcell_state(
-  db_session: AsyncSession, workcell_id: uuid.UUID
+  db_session: AsyncSession, workcell_accession_id: uuid.UUID
 ) -> Optional[Dict[str, Any]]:
   """Retrieve the latest JSON-serialized state of a workcell from the database.
 
   Args:
     db_session (AsyncSession): The database session.
-    workcell_id (uuid.UUID): The ID of the workcell to retrieve the state for.
+    workcell_accession_id (uuid.UUID): The ID of the workcell to retrieve the state for.
 
   Returns:
     Optional[Dict[str, Any]]: The latest state JSON if found, otherwise None.
@@ -345,28 +354,28 @@ async def read_workcell_state(
 
   """
   try:
-    workcell_orm = await db_session.get(WorkcellOrm, workcell_id)
+    workcell_orm = await db_session.get(WorkcellOrm, workcell_accession_id)
     if workcell_orm and workcell_orm.latest_state_json:
-      logger.debug(f"Retrieved workcell state from DB for ID {workcell_id}.")
+      logger.debug(f"Retrieved workcell state from DB for ID {workcell_accession_id}.")
       return workcell_orm.latest_state_json
-    logger.info(f"No state found for workcell ID {workcell_id} in DB.")
+    logger.info(f"No state found for workcell ID {workcell_accession_id} in DB.")
     return None
   except Exception as e:
     logger.error(
-      f"Failed to retrieve workcell state from DB for ID {workcell_id}: {e}",
+      f"Failed to retrieve workcell state from DB for ID {workcell_accession_id}: {e}",
       exc_info=True,
     )
     raise
 
 
 async def update_workcell_state(
-  db_session: AsyncSession, workcell_id: uuid.UUID, state_json: Dict[str, Any]
+  db_session: AsyncSession, workcell_accession_id: uuid.UUID, state_json: Dict[str, Any]
 ) -> WorkcellOrm:
   """Update the latest_state_json for a specific WorkcellOrm entry.
 
   Args:
     db_session (AsyncSession): The database session.
-    workcell_id (uuid.UUID): The ID of the workcell to update.
+    workcell_accession_id (uuid.UUID): The ID of the workcell to update.
     state_json (Dict[str, Any]): The new state JSON to set.
 
   Returns:
@@ -378,18 +387,21 @@ async def update_workcell_state(
 
   """
   try:
-    workcell_orm = await db_session.get(WorkcellOrm, workcell_id)
+    workcell_orm = await db_session.get(WorkcellOrm, workcell_accession_id)
     if not workcell_orm:
-      raise ValueError(f"WorkcellOrm with ID {workcell_id} not found for state update.")
+      raise ValueError(
+        f"WorkcellOrm with ID {workcell_accession_id} not found for state update."
+      )
 
     workcell_orm.latest_state_json = state_json
     workcell_orm.last_state_update_time = datetime.datetime.now(datetime.timezone.utc)
     await db_session.merge(workcell_orm)
     await db_session.flush()
-    logger.debug(f"Workcell state for ID {workcell_id} updated in DB.")
+    logger.debug(f"Workcell state for ID {workcell_accession_id} updated in DB.")
     return workcell_orm
   except Exception as e:
     logger.error(
-      f"Failed to update workcell state in DB for ID {workcell_id}: {e}", exc_info=True
+      f"Failed to update workcell state in DB for ID {workcell_accession_id}: {e}",
+      exc_info=True,
     )
     raise

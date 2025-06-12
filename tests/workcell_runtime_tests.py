@@ -129,7 +129,7 @@ class TestWorkcellRuntimeDeviceHandling:
             backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
             assert workcell_runtime._main_deck_plr_object is backend_instance
-            assert workcell_runtime._main_deck_machine_orm_id == 2
+            assert workcell_runtime._main_deck_machine_orm_accession_id == 2
 
 
     @patch('praxis.backend.core.workcell_runtime._get_class_from_fqn')
@@ -191,7 +191,7 @@ class TestWorkcellRuntimeResourceHandling:
         # Check that status was updated to ERROR
         mock_ads_service_wcr.update_resource_instance_location_and_status.assert_called_once_with(
             db=workcell_runtime.db_session,
-            resource_instance_id=2,
+            resource_instance_accession_id=2,
             new_status=ResourceInstanceStatusEnum.ERROR,
             status_details="Failed to create PLR object for 'BadPlate' using FQN 'bad.fqn.Resource': Cannot import resource class"
         )
@@ -210,14 +210,14 @@ class TestWorkcellRuntimeResourceHandling:
         workcell_runtime._active_machine_backends[10] = mock_deck_instance # Assume deck ID 10 is active
 
         mock_resource_plr_obj = MagicMock(spec=workcell_runtime.Resource) # from praxis.backend.core.workcell_runtime
-        resource_instance_id = 1
+        resource_instance_accession_id = 1
 
-        workcell_runtime.assign_resource_to_deck_slot(10, "A1", mock_resource_plr_obj, resource_instance_id)
+        workcell_runtime.assign_resource_to_deck_slot(10, "A1", mock_resource_plr_obj, resource_instance_accession_id)
 
         mock_deck_instance.assign_child_resource.assert_called_once_with(resource=mock_resource_plr_obj, slot="A1")
         mock_ads_service_wcr.update_resource_instance_location_and_status.assert_called_once_with(
-            workcell_runtime.db_session, resource_instance_id, ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
-            location_machine_id=10, current_deck_slot_name="A1"
+            workcell_runtime.db_session, resource_instance_accession_id, ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+            location_machine_accession_id=10, current_deck_slot_name="A1"
         )
 
 # TODO: More tests:

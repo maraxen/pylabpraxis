@@ -525,15 +525,17 @@ class AssetManager:
     return added_count, updated_count
 
   async def apply_deck_instance(
-    self, deck_instance_orm_id: uuid.UUID, protocol_run_guid: uuid.UUID
+    self,
+    deck_instance_orm_accession_id: uuid.UUID,
+    protocol_run_accession_id: uuid.UUID,
   ) -> Deck:
     """Apply a deck instanceuration.
 
     Initialize the deck and assign pre-configured resources.
 
     Args:
-        deck_instance_orm_id: The ORM ID of the deck.
-        protocol_run_guid: The GUID of the current protocol run.
+        deck_instance_orm_accession_id: The ORM ID of the deck.
+        protocol_run_accession_id: The GUID of the current protocol run.
 
     Returns:
         The live PyLabRobot Deck object.
@@ -543,23 +545,25 @@ class AssetManager:
 
     """
     logger.info(
-      "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_guid: %s",
-      deck_instance_orm_id,
-      protocol_run_guid,
+      "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_accession_id: %s",
+      deck_instance_orm_accession_id,
+      protocol_run_accession_id,
     )
 
-    deck_instance_orm = await svc.read_deck_instance(self.db, deck_instance_orm_id)
+    deck_instance_orm = await svc.read_deck_instance(
+      self.db, deck_instance_orm_accession_id
+    )
     if not deck_instance_orm:
       raise AssetAcquisitionError(
-        f"DeckInstance ID '{deck_instance_orm_id}' not found."
+        f"DeckInstance ID '{deck_instance_orm_accession_id}' not found."
       )
 
     deck_resource_instance_orm = await svc.read_resource_instance(
-      self.db, deck_instance_orm.deck_id
+      self.db, deck_instance_orm.deck_accession_id
     )  # TODO: make sure these are synced
     if not deck_resource_instance_orm:
       raise AssetAcquisitionError(
-        f"Deck ResourceInstance ID '{deck_instance_orm.deck_id}' (from DeckInstance "
+        f"Deck ResourceInstance ID '{deck_instance_orm.deck_accession_id}' (from DeckInstance "
         f"'{deck_instance_orm.name}') not found."
       )
 
@@ -574,7 +578,8 @@ class AssetManager:
 
     if (
       deck_resource_instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE
-      and deck_resource_instance_orm.current_protocol_run_guid != protocol_run_guid
+      and deck_resource_instance_orm.current_protocol_run_accession_id
+      != protocol_run_accession_id
     ):
       raise AssetAcquisitionError(
         f"Deck resource '{deck_resource_instance_orm.user_assigned_name}' is IN_USE by"
@@ -592,31 +597,31 @@ class AssetManager:
       )
 
     # Determine parent machine for location of the deck resource itself
-    parent_machine_id_for_deck: Optional[uuid.UUID] = None
+    parent_machine_accession_id_for_deck: Optional[uuid.UUID] = None
     parent_machine_name_for_log = "N/A (standalone or not specified)"
     # To access deck_instance_orm.deck_parent_machine, it must be loaded by
     # read_deck_instance
     # For now, assuming it might not be loaded and rely on an explicit FK if it existed,
     # or leave None.
-    # If DeckInstanceOrm has deck_parent_machine_id FK:
-    # if hasattr(deck_instance_orm, 'deck_parent_machine_id') and
-    # deck_instance_orm.deck_parent_machine_id:
-    #    parent_machine_id_for_deck = deck_instance_orm.deck_parent_machine_id
+    # If DeckInstanceOrm has deck_parent_machine_accession_id FK:
+    # if hasattr(deck_instance_orm, 'deck_parent_machine_accession_id') and
+    # deck_instance_orm.deck_parent_machine_accession_id:
+    #    parent_machine_accession_id_for_deck = deck_instance_orm.deck_parent_machine_accession_id
     #    # Potentially log parent machine name
     # elif deck_instance_orm.deck_parent_machine: # If relationship is loaded
-    #    parent_machine_id_for_deck = deck_instance_orm.deck_parent_machine.id
+    #    parent_machine_accession_id_for_deck = deck_instance_orm.deck_parent_machine.accession_id
     #    parent_machine_name_for_log =
     # deck_instance_orm.deck_parent_machine.user_friendly_name
 
     await svc.update_resource_instance_location_and_status(
       db=self.db,
-      resource_instance_id=deck_resource_instance_orm.id,
+      resource_instance_accession_id=deck_resource_instance_orm.accession_id,
       new_status=ResourceInstanceStatusEnum.IN_USE,
-      current_protocol_run_guid=protocol_run_guid,
+      current_protocol_run_accession_id=protocol_run_accession_id,
       status_details=f"Deck '{deck_resource_instance_orm.user_assigned_name}' "
       f"(parent machine: {parent_machine_name_for_log}) in use for config "
-      f"'{deck_instance_orm.name}' by run {protocol_run_guid}",
-      location_machine_id=parent_machine_id_for_deck,
+      f"'{deck_instance_orm.name}' by run {protocol_run_accession_id}",
+      location_machine_accession_id=parent_machine_accession_id_for_deck,
       current_deck_position_name=None,
     )
     logger.info(
@@ -625,30 +630,33 @@ class AssetManager:
     )
 
     for position_item_orm in deck_instance_orm.position_items or []:
-      if position_item_orm.resource_instance_id:
-        item_to_place_id = position_item_orm.resource_instance_id
-        item_to_place_orm = await svc.read_resource_instance(self.db, item_to_place_id)
+      if position_item_orm.resource_instance_accession_id:
+        item_to_place_accession_id = position_item_orm.resource_instance_accession_id
+        item_to_place_orm = await svc.read_resource_instance(
+          self.db, item_to_place_accession_id
+        )
         if not item_to_place_orm:
           logger.error(
             "Resource instance %s for position '%s' not found. Skipping.",
-            item_to_place_id,
-            position_item_orm.position_id,
+            item_to_place_accession_id,
+            position_item_orm.position_accession_id,
           )
           continue
 
         # Idempotency check
         if (
           item_to_place_orm.current_status == ResourceInstanceStatusEnum.IN_USE
-          and item_to_place_orm.current_protocol_run_guid == protocol_run_guid
-          and item_to_place_orm.location_machine_id
-          == deck_resource_instance_orm.id  # Located on this deck
+          and item_to_place_orm.current_protocol_run_accession_id
+          == protocol_run_accession_id
+          and item_to_place_orm.location_machine_accession_id
+          == deck_resource_instance_orm.accession_id  # Located on this deck
           and item_to_place_orm.current_deck_position_name
-          == position_item_orm.position_id
+          == position_item_orm.position_accession_id
         ):
           logger.info(
             "Resource %s already configured at '%s' on this deck for this run.",
-            item_to_place_id,
-            position_item_orm.position_id,
+            item_to_place_accession_id,
+            position_item_orm.position_accession_id,
           )
           continue
 
@@ -657,8 +665,8 @@ class AssetManager:
           ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
         ]:
           raise AssetAcquisitionError(
-            f"Resource {item_to_place_id} for position "
-            f"'{position_item_orm.position_id}' unavailable (status: "
+            f"Resource {item_to_place_accession_id} for position "
+            f"'{position_item_orm.position_accession_id}' unavailable (status: "
             f"{item_to_place_orm.current_status})."
           )
 
@@ -675,24 +683,24 @@ class AssetManager:
           resource_definition_fqn=item_def_orm.python_fqn,
         )
         await self.workcell_runtime.assign_resource_to_deck(
-          resource_instance_orm_id=item_to_place_id,
-          target=deck_instance_orm_id,
-          position_id=position_item_orm.position_id,
+          resource_instance_orm_accession_id=item_to_place_accession_id,
+          target=deck_instance_orm_accession_id,
+          position_accession_id=position_item_orm.position_accession_id,
         )
         await svc.update_resource_instance_location_and_status(
           db=self.db,
-          resource_instance_id=item_to_place_id,
+          resource_instance_accession_id=item_to_place_accession_id,
           new_status=ResourceInstanceStatusEnum.IN_USE,
-          current_protocol_run_guid=protocol_run_guid,
-          location_machine_id=deck_resource_instance_orm.id,
-          current_deck_position_name=position_item_orm.position_id,
+          current_protocol_run_accession_id=protocol_run_accession_id,
+          location_machine_accession_id=deck_resource_instance_orm.accession_id,
+          current_deck_position_name=position_item_orm.position_accession_id,
           status_details=f"On deck '{deck_resource_instance_orm.user_assigned_name}' "
-          f"pos '{position_item_orm.position_id}' for run {protocol_run_guid}",
+          f"pos '{position_item_orm.position_accession_id}' for run {protocol_run_accession_id}",
         )
         logger.info(
           "Resource %s configured at '%s' on deck '%s'.",
           item_to_place_orm.user_assigned_name,
-          position_item_orm.position_id,
+          position_item_orm.position_accession_id,
           deck_resource_instance_orm.user_assigned_name,
         )
 
@@ -706,7 +714,7 @@ class AssetManager:
 
   async def acquire_machine(
     self,
-    protocol_run_guid: uuid.UUID,
+    protocol_run_accession_id: uuid.UUID,
     requested_asset_name_in_protocol: str,
     python_fqn_constraint: str,
     constraints: Optional[Dict[str, Any]] = None,
@@ -714,14 +722,14 @@ class AssetManager:
     """Acquire a Machine that is available or already in use by the current run.
 
     Args:
-        protocol_run_guid: GUID of the protocol run.
+        protocol_run_accession_id: GUID of the protocol run.
         requested_asset_name_in_protocol: Name of the asset as requested in the
         protocol.
         python_fqn_constraint: The FQN of the PyLabRobot Machine class.
         constraints: Optional dictionary of constraints (e.g., specific serial number).
 
     Returns:
-        A tuple (live_plr_machine_object, machine_orm_id, "machine").
+        A tuple (live_plr_machine_object, machine_orm_accession_id, "machine").
 
     Raises:
         AssetAcquisitionError: If no suitable machine can be acquired or initialized.
@@ -731,7 +739,7 @@ class AssetManager:
       "AM_ACQUIRE_MACHINE: Acquiring machine '%s' (FQN: '%s') for run '%s'.",
       requested_asset_name_in_protocol,
       python_fqn_constraint,
-      protocol_run_guid,
+      protocol_run_accession_id,
     )
 
     # Safeguard: Check if FQN might be a Deck type mistakenly passed here
@@ -770,7 +778,7 @@ class AssetManager:
       self.db,
       pylabrobot_class_filter=python_fqn_constraint,
       status=MachineStatusEnum.IN_USE,
-      current_protocol_run_guid_filter=protocol_run_guid,
+      current_protocol_run_accession_id_filter=protocol_run_accession_id,
     )
     if in_use_by_this_run_list:
       selected_machine_orm = in_use_by_this_run_list[0]
@@ -785,7 +793,7 @@ class AssetManager:
         logger.info(
           "AM_ACQUIRE_DEVICE: Found available machine '%s' (ID: %s).",
           selected_machine_orm.user_friendly_name,
-          selected_machine_orm.id,
+          selected_machine_orm.accession_id,
         )
       else:
         raise AssetAcquisitionError(
@@ -804,9 +812,9 @@ class AssetManager:
     if not live_plr_machine:
       await svc.update_machine_status(
         self.db,
-        selected_machine_orm.id,
+        selected_machine_orm.accession_id,
         MachineStatusEnum.ERROR,
-        status_details=f"Backend init failed for run {protocol_run_guid}.",
+        status_details=f"Backend init failed for run {protocol_run_accession_id}.",
       )
       raise AssetAcquisitionError(
         f"Failed to initialize backend for machine "
@@ -815,15 +823,15 @@ class AssetManager:
 
     if (
       selected_machine_orm.current_status != MachineStatusEnum.IN_USE
-      or selected_machine_orm.current_protocol_run_guid
-      != uuid.UUID(str(protocol_run_guid))
+      or selected_machine_orm.current_protocol_run_accession_id
+      != uuid.UUID(str(protocol_run_accession_id))
     ):
       updated_machine_orm = await svc.update_machine_status(
         self.db,
-        selected_machine_orm.id,
+        selected_machine_orm.accession_id,
         MachineStatusEnum.IN_USE,
-        current_protocol_run_guid=uuid.UUID(str(protocol_run_guid)),
-        status_details=f"In use by run {protocol_run_guid}",
+        current_protocol_run_accession_id=uuid.UUID(str(protocol_run_accession_id)),
+        status_details=f"In use by run {protocol_run_accession_id}",
       )
       if not updated_machine_orm:
         raise AssetAcquisitionError(
@@ -835,34 +843,34 @@ class AssetManager:
     logger.info(
       "AM_ACQUIRE_MACHINE: Machine '%s' acquired for run '%s'.",
       selected_machine_orm.user_friendly_name,
-      protocol_run_guid,
+      protocol_run_accession_id,
     )
-    return live_plr_machine, selected_machine_orm.id, "machine"
+    return live_plr_machine, selected_machine_orm.accession_id, "machine"
 
   async def acquire_resource(
     self,
-    protocol_run_guid: uuid.UUID,
+    protocol_run_accession_id: uuid.UUID,
     requested_asset_name_in_protocol: str,
     name_constraint: str,  # ResourceDefinitionCatalogOrm.name
-    user_choice_instance_id: Optional[uuid.UUID] = None,
+    user_choice_instance_accession_id: Optional[uuid.UUID] = None,
     location_constraints: Optional[Dict[str, Any]] = None,
     property_constraints: Optional[Dict[str, Any]] = None,
   ) -> Tuple[Any, uuid.UUID, str]:
     """Acquire a resource instance that is available.
 
     Args:
-        protocol_run_guid: GUID of the protocol run.
+        protocol_run_accession_id: GUID of the protocol run.
         requested_asset_name_in_protocol: Name of the asset as requested in the
         protocol.
         name_constraint: The `name` from `ResourceDefinitionCatalogOrm`.
-        user_choice_instance_id: Optional specific ID of the resource instance to
+        user_choice_instance_accession_id: Optional specific ID of the resource instance to
         acquire.
         location_constraints: Optional constraints on where the resource should be
         (primarily for deck assignment).
         property_constraints: Optional constraints on resource properties.
 
     Returns:
-        A tuple (live_plr_resource_object, resource_instance_orm_id, "resource").
+        A tuple (live_plr_resource_object, resource_instance_orm_accession_id, "resource").
 
     Raises:
         AssetAcquisitionError: If no suitable resource can be acquired or initialized.
@@ -872,33 +880,37 @@ class AssetManager:
       "AM_ACQUIRE_RESOURCE: Acquiring '%s' (Def: '%s') for run '%s'. Loc: %s",
       requested_asset_name_in_protocol,
       name_constraint,
-      protocol_run_guid,
+      protocol_run_accession_id,
       location_constraints,
     )
 
     resource_instance_to_acquire: Optional[ResourceInstanceOrm] = None
-    if user_choice_instance_id:
-      instance_orm = await svc.read_resource_instance(self.db, user_choice_instance_id)
+    if user_choice_instance_accession_id:
+      instance_orm = await svc.read_resource_instance(
+        self.db, user_choice_instance_accession_id
+      )
       if not instance_orm:
         raise AssetAcquisitionError(
-          f"Specified resource ID {user_choice_instance_id} not found."
+          f"Specified resource ID {user_choice_instance_accession_id} not found."
         )
       if instance_orm.name != name_constraint:
         raise AssetAcquisitionError(
-          f"Chosen instance {user_choice_instance_id} (Def: {instance_orm.name}) "
+          f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.name}) "
           f"mismatches constraint {name_constraint}."
         )
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
-        if instance_orm.current_protocol_run_guid != uuid.UUID(str(protocol_run_guid)):
+        if instance_orm.current_protocol_run_accession_id != uuid.UUID(
+          str(protocol_run_accession_id)
+        ):
           raise AssetAcquisitionError(
-            f"Instance {user_choice_instance_id} IN_USE by another run."
+            f"Instance {user_choice_instance_accession_id} IN_USE by another run."
           )
       elif instance_orm.current_status not in [
         ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
         ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
       ]:
         raise AssetAcquisitionError(
-          f"Chosen instance {user_choice_instance_id} not available (Status: "
+          f"Chosen instance {user_choice_instance_accession_id} not available (Status: "
           f"{instance_orm.current_status.name})."
         )
       resource_instance_to_acquire = instance_orm
@@ -907,7 +919,7 @@ class AssetManager:
         self.db,
         name=name_constraint,
         status=ResourceInstanceStatusEnum.IN_USE,
-        current_protocol_run_guid_filter=str(protocol_run_guid),
+        current_protocol_run_accession_id_filter=str(protocol_run_accession_id),
         property_filters=property_constraints,
       )
       if in_use_list:
@@ -934,7 +946,7 @@ class AssetManager:
     if not resource_instance_to_acquire:
       raise AssetAcquisitionError(
         f"No instance found for definition '{name_constraint}' matching criteria for "
-        f"run '{protocol_run_guid}'."
+        f"run '{protocol_run_accession_id}'."
       )
 
     resource_def_orm = await svc.read_resource_definition(
@@ -943,7 +955,7 @@ class AssetManager:
     if not resource_def_orm or not resource_def_orm.python_fqn:
       await svc.update_resource_instance_location_and_status(
         db=self.db,
-        resource_instance_id=resource_instance_to_acquire.id,
+        resource_instance_accession_id=resource_instance_to_acquire.accession_id,
         new_status=ResourceInstanceStatusEnum.ERROR,
         status_details=f"FQN missing for def {resource_instance_to_acquire.name}",
       )
@@ -958,7 +970,7 @@ class AssetManager:
     if not live_plr_resource:
       await svc.update_resource_instance_location_and_status(
         db=self.db,
-        resource_instance_id=resource_instance_to_acquire.id,
+        resource_instance_accession_id=resource_instance_to_acquire.accession_id,
         new_status=ResourceInstanceStatusEnum.ERROR,
         status_details="PLR object creation failed.",
       )
@@ -967,9 +979,9 @@ class AssetManager:
         f"'{resource_instance_to_acquire.user_assigned_name}'."
       )
 
-    target_deck_resource_id: Optional[uuid.UUID] = None
+    target_deck_resource_accession_id: Optional[uuid.UUID] = None
     target_position_name: Optional[str] = None
-    final_status_details = f"In use by run {protocol_run_guid}"
+    final_status_details = f"In use by run {protocol_run_accession_id}"
     is_acquiring_a_deck_resource = isinstance(live_plr_resource, Deck)
 
     if not is_acquiring_a_deck_resource and location_constraints:
@@ -999,15 +1011,15 @@ class AssetManager:
           )
         ):
           raise AssetAcquisitionError(f"Target '{deck_user_name}' is not a deck type.")
-        target_deck_resource_id = target_deck_instance.id
+        target_deck_resource_accession_id = target_deck_instance.accession_id
         target_position_name = position_on_deck
         await self.workcell_runtime.assign_resource_to_deck(
-          resource_instance_orm_id=resource_instance_to_acquire.id,
-          target=target_deck_resource_id,
-          position_id=target_position_name,
+          resource_instance_orm_accession_id=resource_instance_to_acquire.accession_id,
+          target=target_deck_resource_accession_id,
+          position_accession_id=target_position_name,
         )
         final_status_details = f"On deck '{deck_user_name}' pos \
-          '{target_position_name}' for run {protocol_run_guid}"
+          '{target_position_name}' for run {protocol_run_accession_id}"
       elif deck_user_name or position_on_deck:
         raise AssetAcquisitionError(
           "Partial location constraint: 'deck_name' and 'position_name' required."
@@ -1024,22 +1036,25 @@ class AssetManager:
       # (e.g. an integrated deck),
       # that association would typically be part of its definition or a higher-level
       # configuration.
-      # For now, its location_machine_id will be set if it was part of a
+      # For now, its location_machine_accession_id will be set if it was part of a
       # DeckInstanceOrm that had a parent machine.
-      # If acquired standalone, and it's a deck, its location_machine_id might remain
+      # If acquired standalone, and it's a deck, its location_machine_accession_id might remain
       # None unless other logic sets it.
-      target_deck_resource_id = None  # Explicitly not on another deck resource
+      target_deck_resource_accession_id = (
+        None  # Explicitly not on another deck resource
+      )
       target_position_name = None
 
     # Idempotency check for DB update
     needs_db_update = not (
       resource_instance_to_acquire.current_status == ResourceInstanceStatusEnum.IN_USE
-      and resource_instance_to_acquire.current_protocol_run_guid
-      == uuid.UUID(str(protocol_run_guid))
+      and resource_instance_to_acquire.current_protocol_run_accession_id
+      == uuid.UUID(str(protocol_run_accession_id))
       and (
         is_acquiring_a_deck_resource
         or (  # For non-decks, location must match
-          resource_instance_to_acquire.location_machine_id == target_deck_resource_id
+          resource_instance_to_acquire.location_machine_accession_id
+          == target_deck_resource_accession_id
           and resource_instance_to_acquire.current_deck_position_name
           == target_position_name
         )
@@ -1050,10 +1065,10 @@ class AssetManager:
       updated_resource_instance = (
         await svc.update_resource_instance_location_and_status(
           self.db,
-          resource_instance_to_acquire.id,
+          resource_instance_to_acquire.accession_id,
           new_status=ResourceInstanceStatusEnum.IN_USE,
-          current_protocol_run_guid=uuid.UUID(str(protocol_run_guid)),
-          location_machine_id=target_deck_resource_id,
+          current_protocol_run_accession_id=uuid.UUID(str(protocol_run_accession_id)),
+          location_machine_accession_id=target_deck_resource_accession_id,
           current_deck_position_name=target_position_name,
           status_details=final_status_details,
         )
@@ -1068,26 +1083,28 @@ class AssetManager:
     logger.info(
       "AM_ACQUIRE_RESOURCE: Resource '%s' (ID: %s) acquired. Status: IN_USE.",
       resource_instance_to_acquire.user_assigned_name,
-      resource_instance_to_acquire.id,
+      resource_instance_to_acquire.accession_id,
     )
-    return live_plr_resource, resource_instance_to_acquire.id, "resource"
+    return live_plr_resource, resource_instance_to_acquire.accession_id, "resource"
 
   async def release_machine(
     self,
-    machine_orm_id: uuid.UUID,
+    machine_orm_accession_id: uuid.UUID,
     final_status: MachineStatusEnum = MachineStatusEnum.AVAILABLE,
     status_details: Optional[str] = "Released from run",
   ):
     """Release a Machine (not a Deck)."""
-    machine_to_release = await svc.read_machine(self.db, machine_orm_id)
+    machine_to_release = await svc.read_machine(self.db, machine_orm_accession_id)
     if not machine_to_release:
-      logger.warning(f"AM_RELEASE_MACHINE: Machine ID {machine_orm_id} not found.")
+      logger.warning(
+        f"AM_RELEASE_MACHINE: Machine ID {machine_orm_accession_id} not found."
+      )
       return
 
     logger.info(
       "AM_RELEASE_MACHINE: Releasing machine '%s' (ID %s), final status: %s.",
       machine_to_release.user_friendly_name,
-      machine_orm_id,
+      machine_orm_accession_id,
       final_status.name,
     )
     # Safeguard against releasing Deck FQNs
@@ -1101,17 +1118,17 @@ class AssetManager:
       )
       return  # Avoid proceeding
 
-    await self.workcell_runtime.shutdown_machine(machine_orm_id)
+    await self.workcell_runtime.shutdown_machine(machine_orm_accession_id)
     updated_machine = await svc.update_machine_status(
       self.db,
-      machine_orm_id,
+      machine_orm_accession_id,
       final_status,
       status_details=status_details,
-      current_protocol_run_guid=None,
+      current_protocol_run_accession_id=None,
     )
     if not updated_machine:
       raise AssetReleaseError(
-        f"Failed to update DB status for machine ID {machine_orm_id} after shutdown."
+        f"Failed to update DB status for machine ID {machine_orm_accession_id} after shutdown."
       )
     logger.info(
       "AM_RELEASE_MACHINE: Machine '%s' released, status %s.",
@@ -1121,10 +1138,10 @@ class AssetManager:
 
   async def release_resource(
     self,
-    resource_instance_orm_id: uuid.UUID,
+    resource_instance_orm_accession_id: uuid.UUID,
     final_status: ResourceInstanceStatusEnum,
     final_properties_json_update: Optional[Dict[str, Any]] = None,
-    clear_from_deck_id: Optional[uuid.UUID] = None,
+    clear_from_deck_accession_id: Optional[uuid.UUID] = None,
     clear_from_position_name: Optional[str] = None,
     status_details: Optional[str] = "Released from run",
   ):
@@ -1134,10 +1151,10 @@ class AssetManager:
     and clearing it from a deck position via WorkcellRuntime if specified.
 
     Args:
-        resource_instance_orm_id: The ORM ID of the resource instance to release.
+        resource_instance_orm_accession_id: The ORM ID of the resource instance to release.
         final_status: The status to set after release (e.g., AVAILABLE_IN_STORAGE).
         final_properties_json_update: Optional properties to update in JSON format.
-        clear_from_deck_id: Optional ID of the deck DeckConfigOrm to clear from.
+        clear_from_deck_accession_id: Optional ID of the deck DeckConfigOrm to clear from.
         clear_from_position_name: Optional position name on the deck to clear from.
         status_details: Optional details about the release.
 
@@ -1146,18 +1163,18 @@ class AssetManager:
 
     """
     resource_to_release = await svc.read_resource_instance(
-      self.db, resource_instance_orm_id
+      self.db, resource_instance_orm_accession_id
     )
     if not resource_to_release:
       logger.warning(
         "AM_RELEASE_RESOURCE: Resource instance ID %s not found.",
-        resource_instance_orm_id,
+        resource_instance_orm_accession_id,
       )
       return
     logger.info(
       "AM_RELEASE_RESOURCE: Releasing '%s' (ID %s, Type %s), final status: %s.",
       resource_to_release.user_assigned_name,
-      resource_instance_orm_id,
+      resource_instance_orm_accession_id,
       resource_to_release.name,
       final_status.name,
     )
@@ -1180,46 +1197,50 @@ class AssetManager:
         "AM_RELEASE_RESOURCE: '%s' is a Deck resource. Clearing its WCR state.",
         resource_to_release.user_assigned_name,
       )
-      await self.workcell_runtime.clear_resource_instance(resource_instance_orm_id)
-      clear_from_deck_id = None  # Not applicable for the deck itself
+      await self.workcell_runtime.clear_resource_instance(
+        resource_instance_orm_accession_id
+      )
+      clear_from_deck_accession_id = None  # Not applicable for the deck itself
       clear_from_position_name = None
-    elif clear_from_deck_id and clear_from_position_name:
+    elif clear_from_deck_accession_id and clear_from_position_name:
       logger.info(
         "AM_RELEASE_RESOURCE: Clearing '%s' from deck ID %s, pos '%s'.",
         resource_to_release.user_assigned_name,
-        clear_from_deck_id,
+        clear_from_deck_accession_id,
         clear_from_position_name,
       )
       await self.workcell_runtime.clear_deck_position(
-        deck_orm_id=clear_from_deck_id,
+        deck_orm_accession_id=clear_from_deck_accession_id,
         position_name=clear_from_position_name,
-        resource_instance_orm_id=resource_instance_orm_id,
+        resource_instance_orm_accession_id=resource_instance_orm_accession_id,
       )
     else:  # Generic resource not on a specific deck or deck not specified
-      await self.workcell_runtime.clear_resource_instance(resource_instance_orm_id)
+      await self.workcell_runtime.clear_resource_instance(
+        resource_instance_orm_accession_id
+      )
 
-    final_loc_id_for_ads: Optional[uuid.UUID] = None
+    final_loc_accession_id_for_ads: Optional[uuid.UUID] = None
     final_pos_for_ads: Optional[str] = None
     if (
       not is_releasing_a_deck_resource
       and final_status == ResourceInstanceStatusEnum.AVAILABLE_ON_DECK
     ):
-      final_loc_id_for_ads = clear_from_deck_id
+      final_loc_accession_id_for_ads = clear_from_deck_accession_id
       final_pos_for_ads = clear_from_position_name
 
     updated_resource = await svc.update_resource_instance_location_and_status(
       self.db,
-      resource_instance_orm_id,
+      resource_instance_orm_accession_id,
       final_status,
       properties_json_update=final_properties_json_update,
-      location_machine_id=final_loc_id_for_ads,
+      location_machine_accession_id=final_loc_accession_id_for_ads,
       current_deck_position_name=final_pos_for_ads,
-      current_protocol_run_guid=None,
+      current_protocol_run_accession_id=None,
       status_details=status_details,
     )
     if not updated_resource:
       raise AssetReleaseError(
-        f"Failed to update DB for resource ID {resource_instance_orm_id} on release."
+        f"Failed to update DB for resource ID {resource_instance_orm_accession_id} on release."
       )
     logger.info(
       "AM_RELEASE_RESOURCE: Resource '%s' released, status %s.",
@@ -1228,7 +1249,9 @@ class AssetManager:
     )
 
   async def acquire_asset(
-    self, protocol_run_guid: uuid.UUID, asset_requirement: AssetRequirementModel
+    self,
+    protocol_run_accession_id: uuid.UUID,
+    asset_requirement: AssetRequirementModel,
   ) -> Tuple[Any, uuid.UUID, str]:
     """Dispatch asset acquisition to either acquire_machine or acquire_resource.
 
@@ -1237,11 +1260,11 @@ class AssetManager:
     - Otherwise, it's assumed to be a PLR Machine FQN (machine).
 
     Args:
-        protocol_run_guid: GUID of the protocol run.
+        protocol_run_accession_id: GUID of the protocol run.
         asset_requirement: The asset requirement model containing details.
 
     Returns:
-        A tuple (live_plr_object, asset_orm_id, "machine" or "resource").
+        A tuple (live_plr_object, asset_orm_accession_id, "machine" or "resource").
 
     """
     asset_type_or_def_name = asset_requirement.actual_type_str
@@ -1249,7 +1272,7 @@ class AssetManager:
       "AM_ACQUIRE_ASSET: Acquiring '%s' (Type/Def: '%s') for run '%s'.",
       asset_requirement.name,
       asset_type_or_def_name,
-      protocol_run_guid,
+      protocol_run_accession_id,
     )
 
     resource_def_check = await svc.read_resource_definition(
@@ -1262,13 +1285,13 @@ class AssetManager:
         asset_type_or_def_name,
       )
       return await self.acquire_resource(
-        protocol_run_guid=protocol_run_guid,
+        protocol_run_accession_id=protocol_run_accession_id,
         requested_asset_name_in_protocol=asset_requirement.name,
         name_constraint=asset_type_or_def_name,  # ResourceDefinitionCatalog.name
         property_constraints=dict(asset_requirement.constraints or {}),
         location_constraints=dict(asset_requirement.location_constraints or {}),
-        user_choice_instance_id=getattr(
-          asset_requirement, "user_choice_instance_id", None
+        user_choice_instance_accession_id=getattr(
+          asset_requirement, "user_choice_instance_accession_id", None
         ),
       )
     else:  # Assume it's a Machine FQN
@@ -1291,7 +1314,7 @@ class AssetManager:
           pass
 
       return await self.acquire_machine(
-        protocol_run_guid=protocol_run_guid,
+        protocol_run_accession_id=protocol_run_accession_id,
         requested_asset_name_in_protocol=asset_requirement.name,
         python_fqn_constraint=asset_type_or_def_name,
         constraints=dict(asset_requirement.constraints or {}),

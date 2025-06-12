@@ -21,7 +21,7 @@ _DeckLayout _$DeckLayoutFromJson(Map<String, dynamic> json) => _DeckLayout(
 
 Map<String, dynamic> _$DeckLayoutToJson(_DeckLayout instance) =>
     <String, dynamic>{
-      'id': instance.id,
+      'id': instance.accession_id,
       'name': instance.name,
       'items': instance.items,
       'schemaVersion': instance.schemaVersion,
@@ -32,7 +32,7 @@ Map<String, dynamic> _$DeckLayoutToJson(_DeckLayout instance) =>
 _DeckItem _$DeckItemFromJson(Map<String, dynamic> json) => _DeckItem(
   id: json['id'] as String,
   slot: json['slot'] as String,
-  resourceDefinitionId: json['resource_definition_id'] as String,
+  resourceDefinitionId: json['resource_definition_accession_id'] as String,
   resourceDefinition:
       json['resource_definition'] == null
           ? null
@@ -43,9 +43,9 @@ _DeckItem _$DeckItemFromJson(Map<String, dynamic> json) => _DeckItem(
 );
 
 Map<String, dynamic> _$DeckItemToJson(_DeckItem instance) => <String, dynamic>{
-  'id': instance.id,
+  'id': instance.accession_id,
   'slot': instance.slot,
-  'resource_definition_id': instance.resourceDefinitionId,
+  'resource_definition_accession_id': instance.resourceDefinitionId,
   'resource_definition': instance.resourceDefinition,
   'display_name': instance.displayName,
 };

@@ -29,7 +29,7 @@ _ProtocolStep _$ProtocolStepFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$ProtocolStepToJson(_ProtocolStep instance) =>
     <String, dynamic>{
-      'id': instance.id,
+      'id': instance.accession_id,
       'name': instance.name,
       'description': instance.description,
       'command': instance.command,

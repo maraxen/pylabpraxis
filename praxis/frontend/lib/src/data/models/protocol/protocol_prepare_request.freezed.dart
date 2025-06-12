@@ -17,7 +17,7 @@ T _$identity<T>(T value) => value;
 mixin _$ProtocolPrepareRequest {
 
 /// The ID of the protocol to prepare.
-@JsonKey(name: 'protocol_id') String get protocolId;/// Parameters for the protocol run.
+@JsonKey(name: 'protocol_accession_id') String get protocolId;/// Parameters for the protocol run.
 /// The key in the backend JSON is expected to be 'params'.
 @JsonKey(name: 'params') Map<String, dynamic>? get params;/// Asset assignments for the protocol run.
  Map<String, String>? get assets;/// Name of the deck layout to use (if selecting an existing one).
@@ -56,7 +56,7 @@ abstract mixin class $ProtocolPrepareRequestCopyWith<$Res>  {
   factory $ProtocolPrepareRequestCopyWith(ProtocolPrepareRequest value, $Res Function(ProtocolPrepareRequest) _then) = _$ProtocolPrepareRequestCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'protocol_id') String protocolId,@JsonKey(name: 'params') Map<String, dynamic>? params, Map<String, String>? assets,@JsonKey(name: 'deck_layout_name') String? deckLayoutName,@JsonKey(name: 'deck_layout_content') Map<String, dynamic>? deckLayoutContent
+@JsonKey(name: 'protocol_accession_id') String protocolId,@JsonKey(name: 'params') Map<String, dynamic>? params, Map<String, String>? assets,@JsonKey(name: 'deck_layout_name') String? deckLayoutName,@JsonKey(name: 'deck_layout_content') Map<String, dynamic>? deckLayoutContent
 });
 
 
@@ -91,11 +91,11 @@ as Map<String, dynamic>?,
 @JsonSerializable()
 
 class _ProtocolPrepareRequest implements ProtocolPrepareRequest {
-  const _ProtocolPrepareRequest({@JsonKey(name: 'protocol_id') required this.protocolId, @JsonKey(name: 'params') final  Map<String, dynamic>? params, final  Map<String, String>? assets, @JsonKey(name: 'deck_layout_name') this.deckLayoutName, @JsonKey(name: 'deck_layout_content') final  Map<String, dynamic>? deckLayoutContent}): _params = params,_assets = assets,_deckLayoutContent = deckLayoutContent;
+  const _ProtocolPrepareRequest({@JsonKey(name: 'protocol_accession_id') required this.protocolId, @JsonKey(name: 'params') final  Map<String, dynamic>? params, final  Map<String, String>? assets, @JsonKey(name: 'deck_layout_name') this.deckLayoutName, @JsonKey(name: 'deck_layout_content') final  Map<String, dynamic>? deckLayoutContent}): _params = params,_assets = assets,_deckLayoutContent = deckLayoutContent;
   factory _ProtocolPrepareRequest.fromJson(Map<String, dynamic> json) => _$ProtocolPrepareRequestFromJson(json);
 
 /// The ID of the protocol to prepare.
-@override@JsonKey(name: 'protocol_id') final  String protocolId;
+@override@JsonKey(name: 'protocol_accession_id') final  String protocolId;
 /// Parameters for the protocol run.
 /// The key in the backend JSON is expected to be 'params'.
  final  Map<String, dynamic>? _params;
@@ -169,7 +169,7 @@ abstract mixin class _$ProtocolPrepareRequestCopyWith<$Res> implements $Protocol
   factory _$ProtocolPrepareRequestCopyWith(_ProtocolPrepareRequest value, $Res Function(_ProtocolPrepareRequest) _then) = __$ProtocolPrepareRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'protocol_id') String protocolId,@JsonKey(name: 'params') Map<String, dynamic>? params, Map<String, String>? assets,@JsonKey(name: 'deck_layout_name') String? deckLayoutName,@JsonKey(name: 'deck_layout_content') Map<String, dynamic>? deckLayoutContent
+@JsonKey(name: 'protocol_accession_id') String protocolId,@JsonKey(name: 'params') Map<String, dynamic>? params, Map<String, String>? assets,@JsonKey(name: 'deck_layout_name') String? deckLayoutName,@JsonKey(name: 'deck_layout_content') Map<String, dynamic>? deckLayoutContent
 });
 
 

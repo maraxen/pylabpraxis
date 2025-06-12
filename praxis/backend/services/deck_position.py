@@ -29,19 +29,19 @@ UUID = uuid.UUID
 
 async def create_deck_position_item(
   db: AsyncSession,
-  deck_id: UUID,
+  deck_accession_id: UUID,
   name: str,
-  resource_instance_id: Optional[UUID] = None,
+  resource_instance_accession_id: Optional[UUID] = None,
   expected_resource_definition_name: Optional[str] = None,
 ) -> Optional[DeckInstancePositionResourceOrm]:
   """Add a new position item to a deck instance.
 
   Args:
     db (AsyncSession): The database session.
-    deck_id (int): The ID of the deck instance to which
+    deck_accession_id (int): The ID of the deck instance to which
       to create the position item.
     name (str): The name of the position for this item.
-    resource_instance_id (Optional[int], optional): The ID of the resource instance
+    resource_instance_accession_id (Optional[int], optional): The ID of the resource instance
       associated with this position item. Defaults to None.
     expected_resource_definition_name (Optional[str], optional): The name of the
       expected resource definition for this position item. Defaults to None.
@@ -50,7 +50,7 @@ async def create_deck_position_item(
     DeckInstancePositionResourceOrm: The newly created position item object.
 
   Raises:
-    ValueError: If the `deck_id` does not exist, or if a specified
+    ValueError: If the `deck_accession_id` does not exist, or if a specified
       resource instance ID or resource definition name does not exist.
     Exception: For any other unexpected errors during the process.
 
@@ -58,30 +58,33 @@ async def create_deck_position_item(
   logger.info(
     "Attempting to create position item '%s' to deck instance ID %s.",
     name,
-    deck_id,
+    deck_accession_id,
   )
 
   # Check if the parent DeckInstanceOrm exists
   deck_result = await db.execute(
-    select(DeckInstanceOrm).filter(DeckInstanceOrm.id == deck_id)
+    select(DeckInstanceOrm).filter(DeckInstanceOrm.accession_id == deck_accession_id)
   )
   deck_orm = deck_result.scalar_one_or_none()
 
   if not deck_orm:
     error_message = (
-      f"DeckInstanceOrm with id {deck_id} not found. " "Cannot create position item."
+      f"DeckInstanceOrm with id {deck_accession_id} not found. "
+      "Cannot create position item."
     )
     logger.error(error_message)
     raise ValueError(error_message)
 
   # Validate resource instance if provided
-  if resource_instance_id is not None:
+  if resource_instance_accession_id is not None:
     resource_instance_result = await db.execute(
-      select(ResourceInstanceOrm).filter(ResourceInstanceOrm.id == resource_instance_id)
+      select(ResourceInstanceOrm).filter(
+        ResourceInstanceOrm.accession_id == resource_instance_accession_id
+      )
     )
     if not resource_instance_result.scalar_one_or_none():
       error_message = (
-        f"ResourceInstanceOrm with id {resource_instance_id} not found. "
+        f"ResourceInstanceOrm with id {resource_instance_accession_id} not found. "
         "Cannot create position item."
       )
       logger.error(error_message)
@@ -98,9 +101,9 @@ async def create_deck_position_item(
       raise ValueError(error_message)
   # Create the new position item
   position_item = DeckInstancePositionResourceOrm(
-    deck_id=deck_id,
+    deck_accession_id=deck_accession_id,
     name=name,
-    resource_instance_id=resource_instance_id,
+    resource_instance_accession_id=resource_instance_accession_id,
     expected_resource_definition_name=expected_resource_definition_name,
   )
   db.add(position_item)
@@ -112,14 +115,14 @@ async def create_deck_position_item(
     logger.info(
       "Successfully created position item '%s' to deck instance ID %s.",
       name,
-      deck_id,
+      deck_accession_id,
     )
     return position_item
   except IntegrityError as e:
     await db.rollback()
     error_message = (
       f"Integrity error creating position item '{name}' to deck instance ID"
-      f" {deck_id}. Details: {e}"
+      f" {deck_accession_id}. Details: {e}"
     )
     logger.error(error_message)
     return None
@@ -127,52 +130,54 @@ async def create_deck_position_item(
 
 async def read_deck_position_item(
   db: AsyncSession,
-  position_item_id: UUID,
+  position_item_accession_id: UUID,
 ) -> Optional[DeckInstancePositionResourceOrm]:
   """Retrieve a specific position item by its ID.
 
   Args:
     db (AsyncSession): The database session.
-    position_item_id (UUID): The ID of the position item to retrieve.
+    position_item_accession_id (UUID): The ID of the position item to retrieve.
 
   Returns:
     Optional[DeckInstancePositionResourceOrm]: The position item object if found,
     otherwise None.
 
   """
-  logger.info("Attempting to retrieve position item with ID: %s.", position_item_id)
+  logger.info(
+    "Attempting to retrieve position item with ID: %s.", position_item_accession_id
+  )
   result = await db.execute(
     select(DeckInstancePositionResourceOrm).filter(
-      DeckInstancePositionResourceOrm.id == position_item_id
+      DeckInstancePositionResourceOrm.accession_id == position_item_accession_id
     )
   )
   position_item = result.scalar_one_or_none()
   if position_item:
     logger.info(
       "Successfully retrieved position item ID %s: '%s'.",
-      position_item_id,
+      position_item_accession_id,
       position_item.position_name,
     )
   else:
-    logger.info("Position item with ID %s not found.", position_item_id)
+    logger.info("Position item with ID %s not found.", position_item_accession_id)
   return position_item
 
 
 async def update_deck_position_item(
   db: AsyncSession,
-  position_item_id: UUID,
-  position_id: Optional[str] = None,
-  resource_instance_id: Optional[UUID] = None,
+  position_item_accession_id: UUID,
+  position_accession_id: Optional[str] = None,
+  resource_instance_accession_id: Optional[UUID] = None,
   expected_resource_definition_name: Optional[str] = None,
 ) -> Optional[DeckInstancePositionResourceOrm]:
   """Update an existing position item in a deck instance.
 
   Args:
     db (AsyncSession): The database session.
-    position_item_id (UUID): The ID of the position item to update.
-    position_id (Optional[str], optional): The new position ID for the position item.
+    position_item_accession_id (UUID): The ID of the position item to update.
+    position_accession_id (Optional[str], optional): The new position ID for the position item.
       Defaults to None.
-    resource_instance_id (Optional[UUID], optional): The new resource instance ID
+    resource_instance_accession_id (Optional[UUID], optional): The new resource instance ID
       associated with this position item. Defaults to None.
     expected_resource_definition_name (Optional[str], optional): The new expected
       resource definition name for this position item. Defaults to None.
@@ -187,48 +192,55 @@ async def update_deck_position_item(
     Exception: For any other unexpected errors during the process.
 
   """
-  logger.info("Attempting to update position item ID %s.", position_item_id)
+  logger.info("Attempting to update position item ID %s.", position_item_accession_id)
   result = await db.execute(
     select(DeckInstancePositionResourceOrm).filter(
-      DeckInstancePositionResourceOrm.id == position_item_id
+      DeckInstancePositionResourceOrm.accession_id == position_item_accession_id
     )
   )
   position_item = result.scalar_one_or_none()
 
   if not position_item:
-    logger.warning("Position item with ID %s not found for update.", position_item_id)
+    logger.warning(
+      "Position item with ID %s not found for update.", position_item_accession_id
+    )
     return None
 
-  original_position_id = position_item.position_id
+  original_position_accession_id = position_item.position_accession_id
 
-  if position_id is not None and position_item.position_id != position_id:
+  if (
+    position_accession_id is not None
+    and position_item.position_accession_id != position_accession_id
+  ):
     logger.debug(
       "Updating position ID from '%s' to '%s'.",
-      original_position_id,
-      position_id,
+      original_position_accession_id,
+      position_accession_id,
     )
-    position_item.position_id = position_id
+    position_item.position_accession_id = position_accession_id
 
-  if resource_instance_id is not None and (
-    not position_item.resource_instance_id
-    or position_item.resource_instance_id != resource_instance_id
+  if resource_instance_accession_id is not None and (
+    not position_item.resource_instance_accession_id
+    or position_item.resource_instance_accession_id != resource_instance_accession_id
   ):
     resource_instance_result = await db.execute(
-      select(ResourceInstanceOrm).filter(ResourceInstanceOrm.id == resource_instance_id)
+      select(ResourceInstanceOrm).filter(
+        ResourceInstanceOrm.accession_id == resource_instance_accession_id
+      )
     )
     if not resource_instance_result.scalar_one_or_none():
       error_message = (
-        f"ResourceInstanceOrm with id {resource_instance_id} not found. "
+        f"ResourceInstanceOrm with id {resource_instance_accession_id} not found. "
         "Cannot update position item."
       )
       logger.error(error_message)
       raise ValueError(error_message)
     logger.debug(
       "Updating resource instance ID from %s to %s.",
-      position_item.resource_instance_id,
-      resource_instance_id,
+      position_item.resource_instance_accession_id,
+      resource_instance_accession_id,
     )
-    position_item.resource_instance_id = resource_instance_id
+    position_item.resource_instance_accession_id = resource_instance_accession_id
   if expected_resource_definition_name is not None and (
     not position_item.expected_resource_definition_name
     or position_item.expected_resource_definition_name
@@ -250,25 +262,28 @@ async def update_deck_position_item(
   try:
     await db.commit()
     await db.refresh(position_item)  # Refresh to get the latest state
-    logger.info("Successfully updated position item ID %s.", position_item_id)
+    logger.info("Successfully updated position item ID %s.", position_item_accession_id)
     return position_item
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error updating position item ID {position_item_id}. " f"Details: {e}"
+      f"Integrity error updating position item ID {position_item_accession_id}. "
+      f"Details: {e}"
     )
     logger.error(error_message, exc_info=True)
     return None
 
 
-async def delete_deck_position_item(db: AsyncSession, position_item_id: UUID) -> bool:
+async def delete_deck_position_item(
+  db: AsyncSession, position_item_accession_id: UUID
+) -> bool:
   """Delete a specific position item by its ID.
 
   This function deletes a position item from a deck instance.
 
   Args:
     db (AsyncSession): The database session.
-    position_item_id (UUID): The ID of the position item to delete.
+    position_item_accession_id (UUID): The ID of the position item to delete.
 
   Returns:
     bool: True if the deletion was successful, False if the item was not found.
@@ -277,21 +292,25 @@ async def delete_deck_position_item(db: AsyncSession, position_item_id: UUID) ->
     Exception: For any unexpected errors during deletion.
 
   """
-  logger.info("Attempting to delete position item with ID: %s.", position_item_id)
-  position_item = await read_deck_position_item(db, position_item_id)
+  logger.info(
+    "Attempting to delete position item with ID: %s.", position_item_accession_id
+  )
+  position_item = await read_deck_position_item(db, position_item_accession_id)
   if not position_item:
-    logger.warning("Position item with ID %s not found for deletion.", position_item_id)
+    logger.warning(
+      "Position item with ID %s not found for deletion.", position_item_accession_id
+    )
     return False
 
   try:
     await db.delete(position_item)
     await db.commit()
-    logger.info("Successfully deleted position item ID %s.", position_item_id)
+    logger.info("Successfully deleted position item ID %s.", position_item_accession_id)
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error deleting position item ID {position_item_id}. "
+      f"Integrity error deleting position item ID {position_item_accession_id}. "
       f"This might be due to foreign key constraints. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -299,7 +318,8 @@ async def delete_deck_position_item(db: AsyncSession, position_item_id: UUID) ->
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting position item ID %s. Rolling back.", position_item_id
+      "Unexpected error deleting position item ID %s. Rolling back.",
+      position_item_accession_id,
     )
     raise e
 
@@ -321,9 +341,10 @@ async def _process_position_definitions(
       len(position_definitions_data),
     )
     # Delete existing position definitions for this deck type
-    if deck_type_orm.id:  # Ensure we have an ID to link positions
+    if deck_type_orm.accession_id:  # Ensure we have an ID to link positions
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
-        DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_orm.id
+        DeckPositionDefinitionOrm.deck_type_definition_accession_id
+        == deck_type_orm.accession_id
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
@@ -359,7 +380,7 @@ async def _process_position_definitions(
         position_specific_details["notes"] = position_data["notes"]
 
       new_position = DeckPositionDefinitionOrm(
-        deck_type_definition_id=deck_type_orm.id,  # type: ignore
+        deck_type_definition_accession_id=deck_type_orm.accession_id,  # type: ignore
         name=name,
         nominal_x_mm=position_data.get("location_x_mm"),
         nominal_y_mm=position_data.get("location_y_mm"),
@@ -376,7 +397,7 @@ async def _process_position_definitions(
 
 async def create_deck_position_definitions(
   db: AsyncSession,
-  deck_type_definition_id: int,
+  deck_type_definition_accession_id: int,
   new_positions_data: List[Dict[str, Any]],
 ) -> List[DeckPositionDefinitionOrm]:
   """Add multiple new position definitions to an existing deck type definition.
@@ -386,7 +407,7 @@ async def create_deck_position_definitions(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_id (int): The ID of the deck type definition to which
+    deck_type_definition_accession_id (int): The ID of the deck type definition to which
       to create the positions.
     new_positions_data (List[Dict[str, Any]]): A list of dictionaries, each
       representing a new position definition. Each dictionary should contain:
@@ -410,12 +431,14 @@ async def create_deck_position_definitions(
     objects.
 
   Raises:
-    ValueError: If the `deck_type_definition_id` does not exist, or if a position
+    ValueError: If the `deck_type_definition_accession_id` does not exist, or if a position
       name conflict occurs during creation.
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_definition_id}):"
+  log_prefix = (
+    f"Deck Position Definitions (Deck Type ID: {deck_type_definition_accession_id}):"
+  )
   logger.info(
     "%s Attempting to create %s new position definitions.",
     log_prefix,
@@ -425,14 +448,14 @@ async def create_deck_position_definitions(
   # First, check if the parent DeckTypeDefinitionOrm exists
   deck_type_result = await db.execute(
     select(DeckTypeDefinitionOrm).filter(
-      DeckTypeDefinitionOrm.id == deck_type_definition_id
+      DeckTypeDefinitionOrm.accession_id == deck_type_definition_accession_id
     )
   )
   deck_type_orm = deck_type_result.scalar_one_or_none()
 
   if not deck_type_orm:
     error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_definition_id} not found."
+      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_definition_accession_id} not found."
       " Cannot create position definitions."
     )
     logger.error(error_message)
@@ -468,7 +491,7 @@ async def create_deck_position_definitions(
         position_specific_details["notes"] = position_data["notes"]
 
       new_position = DeckPositionDefinitionOrm(
-        deck_type_definition_id=deck_type_definition_id,
+        deck_type_definition_accession_id=deck_type_definition_accession_id,
         name=name,
         nominal_x_mm=position_data.get("location_x_mm"),
         nominal_y_mm=position_data.get("location_y_mm"),
@@ -520,7 +543,7 @@ async def create_deck_position_definitions(
 
 async def update_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_id: int,
+  deck_type_definition_accession_id: int,
   name: str,
   location_x_mm: Optional[float] = None,
   location_y_mm: Optional[float] = None,
@@ -537,7 +560,7 @@ async def update_deck_position_definition(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_id (int): The ID of the parent deck type definition.
+    deck_type_definition_accession_id (int): The ID of the parent deck type definition.
     name (str): The unique name of the position to update.
     location_x_mm (Optional[float], optional): Nominal X coordinate of the position.
     location_y_mm (Optional[float], optional): Nominal Y coordinate of the position.
@@ -560,14 +583,15 @@ async def update_deck_position_definition(
     ValueError: If the deck type definition or the position definition is not found.
     Exception: For any other unexpected errors during the process.
   """
-  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_id}, Position: '{name}'):"
+  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, Position: '{name}'):"
   logger.info("%s Attempting to update.", log_prefix)
 
   # First, fetch the specific position definition
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_definition_id
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id
+      == deck_type_definition_accession_id
     )
     .filter(DeckPositionDefinitionOrm.name == name)
   )
@@ -642,14 +666,14 @@ async def update_deck_position_definition(
 
 async def delete_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_id: int,
+  deck_type_definition_accession_id: int,
   name: str,
 ) -> None:
   """Delete a specific position definition from a deck type definition.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_id (int): The ID of the parent deck type definition.
+    deck_type_definition_accession_id (int): The ID of the parent deck type definition.
     name (str): The unique name of the position to delete.
 
   Returns:
@@ -660,7 +684,7 @@ async def delete_deck_position_definition(
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_id}, \
+  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, \
     Position: '{name}'):"
   logger.info("%s Attempting to delete.", log_prefix)
 
@@ -668,7 +692,8 @@ async def delete_deck_position_definition(
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_definition_id
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id
+      == deck_type_definition_accession_id
     )
     .filter(DeckPositionDefinitionOrm.name == name)
   )
@@ -694,13 +719,13 @@ async def delete_deck_position_definition(
 
 
 async def read_position_definitions_for_deck_type(
-  db: AsyncSession, deck_type_definition_id: uuid.UUID
+  db: AsyncSession, deck_type_definition_accession_id: uuid.UUID
 ) -> List[DeckPositionDefinitionOrm]:
   """Retrieve all position definitions associated with a specific deck type definition ID.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_id (uuid.UUID): The ID of the deck type definition.
+    deck_type_definition_accession_id (uuid.UUID): The ID of the deck type definition.
 
   Returns:
     List[DeckPositionDefinitionOrm]: A list of position definitions for the specified
@@ -708,21 +733,21 @@ async def read_position_definitions_for_deck_type(
     does not exist.
 
   Raises:
-    ValueError: If the `deck_type_definition_id` does not exist.
+    ValueError: If the `deck_type_definition_accession_id` does not exist.
 
   """
   logger.info(
     "Attempting to retrieve position definitions for deck type ID: %s.",
-    deck_type_definition_id,
+    deck_type_definition_accession_id,
   )
   deck_type_exists_result = await db.execute(
-    select(DeckTypeDefinitionOrm.id).filter(
-      DeckTypeDefinitionOrm.id == deck_type_definition_id
+    select(DeckTypeDefinitionOrm.accession_id).filter(
+      DeckTypeDefinitionOrm.accession_id == deck_type_definition_accession_id
     )
   )
   if not deck_type_exists_result.scalar_one_or_none():
     error_message = (
-      f"DeckTypeDefinitionOrm with id {deck_type_definition_id} not found. "
+      f"DeckTypeDefinitionOrm with id {deck_type_definition_accession_id} not found. "
       "Cannot retrieve position definitions."
     )
     logger.error(error_message)
@@ -731,15 +756,18 @@ async def read_position_definitions_for_deck_type(
   stmt = (
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_definition_id
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id
+      == deck_type_definition_accession_id
     )
-    .order_by(DeckPositionDefinitionOrm.name)  # Changed from position_id to name
+    .order_by(
+      DeckPositionDefinitionOrm.name
+    )  # Changed from position_accession_id to name
   )
   result = await db.execute(stmt)
   positions = list(result.scalars().all())
   logger.info(
     "Found %s position definitions for deck type ID %s.",
     len(positions),
-    deck_type_definition_id,
+    deck_type_definition_accession_id,
   )
   return positions

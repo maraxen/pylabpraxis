@@ -13,7 +13,7 @@ import asyncio
 import json
 import logging
 import os
-import uuid  # For generating run_guid
+import uuid  # For generating run_accession_id
 from configparser import ConfigParser
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -248,11 +248,11 @@ class PraxisDBService:
 
   async def register_protocol_run(
     self,
-    protocol_definition_id: int,
-    created_by_user_id: str,
+    protocol_definition_accession_id: int,
+    created_by_user_accession_id: str,
     parameters: Optional[Dict[str, Any]] = None,
     status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
-    run_guid: Optional[str] = None,
+    run_accession_id: Optional[str] = None,
   ) -> int:
     """Register a new protocol run in the database.
 
@@ -261,14 +261,14 @@ class PraxisDBService:
     provided.
 
     Args:
-        protocol_definition_id (int): The ID of the top-level protocol
+        protocol_definition_accession_id (int): The ID of the top-level protocol
             definition for this run.
-        created_by_user_id (str): The ID of the user who created this run.
+        created_by_user_accession_id (str): The ID of the user who created this run.
         parameters (Optional[Dict[str, Any]], optional): A dictionary of
             input parameters for the protocol run. Defaults to None.
         status (ProtocolRunStatusEnum, optional): The initial status of the
             protocol run. Defaults to `ProtocolRunStatusEnum.PENDING`.
-        run_guid (Optional[str], optional): A pre-defined GUID for the run.
+        run_accession_id (Optional[str], optional): A pre-defined GUID for the run.
             If None, a new UUID will be generated. Defaults to None.
 
     Returns:
@@ -282,18 +282,18 @@ class PraxisDBService:
     """
     logger.info(
       "Registering new protocol run for protocol definition ID %d by user %s.",
-      protocol_definition_id,
-      created_by_user_id,
+      protocol_definition_accession_id,
+      created_by_user_accession_id,
     )
     async with self.get_praxis_session() as session:
-      if not run_guid:
-        run_guid = str(uuid.uuid4())
-        logger.debug("Generated new run GUID: %s.", run_guid)
+      if not run_accession_id:
+        run_accession_id = str(uuid.uuid4())
+        logger.debug("Generated new run GUID: %s.", run_accession_id)
 
       new_run = ProtocolRunOrm(
-        run_guid=run_guid,
-        top_level_protocol_definition_id=protocol_definition_id,
-        created_by_user_id=created_by_user_id,
+        run_accession_id=run_accession_id,
+        top_level_protocol_definition_accession_id=protocol_definition_accession_id,
+        created_by_user_accession_id=created_by_user_accession_id,
         status=status,
         input_parameters_json=parameters if parameters else {},
       )
@@ -301,9 +301,9 @@ class PraxisDBService:
       await session.flush()
       await session.refresh(new_run)
 
-      if new_run.id is None:
+      if new_run.accession_id is None:
         error_message = (
-          f"Failed to create protocol run '{run_guid}': no ID returned "
+          f"Failed to create protocol run '{run_accession_id}': no ID returned "
           "after flush/refresh."
         )
         logger.error(error_message)
@@ -311,14 +311,16 @@ class PraxisDBService:
 
       logger.info(
         "Registered new protocol run (ID: %d, GUID: %s).",
-        new_run.id,
-        new_run.run_guid,
+        new_run.accession_id,
+        new_run.run_accession_id,
       )
-      assert isinstance(new_run.id, int), "Expected integer ID for ProtocolRunOrm"
-      return new_run.id
+      assert isinstance(
+        new_run.accession_id, int
+      ), "Expected integer ID for ProtocolRunOrm"
+      return new_run.accession_id
 
   async def read_protocol_run_details(
-    self, protocol_run_id: int
+    self, protocol_run_accession_id: int
   ) -> Optional[Dict[str, Any]]:
     """Retrieve detailed information about a specific protocol run.
 
@@ -326,19 +328,21 @@ class PraxisDBService:
     about the user who created it.
 
     Args:
-        protocol_run_id (int): The ID of the protocol run to retrieve.
+        protocol_run_accession_id (int): The ID of the protocol run to retrieve.
 
     Returns:
         Optional[Dict[str, Any]]: A dictionary containing the protocol run
         details, or None if the run is not found.
 
     """
-    logger.info("Retrieving details for protocol run ID: %d.", protocol_run_id)
+    logger.info(
+      "Retrieving details for protocol run ID: %d.", protocol_run_accession_id
+    )
     async with self.get_praxis_session() as session:
       stmt = (
         select(ProtocolRunOrm)
         .options(joinedload(ProtocolRunOrm.created_by_user))
-        .where(ProtocolRunOrm.id == protocol_run_id)
+        .where(ProtocolRunOrm.accession_id == protocol_run_accession_id)
       )
       result = await session.execute(stmt)
       run_orm = result.scalar_one_or_none()
@@ -355,11 +359,11 @@ class PraxisDBService:
             "first_name": getattr(user_data, "first_name", None),
             "last_name": getattr(user_data, "last_name", None),
           }
-        logger.info("Found protocol run ID %d.", protocol_run_id)
+        logger.info("Found protocol run ID %d.", protocol_run_accession_id)
         return {
-          "protocol_run_id": run_orm.id,
-          "run_guid": run_orm.run_guid,
-          "protocol_definition_id": run_orm.top_level_protocol_definition_id,
+          "protocol_run_accession_id": run_orm.accession_id,
+          "run_accession_id": run_orm.run_accession_id,
+          "protocol_definition_accession_id": run_orm.top_level_protocol_definition_accession_id,
           "start_time": (
             run_orm.start_time.isoformat() if run_orm.start_time else None
           ),
@@ -373,11 +377,11 @@ class PraxisDBService:
           "final_state": run_orm.final_state_json,
           "data_directory_path": run_orm.data_directory_path,
         }
-      logger.info("Protocol run ID %d not found.", protocol_run_id)
+      logger.info("Protocol run ID %d not found.", protocol_run_accession_id)
       return None
 
   async def update_protocol_run_status(
-    self, protocol_run_id: int, status: ProtocolRunStatusEnum
+    self, protocol_run_accession_id: int, status: ProtocolRunStatusEnum
   ):
     """Update the status of a specific protocol run.
 
@@ -385,13 +389,13 @@ class PraxisDBService:
     the protocol run will also be set to the current UTC time.
 
     Args:
-        protocol_run_id (int): The ID of the protocol run to update.
+        protocol_run_accession_id (int): The ID of the protocol run to update.
         status (ProtocolRunStatusEnum): The new status for the protocol run.
 
     """
     logger.info(
       "Updating status for protocol run ID %d to '%s'.",
-      protocol_run_id,
+      protocol_run_accession_id,
       status.name,
     )
     async with self.get_praxis_session() as session:
@@ -404,29 +408,31 @@ class PraxisDBService:
         values_to_update["end_time"] = func.now()
         logger.debug(
           "Setting end_time for protocol run ID %d due to status '%s'.",
-          protocol_run_id,
+          protocol_run_accession_id,
           status.name,
         )
 
       stmt = (
         update(ProtocolRunOrm)
-        .where(ProtocolRunOrm.id == protocol_run_id)
+        .where(ProtocolRunOrm.accession_id == protocol_run_accession_id)
         .values(**values_to_update)
       )
       await session.execute(stmt)
-      logger.info("Protocol run %d status updated to %s.", protocol_run_id, status.name)
+      logger.info(
+        "Protocol run %d status updated to %s.", protocol_run_accession_id, status.name
+      )
 
   async def list_protocol_runs(
     self,
     status: Optional[ProtocolRunStatusEnum] = None,
-    created_by_user_id: Optional[str] = None,
+    created_by_user_accession_id: Optional[str] = None,
   ) -> List[Dict[str, Any]]:
     """List protocol runs with optional filtering by status and user.
 
     Args:
         status (Optional[ProtocolRunStatusEnum], optional): Filter runs by
             their current status. Defaults to None.
-        created_by_user_id (Optional[str], optional): Filter runs by the ID
+        created_by_user_accession_id (Optional[str], optional): Filter runs by the ID
             of the user who created them. Defaults to None.
 
     Returns:
@@ -435,9 +441,9 @@ class PraxisDBService:
 
     """
     logger.info(
-      "Listing protocol runs with filters: status=%s, created_by_user_id=%s.",
+      "Listing protocol runs with filters: status=%s, created_by_user_accession_id=%s.",
       status,
-      created_by_user_id,
+      created_by_user_accession_id,
     )
     async with self.get_praxis_session() as session:
       stmt = (
@@ -446,15 +452,17 @@ class PraxisDBService:
         .order_by(
           ProtocolRunOrm.start_time.desc()
           if ProtocolRunOrm.start_time is not None
-          else ProtocolRunOrm.id.desc()
+          else ProtocolRunOrm.accession_id.desc()
         )
       )
 
       if status:
         stmt = stmt.where(ProtocolRunOrm.status == status)
-      if created_by_user_id:
+      if created_by_user_accession_id:
         # Assuming created_by_user relationship points to a UserOrm-like object
-        stmt = stmt.where(ProtocolRunOrm.created_by_user.has(id=created_by_user_id))
+        stmt = stmt.where(
+          ProtocolRunOrm.created_by_user.has(id=created_by_user_accession_id)
+        )
 
       result = await session.execute(stmt)
       runs_orm = result.scalars().all()
@@ -473,9 +481,11 @@ class PraxisDBService:
           }
         runs_list.append(
           {
-            "protocol_run_id": run_orm.id,
-            "run_guid": run_orm.run_guid,
-            "protocol_definition_id": (run_orm.top_level_protocol_definition_id),
+            "protocol_run_accession_id": run_orm.accession_id,
+            "run_accession_id": run_orm.run_accession_id,
+            "protocol_definition_accession_id": (
+              run_orm.top_level_protocol_definition_accession_id
+            ),
             "start_time": (
               run_orm.start_time.isoformat() if run_orm.start_time else None
             ),
@@ -562,15 +572,15 @@ class PraxisDBService:
 
       await session.flush()
       await session.refresh(asset_orm)
-      if asset_orm.id is None:
+      if asset_orm.accession_id is None:
         error_message = (
           f"Failed to add/update resource instance '{user_assigned_name}': "
           "no ID returned."
         )
         logger.error(error_message)
         raise ValueError(error_message)
-      logger.info("%s Operation completed. ID: %s.", log_prefix, asset_orm.id)
-      return asset_orm.id
+      logger.info("%s Operation completed. ID: %s.", log_prefix, asset_orm.accession_id)
+      return asset_orm.accession_id
 
   async def get_asset_instance(
     self, user_assigned_name: str
@@ -600,7 +610,7 @@ class PraxisDBService:
       if asset_orm:
         logger.info("Found asset instance '%s'.", user_assigned_name)
         return {
-          "id": asset_orm.id,
+          "id": asset_orm.accession_id,
           "user_assigned_name": asset_orm.user_assigned_name,
           "name": (asset_orm.name),
           "lot_number": asset_orm.lot_number,
@@ -617,11 +627,13 @@ class PraxisDBService:
           ),
           "status_details": asset_orm.status_details,
           "current_deck_position_name": asset_orm.current_deck_position_name,
-          "location_machine_id": asset_orm.location_machine_id,
+          "location_machine_accession_id": asset_orm.location_machine_accession_id,
           "physical_location_description": (asset_orm.physical_location_description),
           "properties_json": asset_orm.properties_json,
           "is_permanent_fixture": asset_orm.is_permanent_fixture,
-          "current_protocol_run_guid": (asset_orm.current_protocol_run_guid),
+          "current_protocol_run_accession_id": (
+            asset_orm.current_protocol_run_accession_id
+          ),
           "is_available": asset_orm.current_status
           in [
             ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,

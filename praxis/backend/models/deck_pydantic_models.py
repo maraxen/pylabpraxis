@@ -1,7 +1,7 @@
 """Pydantic models for deck-related entities in the Praxis application.
 
 These models are used for data validation and serialization/deserialization of deck
-configurations, positioning with "positions" which are human accessible location guides
+configurations, positioning with "positions" which are human accessible location accession_ides
 (e.g., slots or rails), and decks.
 """
 
@@ -49,8 +49,8 @@ class DeckPositionResourceBase(BaseModel):
   including its position identifier and optional associated resource details.
   """
 
-  position_id: str | int | UUID7
-  resource_instance_id: Optional[UUID7] = None
+  position_accession_id: str | int | UUID7
+  resource_instance_accession_id: Optional[UUID7] = None
   expected_resource_definition_name: Optional[UUID7] = None
 
   class Config:
@@ -76,8 +76,8 @@ class DeckPositionResourceResponse(DeckPositionResourceBase):
   suitable for client-facing responses.
   """
 
-  item_id: UUID7
-  deck_instance_id: UUID7
+  item_accession_id: UUID7
+  deck_instance_accession_id: UUID7
 
 
 class DeckInstanceBase(BaseModel):
@@ -88,7 +88,7 @@ class DeckInstanceBase(BaseModel):
   """
 
   deck_name: str
-  deck_id: UUID7
+  deck_accession_id: UUID7
   python_fqn: str
   description: Optional[str] = None
 
@@ -118,7 +118,7 @@ class DeckInstanceUpdate(BaseModel):
   """
 
   deck_name: Optional[str] = None
-  deck_id: Optional[UUID7] = None
+  deck_accession_id: Optional[UUID7] = None
   description: Optional[str] = None
   position_items: Optional[List[DeckPositionResourceCreate]] = None
 
@@ -145,7 +145,7 @@ class DeckPositionDefinitionBase(BaseModel):
   types, and physical location coordinates.
   """
 
-  position_id: str | int
+  position_accession_id: str | int
   uuid: Optional[UUID7] = None
   pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
@@ -184,7 +184,7 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
   """
 
   id: int
-  deck_type_definition_id: int  # Foreign Key to the DeckTypeDefinition
+  deck_type_definition_accession_id: int  # Foreign Key to the DeckTypeDefinition
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 
@@ -197,7 +197,7 @@ class DeckPositionDefinitionUpdate(BaseModel):
   and physical location details.
   """
 
-  position_id: Optional[str | int | UUID7] = None
+  position_accession_id: Optional[str | int | UUID7] = None
   pylabrobot_position_type_name: Optional[str] = None
   allowed_resource_categories: Optional[List[str]] = None
   allowed_resource_definition_names: Optional[List[UUID7]] = None
@@ -297,7 +297,9 @@ class DeckInfo(BaseModel):
 class DeckResourceInfo(BaseModel):
   """Detailed information about a resource instance on the deck."""
 
-  resource_instance_id: UUID7 = Field(description="ORM ID of the ResourceInstanceOrm")
+  resource_instance_accession_id: UUID7 = Field(
+    description="ORM ID of the ResourceInstanceOrm"
+  )
   user_assigned_name: str = Field(
     description="User-assigned name for this specific resource instance"
   )
@@ -357,7 +359,7 @@ class DeckPositionInfo(BaseModel):
 class DeckStateResponse(BaseModel):
   """Represents the complete state of a deck, including its positions and resource."""
 
-  deck_id: UUID7 = Field(description="ORM ID of the MachineOrm for the deck")
+  deck_accession_id: UUID7 = Field(description="ORM ID of the MachineOrm for the deck")
   name: str = Field(description="User-assigned name for the deck")
   python_fqn: str = Field(description="PyLabRobot class name for the deck")
   size_x_mm: Optional[float] = Field(
@@ -379,7 +381,7 @@ class DeckStateResponse(BaseModel):
 class DeckUpdateMessage(BaseModel):
   """Model for WebSocket messages broadcasting updates to the deck state."""
 
-  deck_id: UUID7 = Field(description="ORM ID of the deck that was updated")
+  deck_accession_id: UUID7 = Field(description="ORM ID of the deck that was updated")
   update_type: str = Field(
     description="Type of update (e.g., 'resource_added', 'resource_removed', "
     "'resource_updated', 'position_cleared')"

@@ -42,7 +42,7 @@ $ResourceDefinitionCopyWith<ResourceDefinition> get copyWith => _$ResourceDefini
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResourceDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.dimensions, dimensions)&&const DeepCollectionEquality().equals(other.wells, wells)&&const DeepCollectionEquality().equals(other.ordering, ordering)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResourceDefinition&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.dimensions, dimensions)&&const DeepCollectionEquality().equals(other.wells, wells)&&const DeepCollectionEquality().equals(other.ordering, ordering)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -81,7 +81,7 @@ class _$ResourceDefinitionCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = freezed,Object? version = freezed,Object? namespace = freezed,Object? category = freezed,Object? dimensions = freezed,Object? wells = freezed,Object? ordering = freezed,Object? metadata = freezed,Object? brand = freezed,Object? model = freezed,}) {
   return _then(_self.copyWith(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,version: freezed == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as int?,namespace: freezed == namespace ? _self.namespace : namespace // ignore: cast_nullable_to_non_nullable
@@ -103,7 +103,7 @@ as String?,
 @JsonSerializable()
 
 class _ResourceDefinition implements ResourceDefinition {
-  const _ResourceDefinition({required this.id, @JsonKey(name: 'display_name') this.displayName, this.version, this.namespace, this.category, final  Map<String, double>? dimensions, final  Map<String, WellDefinition>? wells, final  List<List<String>>? ordering, final  Map<String, dynamic>? metadata, this.brand, this.model}): _dimensions = dimensions,_wells = wells,_ordering = ordering,_metadata = metadata;
+  const _ResourceDefinition({required this.accession_id, @JsonKey(name: 'display_name') this.displayName, this.version, this.namespace, this.category, final  Map<String, double>? dimensions, final  Map<String, WellDefinition>? wells, final  List<List<String>>? ordering, final  Map<String, dynamic>? metadata, this.brand, this.model}): _dimensions = dimensions,_wells = wells,_ordering = ordering,_metadata = metadata;
   factory _ResourceDefinition.fromJson(Map<String, dynamic> json) => _$ResourceDefinitionFromJson(json);
 
 // Unique identifier for the resource definition (e.g., 'opentrons_96_tiprack_300ul').
@@ -182,7 +182,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResourceDefinition&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other._dimensions, _dimensions)&&const DeepCollectionEquality().equals(other._wells, _wells)&&const DeepCollectionEquality().equals(other._ordering, _ordering)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResourceDefinition&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.version, version) || other.version == version)&&(identical(other.namespace, namespace) || other.namespace == namespace)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other._dimensions, _dimensions)&&const DeepCollectionEquality().equals(other._wells, _wells)&&const DeepCollectionEquality().equals(other._ordering, _ordering)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.brand, brand) || other.brand == brand)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -221,7 +221,7 @@ class __$ResourceDefinitionCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = freezed,Object? version = freezed,Object? namespace = freezed,Object? category = freezed,Object? dimensions = freezed,Object? wells = freezed,Object? ordering = freezed,Object? metadata = freezed,Object? brand = freezed,Object? model = freezed,}) {
   return _then(_ResourceDefinition(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String?,version: freezed == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as int?,namespace: freezed == namespace ? _self.namespace : namespace // ignore: cast_nullable_to_non_nullable

@@ -99,7 +99,7 @@ class Workcell:
     return all_machines_dict
 
   @property
-  def asset_ids(self) -> list[str]:
+  def asset_accession_ids(self) -> list[str]:
     """Returns a list of all asset names (machines and resources)."""
     return [getattr(child, "name", str(child.__hash__())) for child in self.children]
 
@@ -139,18 +139,18 @@ class Workcell:
         children.extend(child.get_all_children())
     return children
 
-  def specify_deck(self, liquid_handler_id: str, deck: Deck) -> None:
+  def specify_deck(self, liquid_handler_accession_id: str, deck: Deck) -> None:
     """Assign a deck resource to a specific liquid handler."""
     if (
       "liquid_handlers" in self.refs
-      and liquid_handler_id in self.refs["liquid_handlers"]
+      and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_id]
+        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id]
       )
       liquid_handler.deck = deck
     else:
-      raise KeyError(f"Liquid handler '{liquid_handler_id}' not found.")
+      raise KeyError(f"Liquid handler '{liquid_handler_accession_id}' not found.")
 
   def serialize_all_state(self) -> dict[str, Any]:
     """Serialize the state of all resources within the workcell."""
@@ -179,7 +179,7 @@ class Workcell:
 
   def __contains__(self, item: str) -> bool:
     """Check if an asset with the given name exists in the workcell."""
-    return item in self.asset_ids
+    return item in self.asset_accession_ids
 
   def __getitem__(self, key: str) -> dict:
     """Get the asset category by name."""

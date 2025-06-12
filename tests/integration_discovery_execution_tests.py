@@ -113,7 +113,7 @@ def mock_db_session():
 def mock_data_services(request): # request is a pytest fixture
     # --- Mock Instances ---
     mock_fpd_instance = MagicMock(spec=FunctionProtocolDefinitionOrm)
-    mock_fpd_instance.id = 12345
+    mock_fpd_instance.accession_id = 12345
     mock_fpd_instance.name = "DefaultMockedProtocol"
     mock_fpd_instance.version = "1.0.mock"
     # Add other essential attributes that are accessed after get_protocol_definition_details
@@ -135,16 +135,16 @@ def mock_data_services(request): # request is a pytest fixture
             is_top_level=protocol_pydantic.is_top_level, # Corrected: protocol_pydantic.is_top_level
             parameters=[MagicMock(name=p.name) for p in protocol_pydantic.parameters],
             assets=[MagicMock(name=a.name) for a in protocol_pydantic.assets],
-            source_repository_id=kwargs.get('source_repository_id'),
-            source_repository=MagicMock(spec=ProtocolSourceRepositoryOrm, local_checkout_path='dummy/repo/path') if kwargs.get('source_repository_id') else None,
-            file_system_source_id=kwargs.get('file_system_source_id'),
-            file_system_source=MagicMock(spec=FileSystemProtocolSourceOrm, base_path='dummy_scan_path_for_upsert_fixture') if kwargs.get('file_system_source_id') else None,
+            source_repository_accession_id=kwargs.get('source_repository_accession_id'),
+            source_repository=MagicMock(spec=ProtocolSourceRepositoryOrm, local_checkout_path='dummy/repo/path') if kwargs.get('source_repository_accession_id') else None,
+            file_system_source_accession_id=kwargs.get('file_system_source_accession_id'),
+            file_system_source=MagicMock(spec=FileSystemProtocolSourceOrm, base_path='dummy_scan_path_for_upsert_fixture') if kwargs.get('file_system_source_accession_id') else None,
             commit_hash=kwargs.get('commit_hash'),
             pydantic_definition=protocol_pydantic
         )
     )
     _mock_get_fpd_details = MagicMock(return_value=mock_fpd_instance)
-    _mock_create_pr = MagicMock(return_value=MagicMock(spec=ProtocolRunOrm, id=789, run_guid="default_guid"))
+    _mock_create_pr = MagicMock(return_value=MagicMock(spec=ProtocolRunOrm, id=789, run_accession_id="default_accession_id"))
     _mock_update_pr_status = MagicMock(return_value=MagicMock(spec=ProtocolRunOrm))
     _mock_log_fcs = MagicMock(return_value=MagicMock(spec=FunctionCallLogOrm, id=101112))
     _mock_log_fce = MagicMock(return_value=MagicMock(spec=FunctionCallLogOrm))
@@ -197,7 +197,7 @@ class TestIntegrationDiscoveryExecution:
 
         discovered_defs_orm_mocks = discovery_service.discover_and_upsert_protocols(
             search_paths=[temp_integration_protocols],
-            file_system_source_id=1
+            file_system_source_accession_id=1
         )
         # Assertion for upsert_function_protocol_definition (mocked by mock_data_services)
         assert mock_data_services["upsert_function_protocol_definition"].called
@@ -207,9 +207,9 @@ class TestIntegrationDiscoveryExecution:
         nested_proto_orm_mock = next((p for p in discovered_defs_orm_mocks if p.name == "NestedProtocolStep"), None)
 
         assert main_proto_orm_mock is not None
-        assert main_proto_orm_mock.id is not None
+        assert main_proto_orm_mock.accession_id is not None
         assert nested_proto_orm_mock is not None
-        assert nested_proto_orm_mock.id is not None
+        assert nested_proto_orm_mock.accession_id is not None
 
         module_parent_dir = Path(temp_integration_protocols).parent.as_posix()
         if module_parent_dir not in sys.path:
@@ -217,8 +217,8 @@ class TestIntegrationDiscoveryExecution:
 
         import integration_test_protocols.protocol_module as mod
 
-        assert mod.main_protocol._protocol_definition.db_id == main_proto_orm_mock.id
-        assert mod.nested_step._protocol_definition.db_id == nested_proto_orm_mock.id
+        assert mod.main_protocol._protocol_definition.db_accession_id == main_proto_orm_mock.accession_id
+        assert mod.nested_step._protocol_definition.db_accession_id == nested_proto_orm_mock.accession_id
 
         # --- 2. Orchestration Phase ---
 
@@ -236,9 +236,9 @@ class TestIntegrationDiscoveryExecution:
         orchestrator = Orchestrator(db_session=mock_db_session)
         orchestrator.asset_manager = mock_asset_manager_instance
 
-        test_run_guid = str(uuid.uuid4())
+        test_run_accession_id = str(uuid.uuid4())
         # Configure create_protocol_run from the new fixture
-        mock_data_services['create_protocol_run'].return_value.run_guid = test_run_guid
+        mock_data_services['create_protocol_run'].return_value.run_accession_id = test_run_accession_id
 
         user_params = {"initial_message": "integration_test", "pipette": IntegrationPipette(name="p300_single")}
         initial_state = {"previous_run_count": 5}
@@ -246,20 +246,20 @@ class TestIntegrationDiscoveryExecution:
         final_run_orm = orchestrator.execute_protocol(
             protocol_name="MainIntegrationProtocol",
             protocol_version="1.1",
-            file_system_source_id=1,
+            file_system_source_accession_id=1,
             user_input_params=user_params,
             initial_state_data=initial_state
         )
 
         assert final_run_orm is not None
-        assert final_run_orm.id == mock_data_services['create_protocol_run'].return_value.id
+        assert final_run_orm.accession_id == mock_data_services['create_protocol_run'].return_value.accession_id
 
         # --- 3. Verification ---
 
         mock_data_services['create_protocol_run'].assert_called_once_with(
             db=mock_db_session,
-            run_guid=test_run_guid,
-            top_level_protocol_definition_id=main_proto_orm_mock.id,
+            run_accession_id=test_run_accession_id,
+            top_level_protocol_definition_accession_id=main_proto_orm_mock.accession_id,
             status=ProtocolRunStatusEnum.PREPARING,
             input_parameters_json=json.dumps(user_params, default=lambda o: o.name if isinstance(o, Resource) else str(o)),
             initial_state_json=json.dumps(initial_state)
@@ -274,9 +274,9 @@ class TestIntegrationDiscoveryExecution:
         assert final_state_json_in_db['nested_step_ran'] == True
         assert final_state_json_in_db['main_protocol_completed'] == True
 
-        mock_redis_for_state.get.assert_any_call(f"praxis_state:{test_run_guid}")
+        mock_redis_for_state.get.assert_any_call(f"praxis_state:{test_run_accession_id}")
         assert any(
-            call_args[0][0] == f"praxis_state:{test_run_guid}"
+            call_args[0][0] == f"praxis_state:{test_run_accession_id}"
             for call_args in mock_redis_for_state.set.call_args_list
         )
 
@@ -286,15 +286,15 @@ class TestIntegrationDiscoveryExecution:
         assert log_start_mock.call_count == 2
         assert log_end_mock.call_count == 2
 
-        main_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_id'] == main_proto_orm_mock.id)
-        assert main_call_start_kwargs['protocol_run_orm_id'] == final_run_orm.id
-        assert main_call_start_kwargs['parent_function_call_log_id'] is None
+        main_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_accession_id'] == main_proto_orm_mock.accession_id)
+        assert main_call_start_kwargs['protocol_run_orm_accession_id'] == final_run_orm.accession_id
+        assert main_call_start_kwargs['parent_function_call_log_accession_id'] is None
 
-        main_call_log_entry_mock = next(c.return_value for c in log_start_mock.side_effect_history if c.kwargs['function_definition_id'] == main_proto_orm_mock.id)
+        main_call_log_entry_mock = next(c.return_value for c in log_start_mock.side_effect_history if c.kwargs['function_definition_accession_id'] == main_proto_orm_mock.accession_id)
 
-        nested_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_id'] == nested_proto_orm_mock.id)
-        assert nested_call_start_kwargs['protocol_run_orm_id'] == final_run_orm.id
-        assert nested_call_start_kwargs['parent_function_call_log_id'] == main_call_log_entry_mock.id
+        nested_call_start_kwargs = next(c.kwargs for c in log_start_mock.call_args_list if c.kwargs['function_definition_accession_id'] == nested_proto_orm_mock.accession_id)
+        assert nested_call_start_kwargs['protocol_run_orm_accession_id'] == final_run_orm.accession_id
+        assert nested_call_start_kwargs['parent_function_call_log_accession_id'] == main_call_log_entry_mock.accession_id
 
         final_output = json.loads(update_calls[-1].kwargs['output_data_json'])
         assert final_output['nested_result']['nested_output'] == "FROM_MAIN"
@@ -304,7 +304,7 @@ class TestIntegrationDiscoveryExecution:
 
         pipette_asset_req = next(a for a in mod.main_protocol._protocol_definition.assets if a.name == "pipette")
         mock_asset_manager_instance.acquire_asset.assert_called_once_with(
-            protocol_run_guid=test_run_guid,
+            protocol_run_accession_id=test_run_accession_id,
             asset_requirement=pipette_asset_req
         )
 
@@ -319,7 +319,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
         # --- Setup: Discovery (to get Pydantic model into PROTOCOL_REGISTRY) ---
         discovery_service = ProtocolDiscoveryService(db_session=mock_db_session)
         discovered_defs_orm_mocks = discovery_service.discover_and_upsert_protocols(
-            search_paths=[temp_integration_protocols], file_system_source_id=1
+            search_paths=[temp_integration_protocols], file_system_source_accession_id=1
         )
         main_proto_discovered_mock_orm = next((p for p in discovered_defs_orm_mocks if p.name == "MainIntegrationProtocol"), None)
         assert main_proto_discovered_mock_orm is not None
@@ -344,7 +344,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
             orchestrator.execute_protocol(
                 protocol_name="MainIntegrationProtocol",
                 protocol_version="1.1",
-                file_system_source_id=1,
+                file_system_source_accession_id=1,
                 user_input_params=invalid_user_params,
                 initial_state_data={}
             )

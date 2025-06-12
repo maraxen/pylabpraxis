@@ -174,55 +174,62 @@ class TestPraxisRunContext:
   def test_praxis_run_context_creation_and_attributes(self):
     # Assuming PraxisState can be instantiated (even if it's the Redis-backed one, for type hint)
     # For unit test, we assume PraxisState from definitions is usable without full Redis.
-    # If PraxisState from definitions is an alias to utils.state.State, it requires run_guid.
-    mock_state = PraxisState(run_guid="test-run-guid-ctx")
+    # If PraxisState from definitions is an alias to utils.state.State, it requires run_accession_id.
+    mock_state = PraxisState(run_accession_id="test-run-accession_id-ctx")
     mock_db_session = object()  # Dummy object for session
 
     context = PraxisRunContext(
-      protocol_run_db_id=1,
-      run_guid="test-run-guid-ctx",
+      protocol_run_db_accession_id=1,
+      run_accession_id="test-run-accession_id-ctx",
       canonical_state=mock_state,
       current_db_session=mock_db_session,
-      current_call_log_db_id=None,
+      current_call_log_db_accession_id=None,
     )
-    assert context.protocol_run_db_id == 1
-    assert context.run_guid == "test-run-guid-ctx"
+    assert context.protocol_run_db_accession_id == 1
+    assert context.run_accession_id == "test-run-accession_id-ctx"
     assert context.canonical_state is mock_state
     assert context.current_db_session is mock_db_session
-    assert context.current_call_log_db_id is None
+    assert context.current_call_log_db_accession_id is None
     assert context._call_sequence_next_val == 1
 
   def test_get_and_increment_sequence_val(self):
     context = PraxisRunContext(
-      1, "guid-seq", PraxisState(run_guid="guid-seq"), object(), None
+      1,
+      "accession_id-seq",
+      PraxisState(run_accession_id="accession_id-seq"),
+      object(),
+      None,
     )
     assert context.get_and_increment_sequence_val() == 1
     assert context.get_and_increment_sequence_val() == 2
     assert context._call_sequence_next_val == 3
 
   def test_create_context_for_nested_call(self):
-    mock_state = PraxisState(run_guid="test-run-guid-parent")
+    mock_state = PraxisState(run_accession_id="test-run-accession_id-parent")
     mock_db_session = object()
 
     parent_context = PraxisRunContext(
-      protocol_run_db_id=1,
-      run_guid="test-run-guid-parent",
+      protocol_run_db_accession_id=1,
+      run_accession_id="test-run-accession_id-parent",
       canonical_state=mock_state,
       current_db_session=mock_db_session,
-      current_call_log_db_id=100,  # Parent's own log ID (becomes parent_id for nested)
+      current_call_log_db_accession_id=100,  # Parent's own log ID (becomes parent_accession_id for nested)
     )
     parent_context._call_sequence_next_val = 5  # Simulate some calls happened
 
-    # This new_parent_call_log_db_id is the log ID of the function that is *creating* this nested context.
+    # This new_parent_call_log_db_accession_id is the log ID of the function that is *creating* this nested context.
     # So, for the nested function, this ID will be its parent's log ID.
     nested_context = parent_context.create_context_for_nested_call(
-      new_parent_call_log_db_id=100
+      new_parent_call_log_db_accession_id=100
     )
 
-    assert nested_context.protocol_run_db_id == parent_context.protocol_run_db_id
-    assert nested_context.run_guid == parent_context.run_guid
+    assert (
+      nested_context.protocol_run_db_accession_id
+      == parent_context.protocol_run_db_accession_id
+    )
+    assert nested_context.run_accession_id == parent_context.run_accession_id
     assert nested_context.canonical_state == parent_context.canonical_state
     assert nested_context.current_db_session == parent_context.current_db_session
-    # The 'current_call_log_db_id' of the nested context IS the parent's log ID.
-    assert nested_context.current_call_log_db_id == 100
+    # The 'current_call_log_db_accession_id' of the nested context IS the parent's log ID.
+    assert nested_context.current_call_log_db_accession_id == 100
     assert nested_context._call_sequence_next_val == 5  # Sequence counter continues

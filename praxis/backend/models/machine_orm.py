@@ -126,8 +126,8 @@ class MachineOrm(Base):
     comment="Runtime configuration and defaults from introspection",
   )
 
-  deck_type_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.id"), nullable=True, index=True
+  deck_type_definition_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=True, index=True
   )
 
   current_status: Mapped[MachineStatusEnum] = mapped_column(
@@ -138,16 +138,16 @@ class MachineOrm(Base):
   status_details: Mapped[Optional[str]] = mapped_column(
     Text, nullable=True, comment="More details on error or current operation"
   )
-  current_protocol_run_guid: Mapped[Optional[uuid.UUID]] = mapped_column(
+  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("protocol_runs.run_guid", ondelete="SET NULL"),
+    ForeignKey("protocol_runs.run_accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
-  )  # Link to ProtocolRunOrm.run_guid
+  )  # Link to ProtocolRunOrm.run_accession_id
 
-  workcell_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  workcell_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("workcells.id"),
+    ForeignKey("workcells.accession_id"),
     nullable=True,
     index=True,
     comment="FK to workcell table",
@@ -155,7 +155,7 @@ class MachineOrm(Base):
 
   # Link to Workcell table
   workcell: Mapped[Optional["WorkcellOrm"]] = relationship(
-    "WorkcellOrm", foreign_keys=[workcell_id], back_populates="machines"
+    "WorkcellOrm", foreign_keys=[workcell_accession_id], back_populates="machines"
   )
 
   physical_location_description: Mapped[Optional[str]] = mapped_column(
@@ -185,9 +185,9 @@ class MachineOrm(Base):
     comment="Indicates if this machine is a resource (e.g., a lab instrument)",
   )
 
-  resource_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("resource_instances.id", ondelete="SET NULL"),
+    ForeignKey("resource_instances.accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
     comment="Link to ResourceInstanceOrm if this machine is a resource",
@@ -195,7 +195,7 @@ class MachineOrm(Base):
 
   resource_counterpart: Mapped[Optional["ResourceInstanceOrm"]] = relationship(
     "ResourceInstanceOrm",
-    foreign_keys=[resource_counterpart_id],
+    foreign_keys=[resource_counterpart_accession_id],
     back_populates="machine_counterpart",
     uselist=False,
   )
@@ -208,5 +208,5 @@ class MachineOrm(Base):
 
   def __repr__(self):
     """Render a string representation of the MachineOrm instance."""
-    return f"<MachineOrm(id={self.id}, name='{self.user_friendly_name}', \
+    return f"<MachineOrm(id={self.accession_id}, name='{self.user_friendly_name}', \
           type='{self.python_fqn}')>"

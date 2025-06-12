@@ -86,12 +86,14 @@ class WorkcellOrm(Base):
 
   # Relationship to machines within this workcell
   machines = relationship(
-    "MachineOrm", back_populates="workcell", foreign_keys="[MachineOrm.workcell_id]"
+    "MachineOrm",
+    back_populates="workcell",
+    foreign_keys="[MachineOrm.workcell_accession_id]",
   )
 
   def __repr__(self):
     """Return a string representation of the WorkcellOrm object."""
     return (
-      f"<WorkcellOrm(id={self.id}, name='{self.name}',"
+      f"<WorkcellOrm(id={self.accession_id}, name='{self.name}',"
       f" physical_location='{self.physical_location}', status='{self.status}')>"
     )

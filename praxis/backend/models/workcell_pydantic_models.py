@@ -76,7 +76,7 @@ class WorkcellResponse(WorkcellBase):
   responses.
   """
 
-  db_id: UUID7 = Field(description="The unique database ID of the workcell.")
+  db_accession_id: UUID7 = Field(description="The unique database ID of the workcell.")
   created_at: Optional[datetime.datetime] = Field(
     None, description="Timestamp when the workcell was created (UTC)."
   )

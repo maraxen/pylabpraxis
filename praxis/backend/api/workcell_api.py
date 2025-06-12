@@ -43,35 +43,35 @@ class ConnectionManager:
   def __init__(self):
     self.active_connections: Dict[int, List[WebSocket]] = {}
 
-  async def connect(self, deck_id: int, websocket: WebSocket):
+  async def connect(self, deck_accession_id: int, websocket: WebSocket):
     await websocket.accept()
-    if deck_id not in self.active_connections:
-      self.active_connections[deck_id] = []
-    self.active_connections[deck_id].append(websocket)
+    if deck_accession_id not in self.active_connections:
+      self.active_connections[deck_accession_id] = []
+    self.active_connections[deck_accession_id].append(websocket)
     print(
-      f"INFO: WebSocket connected for deck_id {deck_id}. Total: {len(self.active_connections[deck_id])}"
+      f"INFO: WebSocket connected for deck_accession_id {deck_accession_id}. Total: {len(self.active_connections[deck_accession_id])}"
     )
 
-  def disconnect(self, deck_id: int, websocket: WebSocket):
-    if deck_id in self.active_connections:
-      self.active_connections[deck_id].remove(websocket)
-      if not self.active_connections[deck_id]:
-        del self.active_connections[deck_id]
+  def disconnect(self, deck_accession_id: int, websocket: WebSocket):
+    if deck_accession_id in self.active_connections:
+      self.active_connections[deck_accession_id].remove(websocket)
+      if not self.active_connections[deck_accession_id]:
+        del self.active_connections[deck_accession_id]
       print(
-        f"INFO: WebSocket disconnected for deck_id {deck_id}. Remaining: {len(self.active_connections.get(deck_id, []))}"
+        f"INFO: WebSocket disconnected for deck_accession_id {deck_accession_id}. Remaining: {len(self.active_connections.get(deck_accession_id, []))}"
       )
 
-  async def broadcast_to_deck(self, deck_id: int, message: DeckUpdateMessage):
-    if deck_id in self.active_connections:
+  async def broadcast_to_deck(self, deck_accession_id: int, message: DeckUpdateMessage):
+    if deck_accession_id in self.active_connections:
       disconnected_clients: List[WebSocket] = []
       message_json = message.model_dump_json()
-      for connection in self.active_connections[deck_id]:
+      for connection in self.active_connections[deck_accession_id]:
         try:
           await connection.send_text(message_json)
         except Exception:
           disconnected_clients.append(connection)
       for client in disconnected_clients:
-        self.disconnect(deck_id, client)
+        self.disconnect(deck_accession_id, client)
 
 
 manager = ConnectionManager()
@@ -110,7 +110,7 @@ async def get_workcell_state(orchestrator: Orchestrator = Depends(get_orchestrat
       running_protocols=orchestrator.get_running_protocols(),
       available_resources=[
         asset
-        for asset in orchestrator._main_workcell.asset_ids
+        for asset in orchestrator._main_workcell.asset_accession_ids
         if not orchestrator._main_workcell.is_asset_in_use(asset)
       ],
     )
@@ -173,8 +173,9 @@ async def list_available_decks(
       if machine_orm.current_status:  # current_status is already Enum
         status_name = machine_orm.current_status.name
       deck_info = DeckInfo(
-        id=machine_orm.id,
-        user_friendly_name=machine_orm.user_friendly_name or f"Deck_{machine_orm.id}",
+        id=machine_orm.accession_id,
+        user_friendly_name=machine_orm.user_friendly_name
+        or f"Deck_{machine_orm.accession_id}",
         python_fqn=machine_orm.python_fqn or "UnknownType",
         current_status=status_name,
       )
@@ -186,10 +187,12 @@ async def list_available_decks(
 
 
 @router.get(
-  "/decks/{deck_id}/state", response_model=DeckStateResponse, tags=["Workcell API"]
+  "/decks/{deck_accession_id}/state",
+  response_model=DeckStateResponse,
+  tags=["Workcell API"],
 )
 async def get_specific_deck_state(
-  deck_id: int = Path(..., title="The ID of the deck", ge=1),
+  deck_accession_id: int = Path(..., title="The ID of the deck", ge=1),
   workcell_runtime: WorkcellRuntime = Depends(
     get_workcell_runtime
   ),  # workcell_runtime already injected
@@ -198,7 +201,7 @@ async def get_specific_deck_state(
     # Assuming get_deck_state_representation is async or can be called from async
     # If it needs db session, WorkcellRuntime should get it via its own dependencies or initialization
     deck_state_data = workcell_runtime.get_deck_state_representation(
-      deck_machine_orm_id=deck_id
+      deck_machine_orm_accession_id=deck_accession_id
     )
     return deck_state_data
   except WorkcellRuntimeError as wre:
@@ -218,10 +221,10 @@ async def get_specific_deck_state(
     )
 
 
-@router.websocket("/ws/decks/{deck_id}/updates")
+@router.websocket("/ws/decks/{deck_accession_id}/updates")
 async def websocket_deck_updates(
   websocket: WebSocket,
-  deck_id: int = Path(..., title="Deck ID for updates", ge=1),
+  deck_accession_id: int = Path(..., title="Deck ID for updates", ge=1),
   # db: AsyncSession = Depends(get_db) # Cannot use Depends directly in WebSocket path operation func signature
   # We need to manage session manually or pass it if manager methods need it.
 ):
@@ -231,37 +234,49 @@ async def websocket_deck_updates(
   db_session_for_validation: Optional[AsyncSession] = None
   try:
     async with AsyncSessionLocal() as db_session_for_validation:  # Manually create session for validation
-      deck_machine = await ads.get_managed_machine(db_session_for_validation, deck_id)
+      deck_machine = await ads.get_managed_machine(
+        db_session_for_validation, deck_accession_id
+      )
       if (
         not deck_machine
         or deck_machine.praxis_machine_category != PraxisDeviceCategoryEnum.DECK
       ):
-        print(f"INFO: WebSocket attempt to invalid deck_id {deck_id}. Closing.")
+        print(
+          f"INFO: WebSocket attempt to invalid deck_accession_id {deck_accession_id}. Closing."
+        )
         await websocket.close(code=1008)
         return
   except Exception as e:  # Catch DB connection errors or other issues during validation
-    print(f"ERROR: WebSocket validation for deck_id {deck_id} failed: {e}")
+    print(
+      f"ERROR: WebSocket validation for deck_accession_id {deck_accession_id} failed: {e}"
+    )
     await websocket.close(code=1011)  # Internal Error
     return
   # finally: # Session is closed by 'async with'
 
-  await manager.connect(deck_id, websocket)
+  await manager.connect(deck_accession_id, websocket)
   try:
     while True:
       data = await websocket.receive_text()
-      print(f"INFO: WebSocket for deck_id {deck_id} received: {data}")
+      print(
+        f"INFO: WebSocket for deck_accession_id {deck_accession_id} received: {data}"
+      )
   except WebSocketDisconnect:
-    print(f"INFO: WebSocket for deck_id {deck_id} disconnected by client.")
+    print(
+      f"INFO: WebSocket for deck_accession_id {deck_accession_id} disconnected by client."
+    )
   except Exception as e:
-    print(f"ERROR: Exception in WebSocket for deck_id {deck_id}: {e}")
+    print(
+      f"ERROR: Exception in WebSocket for deck_accession_id {deck_accession_id}: {e}"
+    )
   finally:
-    manager.disconnect(deck_id, websocket)
-    print(f"INFO: Cleaned up WebSocket for deck_id {deck_id}.")
+    manager.disconnect(deck_accession_id, websocket)
+    print(f"INFO: Cleaned up WebSocket for deck_accession_id {deck_accession_id}.")
 
 
-@router.post("/ws/test_broadcast/{deck_id}", tags=["Workcell API - Test"])
+@router.post("/ws/test_broadcast/{deck_accession_id}", tags=["Workcell API - Test"])
 async def test_broadcast_deck_update(
-  deck_id: int = Path(..., title="Deck ID to broadcast to", ge=1),
+  deck_accession_id: int = Path(..., title="Deck ID to broadcast to", ge=1),
   message_type: str = "resource_added",
   slot_name: Optional[str] = "A1",
   resource_name: Optional[str] = "TestPlate123",
@@ -269,7 +284,7 @@ async def test_broadcast_deck_update(
   sample_resource_info = None
   if resource_name and slot_name:
     sample_resource_info = ResourceInfo(
-      resource_instance_id=999,
+      resource_instance_accession_id=999,
       user_assigned_name=resource_name,
       name="test_plate_def",
       python_fqn="pylabrobot.resources.Plate",
@@ -281,7 +296,7 @@ async def test_broadcast_deck_update(
       model="TestModel123",
     )
   update_message = DeckUpdateMessage(
-    deck_id=deck_id,
+    deck_accession_id=deck_accession_id,
     update_type=message_type,
     slot_name=slot_name
     if message_type
@@ -292,8 +307,8 @@ async def test_broadcast_deck_update(
     else None,
     timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
   )
-  await manager.broadcast_to_deck(deck_id, update_message)
+  await manager.broadcast_to_deck(deck_accession_id, update_message)
   return {
     "status": "success",
-    "message": f"Test broadcast for deck {deck_id}, type '{message_type}'.",
+    "message": f"Test broadcast for deck {deck_accession_id}, type '{message_type}'.",
   }

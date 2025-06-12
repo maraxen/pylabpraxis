@@ -66,7 +66,7 @@ class WorkcellApiServiceImpl implements WorkcellApiService {
           'timestamp': DateTime.now().toIso8601String(),
           'payload': {
             'updated_slot': 'A${count + 1}',
-            'new_resource_id': 'plate_00${count + 1}',
+            'new_resource_accession_id': 'plate_00${count + 1}',
             'status': 'loaded',
           },
         });

@@ -196,7 +196,7 @@ class ProtocolDiscoveryService:
     extracted_definitions: List[
       Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]
     ] = []  # type: ignore
-    processed_func_ids: Set[int] = set()
+    processed_func_accession_ids: Set[int] = set()
     loaded_module_names: Set[str] = set()
     original_sys_path = list(sys.path)
 
@@ -237,9 +237,9 @@ class ProtocolDiscoveryService:
               for name, func_obj in inspect.getmembers(module, inspect.isfunction):
                 if func_obj.__module__ != module_import_name:
                   continue
-                if id(func_obj) in processed_func_ids:
+                if id(func_obj) in processed_func_accession_ids:
                   continue
-                processed_func_ids.add(id(func_obj))
+                processed_func_accession_ids.add(id(func_obj))
 
                 protocol_def_attr = getattr(func_obj, "_protocol_definition", None)
                 if protocol_def_attr and isinstance(
@@ -316,9 +316,9 @@ class ProtocolDiscoveryService:
   async def discover_and_upsert_protocols(
     self,
     search_paths: Union[str, List[str]],
-    source_repository_id: Optional[uuid.UUID] = None,
+    source_repository_accession_id: Optional[uuid.UUID] = None,
     commit_hash: Optional[str] = None,
-    file_system_source_id: Optional[uuid.UUID] = None,
+    file_system_source_accession_id: Optional[uuid.UUID] = None,
   ) -> List[Any]:
     """Discover protocol functions in the given paths and upsert them to the DB.
 
@@ -333,10 +333,10 @@ class ProtocolDiscoveryService:
 
     Args:
       search_paths: A single path or a list of paths to search for protocol files.
-      source_repository_id: Optional[uuid.UUID]; ID of the source repository to link
+      source_repository_accession_id: Optional[uuid.UUID]; ID of the source repository to link
       definitions.
       commit_hash: Optional[str]; commit hash to link definitions to a specific commit.
-      file_system_source_id: Optional[uuid.UUID]; ID of the file system source to link
+      file_system_source_accession_id: Optional[uuid.UUID]; ID of the file system source to link
       definitions.
 
     Returns:
@@ -351,7 +351,10 @@ class ProtocolDiscoveryService:
       )
       return []
 
-    if not ((source_repository_id and commit_hash) or file_system_source_id):
+    if not (
+      (source_repository_accession_id and commit_hash)
+      or file_system_source_accession_id
+    ):
       logger.warning(
         "DiscoveryService: No source linkage provided for discovery. Protocols may not "
         "be correctly linked or upserted if service requires it."
@@ -377,18 +380,22 @@ class ProtocolDiscoveryService:
         protocol_name_for_error = protocol_pydantic_model.name
         protocol_version_for_error = protocol_pydantic_model.version
         try:  # TODO: have these pull from the protocol database  ORM
-          if source_repository_id and commit_hash:
-            protocol_pydantic_model.source_repository_name = str(source_repository_id)
+          if source_repository_accession_id and commit_hash:
+            protocol_pydantic_model.source_repository_name = str(
+              source_repository_accession_id
+            )
             protocol_pydantic_model.commit_hash = commit_hash
-          elif file_system_source_id:
-            protocol_pydantic_model.file_system_source_name = str(file_system_source_id)
+          elif file_system_source_accession_id:
+            protocol_pydantic_model.file_system_source_name = str(
+              file_system_source_accession_id
+            )
 
           def_orm = await upsert_function_protocol_definition(
             db=session,
             protocol_pydantic=protocol_pydantic_model,
-            source_repository_id=source_repository_id,
+            source_repository_accession_id=source_repository_accession_id,
             commit_hash=commit_hash,
-            file_system_source_id=file_system_source_id,
+            file_system_source_accession_id=file_system_source_accession_id,
           )
           upserted_definitions_orm.append(def_orm)
 
@@ -398,12 +405,14 @@ class ProtocolDiscoveryService:
 
           func_ref_protocol_def = getattr(func_ref, "_protocol_definition", None)
           if func_ref and func_ref_protocol_def is protocol_pydantic_model:
-            if hasattr(def_orm, "id") and def_orm.id is not None:
-              setattr(func_ref_protocol_def, "db_id", def_orm.id)
+            if hasattr(def_orm, "id") and def_orm.accession_id is not None:
+              setattr(func_ref_protocol_def, "db_accession_id", def_orm.accession_id)
 
           if protocol_unique_key in PROTOCOL_REGISTRY:
-            if hasattr(def_orm, "id") and def_orm.id is not None:
-              PROTOCOL_REGISTRY[protocol_unique_key]["db_id"] = def_orm.id
+            if hasattr(def_orm, "id") and def_orm.accession_id is not None:
+              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = (
+                def_orm.accession_id
+              )
               pydantic_def_in_registry = PROTOCOL_REGISTRY[protocol_unique_key].get(
                 "pydantic_definition"
               )  # type: ignore
@@ -411,7 +420,9 @@ class ProtocolDiscoveryService:
                 pydantic_def_in_registry,
                 FunctionProtocolDefinitionModel,
               ):
-                setattr(pydantic_def_in_registry, "db_id", def_orm.id)
+                setattr(
+                  pydantic_def_in_registry, "db_accession_id", def_orm.accession_id
+                )
             else:
               logger.warning(
                 f"DiscoveryService: Upserted ORM object for '{protocol_unique_key}' has"
@@ -427,7 +438,11 @@ class ProtocolDiscoveryService:
       # Commit happens when the session context manager exits if no exceptions
 
     num_successful_upserts = len(
-      [d for d in upserted_definitions_orm if hasattr(d, "id") and d.id is not None]
+      [
+        d
+        for d in upserted_definitions_orm
+        if hasattr(d, "id") and d.accession_id is not None
+      ]
     )
     logger.info(
       f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB."

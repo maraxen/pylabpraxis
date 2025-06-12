@@ -1,10 +1,10 @@
 PRAXIS_SCHEMA = """
 CREATE TABLE IF NOT EXISTS protocols_metadata (
-    protocol_id SERIAL PRIMARY KEY,
+    protocol_accession_id SERIAL PRIMARY KEY,
     protocol_name TEXT UNIQUE NOT NULL,
     start_time TIMESTAMPTZ,
     end_time TIMESTAMPTZ,
-    user_id UUID REFERENCES keycloak_users(id),
+    user_accession_id UUID REFERENCES keycloak_users(id),
     status TEXT,
     data_directory TEXT,
     database_file TEXT,
@@ -13,18 +13,18 @@ CREATE TABLE IF NOT EXISTS protocols_metadata (
 );
 
 CREATE TABLE IF NOT EXISTS substep_timings (
-    timing_id SERIAL PRIMARY KEY,
+    timing_accession_id SERIAL PRIMARY KEY,
     protocol_name TEXT REFERENCES protocols_metadata(protocol_name),
     func_hash TEXT,
     func_name TEXT,
     duration FLOAT,
     caller_name TEXT,
-    task_id TEXT,
+    task_accession_id TEXT,
     timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS assets (
-    asset_id SERIAL PRIMARY KEY,
+    asset_accession_id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     type TEXT NOT NULL,
     metadata JSONB,
@@ -49,17 +49,17 @@ CREATE INDEX IF NOT EXISTS idx_asset_plr_serialized ON assets USING GIN (plr_ser
 KEYCLOAK_VIEWS = """
 CREATE OR REPLACE VIEW keycloak_users AS
 SELECT
-    u.id,
+    u.accession_id,
     u.username,
     u.email,
     u.first_name,
     u.last_name,
     u.enabled,
-    array_agg(ur.role_id) as roles,
+    array_agg(ur.role_accession_id) as roles,
     ua.value as phone_number
 FROM user_entity u
-LEFT JOIN user_role_mapping ur ON u.id = ur.user_id
-LEFT JOIN user_attribute ua ON u.id = ua.user_id AND ua.name = 'phone_number'
-WHERE u.realm_id = (SELECT id FROM realm WHERE name = 'praxis')
-GROUP BY u.id, u.username, u.email, u.first_name, u.last_name, u.enabled, ua.value;
+LEFT JOIN user_role_mapping ur ON u.accession_id = ur.user_accession_id
+LEFT JOIN user_attribute ua ON u.accession_id = ua.user_accession_id AND ua.name = 'phone_number'
+WHERE u.realm_accession_id = (SELECT id FROM realm WHERE name = 'praxis')
+GROUP BY u.accession_id, u.username, u.email, u.first_name, u.last_name, u.enabled, ua.value;
 """

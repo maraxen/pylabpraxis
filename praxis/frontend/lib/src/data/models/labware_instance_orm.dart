@@ -35,7 +35,7 @@ class ResourceInventoryReagentItem {
 
   factory ResourceInventoryReagentItem.fromJson(Map<String, dynamic> json) {
     return ResourceInventoryReagentItem(
-      reagentId: json['reagent_id'] as String,
+      reagentId: json['reagent_accession_id'] as String,
       reagentName: json['reagent_name'] as String?,
       lotNumber: json['lot_number'] as String?,
       expiryDate: json['expiry_date'] as String?,
@@ -53,7 +53,7 @@ class ResourceInventoryReagentItem {
 
   Map<String, dynamic> toJson() {
     return {
-      'reagent_id': reagentId,
+      'reagent_accession_id': reagentId,
       'reagent_name': reagentName,
       'lot_number': lotNumber,
       'expiry_date': expiryDate,
@@ -167,7 +167,7 @@ class ResourceInventoryData {
 
 // Corresponds to ResourceInstanceOrm in backend database model
 class ResourceInstanceOrm {
-  final int? id; // praxis_resource_instance_id
+  final int? id; // praxis_resource_instance_accession_id
   final String userAssignedName;
   final String pylabrobotDefinitionName; // FK to ResourceDefinitionCatalogOrm
   final String? lotNumber;
@@ -193,7 +193,7 @@ class ResourceInstanceOrm {
   final String? workspaceId;
 
   ResourceInstanceOrm({
-    this.id,
+    this.accession_id,
     required this.userAssignedName,
     required this.pylabrobotDefinitionName,
     this.lotNumber,
@@ -223,7 +223,7 @@ class ResourceInstanceOrm {
       currentStatus: json['current_status'] as String?,
       statusDetails: json['status_details'] as String?,
       currentDeckSlotName: json['current_deck_slot_name'] as String?,
-      locationDeviceId: json['location_machine_id'] as int?,
+      locationDeviceId: json['location_machine_accession_id'] as int?,
       physicalLocationDescription:
           json['physical_location_description'] as String?,
       // properties_json from backend ORM maps to inventoryData here
@@ -241,11 +241,13 @@ class ResourceInstanceOrm {
               ) // Assume flat structure from inventory endpoint
               : null,
       isPermanentFixture: json['is_permanent_fixture'] as bool?,
-      currentProtocolRunGuid: json['current_protocol_run_guid'] as String?,
+      currentProtocolRunGuid:
+          json['current_protocol_run_accession_id'] as String?,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
       workspaceId:
-          json['workspaceId'] as String? ?? json['workspace_id'] as String?,
+          json['workspaceId'] as String? ??
+          json['workspace_accession_id'] as String?,
     );
   }
 
@@ -260,18 +262,18 @@ class ResourceInstanceOrm {
       'current_status': currentStatus,
       'status_details': statusDetails,
       'current_deck_slot_name': currentDeckSlotName,
-      'location_machine_id': locationDeviceId,
+      'location_machine_accession_id': locationDeviceId,
       'physical_location_description': physicalLocationDescription,
       // inventoryData maps to properties_json for general instance creation/update
       // For specific inventory updates, inventoryData.toJson() will be sent directly.
       'properties_json': inventoryData?.toJson(),
       'is_permanent_fixture': isPermanentFixture,
-      'current_protocol_run_guid': currentProtocolRunGuid,
+      'current_protocol_run_accession_id': currentProtocolRunGuid,
       // 'created_at': createdAt, // Usually server-set
       // 'updated_at': updatedAt, // Usually server-set
     };
     if (workspaceId != null) {
-      data['workspace_id'] = workspaceId;
+      data['workspace_accession_id'] = workspaceId;
     }
     return data;
   }

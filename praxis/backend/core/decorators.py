@@ -79,7 +79,7 @@ class ProtocolRuntimeInfo:
     self.pydantic_definition: FunctionProtocolDefinitionModel = pydantic_definition
     self.function_ref: Callable = function_ref
     self.callable_wrapper: Optional[Callable] = None
-    self.db_id: Optional[uuid.UUID] = None
+    self.db_accession_id: Optional[uuid.UUID] = None
     self.found_state_param_details: Optional[Dict[str, Any]] = found_state_param_details
 
 
@@ -303,7 +303,7 @@ async def protocol_function(
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
       current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
-      if not current_meta or not current_meta.db_id:
+      if not current_meta or not current_meta.db_accession_id:
         raise RuntimeError(
           f"Protocol '{protocol_unique_key}' not registered or missing DB ID."
         )
@@ -315,7 +315,7 @@ async def protocol_function(
           "within a valid Praxis run context."
         )
 
-      this_function_def_db_id = current_meta.db_id
+      this_function_def_db_accession_id = current_meta.db_accession_id
       state_details = current_meta.found_state_param_details
 
       processed_args = list(args)
@@ -335,10 +335,12 @@ async def protocol_function(
               else {}
             )
 
-      current_call_log_db_id: Optional[uuid.UUID] = None
-      parent_log_id_for_this_call = parent_context.current_call_log_db_id
+      current_call_log_db_accession_id: Optional[uuid.UUID] = None
+      parent_log_accession_id_for_this_call = (
+        parent_context.current_call_log_db_accession_id
+      )
 
-      if parent_context.current_db_session and this_function_def_db_id:
+      if parent_context.current_db_session and this_function_def_db_accession_id:
         try:
           sequence_val = parent_context.get_and_increment_sequence_val()
           serialized_input_args = serialize_arguments(
@@ -346,13 +348,13 @@ async def protocol_function(
           )
           call_log_entry_orm = await log_function_call_start(
             db=parent_context.current_db_session,
-            protocol_run_orm_id=parent_context.run_guid,
-            function_definition_id=this_function_def_db_id,
+            protocol_run_orm_accession_id=parent_context.run_accession_id,
+            function_definition_accession_id=this_function_def_db_accession_id,
             sequence_in_run=sequence_val,
             input_args_json=serialized_input_args,
-            parent_function_call_log_id=parent_log_id_for_this_call,
+            parent_function_call_log_accession_id=parent_log_accession_id_for_this_call,
           )
-          current_call_log_db_id = call_log_entry_orm.id
+          current_call_log_db_accession_id = call_log_entry_orm.accession_id
         except Exception as log_e:
           logger.error(
             "Failed to log_function_call_start for '%s': %s",
@@ -362,7 +364,7 @@ async def protocol_function(
           )
 
       context_for_this_call = parent_context.create_context_for_nested_call(
-        new_parent_call_log_db_id=current_call_log_db_id
+        new_parent_call_log_db_accession_id=current_call_log_db_accession_id
       )
       token = praxis_run_context_cv.set(context_for_this_call)
 
@@ -372,14 +374,14 @@ async def protocol_function(
       start_time_perf = time.perf_counter()
 
       try:
-        run_guid = context_for_this_call.run_guid
+        run_accession_id = context_for_this_call.run_accession_id
         current_db_session = context_for_this_call.current_db_session
         logger.info(
           "Executing protocol function '%s v%s' (Run: %s, Call ID: %s)",
           protocol_definition.name,
           protocol_definition.version,
-          context_for_this_call.run_guid,
-          current_call_log_db_id,
+          context_for_this_call.run_accession_id,
+          current_call_log_db_accession_id,
         )
       except Exception as e:
         logger.error(
@@ -393,29 +395,31 @@ async def protocol_function(
         )
 
       while True:
-        command = await get_control_command(run_guid)
+        command = await get_control_command(run_accession_id)
         if not command:
           break
 
         if command not in ALLOWED_COMMANDS:
           logger.warning(
-            "Invalid control command '%s' for run %s. Clearing.", command, run_guid
+            "Invalid control command '%s' for run %s. Clearing.",
+            command,
+            run_accession_id,
           )
-          await clear_control_command(run_guid)
+          await clear_control_command(run_accession_id)
           continue
 
         if command == "PAUSE":
-          await clear_control_command(run_guid)
-          logger.info("Protocol run %s PAUSING.", run_guid)
+          await clear_control_command(run_accession_id)
+          logger.info("Protocol run %s PAUSING.", run_accession_id)
           await update_protocol_run_status(
             current_db_session,
-            run_guid,
+            run_accession_id,
             ProtocolRunStatusEnum.PAUSING,
           )
           await current_db_session.commit()
           await update_protocol_run_status(
             current_db_session,
-            run_guid,
+            run_accession_id,
             ProtocolRunStatusEnum.PAUSED,
           )
           await current_db_session.commit()
@@ -423,112 +427,112 @@ async def protocol_function(
           pause_loop_command_after_resume = None
           while True:
             await asyncio.sleep(1)
-            pause_loop_command = await get_control_command(run_guid)
+            pause_loop_command = await get_control_command(run_accession_id)
             pause_loop_command_after_resume = pause_loop_command
             if pause_loop_command in ["RESUME", "CANCEL"]:
               logger.info(
                 "Received command '%s' while PAUSED for run %s.",
                 pause_loop_command,
-                run_guid,
+                run_accession_id,
               )
               break
             elif pause_loop_command == "INTERVENE":
-              await clear_control_command(run_guid)
-              logger.info("Protocol run %s INTERVENING during pause.", run_guid)
+              await clear_control_command(run_accession_id)
+              logger.info("Protocol run %s INTERVENING during pause.", run_accession_id)
               await update_protocol_run_status(
                 current_db_session,
-                run_guid,
+                run_accession_id,
                 ProtocolRunStatusEnum.INTERVENING,
               )
               await current_db_session.commit()
             elif pause_loop_command == "PAUSE":
               logger.info(
                 "Received PAUSE command while already PAUSED for run %s. Ignoring.",
-                run_guid,
+                run_accession_id,
               )
               continue
             elif pause_loop_command and pause_loop_command not in [*ALLOWED_COMMANDS]:
               logger.warning(
                 "Invalid command '%s' while PAUSED for run %s. Clearing.",
                 pause_loop_command,
-                run_guid,
+                run_accession_id,
               )
-              await clear_control_command(run_guid)
+              await clear_control_command(run_accession_id)
             elif pause_loop_command in ALLOWED_COMMANDS:
               logger.info(
                 "Received command '%s' while PAUSED for run %s.",
                 pause_loop_command,
-                run_guid,
+                run_accession_id,
               )
               if pause_loop_command == "INTERVENE":
-                await clear_control_command(run_guid)
-                logger.info("Protocol run %s INTERVENING.", run_guid)
+                await clear_control_command(run_accession_id)
+                logger.info("Protocol run %s INTERVENING.", run_accession_id)
                 await update_protocol_run_status(
                   current_db_session,
-                  run_guid,
+                  run_accession_id,
                   ProtocolRunStatusEnum.INTERVENING,
                 )
                 await current_db_session.commit()
                 # TODO: dispatch to intervention handler)
 
           if pause_loop_command_after_resume == "RESUME":
-            await clear_control_command(run_guid)
-            logger.info("Protocol run %s RESUMING.", run_guid)
+            await clear_control_command(run_accession_id)
+            logger.info("Protocol run %s RESUMING.", run_accession_id)
             await update_protocol_run_status(
               current_db_session,
-              run_guid,
+              run_accession_id,
               ProtocolRunStatusEnum.RESUMING,
             )
             await current_db_session.commit()
             await update_protocol_run_status(
               current_db_session,
-              run_guid,
+              run_accession_id,
               ProtocolRunStatusEnum.RUNNING,
             )
             await current_db_session.commit()
             break
           elif pause_loop_command_after_resume == "CANCEL":
-            await clear_control_command(run_guid)
-            logger.info("Protocol run %s CANCELLING after pause.", run_guid)
+            await clear_control_command(run_accession_id)
+            logger.info("Protocol run %s CANCELLING after pause.", run_accession_id)
             await update_protocol_run_status(
               current_db_session,
-              run_guid,
+              run_accession_id,
               ProtocolRunStatusEnum.CANCELING,
             )
             await current_db_session.commit()
             await update_protocol_run_status(
               current_db_session,
-              run_guid,
+              run_accession_id,
               ProtocolRunStatusEnum.CANCELLED,
               output_data_json=json.dumps({"status": "Cancelled by user."}),
             )
             await current_db_session.commit()
-            raise ProtocolCancelledError(f"Run {run_guid} cancelled by user.")
+            raise ProtocolCancelledError(f"Run {run_accession_id} cancelled by user.")
 
         elif command == "CANCEL":
-          await clear_control_command(run_guid)
-          logger.info("Protocol run %s CANCELLING.", run_guid)
+          await clear_control_command(run_accession_id)
+          logger.info("Protocol run %s CANCELLING.", run_accession_id)
           await update_protocol_run_status(
             current_db_session,
-            run_guid,
+            run_accession_id,
             ProtocolRunStatusEnum.CANCELING,
           )
           await current_db_session.commit()
           await update_protocol_run_status(
             current_db_session,
-            run_guid,
+            run_accession_id,
             ProtocolRunStatusEnum.CANCELLED,
             output_data_json=json.dumps({"status": "Cancelled by user."}),
           )
           await current_db_session.commit()
-          raise ProtocolCancelledError(f"Run {run_guid} cancelled by user.")
+          raise ProtocolCancelledError(f"Run {run_accession_id} cancelled by user.")
 
         elif command == "INTERVENE":
-          await clear_control_command(run_guid)
-          logger.info("Protocol run %s INTERVENING.", run_guid)
+          await clear_control_command(run_accession_id)
+          logger.info("Protocol run %s INTERVENING.", run_accession_id)
           await update_protocol_run_status(
             current_db_session,
-            run_guid,
+            run_accession_id,
             ProtocolRunStatusEnum.INTERVENING,
           )
           await current_db_session.commit()
@@ -572,7 +576,7 @@ async def protocol_function(
         logger.error(
           "ERROR in '%s' (Run: %s): %s",
           protocol_unique_key,
-          context_for_this_call.run_guid,
+          context_for_this_call.run_accession_id,
           e,
           exc_info=True,
         )
@@ -593,15 +597,17 @@ async def protocol_function(
               serialized_result = json.dumps(repr(result))
             else:
               serialized_result = json.dumps(result, default=str)
-          if current_call_log_db_id is None:
-            current_call_log_db_id = context_for_this_call.current_call_log_db_id
-          if current_call_log_db_id is None:
+          if current_call_log_db_accession_id is None:
+            current_call_log_db_accession_id = (
+              context_for_this_call.current_call_log_db_accession_id
+            )
+          if current_call_log_db_accession_id is None:
             raise RuntimeError(
               "No current call log DB ID found. Cannot log function call end."
             )
           await log_function_call_end(
             db=context_for_this_call.current_db_session,
-            function_call_log_id=current_call_log_db_id,
+            function_call_log_accession_id=current_call_log_db_accession_id,
             status=status_enum_val,
             return_value_json=serialized_result,
             error_message=str(error) if error else None,

@@ -72,9 +72,10 @@ async def _process_position_definitions(
       len(position_definitions_data),
     )
     # Delete existing position definitions for this deck type
-    if deck_type_orm.id:  # Ensure we have an ID to link positions
+    if deck_type_orm.accession_id:  # Ensure we have an ID to link positions
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
-        DeckPositionDefinitionOrm.deck_type_definition_id == deck_type_orm.id
+        DeckPositionDefinitionOrm.deck_type_definition_accession_id
+        == deck_type_orm.accession_id
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
@@ -114,7 +115,7 @@ async def _process_position_definitions(
         position_specific_details["notes"] = position_data["notes"]
 
       new_position = DeckPositionDefinitionOrm(
-        deck_type_definition_id=deck_type_orm.id,  # type: ignore
+        deck_type_definition_accession_id=deck_type_orm.accession_id,  # type: ignore
         position_name=position_name,
         nominal_x_mm=position_data.get("location_x_mm"),
         nominal_y_mm=position_data.get("location_y_mm"),
@@ -279,7 +280,9 @@ async def create_deck_type_definition(
     logger.debug("%s Updated additional_properties_json.", log_prefix)
 
   try:
-    await db.flush()  # Flush to get the new deck_type_orm.id for position definitions
+    await (
+      db.flush()
+    )  # Flush to get the new deck_type_orm.accession_id for position definitions
     logger.debug("%s Flushed new deck type definition to get ID.", log_prefix)
 
     await _process_position_definitions(
@@ -294,7 +297,7 @@ async def create_deck_type_definition(
     refreshed_deck_type_result = await db.execute(
       select(DeckTypeDefinitionOrm)
       .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
-      .filter(DeckTypeDefinitionOrm.id == deck_type_orm.id)
+      .filter(DeckTypeDefinitionOrm.accession_id == deck_type_orm.accession_id)
     )
     deck_type_orm = refreshed_deck_type_result.scalar_one()
     logger.debug(
@@ -332,7 +335,7 @@ async def create_deck_type_definition(
 
 async def update_deck_type_definition(
   db: AsyncSession,
-  deck_type_id: UUID,
+  deck_type_accession_id: UUID,
   python_fqn: str,
   deck_type: str,
   description: Optional[str] = None,
@@ -354,7 +357,7 @@ async def update_deck_type_definition(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_id (UUID): The ID of the existing deck type definition to update.
+    deck_type_accession_id (UUID): The ID of the existing deck type definition to update.
     python_fqn (str): The fully qualified name of the PyLabRobot deck
       class. This will update the existing FQN.
     deck_type (str): A human-readable display name for the deck type.
@@ -411,25 +414,23 @@ async def update_deck_type_definition(
     DeckTypeDefinitionOrm: The updated deck type definition object.
 
   Raises:
-    ValueError: If `deck_type_id` is provided but no matching deck type is found,
+    ValueError: If `deck_type_accession_id` is provided but no matching deck type is found,
                 or if the updated `python_fqn` conflicts with an existing one.
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Type Definition (ID: {deck_type_id}, updating):"
+  log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, updating):"
   logger.info("%s Attempting to update.", log_prefix)
 
   # Fetch the existing deck type definition
   result = await db.execute(
     select(DeckTypeDefinitionOrm)
     .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
-    .filter(DeckTypeDefinitionOrm.id == deck_type_id)
+    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id)
   )
   deck_type_orm = result.scalar_one_or_none()
   if not deck_type_orm:
-    error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_id} not found for update."
-    )
+    error_message = f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found for update."
     logger.error(error_message)
     raise ValueError(error_message)
   logger.info("%s Found existing deck type for update.", log_prefix)
@@ -439,7 +440,9 @@ async def update_deck_type_definition(
     existing_fqn_check = await db.execute(
       select(DeckTypeDefinitionOrm)
       .filter(DeckTypeDefinitionOrm.pylabrobot_deck_fqn == python_fqn)
-      .filter(DeckTypeDefinitionOrm.id != deck_type_id)  # Exclude the current record
+      .filter(
+        DeckTypeDefinitionOrm.accession_id != deck_type_accession_id
+      )  # Exclude the current record
     )
     if existing_fqn_check.scalar_one_or_none():
       error_message = (
@@ -495,7 +498,9 @@ async def update_deck_type_definition(
     logger.debug("%s Updated additional_properties_json.", log_prefix)
 
   try:
-    await db.flush()  # Flush to ensure deck_type_orm.id is correct for position ops
+    await (
+      db.flush()
+    )  # Flush to ensure deck_type_orm.accession_id is correct for position ops
     logger.debug("%s Flushed deck type definition changes.", log_prefix)
 
     await _process_position_definitions(
@@ -510,7 +515,7 @@ async def update_deck_type_definition(
     refreshed_deck_type_result = await db.execute(
       select(DeckTypeDefinitionOrm)
       .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
-      .filter(DeckTypeDefinitionOrm.id == deck_type_orm.id)
+      .filter(DeckTypeDefinitionOrm.accession_id == deck_type_orm.accession_id)
     )
     deck_type_orm = refreshed_deck_type_result.scalar_one()
     logger.debug(
@@ -545,35 +550,37 @@ async def update_deck_type_definition(
 
 
 async def read_deck_type_definition(
-  db: AsyncSession, deck_type_id: uuid.UUID
+  db: AsyncSession, deck_type_accession_id: uuid.UUID
 ) -> Optional[DeckTypeDefinitionOrm]:
   """Retrieve a specific deck type definition by its ID.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_id (uuid.UUID): The ID of the deck type definition to retrieve.
+    deck_type_accession_id (uuid.UUID): The ID of the deck type definition to retrieve.
 
   Returns:
     Optional[DeckTypeDefinitionOrm]: The deck type definition object if found,
     otherwise None.
 
   """
-  logger.info("Attempting to retrieve deck type definition with ID: %s.", deck_type_id)
+  logger.info(
+    "Attempting to retrieve deck type definition with ID: %s.", deck_type_accession_id
+  )
   stmt = (
     select(DeckTypeDefinitionOrm)
     .options(selectinload(DeckTypeDefinitionOrm.position_definitions))
-    .filter(DeckTypeDefinitionOrm.id == deck_type_id)
+    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id)
   )
   result = await db.execute(stmt)
   deck_type_def = result.scalar_one_or_none()
   if deck_type_def:
     logger.info(
       "Successfully retrieved deck type definition ID %s: '%s'.",
-      deck_type_id,
+      deck_type_accession_id,
       deck_type_def.display_name,
     )
   else:
-    logger.info("Deck type definition with ID %s not found.", deck_type_id)
+    logger.info("Deck type definition with ID %s not found.", deck_type_accession_id)
   return deck_type_def
 
 
@@ -641,28 +648,30 @@ async def list_deck_type_definitions(
 
 
 async def delete_deck_type_definition(
-  db: AsyncSession, deck_type_id: uuid.UUID
+  db: AsyncSession, deck_type_accession_id: uuid.UUID
 ) -> None:
   """Delete a deck type definition by its ID.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_id (uuid.UUID): The ID of the deck type definition to delete.
+    deck_type_accession_id (uuid.UUID): The ID of the deck type definition to delete.
 
   Raises:
     ValueError: If the deck type definition does not exist.
     Exception: For any other unexpected errors during the deletion process.
 
   """
-  log_prefix = f"Deck Type Definition (ID: {deck_type_id}, deleting):"
+  log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, deleting):"
   logger.info("%s Attempting to delete.", log_prefix)
 
-  stmt = select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.id == deck_type_id)
+  stmt = select(DeckTypeDefinitionOrm).filter(
+    DeckTypeDefinitionOrm.accession_id == deck_type_accession_id
+  )
   result = await db.execute(stmt)
   deck_type_orm = result.scalar_one_or_none()
   if not deck_type_orm:
     error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_id} not found."
+      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found."
     )
     logger.error(error_message)
     raise ValueError(error_message)

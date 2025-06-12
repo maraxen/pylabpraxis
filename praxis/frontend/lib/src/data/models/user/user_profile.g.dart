@@ -21,7 +21,7 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
 
 Map<String, dynamic> _$UserProfileToJson(_UserProfile instance) =>
     <String, dynamic>{
-      'sub': instance.id,
+      'sub': instance.accession_id,
       'preferred_username': instance.username,
       'email': instance.email,
       'email_verified': instance.emailVerified,

@@ -31,7 +31,7 @@ $UserProfileCopyWith<UserProfile> get copyWith => _$UserProfileCopyWithImpl<User
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.name, name) || other.name == name)&&(identical(other.givenName, givenName) || other.givenName == givenName)&&(identical(other.familyName, familyName) || other.familyName == familyName)&&const DeepCollectionEquality().equals(other.roles, roles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserProfile&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.name, name) || other.name == name)&&(identical(other.givenName, givenName) || other.givenName == givenName)&&(identical(other.familyName, familyName) || other.familyName == familyName)&&const DeepCollectionEquality().equals(other.roles, roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -70,7 +70,7 @@ class _$UserProfileCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? username = freezed,Object? email = freezed,Object? emailVerified = freezed,Object? name = freezed,Object? givenName = freezed,Object? familyName = freezed,Object? roles = null,}) {
   return _then(_self.copyWith(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,username: freezed == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String?,emailVerified: freezed == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable
@@ -89,7 +89,7 @@ as List<String>,
 @JsonSerializable()
 
 class _UserProfile implements UserProfile {
-  const _UserProfile({@JsonKey(name: 'sub') required this.id, @JsonKey(name: 'preferred_username') this.username, this.email, @JsonKey(name: 'email_verified') this.emailVerified, this.name, @JsonKey(name: 'given_name') this.givenName, @JsonKey(name: 'family_name') this.familyName, final  List<String> roles = const []}): _roles = roles;
+  const _UserProfile({@JsonKey(name: 'sub') required this.accession_id, @JsonKey(name: 'preferred_username') this.username, this.email, @JsonKey(name: 'email_verified') this.emailVerified, this.name, @JsonKey(name: 'given_name') this.givenName, @JsonKey(name: 'family_name') this.familyName, final  List<String> roles = const []}): _roles = roles;
   factory _UserProfile.fromJson(Map<String, dynamic> json) => _$UserProfileFromJson(json);
 
 @override@JsonKey(name: 'sub') final  String id;
@@ -122,7 +122,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.name, name) || other.name == name)&&(identical(other.givenName, givenName) || other.givenName == givenName)&&(identical(other.familyName, familyName) || other.familyName == familyName)&&const DeepCollectionEquality().equals(other._roles, _roles));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserProfile&&(identical(other.accession_id, id) || other.accession_id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.email, email) || other.email == email)&&(identical(other.emailVerified, emailVerified) || other.emailVerified == emailVerified)&&(identical(other.name, name) || other.name == name)&&(identical(other.givenName, givenName) || other.givenName == givenName)&&(identical(other.familyName, familyName) || other.familyName == familyName)&&const DeepCollectionEquality().equals(other._roles, _roles));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -161,7 +161,7 @@ class __$UserProfileCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? username = freezed,Object? email = freezed,Object? emailVerified = freezed,Object? name = freezed,Object? givenName = freezed,Object? familyName = freezed,Object? roles = null,}) {
   return _then(_UserProfile(
-id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+id: null == id ? _self.accession_id : id // ignore: cast_nullable_to_non_nullable
 as String,username: freezed == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String?,emailVerified: freezed == emailVerified ? _self.emailVerified : emailVerified // ignore: cast_nullable_to_non_nullable

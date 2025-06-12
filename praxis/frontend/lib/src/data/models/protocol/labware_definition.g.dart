@@ -31,7 +31,7 @@ _ResourceDefinition _$ResourceDefinitionFromJson(
 
 Map<String, dynamic> _$ResourceDefinitionToJson(_ResourceDefinition instance) =>
     <String, dynamic>{
-      'id': instance.id,
+      'id': instance.accession_id,
       'display_name': instance.displayName,
       'version': instance.version,
       'namespace': instance.namespace,

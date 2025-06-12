@@ -52,6 +52,6 @@ class UserOrm(Base):
   def __repr__(self):
     """Return a string representation of the UserOrm object."""
     return (
-      f"<UserOrm(id={self.id}, username='{self.username}',"
+      f"<UserOrm(id={self.accession_id}, username='{self.username}',"
       f" email='{self.email}', is_active={self.is_active})>"
     )

@@ -67,7 +67,7 @@ def mock_asset_manager():  # Removed self
     MagicMock(name="live_asset"),
     123,
     "machine",
-  )  # live_obj, orm_id, asset_type_str
+  )  # live_obj, orm_accession_id, asset_type_str
   mock_am.release_machine = MagicMock()
   mock_am.release_resource = MagicMock()
   return mock_am
@@ -77,14 +77,14 @@ def mock_asset_manager():  # Removed self
 def mock_protocol_def_orm():  # Removed self
   # Create a somewhat realistic FunctionProtocolDefinitionOrm mock
   pdo = MagicMock(spec=FunctionProtocolDefinitionOrm)
-  pdo.id = 1
+  pdo.accession_id = 1
   pdo.name = "TestProtocol"
   pdo.version = "1.0"
   pdo.module_name = "mock_protocol_module"
   pdo.function_name = "mock_protocol_function"
-  pdo.source_repository_id = None
+  pdo.source_repository_accession_id = None
   pdo.source_repository = None
-  pdo.file_system_source_id = 1
+  pdo.file_system_source_accession_id = 1
   pdo.file_system_source = MagicMock(
     spec=FileSystemProtocolSourceOrm, base_path="dummy/path"
   )
@@ -100,7 +100,7 @@ def mock_protocol_def_orm():  # Removed self
   mock_decorator_metadata = {
     "name": "TestProtocol",
     "version": "1.0",
-    "db_id": 1,
+    "db_accession_id": 1,
     "protocol_unique_key": "TestProtocol_v1.0",
     "parameters": {},
     "assets": [],
@@ -114,8 +114,8 @@ def mock_protocol_def_orm():  # Removed self
 @pytest.fixture
 def mock_protocol_run_orm():  # Removed self
   pro = MagicMock(spec=ProtocolRunOrm)
-  pro.id = 99
-  pro.run_guid = str(uuid.uuid4())
+  pro.accession_id = 99
+  pro.run_accession_id = str(uuid.uuid4())
   # Status is set to PREPARING by create_protocol_run initially
   pro.status = ProtocolRunStatusEnum.PREPARING
   return pro
@@ -200,22 +200,22 @@ class TestOrchestratorExecutionControl:
 
     orchestrator.execute_protocol(protocol_name="TestProtocol", user_input_params={})
 
-    mock_run_control_clear.assert_any_call(mock_protocol_run_orm.run_guid)
+    mock_run_control_clear.assert_any_call(mock_protocol_run_orm.run_accession_id)
     assert mock_run_control_clear.call_count == 2  # For PAUSE and RESUME
 
     expected_status_calls = [
       call(
-        ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RUNNING
+        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
       ),  # Set after successful prep & before pause check
-      call(ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSING),
-      call(ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSED),
-      call(ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RESUMING),
+      call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSING),
+      call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED),
+      call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RESUMING),
       call(
-        ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RUNNING
+        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
       ),  # Set after resume
       call(
         ANY,
-        mock_protocol_run_orm.id,
+        mock_protocol_run_orm.accession_id,
         ProtocolRunStatusEnum.COMPLETED,
         output_data_json=ANY,
       ),
@@ -245,7 +245,7 @@ class TestOrchestratorExecutionControl:
     )
 
     acquired_assets_info = [
-      {"type": "machine", "orm_id": 123, "name_in_protocol": "mock_machine"}
+      {"type": "machine", "orm_accession_id": 123, "name_in_protocol": "mock_machine"}
     ]
     orchestrator._prepare_arguments = MagicMock(
       return_value=({}, None, acquired_assets_info)
@@ -262,26 +262,26 @@ class TestOrchestratorExecutionControl:
     with pytest.raises(ProtocolCancelledError, match="cancelled by user during pause"):
       orchestrator.execute_protocol(protocol_name="TestProtocol", user_input_params={})
 
-    mock_run_control_clear.assert_any_call(mock_protocol_run_orm.run_guid)
+    mock_run_control_clear.assert_any_call(mock_protocol_run_orm.run_accession_id)
     assert mock_run_control_clear.call_count == 2
 
     actual_calls = mock_update_protocol_run_status.call_args_list
 
     assert actual_calls[0] == call(
-      ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RUNNING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
     )
     assert actual_calls[1] == call(
-      ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSING
     )
     assert actual_calls[2] == call(
-      ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSED
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED
     )
     assert actual_calls[3] == call(
-      ANY, mock_protocol_run_orm.id, ProtocolRunStatusEnum.CANCELING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.CANCELING
     )
     assert actual_calls[4] == call(
       ANY,
-      mock_protocol_run_orm.id,
+      mock_protocol_run_orm.accession_id,
       ProtocolRunStatusEnum.CANCELLED,
       output_data_json=json.dumps({"status": "Cancelled by user during pause."}),
     )
@@ -289,7 +289,7 @@ class TestOrchestratorExecutionControl:
     mock_protocol_wrapper_func.assert_not_called()
 
     orchestrator.asset_manager.release_machine.assert_called_once_with(
-      machine_orm_id=123
+      machine_orm_accession_id=123
     )
     orchestrator.asset_manager.release_resource.assert_not_called()
 
@@ -312,13 +312,13 @@ class TestOrchestratorGitOps:
     """Modifies the standard protocol_def_orm to include git source info."""
     protocol_def, decorator_meta = mock_protocol_def_orm
     # Clear file system source if it exists from the base fixture
-    protocol_def.file_system_source_id = None
+    protocol_def.file_system_source_accession_id = None
     protocol_def.file_system_source = None
 
     # Add Git source details
-    protocol_def.source_repository_id = 100
+    protocol_def.source_repository_accession_id = 100
     mock_repo_orm = MagicMock(spec=ProtocolSourceRepositoryOrm)
-    mock_repo_orm.id = 100
+    mock_repo_orm.accession_id = 100
     mock_repo_orm.name = "TestGitRepo"
     mock_repo_orm.git_url = "git@example.com:test/repo.git"
     mock_repo_orm.local_checkout_path = "/tmp/test_repo_checkout"
@@ -330,7 +330,7 @@ class TestOrchestratorGitOps:
     protocol_def.function_name = "protocol_func"
 
     # Update decorator metadata if necessary, though _prepare_protocol_code focuses on path setup
-    decorator_meta["db_id"] = protocol_def.id  # Ensure consistency
+    decorator_meta["db_accession_id"] = protocol_def.accession_id  # Ensure consistency
     return protocol_def, decorator_meta
 
   @patch("praxis.backend.core.orchestrator.os")
@@ -372,7 +372,7 @@ class TestOrchestratorGitOps:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
       mock_protocol_func.protocol_metadata = {
-        "db_id": protocol_def.id
+        "db_accession_id": protocol_def.accession_id
       }  # Make it seem decorated
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
@@ -453,7 +453,9 @@ class TestOrchestratorGitOps:
       # Setup mock module and function as in previous test
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
-      mock_protocol_func.protocol_metadata = {"db_id": protocol_def.id}
+      mock_protocol_func.protocol_metadata = {
+        "db_accession_id": protocol_def.accession_id
+      }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
       orchestrator._prepare_protocol_code(protocol_def)
@@ -505,7 +507,9 @@ class TestOrchestratorGitOps:
     with patch("importlib.import_module") as mock_import_module:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
-      mock_protocol_func.protocol_metadata = {"db_id": protocol_def.id}
+      mock_protocol_func.protocol_metadata = {
+        "db_accession_id": protocol_def.accession_id
+      }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
       orchestrator._prepare_protocol_code(protocol_def)
@@ -642,7 +646,7 @@ class TestOrchestratorGitOps:
     )
 
     # Ensure it's not a git sourced protocol for this test
-    protocol_def.source_repository_id = None
+    protocol_def.source_repository_accession_id = None
     protocol_def.source_repository = None
     # It should have a file system source from the fixture
     assert protocol_def.file_system_source is not None
@@ -652,8 +656,10 @@ class TestOrchestratorGitOps:
     ) as mock_subproc_run:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
-      # Ensure metadata matches the db_id from the mock_protocol_def_orm
-      mock_protocol_func.protocol_metadata = {"db_id": protocol_def.id}
+      # Ensure metadata matches the db_accession_id from the mock_protocol_def_orm
+      mock_protocol_func.protocol_metadata = {
+        "db_accession_id": protocol_def.accession_id
+      }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
 
@@ -714,12 +720,13 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       user_input_params,
-      PraxisState(run_guid="test_run"),
+      PraxisState(run_accession_id="test_run"),
       mock_protocol_wrapper_func_for_args,
     )
 
     orchestrator.asset_manager.apply_deck_instance.assert_called_once_with(
-      deck_identifier="MyDeckLayoutName", protocol_run_guid="test_run"
+      deck_accession_identifier="MyDeckLayoutName",
+      protocol_run_accession_id="test_run",
     )
     assert final_args["my_deck"] == mock_live_deck_obj
 
@@ -755,13 +762,13 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       user_input_params,
-      PraxisState(run_guid="test_run_plr"),
+      PraxisState(run_accession_id="test_run_plr"),
       mock_protocol_wrapper_func_for_args,
     )
 
     orchestrator.asset_manager.apply_deck_instance.assert_called_once_with(
-      deck_identifier="MyDeckLayoutName",  # Name is extracted
-      protocol_run_guid="test_run_plr",
+      deck_accession_identifier="MyDeckLayoutName",  # Name is extracted
+      protocol_run_accession_id="test_run_plr",
     )
     assert final_args["the_deck"] == mock_live_deck_obj
 
@@ -795,7 +802,7 @@ class TestOrchestratorArgumentPreparation:
         protocol_def,
         decorator_meta,
         user_input_params,
-        PraxisState(run_guid="test_run_m"),
+        PraxisState(run_accession_id="test_run_m"),
         mock_protocol_wrapper_func_for_args,
       )
     orchestrator.asset_manager.apply_deck_instance.assert_not_called()
@@ -826,7 +833,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       user_input_params,
-      PraxisState(run_guid="test_run_o"),
+      PraxisState(run_accession_id="test_run_o"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -866,7 +873,7 @@ class TestOrchestratorArgumentPreparation:
         protocol_def,
         decorator_meta,
         user_input_params,
-        PraxisState(run_guid="test_run_f"),
+        PraxisState(run_accession_id="test_run_f"),
         mock_protocol_wrapper_func_for_args,
       )
 
@@ -898,7 +905,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       user_input_params,
-      PraxisState(run_guid="test_run_nc"),
+      PraxisState(run_accession_id="test_run_nc"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -961,7 +968,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       {},
-      PraxisState(run_guid="infer_lw"),
+      PraxisState(run_accession_id="infer_lw"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -1008,7 +1015,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       {},
-      PraxisState(run_guid="infer_dev"),
+      PraxisState(run_accession_id="infer_dev"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -1058,7 +1065,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       {},
-      PraxisState(run_guid="infer_opt_fail"),
+      PraxisState(run_accession_id="infer_opt_fail"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -1093,7 +1100,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       {"name": "test", "count": 10},
-      PraxisState(run_guid="infer_ignore"),
+      PraxisState(run_accession_id="infer_ignore"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -1148,7 +1155,7 @@ class TestOrchestratorArgumentPreparation:
       protocol_def,
       decorator_meta,
       {"another_param": 5},
-      PraxisState(run_guid="infer_override"),
+      PraxisState(run_accession_id="infer_override"),
       mock_protocol_wrapper_func_for_args,
     )
 
@@ -1196,8 +1203,10 @@ class TestOrchestratorArgumentPreparation:
 
     # Mock for the protocol function's context
     mock_praxis_run_context = MagicMock(spec=PraxisRunContext)
-    mock_praxis_run_context.run_guid = mock_protocol_run_orm.run_guid
-    mock_praxis_run_context.protocol_run_db_id = mock_protocol_run_orm.id
+    mock_praxis_run_context.run_accession_id = mock_protocol_run_orm.run_accession_id
+    mock_praxis_run_context.protocol_run_db_accession_id = (
+      mock_protocol_run_orm.accession_id
+    )
     mock_praxis_run_context.current_db_session = mock_db_session
 
     # Simulate the sequence of commands the decorator will see
@@ -1222,36 +1231,40 @@ class TestOrchestratorArgumentPreparation:
       )  # Fallback for safety
 
       # Simulate 1st command check in decorator (before user code)
-      cmd1 = mock_decorator_get_cmd(ctx.run_guid)  # Sees None
+      cmd1 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
       # No command, so it would proceed to call user_protocol_function_mock,
       # but we embed further command checks as if they are part of user_protocol_function_mock's execution flow
       # for this test's purpose, to simulate commands during the step.
 
       # Simulate decorator checking for command *during* the step (conceptually)
-      cmd2 = mock_decorator_get_cmd(ctx.run_guid)  # Sees PAUSE
+      cmd2 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees PAUSE
       if cmd2 == "PAUSE":
-        mock_decorator_clear_cmd(ctx.run_guid)
+        mock_decorator_clear_cmd(ctx.run_accession_id)
         mock_decorator_update_status(
-          ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.PAUSING
+          ctx.current_db_session,
+          ctx.protocol_run_db_accession_id,
+          ProtocolRunStatusEnum.PAUSING,
         )
         mock_decorator_update_status(
-          ctx.current_db_session, ctx.protocol_run_db_id, ProtocolRunStatusEnum.PAUSED
+          ctx.current_db_session,
+          ctx.protocol_run_db_accession_id,
+          ProtocolRunStatusEnum.PAUSED,
         )
 
         paused = True
         while paused:
           mock_decorator_sleep(1)
-          cmd_in_pause = mock_decorator_get_cmd(ctx.run_guid)
+          cmd_in_pause = mock_decorator_get_cmd(ctx.run_accession_id)
           if cmd_in_pause == "RESUME":
-            mock_decorator_clear_cmd(ctx.run_guid)
+            mock_decorator_clear_cmd(ctx.run_accession_id)
             mock_decorator_update_status(
               ctx.current_db_session,
-              ctx.protocol_run_db_id,
+              ctx.protocol_run_db_accession_id,
               ProtocolRunStatusEnum.RESUMING,
             )
             mock_decorator_update_status(
               ctx.current_db_session,
-              ctx.protocol_run_db_id,
+              ctx.protocol_run_db_accession_id,
               ProtocolRunStatusEnum.RUNNING,
             )
             paused = False
@@ -1274,7 +1287,11 @@ class TestOrchestratorArgumentPreparation:
       return_value=(mock_wrapper_func_instance, decorator_meta)
     )
     orchestrator._prepare_arguments = MagicMock(
-      return_value=({}, PraxisState(run_guid=mock_protocol_run_orm.run_guid), [])
+      return_value=(
+        {},
+        PraxisState(run_accession_id=mock_protocol_run_orm.run_accession_id),
+        [],
+      )
     )
     mock_get_protocol_definition_details.return_value = protocol_def
     mock_create_protocol_run.return_value = mock_protocol_run_orm
@@ -1290,10 +1307,26 @@ class TestOrchestratorArgumentPreparation:
 
     # Check calls to decorator's mocks
     decorator_status_calls = [
-      call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSING),
-      call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.PAUSED),
-      call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RESUMING),
-      call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.RUNNING),
+      call(
+        mock_db_session,
+        mock_protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.PAUSING,
+      ),
+      call(
+        mock_db_session,
+        mock_protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.PAUSED,
+      ),
+      call(
+        mock_db_session,
+        mock_protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.RESUMING,
+      ),
+      call(
+        mock_db_session,
+        mock_protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.RUNNING,
+      ),
     ]
     mock_decorator_update_status.assert_has_calls(
       decorator_status_calls, any_order=False
@@ -1301,8 +1334,8 @@ class TestOrchestratorArgumentPreparation:
 
     mock_decorator_clear_cmd.assert_has_calls(
       [
-        call(mock_protocol_run_orm.run_guid),  # For PAUSE
-        call(mock_protocol_run_orm.run_guid),  # For RESUME
+        call(mock_protocol_run_orm.run_accession_id),  # For PAUSE
+        call(mock_protocol_run_orm.run_accession_id),  # For RESUME
       ]
     )
     assert mock_decorator_clear_cmd.call_count == 2
@@ -1312,7 +1345,7 @@ class TestOrchestratorArgumentPreparation:
     # The RUNNING status before the pause is handled by the Orchestrator itself.
     orchestrator_final_status_call = call(
       ANY,
-      mock_protocol_run_orm.id,
+      mock_protocol_run_orm.accession_id,
       ProtocolRunStatusEnum.COMPLETED,
       output_data_json=ANY,
     )
@@ -1348,8 +1381,10 @@ class TestOrchestratorArgumentPreparation:
     ]  # Orchestrator's pre-execution checks
 
     mock_praxis_run_context = MagicMock(spec=PraxisRunContext)
-    mock_praxis_run_context.run_guid = mock_protocol_run_orm.run_guid
-    mock_praxis_run_context.protocol_run_db_id = mock_protocol_run_orm.id
+    mock_praxis_run_context.run_accession_id = mock_protocol_run_orm.run_accession_id
+    mock_praxis_run_context.protocol_run_db_accession_id = (
+      mock_protocol_run_orm.accession_id
+    )
     mock_praxis_run_context.current_db_session = mock_db_session
 
     mock_decorator_get_cmd.side_effect = [
@@ -1362,24 +1397,26 @@ class TestOrchestratorArgumentPreparation:
     def mock_protocol_wrapper_side_effect(*args, **kwargs):
       ctx = kwargs.get("__praxis_run_context__", mock_praxis_run_context)
 
-      cmd1 = mock_decorator_get_cmd(ctx.run_guid)  # Sees None
+      cmd1 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
 
       # Simulate decorator checking for command *during* the step
-      cmd2 = mock_decorator_get_cmd(ctx.run_guid)  # Sees CANCEL
+      cmd2 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees CANCEL
       if cmd2 == "CANCEL":
-        mock_decorator_clear_cmd(ctx.run_guid)
+        mock_decorator_clear_cmd(ctx.run_accession_id)
         mock_decorator_update_status(
           ctx.current_db_session,
-          ctx.protocol_run_db_id,
+          ctx.protocol_run_db_accession_id,
           ProtocolRunStatusEnum.CANCELING,
         )
         mock_decorator_update_status(
           ctx.current_db_session,
-          ctx.protocol_run_db_id,
+          ctx.protocol_run_db_accession_id,
           ProtocolRunStatusEnum.CANCELLED,
           output_data_json=ANY,
         )
-        raise ProtocolCancelledError(f"Cancelled by user during step {ctx.run_guid}")
+        raise ProtocolCancelledError(
+          f"Cancelled by user during step {ctx.run_accession_id}"
+        )
 
       user_protocol_function_mock(
         *args, **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"}
@@ -1393,12 +1430,16 @@ class TestOrchestratorArgumentPreparation:
 
     # Simulate acquired assets for release check
     acquired_assets_info = [
-      {"type": "machine", "orm_id": 789, "name_in_protocol": "test_machine_cancel"}
+      {
+        "type": "machine",
+        "orm_accession_id": 789,
+        "name_in_protocol": "test_machine_cancel",
+      }
     ]
     orchestrator._prepare_arguments = MagicMock(
       return_value=(
         {},
-        PraxisState(run_guid=mock_protocol_run_orm.run_guid),
+        PraxisState(run_accession_id=mock_protocol_run_orm.run_accession_id),
         acquired_assets_info,
       )
     )
@@ -1411,17 +1452,21 @@ class TestOrchestratorArgumentPreparation:
 
     with pytest.raises(
       ProtocolCancelledError,
-      match=f"Cancelled by user during step {mock_protocol_run_orm.run_guid}",
+      match=f"Cancelled by user during step {mock_protocol_run_orm.run_accession_id}",
     ):
       orchestrator.execute_protocol(protocol_name="TestProtocol", user_input_params={})
 
     user_protocol_function_mock.assert_not_called()
 
     decorator_status_calls = [
-      call(mock_db_session, mock_protocol_run_orm.id, ProtocolRunStatusEnum.CANCELING),
       call(
         mock_db_session,
-        mock_protocol_run_orm.id,
+        mock_protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.CANCELING,
+      ),
+      call(
+        mock_db_session,
+        mock_protocol_run_orm.accession_id,
         ProtocolRunStatusEnum.CANCELLED,
         output_data_json=ANY,
       ),
@@ -1429,12 +1474,14 @@ class TestOrchestratorArgumentPreparation:
     mock_decorator_update_status.assert_has_calls(
       decorator_status_calls, any_order=False
     )
-    mock_decorator_clear_cmd.assert_called_once_with(mock_protocol_run_orm.run_guid)
+    mock_decorator_clear_cmd.assert_called_once_with(
+      mock_protocol_run_orm.run_accession_id
+    )
 
     # Check Orchestrator's final status update (should be CANCELLED by the orchestrator itself due to the raised error)
     orchestrator_final_status_call = call(
       ANY,
-      mock_protocol_run_orm.id,
+      mock_protocol_run_orm.accession_id,
       ProtocolRunStatusEnum.CANCELLED,
       output_data_json=ANY,
     )
@@ -1445,5 +1492,7 @@ class TestOrchestratorArgumentPreparation:
     )
 
     # Check asset release
-    mock_asset_manager.release_machine.assert_called_once_with(machine_orm_id=789)
+    mock_asset_manager.release_machine.assert_called_once_with(
+      machine_orm_accession_id=789
+    )
     mock_asset_manager.release_resource.assert_not_called()

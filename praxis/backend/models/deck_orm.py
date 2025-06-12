@@ -54,7 +54,7 @@ class DeckInstanceOrm(Base):
   Attributes:
       id (int): Primary key, unique identifier for the deck instanceuration.
       name (str): A unique, human-readable name for the deck instance.
-      deck_id (UUID): Foreign key to the `MachineOrm` representing
+      deck_accession_id (UUID): Foreign key to the `MachineOrm` representing
           the physical deck associated with this instance.
       description (Optional[str]): An optional description of the deck instance.
       created_at (Optional[datetime]): Timestamp when the record was created.
@@ -80,8 +80,8 @@ class DeckInstanceOrm(Base):
 
   name: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
 
-  deck_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("resources.id"), nullable=False
+  deck_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("resources.accession_id"), nullable=False
   )
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -92,29 +92,29 @@ class DeckInstanceOrm(Base):
     DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
   )
 
-  deck_type_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.id"), nullable=True, index=True
+  deck_type_definition_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=True, index=True
   )
 
-  deck_parent_machine_id: Mapped[uuid.UUID] = mapped_column(
+  deck_parent_machine_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("machines.id", ondelete="CASCADE"),
+    ForeignKey("machines.accession_id", ondelete="CASCADE"),
     nullable=False,
     index=True,
     comment="Foreign key to the MachineOrm representing the physical deck",
   )
   deck_parent_machine: Mapped["MachineOrm"] = relationship(
     "MachineOrm",
-    foreign_keys=[deck_parent_machine_id],
+    foreign_keys=[deck_parent_machine_accession_id],
     back_populates="deck_instances",
     uselist=False,
     comment="Relationship to the MachineOrm representing the parent machine housing the"
     " physical deck",
   )
 
-  resource_counterpart_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID,
-    ForeignKey("resource_instances.id", ondelete="SET NULL"),
+    ForeignKey("resource_instances.accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
     comment="Link to ResourceInstanceOrm of the deck instance",
@@ -133,29 +133,29 @@ class DeckInstanceOrm(Base):
 
   def __repr__(self):
     """Render string representation of the DeckInstanceOrm instance."""
-    return f"<DeckInstanceOrm(id={self.id}, name='{self.name}')>"
+    return f"<DeckInstanceOrm(id={self.accession_id}, name='{self.name}')>"
 
 
 class DeckInstancePositionResourceOrm(Base):
   """Represent a specific resource placed at a position within a deck instance.
 
-  This ORM model links a `ResourceInstanceOrm` to a particular `position_id`
+  This ORM model links a `ResourceInstanceOrm` to a particular `position_accession_id`
   (e.g., "A1", "SLOT_7") within a `DeckInstanceOrm`. It can also
   optionally store the `expected_resource_definition_name` for validation
   purposes.
 
   Attributes:
       id (int): Primary key, unique identifier for the position item.
-      deck_instance_id (int): Foreign key to the parent
+      deck_instance_accession_id (int): Foreign key to the parent
           `DeckInstanceOrm`.
-      position_id (str): The identifier for the position on the deck (e.g., "A1",
+      position_accession_id (str): The identifier for the position on the deck (e.g., "A1",
           "SLOT_7").
-      resource_instance_id (int): Foreign key to the `ResourceInstanceOrm`
+      resource_instance_accession_id (int): Foreign key to the `ResourceInstanceOrm`
           representing the physical resource placed at this position.
       expected_resource_definition_name (Optional[str]): Foreign key to the
           `ResourceDefinitionCatalogOrm` representing the expected type of
           resource for this position in this instance.
-      deck_position_definition_id (Optional[int]): Foreign key to a specific
+      deck_position_definition_accession_id (Optional[int]): Foreign key to a specific
           `DeckPositionDefinitionOrm` if this position item corresponds to a predefined
           position on the deck type.
       deck_instance (relationship): Establishes a relationship to the
@@ -172,10 +172,10 @@ class DeckInstancePositionResourceOrm(Base):
   __tablename__ = "deck_instance_position_items"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  deck_instance_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_instances.id"), nullable=False
+  deck_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("deck_instances.accession_id"), nullable=False
   )
-  position_id: Mapped[str] = mapped_column(
+  position_accession_id: Mapped[str] = mapped_column(
     String, nullable=False, comment="Position name on the deck (e.g., A1, SLOT_7)"
   )
 
@@ -186,8 +186,8 @@ class DeckInstancePositionResourceOrm(Base):
     comment="Unique name for this position within the deck instanceuration",
   )
   # This links to a specific physical piece of resource
-  resource_instance_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("resource_instances.id"), nullable=False
+  resource_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("resource_instances.accession_id"), nullable=False
   )
 
   # Optional: for validation, store the expected type of resource for this
@@ -198,8 +198,11 @@ class DeckInstancePositionResourceOrm(Base):
     nullable=True,
   )
 
-  deck_position_definition_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("deck_position_definitions.id"), nullable=True, index=True
+  deck_position_definition_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID,
+    ForeignKey("deck_position_definitions.accession_id"),
+    nullable=True,
+    index=True,
   )
 
   deck_instance = relationship("DeckInstanceOrm", back_populates="position_items")
@@ -212,15 +215,19 @@ class DeckInstancePositionResourceOrm(Base):
   deck_position_definition = relationship("DeckPositionDefinitionOrm")
 
   __table_args__ = (
-    UniqueConstraint("deck_instance_id", "position_id", name="uq_deck_position_item"),
+    UniqueConstraint(
+      "deck_instance_accession_id",
+      "position_accession_id",
+      name="uq_deck_position_item",
+    ),
   )
 
   def __repr__(self):
     """Render string representation of the DeckInstancePositionResourceOrm instance."""
     return (
-      f"<DeckInstancePositionResourceOrm(deck_config_id="
-      f"{self.deck_instance_id}, position='{self.position_id}', "
-      f"lw_instance_id={self.resource_instance_id})>"
+      f"<DeckInstancePositionResourceOrm(deck_config_accession_id="
+      f"{self.deck_instance_accession_id}, position='{self.position_accession_id}', "
+      f"lw_instance_accession_id={self.resource_instance_accession_id})>"
     )
 
 
@@ -232,9 +239,9 @@ class DeckPositionDefinitionOrm(Base):
 
   Attributes:
       id (int): Primary key, unique identifier for the position definition.
-      deck_type_definition_id (int): Foreign key to the `DeckTypeDefinitionOrm`
+      deck_type_definition_accession_id (int): Foreign key to the `DeckTypeDefinitionOrm`
           this position belongs to.
-      position_id (str): The unique identifier for this position within its deck type
+      position_accession_id (str): The unique identifier for this position within its deck type
           (e.g., "A1", "trash_position").
       nominal_x_mm (Optional[float]): The nominal X coordinate of the position's
           origin in millimeters, relative to the deck.
@@ -256,10 +263,10 @@ class DeckPositionDefinitionOrm(Base):
   __tablename__ = "deck_position_definitions"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, autoincrement=True)
-  deck_type_definition_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.id"), nullable=False
+  deck_type_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=False
   )
-  position_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
+  position_accession_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False)
   name: Mapped[str] = mapped_column(
     String, nullable=False, index=True, comment="Unique name for this position"
   )
@@ -278,18 +285,20 @@ class DeckPositionDefinitionOrm(Base):
     back_populates="position_definitions"
   )
 
-  # Unique constraint for position_id within a deck_type_definition
+  # Unique constraint for position_accession_id within a deck_type_definition
   __table_args__ = (
     UniqueConstraint(
-      "deck_type_definition_id", "position_id", name="uq_deck_position_definition"
+      "deck_type_definition_accession_id",
+      "position_accession_id",
+      name="uq_deck_position_definition",
     ),
   )
 
   def __repr__(self):
     """Render string representation of the DeckPositionDefinitionOrm instance."""
     return (
-      f"<DeckPositionDefinitionOrm(id={self.id}, name='{self.position_id}', "
-      f"deck_type_id={self.deck_type_definition_id})>"
+      f"<DeckPositionDefinitionOrm(id={self.accession_id}, name='{self.position_accession_id}', "
+      f"deck_type_accession_id={self.deck_type_definition_accession_id})>"
     )
 
 
@@ -373,6 +382,6 @@ class DeckTypeDefinitionOrm(Base):
   def __repr__(self):
     """Render string representation of the DeckTypeDefinitionOrm instance."""
     return (
-      f"<DeckTypeDefinitionOrm(id={self.id}, "
+      f"<DeckTypeDefinitionOrm(id={self.accession_id}, "
       f"fqn='{self.pylabrobot_deck_fqn}', name='{self.display_name}')>"
     )
