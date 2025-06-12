@@ -16,7 +16,7 @@ abstract class UserProfile with _$UserProfile {
   /// Default constructor for [UserProfile].
   ///
   /// Parameters:
-  ///   [id] - The unique identifier for the user (maps to 'sub' from OIDC).
+  ///   [accession_id] - The unique identifier for the user (maps to 'sub' from OIDC).
   ///   [username] - The username (maps to 'preferred_username' from OIDC).
   ///   [email] - The user's email address.
   ///   [emailVerified] - Whether the user's email address has been verified.

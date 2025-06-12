@@ -631,7 +631,7 @@ async def upsert_function_protocol_definition(
             f"{log_prefix} Failed to get ID for new protocol definition."
           )
       param_orm = ParameterDefinitionOrm(
-        protocol_definition_accession_accession_id=def_orm.accession_id
+        protocol_definition_accession_id=def_orm.accession_id
       )
       db.add(param_orm)  # Add new parameter to session
       logger.debug("%s Adding new parameter: %s.", log_prefix, param_model.name)
@@ -671,7 +671,7 @@ async def upsert_function_protocol_definition(
             f"{log_prefix} Failed to get ID for new protocol definition."
           )
       asset_orm = AssetDefinitionOrm(
-        protocol_definition_accession_accession_id=def_orm.accession_id
+        protocol_definition_accession_id=def_orm.accession_id
       )
       db.add(asset_orm)  # Add new asset to session
       logger.debug("%s Adding new asset: %s.", log_prefix, asset_model.name)
@@ -718,8 +718,8 @@ async def upsert_function_protocol_definition(
 
 async def create_protocol_run(
   db: AsyncSession,
-  run_accession_accession_id: uuid.UUID,
-  top_level_protocol_definition_accession_accession_id: uuid.UUID,
+  run_accession_id: uuid.UUID,
+  top_level_protocol_definition_accession_id: uuid.UUID,
   status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
   input_parameters_json: Optional[str] = None,
   initial_state_json: Optional[str] = None,
@@ -728,8 +728,8 @@ async def create_protocol_run(
 
   Args:
       db (AsyncSession): The database session.
-      run_accession_accession_id (uuid.UUID): A unique GUID for this protocol run.
-      top_level_protocol_definition_accession_accession_id (uuid.UUID): The ID of the top-level
+      run_accession_id (uuid.UUID): A unique GUID for this protocol run.
+      top_level_protocol_definition_accession_id (uuid.UUID): The ID of the top-level
           protocol definition this run is based on.
       status (ProtocolRunStatusEnum, optional): The initial status of the run.
           Defaults to `ProtocolRunStatusEnum.PENDING`.
@@ -749,13 +749,13 @@ async def create_protocol_run(
   """
   logger.info(
     "Creating new protocol run with GUID '%s' for definition ID %d.",
-    run_accession_accession_id,
-    top_level_protocol_definition_accession_accession_id,
+    run_accession_id,
+    top_level_protocol_definition_accession_id,
   )
   utc_now = datetime.datetime.now(datetime.timezone.utc)
   db_protocol_run = ProtocolRunOrm(
-    run_accession_accession_id=run_accession_accession_id,
-    top_level_protocol_definition_accession_accession_id=top_level_protocol_definition_accession_accession_id,
+    run_accession_id=run_accession_id,
+    top_level_protocol_definition_accession_id=top_level_protocol_definition_accession_id,
     status=status,
     input_parameters_json=(
       json.loads(input_parameters_json) if input_parameters_json else {}
@@ -770,12 +770,12 @@ async def create_protocol_run(
     logger.info(
       "Successfully created protocol run (ID: %d, GUID: %s).",
       db_protocol_run.accession_id,
-      db_protocol_run.run_accession_accession_id,
+      db_protocol_run.run_accession_id,
     )
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error creating protocol run '{run_accession_accession_id}'. This might "
+      f"Integrity error creating protocol run '{run_accession_id}'. This might "
       f"be due to a duplicate GUID. Details: {e}"
     )
     logger.error(error_message, exc_info=True)
@@ -784,7 +784,7 @@ async def create_protocol_run(
     await db.rollback()
     logger.exception(
       "Unexpected error creating protocol run '%s'. Rolling back.",
-      run_accession_accession_id,
+      run_accession_id,
     )
     raise e
   return db_protocol_run
@@ -911,7 +911,7 @@ async def update_protocol_run_status(
 async def log_function_call_start(
   db: AsyncSession,
   protocol_run_orm_accession_id: uuid.UUID,
-  function_definition_accession_accession_id: uuid.UUID,
+  function_definition_accession_id: uuid.UUID,
   sequence_in_run: int,
   input_args_json: str,
   parent_function_call_log_accession_id: Optional[uuid.UUID] = None,
@@ -921,7 +921,7 @@ async def log_function_call_start(
   Args:
       db (AsyncSession): The database session.
       protocol_run_orm_accession_id (int): The ID of the parent protocol run.
-      function_definition_accession_accession_id (int): The ID of the function protocol definition
+      function_definition_accession_id (int): The ID of the function protocol definition
           being called.
       sequence_in_run (int): The sequential number of this function call
           within its protocol run.
@@ -941,12 +941,12 @@ async def log_function_call_start(
     "Logging start of function call for protocol run ID %d, function def ID %d, "
     "sequence %d.",
     protocol_run_orm_accession_id,
-    function_definition_accession_accession_id,
+    function_definition_accession_id,
     sequence_in_run,
   )
   call_log = FunctionCallLogOrm(
     protocol_run_accession_id=protocol_run_orm_accession_id,
-    function_protocol_definition_accession_accession_id=function_definition_accession_accession_id,
+    function_protocol_definition_accession_id=function_definition_accession_id,
     sequence_in_run=sequence_in_run,
     parent_function_call_log_accession_id=parent_function_call_log_accession_id,
     start_time=datetime.datetime.now(datetime.timezone.utc),
@@ -1059,13 +1059,13 @@ async def log_function_call_end(
 
 async def read_protocol_definition(
   db: AsyncSession,
-  definition_accession_accession_id: uuid.UUID,
+  definition_accession_id: uuid.UUID,
 ) -> Optional[FunctionProtocolDefinitionOrm]:
   """Retrieve a protocol definition by its ID.
 
   Args:
       db (AsyncSession): The database session.
-      definition_accession_accession_id (uuid.UUID): The ID of the protocol definition to retrieve.
+      definition_accession_id (uuid.UUID): The ID of the protocol definition to retrieve.
 
   Returns:
       Optional[FunctionProtocolDefinitionOrm]: The protocol definition object
@@ -1074,7 +1074,7 @@ async def read_protocol_definition(
   """
   logger.info(
     "Retrieving protocol definition with ID: %d.",
-    definition_accession_accession_id,
+    definition_accession_id,
   )
   stmt = (
     select(FunctionProtocolDefinitionOrm)
@@ -1084,23 +1084,19 @@ async def read_protocol_definition(
       joinedload(FunctionProtocolDefinitionOrm.source_repository),
       joinedload(FunctionProtocolDefinitionOrm.file_system_source),
     )
-    .filter(
-      FunctionProtocolDefinitionOrm.accession_id == definition_accession_accession_id
-    )
+    .filter(FunctionProtocolDefinitionOrm.accession_id == definition_accession_id)
   )
   result = await db.execute(stmt)
   protocol_def = result.scalar_one_or_none()
   if protocol_def:
     logger.info(
       "Found protocol definition ID %d: '%s' (Version: %s).",
-      definition_accession_accession_id,
+      definition_accession_id,
       protocol_def.name,
       protocol_def.version,
     )
   else:
-    logger.info(
-      "Protocol definition ID %d not found.", definition_accession_accession_id
-    )
+    logger.info("Protocol definition ID %d not found.", definition_accession_id)
   return protocol_def
 
 
@@ -1311,8 +1307,8 @@ async def list_protocol_definitions(
   return protocol_defs
 
 
-async def read_protocol_run_by_accession_accession_id(
-  db: AsyncSession, run_accession_accession_id: uuid.UUID
+async def read_protocol_run_by_accession_id(
+  db: AsyncSession, run_accession_id: uuid.UUID
 ) -> Optional[ProtocolRunOrm]:
   """Retrieve a protocol run by its unique GUID.
 
@@ -1321,13 +1317,13 @@ async def read_protocol_run_by_accession_accession_id(
 
   Args:
       db (AsyncSession): The database session.
-      run_accession_accession_id (uuid.UUID): The unique GUID of the protocol run.
+      run_accession_id (uuid.UUID): The unique GUID of the protocol run.
 
   Returns:
       Optional[ProtocolRunOrm]: The protocol run object if found, otherwise None.
 
   """
-  logger.info("Retrieving protocol run with GUID: '%s'.", run_accession_accession_id)
+  logger.info("Retrieving protocol run with GUID: '%s'.", run_accession_id)
   stmt = (
     select(ProtocolRunOrm)
     .options(
@@ -1339,14 +1335,14 @@ async def read_protocol_run_by_accession_accession_id(
       .selectinload(FunctionProtocolDefinitionOrm.file_system_source),
       joinedload(ProtocolRunOrm.top_level_protocol_definition),
     )
-    .filter(ProtocolRunOrm.run_accession_accession_id == run_accession_accession_id)
+    .filter(ProtocolRunOrm.run_accession_id == run_accession_id)
   )
   result = await db.execute(stmt)
   protocol_run = result.scalar_one_or_none()
   if protocol_run:
-    logger.info("Found protocol run with GUID '%s'.", run_accession_accession_id)
+    logger.info("Found protocol run with GUID '%s'.", run_accession_id)
   else:
-    logger.info("Protocol run with GUID '%s' not found.", run_accession_accession_id)
+    logger.info("Protocol run with GUID '%s' not found.", run_accession_id)
   return protocol_run
 
 
@@ -1354,7 +1350,7 @@ async def list_protocol_runs(
   db: AsyncSession,
   limit: int = 100,
   offset: int = 0,
-  protocol_definition_accession_accession_id: Optional[uuid.UUID] = None,
+  protocol_definition_accession_id: Optional[uuid.UUID] = None,
   protocol_name: Optional[str] = None,
   status: Optional[ProtocolRunStatusEnum] = None,
 ) -> List[ProtocolRunOrm]:
@@ -1366,7 +1362,7 @@ async def list_protocol_runs(
           Defaults to 100.
       offset (int, optional): The number of results to skip before returning.
           Defaults to 0.
-      protocol_definition_accession_accession_id (Optional[uuid.UUID], optional): Filter runs by the ID
+      protocol_definition_accession_id (Optional[uuid.UUID], optional): Filter runs by the ID
           of their top-level protocol definition. Defaults to None.
       protocol_name (Optional[str], optional): Filter runs by the name of
           their top-level protocol. Defaults to None.
@@ -1380,7 +1376,7 @@ async def list_protocol_runs(
   logger.info(
     "Listing protocol runs with filters: def_accession_id=%s, name='%s', status=%s, "
     "limit=%d, offset=%d.",
-    protocol_definition_accession_accession_id,
+    protocol_definition_accession_id,
     protocol_name,
     status,
     limit,
@@ -1390,19 +1386,19 @@ async def list_protocol_runs(
     joinedload(ProtocolRunOrm.top_level_protocol_definition)
   )
 
-  if protocol_definition_accession_accession_id is not None:
+  if protocol_definition_accession_id is not None:
     stmt = stmt.filter(
-      ProtocolRunOrm.top_level_protocol_definition_accession_accession_id
-      == protocol_definition_accession_accession_id
+      ProtocolRunOrm.top_level_protocol_definition_accession_id
+      == protocol_definition_accession_id
     )
     logger.debug(
       "Filtering by protocol definition ID: %d.",
-      protocol_definition_accession_accession_id,
+      protocol_definition_accession_id,
     )
   if protocol_name is not None:
     stmt = stmt.join(
       FunctionProtocolDefinitionOrm,
-      ProtocolRunOrm.top_level_protocol_definition_accession_accession_id
+      ProtocolRunOrm.top_level_protocol_definition_accession_id
       == FunctionProtocolDefinitionOrm.accession_id,
     ).filter(FunctionProtocolDefinitionOrm.name == protocol_name)
     logger.debug("Filtering by protocol name: '%s'.", protocol_name)
