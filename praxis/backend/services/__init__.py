@@ -33,8 +33,8 @@ from .deck_type_definition import (
   create_deck_type_definition,
   delete_deck_type_definition,
   list_deck_type_definitions,
-  read_deck_type_definition_by_fqn,
   read_deck_type_definition,
+  read_deck_type_definition_by_fqn,
   update_deck_type_definition,
 )
 from .discovery_service import (
@@ -59,19 +59,22 @@ from .machine_data_service import (
 )
 from .praxis_orm_service import PraxisDBService
 from .protocol_data_service import (
-  add_or_update_file_system_protocol_source,
-  add_or_update_protocol_source_repository,
+  create_file_system_protocol_source,
   create_protocol_run,
+  create_protocol_source_repository,
   list_active_protocol_sources,
   list_protocol_definitions,
   list_protocol_runs,
+  list_protocol_source_repositories,
   log_function_call_end,
   log_function_call_start,
   read_function_call_logs_for_run,
   read_protocol_definition,
   read_protocol_definition_details,
   read_protocol_run_by_accession_id,
+  update_file_system_protocol_source,
   update_protocol_run_status,
+  update_protocol_source_repository,
 )
 from .protocol_data_service import (
   upsert_function_protocol_definition as upsert_function_protocol_definition,
@@ -160,8 +163,6 @@ __all__ = [
   "read_protocol_definition",
   "read_protocol_definition_details",
   "read_protocol_run_by_accession_id",
-  "add_or_update_file_system_protocol_source",
-  "add_or_update_protocol_source_repository",
   "list_active_protocol_sources",
   "list_protocol_definitions",
   "list_protocol_runs",
@@ -192,4 +193,10 @@ __all__ = [
   "read_workcell_state",
   "read_workcell",
   "read_workcell_by_name",
+  "create_file_system_protocol_source",
+  "update_file_system_protocol_source",
+  "create_protocol_source_repository",
+  "update_protocol_source_repository",
+  "list_protocol_source_repositories",
+  "delete_resource_instance_by_name",
 ]

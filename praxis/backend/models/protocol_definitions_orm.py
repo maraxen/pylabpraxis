@@ -225,7 +225,7 @@ class FunctionProtocolDefinitionOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FunctionProtocolDefinitionOrm instance."""
-    return f"<FunctionProtocolDefinitionOrm(id={self.accession_id}, name='{self.name}', \
+    return f"<FunctionProtocolDefinitionOrm(id={self.accession_id}, name='{self.name}',\
       version='{self.version}')>"
 
 
@@ -319,8 +319,8 @@ class ProtocolRunOrm(Base):
   run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, nullable=False, unique=True, index=True
   )
-  top_level_protocol_definition_accession_id: Mapped[int] = mapped_column(
-    Integer, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
+  top_level_protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
   )
   status: Mapped[ProtocolRunStatusEnum] = mapped_column(
     SAEnum(ProtocolRunStatusEnum, name="protocol_run_status_enum_v3"),
@@ -404,7 +404,7 @@ class FunctionCallLogOrm(Base):
   )
   parent_call = relationship(
     "FunctionCallLogOrm", remote_side=[accession_id], backref="child_calls"
-  )  # type: ignore
+  )
 
   def __repr__(self):
     """Return a string representation of the FunctionCallLogOrm instance."""
