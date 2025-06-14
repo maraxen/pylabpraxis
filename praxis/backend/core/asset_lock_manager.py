@@ -348,7 +348,7 @@ class AssetLockManager:
 
     Returns:
         None if available, reservation data if locked
-        
+
     """
     if not self._redis_client:
       raise RuntimeError("Redis client not initialized")
@@ -540,5 +540,3 @@ class AssetLockManager:
         "error": str(e),
         "timestamp": datetime.now(timezone.utc).isoformat(),
       }
-
-

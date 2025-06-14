@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
   from .protocol_definitions_orm import ProtocolRunOrm
-  from .asset_orm import AssetInstanceOrm
   from .machine_orm import MachineOrm
 
 from sqlalchemy import (
@@ -60,6 +59,7 @@ class ScheduleStatusEnum(enum.Enum):
 class AssetReservationStatusEnum(enum.Enum):
   """Enumeration for the status of a asset reservation."""
 
+  RESERVED = "reserved"  # Asset successfully reserved
   PENDING = "pending"  # Reservation request pending
   ACTIVE = "active"  # Reservation is active
   RELEASED = "released"  # Reservation has been released
@@ -172,10 +172,6 @@ class AssetReservationOrm(Base):
   asset_instance_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
     UUID, ForeignKey("asset_instances.accession_id"), nullable=True, index=True
   )
-  machine_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("machines.accession_id"), nullable=True, index=True
-  )
-
   # Reservation details
   status: Mapped[AssetReservationStatusEnum] = mapped_column(
     SAEnum(AssetReservationStatusEnum, name="asset_reservation_status_enum"),
@@ -223,10 +219,6 @@ class AssetReservationOrm(Base):
 
   # Relationships
   schedule_entry = relationship("ScheduleEntryOrm", back_populates="asset_reservations")
-  asset_instance = relationship(
-    "AssetInstanceOrm", foreign_keys=[asset_instance_accession_id]
-  )
-  machine = relationship("MachineOrm", foreign_keys=[machine_accession_id])
 
 
 class ScheduleHistoryOrm(Base):
