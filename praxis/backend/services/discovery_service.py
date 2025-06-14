@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 import traceback
+import uuid_utils as uuid
 from typing import (
   Any,
   Callable,
@@ -27,7 +28,6 @@ from typing import (
   get_origin,
 )
 
-import uuid_utils as uuid
 from pylabrobot.resources import Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # MODIFIED
 
@@ -40,7 +40,7 @@ from praxis.backend.models.protocol_pydantic_models import (
 )
 
 # MODIFIED: Import async version of upsert
-from praxis.backend.services.protocol_data_service import (
+from praxis.backend.services.protocols import (
   upsert_function_protocol_definition,
 )
 

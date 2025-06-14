@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 from praxis.backend.models import MachineOrm, MachineStatusEnum
 from praxis.backend.services.entity_linking import (
   _create_or_link_resource_counterpart_for_machine,
+  synchronize_machine_resource_names,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -280,6 +281,9 @@ async def update_machine(
       raise ValueError(error_message)
     machine_orm.user_friendly_name = user_friendly_name
 
+    # Synchronize name with linked resource counterpart if it exists
+    await synchronize_machine_resource_names(db, machine_orm, user_friendly_name)
+
   # Update attributes if provided
   if python_fqn is not None:
     machine_orm.python_fqn = python_fqn
@@ -425,7 +429,7 @@ async def list_machines(
   db: AsyncSession,
   status: Optional[MachineStatusEnum] = None,
   pylabrobot_class_filter: Optional[str] = None,
-  workcell_accession_id: Optional[int] = None,
+  workcell_accession_id: Optional[uuid.UUID] = None,
   current_protocol_run_accession_id_filter: Optional[uuid.UUID] = None,
   user_friendly_name_filter: Optional[str] = None,  # Added parameter
   limit: int = 100,

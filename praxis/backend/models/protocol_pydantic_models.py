@@ -165,7 +165,7 @@ class AssetRequirementModel(BaseModel):
   description, and specific constraints.
   """
 
-  uuid: uuid.UUID
+  accession_id: UUID7
   name: str
   type_hint_str: str
   actual_type_str: str

@@ -4,9 +4,9 @@
 # to reduce code duplication and centralize common logic.
 
 from typing import Awaitable, Callable, Optional, TypeVar
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid_utils import UUID
 
 # Define a generic type 'T' that represents any ORM model class.
 # We expect it to have an 'id' attribute.

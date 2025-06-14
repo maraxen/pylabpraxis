@@ -35,6 +35,7 @@ class ResourceDefinitionBase(BaseModel):
   such as its PyLabRobot definition name, type, and physical dimensions.
   """
 
+  accession_id: UUID7
   name: str
   python_fqn: str
   resource_type: Optional[str] = None
@@ -199,12 +200,18 @@ class ResourceInstanceSharedFields(BaseModel):
   attributes of a physical resource item, such as status and location.
   """
 
-  id: UUID7
+  accession_id: UUID7
   user_assigned_name: str = Field(
     ...,
     description="A user-friendly name for the resource instance, which can be \
       different from the PyLabRobot definition name.",
   )
+  python_fqn: str = Field(
+    ...,
+    description="The fully qualified Python name of the resource instance's \
+      PyLabRobot definition.",
+  )
+  resource_definition_accession_id: Optional[UUID7] = None
   lot_number: Optional[str] = None
   serial_number: Optional[str] = None
   status: Optional[str] = "unknown"
@@ -237,8 +244,6 @@ class ResourceInstanceCreate(ResourceInstanceSharedFields):
   to a resource definition.
   """
 
-  name: str
-  resource_definition_accession_id: Optional[UUID7] = None
   inventory_data: Optional[ResourceInventoryDataIn] = None
   date_added_to_inventory: Optional[datetime.datetime] = Field(
     default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
@@ -253,14 +258,8 @@ class ResourceInstanceResponse(ResourceInstanceSharedFields):
   and timestamps for creation and last update.
   """
 
-  id: UUID7
-  resource_definition_accession_id: Optional[UUID7]
-  name: str
-
   instance_name: str
-
-  inventory_data: Optional[ResourceInventoryDataOut] = None
-
+  instance_fqn: str
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 

@@ -3,7 +3,7 @@ import asyncio
 import asyncpg
 import pytest
 import pytest_asyncio  # For async fixtures
-import uuid
+
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from unittest.mock import patch, AsyncMock
@@ -21,7 +21,7 @@ from praxis.backend.services.praxis_orm_service import (
   PraxisDBService,
   _get_keycloak_dsn_from_config,
 )
-from praxis.backend.database_models import (
+from praxis.backend.models import (
   ProtocolSourceRepositoryOrm,
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
@@ -29,6 +29,7 @@ from praxis.backend.database_models import (
   ResourceInstanceOrm,
   UserOrm,  # Assuming UserOrm is in praxis.backend.database_models
   ResourceDefinitionCatalogOrm,
+  ResourceInstanceStatusEnum,
   # If AssetDefinitionOrm is still used for other asset types, import it
 )
 from praxis.backend.database_models.asset_management_orm import (

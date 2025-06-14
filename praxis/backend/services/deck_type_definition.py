@@ -14,9 +14,9 @@ It also includes functions to manage position definitions for deck types.
 
 import datetime
 import logging
+import uuid_utils as uuid
 from typing import Any, Dict, List, Optional
 
-import uuid_utils as uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

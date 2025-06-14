@@ -42,6 +42,26 @@ from .deck_pydantic_models import (
   DeckUpdateMessage,
   PositioningConfig,
 )
+from .function_data_output_orm import (
+  DataOutputTypeEnum,
+  FunctionDataOutputOrm,
+  SpatialContextEnum,
+  WellDataOutputOrm,
+)
+from .function_data_output_pydantic_models import (
+  DataExportRequest,
+  DataSearchFilters,
+  FunctionDataOutputBase,
+  FunctionDataOutputCreate,
+  FunctionDataOutputResponse,
+  FunctionDataOutputUpdate,
+  PlateDataVisualization,
+  ProtocolRunDataSummary,
+  WellDataOutputBase,
+  WellDataOutputCreate,
+  WellDataOutputResponse,
+  WellDataOutputUpdate,
+)
 from .machine_orm import MachineCategoryEnum, MachineOrm, MachineStatusEnum
 from .machine_pydantic_models import (
   MachineBase,
@@ -185,4 +205,21 @@ __all__ = [
   "WorkcellStatusEnum",
   "ResourceCategoryEnum",
   "PositioningConfig",
+  # Function Data Output Models
+  "DataOutputTypeEnum",
+  "SpatialContextEnum",
+  "FunctionDataOutputOrm",
+  "WellDataOutputOrm",
+  "FunctionDataOutputBase",
+  "FunctionDataOutputCreate",
+  "FunctionDataOutputResponse",
+  "FunctionDataOutputUpdate",
+  "WellDataOutputBase",
+  "WellDataOutputCreate",
+  "WellDataOutputResponse",
+  "WellDataOutputUpdate",
+  "PlateDataVisualization",
+  "DataExportRequest",
+  "DataSearchFilters",
+  "ProtocolRunDataSummary",
 ]

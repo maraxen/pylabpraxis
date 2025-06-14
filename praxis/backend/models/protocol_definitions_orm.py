@@ -271,7 +271,7 @@ class ParameterDefinitionOrm(Base):
 class AssetDefinitionOrm(Base):
   """SQLAlchemy ORM model for defining assets required by a function protocol.
 
-  This model describes the assets (e.g., resource, instruments) a protocol function
+  This model describes the assets (e.g., resource, machines) a protocol function
   expects, including their names, type hints, and descriptions.
   """
 
@@ -358,6 +358,11 @@ class ProtocolRunOrm(Base):
     order_by="FunctionCallLogOrm.sequence_in_run",
   )
 
+  # Relationship to data outputs
+  data_outputs = relationship(
+    "FunctionDataOutputOrm", back_populates="protocol_run", cascade="all, delete-orphan"
+  )
+
   def __repr__(self):
     """Return a string representation of the ProtocolRunOrm instance."""
     return f"<ProtocolRunOrm(id={self.accession_id}, run_accession_id='{self.run_accession_id}', \
@@ -404,6 +409,13 @@ class FunctionCallLogOrm(Base):
   )
   parent_call = relationship(
     "FunctionCallLogOrm", remote_side=[accession_id], backref="child_calls"
+  )
+
+  # Relationship to data outputs
+  data_outputs = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="function_call_log",
+    cascade="all, delete-orphan",
   )
 
   def __repr__(self):

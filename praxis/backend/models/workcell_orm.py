@@ -4,10 +4,10 @@ This file defines the database schema for storing workcell information,
 including their names, descriptions, and relationships to associated machines.
 """
 
+import uuid_utils as uuid
 from datetime import datetime
 from typing import Any, Optional
 
-import uuid_utils as uuid
 from sqlalchemy import JSON, UUID, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

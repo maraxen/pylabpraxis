@@ -118,7 +118,7 @@ Core Architectural Principles:
 * API-First Design: The backend exposes a comprehensive REST API via FastAPI, enabling seamless interaction with the Flutter-based frontend and other external systems.
 * Modular Componentry: Logic is strictly separated into distinct core components (Orchestrator, AssetManager, WorkcellRuntime, Workcell) with clearly defined responsibilities, promoting maintainability and scalability.
 * Database-Centric Data Management: PostgreSQL serves as the primary persistent data store for all definitions, logs, and asset states. Data access is abstracted through a dedicated service layer utilizing SQLAlchemy ORMs for robust and consistent interactions.
-* PyLabRobot Integration: Deep integration with the PyLabRobot library allows for direct control and abstraction of various laboratory instruments and resources.
+* PyLabRobot Integration: Deep integration with the PyLabRobot library allows for direct control and abstraction of various laboratory machines and resources.
 * Containerization: The entire backend ecosystem is designed for deployment using Docker and Docker Compose, facilitating isolated and reproducible environments.
 * Authentication & Authorization: Keycloak is integrated to manage user identities and access control.
 
@@ -201,7 +201,7 @@ Key Backend Components & Their Roles:
    * PostgreSQL Database: The primary persistent data store for all definitions, logs, and asset states. Available via docker.
    * Keycloak (Auth Server): Integrated to manage user identities and access control, also managing its own user data in a PostgreSQL database. Available via Docker.
    * Redis (Cache/State/Locks): Used for efficient runtime in-memory caching, managing shared state, and implementing distributed locking mechanisms to prevent race conditions. Available via Docker.
-   * PyLabRobot: The core library providing objects and control mechanisms for various laboratory instruments and resources.
+   * PyLabRobot: The core library providing objects and control mechanisms for various laboratory machines and resources.
    * Protocol Files (Python Code): The source Python files containing the definitions of laboratory protocols, which are discovered and executed by the backend. User-provided.
    * SMTP Server: A Simple Mail Transfer Protocol (SMTP) server (e.g., Postfix, Mailhog for development) used by the praxis.backend.utils.notify module to send email notifications. This ensures that the backend can dispatch alerts and updates to users about protocol statuses or system events. Available via Docker.
 

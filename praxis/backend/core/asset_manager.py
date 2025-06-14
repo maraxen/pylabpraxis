@@ -568,7 +568,7 @@ class AssetManager:
       )
 
     deck_def_catalog_orm = await svc.read_resource_definition(
-      self.db, deck_resource_instance_orm.name
+      self.db, deck_resource_instance_orm.python_fqn
     )
     if not deck_def_catalog_orm or not deck_def_catalog_orm.python_fqn:
       raise AssetAcquisitionError(
@@ -671,11 +671,11 @@ class AssetManager:
           )
 
         item_def_orm = await svc.read_resource_definition(
-          self.db, item_to_place_orm.name
+          self.db, item_to_place_orm.python_fqn
         )
         if not item_def_orm or not item_def_orm.python_fqn:
           raise AssetAcquisitionError(
-            f"FQN not found for resource definition '{item_to_place_orm.name}'."
+            f"FQN not found for resource definition '{item_to_place_orm.python_fqn}'."
           )
 
         await self.workcell_runtime.create_or_get_resource(
@@ -893,9 +893,9 @@ class AssetManager:
         raise AssetAcquisitionError(
           f"Specified resource ID {user_choice_instance_accession_id} not found."
         )
-      if instance_orm.name != name_constraint:
+      if instance_orm.python_fqn != name_constraint:
         raise AssetAcquisitionError(
-          f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.name}) "
+          f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.python_fqn}) "
           f"mismatches constraint {name_constraint}."
         )
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
@@ -917,7 +917,7 @@ class AssetManager:
     else:
       in_use_list = await svc.list_resource_instances(
         self.db,
-        name=name_constraint,
+        python_fqn=name_constraint,
         status=ResourceInstanceStatusEnum.IN_USE,
         current_protocol_run_accession_id_filter=str(protocol_run_accession_id),
         property_filters=property_constraints,
@@ -927,7 +927,7 @@ class AssetManager:
       else:
         on_deck_list = await svc.list_resource_instances(
           self.db,
-          name=name_constraint,
+          python_fqn=name_constraint,
           status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
           property_filters=property_constraints,
         )
@@ -936,7 +936,7 @@ class AssetManager:
         else:
           in_storage_list = await svc.list_resource_instances(
             self.db,
-            name=name_constraint,
+            python_fqn=name_constraint,
             status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
             property_filters=property_constraints,
           )
@@ -950,17 +950,17 @@ class AssetManager:
       )
 
     resource_def_orm = await svc.read_resource_definition(
-      self.db, resource_instance_to_acquire.name
+      self.db, resource_instance_to_acquire.python_fqn
     )
     if not resource_def_orm or not resource_def_orm.python_fqn:
       await svc.update_resource_instance_location_and_status(
         db=self.db,
         resource_instance_accession_id=resource_instance_to_acquire.accession_id,
         new_status=ResourceInstanceStatusEnum.ERROR,
-        status_details=f"FQN missing for def {resource_instance_to_acquire.name}",
+        status_details=f"FQN missing for def {resource_instance_to_acquire.python_fqn}",
       )
       raise AssetAcquisitionError(
-        f"FQN not found for resource definition '{resource_instance_to_acquire.name}'."
+        f"FQN not found for resource definition '{resource_instance_to_acquire.python_fqn}'."
       )
 
     live_plr_resource = await self.workcell_runtime.create_or_get_resource(
@@ -999,7 +999,7 @@ class AssetManager:
           )
         # Verify target_deck_instance is a deck
         target_deck_def = await svc.read_resource_definition(
-          self.db, target_deck_instance.name
+          self.db, target_deck_instance.python_fqn
         )
         if not target_deck_def or not (
           (target_deck_def.plr_category and "Deck" in target_deck_def.plr_category)
@@ -1175,12 +1175,12 @@ class AssetManager:
       "AM_RELEASE_RESOURCE: Releasing '%s' (ID %s, Type %s), final status: %s.",
       resource_to_release.user_assigned_name,
       resource_instance_orm_accession_id,
-      resource_to_release.name,
+      resource_to_release.python_fqn,
       final_status.name,
     )
 
     resource_def_orm = await svc.read_resource_definition(
-      self.db, resource_to_release.name
+      self.db, resource_to_release.python_fqn
     )
     is_releasing_a_deck_resource = False
     if resource_def_orm and resource_def_orm.python_fqn:

@@ -9,10 +9,11 @@ This includes Resource Definitions, Resource Instances, and their management.
 """
 
 import datetime
+import uuid_utils as uuid
 from functools import partial
 from typing import Any, Dict, List, Optional
 
-import uuid_utils as uuid
+
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,7 @@ from praxis.backend.models import (
 )
 from praxis.backend.services.entity_linking import (
   _create_or_link_machine_counterpart_for_resource,
+  synchronize_resource_machine_names,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -51,7 +53,8 @@ log_resource_data_service_errors = partial(
 async def create_resource_instance(
   db: AsyncSession,
   user_assigned_name: str,
-  name: str,
+  python_fqn: str,
+  resource_definition_accession_id: uuid.UUID,
   initial_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,  # noqa: E501
   lot_number: Optional[str] = None,
   expiry_date: Optional[datetime.datetime] = None,
@@ -72,7 +75,7 @@ async def create_resource_instance(
       db (AsyncSession): The database session.
       user_assigned_name (str): A unique, user-friendly name for the
           resource instance.
-      name (str): The PyLabRobot definition name
+      python_fqn (str): The PyLabRobot definition name
           associated with this instance. This definition must exist in the
           catalog.
       initial_status (ResourceInstanceStatusEnum, optional): The initial
@@ -114,23 +117,23 @@ async def create_resource_instance(
   from praxis.backend.models import MachineStatusEnum  # noqa: F401
 
   log_prefix = (
-    f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{name}'):"
+    f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{python_fqn}'):"
   )
   logger.info("%s Attempting to add new resource instance.", log_prefix)
 
-  definition = await read_resource_definition(db, name)
+  definition = await read_resource_definition(db, python_fqn)
   if not definition:
     error_message = (
-      f"{log_prefix} Resource definition '{name}' "
+      f"{log_prefix} Resource definition '{python_fqn}' "
       "not found in catalog. Cannot add instance."
     )
     logger.error(error_message)
     raise ValueError(error_message)
 
   instance_orm = ResourceInstanceOrm(
-    id=uuid.uuid7(),
+    accession_id=uuid.uuid7(),
     user_assigned_name=user_assigned_name,
-    name=name,
+    python_fqn=python_fqn,
     resource_definition=definition,
     current_status=initial_status,
     lot_number=lot_number,
@@ -188,7 +191,7 @@ async def update_resource_instance(
   db: AsyncSession,
   instance_accession_id: uuid.UUID,
   user_assigned_name: Optional[str] = None,
-  name: Optional[str] = None,
+  python_fqn: Optional[str] = None,
   lot_number: Optional[str] = None,
   expiry_date: Optional[datetime.datetime] = None,
   properties_json: Optional[Dict[str, Any]] = None,
@@ -204,7 +207,7 @@ async def update_resource_instance(
     instance_accession_id (uuid.UUID): The ID of the resource instance to update.
     user_assigned_name (Optional[str], optional): New user-assigned name for the
       resource instance. Defaults to None.
-    name (Optional[str], optional): New PyLabRobot definition name for the
+    python_fqn (Optional[str], optional): New PyLabRobot definition name for the
       resource instance. Defaults to None.
     lot_number (Optional[str], optional): New lot number for the resource.
       Defaults to None.
@@ -243,8 +246,10 @@ async def update_resource_instance(
   # Update the fields of the resource instance as needed
   if user_assigned_name:
     instance_orm.user_assigned_name = user_assigned_name
-  if name:
-    instance_orm.name = name
+    # Synchronize name with linked machine counterpart if it exists
+    await synchronize_resource_machine_names(db, instance_orm, user_assigned_name)
+  if python_fqn:
+    instance_orm.python_fqn = python_fqn
   if lot_number:
     instance_orm.lot_number = lot_number
   if expiry_date:
@@ -380,7 +385,7 @@ async def read_resource_instance_by_name(
 
 async def list_resource_instances(
   db: AsyncSession,
-  name: Optional[str] = None,
+  python_fqn: Optional[str] = None,
   status: Optional[ResourceInstanceStatusEnum] = None,
   location_machine_accession_id: Optional[uuid.UUID] = None,
   on_deck_position: Optional[str] = None,
@@ -393,8 +398,8 @@ async def list_resource_instances(
 
   Args:
       db (AsyncSession): The database session.
-      name (Optional[str], optional): Filter instances
-          by their PyLabRobot definition name. Defaults to None.
+      python_fqn (Optional[str], optional): Filter instances
+          by their PyLabRobot definition FQN. Defaults to None.
       status (Optional[ResourceInstanceStatusEnum], optional): Filter instances
           by their current status. Defaults to None.
       location_machine_accession_id (Optional[uuid.UUID], optional): Filter instances by the
@@ -416,10 +421,10 @@ async def list_resource_instances(
 
   """
   logger.info(
-    "Listing resource instances with filters: def_name='%s', status=%s, "
+    "Listing resource instances with filters: python_fqn='%s', status=%s, "
     "machine_accession_id=%s, deck_position='%s', property_filters=%s, run_accession_id_filter=%s, "
     "limit=%d, offset=%d.",
-    name,
+    python_fqn,
     status,
     location_machine_accession_id,
     on_deck_position,
@@ -433,9 +438,9 @@ async def list_resource_instances(
     joinedload(ResourceInstanceOrm.location_machine),
     joinedload(ResourceInstanceOrm.machine_counterpart),
   )
-  if name:
-    stmt = stmt.filter(ResourceInstanceOrm.name == name)
-    logger.debug("Filtering by definition name: '%s'.", name)
+  if python_fqn:
+    stmt = stmt.filter(ResourceInstanceOrm.python_fqn == python_fqn)
+    logger.debug("Filtering by definition FQN: '%s'.", python_fqn)
   if status:
     stmt = stmt.filter(ResourceInstanceOrm.current_status == status)
     logger.debug("Filtering by status: '%s'.", status.name)

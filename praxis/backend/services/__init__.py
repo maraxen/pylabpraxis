@@ -47,7 +47,14 @@ from .discovery_service import (
 from .discovery_service import (
   upsert_function_protocol_definition as upsert_discovered_function_protocol_definition,
 )
-from .machine_data_service import (
+from .function_output_data import (
+  create_function_data_output,
+  delete_function_data_output,
+  list_function_data_outputs,
+  read_function_data_output,
+  update_function_data_output,
+)
+from .machine import (
   create_machine,
   delete_machine,
   list_machines,
@@ -57,8 +64,12 @@ from .machine_data_service import (
   update_machine,
   update_machine_status,
 )
+from .plate_viz import read_plate_data_visualization
 from .praxis_orm_service import PraxisDBService
-from .protocol_data_service import (
+from .protocol_output_data import (
+  read_protocol_run_data_summary,
+)
+from .protocols import (
   create_file_system_protocol_source,
   create_protocol_run,
   create_protocol_source_repository,
@@ -75,9 +86,7 @@ from .protocol_data_service import (
   update_file_system_protocol_source,
   update_protocol_run_status,
   update_protocol_source_repository,
-)
-from .protocol_data_service import (
-  upsert_function_protocol_definition as upsert_function_protocol_definition,
+  upsert_function_protocol_definition,
 )
 from .resource_instance import (
   create_resource_instance,
@@ -98,7 +107,16 @@ from .resource_type_definition import (
   read_resource_definition_by_name,
   update_resource_definition,
 )
-from .workcell_data_service import (
+from .well_outputs import (
+  create_well_data_output,
+  create_well_data_outputs,
+  create_well_data_outputs_from_flat_array,
+  delete_well_data_output,
+  read_well_data_output,
+  read_well_data_outputs,
+  update_well_data_output,
+)
+from .workcell import (
   create_workcell,
   delete_workcell,
   list_workcells,
@@ -199,4 +217,19 @@ __all__ = [
   "update_protocol_source_repository",
   "list_protocol_source_repositories",
   "delete_resource_instance_by_name",
+  "create_function_data_output",
+  "delete_function_data_output",
+  "list_function_data_outputs",
+  "read_function_data_output",
+  "update_function_data_output",
+  "create_well_data_output",
+  "create_well_data_outputs",
+  "create_well_data_outputs_from_flat_array",
+  "delete_well_data_output",
+  "read_well_data_output",
+  "read_well_data_outputs",
+  "update_well_data_output",
+  "read_plate_data_visualization",
+  "read_protocol_run_data_summary",
+  "upsert_function_protocol_definition",
 ]

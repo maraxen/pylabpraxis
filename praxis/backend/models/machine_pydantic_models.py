@@ -34,7 +34,7 @@ class MachineCreationRequest(BaseModel):
   """
 
   name: str
-  machineType: str
+  machine_fqn: str
   backend: Optional[str] = None
   description: Optional[str] = None
   params: Dict[str, Any] = {}
@@ -49,6 +49,7 @@ class MachineBase(BaseModel):
 
   name: str
   machine_category: str
+  python_fqn: str
   description: Optional[str] = None
   manufacturer: Optional[str] = None
   model: Optional[str] = None
@@ -84,7 +85,7 @@ class MachineCreate(MachineBase):
   serves as a deck.
   """
 
-  id: Optional[UUID7] = None
+  accession_id: Optional[UUID7] = None
   python_fqn: str
   deck_type_definition_accession_id: Optional[UUID7] = None
 
@@ -97,9 +98,11 @@ class MachineResponse(MachineBase):
   and timestamps for creation and last update.
   """
 
-  id: UUID7
+  name: str
+  machine_category: str
+  accession_id: UUID7
   python_fqn: str
-  deck_type_definition_accession_id: Optional[int] = None
+  deck_type_definition_accession_id: Optional[UUID7] = None
   created_at: Optional[datetime.datetime] = None
   updated_at: Optional[datetime.datetime] = None
 

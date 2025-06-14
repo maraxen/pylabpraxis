@@ -1,10 +1,10 @@
 # praxis/db_services/entity_linking.py
 
 import datetime
+import uuid_utils as uuid
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-import uuid_utils as uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
   from praxis.backend.models import (
+    DeckInstanceOrm,
     MachineOrm,
     MachineStatusEnum,
     ResourceDefinitionCatalogOrm,
@@ -149,6 +150,8 @@ async def _create_or_link_resource_counterpart_for_machine(
       ):
         new_resource_instance.is_machine = True
         new_resource_instance.machine_counterpart = machine_orm
+        # Synchronize names when linking
+        new_resource_instance.user_assigned_name = machine_orm.user_friendly_name
         db.add(new_resource_instance)  # Mark for update
         logger.debug(
           "%s Ensured reciprocal link from ResourceInstance ID %d.",
@@ -200,8 +203,7 @@ async def _create_or_link_resource_counterpart_for_machine(
       definition = await _read_resource_definition_for_linking(db, resource_def_name)
 
       new_resource_instance = ResourceInstanceOrm(
-        user_assigned_name=f"Resource for {machine_orm.user_friendly_name} (Machine ID:\
-          {machine_orm.accession_id})",
+        user_assigned_name=machine_orm.user_friendly_name,
         name=definition.name,
         resource_definition=definition,
         is_machine=True,
@@ -325,6 +327,10 @@ async def _create_or_link_machine_counterpart_for_resource(
       ):
         new_machine_counterpart.is_resource = True
         new_machine_counterpart.resource_counterpart = resource_instance_orm
+        # Synchronize names when linking
+        new_machine_counterpart.user_friendly_name = (
+          resource_instance_orm.user_assigned_name
+        )
         db.add(new_machine_counterpart)
         logger.debug(
           "%s Ensured reciprocal link from Machine ID %d.",
@@ -375,8 +381,7 @@ async def _create_or_link_machine_counterpart_for_resource(
 
       logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
       new_machine_counterpart = MachineOrm(
-        user_friendly_name=f"Machine for {resource_instance_orm.user_assigned_name} \
-          (Resource ID: {resource_instance_orm.accession_id})",
+        user_friendly_name=resource_instance_orm.user_assigned_name,
         python_fqn=machine_python_fqn,
         is_resource=True,
         resource_counterpart=resource_instance_orm,
@@ -409,3 +414,154 @@ async def _create_or_link_machine_counterpart_for_resource(
         db.add(current_machine_counterpart)
       resource_instance_orm.machine_counterpart = None
     return None
+
+
+@log_entity_linking_errors(
+  prefix="Entity Linking Error: Error while synchronizing names between entities.",
+  suffix=" Please ensure the entities are properly linked.",
+)
+async def synchronize_machine_resource_names(
+  db: AsyncSession,
+  machine_orm: "MachineOrm",
+  new_machine_name: Optional[str] = None,
+) -> None:
+  """Synchronize names between a machine and its resource counterpart.
+
+  When a machine's user_friendly_name is updated and it has a resource counterpart,
+  this function updates the resource's user_assigned_name to match.
+
+  Args:
+    db: The database session.
+    machine_orm: The MachineOrm instance whose name is being updated.
+    new_machine_name: The new name for the machine (if None, uses current name).
+
+  """
+  if not machine_orm.is_resource or not machine_orm.resource_counterpart:
+    return
+
+  name_to_sync = new_machine_name or machine_orm.user_friendly_name
+  resource_instance = machine_orm.resource_counterpart
+
+  if resource_instance.user_assigned_name != name_to_sync:
+    logger.info(
+      "Synchronizing resource name from '%s' to '%s' for Machine ID %s",
+      resource_instance.user_assigned_name,
+      name_to_sync,
+      machine_orm.accession_id,
+    )
+    resource_instance.user_assigned_name = name_to_sync
+    db.add(resource_instance)
+
+
+@log_entity_linking_errors(
+  prefix="Entity Linking Error: Error while synchronizing names between entities.",
+  suffix=" Please ensure the entities are properly linked.",
+)
+async def synchronize_resource_machine_names(
+  db: AsyncSession,
+  resource_instance_orm: "ResourceInstanceOrm",
+  new_resource_name: Optional[str] = None,
+) -> None:
+  """Synchronize names between a resource and its machine counterpart.
+
+  When a resource's user_assigned_name is updated and it has a machine counterpart,
+  this function updates the machine's user_friendly_name to match.
+
+  Args:
+    db: The database session.
+    resource_instance_orm: The ResourceInstanceOrm whose name is being updated.
+    new_resource_name: The new name for the resource (if None, uses current name).
+
+  """
+  if (
+    not resource_instance_orm.is_machine
+    or not resource_instance_orm.machine_counterpart
+  ):
+    return
+
+  name_to_sync = new_resource_name or resource_instance_orm.user_assigned_name
+  machine = resource_instance_orm.machine_counterpart
+
+  if machine.user_friendly_name != name_to_sync:
+    logger.info(
+      "Synchronizing machine name from '%s' to '%s' for Resource ID %s",
+      machine.user_friendly_name,
+      name_to_sync,
+      resource_instance_orm.accession_id,
+    )
+    machine.user_friendly_name = name_to_sync
+    db.add(machine)
+
+
+@log_entity_linking_errors(
+  prefix="Entity Linking Error: Error while synchronizing deck-resource names.",
+  suffix=" Please ensure the entities are properly linked.",
+)
+async def synchronize_deck_resource_names(
+  db: AsyncSession,
+  deck_instance_orm: "DeckInstanceOrm",
+  new_deck_name: Optional[str] = None,
+) -> None:
+  """Synchronize names between a deck instance and its resource counterpart.
+
+  When a deck's name is updated and it has a resource counterpart,
+  this function updates the resource's user_assigned_name to match.
+
+  Args:
+    db: The database session.
+    deck_instance_orm: The DeckInstanceOrm whose name is being updated.
+    new_deck_name: The new name for the deck (if None, uses current name).
+
+  """
+  if not deck_instance_orm.resource_counterpart:
+    return
+
+  name_to_sync = new_deck_name or deck_instance_orm.name
+  resource_instance = deck_instance_orm.resource_counterpart
+
+  if resource_instance.user_assigned_name != name_to_sync:
+    logger.info(
+      "Synchronizing resource name from '%s' to '%s' for Deck ID %s",
+      resource_instance.user_assigned_name,
+      name_to_sync,
+      deck_instance_orm.accession_id,
+    )
+    resource_instance.user_assigned_name = name_to_sync
+    db.add(resource_instance)
+
+
+@log_entity_linking_errors(
+  prefix="Entity Linking Error: Error while synchronizing resource-deck names.",
+  suffix=" Please ensure the entities are properly linked.",
+)
+async def synchronize_resource_deck_names(
+  db: AsyncSession,
+  resource_instance_orm: "ResourceInstanceOrm",
+  new_resource_name: Optional[str] = None,
+) -> None:
+  """Synchronize names between a resource and its deck counterpart.
+
+  When a resource's user_assigned_name is updated and it has a deck counterpart,
+  this function updates the deck's name to match.
+
+  Args:
+    db: The database session.
+    resource_instance_orm: The ResourceInstanceOrm whose name is being updated.
+    new_resource_name: The new name for the resource (if None, uses current name).
+
+  """
+  if not resource_instance_orm.deck_counterpart:
+    return
+
+  name_to_sync = new_resource_name or resource_instance_orm.user_assigned_name
+  deck = resource_instance_orm.deck_counterpart
+
+  if deck.name != name_to_sync:
+    logger.info(
+      "Synchronizing deck name from '%s' to '%s' for Resource ID %s",
+      deck.name,
+      name_to_sync,
+      resource_instance_orm.accession_id,
+    )
+    deck.name = name_to_sync
+    db.add(deck)

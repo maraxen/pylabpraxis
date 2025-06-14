@@ -4,7 +4,7 @@
 praxis/database_models/machine_orm.py
 
 SQLAlchemy ORM models for Machine Management, including:
-- MachineOrm (represents a physical machine or instrument)
+- MachineOrm (represents a physical machine or machine)
 - MachineStatusEnum (enumeration for machine operational statuses)
 - MachineCategoryEnum (enumeration for machine categories)
 """
@@ -50,8 +50,8 @@ class MachineStatusEnum(enum.Enum):
 class MachineCategoryEnum(enum.Enum):
   """Enumeration for classifying machines into predefined categories.
 
-  These categories help in broad classification of instruments based on their
-  functionality, mapping to PyLabRobot's instrument types.
+  These categories help in broad classification of machines based on their
+  functionality, mapping to PyLabRobot's machine types.
   """
 
   LIQUID_HANDLER = "LiquidHandler"
@@ -93,7 +93,7 @@ class MachineCategoryEnum(enum.Enum):
 
 
 class MachineOrm(Base):
-  """SQLAlchemy ORM model representing a physical machine or instrument.
+  """SQLAlchemy ORM model representing a physical machine or machine.
 
   This model stores details about automation hardware, including its status,
   configuration, and relationships to deck instanceurations and resource instances.
@@ -182,7 +182,7 @@ class MachineOrm(Base):
     Boolean,
     default=False,
     nullable=False,
-    comment="Indicates if this machine is a resource (e.g., a lab instrument)",
+    comment="Indicates if this machine is a resource (e.g., a lab machine)",
   )
 
   resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -204,6 +204,11 @@ class MachineOrm(Base):
 
   located_resource_instances = relationship(
     "ResourceInstanceOrm", back_populates="location_machine"
+  )
+
+  # Relationship to data outputs
+  data_outputs = relationship(
+    "FunctionDataOutputOrm", back_populates="machine", cascade="all, delete-orphan"
   )
 
   def __repr__(self):

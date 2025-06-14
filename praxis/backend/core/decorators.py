@@ -13,9 +13,9 @@ import json
 import re
 import time
 import traceback
+import uuid_utils as uuid
 from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin
 
-import uuid_utils as uuid
 from pydantic import BaseModel as PydanticBaseModel
 from pylabrobot.resources import Deck, Resource
 
@@ -34,7 +34,7 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   UIHint,
 )
-from praxis.backend.services.protocol_data_service import (
+from praxis.backend.services.protocols import (
   log_function_call_end,
   log_function_call_start,
   update_protocol_run_status,

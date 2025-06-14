@@ -122,11 +122,18 @@ class DeckInstanceOrm(Base):
 
   resource_counterpart: Mapped[Optional["ResourceInstanceOrm"]] = relationship(
     "ResourceInstanceOrm",
-    back_populates="deck_instance_counterpart",
+    back_populates="deck_counterpart",
   )
 
   position_items = relationship(
     "DeckInstancePositionResourceOrm",
+    back_populates="deck_instance",
+    cascade="all, delete-orphan",
+  )
+
+  # Relationship to data outputs
+  data_outputs = relationship(
+    "FunctionDataOutputOrm",
     back_populates="deck_instance",
     cascade="all, delete-orphan",
   )

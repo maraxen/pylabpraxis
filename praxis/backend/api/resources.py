@@ -26,6 +26,7 @@ from praxis.backend.models import (
   ResourceInstanceResponse,
   ResourceInstanceUpdate,
 )
+from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -36,6 +37,13 @@ router = APIRouter()
 
 log_resource_api_errors = partial(
   log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+)
+
+resource_instance_resolve_accession = partial(
+  get_accession_id_from_accession,
+  get_func=svc.read_resource_instance,
+  get_by_name_func=svc.read_resource_instance_by_name,
+  entity_type_name="Resource Instance",
 )
 
 
@@ -56,9 +64,7 @@ async def create_resource_definition(
 ):
   """Create a new resource definition in the catalog."""
   try:
-    created_def = await svc.add_or_update_resource_definition(
-      db=db, **definition.model_dump()
-    )
+    created_def = await svc.create_resource_definition(db=db, **definition.model_dump())
     return created_def
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -77,7 +83,7 @@ async def create_resource_definition(
 )
 async def get_resource_definition(name: str, db: AsyncSession = Depends(get_db)):
   """Retrieve a resource definition by name."""
-  db_def = await svc.get_resource_definition(db, name)
+  db_def = await svc.read_resource_definition(db, name)
   if db_def is None:
     raise HTTPException(status_code=404, detail="Resource definition not found")
   return db_def
@@ -120,9 +126,7 @@ async def update_resource_definition(
   """Update an existing resource definition."""
   update_data = definition_update.model_dump(exclude_unset=True)
   try:
-    updated_def = await svc.add_or_update_resource_definition(
-      db=db, name=name, **update_data
-    )
+    updated_def = await svc.update_resource_definition(db=db, name=name, **update_data)
     if not updated_def:
       raise HTTPException(
         status_code=404, detail=f"Resource definition '{name}' not found."
@@ -173,18 +177,20 @@ async def create_resource_instance(
 ):
   """Create a new resource instance."""
   try:
-    resource_types = await svc.list_resource_definitions(db)
-    if request.resource_definition_accession_id not in [
-      r.accession_id for r in resource_types
-    ]:
-      raise HTTPException(
-        status_code=400, detail=f"Unknown resource type: {request.name}"
+    if request.resource_definition_accession_id is None:
+      definition_orm = await svc.read_resource_definition_by_fqn(
+        db=db, python_fqn=request.python_fqn
       )
-
-    # Using the service layer to create the resource instance
-    resource_orm = await svc.add_resource_instance(
+      if not definition_orm:
+        raise HTTPException(
+          status_code=404,
+          detail=f"Resource definition with FQN '{request.python_fqn}' not found.",
+        )
+      request.resource_definition_accession_id = definition_orm.accession_id
+    resource_orm = await svc.create_resource_instance(
       db=db,
-      name=request.name,
+      python_fqn=request.python_fqn
+      resource_definition_accession_id=request.resource_definition_accession_id,
       user_assigned_name=request.user_assigned_name,
     )
     return ResourceInstanceResponse.model_validate(resource_orm)
@@ -209,14 +215,8 @@ async def get_resource_instance(
 ):
   """Retrieve a resource instance."""
   try:
-    if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance(db, instance_accession_id=accession)
-    elif isinstance(accession, str):
-      resource = await svc.get_resource_instance_by_name(
-        db, user_assigned_name=accession
-      )
-    else:
-      raise HTTPException(status_code=400, detail="Invalid accession format.")
+    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
     return ResourceInstanceResponse.model_validate(resource)
@@ -242,17 +242,8 @@ async def update_resource(
 ):
   """Update an existing resource instance."""
   try:
-    resource = None
-    if isinstance(accession, UUID):
-      resource = await svc.get_resource_instance(db, instance_accession_id=accession)
-      if not resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
-    elif isinstance(accession, str):
-      resource = await svc.get_resource_instance_by_name(
-        db, user_assigned_name=accession
-      )
-    else:
-      raise HTTPException(status_code=400, detail="Invalid accession format.")
+    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
     if resource is None:
       raise HTTPException(status_code=404, detail="Resource not found")
     update_data = request.model_dump(exclude_unset=True)
@@ -280,17 +271,13 @@ async def delete_resource(accession: str | UUID, db: AsyncSession = Depends(get_
   """Delete a resource instance by name or ID."""
   try:
     success = False
-    if isinstance(accession, UUID):
-      success = await svc.delete_resource_instance(db, instance_accession_id=accession)
-    elif isinstance(accession, str):
-      resource = await svc.get_resource_instance_by_name(
-        db, user_assigned_name=accession
-      )
-      if not resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
-      success = await svc.delete_resource_instance(
-        db, instance_accession_id=resource.accession_id
-      )
+    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
+    if not resource:
+      raise HTTPException(status_code=404, detail="Resource not found")
+    success = await svc.delete_resource_instance(
+      db, instance_accession_id=resource.accession_id
+    )
     if not success:
       raise HTTPException(status_code=404, detail="Resource not found")
     return None

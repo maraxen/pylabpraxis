@@ -6,15 +6,15 @@ import asyncio
 import contextlib
 import datetime
 import importlib
-import inspect
 import json
 import os
 import subprocess
 import sys
 import traceback
+import uuid_utils as uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
-import uuid_utils as uuid  # For UUID type hints and generation
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import praxis.backend.services as svc
@@ -746,13 +746,13 @@ class Orchestrator:
         ) % (protocol_name, protocol_version, commit_hash, source_name)
         logger.error(error_msg)
 
-        protocol_defaccession_id_for_error_run = (
+        protocol_def_accession_id_for_error_run = (
           protocol_def_orm.accession_id
           if protocol_def_orm and protocol_def_orm.accession_id
           else None
         )
 
-        if protocol_defaccession_id_for_error_run is None:
+        if protocol_def_accession_id_for_error_run is None:
           raise ProtocolCancelledError(
             f"Protocol definition '{protocol_name}' completely not found, cannot link "
             f"failed run to a definition."
@@ -761,7 +761,7 @@ class Orchestrator:
         error_run_db_obj = await svc.create_protocol_run(
           db=db_session,
           run_accession_id=run_accession_id,
-          top_level_protocol_definition_accession_id=protocol_defaccession_id_for_error_run,
+          top_level_protocol_definition_accession_id=protocol_def_accession_id_for_error_run,
           status=ProtocolRunStatusEnum.FAILED,
           input_parameters_json=json.dumps(user_input_params),
           initial_state_json=json.dumps(initial_state_data),

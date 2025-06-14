@@ -281,9 +281,9 @@ class ResourceInstanceOrm(Base):
     comment="User-friendly unique name for this physical item",
   )
 
-  name: Mapped[str] = mapped_column(
+  python_fqn: Mapped[str] = mapped_column(
     String,
-    ForeignKey("resource_definition_catalog.name"),
+    ForeignKey("resource_definition_catalog.python_fqn"),
     nullable=False,
     index=True,
   )
@@ -398,7 +398,7 @@ class ResourceInstanceOrm(Base):
 
   deck_counterpart: Mapped[Optional["DeckInstanceOrm"]] = relationship(
     "DeckInstanceOrm",
-    back_populates="resource_instance",
+    back_populates="resource_counterpart",
     foreign_keys=[deck_counterpart_accession_id],
     uselist=False,
     cascade="all, delete-orphan",
@@ -406,9 +406,16 @@ class ResourceInstanceOrm(Base):
     "DeckInstanceOrm entry",
   )
 
+  # Relationship to data outputs
+  data_outputs = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="resource_instance",
+    cascade="all, delete-orphan",
+  )
+
   def __repr__(self):
     """Return a string representation of the ResourceInstanceOrm object."""
     return (
       f"<ResourceInstanceOrm(id={self.accession_id}, name='{self.user_assigned_name}',"
-      f" type='{self.name}', is_machine={self.is_machine})>"
+      f" type='{self.python_fqn}', is_machine={self.is_machine})>"
     )

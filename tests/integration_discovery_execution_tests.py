@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 import shutil
-import uuid
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch, ANY
 
