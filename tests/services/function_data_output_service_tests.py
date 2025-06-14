@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid_utils import UUID, uuid7
-
+from uuid import UUID
+from praxis.backend.utils.uuid import uuid7
 from praxis.backend.models import (
   DataOutputTypeEnum,
   FunctionDataOutputCreate,
@@ -16,7 +16,7 @@ from praxis.backend.models import (
   WellDataOutputCreate,
   WellDataOutputOrm,
 )
-from praxis.backend.services import function_data_output_service
+import praxis.bac
 
 
 class TestFunctionDataOutputService:

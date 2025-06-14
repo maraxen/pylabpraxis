@@ -4,7 +4,7 @@ This file defines the database schema for storing workcell information,
 including their names, descriptions, and relationships to associated machines.
 """
 
-import uuid_utils as uuid
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 

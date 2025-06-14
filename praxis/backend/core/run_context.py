@@ -24,7 +24,7 @@ import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
-import uuid_utils as uuid
+import uuid
 from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession

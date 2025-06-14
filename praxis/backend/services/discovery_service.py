@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 import traceback
-import uuid_utils as uuid
+import uuid
 from typing import (
   Any,
   Callable,

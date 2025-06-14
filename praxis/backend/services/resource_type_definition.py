@@ -12,7 +12,7 @@ import datetime
 from functools import partial
 from typing import Any, Dict, List, Optional
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

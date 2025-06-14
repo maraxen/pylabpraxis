@@ -9,7 +9,7 @@ This includes Resource Definitions, Resource Instances, and their management.
 """
 
 import datetime
-import uuid_utils as uuid
+import uuid
 from functools import partial
 from typing import Any, Dict, List, Optional
 
@@ -30,6 +30,7 @@ from praxis.backend.services.entity_linking import (
   synchronize_resource_machine_names,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+from praxis.backend.utils.uuid import uuid7
 
 from .resource_type_definition import read_resource_definition
 
@@ -131,7 +132,7 @@ async def create_resource_instance(
     raise ValueError(error_message)
 
   instance_orm = ResourceInstanceOrm(
-    accession_id=uuid.uuid7(),
+    accession_id=uuid7(),
     user_assigned_name=user_assigned_name,
     python_fqn=python_fqn,
     resource_definition=definition,

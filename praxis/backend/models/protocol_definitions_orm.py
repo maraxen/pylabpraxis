@@ -15,7 +15,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import (
   JSON,
   UUID,

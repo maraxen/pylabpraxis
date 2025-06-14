@@ -7,7 +7,7 @@ including authentication credentials, contact details, and account status.
 from datetime import datetime
 from typing import Optional
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import UUID, Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 

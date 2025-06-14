@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 import redis
-import uuid_utils as uuid
+import uuid
 from redis.exceptions import RedisError
 
 from praxis.backend.configure import get_settings  # To access Redis config

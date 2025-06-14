@@ -29,7 +29,7 @@ from typing import (
   cast,
 )
 
-import uuid_utils as uuid
+import uuid
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines import Machine
 from pylabrobot.resources import Coordinate, Deck, Resource

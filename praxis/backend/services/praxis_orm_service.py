@@ -13,14 +13,14 @@ import asyncio
 import json
 import logging
 import os
-import uuid_utils as uuid  # For generating run_accession_id
+import uuid  # For generating run_accession_id
 from configparser import ConfigParser
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional
 
 import asyncpg  # For Keycloak database
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import (
   AsyncSession,

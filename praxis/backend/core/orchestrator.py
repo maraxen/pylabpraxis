@@ -11,9 +11,8 @@ import os
 import subprocess
 import sys
 import traceback
-import uuid_utils as uuid
+import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
-
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -45,6 +44,7 @@ from praxis.backend.utils.errors import (
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import clear_control_command, get_control_command
 from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)
 
@@ -723,7 +723,7 @@ class Orchestrator:
     """
     user_input_params = user_input_params or {}
     initial_state_data = initial_state_data or {}
-    run_accession_id = uuid.uuid7()
+    run_accession_id = uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
       "ORCH: Initiating protocol run %s for '%s' at %s. "

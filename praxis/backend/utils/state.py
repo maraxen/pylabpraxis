@@ -1,14 +1,14 @@
 """State management utility."""
 
 import json
-import logging
+import uuid
 from typing import Any, Dict, Optional
 
 import redis
-import uuid_utils as uuid
 from redis.exceptions import ConnectionError
 
 from praxis.backend.utils.logging import get_logger
+from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)
 
@@ -28,7 +28,7 @@ class State:  # This will be aliased as PraxisState
     _data (Dict[str, Any]): The internal dictionary holding the state data.
 
   Methods:
-    __init__(self, redis_host="localhost", redis_port=6379, redis_db=0, run_accession_id=uuid.uuid7()):
+    __init__(self, redis_host="localhost", redis_port=6379, redis_db=0, run_accession_id=uuid7()):
       Initializes a new State instance, connecting to Redis and loading any existing state.
     _load_from_redis(self) -> Dict[str, Any]:
       Loads the state data from Redis.
@@ -62,7 +62,7 @@ class State:  # This will be aliased as PraxisState
     redis_host: str = "localhost",
     redis_port: int = 6379,
     redis_db: int = 0,
-    run_accession_id: uuid.UUID = uuid.uuid7(),
+    run_accession_id: uuid.UUID = uuid7(),
   ):
     """Initialize the State instance."""
     if not isinstance(run_accession_id, uuid.UUID):

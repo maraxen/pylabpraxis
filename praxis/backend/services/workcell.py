@@ -14,13 +14,14 @@ import logging
 from typing import Any, Dict, List, Optional
 
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from praxis.backend.models import MachineOrm, WorkcellOrm
+from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ async def create_workcell(
   logger.info("Attempting to create workcell '%s'.", name)
 
   workcell_orm = WorkcellOrm(
-    id=uuid.uuid7(),
+    id=uuid7(),
     name=name,
     description=description,
     physical_location=physical_location,
@@ -323,7 +324,7 @@ async def read_or_create_workcell_orm(
     else:
       logger.info(f"WorkcellOrm '{workcell_name}' not found, creating new entry.")
       new_workcell = WorkcellOrm(
-        id=uuid.uuid7(),
+        id=uuid7(),
         name=workcell_name,
         latest_state_json=initial_state,
       )

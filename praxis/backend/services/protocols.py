@@ -14,7 +14,7 @@ import json
 import logging
 from typing import Dict, List, Optional, Union
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import desc, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

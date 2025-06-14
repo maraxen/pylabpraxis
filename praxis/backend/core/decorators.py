@@ -13,7 +13,7 @@ import json
 import re
 import time
 import traceback
-import uuid_utils as uuid
+import uuid
 from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin
 
 from pydantic import BaseModel as PydanticBaseModel

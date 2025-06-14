@@ -21,7 +21,7 @@ if TYPE_CHECKING:
   from .deck_orm import DeckInstanceOrm
   from .machine_orm import MachineOrm
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import (
   JSON,
   UUID,

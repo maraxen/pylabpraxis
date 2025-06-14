@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
   from .resource_orm import ResourceInstanceOrm
 
-import uuid_utils as uuid
+import uuid
 from sqlalchemy import (
   JSON,
   UUID,

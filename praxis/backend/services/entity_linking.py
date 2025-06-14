@@ -1,7 +1,7 @@
 # praxis/db_services/entity_linking.py
 
 import datetime
-import uuid_utils as uuid
+import uuid
 from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, Optional
 

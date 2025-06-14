@@ -21,7 +21,7 @@ Models included:
 
 from typing import Any, Dict, List, Optional, Union
 
-import uuid_utils as uuid
+import uuid
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 

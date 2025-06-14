@@ -1,6 +1,6 @@
 import datetime
 import logging
-import uuid_utils as uuid
+import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy import delete, select, update

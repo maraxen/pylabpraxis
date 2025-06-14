@@ -19,7 +19,7 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import pylabrobot.resources
-import uuid_utils as uuid
+import uuid
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import (
   Carrier,  # Added back to EXCLUDED_BASE_CLASSES as per user feedback
