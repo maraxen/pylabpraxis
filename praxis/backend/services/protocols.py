@@ -33,6 +33,7 @@ from praxis.backend.models import (
   ProtocolSourceRepositoryOrm,
   ProtocolSourceStatusEnum,
 )
+from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 
@@ -718,8 +719,8 @@ async def upsert_function_protocol_definition(
 
 async def create_protocol_run(
   db: AsyncSession,
-  run_accession_id: uuid.UUID,
   top_level_protocol_definition_accession_id: uuid.UUID,
+  run_accession_id: Optional[uuid.UUID] = None,
   status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING,
   input_parameters_json: Optional[str] = None,
   initial_state_json: Optional[str] = None,
@@ -728,9 +729,10 @@ async def create_protocol_run(
 
   Args:
       db (AsyncSession): The database session.
-      run_accession_id (uuid.UUID): A unique GUID for this protocol run.
       top_level_protocol_definition_accession_id (uuid.UUID): The ID of the top-level
           protocol definition this run is based on.
+      run_accession_id (Optional[uuid.UUID], optional): A unique GUID for this
+          protocol run. If None, a new UUID7 will be generated. Defaults to None.
       status (ProtocolRunStatusEnum, optional): The initial status of the run.
           Defaults to `ProtocolRunStatusEnum.PENDING`.
       input_parameters_json (Optional[str], optional): A JSON string of input
@@ -747,6 +749,10 @@ async def create_protocol_run(
       Exception: For any unexpected errors during the process.
 
   """
+  # Generate UUID7 if not provided
+  if run_accession_id is None:
+    run_accession_id = uuid7()
+
   logger.info(
     "Creating new protocol run with GUID '%s' for definition ID %d.",
     run_accession_id,
@@ -1100,14 +1106,14 @@ async def read_protocol_definition(
   return protocol_def
 
 
-async def read_protocol_definition_details(
+async def read_protocol_definition_by_name(
   db: AsyncSession,
   name: str,
   version: Optional[str] = None,
   source_name: Optional[str] = None,
   commit_hash: Optional[str] = None,
 ) -> Optional[FunctionProtocolDefinitionOrm]:
-  """Retrieve details of a specific protocol definition.
+  """Retrieve a protocol definition by its name.
 
   This function fetches a `FunctionProtocolDefinitionOrm` by its name,
   optionally filtered by version, source name, and commit hash. It prioritizes
@@ -1130,8 +1136,7 @@ async def read_protocol_definition_details(
 
   """
   logger.info(
-    "Retrieving protocol definition details for name '%s', version '%s', "
-    "source '%s', commit '%s'.",
+    "Retrieving protocol definition '%s', version '%s', source '%s', commit '%s'.",
     name,
     version,
     source_name,
@@ -1185,6 +1190,108 @@ async def read_protocol_definition_details(
       )
     )
     logger.debug("Filtering by generic source name (Git or File System).")
+  if not version:
+    # If no version specified, order by creation date to get latest
+    stmt = stmt.order_by(desc(FunctionProtocolDefinitionOrm.created_at))
+    logger.debug("No version specified, ordering by creation date for latest.")
+  result = await db.execute(stmt)
+  protocol_def = result.scalar_one_or_none()
+  if protocol_def:
+    logger.info(
+      "Found protocol definition '%s' (Version: %s).",
+      protocol_def.name,
+      protocol_def.version,
+    )
+  else:
+    logger.info("Protocol definition '%s' not found with specified criteria.", name)
+  return protocol_def
+
+
+async def read_protocol_definition_details(
+  db: AsyncSession,
+  accession_id: uuid.UUID,
+  version: Optional[str] = None,
+  source_name: Optional[str] = None,
+  commit_hash: Optional[str] = None,
+) -> Optional[FunctionProtocolDefinitionOrm]:
+  """Retrieve details of a specific protocol definition.
+
+  This function fetches a `FunctionProtocolDefinitionOrm` by its name,
+  optionally filtered by version, source name, and commit hash. It prioritizes
+  the latest version if no version is specified.
+
+  Args:
+      db (AsyncSession): The database session.
+      name (str): The name of the protocol definition.
+      version (Optional[str], optional): The specific version of the protocol.
+          If None, the latest non-deprecated version will be retrieved.
+          Defaults to None.
+      source_name (Optional[str], optional): The name of the protocol source
+          (either Git repository or file system). Defaults to None.
+      commit_hash (Optional[str], optional): The Git commit hash if the
+          protocol is from a Git repository. Defaults to None.
+
+  Returns:
+      Optional[FunctionProtocolDefinitionOrm]: The protocol definition object
+      if found, otherwise None.
+
+  """
+  logger.info(
+    "Retrieving protocol definition details for ID '%s', version '%s', "
+    "source '%s', commit '%s'.",
+    accession_id,
+    version,
+    source_name,
+    commit_hash,
+  )
+  stmt = (
+    select(FunctionProtocolDefinitionOrm)
+    .options(
+      selectinload(FunctionProtocolDefinitionOrm.parameters),
+      selectinload(FunctionProtocolDefinitionOrm.assets),
+      joinedload(FunctionProtocolDefinitionOrm.source_repository),
+      joinedload(FunctionProtocolDefinitionOrm.file_system_source),
+    )
+    .filter(
+      FunctionProtocolDefinitionOrm.accession_id == accession_id,
+      ~FunctionProtocolDefinitionOrm.deprecated,
+    )
+  )
+
+  if version:
+    stmt = stmt.filter(FunctionProtocolDefinitionOrm.version == version)
+
+  if commit_hash:
+    stmt = stmt.filter(FunctionProtocolDefinitionOrm.commit_hash == commit_hash)
+    if source_name:
+      stmt = stmt.join(
+        ProtocolSourceRepositoryOrm,
+        FunctionProtocolDefinitionOrm.source_repository_accession_id
+        == ProtocolSourceRepositoryOrm.accession_id,
+      ).filter(ProtocolSourceRepositoryOrm.name == source_name)
+    logger.debug("Filtering by commit hash and Git source name.")
+  elif source_name:
+    git_source_alias = aliased(ProtocolSourceRepositoryOrm)
+    fs_source_alias = aliased(FileSystemProtocolSourceOrm)
+    stmt = (
+      stmt.outerjoin(
+        git_source_alias,
+        FunctionProtocolDefinitionOrm.source_repository_accession_id
+        == git_source_alias.accession_id,
+      )
+      .outerjoin(
+        fs_source_alias,
+        FunctionProtocolDefinitionOrm.file_system_source_accession_id
+        == fs_source_alias.accession_id,
+      )
+      .filter(
+        or_(
+          git_source_alias.name == source_name,
+          fs_source_alias.name == source_name,
+        )
+      )
+    )
+    logger.debug("Filtering by generic source name (Git or File System).")
 
   if not version:
     # If no version specified, order by creation date to get latest
@@ -1200,7 +1307,9 @@ async def read_protocol_definition_details(
       protocol_def.version,
     )
   else:
-    logger.info("Protocol definition '%s' not found with specified criteria.", name)
+    logger.info(
+      "Protocol definition '%s' not found with specified criteria.", accession_id
+    )
   return protocol_def
 
 
@@ -1307,7 +1416,7 @@ async def list_protocol_definitions(
   return protocol_defs
 
 
-async def read_protocol_run_by_accession_id(
+async def read_protocol_run(
   db: AsyncSession, run_accession_id: uuid.UUID
 ) -> Optional[ProtocolRunOrm]:
   """Retrieve a protocol run by its unique GUID.
@@ -1343,6 +1452,50 @@ async def read_protocol_run_by_accession_id(
     logger.info("Found protocol run with GUID '%s'.", run_accession_id)
   else:
     logger.info("Protocol run with GUID '%s' not found.", run_accession_id)
+  return protocol_run
+
+
+async def read_protocol_run_by_name(
+  db: AsyncSession, name: str
+) -> Optional[ProtocolRunOrm]:
+  """Retrieve a protocol run by its name.
+
+  This function fetches a `ProtocolRunOrm` by its name, including its
+  associated function calls and their definitions.
+
+  Args:
+      db (AsyncSession): The database session.
+      name (str): The name of the protocol run.
+
+  Returns:
+      Optional[ProtocolRunOrm]: The protocol run object if found, otherwise None.
+
+  """
+  logger.info("Retrieving protocol run with name: '%s'.", name)
+  stmt = (
+    select(ProtocolRunOrm)
+    .options(
+      selectinload(ProtocolRunOrm.function_calls)
+      .selectinload(FunctionCallLogOrm.executed_function_definition)
+      .selectinload(FunctionProtocolDefinitionOrm.source_repository),
+      selectinload(ProtocolRunOrm.function_calls)
+      .selectinload(FunctionCallLogOrm.executed_function_definition)
+      .selectinload(FunctionProtocolDefinitionOrm.file_system_source),
+      joinedload(ProtocolRunOrm.top_level_protocol_definition),
+    )
+    .join(
+      FunctionProtocolDefinitionOrm,
+      ProtocolRunOrm.top_level_protocol_definition_accession_id
+      == FunctionProtocolDefinitionOrm.accession_id,
+    )
+    .filter(FunctionProtocolDefinitionOrm.name == name)
+  )
+  result = await db.execute(stmt)
+  protocol_run = result.scalar_one_or_none()
+  if protocol_run:
+    logger.info("Found protocol run with name '%s'.", name)
+  else:
+    logger.info("Protocol run with name '%s' not found.", name)
   return protocol_run
 
 

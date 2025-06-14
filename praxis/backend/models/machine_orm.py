@@ -96,7 +96,7 @@ class MachineOrm(Base):
   """SQLAlchemy ORM model representing a physical machine or machine.
 
   This model stores details about automation hardware, including its status,
-  configuration, and relationships to deck instanceurations and resource instances.
+  configuration, and relationships to deck instances and resource instances.
   """
 
   __tablename__ = "machines"
