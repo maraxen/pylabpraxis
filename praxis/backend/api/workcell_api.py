@@ -24,7 +24,7 @@ from praxis.backend.api.dependencies import (
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime, WorkcellRuntimeError
 
-from praxis.backend.services import asset_data_service as ads
+import praxis.backend.services import asset_data_service as ads
 from praxis.backend.models.asset_management_orm import (
   PraxisDeviceCategoryEnum,
   ManagedDeviceStatusEnum,

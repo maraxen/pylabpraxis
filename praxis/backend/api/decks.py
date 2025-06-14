@@ -8,7 +8,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid_utils import UUID
+from uuid import UUID
 
 # Import the service layer, aliased as 'svc' for convenience
 import praxis.backend.services as svc

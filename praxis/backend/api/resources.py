@@ -6,10 +6,10 @@
 import datetime
 from functools import partial
 from typing import Dict, List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid_utils import UUID
 
 # Import the service layer, aliased as 'svc' for convenience
 import praxis.backend.services as svc
@@ -189,7 +189,7 @@ async def create_resource_instance(
       request.resource_definition_accession_id = definition_orm.accession_id
     resource_orm = await svc.create_resource_instance(
       db=db,
-      python_fqn=request.python_fqn
+      python_fqn=request.python_fqn,
       resource_definition_accession_id=request.resource_definition_accession_id,
       user_assigned_name=request.user_assigned_name,
     )
@@ -248,7 +248,7 @@ async def update_resource(
       raise HTTPException(status_code=404, detail="Resource not found")
     update_data = request.model_dump(exclude_unset=True)
     updated_resource = await svc.update_resource_instance(
-      db=db, name=resource.name, **update_data
+      db=db, instance_accession_id=accession_id, **update_data
     )
     return ResourceInstanceResponse.model_validate(updated_resource)
 
