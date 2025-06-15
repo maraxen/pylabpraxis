@@ -19,11 +19,14 @@ Models included:
 - ProtocolParameters
 """
 
-from typing import Any, Dict, List, Optional, Union
-
 import uuid
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
+
+if TYPE_CHECKING:
+  from .protocol_definitions_orm import AssetDefinitionOrm
 
 
 class ProtocolStartRequest(BaseModel):
@@ -87,7 +90,7 @@ class ProtocolInfo(BaseModel):
 
 
 class UIHint(BaseModel):
-  """Provides hints for how a parameter or asset should be rendered in a user interface."""
+  """Provides hints for parameter/asset rendering in a user interface."""
 
   widget_type: Optional[str] = None
 
@@ -200,6 +203,69 @@ class RuntimeAssetRequirement:
     self.estimated_duration_ms = estimated_duration_ms
     self.priority = priority
     self.reservation_id: Optional[uuid.UUID] = None
+
+  @property
+  def asset_name(self) -> str:
+    """Get the asset name from the underlying definition."""
+    return self.asset_definition.name
+
+  @property
+  def constraints(self) -> Optional[AssetConstraintsModel]:
+    """Get the asset constraints from the underlying definition."""
+    return self.asset_definition.constraints
+
+  @property
+  def location_constraints(self) -> Optional[LocationConstraintsModel]:
+    """Get the location constraints from the underlying definition."""
+    return self.asset_definition.location_constraints
+
+  def to_dict(self) -> Dict[str, Any]:
+    """Convert to dictionary for serialization."""
+    return {
+      "asset_name": self.asset_name,
+      "asset_type": self.asset_type,
+      "asset_fqn": self.asset_fqn,
+      "estimated_duration_ms": self.estimated_duration_ms,
+      "priority": self.priority,
+      "reservation_id": str(self.reservation_id) if self.reservation_id else None,
+      "constraints": self.constraints.dict() if self.constraints else None,
+      "location_constraints": (
+        self.location_constraints.dict() if self.location_constraints else None
+      ),
+    }
+
+  @classmethod
+  def from_asset_definition_orm(
+    cls,
+    asset_def_orm: "AssetDefinitionOrm",
+    asset_type: str = "asset",
+    estimated_duration_ms: Optional[int] = None,
+    priority: int = 1,
+  ) -> "RuntimeAssetRequirement":
+    """Create a RuntimeAssetRequirement from AssetDefinitionOrm.
+
+    This provides a bridge between the ORM model and the runtime requirement.
+    """
+    # Convert ORM to AssetRequirementModel
+    asset_requirement = AssetRequirementModel(
+      accession_id=asset_def_orm.accession_id,
+      name=asset_def_orm.name,
+      type_hint_str=asset_def_orm.type_hint_str,
+      actual_type_str=asset_def_orm.actual_type_str,
+      fqn=asset_def_orm.fqn,
+      optional=asset_def_orm.optional,
+      default_value_repr=asset_def_orm.default_value_repr,
+      description=asset_def_orm.description,
+      constraints=AssetConstraintsModel(**(asset_def_orm.constraints_json or {})),
+      location_constraints=LocationConstraintsModel(),
+    )
+
+    return cls(
+      asset_definition=asset_requirement,
+      asset_type=asset_type,
+      estimated_duration_ms=estimated_duration_ms,
+      priority=priority,
+    )
 
 
 class FunctionProtocolDefinitionModel(BaseModel):

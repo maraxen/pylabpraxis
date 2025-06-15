@@ -89,7 +89,7 @@ def execute_protocol_run_task(
   protocol_run_id: str,
   user_params: Dict[str, Any],
   initial_state: Optional[Dict[str, Any]] = None,
-):
+) -> Dict[str, Any]:
   """Celery task to execute a protocol run.
 
   Args:

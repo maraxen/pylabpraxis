@@ -5,7 +5,6 @@ This module provides the scheduling layer between the API and the Orchestrator,
 handling asset analysis, reservation, and asynchronous task queueing.
 """
 
-import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -16,14 +15,23 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import praxis.backend.services as svc
 from praxis.backend.models import (
-  AssetRequirementModel,
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
   RuntimeAssetRequirement,
 )
+from praxis.backend.models.protocol_pydantic_models import (
+  AssetConstraintsModel,
+  AssetRequirementModel,
+  LocationConstraintsModel,
+)
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
+
+
+from praxis.backend.core.celery_tasks import execute_protocol_run_task
+
+
 
 logger = get_logger(__name__)
 
@@ -78,6 +86,8 @@ class ProtocolScheduler:
     Args:
         db_session_factory: Factory for creating database sessions
         redis_url: Redis connection URL for Celery broker
+        celery_app_instance: Optional pre-configured Celery app instance
+
     """
     self.db_session_factory = db_session_factory
     self.redis_url = redis_url
@@ -107,6 +117,7 @@ class ProtocolScheduler:
 
     Returns:
         List of RuntimeAssetRequirement objects needed for execution
+
     """
     logger.info(
       "Analyzing asset requirements for protocol: %s v%s",
@@ -118,12 +129,11 @@ class ProtocolScheduler:
 
     # Analyze asset requirements from protocol definition
     for asset_def in protocol_def_orm.assets:
-      requirement = RuntimeAssetRequirement(
-        asset_definition=asset_def,
+      requirement = RuntimeAssetRequirement.from_asset_definition_orm(
+        asset_def,
         asset_type="asset",
         estimated_duration_ms=None,
         priority=1,
-        # TODO: Estimate duration based on protocol analysis
       )
       requirements.append(requirement)
 
@@ -135,9 +145,22 @@ class ProtocolScheduler:
 
     # Analyze deck requirements
     if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
+      # Create a synthetic asset definition for deck
+
+      deck_asset_requirement = AssetRequirementModel(
+        accession_id=uuid7(),
+        name=protocol_def_orm.deck_param_name,
+        type_hint_str="Deck",
+        actual_type_str="Deck",
+        fqn="pylabrobot.resources.Deck",  # Generic deck FQN
+        optional=False,
+        constraints=AssetConstraintsModel(),
+        location_constraints=LocationConstraintsModel(),
+      )
+
       deck_requirement = RuntimeAssetRequirement(
-        asset_definition=AssetRequirementModel,  # Deck doesn't have a static asset definition
-        asset_type="resource",
+        asset_definition=deck_asset_requirement,
+        asset_type="deck",
         estimated_duration_ms=None,
         priority=1,
       )
@@ -157,16 +180,17 @@ class ProtocolScheduler:
     return requirements
 
   async def reserve_assets(
-    self, requirements: List[AssetRequirementModel], protocol_run_id: uuid.UUID
+    self, requirements: List[RuntimeAssetRequirement], protocol_run_id: uuid.UUID
   ) -> bool:
     """Reserve assets for a protocol run.
 
     Args:
-        requirements: List of asset requirements to reserve
+        requirements: List of runtime asset requirements to reserve
         protocol_run_id: ID of the protocol run requesting assets
 
     Returns:
         True if all assets were successfully reserved, False otherwise
+
     """
     logger.info(
       "Attempting to reserve %d assets for run %s",
@@ -251,6 +275,7 @@ class ProtocolScheduler:
 
     Returns:
         True if successfully scheduled, False otherwise
+
     """
     logger.info(
       "Scheduling protocol execution for run %s (%s)",
@@ -371,22 +396,29 @@ class ProtocolScheduler:
 
     Returns:
         True if successfully queued, False otherwise.
+
     """
     logger.info("Queueing execution task for run %s", protocol_run_id)
 
-    try:
-      # Import Celery task here to avoid circular imports
-      from praxis.backend.core.celery_tasks import execute_protocol_run_task
+    # Ensure user_params is a dict (never None)
+    user_params = user_params or {}
 
+    try:
       # Queue the task with Celery
-      task_result = execute_protocol_run_task.delay(
-        str(protocol_run_id), user_params, initial_state
-      )
+      try:
+        # Try to use Celery task
+        task_result = execute_protocol_run_task.delay(  # type: ignore
+          str(protocol_run_id), user_params, initial_state
+        )
+        celery_task_id = getattr(task_result, "id", None)
+      except AttributeError:
+        # Fallback: direct call to Celery task is not supported
+        raise RuntimeError("Direct call to execute_protocol_run_task is not supported. Celery worker must be running.")
 
       logger.info(
         "Successfully queued protocol run %s with Celery task ID: %s",
         protocol_run_id,
-        task_result.id,
+        celery_task_id,
       )
 
       # Update schedule entry with task ID
@@ -394,7 +426,7 @@ class ProtocolScheduler:
         schedule_entry = self._active_schedules[protocol_run_id]
         schedule_entry.status = "QUEUED"
         # Store task ID for future reference/cancellation
-        schedule_entry.celery_task_id = task_result.id
+        schedule_entry.celery_task_id = celery_task_id
 
       return True
 
@@ -415,6 +447,7 @@ class ProtocolScheduler:
 
     Returns:
         True if successfully cancelled, False otherwise
+
     """
     logger.info("Cancelling scheduled run %s", protocol_run_id)
 
@@ -458,6 +491,7 @@ class ProtocolScheduler:
 
     Returns:
         Dictionary with schedule information, or None if not found
+
     """
     if protocol_run_id not in self._active_schedules:
       return None
@@ -479,6 +513,7 @@ class ProtocolScheduler:
 
     Returns:
         List of schedule status dictionaries
+
     """
     schedules = []
     for protocol_run_id in self._active_schedules:

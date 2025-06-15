@@ -4,18 +4,186 @@
 
 ## What is PyLabPraxis?
 
-PyLabPraxis is a library that interfaces with PyLabRobot to facilitate execution of experiments. Read [the PyLabRobot paper](<https://www.cell.com/machine/fulltext/S2666-9986(23)00170-9>) in Device.
+PyLabPraxis is a comprehensive Python-based platform designed to automate and manage laboratory workflows. It leverages the [PyLabRobot](https://pylabrobot.org/) library to interface with a wide range of lab automation hardware. PyLabPraxis provides a robust backend system built with FastAPI, enabling protocol execution, asset management, real-time hardware control, and persistent state management. Its primary goal is to facilitate the seamless execution of experiments in an automated lab environment with a frontend accessible to users of any skill level. It ensures consistent data logging practices, inventory management, reservation, and works with type-hinted python functions using PyLabRobot objects.
 
-### Lab Configuration
+Developed for the Ovchinnikov group in MIT Biology.
+
+## Core Architecture
+
+PyLabPraxis employs a modular, service-oriented architecture designed for scalability and maintainability. The key architectural pillars are:
+
+1. **FastAPI Backend**: Provides a RESTful API for all interactions, including protocol management, execution control, and asset monitoring.
+2. **PyLabRobot Integration**: Core to its functionality, PyLabPraxis uses PyLabRobot for abstracting hardware interactions, allowing for control of various lab instruments like liquid handlers, plate readers, etc.
+3. **PostgreSQL Database**: Serves as the primary persistent data store for:
+    * Protocol definitions and versions.
+    * Protocol run history, status, and results.
+    * Asset definitions (e.g., machine types, resource types) and instances (specific physical assets).
+    * Workcell configurations and deck layouts.
+    * User management data (via Keycloak integration).
+4. **Redis**: Utilized for:
+    * **Runtime State Management**: Storing `PraxisState` for individual protocol runs.
+    * **Distributed Locking**: `AssetLockManager` uses Redis to ensure exclusive access to assets during operations.
+    * **Celery Broker & Backend**: Managing asynchronous task queues for protocol execution.
+5. **Celery**: Enables asynchronous execution of long-running laboratory protocols, improving responsiveness and scalability of the system.
+6. **Docker & Docker Compose**: The entire backend ecosystem is designed for deployment using Docker, facilitating isolated, reproducible, and scalable environments for the application and its services (PostgreSQL, Redis, Keycloak, SMTP).
+
+## Key Components
+
+The backend is composed of several core components, each with distinct responsibilities:
+
+* **`ProtocolExecutionService`**: A high-level service that acts as the main entry point for all protocol execution workflows. It integrates various components to manage the lifecycle of a protocol run, supporting both immediate and scheduled (asynchronous via Celery) execution.
+* **`Orchestrator`**: The central component responsible for the step-by-step execution of a defined protocol. It fetches protocol definitions, prepares the execution environment (including `PraxisState`), acquires necessary assets via the `AssetManager`, executes the protocol's Python functions, and logs progress and results.
+* **`ProtocolScheduler`**: Manages the scheduling of protocol runs. It analyzes resource requirements for a protocol, reserves the necessary assets, and queues the execution task with Celery.
+* **`AssetManager`**: Handles the lifecycle and allocation of physical laboratory assets (machines and resources). It interacts with the `WorkcellRuntime` to get live PyLabRobot objects and updates the database with asset status (e.g., `IN_USE`, `AVAILABLE`). It also manages asset definitions and synchronization with PyLabRobot's capabilities.
+* **`AssetLockManager`**: Provides a mechanism for distributed locking of assets using Redis, preventing conflicts when multiple processes or protocol runs might attempt to use the same asset simultaneously.
+* **`WorkcellRuntime`**: Manages the *live, operational instances* of PyLabRobot objects (machines, resources). It dynamically instantiates these objects based on database definitions, handles their setup and teardown (connecting/disconnecting from hardware), and can save/restore their state for persistence and recovery.
+* **`Workcell`**: An in-memory container holding all configured PyLabRobot objects for the current lab setup. It provides a structured way to access and manage these live objects and their states.
+* **`ProtocolCodeManager`**: Responsible for fetching, preparing, and loading protocol code for execution. It can handle protocols from various sources, such as Git repositories or local file systems, and manages module imports.
+* **`PraxisRunContext`**: An object passed through the execution flow of a protocol, carrying run-specific information like the unique run ID, a reference to the `PraxisState`, the current database session, and logging context.
+* **`Protocol Decorators` (`@protocol_function`)**: Python decorators used to define functions as PylabPraxis protocols. These decorators facilitate the automatic extraction of metadata (parameters, asset requirements, description) and integrate the function into the Praxis execution and discovery system.
+* **`DataServices` (in `praxis.backend.services/`)**: A crucial abstraction layer encapsulating all direct database interactions. Various services (e.g., `ProtocolDataService`, `AssetDataService`, `MachineDataService`) provide CRUD operations and specialized queries for their respective ORM models, ensuring that business logic components do not interact directly with SQLAlchemy.
+* **`API Layer` (in `praxis.backend.api/`)**: FastAPI routers and endpoints that expose the system's functionality over HTTP. This includes endpoints for protocol discovery, execution, status monitoring, asset management, and workcell configuration.
+
+## Data Structures
+
+PyLabPraxis utilizes two main types of data structures:
+
+1. **ORM Models** (defined in `praxis.backend.models/` using SQLAlchemy):
+    * These models represent the database schema and are used for persistent storage of all critical information.
+    * Examples include `ProtocolDefinitionOrm`, `ProtocolRunOrm`, `ResourceDefinitionCatalogOrm`, `ResourceInstanceOrm`, `MachineOrm`, `FunctionCallLogOrm`, etc.
+    * They define the relationships between different entities (e.g., a protocol run consists of multiple function calls; a machine can have multiple resources).
+
+2. **Pydantic Models** (defined in `praxis.backend.models.protocol_pydantic_models`, `praxis.backend.models.resource_pydantic_models`, etc.):
+    * Used for data validation, serialization, and deserialization, especially for API request and response bodies.
+    * Ensure type safety and provide clear data contracts for the API.
+    * Examples include `ProtocolStartRequest`, `AssetRequirementModel`, `ResourceInstanceResponse`, `ProtocolInfo`.
+
+## State Management
+
+State management is critical in an automated lab environment and is handled at multiple levels in PyLabPraxis:
+
+1. **`PraxisState` (`praxis.backend.utils.state.State`)**:
+    * Provides a dictionary-like object for storing and retrieving protocol-specific runtime data that needs to persist across different function calls within a single protocol run.
+    * Each protocol run gets its own `PraxisState` instance.
+    * Backed by **Redis**, ensuring that state is preserved even if a protocol execution is paused, resumed, or handled by different worker processes. The state is keyed by the `run_accession_id`.
+
+2. **`WorkcellRuntime` State**:
+    * Manages the live state of PyLabRobot objects (e.g., a liquid handler's current tip status, a plate's location on deck).
+    * Provides mechanisms to **backup** the entire workcell state (or individual asset states) to a persistent file (e.g., JSON).
+    * Allows **restoring** the workcell state from a backup, which is crucial for recovery after system restarts or errors.
+    * Synchronizes critical aspects of this live state with the **database** (e.g., asset availability, current location if tracked).
+
+3. **Database (PostgreSQL)**:
+    * The ultimate source of truth for **persistent configuration and historical data**.
+    * Stores the defined state of assets (e.g., `ResourceInstanceOrm.status`, `MachineOrm.status`).
+    * Records the history of protocol runs, including their final status (`ProtocolRunOrm.status`), inputs, and outputs.
+    * Maintains definitions of protocols, resources, machines, and deck layouts.
+
+4. **Redis (beyond `PraxisState`)**:
+    * **`AssetLockManager`**: Uses Redis for distributed locks to manage exclusive access to assets, preventing concurrent modifications or use.
+    * **Celery**: Uses Redis as a message broker (to send tasks to workers) and as a result backend (to store task completion status and results).
+
+**How it Fits Together:**
+
+* When a protocol starts, a `PraxisState` instance is created (or loaded if resuming) for that specific run.
+* The `Orchestrator` passes the `PraxisRunContext` (which includes `PraxisState`) to protocol functions.
+* Protocol functions can read from and write to `PraxisState` to share data between steps.
+* `AssetManager` requests live asset objects from `WorkcellRuntime`. `WorkcellRuntime` instantiates these from database definitions and manages their live operational state.
+* Changes in live asset status (e.g., a machine becoming busy) are reflected by `AssetManager` and `WorkcellRuntime` and updated in the database.
+* `AssetLockManager` ensures that an asset acquired by one protocol run is not simultaneously used by another.
+* Upon completion or failure, the final status of the protocol run and any significant outputs are persisted to the PostgreSQL database.
+* `WorkcellRuntime` can periodically back up the live state of all instruments.
+
+## Execution Workflow (Simplified)
+
+1. **Request**: A user or system initiates a protocol run via the API, providing the protocol name/ID and any user parameters.
+2. **Scheduling (Optional)**: For asynchronous execution, the `ProtocolExecutionService` passes the request to the `ProtocolScheduler`.
+    * The `Scheduler` analyzes the protocol's asset requirements.
+    * It attempts to reserve the required assets using the `AssetLockManager`.
+    * If successful, it queues a task in Celery via `execute_protocol_run_task`.
+3. **Task Execution (Celery Worker)**:
+    * A Celery worker picks up the task.
+    * It initializes the `Orchestrator` (or uses a shared instance with proper context).
+4. **Orchestration**:
+    * The `Orchestrator` fetches the protocol definition (code and metadata) using `ProtocolCodeManager` and database services.
+    * It prepares the execution context (`PraxisRunContext`), including initializing `PraxisState`.
+    * It acquires the necessary live assets (PyLabRobot objects) from the `AssetManager`, which in turn interacts with `WorkcellRuntime`.
+    * The `Orchestrator` then executes the protocol's Python functions sequentially, passing the context and acquired assets.
+    * Each function call, its parameters, and its outcome are logged to the database.
+5. **State Updates**: During execution, protocol functions can modify `PraxisState`. The state of physical assets is managed by `WorkcellRuntime` and reflected in the database by `AssetManager`.
+6. **Completion/Failure**:
+    * Upon completion, the `Orchestrator` finalizes logging, updates the protocol run status to `COMPLETED` in the database, and ensures assets are released via `AssetManager`.
+    * In case of failure, the status is updated to `FAILED`, error information is logged, and attempts are made to release assets safely.
+7. **Results**: Outputs and results from the protocol are stored in the database, associated with the protocol run.
+
+## Services Overview (`praxis.backend.services/`)
+
+The `praxis.backend.services/` package contains a suite of modules that abstract database interactions for different entities. This promotes separation of concerns and makes the core logic cleaner. Key services include:
+
+* **`protocol_data_service.py`**: Manages CRUD operations for protocol definitions, protocol runs, and function call logs.
+* **`asset_data_service.py`**: Handles data for resource definitions (`ResourceDefinitionCatalogOrm`) and instances (`ResourceInstanceOrm`).
+* **`machine_data_service.py`**: Manages machine-specific data (`MachineOrm`), including status and associations.
+* **`workcell_data_service.py`**: Manages workcell configurations (`WorkcellOrm`).
+* **`deck_data_service.py`**: Handles persistence for deck layouts (`DeckLayoutOrm`, `DeckSlotOrm`).
+* **`discovery_service.py`**: Discovers protocol functions from code, extracts metadata, and stores them as `FunctionProtocolDefinitionOrm`.
+* **`praxis_orm_service.py`**: Provides a general interface for common database operations.
+* And others for specific data types like function outputs, plate data, etc.
+
+## API Overview (`praxis.backend.api/`)
+
+PyLabPraxis exposes a RESTful API built with FastAPI. Key endpoint groups include:
+
+* **`/protocols`**:
+  * Discover available protocols.
+  * Get details of specific protocols.
+  * Create, start, and manage protocol runs.
+  * Get status and results of protocol runs.
+* **`/resources` / `/assets`**:
+  * List and manage resource definitions (types of plates, tips, etc.).
+  * List and manage resource instances (specific physical items).
+* **`/machines`**:
+  * List and manage machine definitions and instances.
+  * Control machine states.
+* **`/workcell`**:
+  * Manage workcell configurations.
+  * Get live deck layouts and workcell state.
+* **`/function_data_outputs`**:
+  * Manage and retrieve data generated by protocol functions.
+
+The API uses Pydantic models for request and response validation and serialization, ensuring clear and robust communication.
+
+## Lab Configuration & Getting Started
+
+(This section can be expanded with specific setup instructions for databases, Redis, Keycloak, and PyLabRobot hardware.)
+
+### Keycloak Setup
+
+1. Start the Keycloak server:
+    ```bash
+    # (Instructions for starting Keycloak, typically via Docker Compose)
+    docker-compose up keycloak
+    ```
+2. Configure realms, clients, and users as per Keycloak documentation and PyLabPraxis requirements.
+
+## Development
+
+PyLabPraxis uses standard Python development tools:
+
+* **`pytest`**: For running unit and integration tests.
+    ```bash
+    make test
+    ```
+* **`pylint`**: For code style enforcement.
+    ```bash
+    make lint
+    ```
+* **`mypy`**: For static type checking.
+    ```bash
+    make typecheck
+    ```
+
+Refer to `CONTRIBUTING.md` for more details on the development process.
 
 ---
 
 **Disclaimer:** PyLabPraxis is not officially endorsed or supported by any robot manufacturer. If you use a firmware driver such as the STAR driver provided here, you do so at your own risk. Usage of a firmware driver such as STAR may invalidate your warranty. Please contact us with any questions.
-
-## Developed for the Sculpting Evolution Group at the MIT Media Lab
-
-# Praxis Lab Manager
-
-## Keycloak Setup
-
-1. Start the Keycloak server:
