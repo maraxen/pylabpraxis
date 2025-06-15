@@ -55,6 +55,12 @@ class ProtocolExecutionContext:
     db_session_factory: async_sessionmaker[AsyncSession],
     orchestrator=None,  # Will be imported when needed to avoid circular imports
   ):
+    """Initialize the protocol execution context.
+
+    Args:
+        db_session_factory: Factory for creating database sessions.
+        orchestrator: Optional Orchestrator instance for protocol execution.
+    """
     self.db_session_factory = db_session_factory
     self.orchestrator = orchestrator
 
@@ -153,10 +159,22 @@ async def _execute_protocol_async(
   user_params: Dict[str, Any],
   initial_state: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
-  """Execute a protocol run asynchronously.
+  """Execute a protocol run asynchronously using the Orchestrator.
 
   This function serves as the bridge between the Celery task and the
   orchestrator, handling the async execution within the task context.
+
+  Args:
+      protocol_run_id: UUID of the protocol run to execute.
+      user_params: User-provided parameters for the protocol.
+      initial_state: Initial state data for the protocol.
+
+  Returns:
+      Dict with execution results and status information.
+
+  Raises:
+      RuntimeError: If execution context is not available.
+      ValueError: If protocol run is not found.
   """
   if not _execution_context:
     raise RuntimeError("Execution context not available")
@@ -185,39 +203,44 @@ async def _execute_protocol_async(
       )
       await db_session.commit()
 
-      # TODO: Execute via orchestrator
-      # For now, we'll need to refactor the orchestrator to accept
-      # an existing ProtocolRunOrm instead of creating its own
+      # Execute via orchestrator using the new method for existing runs
+      if _execution_context.orchestrator:
+        result_run_orm = (
+          await _execution_context.orchestrator.execute_existing_protocol_run(
+            protocol_run_orm, user_params, initial_state
+          )
+        )
 
-      # Placeholder for orchestrator integration
-      # This is where we'd call something like:
-      # result = await _execution_context.orchestrator.execute_existing_run(
-      #     protocol_run_orm, user_params, initial_state
-      # )
+        return {
+          "success": True,
+          "protocol_run_id": str(protocol_run_id),
+          "status": result_run_orm.status.value if result_run_orm.status else "UNKNOWN",
+          "message": "Protocol executed via Orchestrator",
+        }
+      else:
+        # Fallback: simulate successful execution for now
+        await asyncio.sleep(1)  # Simulate work
 
-      # For now, simulate successful execution
-      await asyncio.sleep(1)  # Simulate work
+        # Update status to COMPLETED
+        await svc.update_protocol_run_status(
+          db_session,
+          protocol_run_orm.accession_id,
+          ProtocolRunStatusEnum.COMPLETED,
+          output_data_json=json.dumps(
+            {
+              "status": "Protocol execution completed successfully (fallback mode)",
+              "result": "Placeholder result - orchestrator not available",
+            }
+          ),
+        )
+        await db_session.commit()
 
-      # Update status to COMPLETED
-      await svc.update_protocol_run_status(
-        db_session,
-        protocol_run_orm.accession_id,
-        ProtocolRunStatusEnum.COMPLETED,
-        output_data_json=json.dumps(
-          {
-            "status": "Protocol execution completed successfully",
-            "result": "Placeholder result",
-          }
-        ),
-      )
-      await db_session.commit()
-
-      return {
-        "success": True,
-        "protocol_run_id": str(protocol_run_id),
-        "status": "COMPLETED",
-        "message": "Protocol executed successfully",
-      }
+        return {
+          "success": True,
+          "protocol_run_id": str(protocol_run_id),
+          "status": "COMPLETED",
+          "message": "Protocol executed successfully (fallback mode)",
+        }
 
     except Exception as e:
       # Update status to FAILED

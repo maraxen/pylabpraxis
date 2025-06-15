@@ -1,8 +1,8 @@
 # pylint: disable=too-many-arguments,broad-except,fixme
-"""Protocol Scheduler - Manages protocol execution scheduling and resource allocation.
+"""Protocol Scheduler - Manages protocol execution scheduling and asset allocation.
 
 This module provides the scheduling layer between the API and the Orchestrator,
-handling resource analysis, reservation, and asynchronous task queueing.
+handling asset analysis, reservation, and asynchronous task queueing.
 """
 
 import asyncio
@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
+from celery import Celery
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import praxis.backend.services as svc
@@ -19,6 +20,7 @@ from praxis.backend.models import (
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
+  RuntimeAssetRequirement,
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
@@ -26,49 +28,41 @@ from praxis.backend.utils.uuid import uuid7
 logger = get_logger(__name__)
 
 
-class ResourceRequirement:
-  """Represents a resource requirement for protocol execution."""
-
-  def __init__(
-    self,
-    resource_type: str,
-    resource_name: str,
-    required_capabilities: Optional[Dict[str, Any]] = None,
-    estimated_duration_ms: Optional[int] = None,
-    priority: int = 1,
-  ):
-    self.resource_type = resource_type
-    self.resource_name = resource_name
-    self.required_capabilities = required_capabilities or {}
-    self.estimated_duration_ms = estimated_duration_ms
-    self.priority = priority
-    self.reservation_id: Optional[uuid.UUID] = None
-
-
 class ScheduleEntry:
-  """Represents a scheduled protocol run with resource reservations."""
+  """Represents a scheduled protocol run with asset reservations."""
 
   def __init__(
     self,
     protocol_run_id: uuid.UUID,
     protocol_name: str,
-    required_resources: List[ResourceRequirement],
+    required_assets: List[RuntimeAssetRequirement],
     estimated_duration_ms: Optional[int] = None,
     priority: int = 1,
   ):
+    """Initialize a ScheduleEntry.
+
+    Args:
+        protocol_run_id: UUID of the protocol run.
+        protocol_name: Name of the protocol.
+        required_assets: List of asset requirements.
+        estimated_duration_ms: Estimated execution duration in milliseconds.
+        priority: Execution priority (higher numbers = higher priority).
+
+    """
     self.protocol_run_id = protocol_run_id
     self.protocol_name = protocol_name
-    self.required_resources = required_resources
+    self.required_assets = required_assets
     self.estimated_duration_ms = estimated_duration_ms
     self.priority = priority
     self.scheduled_at = datetime.now(timezone.utc)
     self.status = "QUEUED"
+    self.celery_task_id: Optional[str] = None
 
 
 class ProtocolScheduler:
-  """Manages protocol scheduling, resource allocation, and execution queueing.
+  """Manages protocol scheduling, asset allocation, and execution queueing.
 
-  This scheduler analyzes protocol requirements, reserves necessary resources,
+  This scheduler analyzes protocol requirements, reserves necessary assets,
   and queues protocol execution tasks using Celery. It provides the foundation
   for more advanced scheduling features like multi-protocol orchestration.
   """
@@ -77,6 +71,7 @@ class ProtocolScheduler:
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
     redis_url: str = "redis://localhost:6379/0",
+    celery_app_instance: Optional[Celery] = None,
   ):
     """Initialize the Protocol Scheduler.
 
@@ -86,10 +81,16 @@ class ProtocolScheduler:
     """
     self.db_session_factory = db_session_factory
     self.redis_url = redis_url
+    self.celery_app = celery_app_instance or Celery(
+      "praxis_protocol_scheduler",
+      broker=redis_url,
+      backend=redis_url,
+      include=["praxis.backend.core.celery_tasks"],
+    )
 
     # In-memory tracking (will be moved to Redis/DB for persistence)
     self._active_schedules: Dict[uuid.UUID, ScheduleEntry] = {}
-    self._resource_reservations: Dict[str, Set[uuid.UUID]] = {}
+    self._asset_reservations: Dict[str, Set[uuid.UUID]] = {}
 
     logger.info("ProtocolScheduler initialized with Redis: %s", redis_url)
 
@@ -97,37 +98,35 @@ class ProtocolScheduler:
     self,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
     user_params: Dict[str, Any],
-  ) -> List[ResourceRequirement]:
-    """Analyze a protocol definition to determine resource requirements.
+  ) -> List[RuntimeAssetRequirement]:
+    """Analyze a protocol definition to determine asset requirements.
 
     Args:
         protocol_def_orm: The protocol definition from the database
         user_params: User-provided parameters for the protocol
 
     Returns:
-        List of ResourceRequirement objects needed for execution
+        List of RuntimeAssetRequirement objects needed for execution
     """
     logger.info(
-      "Analyzing resource requirements for protocol: %s v%s",
+      "Analyzing asset requirements for protocol: %s v%s",
       protocol_def_orm.name,
       protocol_def_orm.version,
     )
 
-    requirements: List[ResourceRequirement] = []
+    requirements: List[RuntimeAssetRequirement] = []
 
     # Analyze asset requirements from protocol definition
     for asset_def in protocol_def_orm.assets:
-      requirement = ResourceRequirement(
-        resource_type="asset",
-        resource_name=asset_def.name,
-        required_capabilities={
-          "type": asset_def.actual_type_str,
-          "optional": asset_def.optional,
-        },
-        # TODO: Estimate duration based on protocol analysis
+      requirement = RuntimeAssetRequirement(
+        asset_definition=asset_def,
+        asset_type="asset",
         estimated_duration_ms=None,
+        priority=1,
+        # TODO: Estimate duration based on protocol analysis
       )
       requirements.append(requirement)
+
       logger.debug(
         "Added asset requirement: %s (%s)",
         asset_def.name,
@@ -136,79 +135,80 @@ class ProtocolScheduler:
 
     # Analyze deck requirements
     if protocol_def_orm.preconfigure_deck and protocol_def_orm.deck_param_name:
-      deck_requirement = ResourceRequirement(
-        resource_type="deck",
-        resource_name=protocol_def_orm.deck_param_name,
-        required_capabilities={"preconfigure": True},
+      deck_requirement = RuntimeAssetRequirement(
+        asset_definition=AssetRequirementModel,  # Deck doesn't have a static asset definition
+        asset_type="resource",
+        estimated_duration_ms=None,
+        priority=1,
       )
       requirements.append(deck_requirement)
       logger.debug("Added deck requirement: %s", protocol_def_orm.deck_param_name)
 
-    # TODO: Future enhancement - analyze protocol steps for granular resource needs
+    # TODO: Future enhancement - analyze protocol steps for granular asset needs
     # This would involve parsing the protocol function to understand:
-    # - Sequential vs parallel resource usage
+    # - Sequential vs parallel asset usage
     # - Timing requirements
-    # - Critical resource dependencies
+    # - Critical asset dependencies
 
     logger.info(
-      "Protocol analysis complete. Found %d resource requirements.",
+      "Protocol analysis complete. Found %d asset requirements.",
       len(requirements),
     )
     return requirements
 
-  async def reserve_resources(
-    self, requirements: List[ResourceRequirement], protocol_run_id: uuid.UUID
+  async def reserve_assets(
+    self, requirements: List[AssetRequirementModel], protocol_run_id: uuid.UUID
   ) -> bool:
-    """Reserve resources for a protocol run.
+    """Reserve assets for a protocol run.
 
     Args:
-        requirements: List of resource requirements to reserve
-        protocol_run_id: ID of the protocol run requesting resources
+        requirements: List of asset requirements to reserve
+        protocol_run_id: ID of the protocol run requesting assets
 
     Returns:
-        True if all resources were successfully reserved, False otherwise
+        True if all assets were successfully reserved, False otherwise
     """
     logger.info(
-      "Attempting to reserve %d resources for run %s",
+      "Attempting to reserve %d assets for run %s",
       len(requirements),
       protocol_run_id,
     )
 
-    reserved_resources: List[str] = []
+    reserved_assets: List[str] = []
 
     try:
       for requirement in requirements:
-        resource_key = f"{requirement.resource_type}:{requirement.resource_name}"
+        asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
 
-        # Simple resource locking (will be enhanced with Redis locks)
-        if resource_key not in self._resource_reservations:
-          self._resource_reservations[resource_key] = set()
+        # Simple asset locking (will be enhanced with Redis locks)
+        if asset_key not in self._asset_reservations:
+          self._asset_reservations[asset_key] = set()
 
-        # Check if resource is available (not reserved by another run)
-        if self._resource_reservations[resource_key]:
+        # Check if asset is available (not reserved by another run)
+        if self._asset_reservations[asset_key]:
           logger.warning(
-            "Resource %s is already reserved by runs: %s",
-            resource_key,
-            self._resource_reservations[resource_key],
+            "Asset %s is already reserved by runs: %s",
+            asset_key,
+            self._asset_reservations[asset_key],
           )
           # Rollback previous reservations
-          await self._release_reservations(reserved_resources, protocol_run_id)
+          await self._release_reservations(reserved_assets, protocol_run_id)
           return False
 
-        # Reserve the resource
-        self._resource_reservations[resource_key].add(protocol_run_id)
+        # Reserve the asset
+        self._asset_reservations[asset_key].add(protocol_run_id)
         requirement.reservation_id = uuid7()
-        reserved_resources.append(resource_key)
+        reserved_assets.append(asset_key)
 
         logger.debug(
-          "Reserved resource %s for run %s (reservation: %s)",
-          resource_key,
+          "Reserved asset %s for run %s (reservation: %s)",
+          asset_key,
           protocol_run_id,
           requirement.reservation_id,
         )
 
       logger.info(
-        "Successfully reserved all %d resources for run %s",
+        "Successfully reserved all %d assets for run %s",
         len(requirements),
         protocol_run_id,
       )
@@ -216,25 +216,25 @@ class ProtocolScheduler:
 
     except Exception as e:
       logger.error(
-        "Error during resource reservation for run %s: %s",
+        "Error during asset reservation for run %s: %s",
         protocol_run_id,
         e,
         exc_info=True,
       )
       # Rollback all reservations on error
-      await self._release_reservations(reserved_resources, protocol_run_id)
+      await self._release_reservations(reserved_assets, protocol_run_id)
       return False
 
   async def _release_reservations(
-    self, resource_keys: List[str], protocol_run_id: uuid.UUID
+    self, asset_keys: List[str], protocol_run_id: uuid.UUID
   ) -> None:
-    """Release resource reservations for a protocol run."""
-    for resource_key in resource_keys:
-      if resource_key in self._resource_reservations:
-        self._resource_reservations[resource_key].discard(protocol_run_id)
-        if not self._resource_reservations[resource_key]:
-          del self._resource_reservations[resource_key]
-        logger.debug("Released reservation for resource %s", resource_key)
+    """Release asset reservations for a protocol run."""
+    for asset_key in asset_keys:
+      if asset_key in self._asset_reservations:
+        self._asset_reservations[asset_key].discard(protocol_run_id)
+        if not self._asset_reservations[asset_key]:
+          del self._asset_reservations[asset_key]
+        logger.debug("Released reservation for asset %s", asset_key)
 
   async def schedule_protocol_execution(
     self,
@@ -278,28 +278,26 @@ class ProtocolScheduler:
           )
           return False
 
-        # Analyze resource requirements
+        # Analyze asset requirements
         requirements = await self.analyze_protocol_requirements(
           protocol_def, user_params
         )
 
-        # Reserve resources
-        if not await self.reserve_resources(
-          requirements, protocol_run_orm.accession_id
-        ):
+        # Reserve assets
+        if not await self.reserve_assets(requirements, protocol_run_orm.accession_id):
           logger.error(
-            "Failed to reserve resources for run %s",
+            "Failed to reserve assets for run %s",
             protocol_run_orm.accession_id,
           )
-          # Update run status to indicate resource conflict
+          # Update run status to indicate asset conflict
           await svc.update_protocol_run_status(
             db_session,
             protocol_run_orm.accession_id,
             ProtocolRunStatusEnum.FAILED,
             output_data_json=json.dumps(
               {
-                "error": "Resource reservation failed",
-                "details": "Required resources are not available",
+                "error": "Asset reservation failed",
+                "details": "Required assets are not available",
               }
             ),
           )
@@ -310,7 +308,7 @@ class ProtocolScheduler:
         schedule_entry = ScheduleEntry(
           protocol_run_id=protocol_run_orm.accession_id,
           protocol_name=protocol_def.name,
-          required_resources=requirements,
+          required_assets=requirements,
           # TODO: Estimate duration based on protocol analysis
           estimated_duration_ms=None,
         )
@@ -325,7 +323,7 @@ class ProtocolScheduler:
           output_data_json=json.dumps(
             {
               "scheduled_at": schedule_entry.scheduled_at.isoformat(),
-              "resource_count": len(requirements),
+              "asset_count": len(requirements),
             }
           ),
         )
@@ -364,24 +362,53 @@ class ProtocolScheduler:
     user_params: Dict[str, Any],
     initial_state: Optional[Dict[str, Any]],
   ) -> bool:
-    """Queue a protocol execution task.
+    """Queue a protocol execution task using Celery.
 
-    TODO: Replace with actual Celery task queueing
+    Args:
+        protocol_run_id: UUID of the protocol run to execute.
+        user_params: User-provided parameters for the protocol.
+        initial_state: Initial state data for the protocol.
+
+    Returns:
+        True if successfully queued, False otherwise.
     """
     logger.info("Queueing execution task for run %s", protocol_run_id)
 
-    # For now, this is a placeholder
-    # In the full implementation, this would:
-    # 1. Use Celery to queue an execution task
-    # 2. Pass the protocol_run_id and parameters to the worker
-    # 3. The worker would call the orchestrator with the existing run
+    try:
+      # Import Celery task here to avoid circular imports
+      from praxis.backend.core.celery_tasks import execute_protocol_run_task
 
-    # Placeholder: simulate successful queueing
-    await asyncio.sleep(0.1)
-    return True
+      # Queue the task with Celery
+      task_result = execute_protocol_run_task.delay(
+        str(protocol_run_id), user_params, initial_state
+      )
+
+      logger.info(
+        "Successfully queued protocol run %s with Celery task ID: %s",
+        protocol_run_id,
+        task_result.id,
+      )
+
+      # Update schedule entry with task ID
+      if protocol_run_id in self._active_schedules:
+        schedule_entry = self._active_schedules[protocol_run_id]
+        schedule_entry.status = "QUEUED"
+        # Store task ID for future reference/cancellation
+        schedule_entry.celery_task_id = task_result.id
+
+      return True
+
+    except Exception as e:
+      logger.error(
+        "Failed to queue execution task for run %s: %s",
+        protocol_run_id,
+        e,
+        exc_info=True,
+      )
+      return False
 
   async def cancel_scheduled_run(self, protocol_run_id: uuid.UUID) -> bool:
-    """Cancel a scheduled protocol run and release resources.
+    """Cancel a scheduled protocol run and release assets.
 
     Args:
         protocol_run_id: ID of the protocol run to cancel
@@ -395,13 +422,13 @@ class ProtocolScheduler:
       if protocol_run_id in self._active_schedules:
         schedule_entry = self._active_schedules[protocol_run_id]
 
-        # Release resource reservations
-        for requirement in schedule_entry.required_resources:
-          resource_key = f"{requirement.resource_type}:{requirement.resource_name}"
-          if resource_key in self._resource_reservations:
-            self._resource_reservations[resource_key].discard(protocol_run_id)
-            if not self._resource_reservations[resource_key]:
-              del self._resource_reservations[resource_key]
+        # Release asset reservations
+        for requirement in schedule_entry.required_assets:
+          asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
+          if asset_key in self._asset_reservations:
+            self._asset_reservations[asset_key].discard(protocol_run_id)
+            if not self._asset_reservations[asset_key]:
+              del self._asset_reservations[asset_key]
 
         # Remove from active schedules
         del self._active_schedules[protocol_run_id]
@@ -442,7 +469,7 @@ class ProtocolScheduler:
       "protocol_name": schedule_entry.protocol_name,
       "status": schedule_entry.status,
       "scheduled_at": schedule_entry.scheduled_at.isoformat(),
-      "resource_count": len(schedule_entry.required_resources),
+      "asset_count": len(schedule_entry.required_assets),
       "estimated_duration_ms": schedule_entry.estimated_duration_ms,
       "priority": schedule_entry.priority,
     }

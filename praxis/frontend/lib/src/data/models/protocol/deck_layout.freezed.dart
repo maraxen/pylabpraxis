@@ -91,7 +91,7 @@ as List<String>?,
 @JsonSerializable()
 
 class _DeckLayout implements DeckLayout {
-  const _DeckLayout({this.accession_id, this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot, final  List<String>? positions}): _items = items,_robot = robot,_positions = positions;
+  const _DeckLayout({this.name, final  List<DeckItem>? items, this.schemaVersion, final  Map<String, dynamic>? robot, final  List<String>? positions}): _items = items,_robot = robot,_positions = positions;
   factory _DeckLayout.fromJson(Map<String, dynamic> json) => _$DeckLayoutFromJson(json);
 
 // Unique identifier for this deck layout configuration.

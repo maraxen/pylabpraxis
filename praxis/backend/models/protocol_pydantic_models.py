@@ -169,6 +169,7 @@ class AssetRequirementModel(BaseModel):
   name: str
   type_hint_str: str
   actual_type_str: str
+  fqn: str
   optional: bool
   default_value_repr: Optional[str] = None
   description: Optional[str] = None
@@ -176,6 +177,29 @@ class AssetRequirementModel(BaseModel):
   location_constraints: LocationConstraintsModel = Field(
     default_factory=LocationConstraintsModel
   )
+
+
+class RuntimeAssetRequirement:
+  """Represents a specific asset requirement for a *protocol run*.
+
+  This wraps the static AssetRequirementModel definition with runtime details
+  like its specific 'type' for the run (e.g., 'asset', 'deck') and a reservation ID.
+  """
+
+  def __init__(
+    self,
+    asset_definition: AssetRequirementModel,  # The static asset definition
+    asset_type: str,  # e.g., "asset", "deck"
+    estimated_duration_ms: Optional[int] = None,
+    priority: int = 1,
+  ):
+    """Initialize a RuntimeAssetRequirement."""
+    self.asset_definition = asset_definition
+    self.asset_type = asset_type
+    self.asset_fqn = asset_definition.fqn
+    self.estimated_duration_ms = estimated_duration_ms
+    self.priority = priority
+    self.reservation_id: Optional[uuid.UUID] = None
 
 
 class FunctionProtocolDefinitionModel(BaseModel):

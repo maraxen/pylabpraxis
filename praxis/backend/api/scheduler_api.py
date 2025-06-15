@@ -78,8 +78,6 @@ async def initialize_scheduler_components(
     db_session_factory=db_session_factory,
     redis_url=redis_url,
   )
-  # Set the asset_lock manager on the scheduler
-  _global_scheduler._asset_lock_manager = _global_asset_lock_manager
 
   logger.info("Scheduler components initialized")
 
@@ -96,10 +94,9 @@ async def schedule_protocol(
 ) -> ScheduleEntryResponse:
   """Schedule a protocol run for execution.
 
-  This endpoint analyzes asset_lock requirements, reserves necessary asset_locks,
+  This endpoint analyzes asset requirements, reserves necessary assets,
   and queues the protocol for execution using Celery workers.
   """
-
   # Get the protocol run
   protocol_run = await protocol_svc.read_protocol_run(db, request.protocol_run_id)
   if not protocol_run:
@@ -153,7 +150,6 @@ async def get_schedule_status(
   scheduler: ProtocolScheduler = Depends(get_scheduler),
 ) -> ScheduleStatusResponse:
   """Get the current status of a scheduled protocol run."""
-
   schedule_entry = await scheduler_svc.read_schedule_entry(
     db, schedule_id, include_reservations=True
   )
@@ -177,16 +173,11 @@ async def get_schedule_status(
 
   # Calculate queue position (simplified)
   queue_position = None
-  if schedule_entry.status == ScheduleEntryStatusEnum.QUEUED:
-    queued_before = (
-      await db.query(scheduler_svc.ScheduleEntryOrm)
-      .filter(
-        scheduler_svc.ScheduleEntryOrm.status == ScheduleEntryStatusEnum.QUEUED,
-        scheduler_svc.ScheduleEntryOrm.created_at < schedule_entry.created_at,
-      )
-      .count()
-    )
-    queue_position = queued_before + 1
+  if schedule_entry.status == ScheduleStatusEnum.QUEUED:
+    # TODO: Add scheduler service method or include in model to get queue position
+    # queued_before = await scheduler_svc.get_queue_position(db, schedule_id)
+    # queue_position = queued_before + 1
+    queue_position = None  # Placeholder until service method is implemented
 
   return ScheduleStatusResponse(
     schedule_entry=ScheduleEntryResponse.model_validate(schedule_entry),
@@ -194,7 +185,7 @@ async def get_schedule_status(
     protocol_version=protocol_version,
     queue_position=queue_position,
     estimated_start_time=None,  # TODO: Calculate based on queue
-    asset_lock_availability=None,  # TODO: Get from asset_lock manager
+    resource_availability=None,  # TODO: Get from asset manager
   )
 
 
@@ -207,7 +198,6 @@ async def cancel_schedule(
   scheduler: ProtocolScheduler = Depends(get_scheduler),
 ) -> ScheduleEntryResponse:
   """Cancel a scheduled protocol run."""
-
   schedule_entry = await scheduler_svc.read_schedule_entry(db, schedule_id)
   if not schedule_entry:
     raise HTTPException(
@@ -217,18 +207,15 @@ async def cancel_schedule(
 
   # Check if cancellation is allowed
   if schedule_entry.status in [
-    ScheduleEntryStatusEnum.CANCELLED,
-    ScheduleEntryStatusEnum.FAILED,
+    ScheduleStatusEnum.CANCELLED,
+    ScheduleStatusEnum.FAILED,
   ]:
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
       detail=f"Schedule entry is already {schedule_entry.status}",
     )
 
-  if (
-    schedule_entry.status == ScheduleEntryStatusEnum.EXECUTION_QUEUED
-    and not request.force
-  ):
+  if schedule_entry.status == ScheduleStatusEnum.CELERY_QUEUED and not request.force:
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
       detail="Protocol is already queued for execution. Use force=true to cancel.",
@@ -248,8 +235,8 @@ async def cancel_schedule(
   updated_entry = await scheduler_svc.update_schedule_entry_status(
     db,
     schedule_id,
-    ScheduleEntryStatusEnum.CANCELLED,
-    status_details=f"Cancelled by user: {request.reason or 'No reason provided'}",
+    ScheduleStatusEnum.CANCELLED,
+    error_details=f"Cancelled by user: {request.reason or 'No reason provided'}",
   )
 
   await db.commit()
@@ -273,11 +260,10 @@ async def list_schedules(
   db: AsyncSession = Depends(get_db),
 ) -> ScheduleListResponse:
   """List scheduled protocol runs with optional filters."""
-
   # Convert status to ORM enum
   status_filter = None
   if status:
-    status_filter = [ScheduleEntryStatusEnum(s.value) for s in status]
+    status_filter = [ScheduleStatusEnum(s.value) for s in status]
 
   schedules = await scheduler_svc.list_schedule_entries(
     db,
@@ -321,7 +307,6 @@ async def update_schedule_priority(
   db: AsyncSession = Depends(get_db),
 ) -> ScheduleEntryResponse:
   """Update the priority of a scheduled protocol run."""
-
   updated_entry = await scheduler_svc.update_schedule_entry_priority(
     db,
     schedule_id,
@@ -389,57 +374,22 @@ async def get_system_status(
   # Get Redis system status
   redis_status = await asset_manager.get_system_status()
 
-  # Get database statistics
-  today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-
-  total_queued = (
-    await db.query(scheduler_svc.ScheduleEntryOrm)
-    .filter(scheduler_svc.ScheduleEntryOrm.status == ScheduleEntryStatusEnum.QUEUED)
-    .count()
-  )
-
-  total_running = (
-    await db.query(scheduler_svc.ScheduleEntryOrm)
-    .filter(
-      scheduler_svc.ScheduleEntryOrm.status.in_(
-        [
-          ScheduleEntryStatusEnum.RESOURCE_ANALYSIS,
-          ScheduleEntryStatusEnum.RESOURCE_RESERVATION,
-          ScheduleEntryStatusEnum.READY_FOR_EXECUTION,
-          ScheduleEntryStatusEnum.EXECUTION_QUEUED,
-        ]
-      )
-    )
-    .count()
-  )
-
-  total_completed_today = (
-    await db.query(scheduler_svc.ScheduleEntryOrm)
-    .filter(
-      scheduler_svc.ScheduleEntryOrm.completed_at >= today,
-      scheduler_svc.ScheduleEntryOrm.completed_at.isnot(None),
-    )
-    .count()
-  )
-
-  total_failed_today = (
-    await db.query(scheduler_svc.ScheduleEntryOrm)
-    .filter(
-      scheduler_svc.ScheduleEntryOrm.created_at >= today,
-      scheduler_svc.ScheduleEntryOrm.status == ScheduleEntryStatusEnum.FAILED,
-    )
-    .count()
-  )
+  # TODO: Add scheduler service methods to get these statistics
+  # For now, returning placeholder values
+  total_queued = 0  # TODO: await scheduler_svc.get_queued_count(db)
+  total_running = 0  # TODO: await scheduler_svc.get_running_count(db)
+  total_completed_today = 0  # TODO: await scheduler_svc.get_completed_today_count(db)
+  total_failed_today = 0  # TODO: await scheduler_svc.get_failed_today_count(db)
 
   return SchedulerSystemStatusResponse(
     total_queued=total_queued,
     total_running=total_running,
     total_completed_today=total_completed_today,
     total_failed_today=total_failed_today,
-    active_asset_lock_locks=redis_status.get("active_asset_lock_locks", 0),
+    active_resource_locks=redis_status.get("active_locks", 0),
     active_reservations=redis_status.get("active_reservations", 0),
     available_machines=0,  # TODO: Query from machine service
-    available_asset_locks=0,  # TODO: Query from asset_lock service
+    available_resources=0,  # TODO: Query from resource service
     redis_connected=True,  # TODO: Get from Redis health check
     celery_workers_active=0,  # TODO: Get from Celery inspection
     database_healthy=True,  # TODO: Perform DB health check
@@ -462,7 +412,6 @@ async def get_schedule_history(
   db: AsyncSession = Depends(get_db),
 ) -> List[ScheduleHistoryResponse]:
   """Get the scheduling history for a specific schedule entry."""
-
   history_entries = await scheduler_svc.get_schedule_history(db, schedule_id, limit)
 
   return [ScheduleHistoryResponse.model_validate(entry) for entry in history_entries]
@@ -476,7 +425,6 @@ async def get_scheduler_metrics(
   db: AsyncSession = Depends(get_db),
 ) -> SchedulerMetricsResponse:
   """Get scheduler performance metrics for a time period."""
-
   if not start_time:
     start_time = datetime.now(timezone.utc) - timedelta(days=1)
   if not end_time:
@@ -495,13 +443,13 @@ async def get_scheduler_metrics(
     protocols_cancelled=status_counts.get("CANCELLED", 0),
     average_queue_time_seconds=(metrics.get("average_queue_time_ms", 0) or 0) / 1000.0,
     average_execution_time_seconds=0.0,  # TODO: Calculate from protocol runs
-    average_asset_lock_reservation_time_ms=metrics.get("average_reservation_time_ms", 0)
+    average_resource_reservation_time_ms=metrics.get("average_reservation_time_ms", 0)
     or 0.0,
     peak_concurrent_protocols=0,  # TODO: Calculate from history
-    average_asset_lock_utilization_percentage=0.0,  # TODO: Calculate
-    most_contested_asset_locks=[],  # TODO: Calculate from reservation conflicts
+    average_resource_utilization_percentage=0.0,  # TODO: Calculate
+    most_contested_resources=[],  # TODO: Calculate from reservation conflicts
     scheduling_errors=metrics.get("error_count", 0),
-    asset_lock_conflicts=0,  # TODO: Count reservation failures
+    resource_conflicts=0,  # TODO: Count reservation failures
     timeout_errors=0,  # TODO: Count timeout events
     redis_availability_percentage=100.0,  # TODO: Calculate from monitoring
     database_availability_percentage=100.0,  # TODO: Calculate from monitoring

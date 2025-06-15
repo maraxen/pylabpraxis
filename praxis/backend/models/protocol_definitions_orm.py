@@ -284,6 +284,9 @@ class AssetDefinitionOrm(Base):
   name: Mapped[str] = mapped_column(String, nullable=False)
   type_hint_str: Mapped[str] = mapped_column(String, nullable=False)
   actual_type_str: Mapped[str] = mapped_column(String, nullable=False)
+  fqn: Mapped[str] = mapped_column(
+    String, nullable=False, index=True
+  )  # Fully qualified name for the asset
   optional: Mapped[bool] = mapped_column(Boolean, nullable=False)
   default_value_repr: Mapped[Optional[str]] = mapped_column(String, nullable=True)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

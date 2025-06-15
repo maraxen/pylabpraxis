@@ -93,6 +93,7 @@ from .protocol_pydantic_models import (
   ProtocolPrepareRequest,
   ProtocolStartRequest,
   ProtocolStatus,
+  RuntimeAssetRequirement,
   UIHint,
 )
 from .resource_orm import (
@@ -222,4 +223,5 @@ __all__ = [
   "DataExportRequest",
   "DataSearchFilters",
   "ProtocolRunDataSummary",
+  "RuntimeAssetRequirement",
 ]
