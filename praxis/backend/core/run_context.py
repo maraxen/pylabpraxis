@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.services.state import PraxisState as PraxisState
 
 PROTOCOL_REGISTRY: Dict[str, Any] = {}
 DeckInputType = Union[str, os.PathLike, io.IOBase, Deck]

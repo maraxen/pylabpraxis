@@ -33,7 +33,7 @@ from praxis.backend.utils.errors import (
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import clear_control_command, get_control_command
-from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)

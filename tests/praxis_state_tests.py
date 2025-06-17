@@ -2,8 +2,8 @@ import pytest  # type: ignore
 import json
 from unittest.mock import patch, MagicMock
 
-from praxis.backend.utils.state import (
-  State as PraxisState,
+from praxis.backend.services.state import (
+  PraxisState as PraxisState,
 )  # Assuming State is aliased as PraxisState typically
 import redis  # For mocking redis.exceptions.ConnectionError
 

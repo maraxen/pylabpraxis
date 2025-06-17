@@ -10,10 +10,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
-from celery import Celery
+from celery import Celery, Task
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import praxis.backend.services as svc
+from praxis.backend.core.celery_tasks import execute_protocol_run_task
 from praxis.backend.models import (
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
@@ -27,11 +28,6 @@ from praxis.backend.models.protocol_pydantic_models import (
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
-
-
-from praxis.backend.core.celery_tasks import execute_protocol_run_task
-
-
 
 logger = get_logger(__name__)
 
@@ -413,7 +409,9 @@ class ProtocolScheduler:
         celery_task_id = getattr(task_result, "id", None)
       except AttributeError:
         # Fallback: direct call to Celery task is not supported
-        raise RuntimeError("Direct call to execute_protocol_run_task is not supported. Celery worker must be running.")
+        raise RuntimeError(
+          "Direct call to execute_protocol_run_task is not supported. Celery worker must be running."
+        )
 
       logger.info(
         "Successfully queued protocol run %s with Celery task ID: %s",

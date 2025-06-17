@@ -12,7 +12,7 @@ from praxis.backend.database_models.protocol_definitions_orm import (
   FileSystemProtocolSourceOrm,  # For mock_protocol_def_orm
   ProtocolSourceRepositoryOrm,  # ADDED for GitOps tests
 )
-from praxis.backend.utils.state import State as PraxisState
+from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.core.run_context import (
   Deck,
   PraxisRunContext,

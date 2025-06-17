@@ -13,7 +13,7 @@ from praxis.backend.utils.uuid import uuid7
 logger = get_logger(__name__)
 
 
-class State:  # This will be aliased as PraxisState
+class PraxisState:
   """Manages application state, persisting it to a Redis server.
 
   This class provides a dictionary-like interface for storing and retrieving
