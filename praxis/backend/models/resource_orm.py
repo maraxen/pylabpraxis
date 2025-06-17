@@ -52,7 +52,9 @@ class ResourceInstanceStatusEnum(enum.Enum):
   FULL = "full"
   NEEDS_REFILL = "needs_refill"
   TO_BE_DISPOSED = "to_be_disposed"
+  DISPOSED = "disposed"
   TO_BE_CLEANED = "to_be_cleaned"
+  CLEANED = "cleaned"
   ERROR = "error"
   UNKNOWN = "unknown"
 

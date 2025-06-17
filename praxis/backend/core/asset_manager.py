@@ -15,37 +15,29 @@ Decks are treated as ResourceInstanceOrm entities, potentially parented by a Mac
 import importlib
 import inspect
 import pkgutil
+import uuid
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 import pylabrobot.resources
-import uuid
-from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import (
-  Carrier,  # Added back to EXCLUDED_BASE_CLASSES as per user feedback
+  Carrier,
   Container,
   Coordinate,
-  Deck,  # Added back to EXCLUDED_BASE_CLASSES as per user feedback
+  Deck,
   ItemizedResource,
   Lid,
-  MFXCarrier,
   PetriDish,
   Plate,
   PlateAdapter,
-  PlateCarrier,
   PlateHolder,
   Resource,
   ResourceHolder,
   ResourceStack,
   Tip,
-  TipCarrier,
   TipRack,
   TipSpot,
-  Trash,
-  Trough,
-  TroughCarrier,
   Tube,
-  TubeCarrier,
   TubeRack,
   Well,
 )
@@ -55,12 +47,9 @@ import praxis.backend.services as svc
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   AssetRequirementModel,
-  DeckInstanceOrm,
-  DeckInstancePositionResourceOrm,
   MachineOrm,
   MachineStatusEnum,
   ResourceCategoryEnum,  # Not directly used here, but good for context
-  ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
@@ -851,7 +840,7 @@ class AssetManager:
     self,
     protocol_run_accession_id: uuid.UUID,
     requested_asset_name_in_protocol: str,
-    name_constraint: str,  # ResourceDefinitionCatalogOrm.name
+    python_fqn: str,  # ResourceDefinitionCatalogOrm.name
     user_choice_instance_accession_id: Optional[uuid.UUID] = None,
     location_constraints: Optional[Dict[str, Any]] = None,
     property_constraints: Optional[Dict[str, Any]] = None,
@@ -862,7 +851,7 @@ class AssetManager:
         protocol_run_accession_id: GUID of the protocol run.
         requested_asset_name_in_protocol: Name of the asset as requested in the
         protocol.
-        name_constraint: The `name` from `ResourceDefinitionCatalogOrm`.
+        python_fqn: The `name` from `ResourceDefinitionCatalogOrm`.
         user_choice_instance_accession_id: Optional specific ID of the resource instance to
         acquire.
         location_constraints: Optional constraints on where the resource should be
@@ -879,7 +868,7 @@ class AssetManager:
     logger.info(
       "AM_ACQUIRE_RESOURCE: Acquiring '%s' (Def: '%s') for run '%s'. Loc: %s",
       requested_asset_name_in_protocol,
-      name_constraint,
+      python_fqn,
       protocol_run_accession_id,
       location_constraints,
     )
@@ -893,10 +882,10 @@ class AssetManager:
         raise AssetAcquisitionError(
           f"Specified resource ID {user_choice_instance_accession_id} not found."
         )
-      if instance_orm.python_fqn != name_constraint:
+      if instance_orm.python_fqn != python_fqn:
         raise AssetAcquisitionError(
           f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.python_fqn}) "
-          f"mismatches constraint {name_constraint}."
+          f"mismatches constraint {python_fqn}."
         )
       if instance_orm.current_status == ResourceInstanceStatusEnum.IN_USE:
         if instance_orm.current_protocol_run_accession_id != uuid.UUID(
@@ -917,7 +906,7 @@ class AssetManager:
     else:
       in_use_list = await svc.list_resource_instances(
         self.db,
-        python_fqn=name_constraint,
+        python_fqn=python_fqn,
         status=ResourceInstanceStatusEnum.IN_USE,
         current_protocol_run_accession_id_filter=str(protocol_run_accession_id),
         property_filters=property_constraints,
@@ -927,7 +916,7 @@ class AssetManager:
       else:
         on_deck_list = await svc.list_resource_instances(
           self.db,
-          python_fqn=name_constraint,
+          python_fqn=python_fqn,
           status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
           property_filters=property_constraints,
         )
@@ -936,7 +925,7 @@ class AssetManager:
         else:
           in_storage_list = await svc.list_resource_instances(
             self.db,
-            python_fqn=name_constraint,
+            python_fqn=python_fqn,
             status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
             property_filters=property_constraints,
           )
@@ -945,7 +934,7 @@ class AssetManager:
 
     if not resource_instance_to_acquire:
       raise AssetAcquisitionError(
-        f"No instance found for definition '{name_constraint}' matching criteria for "
+        f"No instance found for definition '{python_fqn}' matching criteria for "
         f"run '{protocol_run_accession_id}'."
       )
 
@@ -1267,27 +1256,25 @@ class AssetManager:
         A tuple (live_plr_object, asset_orm_accession_id, "machine" or "resource").
 
     """
-    asset_type_or_def_name = asset_requirement.actual_type_str
+    asset_fqn = asset_requirement.fqn
     logger.info(
       "AM_ACQUIRE_ASSET: Acquiring '%s' (Type/Def: '%s') for run '%s'.",
       asset_requirement.name,
-      asset_type_or_def_name,
+      asset_fqn,
       protocol_run_accession_id,
     )
 
-    resource_def_check = await svc.read_resource_definition(
-      self.db, asset_type_or_def_name
-    )
+    resource_def_check = await svc.read_resource_definition(self.db, asset_fqn)
 
     if resource_def_check:
       logger.debug(
         "AM_ACQUIRE_ASSET: '%s' is a cataloged resource. Using acquire_resource.",
-        asset_type_or_def_name,
+        asset_fqn,
       )
       return await self.acquire_resource(
         protocol_run_accession_id=protocol_run_accession_id,
         requested_asset_name_in_protocol=asset_requirement.name,
-        name_constraint=asset_type_or_def_name,  # ResourceDefinitionCatalog.name
+        python_fqn=asset_fqn,  # ResourceDefinitionCatalog.name
         property_constraints=dict(asset_requirement.constraints or {}),
         location_constraints=dict(asset_requirement.location_constraints or {}),
         user_choice_instance_accession_id=getattr(
@@ -1298,16 +1285,16 @@ class AssetManager:
       logger.debug(
         "AM_ACQUIRE_ASSET: '%s' not in ResourceCatalog. Assuming Machine FQN. Using "
         "acquire_machine.",
-        asset_type_or_def_name,
+        asset_fqn,
       )
       # Final safeguard: if it looks like a Deck FQN but wasn't cataloged, raise error.
-      if "deck" in asset_type_or_def_name.lower() or "Deck" in asset_type_or_def_name:
+      if "deck" in asset_fqn.lower() or "Deck" in asset_fqn:
         try:
-          module_path, class_name = asset_type_or_def_name.rsplit(".", 1)
+          module_path, class_name = asset_fqn.rsplit(".", 1)
           cls_obj = getattr(importlib.import_module(module_path), class_name)
           if issubclass(cls_obj, Deck):
             raise AssetAcquisitionError(
-              f"Asset type '{asset_type_or_def_name}' appears to be a Deck but not "
+              f"Asset type '{asset_fqn}' appears to be a Deck but not "
               f"found in ResourceCatalog. Ensure it's synced."
             )
         except Exception:
@@ -1316,6 +1303,6 @@ class AssetManager:
       return await self.acquire_machine(
         protocol_run_accession_id=protocol_run_accession_id,
         requested_asset_name_in_protocol=asset_requirement.name,
-        python_fqn_constraint=asset_type_or_def_name,
+        python_fqn_constraint=asset_fqn,
         constraints=dict(asset_requirement.constraints or {}),
       )

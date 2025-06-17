@@ -60,15 +60,39 @@ This document outlines the testing strategy for the PyLabPraxis backend componen
 * `pytest` fixtures will be used extensively to set up test data, mock objects, and instances of classes under test.
 * Fixtures should be defined in `conftest.py` files at appropriate levels (root `tests/` directory, or specific subdirectories like `tests/core/conftest.py`).
 
+### Shared Fixtures and UUIDs in `conftest.py`
+
+* Shared fixtures for test data, mocks, and static UUIDs should be defined in `conftest.py` files at the appropriate directory level (e.g., `tests/core/conftest.py`).
+* For UUIDs, use static UUIDv7 values to ensure deterministic and collision-free test data. Structure them as follows:
+
+```python
+TEST_PROTOCOL_RUN_ID = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d", version=7)
+TEST_MACHINE_ID = uuid.UUID("018f4a3c-b034-7548-b4e8-87d464cb3f92", version=7)
+TEST_RESOURCE_ID = uuid.UUID("018f4a3d-3b4f-7b1e-913a-a1c1d858348c", version=7)
+TEST_DECK_RESOURCE_ID = uuid.UUID("018f4a3d-a3e1-75f2-9831-27f329d443e2", version=7)
+```
+
+* These static UUIDs should be used in test factories and fixtures to create ORM or Pydantic model instances, ensuring consistency and traceability across tests.
+* Refer to the provided `conftest.py` for examples of how to structure and use these fixtures.
+
 ### Test Data
 
 * Clear and representative test data should be used.
 * For complex Pydantic models, use their constructors to create instances for test inputs or expected outputs.
+* All test UUIDs should use [UUID version 7](https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-04) for consistency with production data and to avoid collisions. Static UUIDv7 values should be defined in test fixtures (see `conftest.py` for examples).
+* When creating test data that requires unique identifiers, prefer using these static UUIDs or generating new UUIDv7 values as appropriate.
 
 ### Naming Conventions
 
 * Test files: `test_*.py` (e.g., `test_orchestrator.py`).
 * Test functions/methods: `test_*` (e.g., `test_orchestrator_happy_path`).
+
+### Patching and Isolation
+
+* All unit tests must be well isolated. Use `unittest.mock.patch`, `patch.object`, or `pytest`'s `monkeypatch` to replace external dependencies, I/O, or service calls with mocks or fakes.
+* Avoid relying on real database, Redis, or hardware connections in unit tests. All such dependencies should be mocked at the service or interface layer.
+* Each test should be independent and not rely on shared state. Use fixtures to set up and tear down any required context.
+* When patching, always use the most specific scope possible (e.g., patch only the method or class needed, not entire modules) to avoid unintended side effects.
 
 ## Backend Components to Test
 

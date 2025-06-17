@@ -170,8 +170,6 @@ class AssetRequirementModel(BaseModel):
 
   accession_id: UUID7
   name: str
-  type_hint_str: str
-  actual_type_str: str
   fqn: str
   optional: bool
   default_value_repr: Optional[str] = None
@@ -228,9 +226,9 @@ class RuntimeAssetRequirement:
       "estimated_duration_ms": self.estimated_duration_ms,
       "priority": self.priority,
       "reservation_id": str(self.reservation_id) if self.reservation_id else None,
-      "constraints": self.constraints.dict() if self.constraints else None,
+      "constraints": self.constraints.model_dump() if self.constraints else None,
       "location_constraints": (
-        self.location_constraints.dict() if self.location_constraints else None
+        self.location_constraints.model_dump() if self.location_constraints else None
       ),
     }
 
@@ -250,8 +248,6 @@ class RuntimeAssetRequirement:
     asset_requirement = AssetRequirementModel(
       accession_id=asset_def_orm.accession_id,
       name=asset_def_orm.name,
-      type_hint_str=asset_def_orm.type_hint_str,
-      actual_type_str=asset_def_orm.actual_type_str,
       fqn=asset_def_orm.fqn,
       optional=asset_def_orm.optional,
       default_value_repr=asset_def_orm.default_value_repr,
