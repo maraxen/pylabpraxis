@@ -28,30 +28,30 @@ class AssetLockManager:
   """
 
   def __init__(
-      self,
-      redis_url: str = "redis://localhost:6379/0",
-      lock_timeout_seconds: int = 3600,  # 1 hour default
-      lock_retry_delay_ms: int = 100,
-      max_lock_retries: int = 10,
+    self,
+    redis_url: str = "redis://localhost:6379/0",
+    lock_timeout_seconds: int = 3600,  # 1 hour default
+    lock_retry_delay_ms: int = 100,
+    max_lock_retries: int = 10,
   ):
-      """Initialize the Asset Lock Manager.
+    """Initialize the Asset Lock Manager.
 
-      Args:
-          redis_url: Redis connection URL
-          lock_timeout_seconds: Default timeout for asset locks
-          lock_retry_delay_ms: Delay between lock acquisition retries
-          max_lock_retries: Maximum number of lock acquisition attempts
+    Args:
+        redis_url: Redis connection URL
+        lock_timeout_seconds: Default timeout for asset locks
+        lock_retry_delay_ms: Delay between lock acquisition retries
+        max_lock_retries: Maximum number of lock acquisition attempts
 
-      """
-      self.redis_url = redis_url
-      self.lock_timeout_seconds = lock_timeout_seconds
-      self.lock_retry_delay_ms = lock_retry_delay_ms
-      self.max_lock_retries = max_lock_retries
+    """
+    self.redis_url = redis_url
+    self.lock_timeout_seconds = lock_timeout_seconds
+    self.lock_retry_delay_ms = lock_retry_delay_ms
+    self.max_lock_retries = max_lock_retries
 
-      self._redis_pool: Optional[redis.ConnectionPool] = None
-      self._redis_client: Optional[redis.Redis] = None
+    self._redis_pool: Optional[redis.ConnectionPool] = None
+    self._redis_client: Optional[redis.Redis] = None
 
-      logger.info("AssetLockManager initialized with Redis: %s", redis_url)
+    logger.info("AssetLockManager initialized with Redis: %s", redis_url)
 
   async def initialize(self) -> None:
     """Initialize Redis connection pool."""
@@ -160,7 +160,7 @@ class AssetLockManager:
 
           # Track locks held by this protocol run
           protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
-          await self._redis_client.sadd(protocol_locks_key, lock_key) # type: ignore
+          await self._redis_client.sadd(protocol_locks_key, lock_key)  # type: ignore
           await self._redis_client.expire(protocol_locks_key, timeout)
 
           logger.info(
@@ -231,7 +231,7 @@ class AssetLockManager:
             end
             """
 
-      result = await self._redis_client.eval(lua_script, 1, lock_key, lock_value) # type: ignore
+      result = await self._redis_client.eval(lua_script, 1, lock_key, lock_value)  # type: ignore
 
       if result:
         # Clean up reservation metadata
@@ -241,7 +241,7 @@ class AssetLockManager:
         # Remove from protocol locks tracking
         if protocol_run_id:
           protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
-          await self._redis_client.srem(protocol_locks_key, lock_key) # type: ignore
+          await self._redis_client.srem(protocol_locks_key, lock_key)  # type: ignore
 
         logger.info(
           "Asset lock released: %s (reservation %s)",
@@ -284,7 +284,7 @@ class AssetLockManager:
 
     try:
       # Get all locks held by this protocol
-      lock_keys = await self._redis_client.smembers(protocol_locks_key) # type: ignore
+      lock_keys = await self._redis_client.smembers(protocol_locks_key)  # type: ignore
 
       for lock_key in lock_keys:
         try:
@@ -498,6 +498,7 @@ class AssetLockManager:
 
     Returns:
         Dictionary with system status information
+
     """
     if not self._redis_client:
       return {"error": "Redis client not initialized"}

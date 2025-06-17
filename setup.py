@@ -50,6 +50,7 @@ extras_dev = (
     "pylint",
     "mypy",
     "responses",
+    "freezegun",
   ]
 )
 
