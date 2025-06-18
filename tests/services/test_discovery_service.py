@@ -162,6 +162,7 @@ class TestProtocolDiscoveryService:
     """Test the full discover and upsert flow, including registry updates."""
     # Manually populate the registry as the decorator would
     decorated_def = FunctionProtocolDefinitionModel(
+      accession_id=uuid.uuid4(),
       name="decorated_transfer",
       version="1.1.0",
       source_file_path="protocols/decorated_protocol.py",

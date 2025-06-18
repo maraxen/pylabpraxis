@@ -99,7 +99,7 @@ class Workcell:
     return all_machines_dict
 
   @property
-  def asset_accession_ids(self) -> list[str]:
+  def asset_keys(self) -> list[str]:
     """Returns a list of all asset names (machines and resources)."""
     return [getattr(child, "name", str(child.__hash__())) for child in self.children]
 
@@ -179,7 +179,7 @@ class Workcell:
 
   def __contains__(self, item: str) -> bool:
     """Check if an asset with the given name exists in the workcell."""
-    return item in self.asset_accession_ids
+    return item in self.asset_keys
 
   def __getitem__(self, key: str) -> dict:
     """Get the asset category by name."""
