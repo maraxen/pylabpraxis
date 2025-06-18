@@ -146,9 +146,7 @@ class ProtocolScheduler:
       deck_asset_requirement = AssetRequirementModel(
         accession_id=uuid7(),
         name=protocol_def_orm.deck_param_name,
-        type_hint_str="Deck",
-        actual_type_str="Deck",
-        fqn="pylabrobot.resources.Deck",  # Generic deck FQN
+        fqn="pylabrobot.resources.Deck",
         optional=False,
         constraints=AssetConstraintsModel(),
         location_constraints=LocationConstraintsModel(),

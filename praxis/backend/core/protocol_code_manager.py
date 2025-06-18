@@ -443,12 +443,11 @@ class ProtocolCodeManager:
         module_path_to_add_for_sys_path,
       )
 
-      # Update the Pydantic definition with the DB ID if needed
       if protocol_def_orm.accession_id and (
-        not pydantic_def.db_accession_id
-        or pydantic_def.db_accession_id != protocol_def_orm.accession_id
+        not pydantic_def.accession_id
+        or pydantic_def.accession_id != protocol_def_orm.accession_id
       ):
-        pydantic_def.db_accession_id = protocol_def_orm.accession_id  # type: ignore[assignment]
+        pydantic_def.accession_id = protocol_def_orm.accession_id
         logger.debug(
           "Updated Pydantic definition DB ID for '%s' to %s",
           pydantic_def.name,

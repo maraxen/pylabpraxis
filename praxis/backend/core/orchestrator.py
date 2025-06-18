@@ -138,7 +138,7 @@ class Orchestrator:
     self,
     db_session: AsyncSession,
     protocol_pydantic_def: FunctionProtocolDefinitionModel,
-    user_input_params: Dict[str, Any],
+    input_parameters: Dict[str, Any],
     praxis_state: PraxisState,
     workcell_view: WorkcellView,
     protocol_run_accession_id: uuid.UUID,
@@ -155,8 +155,8 @@ class Orchestrator:
       if param_meta.name == protocol_pydantic_def.state_param_name:
         continue
 
-      if param_meta.name in user_input_params:
-        final_args[param_meta.name] = user_input_params[param_meta.name]
+      if param_meta.name in input_parameters:
+        final_args[param_meta.name] = input_parameters[param_meta.name]
         logger.debug("Using user input for param '%s'.", param_meta.name)
       elif not param_meta.optional:
         raise ValueError(
@@ -203,7 +203,7 @@ class Orchestrator:
           "ORCH-ACQUIRE: Acquiring asset '%s' (Type: '%s', Optional: %s) "
           "for run '%s'.",
           asset_req_model.name,
-          asset_req_model.actual_type_str,
+          asset_req_model.fqn,
           asset_req_model.optional,
           protocol_run_accession_id,
         )
@@ -260,7 +260,7 @@ class Orchestrator:
       protocol_pydantic_def.preconfigure_deck and protocol_pydantic_def.deck_param_name
     ):
       deck_param_name = protocol_pydantic_def.deck_param_name
-      deck_accession_identifier_from_user = user_input_params.get(deck_param_name)
+      deck_accession_identifier_from_user = input_parameters.get(deck_param_name)
 
       if deck_accession_identifier_from_user is None and not next(
         (
@@ -326,7 +326,7 @@ class Orchestrator:
   async def execute_protocol(
     self,
     protocol_name: str,
-    user_input_params: Optional[Dict[str, Any]] = None,
+    input_parameters: Optional[Dict[str, Any]] = None,
     initial_state_data: Optional[Dict[str, Any]] = None,
     protocol_version: Optional[str] = None,
     commit_hash: Optional[str] = None,
@@ -351,7 +351,7 @@ class Orchestrator:
       RuntimeError: If there is an error during protocol execution or preparation.
 
     """
-    user_input_params = user_input_params or {}
+    input_parameters = input_parameters or {}
     initial_state_data = initial_state_data or {}
     run_accession_id = uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -361,7 +361,7 @@ class Orchestrator:
       run_accession_id,
       protocol_name,
       start_iso_timestamp,
-      user_input_params,
+      input_parameters,
       initial_state_data,
     )
 
@@ -393,7 +393,7 @@ class Orchestrator:
           run_accession_id=run_accession_id,
           top_level_protocol_definition_accession_id=protocol_def_accession_id_for_error_run,
           status=ProtocolRunStatusEnum.FAILED,
-          input_parameters_json=json.dumps(user_input_params),
+          input_parameters_json=json.dumps(input_parameters),
           initial_state_json=json.dumps(initial_state_data),
         )
         await db_session.flush()
@@ -417,7 +417,7 @@ class Orchestrator:
         run_accession_id=run_accession_id,
         top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
         status=ProtocolRunStatusEnum.PREPARING,
-        input_parameters_json=json.dumps(user_input_params),
+        input_parameters_json=json.dumps(input_parameters),
         initial_state_json=json.dumps(initial_state_data),
       )
       await db_session.flush()
@@ -490,7 +490,7 @@ class Orchestrator:
         ) = await self._prepare_arguments(
           db_session=db_session,
           protocol_pydantic_def=protocol_pydantic_def,
-          user_input_params=user_input_params,
+          input_parameters=input_parameters,
           praxis_state=praxis_state,
           workcell_view=workcell_view_for_protocol,
           protocol_run_accession_id=run_accession_id,
@@ -905,7 +905,7 @@ class Orchestrator:
         ) = await self._prepare_arguments(
           db_session=db_session,
           protocol_pydantic_def=protocol_pydantic_def,
-          user_input_params=user_input_params,
+          input_parameters=user_input_params,
           praxis_state=praxis_state,
           workcell_view=workcell_view_for_protocol,
           protocol_run_accession_id=run_accession_id,

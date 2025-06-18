@@ -252,7 +252,7 @@ serialized_args = serialize_arguments(args, kwargs)
         ParameterMetadataModel(name="volume", type_hint_str="float", optional=False),
     ],
     assets=[
-        AssetRequirementModel(name="lh", actual_type_str="LiquidHandler", optional=False),
+        AssetRequirementModel(name="lh", optional=False),
     ]
 )
 async def my_protocol(

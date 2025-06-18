@@ -45,6 +45,7 @@ from praxis.backend.utils.run_control import (
   clear_control_command,
   get_control_command,
 )
+from praxis.backend.utils.uuid import uuid7
 
 praxis_run_context_cv: contextvars.ContextVar[PraxisRunContext] = (
   contextvars.ContextVar("praxis_run_context")
@@ -99,8 +100,14 @@ def is_pylabrobot_resource(obj_type: Any) -> bool:
   return False
 
 
-def get_actual_type_str_from_hint(type_hint: Any) -> str:
-  """Get the actual type string from a type hint."""
+def fqn_from_hint(type_hint: Any) -> str:
+  """Get the fully qualified name of a type hint.
+
+  For built-in types, this returns just the type name (e.g., "int"), not "builtins.int".
+  For types from the "praxis." namespace, returns the fully qualified name.
+  For Union or Optional types, returns the FQN of the non-None type(s).
+  For generics, returns the FQN of the generic type.
+  """
   if type_hint == inspect.Parameter.empty:
     return "Any"
   actual_type = type_hint
@@ -108,14 +115,11 @@ def get_actual_type_str_from_hint(type_hint: Any) -> str:
   args = get_args(type_hint)
   if origin is Union and type(None) in args:
     non_none_args = [arg for arg in args if arg is not type(None)]
-    if len(non_none_args) == 1:
-      actual_type = non_none_args[0]
-    else:  # pragma: no cover
-      actual_type = non_none_args[0] if non_none_args else type_hint
-
   if hasattr(actual_type, "__name__"):
     module = getattr(actual_type, "__module__", "")
-    if module.startswith("praxis.") or module == "builtins":
+    if isinstance(module, str) and (
+      module.startswith("praxis.") or module == "builtins"
+    ):
       return (
         f"{module}.{actual_type.__name__}"
         if module and module != "builtins"
@@ -125,7 +129,7 @@ def get_actual_type_str_from_hint(type_hint: Any) -> str:
   return str(actual_type)
 
 
-def serialize_type_hint_str(type_hint: Any) -> str:
+def serialize_type_hint(type_hint: Any) -> str:
   """Serialize a type hint to a string representation."""
   if type_hint == inspect.Parameter.empty:
     return "Any"
@@ -206,7 +210,7 @@ async def protocol_function(
       is_optional_param = (
         get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)
       ) or (param_obj.default is not inspect.Parameter.empty)
-      actual_type_cleaned_str = get_actual_type_str_from_hint(param_type_hint)
+      fqn = fqn_from_hint(param_type_hint)
       param_meta_entry = actual_param_metadata.get(param_name_sig, {})
       p_description = param_meta_entry.get("description")
       p_constraints = param_meta_entry.get("constraints_json", {})
@@ -217,8 +221,8 @@ async def protocol_function(
 
       common_model_args = {
         "name": param_name_sig,
-        "type_hint_str": serialize_type_hint_str(param_type_hint),
-        "actual_type_str": actual_type_cleaned_str,
+        "type_hint": serialize_type_hint(param_type_hint),
+        "fqn": fqn,
         "optional": is_optional_param,
         "default_value_repr": repr(param_obj.default)
         if param_obj.default is not inspect.Parameter.empty
@@ -237,11 +241,11 @@ async def protocol_function(
 
       if param_name_sig == state_param_name:
         is_state_type_match = (
-          actual_type_cleaned_str
-          == "praxis.backend.protocol_core.definitions.PraxisState"
-          or actual_type_cleaned_str == "PraxisState"
+          fqn == "PraxisState"
+          or fqn == "praxis.backend.core.definitions.PraxisState"
+          or fqn == "PraxisState"
         )
-        is_dict_type_match = actual_type_cleaned_str == "dict"
+        is_dict_type_match = fqn == "dict"
         found_state_param_details = {
           "name": param_name_sig,
           "expects_praxis_state": is_state_type_match,
@@ -275,6 +279,7 @@ async def protocol_function(
       )
 
     protocol_definition = FunctionProtocolDefinitionModel(
+      accession_id=uuid7(),
       name=resolved_name,
       version=version,
       description=(description or inspect.getdoc(func) or "No description provided."),

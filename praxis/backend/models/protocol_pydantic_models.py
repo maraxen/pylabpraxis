@@ -171,7 +171,7 @@ class AssetRequirementModel(BaseModel):
   accession_id: UUID7
   name: str
   fqn: str
-  optional: bool
+  optional: bool = False
   default_value_repr: Optional[str] = None
   description: Optional[str] = None
   constraints: AssetConstraintsModel = Field(default_factory=AssetConstraintsModel)
@@ -271,6 +271,7 @@ class FunctionProtocolDefinitionModel(BaseModel):
   execution behavior, categorization, and inferred parameters and assets.
   """
 
+  accession_id: uuid.UUID
   name: str
   version: str = "0.1.0"
   description: Optional[str] = None
@@ -295,8 +296,6 @@ class FunctionProtocolDefinitionModel(BaseModel):
 
   parameters: List[ParameterMetadataModel] = Field(default_factory=list)
   assets: List[AssetRequirementModel] = Field(default_factory=list)
-
-  db_accession_id: Optional[UUID7] = None
 
   class Config:
     """Pydantic configuration for FunctionProtocolDefinitionModel."""

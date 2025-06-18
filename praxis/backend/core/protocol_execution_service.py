@@ -101,7 +101,7 @@ class ProtocolExecutionService:
 
     return await self.orchestrator.execute_protocol(
       protocol_name=protocol_name,
-      user_input_params=user_input_params,
+      input_parameters=user_input_params,
       initial_state_data=initial_state_data,
       protocol_version=protocol_version,
       commit_hash=commit_hash,
