@@ -397,7 +397,7 @@ async def _process_position_definitions(
 
 async def create_deck_position_definitions(
   db: AsyncSession,
-  deck_type_definition_accession_id: int,
+  deck_type_definition_accession_id: uuid.UUID,
   new_positions_data: List[Dict[str, Any]],
 ) -> List[DeckPositionDefinitionOrm]:
   """Add multiple new position definitions to an existing deck type definition.
@@ -543,7 +543,7 @@ async def create_deck_position_definitions(
 
 async def update_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_accession_id: int,
+  deck_type_definition_accession_id: uuid.UUID,
   name: str,
   location_x_mm: Optional[float] = None,
   location_y_mm: Optional[float] = None,
@@ -666,7 +666,7 @@ async def update_deck_position_definition(
 
 async def delete_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_accession_id: int,
+  deck_type_definition_accession_id: uuid.UUID,
   name: str,
 ) -> None:
   """Delete a specific position definition from a deck type definition.

@@ -296,6 +296,7 @@ class AssetDefinitionOrm(Base):
   protocol_definition = relationship(
     "FunctionProtocolDefinitionOrm", back_populates="assets"
   )
+  # TODO: link to resource and machine definitions if needed
 
   __table_args__ = (
     UniqueConstraint(

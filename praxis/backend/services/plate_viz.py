@@ -1,5 +1,7 @@
 """Service layer for Function Data Output management.
 
+praxis.backend.services.plate_viz
+
 This module provides comprehensive CRUD operations and specialized functions for
 managing data outputs from protocol function calls, with support for resource
 attribution, spatial context, and data visualization.

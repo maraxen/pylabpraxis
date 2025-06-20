@@ -14,6 +14,7 @@ Key Features:
 """
 
 import enum
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
@@ -99,13 +100,15 @@ class FunctionDataOutputOrm(Base):
 
   __tablename__ = "function_data_outputs"
 
-  accession_id: Mapped[UUID] = mapped_column(UUID, primary_key=True, nullable=False)
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, nullable=False
+  )
 
-  function_call_log_accession_id: Mapped[UUID] = mapped_column(
+  function_call_log_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("function_call_logs.accession_id"), nullable=False, index=True
   )
 
-  protocol_run_accession_id: Mapped[UUID] = mapped_column(
+  protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("protocol_runs.accession_id"), nullable=False, index=True
   )
 
@@ -267,13 +270,15 @@ class WellDataOutputOrm(Base):
 
   __tablename__ = "well_data_outputs"
 
-  accession_id: Mapped[UUID] = mapped_column(UUID, primary_key=True, nullable=False)
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, nullable=False
+  )
 
-  function_data_output_accession_id: Mapped[UUID] = mapped_column(
+  function_data_output_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("function_data_outputs.accession_id"), nullable=False, index=True
   )
 
-  plate_resource_instance_accession_id: Mapped[UUID] = mapped_column(
+  plate_resource_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("resource_instances.accession_id"), nullable=False, index=True
   )
 

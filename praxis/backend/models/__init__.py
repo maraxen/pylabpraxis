@@ -116,6 +116,30 @@ from .resource_pydantic_models import (
   ResourceInventoryItemCount,
   ResourceInventoryReagentItem,
 )
+from .scheduler_orm import (
+  AssetReservationOrm,
+  AssetReservationStatusEnum,
+  ScheduleEntryOrm,
+  ScheduleHistoryOrm,
+  ScheduleStatusEnum,
+)
+from .scheduler_pydantic import (
+  ScheduleEntryStatus,
+  ResourceReservationResponse,
+  ResourceReservationStatus,
+  ResourceRequirementRequest,
+  ScheduleProtocolRequest,
+  CancelScheduleRequest,
+  ScheduleEntryResponse,
+  ScheduleHistoryResponse,
+  ScheduleAnalysisResponse,
+  SchedulerSystemStatusResponse,
+  ScheduleListRequest,
+  ScheduleListResponse,
+  AssetAvailabilityResponse,
+  SchedulePriorityUpdateRequest,
+  SchedulerMetricsResponse,
+)
 from .user_management_orm import UserOrm
 from .workcell_orm import WorkcellOrm, WorkcellStatusEnum
 from .workcell_pydantic_models import (
@@ -224,4 +248,26 @@ __all__ = [
   "DataSearchFilters",
   "ProtocolRunDataSummary",
   "RuntimeAssetRequirement",
+  # Scheduler Models
+  "ScheduleEntryStatus",
+  "ResourceReservationStatus",
+  "ResourceReservationResponse",
+  "ResourceRequirementRequest",
+  "ScheduleProtocolRequest",
+  "CancelScheduleRequest",
+  "ScheduleEntryResponse",
+  "ScheduleHistoryResponse",
+  "ScheduleAnalysisResponse",
+  "SchedulerSystemStatusResponse",
+  "ScheduleListRequest",
+  "ScheduleListResponse",
+  "AssetAvailabilityResponse",
+  "SchedulePriorityUpdateRequest",
+  "SchedulerMetricsResponse",
+  # Scheduler ORM
+  "AssetReservationOrm",
+  "AssetReservationStatusEnum",
+  "ScheduleEntryOrm",
+  "ScheduleHistoryOrm",
+  "ScheduleStatusEnum",
 ]

@@ -88,7 +88,6 @@ While `PraxisState` handles run-specific serializable data and the database hold
 
 ### Key Roles:
 
--   **Representing Complex Entities**: Objects like `WorkcellDefinition` (which includes the deck layout, device configurations, and their spatial relationships), `ProtocolState` (tracking detailed step-by-step progress, parameters, and intermediate complex data), and `AssetManagerState` (tracking locations, properties, and status of all assets in the workcell) are typically rich Python objects.
 -   **Data Validation and Structure**: Pydantic models ensure these complex state objects adhere to defined schemas, have validated data, and provide clear structures.
 -   **Operational Hub**: Services like the `Orchestrator` and `AssetManager` hold and manipulate these in-memory objects to reflect the current understanding of the system. For example, the `Orchestrator` might hold the `ProtocolState` for the currently executing protocol, and the `AssetManager` would manage the state of assets on the deck.
 -   **Synchronization with Persistent Stores**: These in-memory objects are often initialized from the database (e.g., loading a `WorkcellDefinition`). Changes to them during runtime (e.g., an asset's location on the deck changing) are then persisted back to the database and may trigger updates to `PraxisState` if relevant for cross-step communication.

@@ -51,6 +51,7 @@ extras_dev = (
     "mypy",
     "responses",
     "freezegun",
+    "fakeredis",
   ]
 )
 

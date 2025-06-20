@@ -198,3 +198,103 @@ Refer to `CONTRIBUTING.md` for more details on the development process.
 ---
 
 **Disclaimer:** PyLabPraxis is not officially endorsed or supported by any robot manufacturer. If you use a firmware driver such as the STAR driver provided here, you do so at your own risk. Usage of a firmware driver such as STAR may invalidate your warranty. Please contact us with any questions.
+
+graph LR
+    %% Define reusable styles for component types
+    classDef service fill:#f9f,stroke:#333,stroke-width:2px
+    classDef entrypoint fill:#bbf,stroke:#333,stroke-width:2px
+    classDef dataService fill:#ddf,stroke:#333,stroke-width:2px
+    classDef dataModel fill:#eef,stroke:#333,stroke-width:2px
+    classDef runtimeState fill:#ffd,stroke:#333,stroke-width:2px
+    classDef externalDB fill:#afa,stroke:#333,stroke-width:2px
+    classDef externalService fill:#ffc,stroke:#333,stroke-width:2px
+    classDef externalLib fill:#cfa,stroke:#333,stroke-width:2px
+    classDef codeArtifact fill:#e0e0e0,stroke:#333,stroke-width:2px
+
+    %% Frontend Subgraph
+    subgraph Frontend
+        Flutter_Frontend["Flutter Frontend<br/>User Interface"]
+    end
+
+    %% Backend Services Subgraph
+    subgraph Backend
+        direction TB
+
+        subgraph "Entry & Orchestration"
+            API_Layer("FastAPI API Layer")
+            ProtocolExecutionService("ProtocolExecutionService")
+            Orchestrator("Orchestrator")
+            ProtocolScheduler("ProtocolScheduler")
+            CeleryTasks("Celery Tasks")
+        end
+
+        subgraph "Core Logic & Runtimes"
+            WorkcellRuntime("WorkcellRuntime")
+            Workcell{{"Workcell PLR Objects"}}
+            AssetManager("AssetManager")
+            AssetLockManager("AssetLockManager")
+            PraxisRunContext("PraxisRunContext")
+        end
+
+        subgraph "Data & Discovery"
+            DataServices("Data Services")
+            Models("ORM & Pydantic Models")
+            ProtocolDiscoveryService("ProtocolDiscoveryService")
+            ProtocolCodeManager("ProtocolCodeManager")
+            ProtocolDecorators("@protocol_function")
+        end
+    end
+
+    %% External Services and Data Stores Subgraph
+    subgraph "External Dependencies"
+        direction TB
+        PostgreSQL("PostgreSQL")
+        Redis[("Redis Cache/Broker/Locks")]
+        Keycloak("Keycloak Auth")
+        PyLabRobotLib("PyLabRobot Library")
+        Protocol_Files(["Protocol Files"])
+        SMTP_Server("SMTP Server")
+    end
+
+    %% Apply Classes to Nodes
+    class Flutter_Frontend,API_Layer entrypoint
+    class ProtocolExecutionService,Orchestrator,ProtocolScheduler,CeleryTasks,WorkcellRuntime,AssetManager,AssetLockManager,ProtocolDiscoveryService,ProtocolCodeManager service
+    class DataServices dataService
+    class Models dataModel
+    class Workcell,PraxisRunContext runtimeState
+    class PostgreSQL externalDB
+    class Redis,Keycloak,SMTP_Server externalService
+    class PyLabRobotLib externalLib
+    class Protocol_Files,ProtocolDecorators codeArtifact
+
+
+    %% Define Connections
+    Flutter_Frontend -- "HTTP/REST & WebSockets" --> API_Layer
+    API_Layer -- "Handles Requests" --> ProtocolExecutionService
+    API_Layer -- "CRUD Operations" --> DataServices
+    API_Layer -- "Uses for Req/Res" --> Models
+    ProtocolExecutionService -- "Coordinates" --> Orchestrator
+    ProtocolExecutionService -- "Coordinates" --> ProtocolScheduler
+    ProtocolScheduler -- "Queues Task" --> CeleryTasks
+    CeleryTasks -- "Executes via" --> Orchestrator
+    Orchestrator -- "Executes Code From" --> Protocol_Files
+    Orchestrator -- "Controls Hardware via" --> WorkcellRuntime
+    WorkcellRuntime -- "Controls Hardware via" --> PyLabRobotLib
+    WorkcellRuntime -- "Manages Live Objects" --> Workcell
+    Orchestrator -- "Uses" --> AssetManager
+    ProtocolScheduler -- "Checks Locks" --> AssetLockManager
+    AssetManager -- "Uses" --> AssetLockManager
+    AssetManager -- "Interacts with" --> WorkcellRuntime
+    AssetLockManager -- "Uses" --> Redis
+    Orchestrator -- "Creates & Passes" --> PraxisRunContext
+    Orchestrator -- "Logs via" --> DataServices
+    DataServices -- "Accesses" --> PostgreSQL
+    DataServices -- "Uses" --> Models
+    PraxisRunContext -- "Carries State from" --> Redis
+    ProtocolDiscoveryService -- "Scans" --> Protocol_Files
+    ProtocolDiscoveryService -- "Uses" --> ProtocolCodeManager
+    ProtocolDiscoveryService -- "Finds" --> ProtocolDecorators
+    ProtocolDiscoveryService -- "Writes Metadata to" --> DataServices
+    API_Layer -- "Authenticates via" --> Keycloak
+    Orchestrator -- "Sends Notifications via" ---> SMTP_Server
+

@@ -680,8 +680,7 @@ async def upsert_function_protocol_definition(
       logger.debug("%s Updating existing asset: %s.", log_prefix, asset_model.name)
 
     asset_orm.name = asset_model.name
-    asset_orm.type_hint_str = asset_model.type_hint_str
-    asset_orm.actual_type_str = asset_model.actual_type_str
+    asset_orm.fqn = asset_model.fqn
     asset_orm.optional = asset_model.optional
     asset_orm.default_value_repr = asset_model.default_value_repr
     asset_orm.description = asset_model.description

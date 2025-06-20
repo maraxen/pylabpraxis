@@ -294,51 +294,6 @@ async def delete_workcell(db: AsyncSession, workcell_accession_id: uuid.UUID) ->
     raise e
 
 
-async def read_or_create_workcell_orm(
-  db_session: AsyncSession,
-  workcell_name: str,
-  initial_state: Optional[Dict[str, Any]] = None,
-) -> WorkcellOrm:
-  """Retrieve a WorkcellOrm by name, or create it if it doesn't exist.
-
-  Args:
-    db_session (AsyncSession): The database session.
-    workcell_name (str): The name of the workcell to retrieve or create.
-    initial_state (Optional[Dict[str, Any]]): Initial state JSON to set if creating.
-
-  Returns:
-    WorkcellOrm: The retrieved or newly created WorkcellOrm.
-
-  Raises:
-    Exception: If there is an error during the database operation.
-
-  """
-  try:
-    stmt = select(WorkcellOrm).filter_by(name=workcell_name)
-    result = await db_session.execute(stmt)
-    workcell_orm = result.scalar_one_or_none()
-
-    if workcell_orm:
-      logger.info(f"WorkcellOrm '{workcell_name}' found in DB.")
-      return workcell_orm
-    else:
-      logger.info(f"WorkcellOrm '{workcell_name}' not found, creating new entry.")
-      new_workcell = WorkcellOrm(
-        id=uuid7(),
-        name=workcell_name,
-        latest_state_json=initial_state,
-      )
-      db_session.add(new_workcell)
-      await db_session.flush()
-      await db_session.refresh(new_workcell)
-      return new_workcell
-  except Exception as e:
-    logger.error(
-      f"Failed to get or create WorkcellOrm '{workcell_name}': {e}", exc_info=True
-    )
-    raise
-
-
 async def read_workcell_state(
   db_session: AsyncSession, workcell_accession_id: uuid.UUID
 ) -> Optional[Dict[str, Any]]:
