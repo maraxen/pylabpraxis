@@ -238,7 +238,9 @@ class WellDataOutputUpdate(BaseModel):
 
   data_value: Optional[float] = Field(None, description="Updated data value")
 
-  metadata_json: Optional[Dict[str, Any]] = Field(None, description="Updated metadata")
+  metadata_json: Optional[Dict[str, Any]] = Field(
+    None, description="Updated metadata"
+  )  # TODO: figure out how to integrate this
 
 
 class PlateDataVisualization(BaseModel):
