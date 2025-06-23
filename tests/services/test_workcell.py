@@ -1,3 +1,6 @@
+
+"""Test module for workcell service functions."""
+
 import uuid
 from datetime import datetime, timezone
 
