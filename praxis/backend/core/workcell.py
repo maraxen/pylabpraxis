@@ -10,9 +10,8 @@ It also provides a `WorkcellView` class, which acts as a secure proxy for protoc
 allowing them to access only the assets they have explicitly declared as required.
 """
 
-import asyncio
 import json
-from typing import Any, Dict, List, Optional, Self, Set, cast
+from typing import Any, List, Optional, Set, cast
 
 import inflection
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler

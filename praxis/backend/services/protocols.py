@@ -12,10 +12,10 @@ protocol run instances, and function call logs.
 import datetime
 import json
 import logging
+import uuid
 from typing import Dict, List, Optional, Union
 
-import uuid
-from sqlalchemy import desc, or_, select, update
+from sqlalchemy import desc, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload, selectinload

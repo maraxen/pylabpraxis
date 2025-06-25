@@ -51,6 +51,7 @@ class ProtocolExecutionService:
         workcell_runtime: WorkcellRuntime instance for live object management.
         scheduler: Optional ProtocolScheduler instance. If None, creates a new one.
         orchestrator: Optional Orchestrator instance. If None, creates a new one.
+
     """
     self.db_session_factory = db_session_factory
     self.asset_manager = asset_manager
@@ -94,6 +95,7 @@ class ProtocolExecutionService:
 
     Returns:
         The ProtocolRunOrm object representing the execution result.
+
     """
     logger.info(
       "Executing protocol '%s' immediately (bypassing scheduler)", protocol_name
@@ -136,6 +138,7 @@ class ProtocolExecutionService:
     Raises:
         ValueError: If protocol definition is not found.
         RuntimeError: If scheduling fails.
+
     """
     logger.info("Scheduling protocol '%s' for asynchronous execution", protocol_name)
 
@@ -198,6 +201,7 @@ class ProtocolExecutionService:
 
     Returns:
         Dictionary with run status information, or None if not found.
+
     """
     # Check scheduler status first
     schedule_status = await self.scheduler.get_schedule_status(protocol_run_id)
@@ -251,6 +255,7 @@ class ProtocolExecutionService:
 
     Returns:
         True if successfully cancelled, False otherwise.
+
     """
     logger.info("Cancelling protocol run %s", protocol_run_id)
 

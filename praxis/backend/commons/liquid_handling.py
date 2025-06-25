@@ -1,26 +1,35 @@
-from pylabrobot.liquid_handling import LiquidHandler
-from typing import Optional, Literal
-from pylabrobot.resources import (
-  TipRack, Container, Plate, TipSpot, ItemizedResource, Resource, Well
-)
 import warnings
+from typing import Literal, Optional
+
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.resources import (
+  Container,
+  ItemizedResource,
+  Plate,
+  Resource,
+  TipRack,
+  TipSpot,
+  Well,
+)
 
 from praxis.utils import (
-  type_check,
+  check_list_length,
   coerce_to_list,
   liquid_handler_setup_check,
-  check_list_length,
-  tip_mapping)
+  tip_mapping,
+  type_check,
+)
+
 
 async def split_along_columns(resources: list[Container]) -> list[list[Resource]]:
-  """
-  Splits a list of resources into sublists based on their column indices.
+  """Splits a list of resources into sublists based on their column indices.
 
   Args:
     resources (list[Resource]): The resources to split.
 
   Returns:
     list[list[Resource]]: The resources split into sublists based on their column indices.
+
   """
   if not all(isinstance(resources, Resource) for resource in resources):
     raise ValueError("Invalid well type.")
@@ -28,31 +37,34 @@ async def split_along_columns(resources: list[Container]) -> list[list[Resource]
     return [list(resource) for resource in resources]
   if all(isinstance(resource, Well) for resource in resources):
     columns = [(await parse_well_name(well))[0] for well in wells]
-  return [[well for column, well in zip(columns, wells) if column == i] for i in \
-    range(max(columns)+1)]
+  return [
+    [well for column, well in zip(columns, wells) if column == i]
+    for i in range(max(columns) + 1)
+  ]
 
 
-async def inspect_mix_parameters(mix_proportion: Optional[float],
-                                  mix_volumes: Optional[float | list[float]]) \
-                                  -> tuple[float | None, list[float] | None]:
-  """
-
-  """
+async def inspect_mix_parameters(
+  mix_proportion: Optional[float], mix_volumes: Optional[float | list[float]]
+) -> tuple[float | None, list[float] | None]:
+  """ """
   if mix_volumes is None and mix_proportion is None:
     mix_proportion = 0.5
   elif mix_volumes is not None and mix_proportion is not None:
     raise ValueError("Use either mix proportion or mix volumes, not both.")
-  mix_volumes =  [mix_volumes] if mix_volumes is not None \
-    and not isinstance(mix_volumes, list) else None
+  mix_volumes = (
+    [mix_volumes]
+    if mix_volumes is not None and not isinstance(mix_volumes, list)
+    else None
+  )
   return mix_proportion, mix_volumes
 
 
-async def generate_mix_volumes(volumes: list[float],
-                                mix_proportion: Optional[float],
-                                mix_volumes: Optional[list[float]] = None) -> list[float]:
-  """
-
-  """
+async def generate_mix_volumes(
+  volumes: list[float],
+  mix_proportion: Optional[float],
+  mix_volumes: Optional[list[float]] = None,
+) -> list[float]:
+  """ """
   if mix_volumes is None and mix_proportion is None:
     raise ValueError("Either mix_proportion or mix_volumes must be provided.")
   if mix_volumes is not None and mix_proportion is not None:
@@ -60,21 +72,23 @@ async def generate_mix_volumes(volumes: list[float],
   if mix_volumes is not None:
     return mix_volumes
   assert mix_proportion is not None, "Mix proportion must be provided."
-  return [v * mix_proportion * 10 for v in volumes] # * 10 for hamilton
+  return [v * mix_proportion * 10 for v in volumes]  # * 10 for hamilton
+
 
 @liquid_handler_setup_check
-async def transfer_with_mixing(liquid_handler: LiquidHandler,
-                sources: Container | list[Container],
-                targets: Container | list[Container],
-                volumes: float | list[float],
-                transfer_tips: TipSpot | TipRack | list[TipSpot] | list[TipRack],
-                mix_cycles: int | list[int] = 10,
-                return_tips: bool = True,
-                mix_proportion: Optional[float] = None,
-                mix_volumes: Optional[float | list[float]] = None,
-                map_tips: Optional[Literal["source", "target"]] = None) -> None:
-  """
-  Transfers liquid from source containers to target containers with mixing.
+async def transfer_with_mixing(
+  liquid_handler: LiquidHandler,
+  sources: Container | list[Container],
+  targets: Container | list[Container],
+  volumes: float | list[float],
+  transfer_tips: TipSpot | TipRack | list[TipSpot] | list[TipRack],
+  mix_cycles: int | list[int] = 10,
+  return_tips: bool = True,
+  mix_proportion: Optional[float] = None,
+  mix_volumes: Optional[float | list[float]] = None,
+  map_tips: Optional[Literal["source", "target"]] = None,
+) -> None:
+  """Transfers liquid from source containers to target containers with mixing.
 
   Args:
     liquid_handler (LiquidHandler): The liquid handler object used for the transfer.
@@ -101,56 +115,66 @@ async def transfer_with_mixing(liquid_handler: LiquidHandler,
     does not match.
     ValueError: If sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes are not of the
     correct types.
+
   """
-  mix_proportion, mix_volumes = await inspect_mix_parameters(mix_proportion, mix_volumes)
-  await coerce_to_list(
-    items=[sources, targets, volumes, transfer_tips, mix_cycles]
+  mix_proportion, mix_volumes = await inspect_mix_parameters(
+    mix_proportion, mix_volumes
   )
-  assert isinstance(transfer_tips, list) and isinstance(sources, list) and \
-    isinstance(targets, list) and isinstance(volumes, list) and isinstance(mix_cycles, list), \
-      "All arguments must be lists or coercible to lists."
-  mix_volumes = await generate_mix_volumes(volumes = volumes,
-                                          mix_proportion = mix_proportion,
-                                          mix_volumes = mix_volumes)
-  transfer_tips = await tip_mapping(tips=transfer_tips,
-                    sources=sources,
-                    targets=targets,
-                    map_tips=map_tips)
-  sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes = await check_list_length(
+  await coerce_to_list(items=[sources, targets, volumes, transfer_tips, mix_cycles])
+  assert (
+    isinstance(transfer_tips, list)
+    and isinstance(sources, list)
+    and isinstance(targets, list)
+    and isinstance(volumes, list)
+    and isinstance(mix_cycles, list)
+  ), "All arguments must be lists or coercible to lists."
+  mix_volumes = await generate_mix_volumes(
+    volumes=volumes, mix_proportion=mix_proportion, mix_volumes=mix_volumes
+  )
+  transfer_tips = await tip_mapping(
+    tips=transfer_tips, sources=sources, targets=targets, map_tips=map_tips
+  )
+  (
+    sources,
+    targets,
+    volumes,
+    transfer_tips,
+    mix_cycles,
+    mix_volumes,
+  ) = await check_list_length(
     items=[sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes],
     coerce_length=True,
-    target_length=len(transfer_tips)
+    target_length=len(transfer_tips),
   )
-  await type_check(items=[sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes],
-            types=[Container, Container, float, TipSpot, int, float, float],
-            in_list=True)
+  await type_check(
+    items=[sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes],
+    types=[Container, Container, float, TipSpot, int, float, float],
+    in_list=True,
+  )
   await liquid_handler.pick_up_tips(tip_spots=transfer_tips)
   await liquid_handler.aspirate(
-    resources=sources,
-    vols=volumes,
-    mix_cycles=mix_cycles,
-    mix_volumes=mix_volumes
+    resources=sources, vols=volumes, mix_cycles=mix_cycles, mix_volumes=mix_volumes
   )
   await liquid_handler.dispense(
-    resources=targets,
-    vols=volumes,
-    mix_cycles=mix_cycles,
-    mix_volumes=mix_volumes)
+    resources=targets, vols=volumes, mix_cycles=mix_cycles, mix_volumes=mix_volumes
+  )
   if return_tips:
     await liquid_handler.drop_tips(tip_spots=transfer_tips)
 
+
 @liquid_handler_setup_check
-async def transfer_with_mixing96(liquid_handler: LiquidHandler,
-                source: Plate, # ItemizedResource[Container], TODO: change to ItemizedResource once implemented with PLR
-                target: Plate, # ItemizedResource[Container], TODO: change to ItemizedResource once implemented with PLR
-                volume: float,
-                transfer_tips: TipRack,
-                mix_cycles: int = 10,
-                return_tips: bool = True,
-                mix_proportion: Optional[float] = None,
-                mix_volume: Optional[float] = None) -> None:
-  """
-  Transfers liquid from source containers to target containers with mixing.
+async def transfer_with_mixing96(
+  liquid_handler: LiquidHandler,
+  source: Plate,  # ItemizedResource[Container], TODO: change to ItemizedResource once implemented with PLR
+  target: Plate,  # ItemizedResource[Container], TODO: change to ItemizedResource once implemented with PLR
+  volume: float,
+  transfer_tips: TipRack,
+  mix_cycles: int = 10,
+  return_tips: bool = True,
+  mix_proportion: Optional[float] = None,
+  mix_volume: Optional[float] = None,
+) -> None:
+  """Transfers liquid from source containers to target containers with mixing.
 
   Args:
     liquid_handler (LiquidHandler): The liquid handler object used for the transfer.
@@ -177,28 +201,36 @@ async def transfer_with_mixing96(liquid_handler: LiquidHandler,
     does not match.
     ValueError: If sources, targets, volumes, transfer_tips, mix_cycles, mix_volumes are not of the
     correct types.
+
   """
   if mix_proportion is not None and mix_volume is not None:
-    warnings.warn("Mix proportion and volume are not currently supported for 96 head transfers. \
-      Ignoring.")
+    warnings.warn(
+      "Mix proportion and volume are not currently supported for 96 head transfers. \
+      Ignoring."
+    )
   # mix_proportion, mix_volume = await inspect_mix_parameters(mix_proportion, mix_volume)
   if any(isinstance(i, list) for i in [volume, transfer_tips, mix_cycles, mix_volume]):
     raise ValueError("All arguments must be single values for 96 head use, not lists.")
-  if not isinstance(source, ItemizedResource) or not isinstance(target, ItemizedResource):
+  if not isinstance(source, ItemizedResource) or not isinstance(
+    target, ItemizedResource
+  ):
     raise ValueError("Sources and targets must be ItemizedResource objects.")
   if not isinstance(transfer_tips, TipRack):
     raise ValueError("Transfer tips must be a TipRack object.")
   # mix_volume = mix_proportion * volume if mix_volume is None else mix_volume
-  await type_check(items=[source, target, volume, transfer_tips], #, mix_cycles, mix_volumes],
-            types=[ItemizedResource, ItemizedResource, float, TipRack], #, int, float],
-            in_list=False)
-  await liquid_handler.pick_up_tips96(tip_rack = transfer_tips)
-  await liquid_handler.aspirate96(resource = source, volume = volume)  # TODO: add mix_cycles to aspirate96 and dispense96 and allow for resource to be any container of appropriate size
-  await liquid_handler.dispense(resource = target, volume = volume)
+  await type_check(
+    items=[source, target, volume, transfer_tips],  # , mix_cycles, mix_volumes],
+    types=[ItemizedResource, ItemizedResource, float, TipRack],  # , int, float],
+    in_list=False,
+  )
+  await liquid_handler.pick_up_tips96(tip_rack=transfer_tips)
+  await liquid_handler.aspirate96(
+    resource=source, volume=volume
+  )  # TODO: add mix_cycles to aspirate96 and dispense96 and allow for resource to be any container of appropriate size
+  await liquid_handler.dispense(resource=target, volume=volume)
   if return_tips:
     await liquid_handler.drop_tips(tip_spots=transfer_tips)
 
 
 async def fast_optimal_transfer():
   pass
-

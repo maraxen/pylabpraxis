@@ -1,31 +1,30 @@
+"""Tests for the Well Data Output service layer."""
+
 import uuid
 from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import all required models
 from praxis.backend.models import (
+  DataOutputTypeEnum,
   FunctionCallLogOrm,
   FunctionDataOutputOrm,
   ProtocolRunOrm,
   ResourceInstanceOrm,
+  SpatialContextEnum,
   WellDataOutputCreate,
   WellDataOutputOrm,
   WellDataOutputUpdate,
-  DataOutputTypeEnum,
-  SpatialContextEnum,
 )
-
-# Import the service functions to be tested
 from praxis.backend.services import (
   create_well_data_output,
   create_well_data_outputs,
   create_well_data_outputs_from_flat_array,
+  delete_well_data_output,
   read_well_data_output,
   read_well_data_outputs,
   update_well_data_output,
-  delete_well_data_output,
 )
 
 # --- Pytest Fixtures ---
@@ -33,7 +32,7 @@ from praxis.backend.services import (
 
 @pytest.fixture
 def mock_plate_parsing_helpers(mocker):
-  """Mocks the helper functions for plate parsing and dimension reading."""
+  """Mock the helper functions for plate parsing and dimension reading."""
   mocker.patch(
     "praxis.backend.services.function_output_data.parse_well_name", return_value=(0, 0)
   )

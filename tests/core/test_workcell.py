@@ -1,20 +1,13 @@
 # pylint: disable=redefined-outer-name, protected-access
 """Unit tests for the Workcell and WorkcellView classes."""
 
-import json
-import uuid
-from unittest.mock import MagicMock, patch
-from typing import Any
-
 import pytest
-from pylabrobot.resources import Resource
 from pylabrobot.machines import Machine
 from pylabrobot.machines.backends import MachineBackend
+from pylabrobot.resources import Resource
 
-from praxis.backend.core.workcell import Workcell, WorkcellView
+from praxis.backend.core.workcell import Workcell
 from praxis.backend.models import (
-  AssetRequirementModel,
-  MachineCategoryEnum,
   ResourceCategoryEnum,
 )
 
@@ -23,12 +16,15 @@ class MockBackend(MachineBackend):
   """A mock backend for testing."""
 
   def __init__(self):
+    """Initialize the mock backend."""
     super().__init__()
 
   async def setup(self):
+    """Set up the mock backend (no-op)."""
     pass
 
   async def stop(self):
+    """Stop the mock backend (no-op)."""
     pass
 
 
@@ -39,23 +35,30 @@ def mock_backend() -> MockBackend:
 
 
 class MockPureMachine(Machine):
+  """A mock machine that is not a resource."""
+
   def __init__(self, backend: MockBackend):
+    """Initialize the mock pure machine with a backend."""
     super().__init__(backend=backend)
 
 
-# Case 2: A pure Resource that is NOT a machine.
 class MockPureResource(Resource):
+  """A mock resource that is not a machine."""
+
   def __init__(self, name: str, category: str = "plates", **kwargs):
+    """Initialize the mock pure resource with a name and category."""
     super().__init__(
       name=name, size_x=10, size_y=10, size_z=10, category=category, **kwargs
     )
 
 
-# Case 3: A Machine that IS ALSO a Resource.
 class MockMachineResource(Resource, Machine):
+  """A mock asset that is both a machine and a resource."""
+
   def __init__(
     self, name: str, backend: MockBackend, category: str = "robot_arms", **kwargs
   ):
+    """Initialize the mock machine resource with a name, backend, and category."""
     Resource.__init__(
       self, name=name, size_x=1, size_y=1, size_z=1, category=category, **kwargs
     )
@@ -63,9 +66,11 @@ class MockMachineResource(Resource, Machine):
     self.state = "default"
 
   def serialize_state(self) -> dict:
+    """Serialize the state of the mock machine resource."""
     return {"name": self.name, "state": self.state}
 
   def load_state(self, state: dict):
+    """Load the state into the mock machine resource."""
     self.state = state.get("state", "loaded_default")
 
 

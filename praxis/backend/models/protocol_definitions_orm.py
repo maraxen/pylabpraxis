@@ -12,10 +12,10 @@ run, including their status, arguments, and return values.
 """
 
 import enum
+import uuid
 from datetime import datetime
 from typing import Optional
 
-import uuid
 from sqlalchemy import (
   JSON,
   UUID,
@@ -135,8 +135,10 @@ class FileSystemProtocolSourceOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FileSystemProtocolSourceOrm instance."""
-    return f"<FileSystemProtocolSourceOrm(id={self.accession_id}, name='{self.name}', base_path=\
+    return (
+      f"<FileSystemProtocolSourceOrm(id={self.accession_id}, name='{self.name}', base_path=\
       '{self.base_path}')>"
+    )
 
 
 class FunctionProtocolDefinitionOrm(Base):
@@ -188,7 +190,7 @@ class FunctionProtocolDefinitionOrm(Base):
     cascade="all, delete-orphan",
   )
   assets = relationship(
-    "AssetDefinitionOrm",
+    "AssetRequirementOrm",
     back_populates="protocol_definition",
     cascade="all, delete-orphan",
   )
@@ -269,14 +271,14 @@ class ParameterDefinitionOrm(Base):
       protocol_accession_id={self.protocol_definition_accession_id})>"
 
 
-class AssetDefinitionOrm(Base):
+class AssetRequirementOrm(Base):
   """SQLAlchemy ORM model for defining assets required by a function protocol.
 
   This model describes the assets (e.g., resource, machines) a protocol function
   expects, including their names, type hints, and descriptions.
   """
 
-  __tablename__ = "asset_definitions"
+  __tablename__ = "protocol_asset_requirements"
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, ForeignKey("function_protocol_definitions.accession_id"), nullable=False
@@ -294,7 +296,7 @@ class AssetDefinitionOrm(Base):
     "constraints", JSON, nullable=True
   )
   protocol_definition = relationship(
-    "FunctionProtocolDefinitionOrm", back_populates="assets"
+    "FunctionProtocolDefinitionOrm", back_populates="asset_requirements"
   )
   # TODO: link to resource and machine definitions if needed
 

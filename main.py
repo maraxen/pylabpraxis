@@ -1,26 +1,27 @@
+"""Core backend application for PyLabPraxis."""
+
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Awaitable, Optional
+from typing import AsyncGenerator, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-# Praxis specific imports
 from praxis.backend.api import function_data_outputs, protocols, resources, workcell_api
 from praxis.backend.configure import PraxisConfiguration
-from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.asset_manager import AssetManager
+from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-
-# New DB related imports
 from praxis.backend.services.praxis_orm_service import PraxisDBService
 from praxis.backend.utils.db import (
   KEYCLOAK_DSN_FROM_CONFIG,
-  async_engine as praxis_async_engine,
-  init_praxis_db_schema,
-  get_async_db_session,
   AsyncSessionLocal,
+  get_async_db_session,
+  init_praxis_db_schema,
+)
+from praxis.backend.utils.db import (
+  async_engine as praxis_async_engine,
 )
 
 # --- Configuration and Logging Setup ---
@@ -38,9 +39,26 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-  """
-  Manages application startup and shutdown events.
-  Initializes database connections, services, and the main orchestrator.
+  """Manage application startup and shutdown events.
+
+  Initialize database connections, services, and the main orchestrator.
+
+  This function is used to set up the application state and ensure that all
+  necessary components are ready before the application starts handling requests.
+
+  After the application is done, it will clean up resources such as closing
+  database connections and disposing of the SQLAlchemy engine.
+
+  Args:
+    app: The FastAPI application instance.
+
+  Yields:
+    None.
+
+  Raises:
+    Exception: If any error occurs during the startup sequence, it will log the error
+    and re-raise the exception to prevent the application from starting.
+
   """
   db_service_instance: Optional[PraxisDBService] = None
   orchestrator: Optional[Orchestrator] = None
@@ -49,12 +67,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
   try:
     logger.info("Application startup sequence initiated...")
 
-    # 1. Initialize Praxis Database Schema (SQLAlchemy ORM tables)
     logger.info("Initializing Praxis database schema...")
     await init_praxis_db_schema()
     logger.info("Praxis database schema initialization complete.")
 
-    # 2. Initialize PraxisDBService (handles Praxis DB via SQLAlchemy & Keycloak via asyncpg)
     logger.info("Initializing PraxisDBService...")
     assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
     db_service_instance = await PraxisDBService.initialize(
@@ -67,7 +83,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     workcell_runtime = WorkcellRuntime(
       db_session_factory=AsyncSessionLocal,
       workcell_name="praxis_workcell",
-      workcell_save_file="workcell_state.json",  # TODO: have these populated from config
+      workcell_save_file="workcell_state.json",  # TODO: populate from config
     )
     logger.info("WorkcellRuntime initialized successfully.")
     db_session = await anext(get_async_db_session())
@@ -93,7 +109,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield  # The application is now running
 
   except Exception as e:
-    logger.error(f"Error during application startup: {str(e)}", exc_info=True)
+    logger.exception("Error during application startup: %s", str(e))
     # In a production scenario, you might want to exit or handle this more gracefully
     raise
   finally:
@@ -112,13 +128,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
       logger.info("Application shutdown complete.")
     except Exception as e:
-      logger.error(f"Error during application shutdown: {str(e)}", exc_info=True)
+      logger.exception("Error during application shutdown: %s", str(e))
 
 
-# --- FastAPI App Initialization ---
 app = FastAPI(
   title="PyLabPraxis Backend",
-  description="A comprehensive Python-based platform to automate and manage laboratory workflows.",
+  description="A comprehensive Python-based platform to automate and manage laboratory \
+    workflows.",
   version="1.0.0",
   lifespan=lifespan,
 )
@@ -127,8 +143,8 @@ app = FastAPI(
 app.add_middleware(
   CORSMiddleware,
   allow_origins=[
-    "http://localhost:5173",  # Default Vite dev port
-    "http://localhost:4200",  # Default Angular dev port
+    "http://localhost:5173",
+    "http://localhost:4200",  # TODO: ensure this is the correct URL for your frontend
   ],
   allow_credentials=True,
   allow_methods=["*"],
@@ -150,10 +166,13 @@ app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
   """Middleware to log incoming requests and their response status codes."""
-  logger.info(f"Request: {request.method} {request.url.path}")
+  logger.info("Request: %s %s", request.method, request.url.path)
   response: Response = await call_next(request)
   logger.info(
-    f"Response: {request.method} {request.url.path} - Status {response.status_code}"
+    "Response: %s %s - Status %s",
+    request.method,
+    request.url.path,
+    response.status_code,
   )
   return response
 

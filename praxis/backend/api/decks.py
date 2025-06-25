@@ -5,10 +5,10 @@
 
 from functools import partial
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 # Import the service layer, aliased as 'svc' for convenience
 import praxis.backend.services as svc
@@ -21,9 +21,6 @@ from praxis.backend.models import (
   DeckInstanceCreate,
   DeckInstanceResponse,
   DeckInstanceUpdate,
-  DeckPositionDefinitionCreate,
-  DeckPositionDefinitionResponse,
-  DeckPositionDefinitionUpdate,
   DeckPositionResourceCreate,
   DeckPositionResourceResponse,
   DeckTypeDefinitionCreate,

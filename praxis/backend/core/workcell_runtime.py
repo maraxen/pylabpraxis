@@ -12,25 +12,20 @@ import asyncio
 import datetime
 import importlib
 import inspect
-import logging
-import traceback
-import warnings
-from functools import partial, wraps
+import uuid
+from functools import partial
 from typing import (
   Any,
   Awaitable,
   Callable,
   Dict,
   List,
-  Literal,
   Optional,
   Type,
   Union,
   cast,
 )
 
-import uuid
-from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines import Machine
 from pylabrobot.resources import Coordinate, Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -38,14 +33,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 import praxis.backend.services as svc
 from praxis.backend.core.workcell import Workcell
 from praxis.backend.models import (
-  DeckTypeDefinitionBase,
-  DeckTypeDefinitionOrm,
-  MachineCategoryEnum,
   MachineOrm,
   MachineStatusEnum,
   PositioningConfig,
-  ResourceCategoryEnum,
-  ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
   ResourceInstanceStatusEnum,
 )
@@ -91,6 +81,7 @@ class WorkcellRuntime:
       db_session_factory (async_sessionmaker[AsyncSession]): A factory for SQLAlchemy async sessions.
       workcell_name (str): The name of the workcell.
       workcell_save_file (str): The path for disk backups.
+
     """
     self.db_session_factory = db_session_factory
     self._active_machines: Dict[uuid.UUID, Machine] = {}
@@ -405,7 +396,7 @@ class WorkcellRuntime:
     """
     if not hasattr(machine_orm, "id") or machine_orm.accession_id is None:
       raise WorkcellRuntimeError(
-        "Invalid machine_orm object passed to initialize_machine" " (no id)."
+        "Invalid machine_orm object passed to initialize_machine (no id)."
       )
 
     if machine_orm.accession_id in self._active_machines:
@@ -651,8 +642,7 @@ class WorkcellRuntime:
       or resource_instance_orm.accession_id is None
     ):
       raise ValueError(
-        "Invalid resource_instance_orm object passed to create_or_get_resource"
-        " (no id)."
+        "Invalid resource_instance_orm object passed to create_or_get_resource (no id)."
       )
 
     if resource_instance_orm.accession_id in self._active_resources:

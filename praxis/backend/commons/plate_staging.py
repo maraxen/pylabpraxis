@@ -1,13 +1,13 @@
-from typing import Optional, Literal
-from pylabrobot.resources import Plate, Well, TipRack, Coordinate
-from pylabrobot.liquid_handling import LiquidHandler
-from praxis.utils.errors import ExperimentError
-from pylabrobot.resources.errors import ResourceNotFoundError
-from pylabrobot.plate_reading import PlateReader
-from pylabrobot.resources import CarrierSite
-from pylabrobot.liquid_handling.standard import GripDirection
-import numpy as np
+from typing import Literal, Optional
 
+import numpy as np
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.liquid_handling.standard import GripDirection
+from pylabrobot.plate_reading import PlateReader
+from pylabrobot.resources import CarrierSite, Coordinate, Plate, TipRack, Well
+from pylabrobot.resources.errors import ResourceNotFoundError
+
+from praxis.utils.errors import ExperimentError
 from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
 
 # take advantage of traverse and snake
@@ -187,10 +187,10 @@ async def read_plate(
   wavelength: int = 580,
   final_location: Optional[CarrierSite | Coordinate] = None,
 ):
-  """
-  Reads the optical density of a plate at a specified wavelength using a plate reader.
+  """Reads the optical density of a plate at a specified wavelength using a plate reader.
 
-  Parameters:
+  Parameters
+  ----------
     liquid_handler (LiquidHandler): The liquid handler used to move the plate.
     plate_reader (PlateReader): The plate reader used to read the plate.
     plate (Plate): The plate to be read.
@@ -198,11 +198,14 @@ async def read_plate(
     final_location (Optional[CarrierSite], optional): The final location where the plate will be
     moved after reading.  If not specified, the plate will be moved to its parent location. Defaults to None.
 
-  Returns:
+  Returns
+  -------
     numpy.ndarray: An array containing the optical density readings of the plate at the specified wavelength.
 
-  Raises:
+  Raises
+  ------
     ValueError: If the final location is not a valid CarrierSite.
+
   """
   if final_location is None:
     if not isinstance(plate.parent, CarrierSite):

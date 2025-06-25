@@ -5,18 +5,19 @@ This file contains the FastAPI router for workcell-related endpoints,
 including workcell CRUD operations and legacy orchestrator endpoints.
 """
 
+from functools import partial
+from typing import List
+
 from fastapi import (
   APIRouter,
-  HTTPException,
   Depends,
+  HTTPException,
   status,
 )
-from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from functools import partial
 
-from praxis.backend.api.dependencies import get_db
 import praxis.backend.services as svc
+from praxis.backend.api.dependencies import get_db
 from praxis.backend.models import (
   WorkcellCreate,
   WorkcellResponse,

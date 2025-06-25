@@ -8,31 +8,27 @@ This includes Resource Definitions, Resource Instances, and their management.
 
 """
 
-import datetime
 import uuid
 from functools import partial
 from typing import Any, Dict, List, Optional
 
-
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models import (
-  ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
-)
+from praxis.backend.models.resource_orm import (
+  ResourceOrm,
+  ResourceStatusEnum,
+)  # Ensure correct import path and symbol names
+from praxis.backend.models.resource_pydantic_models import ResourceCreate
 from praxis.backend.services.entity_linking import (
   _create_or_link_machine_counterpart_for_resource,
   synchronize_resource_machine_names,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 from praxis.backend.utils.uuid import uuid7
-
-from .resource_type_definition import read_resource_definition
 
 logger = get_logger(__name__)
 
@@ -52,61 +48,16 @@ log_resource_data_service_errors = partial(
     ",
 )
 async def create_resource_instance(
-  db: AsyncSession,
-  user_assigned_name: str,
-  python_fqn: str,
-  resource_definition_accession_id: uuid.UUID,
-  initial_status: ResourceInstanceStatusEnum = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,  # noqa: E501
-  lot_number: Optional[str] = None,
-  expiry_date: Optional[datetime.datetime] = None,
-  properties_json: Optional[Dict[str, Any]] = None,
-  physical_location_description: Optional[str] = None,
-  is_permanent_fixture: bool = False,
-  is_machine: bool = False,
-  machine_counterpart_accession_id: Optional[uuid.UUID] = None,
-  # Parameters for creating a new Machine if machine_counterpart_accession_id is None
-  machine_user_friendly_name: Optional[str] = None,
-  machine_python_fqn: Optional[str] = None,
-  machine_properties_json: Optional[Dict[str, Any]] = None,
-  machine_current_status: Optional["MachineStatusEnum"] = None,  # type: ignore # noqa: F821
-) -> ResourceInstanceOrm:
+  db: AsyncSession, resource_create: ResourceCreate
+) -> ResourceOrm:
   """Add a new resource instance to the inventory.
 
   Args:
       db (AsyncSession): The database session.
-      user_assigned_name (str): A unique, user-friendly name for the
-          resource instance.
-      python_fqn (str): The PyLabRobot definition name
-          associated with this instance. This definition must exist in the
-          catalog.
-      initial_status (ResourceInstanceStatusEnum, optional): The initial
-          status of the resource instance. Defaults to
-          `ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE`.
-      lot_number (Optional[str], optional): The lot number of the resource.
-          Defaults to None.
-      expiry_date (Optional[datetime.datetime], optional): The expiry date
-          of the resource. Defaults to None.
-      properties_json (Optional[Dict[str, Any]], optional): Additional
-          properties for the resource instance as a JSON-serializable
-          dictionary. Defaults to None.
-      physical_location_description (Optional[str], optional): A description
-          of the physical location of the resource. Defaults to None.
-      is_permanent_fixture (bool, optional): Indicates if this resource
-          instance is a permanent fixture (e.g., a deck). Defaults to False.
-      is_machine (bool): True if this instance is a machine.
-      machine_counterpart_accession_id (Optional[int]): ID of the associated MachineOrm if this
-      resource is a machine.
-          If `is_machine` is True and this is None, a new MachineOrm will be created.
-      machine_user_friendly_name (Optional[str]): Required if creating a new MachineOrm.
-      machine_python_fqn (Optional[str]): Required if creating a new MachineOrm.
-      machine_properties_json (Optional[Dict[str, Any]]): Optional properties for a new
-      MachineOrm.
-      machine_current_status (Optional[MachineStatusEnum]): Initial status for a new
-      MachineOrm.
-
+      resource_create (ResourceCreate): Pydantic model with resource instance data.
 
   Returns:
-      ResourceInstanceOrm: The newly created resource instance object.
+      ResourceOrm: The newly created resource instance object.
 
   Raises:
       ValueError: If the `name` is not found in the
@@ -115,54 +66,53 @@ async def create_resource_instance(
       Exception: For any other unexpected errors during the process.
 
   """
-  from praxis.backend.models import MachineStatusEnum  # noqa: F401
+  from praxis.backend.models import (  # pylint: disable=import-outside-toplevel
+    MachineStatusEnum,
+  )
 
   log_prefix = (
-    f"Resource Instance (Name: '{user_assigned_name}', " f"Definition: '{python_fqn}'):"
+    f"Resource Instance (Name: '{resource_create.name}', FQN: '{resource_create.fqn}'):"
   )
   logger.info("%s Attempting to add new resource instance.", log_prefix)
 
-  definition = await read_resource_definition(db, python_fqn)
-  if not definition:
-    error_message = (
-      f"{log_prefix} Resource definition '{python_fqn}' "
-      "not found in catalog. Cannot add instance."
-    )
-    logger.error(error_message)
-    raise ValueError(error_message)
+  # The resource definition is linked by resource_definition_id in the resource_create model
+  # and handled by the ORM relationships. No need to fetch it manually.
 
-  instance_orm = ResourceInstanceOrm(
-    accession_id=uuid7(),
-    user_assigned_name=user_assigned_name,
-    python_fqn=python_fqn,
-    resource_definition=definition,
-    current_status=initial_status,
-    lot_number=lot_number,
-    expiry_date=expiry_date,
-    properties_json=properties_json,
-    physical_location_description=physical_location_description,
-    is_permanent_fixture=is_permanent_fixture,
+  instance_orm = ResourceOrm(
+    **resource_create.model_dump(
+      exclude={"machine_counterpart_id", "resource_definition_id"}
+    )
   )
+  instance_orm.accession_id = uuid7()
+  instance_orm.resource_definition_id = resource_create.resource_definition_id
+
   db.add(instance_orm)
   await db.flush()
 
   try:
+    # Since we are creating a resource that can be a machine, we might need to create
+    # or link a machine counterpart.
     await _create_or_link_machine_counterpart_for_resource(
       db=db,
       resource_instance_orm=instance_orm,
-      is_machine=is_machine,
-      machine_counterpart_accession_id=machine_counterpart_accession_id,
-      machine_user_friendly_name=machine_user_friendly_name,
-      machine_python_fqn=machine_python_fqn,
-      machine_properties_json=machine_properties_json,
-      machine_current_status=machine_current_status,
+      is_machine=resource_create.asset_type
+      in ["MACHINE", "MACHINE_RESOURCE"],  # Simplified check
+      machine_counterpart_accession_id=resource_create.machine_counterpart_id,
+      # The following parameters are for creating a new machine if needed.
+      # They should be part of the resource_create model if we want to support this flow.
+      # For now, we assume linking to an existing machine or no machine counterpart.
+      machine_user_friendly_name=resource_create.name,  # Synchronize names
+      machine_python_fqn=resource_create.fqn,
+      machine_properties_json=resource_create.properties_json,
+      machine_current_status=MachineStatusEnum.AVAILABLE,  # Default status
     )
   except Exception as e:
     logger.error(
       f"{log_prefix} Error linking MachineOrm counterpart: {e}", exc_info=True
     )
     raise ValueError(
-      f"Failed to link machine counterpart for resource instance '{user_assigned_name}'."
+      "Failed to link machine counterpart for resource instance "
+      f"'{resource_create.name}'."
     ) from e
 
   try:
@@ -179,7 +129,7 @@ async def create_resource_instance(
     await db.rollback()
     raise ValueError(
       f"{log_prefix} Integrity error. A resource instance with name "
-      f"'{user_assigned_name}' might already exist. Details: {e}"
+      f"'{resource_create.name}' might already exist. Details: {e}"
     ) from e
   except Exception as e:
     await db.rollback()
@@ -191,128 +141,60 @@ async def create_resource_instance(
 async def update_resource_instance(
   db: AsyncSession,
   instance_accession_id: uuid.UUID,
-  user_assigned_name: Optional[str] = None,
-  python_fqn: Optional[str] = None,
-  lot_number: Optional[str] = None,
-  expiry_date: Optional[datetime.datetime] = None,
-  properties_json: Optional[Dict[str, Any]] = None,
-  physical_location_description: Optional[str] = None,
-  is_permanent_fixture: Optional[bool] = None,
-  is_machine: Optional[bool] = None,
-  machine_counterpart_accession_id: Optional[uuid.UUID] = None,
-) -> Optional[ResourceInstanceOrm]:
+  resource_update: ResourceUpdate,
+) -> Optional[ResourceOrm]:
   """Update an existing resource instance.
 
   Args:
-    db (AsyncSession): The database session.
-    instance_accession_id (uuid.UUID): The ID of the resource instance to update.
-    user_assigned_name (Optional[str], optional): New user-assigned name for the
-      resource instance. Defaults to None.
-    python_fqn (Optional[str], optional): New PyLabRobot definition name for the
-      resource instance. Defaults to None.
-    lot_number (Optional[str], optional): New lot number for the resource.
-      Defaults to None.
-    expiry_date (Optional[datetime.datetime], optional): New expiry date
-      for the resource. Defaults to None.
-    properties_json (Optional[Dict[str, Any]], optional): New properties
-      for the resource instance as a JSON-serializable dictionary. Defaults to None.
-    physical_location_description (Optional[str], optional): New description
-      of the physical location of the resource. Defaults to None.
-    is_permanent_fixture (Optional[bool], optional): Indicates if this resource
-      instance is a permanent fixture. Defaults to None.
-    is_machine (Optional[bool]): True if this instance is a machine, False otherwise.
-    machine_counterpart_accession_id (Optional[uuid.UUID]): ID of the associated MachineOrm if this
-        resource is a machine.
+      db (AsyncSession): The database session.
+      instance_accession_id (uuid.UUID): The accession ID of the resource instance to update.
+      resource_update (ResourceUpdate): Pydantic model with updated data.
 
   Returns:
-    Optional[ResourceInstanceOrm]: The updated resource instance object if
-    the update was successful, otherwise None.
-
-  Raises:
-    ValueError: If the resource instance with the given ID does not exist,
-      or if an error occurs while updating the instance.
-    Exception: For any other unexpected errors during the update process.
+      Optional[ResourceOrm]: The updated resource instance object, or None if not found.
 
   """
-  logger.info("Updating resource instance with ID: %s.", instance_accession_id)
-  instance_orm = await read_resource_instance(db, instance_accession_id)
-  if not instance_orm:
-    logger.warning(
-      "Resource instance with ID %s not found for update.", instance_accession_id
-    )
-    return None
-  log_prefix = f"Resource Instance (ID: {instance_orm.accession_id}, Name: \
-    {instance_orm.user_assigned_name}):"
+  log_prefix = f"Resource Instance (ID: {instance_accession_id}):"
   logger.info("%s Attempting to update resource instance.", log_prefix)
-  # Update the fields of the resource instance as needed
-  if user_assigned_name:
-    instance_orm.user_assigned_name = user_assigned_name
-    # Synchronize name with linked machine counterpart if it exists
-    await synchronize_resource_machine_names(db, instance_orm, user_assigned_name)
-  if python_fqn:
-    instance_orm.python_fqn = python_fqn
-  if lot_number:
-    instance_orm.lot_number = lot_number
-  if expiry_date:
-    instance_orm.expiry_date = expiry_date
-  if properties_json:
-    instance_orm.properties_json = properties_json
-  if physical_location_description:
-    instance_orm.physical_location_description = physical_location_description
-  if is_permanent_fixture:
-    instance_orm.is_permanent_fixture = is_permanent_fixture
-  if is_machine:
-    instance_orm.is_machine = is_machine
-  if machine_counterpart_accession_id:
-    instance_orm.machine_counterpart_accession_id = machine_counterpart_accession_id
-    # If the machine counterpart ID is provided, we assume it is being updated
-    # and we need to ensure the machine counterpart is linked correctly.
-  if machine_counterpart_accession_id is not None:
-    try:
-      logger.info(
-        "%s Linking MachineOrm counterpart (ID: %s).",
-        log_prefix,
-        machine_counterpart_accession_id,
-      )
-      if not is_machine:
-        logger.warning(
-          "%s Machine counterpart ID provided but is_machine is False. "
-          "This may lead to inconsistencies.",
-          log_prefix,
-        )
-        is_machine = (
-          True  # Ensure is_machine is True if a machine counterpart ID is provided
-        )
-      await _create_or_link_machine_counterpart_for_resource(
-        db=db,
-        resource_instance_orm=instance_orm,
-        is_machine=is_machine,
-        machine_counterpart_accession_id=machine_counterpart_accession_id,
-      )
-    except Exception as e:
-      logger.error(
-        f"{log_prefix} Error linking MachineOrm counterpart: {e}", exc_info=True
-      )
-      raise ValueError(
-        f"Failed to link machine counterpart for resource instance "
-        f"'{instance_orm.user_assigned_name}'."
-      ) from e
+
+  instance = await get_resource_instance(db, instance_accession_id)
+  if not instance:
+    logger.warning("%s Resource instance not found.", log_prefix)
+    return None
+
+  update_data = resource_update.model_dump(exclude_unset=True)
+  for key, value in update_data.items():
+    if hasattr(instance, key):
+      setattr(instance, key, value)
+
+  # Special handling for properties_json to ensure modifications are tracked
+  if "properties_json" in update_data:
+    flag_modified(instance, "properties_json")
+
+  # Synchronize names if the name is updated
+  if "name" in update_data and (
+    instance.machine_counterpart or instance.deck_counterpart
+  ):
+    await synchronize_resource_machine_names(db, instance)
 
   try:
     await db.commit()
-    await db.refresh(instance_orm)
+    await db.refresh(instance)
     logger.info("%s Successfully updated resource instance.", log_prefix)
+  except IntegrityError as e:
+    await db.rollback()
+    raise ValueError(f"{log_prefix} Integrity error during update. Details: {e}") from e
   except Exception as e:
     await db.rollback()
-    logger.error("%s Error updating resource instance: %s", log_prefix, e)
-    raise
+    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
+    raise e
 
-  return instance_orm
+  return instance
 
 
-async def read_resource_instance(
+async def get_resource_instance(
   db: AsyncSession, instance_accession_id: uuid.UUID
-) -> Optional[ResourceInstanceOrm]:
+) -> Optional[ResourceOrm]:
   """Retrieve a resource instance by its ID.
 
   Args:
@@ -320,19 +202,18 @@ async def read_resource_instance(
       instance_accession_id (uuid.UUID): The ID of the resource instance to retrieve.
 
   Returns:
-      Optional[ResourceInstanceOrm]: The resource instance object if found,
+      Optional[ResourceOrm]: The resource instance object if found,
       otherwise None.
 
   """
   logger.info("Retrieving resource instance with ID: %s.", instance_accession_id)
   stmt = (
-    select(ResourceInstanceOrm)
+    select(ResourceOrm)
     .options(
-      joinedload(ResourceInstanceOrm.resource_definition),
-      joinedload(ResourceInstanceOrm.location_machine),
-      joinedload(ResourceInstanceOrm.machine_counterpart),
+      joinedload(ResourceOrm.resource_definition),
+      joinedload(ResourceOrm.machine_counterpart),
     )
-    .filter(ResourceInstanceOrm.accession_id == instance_accession_id)
+    .filter(ResourceOrm.accession_id == instance_accession_id)
   )
   result = await db.execute(stmt)
   instance = result.scalar_one_or_none()
@@ -340,7 +221,7 @@ async def read_resource_instance(
     logger.info(
       "Found resource instance ID %s: '%s'.",
       instance_accession_id,
-      instance.user_assigned_name,
+      instance.name,
     )
   else:
     logger.info("Resource instance ID %d not found.", instance_accession_id)
@@ -348,133 +229,85 @@ async def read_resource_instance(
 
 
 async def read_resource_instance_by_name(
-  db: AsyncSession, user_assigned_name: str
-) -> Optional[ResourceInstanceOrm]:
-  """Retrieve a resource instance by its user-assigned name.
+  db: AsyncSession, name: str
+) -> Optional[ResourceOrm]:
+  """Retrieve a resource instance by its name.
 
   Args:
       db (AsyncSession): The database session.
-      user_assigned_name (str): The user-assigned name of the resource
-          instance to retrieve.
+      name (str): The name of the resource instance to retrieve.
 
   Returns:
-      Optional[ResourceInstanceOrm]: The resource instance object if found,
+      Optional[ResourceOrm]: The resource instance object if found,
       otherwise None.
 
   """
-  logger.info(
-    "Retrieving resource instance by user-assigned name: '%s'.",
-    user_assigned_name,
-  )
+  logger.info("Retrieving resource instance by name: '%s'.", name)
   stmt = (
-    select(ResourceInstanceOrm)
+    select(ResourceOrm)
     .options(
-      joinedload(ResourceInstanceOrm.resource_definition),
-      joinedload(ResourceInstanceOrm.location_machine),
-      joinedload(ResourceInstanceOrm.machine_counterpart),
+      joinedload(ResourceOrm.resource_definition),
+      joinedload(ResourceOrm.machine_counterpart),
     )
-    .filter(ResourceInstanceOrm.user_assigned_name == user_assigned_name)
+    .filter(ResourceOrm.name == name)
   )
   result = await db.execute(stmt)
   instance = result.scalar_one_or_none()
   if instance:
-    logger.info("Found resource instance '%s'.", user_assigned_name)
+    logger.info("Found resource instance '%s'.", name)
   else:
-    logger.info("Resource instance '%s' not found.", user_assigned_name)
+    logger.info("Resource instance '%s' not found.", name)
   return instance
 
 
 async def list_resource_instances(
   db: AsyncSession,
-  python_fqn: Optional[str] = None,
-  status: Optional[ResourceInstanceStatusEnum] = None,
-  location_machine_accession_id: Optional[uuid.UUID] = None,
-  on_deck_position: Optional[str] = None,
+  status: Optional[ResourceStatusEnum] = None,
   property_filters: Optional[Dict[str, Any]] = None,  # Added parameter
-  current_protocol_run_accession_id_filter: Optional[str] = None,  # Added parameter
   limit: int = 100,
   offset: int = 0,
-) -> List[ResourceInstanceOrm]:
+) -> List[ResourceOrm]:
   """List resource instances with optional filtering and pagination.
 
   Args:
       db (AsyncSession): The database session.
-      python_fqn (Optional[str], optional): Filter instances
-          by their PyLabRobot definition FQN. Defaults to None.
-      status (Optional[ResourceInstanceStatusEnum], optional): Filter instances
+      status (Optional[ResourceStatusEnum], optional): Filter instances
           by their current status. Defaults to None.
-      location_machine_accession_id (Optional[uuid.UUID], optional): Filter instances by the
-          ID of the machine they are currently located on. Defaults to None.
-      on_deck_position (Optional[str], optional): Filter instances by the name of
-          the deck position they are currently in. Defaults to None.
       property_filters (Optional[Dict[str, Any]], optional): Filter instances
           by properties contained within their JSONB `properties_json` field.
-          Defaults to None.
-      current_protocol_run_accession_id_filter (Optional[str], optional): Filter instances
-          by the GUID of the protocol run they are currently associated with.
           Defaults to None.
       limit (int): The maximum number of results to return. Defaults to 100.
       offset (int): The number of results to skip before returning. Defaults to 0.
 
   Returns:
-      List[ResourceInstanceOrm]: A list of resource instance objects matching
+      List[ResourceOrm]: A list of resource instance objects matching
       the criteria.
 
   """
   logger.info(
-    "Listing resource instances with filters: python_fqn='%s', status=%s, "
-    "machine_accession_id=%s, deck_position='%s', property_filters=%s, run_accession_id_filter=%s, "
+    "Listing resource instances with filters: status=%s, property_filters=%s, "
     "limit=%d, offset=%d.",
-    python_fqn,
     status,
-    location_machine_accession_id,
-    on_deck_position,
     property_filters,
-    current_protocol_run_accession_id_filter,
     limit,
     offset,
   )
-  stmt = select(ResourceInstanceOrm).options(
-    joinedload(ResourceInstanceOrm.resource_definition),
-    joinedload(ResourceInstanceOrm.location_machine),
-    joinedload(ResourceInstanceOrm.machine_counterpart),
+  stmt = select(ResourceOrm).options(
+    joinedload(ResourceOrm.resource_definition),
+    joinedload(ResourceOrm.machine_counterpart),
   )
-  if python_fqn:
-    stmt = stmt.filter(ResourceInstanceOrm.python_fqn == python_fqn)
-    logger.debug("Filtering by definition FQN: '%s'.", python_fqn)
   if status:
-    stmt = stmt.filter(ResourceInstanceOrm.current_status == status)
+    stmt = stmt.filter(ResourceOrm.current_status == status)
     logger.debug("Filtering by status: '%s'.", status.name)
-  if location_machine_accession_id:
-    stmt = stmt.filter(
-      ResourceInstanceOrm.location_machine_accession_id == location_machine_accession_id
-    )
-    logger.debug("Filtering by location machine ID: %d.", location_machine_accession_id)
-  if on_deck_position:
-    stmt = stmt.filter(
-      ResourceInstanceOrm.current_deck_position_name == on_deck_position
-    )
-    logger.debug("Filtering by deck position: '%s'.", on_deck_position)
   if property_filters:
     # This assumes a simple key-value equality check for top-level JSONB properties
     # For more complex queries, you'd need to use JSONB operators
     # (e.g., .op('?') or .op('@>'))
     for key, value in property_filters.items():
-      stmt = stmt.filter(ResourceInstanceOrm.properties_json[key].astext == str(value))
+      stmt = stmt.filter(ResourceOrm.properties_json[key].astext == str(value))
     logger.debug("Filtering by properties: %s.", property_filters)
-  if current_protocol_run_accession_id_filter:
-    stmt = stmt.filter(
-      ResourceInstanceOrm.current_protocol_run_accession_id
-      == current_protocol_run_accession_id_filter
-    )
-    logger.debug(
-      "Filtering by current_protocol_run_accession_id: %s.",
-      current_protocol_run_accession_id_filter,
-    )
 
-  stmt = (
-    stmt.order_by(ResourceInstanceOrm.user_assigned_name).limit(limit).offset(offset)
-  )
+  stmt = stmt.order_by(ResourceOrm.name).limit(limit).offset(offset)
   result = await db.execute(stmt)
   instances = list(result.scalars().all())
   logger.info("Found %d resource instances.", len(instances))
@@ -484,41 +317,25 @@ async def list_resource_instances(
 async def update_resource_instance_location_and_status(
   db: AsyncSession,
   resource_instance_accession_id: uuid.UUID,
-  new_status: Optional[ResourceInstanceStatusEnum] = None,
-  location_machine_accession_id: Optional[uuid.UUID] = None,
-  current_deck_position_name: Optional[str] = None,  # TODO: perhaps change to uuid
-  physical_location_description: Optional[str] = None,
-  properties_json_update: Optional[Dict[str, Any]] = None,
-  current_protocol_run_accession_id: Optional[uuid.UUID] = None,
+  new_status: Optional[ResourceStatusEnum] = None,
   status_details: Optional[str] = None,
-) -> Optional[ResourceInstanceOrm]:
-  """Update the location, status, and other details of a resource instance.
+  properties_json_update: Optional[Dict[str, Any]] = None,
+) -> Optional[ResourceOrm]:
+  """Update the status and other details of a resource instance.
 
   Args:
       db (AsyncSession): The database session.
       resource_instance_accession_id (uuid.UUID): The ID of the resource instance to update.
-      new_status (Optional[ResourceInstanceStatusEnum], optional): The new
+      new_status (Optional[ResourceStatusEnum], optional): The new
           status for the resource instance. Defaults to None.
-      location_machine_accession_id (Optional[uuid.UUID], optional): The ID of the machine
-          where the resource is now located. Defaults to None.
-      current_deck_position_name (Optional[str], optional): The name of the deck
-          position where the resource is now located. Defaults to None.
-      current_deck_position_accession_id (Optional[uuid.UUID], optional): The ID of the deck
-          position where the resource is now located. Defaults to None.
-      physical_location_description (Optional[str], optional): An updated
-          description of the physical location. Defaults to None.
+      status_details (Optional[str], optional): Additional details about the
+          current status. Defaults to None.
       properties_json_update (Optional[Dict[str, Any]], optional): A dictionary
           of properties to merge into the existing `properties_json`.
           Defaults to None.
-      current_protocol_run_accession_id (Optional[uuid.UUID], optional): The GUID of the
-          protocol run currently using this resource. If the status is changing
-          to `IN_USE`, this should be provided. If the status is changing
-          from `IN_USE`, this will be cleared. Defaults to None.
-      status_details (Optional[str], optional): Additional details about the
-          current status. Defaults to None.
 
   Returns:
-      Optional[ResourceInstanceOrm]: The updated resource instance object if
+      Optional[ResourceOrm]: The updated resource instance object if
       found, otherwise None.
 
   Raises:
@@ -526,14 +343,13 @@ async def update_resource_instance_location_and_status(
 
   """
   logger.info(
-    "Updating resource instance ID %d: new_status=%s, machine_accession_id=%s, "
-    "deck_position='%s'.",
+    "Updating resource instance ID %d: new_status=%s.",
     resource_instance_accession_id,
     new_status,
-    location_machine_accession_id,
-    current_deck_position_name,
   )
-  instance_orm = await read_resource_instance(db, resource_instance_accession_id)
+  instance_orm = await read_resource_instance_by_name(
+    db, resource_instance_accession_id
+  )
   if instance_orm:
     if new_status is not None:
       logger.debug(
@@ -544,47 +360,11 @@ async def update_resource_instance_location_and_status(
       )
       instance_orm.current_status = new_status
 
-    # Update location fields if any are provided
-    if (
-      location_machine_accession_id is not None
-      or current_deck_position_name is not None
-      or physical_location_description is not None
-    ):
-      logger.debug(
-        "Instance ID %d location update: machine_accession_id=%s, deck_position='%s', "
-        "physical_desc='%s'.",
-        resource_instance_accession_id,
-        location_machine_accession_id,
-        current_deck_position_name,
-        physical_location_description,
-      )
-
-      instance_orm.location_machine_accession_id = location_machine_accession_id
-      instance_orm.current_deck_position_name = current_deck_position_name
-      instance_orm.physical_location_description = physical_location_description
-
     if status_details is not None:
       logger.debug(
         "Instance ID %d status details updated.", resource_instance_accession_id
       )
       instance_orm.status_details = status_details
-
-    if (
-      new_status == ResourceInstanceStatusEnum.IN_USE
-      and current_protocol_run_accession_id is not None
-    ):
-      logger.debug(
-        "Instance ID %d set to IN_USE with protocol run GUID: %s.",
-        resource_instance_accession_id,
-        current_protocol_run_accession_id,
-      )
-      instance_orm.current_protocol_run_accession_id = current_protocol_run_accession_id
-    elif new_status != ResourceInstanceStatusEnum.IN_USE:
-      if instance_orm.current_protocol_run_accession_id is not None:
-        logger.debug(
-          "Instance ID %d protocol run GUID cleared.", resource_instance_accession_id
-        )
-        instance_orm.current_protocol_run_accession_id = None
 
     if properties_json_update is not None:
       logger.debug("Instance ID %d properties updated.", resource_instance_accession_id)
@@ -637,9 +417,7 @@ async def delete_resource_instance(
   logger.info(
     "Attempting to delete resource instance with ID: %s.", instance_accession_id
   )
-  stmt = select(ResourceInstanceOrm).filter(
-    ResourceInstanceOrm.accession_id == instance_accession_id
-  )
+  stmt = select(ResourceOrm).filter(ResourceOrm.accession_id == instance_accession_id)
   result = await db.execute(stmt)
   instance_orm = result.scalar_one_or_none()
 
@@ -660,7 +438,7 @@ async def delete_resource_instance(
       f"Cannot delete resource instance ID {instance_accession_id} due to existing "
       f"references (e.g., in deck layouts). Details: {e}"
     )
-    logger.error(error_message, exc_info=True)
+    logger.error(error_message)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
@@ -671,14 +449,12 @@ async def delete_resource_instance(
     raise e
 
 
-async def delete_resource_instance_by_name(
-  db: AsyncSession, user_assigned_name: str
-) -> bool:
+async def delete_resource_instance_by_name(db: AsyncSession, name: str) -> bool:
   """Delete a resource instance by its unique name.
 
   Args:
       db (AsyncSession): The database session.
-      user_assigned_name (str): The unique name of the resource
+      name (str): The unique name of the resource
           instance to delete.
 
   Returns:
@@ -686,16 +462,12 @@ async def delete_resource_instance_by_name(
       not found.
 
   """
-  logger.info(
-    "Attempting to delete resource instance with name: '%s'.", user_assigned_name
-  )
-  instance_orm = await read_resource_instance_by_name(
-    db, user_assigned_name=user_assigned_name
-  )
+  logger.info("Attempting to delete resource instance with name: '%s'.", name)
+  instance_orm = await read_resource_instance_by_name(db, name=name)
   if not instance_orm:
     logger.warning(
       "Resource instance with name '%s' not found for deletion.",
-      user_assigned_name,
+      name,
     )
     return False
   try:
@@ -703,21 +475,21 @@ async def delete_resource_instance_by_name(
     await db.commit()
     logger.info(
       "Successfully deleted resource instance with name '%s'.",
-      user_assigned_name,
+      name,
     )
     return True
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Cannot delete resource instance '{user_assigned_name}' due to existing "
+      f"Cannot delete resource instance '{name}' due to existing "
       f"references (e.g., in deck layouts). Details: {e}"
     )
-    logger.error(error_message, exc_info=True)
+    logger.error(error_message)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
     logger.exception(
       "Unexpected error deleting resource instance with name '%s'. Rolling back.",
-      user_assigned_name,
+      name,
     )
     raise e

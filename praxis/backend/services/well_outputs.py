@@ -278,6 +278,7 @@ async def read_well_data_output(
 
   Returns:
     Well data output ORM instance or None if not found
+
   """
   log_prefix = f"Well Data (ID: {well_output_id}):"
   logger.info("%s Reading well data output.", log_prefix)
@@ -402,6 +403,7 @@ async def update_well_data_output(
 
   Raises:
     ValueError: If validation fails
+
   """
   log_prefix = f"Well Data (ID: {well_output_accession_id}):"
   logger.info("%s Updating well data output.", log_prefix)
@@ -449,6 +451,7 @@ async def delete_well_data_output(
 
   Raises:
     ValueError: If there was an error deleting the well data output
+
   """
   log_prefix = f"Well Data (ID: {well_output_accession_id}):"
   logger.info("%s Deleting well data output.", log_prefix)

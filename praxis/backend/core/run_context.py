@@ -20,11 +20,11 @@ import io
 import json
 import logging
 import os
+import uuid
 import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
-import uuid
 from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession

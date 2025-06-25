@@ -7,10 +7,10 @@ attribution, spatial context, and data visualization.
 
 import datetime
 from functools import partial
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -19,17 +19,9 @@ from praxis.backend.models import (
   DataSearchFilters,
   FunctionDataOutputCreate,
   FunctionDataOutputUpdate,
-  PlateDataVisualization,
-  ProtocolRunDataSummary,
-  ResourceDefinitionCatalogOrm,
-  WellDataOutputCreate,
-  WellDataOutputUpdate,
 )
 from praxis.backend.models.function_data_output_orm import (
-  DataOutputTypeEnum,
   FunctionDataOutputOrm,
-  SpatialContextEnum,
-  WellDataOutputOrm,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 

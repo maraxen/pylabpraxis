@@ -1,12 +1,16 @@
+"""Logging utilities and decorators for error handling in PyLabPraxis."""
+
 import logging
 import traceback
 from functools import wraps
 from typing import Any, Callable, Type
 
-def get_logger(name):
+
+def get_logger(name):  # TODO: change to use built-in logging.getLogger and config
+  """Create and return a configured logger with stream handler."""
   logger = logging.getLogger(name)
   logger.setLevel(logging.DEBUG)
-  formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
   ch = logging.StreamHandler()
   ch.setFormatter(formatter)
   logger.addHandler(ch)
@@ -35,7 +39,7 @@ def _process_exception(
       raise raises_exception(full_error_message) from exception
   else:
     unexpected_error_message = (
-      f"Unexpected error in {exception.__class__.__name__}: " f"{str(exception)[:250]}"
+      f"Unexpected error in {exception.__class__.__name__}: {str(exception)[:250]}"
     )
     logger_instance.critical(unexpected_error_message)
     if raises:

@@ -25,6 +25,7 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ResourceInstanceStatusEnum,
 )
+from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.utils.errors import (
   AssetAcquisitionError,
   ProtocolCancelledError,
@@ -33,7 +34,6 @@ from praxis.backend.utils.errors import (
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import clear_control_command, get_control_command
-from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)
@@ -200,8 +200,7 @@ class Orchestrator:
     for asset_req_model in protocol_pydantic_def.assets:
       try:
         logger.info(
-          "ORCH-ACQUIRE: Acquiring asset '%s' (Type: '%s', Optional: %s) "
-          "for run '%s'.",
+          "ORCH-ACQUIRE: Acquiring asset '%s' (Type: '%s', Optional: %s) for run '%s'.",
           asset_req_model.name,
           asset_req_model.fqn,
           asset_req_model.optional,
@@ -635,12 +634,12 @@ class Orchestrator:
             )
           else:
             logger.warning(
-              "ORCH: No prior workcell state snapshot found for run %s to" " rollback.",
+              "ORCH: No prior workcell state snapshot found for run %s to rollback.",
               run_accession_id,
             )
         except Exception as rollback_error:
           logger.critical(
-            "ORCH: CRITICAL - Failed to rollback workcell state for run %s:" " %s",
+            "ORCH: CRITICAL - Failed to rollback workcell state for run %s: %s",
             run_accession_id,
             rollback_error,
             exc_info=True,
@@ -661,15 +660,14 @@ class Orchestrator:
               "error_type": "VolumeError",
               "error_message": str(e),
               "action_required": (
-                "User intervention needed to verify liquid levels and" " proceed."
+                "User intervention needed to verify liquid levels and proceed."
               ),
               "traceback": traceback.format_exc(),
             }
           )
         elif isinstance(e, PyLabRobotGenericError):
           logger.info(
-            "Generic PyLabRobot error detected for run %s. Setting status"
-            " to FAILED.",
+            "Generic PyLabRobot error detected for run %s. Setting status to FAILED.",
             run_accession_id,
           )
           final_run_status = ProtocolRunStatusEnum.FAILED
@@ -737,14 +735,14 @@ class Orchestrator:
                     final_status=(ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE),
                   )
                 logger.info(
-                  "ORCH-RELEASE: Asset '%s' (Type: %s, ORM ID: %s)" " released.",
+                  "ORCH-RELEASE: Asset '%s' (Type: %s, ORM ID: %s) released.",
                   name_in_protocol,
                   asset_type,
                   asset_orm_accession_id,
                 )
               except Exception as release_err:
                 logger.error(
-                  "ORCH-RELEASE: Failed to release asset '%s' (ORM ID:" " %s): %s",
+                  "ORCH-RELEASE: Failed to release asset '%s' (ORM ID: %s): %s",
                   asset_info.get("name_in_protocol", "UnknownAsset"),
                   asset_info.get("orm_accession_id"),
                   release_err,

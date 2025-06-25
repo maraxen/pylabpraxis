@@ -1,12 +1,9 @@
-import datetime
-import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
@@ -14,8 +11,6 @@ from praxis.backend.models import (
   DeckInstancePositionResourceOrm,
   DeckPositionDefinitionOrm,
   DeckTypeDefinitionOrm,
-  MachineOrm,
-  PositioningConfig,
   ResourceInstanceOrm,
 )
 from praxis.backend.utils.logging import get_logger
@@ -330,8 +325,7 @@ async def _process_position_definitions(
   position_definitions_data: Optional[List[Dict[str, Any]]],
   log_prefix: str,
 ):
-  """
-  Helper function to handle the deletion and creation of position definitions.
+  """Helper function to handle the deletion and creation of position definitions.
   This logic is common to both create and update.
   """
   if position_definitions_data is not None:
@@ -582,6 +576,7 @@ async def update_deck_position_definition(
   Raises:
     ValueError: If the deck type definition or the position definition is not found.
     Exception: For any other unexpected errors during the process.
+
   """
   log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, Position: '{name}'):"
   logger.info("%s Attempting to update.", log_prefix)
@@ -684,8 +679,10 @@ async def delete_deck_position_definition(
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, \
+  log_prefix = (
+    f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, \
     Position: '{name}'):"
+  )
   logger.info("%s Attempting to delete.", log_prefix)
 
   # First, fetch the specific position definition

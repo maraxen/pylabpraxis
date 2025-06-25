@@ -298,3 +298,40 @@ graph LR
     API_Layer -- "Authenticates via" --> Keycloak
     Orchestrator -- "Sends Notifications via" ---> SMTP_Server
 
+---
+
+## Asset Model Refactor (2025-06)
+
+### Overview
+
+The asset-related backend models have been **unified and modernized**. All asset types (machines, resources, decks, workcells) now inherit from a single `Asset` base model, with standardized field names and relationships. This change simplifies asset management, improves consistency, and removes legacy/obsolete fields and class names.
+
+### Key Changes
+
+- **Unified Asset Model:**
+  - All asset types now use a common set of fields: `accession_id`, `name`, `fqn`, `asset_type`, `location`, `plr_state`, `plr_definition`, `properties_json`.
+  - Relationships between assets (e.g., resource <-> machine) are standardized and explicit.
+- **Obsolete Fields Removed:**
+  - Legacy fields (e.g., `user_assigned_name`, old FQN fields, `ResourceInstanceOrm`, `DeckInstanceOrm`) are gone.
+  - All ORM and Pydantic models are consistent and up to date.
+- **Exports Updated:**
+  - Only current, valid models and enums are exported in `models/__init__.py`.
+- **Documentation:**
+  - This section summarizes the rationale and provides guidance for updating services and APIs.
+
+### Guidance for Updating Services & APIs
+
+- **Use Unified Fields:**
+  - Update all service and API logic to use the new asset model fields (`accession_id`, `name`, etc.).
+  - Remove references to legacy/obsolete fields and classes.
+- **Relationships:**
+  - Use the new standardized relationships for asset associations (e.g., `resource_counterpart`, `machine_counterpart`).
+- **Testing:**
+  - Update or add tests to ensure compatibility with the new asset model structure.
+- **Imports:**
+  - Import asset models and enums from `praxis.backend.models` as re-exported in `__init__.py`.
+
+See the code and docstrings in `praxis/backend/models/` for details.
+
+---
+

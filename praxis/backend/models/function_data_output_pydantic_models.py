@@ -5,7 +5,7 @@ enabling proper validation, serialization, and API interaction for experimental 
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence
 
 from pydantic import UUID7, BaseModel, Field, field_validator
 

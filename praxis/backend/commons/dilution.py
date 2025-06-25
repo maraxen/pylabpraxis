@@ -1,14 +1,16 @@
-from praxis.utils.errors import ExperimentError
+from typing import Literal, Optional
+
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Well
+
+from praxis.utils.errors import ExperimentError
 from praxis.utils.sanitation import (
+  check_list_length,
   coerce_to_list,
   liquid_handler_setup_check,
-  check_list_length,
-  tip_mapping,
   parse_well_name,
+  tip_mapping,
 )
-from typing import Optional, Literal
 
 
 async def dilution_checks(
@@ -25,8 +27,7 @@ async def dilution_checks(
     Literal["row", "column", "x", "y", 0, 1, "optimal"]
   ] = "optimal",
 ):
-  """
-  Checks for errors in the dilution series functions.
+  """Checks for errors in the dilution series functions.
 
   Args:
     liquid_handler: LiquidHandler object
@@ -43,6 +44,7 @@ async def dilution_checks(
 
   Raises:
     ExperimentError: If there are errors in the input parameters.
+
   """
   if len(source_wells) != len(target_wells):
     raise ValueError("Number of source wells does not match number of target wells")
@@ -77,8 +79,7 @@ async def find_optimal_dilution_strategy(
   undiluted_source: bool = True,
   variable_accession_ids: Optional[list[str]] = None,
 ) -> dict[str, dict]:
-  """
-  Finds the optimal dilution strategy for a dilution series and prints the details for what wells
+  """Finds the optimal dilution strategy for a dilution series and prints the details for what wells
   to use for each variable undiluted or initial dilution source.
 
   Args:
@@ -148,7 +149,7 @@ async def find_optimal_dilution_strategy(
         variable_details[var]["dilution_strategy"] = "snake"
     for var in variable_details:
       column, row = await parse_well_name(variable_details[var]["initial_well"])
-      print(f"Variable {var}: {chr(row+ 65)}{column}")
+      print(f"Variable {var}: {chr(row + 65)}{column}")
   return variable_details
 
 
@@ -188,9 +189,9 @@ async def antigen_dilution_series(
   antigen_volumes, dilution_factors = await coerce_to_list(
     [antigen_volumes, dilution_factors]
   )
-  assert isinstance(antigen_volumes, list) and isinstance(
-    dilution_factors, list
-  ), "Antigen volumes and dilution factors must be lists"
+  assert isinstance(antigen_volumes, list) and isinstance(dilution_factors, list), (
+    "Antigen volumes and dilution factors must be lists"
+  )
   antigen_volumes, dilution_factors = await check_list_length(
     items=[antigen_volumes, dilution_factors],
     coerce_length=True,
@@ -299,8 +300,7 @@ async def serial_dilution(
   source_volumes: Optional[float | list[float]] = None,
   mix_cycles: int = 10,
 ):
-  """
-  Completes a serial dilution. Function assumes you are diluting from the top row of the source plate
+  """Completes a serial dilution. Function assumes you are diluting from the top row of the source plate
   and diluting down the columns of the target plate. If you do not specify a source volume, the
   function will assume the maximum well volume divided by the dilution factor.
 
@@ -314,6 +314,7 @@ async def serial_dilution(
     source_volumes: Volume in the top columns of the source plate. If None, will transfer the \
       total well volume divided by the dilution factor.
     target_plate: Plate to transfer to. If None, will transfer on the source plate.
+
   """
   if source_volumes is None:
     source_volumes = [plate[0][0].max_volume] * len(variable_dict)
@@ -462,9 +463,7 @@ async def handle_dilution(
   dilution_tips: TipRack,
   constant_dilution: bool = True,
 ) -> None:
-  """
-  Handles the dilution series for antigens.
-  """
+  """Handles the dilution series for antigens."""
   if not isinstance(antigen_volumes, list) or not isinstance(dilution_factors, list):
     constant_dilution = True
   for i, antigen_accession_id in enumerate(antigen_accession_ids):
@@ -542,8 +541,10 @@ async def transfer_top_row(
 ):
   n_columns = source_plate.num_items_x
   if source_plate.num_items_x < n_columns or target_plate.num_items_x < n_columns:
-    raise ExperimentError(f"{'Source' if source_plate.num_items_x < n_columns else 'Target'} \
-      plate does not have enough columns")
+    raise ExperimentError(
+      f"{'Source' if source_plate.num_items_x < n_columns else 'Target'} \
+      plate does not have enough columns"
+    )
   for i in range(n_columns):
     liquid_handler.pick_up_tips(tip_spots=tips[i * n_columns])
     await liquid_handler.transfer(
@@ -566,8 +567,7 @@ async def dilution_series(
   source_volumes: Optional[int | list[int]] = None,
   target_plate: Optional[Plate] = None,
 ):
-  """
-  Completes a dilution series. If using replicates, these are treated as separate dilution series.
+  """Completes a dilution series. If using replicates, these are treated as separate dilution series.
   Function assumes you are diluting from the top row of the source plate and diluting down the
   columns of the target plate.
 
@@ -581,6 +581,7 @@ async def dilution_series(
     source_volumes: Volume in the top columns of the source plate. If None, will transfer the \
       total well volume divided by the dilution factor.
     target_plate: Plate to transfer to. If None, will transfer on the source plate.
+
   """
   if isinstance(dilution_factors, list) and len(dilution_factors) != n_replicates:
     raise ExperimentError("Number of dilutions does not match with dilution factors.")

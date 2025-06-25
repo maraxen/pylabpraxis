@@ -8,9 +8,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import JSON, UUID, DateTime, String, Text, func
+from sqlalchemy import JSON, UUID, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from praxis.backend.models.timestamp_mixin import TimestampMixin
 from praxis.backend.utils.db import Base
 
 
@@ -42,7 +43,7 @@ class WorkcellStatusEnum:
     ]
 
 
-class WorkcellOrm(Base):
+class WorkcellOrm(TimestampMixin, Base):
   """SQLAlchemy ORM model representing a workcell.
 
   This model stores details about a logical grouping of machines and resources,
@@ -58,13 +59,6 @@ class WorkcellOrm(Base):
     String,
     nullable=True,
     comment="Physical location of the workcell (e.g., 'Lab 2, Room 301')",
-  )
-
-  created_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
-  )
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
   )
 
   latest_state_json: Mapped[Optional[dict[str, Any]]] = mapped_column(

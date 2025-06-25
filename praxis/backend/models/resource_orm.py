@@ -1,32 +1,26 @@
 """SQLAlchemy ORM models for asset management in the Praxis application.
 
 These models define the database schema for:
-- **ResourceDefinitionCatalogOrm**: Stores static definitions of resource types from
+- **ResourceDefinitionOrm**: Stores static definitions of resource types from
   PyLabRobot.
-- **ResourceInstanceOrm**: Represents specific physical instances of resources, tracking
+- **ResourceOrm**: Represents specific physical instances of resources, tracking
   their status and location.
-- **ResourceInstanceStatusEnum**: Enumerates the possible operational statuses of a
+- **ResourceStatusEnum**: Enumerates the possible operational statuses of a
   resource instance.
-- **ResourceDefinitionCatalogOrm**: Catalogs resource definitions with metadata
+- **ResourceDefinitionOrm**: Catalogs resource definitions with metadata
   including dimensions, categories, and PyLabRobot definitions.
 - **ResourceCategoryEnum**: Enumerates the categories of resources in the catalog,
   providing a hierarchical classification system.
 """
 
 import enum
-from datetime import datetime
+import uuid
 from typing import TYPE_CHECKING, List, Optional
 
-if TYPE_CHECKING:
-  from .deck_orm import DeckInstanceOrm
-  from .machine_orm import MachineOrm
-
-import uuid
 from sqlalchemy import (
   JSON,
   UUID,
   Boolean,
-  DateTime,
   Float,
   ForeignKey,
   String,
@@ -36,12 +30,19 @@ from sqlalchemy import (
   Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
+from praxis.backend.models.asset_management_orm import Asset
+from praxis.backend.models.enums import AssetType
+from praxis.backend.models.timestamp_mixin import TimestampMixin
 from praxis.backend.utils.db import Base
+from praxis.backend.utils.uuid import uuid7
+
+if TYPE_CHECKING:
+  from praxis.backend.models.deck_orm import DeckOrm
+  from praxis.backend.models.machine_orm import MachineOrm
 
 
-class ResourceInstanceStatusEnum(enum.Enum):
+class ResourceStatusEnum(enum.Enum):
   """Enumeration for the possible operational statuses of a resource instance."""
 
   AVAILABLE_IN_STORAGE = "available_in_storage"
@@ -172,7 +173,7 @@ class ResourceCategoryEnum(enum.Enum):
     ]
 
 
-class ResourceDefinitionCatalogOrm(Base):
+class ResourceDefinitionOrm(TimestampMixin, Base):
   """SQLAlchemy ORM model for cataloging PyLabRobot resource definitions.
 
   This model stores comprehensive metadata about various types of lab resources,
@@ -181,26 +182,15 @@ class ResourceDefinitionCatalogOrm(Base):
 
   __tablename__ = "resource_definition_catalog"
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  name: Mapped[str] = mapped_column(
-    String,
-    primary_key=True,
-    index=True,
-    comment=(
-      "Unique name from PyLabRobot (e.g., corning_96_wellplate_360ul_flat),"
-      " corresponds to PLR Resource.name"
-    ),
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, primary_key=True, default=uuid7, index=True
   )
-  python_fqn: Mapped[str] = mapped_column(
+  name: Mapped[str] = mapped_column(String, unique=True, index=True)
+  fqn: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
-    comment=(
-      "Fully qualified Python class name of the specific PyLabRobot"
-      " resource definition (e.g., 'pylabrobot.resources.corning_96_wellplate_360ul_"
-      "flat.Corning96WellPlate360uLFlat',"
-      " or 'pylabrobot.resources.plate.Plate' if generic)."
-    ),
+    comment="Fully qualified name of the resource definition.",
   )
 
   size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -226,198 +216,98 @@ class ResourceDefinitionCatalogOrm(Base):
     ),
   )
 
-  resource_type: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, unique=True
-  )
-  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-  is_consumable: Mapped[bool] = mapped_column(Boolean, default=True)
-  nominal_volume_ul: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  material: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  manufacturer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-
-  plr_definition_details_json: Mapped[Optional[dict]] = mapped_column(
-    JSON,
-    nullable=True,
-    comment=(
-      "Additional PLR-specific details not covered by dedicated columns"
-      " (e.g., well layout, specific geometry details)"
-    ),
-  )
-
-  created_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
-  )
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-  )
-
-  resource_instances = relationship(
-    "ResourceInstanceOrm", back_populates="resource_definition"
+  resource_list: Mapped[List["ResourceOrm"]] = relationship(
+    "ResourceOrm", back_populates="resource_definition"
   )
 
   is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
 
   def __repr__(self):
-    """Return a string representation of the ResourceDefinitionCatalogOrm object."""
+    """Return a string representation of the ResourceDefinitionOrm object."""
     return (
-      f"<ResourceDefinitionCatalogOrm(name='{self.name}',"
-      f" category='{self.plr_category}')>"
+      f"<ResourceDefinitionOrm(name='{self.name}', category='{self.plr_category}')>"
     )
 
 
-class ResourceInstanceOrm(Base):
+class ResourceOrm(Asset):
   """SQLAlchemy ORM model representing a physical instance of a resource.
 
   This model tracks individual physical items of lab resources,
   including their unique name, current status, location, and associated properties.
+  It also supports hierarchical relationships between resources (parent-child).
   """
 
-  __tablename__ = "resource_instances"
+  __tablename__ = "resources"
+  __mapper_args__ = {"polymorphic_identity": "resource"}
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  user_assigned_name: Mapped[str] = mapped_column(
-    String,
-    nullable=False,
-    unique=True,
-    index=True,
-    comment="User-friendly unique name for this physical item",
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("assets.accession_id"), primary_key=True, default=uuid7
   )
-
-  python_fqn: Mapped[str] = mapped_column(
-    String,
-    ForeignKey("resource_definition_catalog.python_fqn"),
+  name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+  asset_type: Mapped[AssetType] = mapped_column(
+    SAEnum(AssetType, name="asset_type_enum"),
     nullable=False,
     index=True,
   )
 
-  lot_number: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  expiry_date: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  # Hierarchical relationship
+  parent_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("resources.accession_id"), nullable=True, index=True
   )
-  date_added_to_inventory: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
+  parent: Mapped[Optional["ResourceOrm"]] = relationship(
+    "ResourceOrm",
+    remote_side=[accession_id],
+    back_populates="children",
+    foreign_keys=[parent_accession_id],
+  )
+  children: Mapped[List["ResourceOrm"]] = relationship(
+    "ResourceOrm", back_populates="parent", cascade="all, delete-orphan"
   )
 
-  current_status: Mapped[ResourceInstanceStatusEnum] = mapped_column(
-    SAEnum(ResourceInstanceStatusEnum, name="resource_instance_status_enum"),
-    default=ResourceInstanceStatusEnum.UNKNOWN,
+  # Definition
+  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    ForeignKey("resource_definition_catalog.accession_id"),
+    nullable=False,
+    index=True,
+  )
+  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
+    "ResourceDefinitionOrm", back_populates="resource_list"
+  )
+
+  # State
+  location: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  properties_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+  current_status: Mapped[ResourceStatusEnum] = mapped_column(
+    SAEnum(ResourceStatusEnum, name="resource_status_enum"),
+    default=ResourceStatusEnum.UNKNOWN,
     nullable=False,
     index=True,
   )
   status_details: Mapped[Optional[str]] = mapped_column(
     Text,
     nullable=True,
-    comment="Additional details about the current status," " e.g., error message",
+    comment="Additional details about the current status, e.g., error message",
   )
 
-  current_deck_position_name: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, comment="If on a deck, the position name (e.g., A1, SLOT_7)"
-  )
-
-  location_machine_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("machines.accession_id"),
-    nullable=True,
-    comment="FK to MachineOrm if located on/in a machine (LiquidHandler, etc.)",
-  )
-
-  physical_location_description: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, comment="General storage location if not on a machine"
-  )
-
-  properties_json: Mapped[Optional[dict]] = mapped_column(
-    JSON,
-    nullable=True,
-    comment=(
-      "Instance-specific state combining PLR runtime inspection (e.g., well"
-      " contents, used tips map) and user-provided metadata (e.g., sample"
-      " info, reagent data)"
-    ),
-  )
-  is_permanent_fixture: Mapped[bool] = mapped_column(
-    Boolean, default=False, comment="e.g., built-in waste chute"
-  )
-
-  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("protocol_runs.run_accession_id", ondelete="SET NULL"),
-    nullable=True,
-    index=True,
-  )
-
-  created_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
-  )
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-  )
-
-  resource_definition = relationship(
-    "ResourceDefinitionCatalogOrm", back_populates="resource_instances"
-  )
-
-  location_machine = relationship(
-    "MachineOrm", back_populates="located_resource_instances"
-  )
-
-  deck_instance_items = relationship(
-    "DeckInstancePositionResourceOrm", back_populates="resource_instance"
-  )
-
-  is_consumable: Mapped[bool] = mapped_column(
-    Boolean, default=True, comment="True if this instance is a consumable item"
-  )
-
-  is_machine: Mapped[bool] = mapped_column(
-    Boolean, default=False, comment="True if this instance is a machine (e.g., shaker)"
-  )
-
-  machine_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("machines.accession_id", ondelete="SET NULL"),
-    nullable=True,
-    index=True,
-    comment="If this resource instance is a machine, links to the MachineOrm entry",
-  )
-
+  # Counterparts
   machine_counterpart: Mapped[Optional["MachineOrm"]] = relationship(
     "MachineOrm",
     back_populates="resource_counterpart",
-    foreign_keys=[machine_counterpart_accession_id],
-    uselist=False,
-    cascade="all, delete-orphan",
-    comment="If this resource instance is a machine, links to the MachineOrm entry",
   )
-
-  deck_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("deck_instances.accession_id", ondelete="SET NULL"),
-    nullable=True,
-    index=True,
-    comment="If this resource instance is a deck instanceuration item, links to the "
-    "DeckInstanceOrm entry",
-  )
-
-  deck_counterpart: Mapped[Optional["DeckInstanceOrm"]] = relationship(
-    "DeckInstanceOrm",
+  deck_counterpart: Mapped[Optional["DeckOrm"]] = relationship(
+    "DeckOrm",
     back_populates="resource_counterpart",
-    foreign_keys=[deck_counterpart_accession_id],
-    uselist=False,
-    cascade="all, delete-orphan",
-    comment="If this resource instance is a deck instanceuration item, links to the "
-    "DeckInstanceOrm entry",
-  )
-
-  # Relationship to data outputs
-  data_outputs = relationship(
-    "FunctionDataOutputOrm",
-    back_populates="resource_instance",
-    cascade="all, delete-orphan",
   )
 
   def __repr__(self):
-    """Return a string representation of the ResourceInstanceOrm object."""
+    """Return a string representation of the ResourceOrm object."""
+    fqn = (
+      self.resource_definition.fqn
+      if self.resource_definition and hasattr(self.resource_definition, "fqn")
+      else "N/A"
+    )
     return (
-      f"<ResourceInstanceOrm(id={self.accession_id}, name='{self.user_assigned_name}',"
-      f" type='{self.python_fqn}', is_machine={self.is_machine})>"
+      f"<ResourceOrm(accession_id={self.accession_id}, name='{self.name}',"
+      f" type='{fqn}')>"
     )

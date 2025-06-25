@@ -8,14 +8,9 @@ providing type safety and validation for scheduling operations.
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
-
-from praxis.backend.models.scheduler_orm import (
-  ScheduleStatusEnum,
-  AssetReservationStatusEnum,
-)
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScheduleEntryStatus(str, Enum):

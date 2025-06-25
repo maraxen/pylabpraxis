@@ -3,9 +3,8 @@
 # This file contains the FastAPI router for all resource-related endpoints,
 # including resource definitions (catalog) and resource instances.
 
-import datetime
 from functools import partial
-from typing import Dict, List
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -22,9 +21,10 @@ from praxis.backend.models import (
   ResourceDefinitionCreate,
   ResourceDefinitionResponse,
   ResourceDefinitionUpdate,
-  ResourceInstanceCreate,
-  ResourceInstanceResponse,
-  ResourceInstanceUpdate,
+)
+from praxis.backend.models.resource_pydantic_models import (
+  ResourceCreate,
+  ResourceResponse,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -168,33 +168,31 @@ async def delete_resource_definition(name: str, db: AsyncSession = Depends(get_d
 )
 @router.post(
   "/",
-  response_model=ResourceInstanceResponse,
+  response_model=ResourceResponse,
   status_code=status.HTTP_201_CREATED,
   tags=["Resources"],
 )
 async def create_resource_instance(
-  request: ResourceInstanceCreate, db: AsyncSession = Depends(get_db)
+  request: ResourceCreate, db: AsyncSession = Depends(get_db)
 ):
   """Create a new resource instance."""
   try:
-    if request.resource_definition_accession_id is None:
+    # If resource_definition_accession_id is not provided, try to resolve from FQN
+    if request.resource_definition_accession_id is None and request.fqn:
       definition_orm = await svc.read_resource_definition_by_fqn(
-        db=db, python_fqn=request.python_fqn
+        db=db, python_fqn=request.fqn
       )
       if not definition_orm:
         raise HTTPException(
           status_code=404,
-          detail=f"Resource definition with FQN '{request.python_fqn}' not found.",
+          detail=f"Resource definition with FQN '{request.fqn}' not found.",
         )
       request.resource_definition_accession_id = definition_orm.accession_id
     resource_orm = await svc.create_resource_instance(
       db=db,
-      python_fqn=request.python_fqn,
-      resource_definition_accession_id=request.resource_definition_accession_id,
-      user_assigned_name=request.user_assigned_name,
+      resource_create=request,
     )
-    return ResourceInstanceResponse.model_validate(resource_orm)
-
+    return ResourceResponse.model_validate(resource_orm)
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Failed to create resource: {str(e)}")
 
@@ -207,7 +205,7 @@ async def create_resource_instance(
 )
 @router.get(
   "/{name}",
-  response_model=ResourceInstanceResponse,
+  response_model=ResourceResponse,
   tags=["Resources"],
 )
 async def get_resource_instance(
@@ -219,7 +217,7 @@ async def get_resource_instance(
     resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
-    return ResourceInstanceResponse.model_validate(resource)
+    return ResourceResponse.model_validate(resource)
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Failed to get resource: {str(e)}")
 
@@ -232,12 +230,12 @@ async def get_resource_instance(
 )
 @router.put(
   "/{instance_accession_id}",
-  response_model=ResourceInstanceResponse,
+  response_model=ResourceResponse,
   tags=["Resources"],
 )
 async def update_resource(
   accession: str | UUID,
-  request: ResourceInstanceUpdate,
+  request: ResourceResponse,
   db: AsyncSession = Depends(get_db),
 ):
   """Update an existing resource instance."""
@@ -250,7 +248,7 @@ async def update_resource(
     updated_resource = await svc.update_resource_instance(
       db=db, instance_accession_id=accession_id, **update_data
     )
-    return ResourceInstanceResponse.model_validate(updated_resource)
+    return ResourceResponse.model_validate(updated_resource)
 
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Failed to update resource: {str(e)}")

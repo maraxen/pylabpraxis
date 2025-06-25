@@ -1,8 +1,8 @@
-from functools import wraps
-from typing import Optional, Literal, Any
-from pylabrobot.resources import TipRack, TipSpot, Well, Plate
 import warnings
-from typing import TypeVar
+from functools import wraps
+from typing import Any, Literal, Optional, TypeVar
+
+from pylabrobot.resources import Plate, TipRack, TipSpot, Well
 
 T = TypeVar("T")
 
@@ -13,8 +13,7 @@ async def well_to_int(well: Well, plate: Plate) -> int:
 
 
 def liquid_handler_setup_check(func):
-  """
-  A decorator function that checks if a liquid handler is set up before executing the decorated
+  """A decorator function that checks if a liquid handler is set up before executing the decorated
   function.
 
   Args:
@@ -26,6 +25,7 @@ def liquid_handler_setup_check(func):
 
   Returns:
     The decorated function.
+
   """
 
   @wraps(func)
@@ -44,8 +44,7 @@ def liquid_handler_setup_check(func):
 
 
 async def coerce_to_list(items: list | tuple, target_length: Optional[int]) -> list:
-  """
-  Coerces the given items into a list.
+  """Coerces the given items into a list.
 
   Args:
     items (list | tuple): The items to be coerced into a list.
@@ -68,8 +67,10 @@ async def coerce_to_list(items: list | tuple, target_length: Optional[int]) -> l
       elif len(item) == target_length:
         new_items.append(item)
       else:
-        raise ValueError(f"Expected list of length {target_length} but got list of length \
-          {len(item)}")
+        raise ValueError(
+          f"Expected list of length {target_length} but got list of length \
+          {len(item)}"
+        )
   return new_items
 
 
@@ -102,8 +103,7 @@ async def fill_in_defaults(
 
 
 async def type_check(items: list, types: list, in_list: bool = False) -> None:
-  """
-  Check the types of items in a list against a given list of types.
+  """Check the types of items in a list against a given list of types.
 
   Args:
     items (list): The list of items to check the types for.
@@ -129,8 +129,7 @@ async def check_list_length(
   coerce_length: bool = False,
   target_length: Optional[int] = None,
 ) -> list[list[Any]]:
-  """
-  Check the length of a list or a list of lists.
+  """Check the length of a list or a list of lists.
 
   Args:
     items (list): The list or list of lists to check.
@@ -142,6 +141,7 @@ async def check_list_length(
 
   Returns:
     items list[list[Any]]: The list of items.
+
   """
   if target_length is None:
     length = len(items[0])
@@ -160,9 +160,9 @@ async def check_list_length(
       raise ValueError(f"Expected list but got {type(item)}")
     if len(item) != target_length:
       if len(item) == 1 and coerce_length:
-        assert (
-          target_length is not None
-        ), "Expected target length to be provided"  # mypy assert
+        assert target_length is not None, (
+          "Expected target length to be provided"
+        )  # mypy assert
         new_items.append(item * target_length)
       else:
         raise ValueError(
@@ -174,8 +174,7 @@ async def check_list_length(
 
 
 async def parse_well_name(well: Well) -> tuple:
-  """
-  Parse the name of a well into a tuple of the row and column.
+  """Parse the name of a well into a tuple of the row and column.
 
   Args:
     well_name (str): The name of the well.
@@ -191,8 +190,7 @@ async def parse_well_name(well: Well) -> tuple:
 
 
 async def parse_well_str_accession_id(well: str, plate: Plate) -> list[Well]:
-  """
-  Parse the name of a well into a tuple of the row and column.
+  """Parse the name of a well into a tuple of the row and column.
 
   Args:
     well_name (str): The name of the well.
@@ -212,8 +210,7 @@ async def tip_mapping(
   targets: Optional[list[Well]] = None,
   map_tips: Optional[Literal["source", "target"]] = None,
 ) -> list[TipSpot]:
-  """
-  Check if tips can be mapped between either source or destination containers based on if they
+  """Check if tips can be mapped between either source or destination containers based on if they
   are wells, and that the number of tips is sufficient for the number of sources and targets.
 
   Args:
@@ -232,6 +229,7 @@ async def tip_mapping(
   Returns:
     tips: The list of tips, either from the input or from mapping between source, target, and
     tip rack.
+
   """
   if isinstance(tips, list):
     if all(isinstance(tip, TipSpot) for tip in tips):
@@ -290,6 +288,7 @@ def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:
 
   Returns:
     dict: The new dictionary containing only the key-value pairs that match the given key and value.
+
   """
   new_dict = {}
   for k, v in nested_dict.items():

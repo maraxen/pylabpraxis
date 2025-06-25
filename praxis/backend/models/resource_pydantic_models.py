@@ -3,37 +3,104 @@
 These models handle the structured representation of various lab resources,
 from their generic definitions to specific physical instances and their
 inventory data.
-
-Models included:
-- ResourceDefinitionBase
-- ResourceDefinitionCreate
-- ResourceDefinitionUpdate
-- ResourceDefinitionResponse
-- ResourceInventoryReagentItem
-- ResourceInventoryItemCount
-- ResourceInventoryDataIn
-- ResourceInventoryDataOut
-- ResourceTypeInfo
-- ResourceCategoriesResponse
-- ResourceCreationRequest
-- ResourceInstanceSharedFields
-- ResourceInstanceCreate
-- ResourceInstanceResponse
-- ResourceInstanceUpdate
 """
 
-import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
+from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
+from .pydantic_base import TimestampedModel
+from .resource_orm import ResourceStatusEnum
+
+if TYPE_CHECKING:
+  from .machine_orm import MachineStatusEnum
+
+# =============================================================================
+# Resource Instance Models
+# =============================================================================
+
+
+class ResourceBase(AssetBase):
+  """Base model for a resource instance."""
+
+  status: ResourceStatusEnum = Field(default=ResourceStatusEnum.UNKNOWN)
+  resource_definition_accession_id: Optional[UUID7] = None
+  machine_counterpart_accession_id: Optional[UUID7] = None
+  deck_counterpart_accession_id: Optional[UUID7] = None
+  parent_accession_id: Optional[UUID7] = None
+  plr_state: Optional[dict] = None
+  plr_definition: Optional[dict] = None
+  properties_json: Optional[dict] = None
+
+  class Config:
+    """Configuration for Pydantic model behavior."""
+
+    from_attributes = True
+    use_enum_values = True
+
+
+class ResourceCreate(ResourceBase):
+  """Model for creating a new resource instance."""
+
+  is_machine: bool = Field(
+    default=False,
+    description="Indicates if this resource is also registered as a machine instance.",
+  )
+  # Fields for creating a machine counterpart if is_machine is True
+  machine_fqn: Optional[str] = Field(
+    default=None,
+    description=(
+      "The FQN for the machine counterpart. Required if is_machine is True and no "
+      "counterpart ID is provided."
+    ),
+  )
+  machine_properties_json: Optional[Dict[str, Any]] = Field(
+    default=None,
+    description="Properties for the new machine counterpart.",
+  )
+  machine_initial_status: Optional["MachineStatusEnum"] = Field(
+    default=None,
+    description="Initial status for the new machine counterpart.",
+  )
+
+
+class ResourceUpdate(AssetUpdate):
+  """Model for updating a resource instance."""
+
+  status: Optional[ResourceStatusEnum] = None
+  resource_definition_accession_id: Optional[UUID7] = None
+  machine_counterpart_accession_id: Optional[UUID7] = None
+  deck_counterpart_accession_id: Optional[UUID7] = None
+  parent_accession_id: Optional[UUID7] = None
+  is_machine: Optional[bool] = None
+  machine_fqn: Optional[str] = None
+  machine_properties_json: Optional[Dict[str, Any]] = None
+  machine_initial_status: Optional["MachineStatusEnum"] = None
+
+
+class ResourceResponse(AssetResponse, ResourceBase):
+  """Model for API responses for a resource instance."""
+
+  parent: Optional["ResourceResponse"] = None
+  children: List["ResourceResponse"] = []
+
+  class Config(AssetResponse.Config, ResourceBase.Config):
+    """Pydantic configuration for ResourceResponse."""
+
+    pass
+
+
+ResourceResponse.model_rebuild()
+
+
+# =============================================================================
+# Resource Definition Models (Existing)
+# =============================================================================
+
 
 class ResourceDefinitionBase(BaseModel):
-  """Defines the base properties for a resource definition.
-
-  This model captures general attributes of a type of lab resource,
-  such as its PyLabRobot definition name, type, and physical dimensions.
-  """
+  """Defines the base properties for a resource definition."""
 
   accession_id: UUID7
   name: str
@@ -59,21 +126,13 @@ class ResourceDefinitionBase(BaseModel):
 
 
 class ResourceDefinitionCreate(ResourceDefinitionBase):
-  """Represents a resource definition for creation requests.
-
-  This model inherits all properties from `ResourceDefinitionBase` and is
-  used when creating new resource definitions.
-  """
+  """Represents a resource definition for creation requests."""
 
   pass
 
 
 class ResourceDefinitionUpdate(BaseModel):
-  """Specifies the fields that can be updated for an existing resource definition.
-
-  All fields are optional, allowing for partial updates of a resource's
-  definitional attributes.
-  """
+  """Specifies the fields that can be updated for an existing resource definition."""
 
   python_fqn: Optional[str] = None
   resource_type: Optional[str] = None
@@ -88,23 +147,17 @@ class ResourceDefinitionUpdate(BaseModel):
   model: Optional[str] = None
 
 
-class ResourceDefinitionResponse(ResourceDefinitionBase):
-  """Represents a resource definition for API responses.
+class ResourceDefinitionResponse(ResourceDefinitionBase, TimestampedModel):
+  """Represents a resource definition for API responses."""
 
-  Extends `ResourceDefinitionBase` by including timestamps for creation and
-  last update, suitable for client-facing responses.
-  """
+  class Config(ResourceDefinitionBase.Config, TimestampedModel.Config):
+    """Pydantic configuration for ResourceDefinitionResponse."""
 
-  created_at: Optional[datetime.datetime] = None
-  updated_at: Optional[datetime.datetime] = None
+    pass
 
 
 class ResourceInventoryReagentItem(BaseModel):
-  """Represents a single reagent item within resource inventory data.
-
-  This model captures specific details about a reagent, such as lot number,
-  expiry, and quantities, for inventory tracking.
-  """
+  """Represents a single reagent item within resource inventory data."""
 
   reagent_accession_id: UUID7
   reagent_name: Optional[str] = None
@@ -122,11 +175,7 @@ class ResourceInventoryReagentItem(BaseModel):
 
 
 class ResourceInventoryItemCount(BaseModel):
-  """Provides counts and usage information for items within a resource inventory.
-
-  This helps track the maximum capacity, current availability, and used positions
-  for consumable resources.
-  """
+  """Provides counts and usage information for items within a resource inventory."""
 
   item_type: Optional[str] = None
   initial_max_items: Optional[int] = None
@@ -135,11 +184,7 @@ class ResourceInventoryItemCount(BaseModel):
 
 
 class ResourceInventoryDataIn(BaseModel):
-  """Represents inbound inventory data for a resource instance.
-
-  This model is used when submitting or updating inventory details,
-  including reagents, item counts, and general state information.
-  """
+  """Represents inbound inventory data for a resource instance."""
 
   praxis_inventory_schema_version: Optional[str] = "1.0"
   reagents: Optional[List[ResourceInventoryReagentItem]] = None
@@ -150,21 +195,13 @@ class ResourceInventoryDataIn(BaseModel):
 
 
 class ResourceInventoryDataOut(ResourceInventoryDataIn):
-  """Represents outbound inventory data for a resource instance.
-
-  Extends `ResourceInventoryDataIn` by adding a `last_updated_at` timestamp,
-  suitable for responses.
-  """
+  """Represents outbound inventory data for a resource instance."""
 
   last_updated_at: Optional[str] = None
 
 
 class ResourceTypeInfo(BaseModel):
-  """Provides detailed information about a specific resource type.
-
-  This includes its name, parent class, constructor parameters, and
-  whether it can be directly instantiated.
-  """
+  """Provides detailed information about a specific resource type."""
 
   name: str
   parent_class: str
@@ -178,120 +215,3 @@ class ResourceCategoriesResponse(BaseModel):
   """Organizes resource types by category for categorization and discovery."""
 
   categories: Dict[str, List[str]]
-
-
-class ResourceCreationRequest(BaseModel):
-  """Represents a request to create a new resource instance.
-
-  It includes the desired name, resource type, description, and
-  specific parameters for resource instantiation.
-  """
-
-  name: str
-  resourceType: str
-  description: Optional[str] = None
-  params: Dict[str, Any] = {}
-
-
-class ResourceInstanceSharedFields(BaseModel):
-  """Defines fields common across different ResourceInstance models.
-
-  These fields have compatible type signatures and represent general
-  attributes of a physical resource item, such as status and location.
-  """
-
-  accession_id: UUID7
-  user_assigned_name: str = Field(
-    ...,
-    description="A user-friendly name for the resource instance, which can be \
-      different from the PyLabRobot definition name.",
-  )
-  python_fqn: str = Field(
-    ...,
-    description="The fully qualified Python name of the resource instance's \
-      PyLabRobot definition.",
-  )
-  resource_definition_accession_id: Optional[UUID7] = None
-  lot_number: Optional[str] = None
-  serial_number: Optional[str] = None
-  status: Optional[str] = "unknown"
-  current_parent_accession_id: Optional[UUID7] = None
-  current_position_accession_id: Optional[UUID7] = None
-  custom_fields: Optional[Dict[str, Any]] = None
-  date_added_to_inventory: Optional[datetime.datetime] = None
-  is_machine: bool = Field(
-    default=False,
-    description="True if this resource instance is also registered as a machine.",
-  )
-  machine_counterpart_accession_id: Optional[UUID7] = Field(
-    default=None,
-    description="ID of the associated MachineOrm if this resource instance is a \
-      machine.",
-  )
-
-  class Config:
-    """Pydantic configuration for ResourceInstanceSharedFields."""
-
-    from_attributes = True
-    use_enum_values = True
-
-
-class ResourceInstanceCreate(ResourceInstanceSharedFields):
-  """Represents a resource instance for creation requests.
-
-  Extends `ResourceInstanceSharedFields` by including the PyLabRobot
-  definition name and an optional resource definition ID, used to link
-  to a resource definition.
-  """
-
-  inventory_data: Optional[ResourceInventoryDataIn] = None
-  date_added_to_inventory: Optional[datetime.datetime] = Field(
-    default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
-  )
-
-
-class ResourceInstanceResponse(ResourceInstanceSharedFields):
-  """Represents a resource instance for API responses.
-
-  Extends `ResourceInstanceSharedFields` by adding system-generated identifiers,
-  the linked resource definition ID and PyLabRobot definition name,
-  and timestamps for creation and last update.
-  """
-
-  instance_name: str
-  instance_fqn: str
-  created_at: Optional[datetime.datetime] = None
-  updated_at: Optional[datetime.datetime] = None
-
-
-class ResourceInstanceUpdate(BaseModel):
-  """Specifies the fields that can be updated for an existing resource instance.
-
-  All fields are optional, allowing for partial updates to the instance's
-  attributes, including its status and inventory data.
-  """
-
-  instance_name: Optional[str] = None
-  lot_number: Optional[str] = None
-  serial_number: Optional[str] = None
-  status: Optional[str] = None
-  current_parent_accession_id: Optional[UUID7] = None
-  current_position_accession_id: Optional[UUID7] = None
-  inventory_data: Optional[ResourceInventoryDataIn] = None
-  custom_fields: Optional[Dict[str, Any]] = None
-  date_added_to_inventory: Optional[datetime.datetime] = None
-  is_machine: Optional[bool] = Field(
-    default=None,
-    description="True if this resource instance is also registered as a machine.",
-  )
-  machine_counterpart_accession_id: Optional[UUID7] = Field(
-    default=None,
-    description="ID of the associated MachineOrm if this resource instance is a \
-      machine.",
-  )
-
-  class Config:
-    """Pydantic configuration for ResourceInstanceUpdate."""
-
-    from_attributes = True
-    use_enum_values = True

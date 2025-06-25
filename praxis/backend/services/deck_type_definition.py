@@ -12,29 +12,21 @@ deck type definitions, and deck position definitions.
 It also includes functions to manage position definitions for deck types.
 """
 
-import datetime
-import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
-  DeckInstanceOrm,
-  DeckInstancePositionResourceOrm,
   DeckPositionDefinitionOrm,
   DeckTypeDefinitionOrm,
-  MachineOrm,
   PositioningConfig,
-  ResourceInstanceOrm,
 )
 from praxis.backend.utils.logging import get_logger
-
-from .resource_type_definition import read_resource_definition
 
 logger = get_logger(__name__)
 

@@ -1,8 +1,6 @@
-
 """Test module for workcell service functions."""
 
 import uuid
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession

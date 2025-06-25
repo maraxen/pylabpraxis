@@ -18,7 +18,6 @@ import uuid
 from typing import (
   Any,
   Callable,
-  Dict,
   List,
   Optional,
   Set,
@@ -43,7 +42,6 @@ from praxis.backend.models.protocol_pydantic_models import (
 from praxis.backend.services.protocols import (
   upsert_function_protocol_definition,
 )
-
 from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
@@ -293,7 +291,7 @@ class ProtocolDiscoveryService:
                       )
 
                   inferred_model = FunctionProtocolDefinitionModel(
-                    accession_id=uuid7(), # TODO: ensure that if a reinspection happens it is assigned the already existing
+                    accession_id=uuid7(),  # TODO: ensure that if a reinspection happens it is assigned the already existing
                     name=func_obj.__name__,
                     version="0.0.0-inferred",
                     description=inspect.getdoc(func_obj) or "Inferred from code.",

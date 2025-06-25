@@ -61,7 +61,7 @@ machine_accession_resolver = partial(
 async def create_machine(machine: MachineCreate, db: AsyncSession = Depends(get_db)):
   """Create a new machine."""
   try:
-    created_machine = await svc.create_machine(db=db, **machine.model_dump())
+    created_machine = await svc.create_machine(db=db, machine_create=machine)
     return created_machine
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -106,7 +106,7 @@ async def list_machines(
   status: Optional[MachineStatusEnum] = None,
   pylabrobot_class_filter: Optional[str] = None,
   workcell_accession_id: Optional[UUID] = None,
-  user_friendly_name_filter: Optional[str] = None,
+  name_filter: Optional[str] = None,
 ):
   """List all machines with optional filtering."""
   return await svc.list_machines(
@@ -114,7 +114,7 @@ async def list_machines(
     status=status,
     pylabrobot_class_filter=pylabrobot_class_filter,
     workcell_accession_id=workcell_accession_id,
-    user_friendly_name_filter=user_friendly_name_filter,
+    name_filter=name_filter,
     limit=limit,
     offset=offset,
   )
@@ -139,10 +139,9 @@ async def update_machine(
   """Update an existing machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 
-  update_data = machine_update.model_dump(exclude_unset=True)
   try:
     updated_machine = await svc.update_machine(
-      db=db, machine_accession_id=machine_id, **update_data
+      db=db, machine_accession_id=machine_id, machine_update=machine_update
     )
     if not updated_machine:
       raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")

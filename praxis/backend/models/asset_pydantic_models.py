@@ -2,36 +2,62 @@
 
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import UUID7, BaseModel, Field
+
+from .enums import AssetType
+from .pydantic_base import TimestampedModel
 
 
 class AssetBase(BaseModel):
-  """Define the base properties for an asset.
+  """Define the base properties for an asset."""
 
-  This model is used for common attributes shared by asset representations,
-  primarily for responses rather than direct database interaction.
-
-  """
-
+  accession_id: UUID7 = Field(..., description="The unique accession ID of the asset.")
   name: str = Field(description="The unique name of the asset.")
-  type: str = Field(description="The type of the asset (e.g., 'tip_rack', 'plate').")
-  metadata: Dict[str, Any] = Field(
+  asset_type: AssetType = Field(description="The type of the asset.")
+  fqn: Optional[str] = Field(
+    None, description="Fully qualified name of the asset's class, if applicable."
+  )
+  location: Optional[str] = Field(None, description="The location of the asset.")
+
+
+class AssetResponse(AssetBase, TimestampedModel):
+  """Represent an asset for API responses."""
+
+  plr_state: Optional[Dict[str, Any]] = Field(
+    default_factory=dict,
+    description="A dictionary for additional state information about the asset.",
+  )
+  plr_definition: Optional[Dict[str, Any]] = Field(
+    default_factory=dict,
+    description="A dictionary for the PyLabRobot definition of the asset.",
+  )
+  properties_json: Optional[Dict[str, Any]] = Field(
     default_factory=dict,
     description="A dictionary for additional metadata about the asset.",
   )
 
 
-class AssetResponse(AssetBase):
-  """Represent an asset for API responses.
+class AssetUpdate(BaseModel):
+  """Define the properties for updating an asset."""
 
-  This model extends `AssetBase` by adding availability status and an
-  optional description, suitable for client-facing responses.
-
-  """
-
-  is_available: bool = Field(
-    description="Indicate if the asset is currently available for use."
+  name: Optional[str] = Field(None, description="The unique name of the asset.")
+  fqn: Optional[str] = Field(
+    None, description="Fully qualified name of the asset's class, if applicable."
   )
-  description: Optional[str] = Field(
-    None, description="A brief description of the asset."
+  location: Optional[str] = Field(None, description="The location of the asset.")
+  plr_state: Optional[Dict[str, Any]] = Field(
+    None,
+    description="A dictionary for additional state information about the asset.",
   )
+  plr_definition: Optional[Dict[str, Any]] = Field(
+    None,
+    description="A dictionary for the PyLabRobot definition of the asset.",
+  )
+  properties_json: Optional[Dict[str, Any]] = Field(
+    None, description="A dictionary for additional metadata about the asset."
+  )
+
+  class Config:
+    """Pydantic configuration for AssetUpdate."""
+
+    from_attributes = True

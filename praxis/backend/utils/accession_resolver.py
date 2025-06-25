@@ -1,15 +1,13 @@
-# <filename>praxis/backend/services/utils.py</filename>
-#
-# This file contains shared utility functions for the service layer, helping
-# to reduce code duplication and centralize common logic.
+"""Shared utility function for the service layer to resolve accessions to UUIDs.
+
+praxis/backend/services/utils.py
+"""
 
 from typing import Awaitable, Callable, Optional, TypeVar
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Define a generic type 'T' that represents any ORM model class.
-# We expect it to have an 'id' attribute.
 T = TypeVar("T")
 
 
@@ -33,8 +31,8 @@ async def get_accession_id_from_accession(
                       Example: `svc.get_resource_instance`
       get_by_name_func: The service function used to get the entity by its name.
                         Example: `svc.get_resource_instance_by_name`
-      entity_type_name: The user-friendly name of the entity type (e.g., "Resource Instance")
-                        used for creating clear error messages.
+      entity_type_name: The user-friendly name of the entity type (e.g., "Resource
+                        Instance") used for creating clear error messages.
 
   Returns:
       The UUID of the found entity.

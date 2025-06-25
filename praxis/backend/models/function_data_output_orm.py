@@ -19,10 +19,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-  from .deck_orm import DeckInstanceOrm
-  from .machine_orm import MachineOrm
-  from .protocol_definitions_orm import FunctionCallLogOrm, ProtocolRunOrm
-  from .resource_orm import ResourceInstanceOrm
+  pass
 
 from sqlalchemy import (
   JSON,
@@ -236,7 +233,7 @@ class FunctionDataOutputOrm(Base):
   )
 
   deck_instance = relationship(
-    "DeckInstanceOrm",
+    "DeckOrm",
     foreign_keys=[deck_instance_accession_id],
     back_populates="data_outputs",
   )

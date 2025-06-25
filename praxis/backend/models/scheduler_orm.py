@@ -19,13 +19,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-  from .protocol_definitions_orm import ProtocolRunOrm
-  from .machine_orm import MachineOrm
+  pass
 
 from sqlalchemy import (
   JSON,
   UUID,
-  Boolean,
   DateTime,
   Float,
   ForeignKey,
@@ -321,6 +319,8 @@ class SchedulerMetricsOrm(Base):
     ),
   )
 
+
+# Remove any legacy/obsolete fields, ensure docstrings and field types are consistent
 
 # Add relationships to existing models (these would be added via alembic migration)
 # This shows the integration points with existing models:

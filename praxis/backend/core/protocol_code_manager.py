@@ -17,7 +17,7 @@ import importlib
 import os
 import subprocess
 import sys
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from praxis.backend.models import (
   FunctionProtocolDefinitionModel,
@@ -45,6 +45,7 @@ def temporary_sys_path(path_to_add: Optional[str]):
 
   Raises:
       ValueError: If the path_to_add is not a string or is empty.
+
   """
   original_sys_path = list(sys.path)
   path_added_successfully = False
@@ -113,6 +114,7 @@ class ProtocolCodeManager:
     Raises:
         RuntimeError: If the command fails or times out.
         FileNotFoundError: If the Git command is not found in the system path.
+
     """
     try:
       logged_command = " ".join(command)
@@ -169,9 +171,7 @@ class ProtocolCodeManager:
         else "N/A"
       )
       error_message = (
-        "CODE-GIT: Command '%s' failed with exit code %d in %s.\n"
-        "Stderr: %s\n"
-        "Stdout: %s"
+        "CODE-GIT: Command '%s' failed with exit code %d in %s.\nStderr: %s\nStdout: %s"
       ) % (
         " ".join(e.cmd),
         e.returncode,
@@ -201,6 +201,7 @@ class ProtocolCodeManager:
     Raises:
         ValueError: If there are conflicts with existing repositories or paths.
         RuntimeError: If Git operations fail.
+
     """
     is_git_repo = False
     if os.path.exists(checkout_path):
@@ -294,6 +295,7 @@ class ProtocolCodeManager:
 
     Raises:
         RuntimeError: If the checkout fails or verification fails.
+
     """
     logger.info(
       "CODE-GIT: Checking out commit '%s' in '%s'...",
@@ -338,6 +340,7 @@ class ProtocolCodeManager:
     Raises:
         AttributeError: If the function or its definition is not found.
         ImportError: If the module cannot be imported.
+
     """
     with temporary_sys_path(module_path):
       if module_name in sys.modules:
@@ -388,6 +391,7 @@ class ProtocolCodeManager:
         ValueError: If the protocol definition is incomplete or invalid.
         AttributeError: If the function or its Pydantic definition is not found.
         RuntimeError: If there is an error with Git operations.
+
     """
     logger.info(
       "Preparing code for protocol: %s v%s",

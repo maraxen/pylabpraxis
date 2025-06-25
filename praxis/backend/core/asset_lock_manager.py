@@ -408,6 +408,7 @@ class AssetLockManager:
 
     Returns:
         Number of locks cleaned up
+
     """
     if not self._redis_client:
       raise RuntimeError("Redis client not initialized")

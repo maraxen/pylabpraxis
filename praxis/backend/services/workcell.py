@@ -11,16 +11,15 @@ This module provides functions to create, read, update, and delete workcell entr
 
 import datetime
 import logging
+import uuid
 from typing import Any, Dict, List, Optional
 
-
-import uuid
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models import MachineOrm, WorkcellOrm
+from praxis.backend.models import WorkcellOrm
 from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
@@ -149,6 +148,7 @@ async def list_workcells(
 
   Returns:
     List[WorkcellOrm]: A list of workcell objects.
+
   """
   logger.info("Listing workcells with limit: %d, offset: %d.", limit, offset)
   stmt = (

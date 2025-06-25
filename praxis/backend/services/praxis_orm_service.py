@@ -10,35 +10,18 @@ and Assets.
 """
 
 import asyncio
-import json
 import logging
 import os
-import uuid  # For generating run_accession_id
 from configparser import ConfigParser
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 import asyncpg  # For Keycloak database
-import uuid
-from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import (
   AsyncSession,
-  async_sessionmaker,
-  create_async_engine,
 )
-from sqlalchemy.orm import joinedload, selectinload
 
-from praxis.backend.models import (
-  AssetDefinitionOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  ProtocolSourceRepositoryOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
-  UserOrm,
-)
 from praxis.backend.utils.db import (
   AsyncSessionLocal,
 )  # This should be an async_sessionmaker
@@ -106,7 +89,7 @@ class PraxisDBService:
     if keycloak_dsn:
       if not keycloak_dsn.startswith(("postgresql://", "postgres://")):
         error_message = (
-          "Invalid keycloak_dsn: must start with postgresql:// or " "postgres://."
+          "Invalid keycloak_dsn: must start with postgresql:// or postgres://."
         )
         logger.error(error_message)
         raise ValueError(error_message)
@@ -129,9 +112,9 @@ class PraxisDBService:
               command_timeout=60,
               timeout=10.0,
             )
-            assert (
-              cls._keycloak_pool is not None
-            ), "Failed to create Keycloak database pool"
+            assert cls._keycloak_pool is not None, (
+              "Failed to create Keycloak database pool"
+            )
             async with cls._keycloak_pool.acquire() as conn:  # type: ignore
               await conn.execute("SELECT 1")  # type: ignore
             logger.info("Successfully connected to Keycloak database.")
@@ -157,9 +140,9 @@ class PraxisDBService:
               cls._max_retries,
             )
             raise ConnectionError(
-              f"Could not establish Keycloak database connection: " f"{last_error}"
+              f"Could not establish Keycloak database connection: {last_error}"
             ) from last_error
-        except Exception as e:
+        except Exception:
           logger.exception("Unexpected error during Keycloak database initialization.")
           raise
 

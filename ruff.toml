@@ -1,16 +1,17 @@
 # ruff.toml
 
 select = [
-    "E",  # pycodestyle errors
-    "F",  # Pyflakes errors
-    "D",  # pydocstyle
-    "I",  # isort (for import sorting, good practice)
+    "E",
+    "F",
+    "G",
+    "D",
+    "I",
 ]
 
 # ignore = ["E501"] # Example: ignore line too long for general code
 
-line-length = 88 # Set a default line length for code and docstrings
-indent-width = 2 # Set the default indentation width
+line-length = 88
+indent-width = 2
 fix = true
 target-version = "py310"
 
@@ -20,8 +21,5 @@ indent-style = "space"
 
 
 
-# Specific pydocstyle configurations (optional, Ruff uses sensible defaults)
 [lint.pydocstyle]
 # ignore = ["D415"]
-# However, for docstring *line length itself*, it's mainly controlled by the global `line-width`
-# when the formatter runs.

@@ -10,36 +10,24 @@ Models included:
 - WorkcellResponse
 """
 
-import datetime
 from typing import List, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
 from praxis.backend.models.deck_pydantic_models import DeckStateResponse
 from praxis.backend.models.machine_pydantic_models import MachineResponse
-from praxis.backend.models.resource_pydantic_models import ResourceInstanceResponse
+from praxis.backend.models.pydantic_base import TimestampedModel
+from praxis.backend.models.resource_pydantic_models import ResourceResponse
 
 
 class WorkcellBase(BaseModel):
-  """Defines the base properties for a workcell.
-
-  This model captures essential attributes shared across workcell
-  representations, such as name, description, and physical location.
-  """
+  """Defines the base properties for a workcell."""
 
   name: str = Field(description="The unique name of the workcell.")
-  id: Optional[UUID7] = Field(
-    None, description="The unique identifier for the workcell (optional for creation)."
-  )
   description: Optional[str] = Field(None, description="A description of the workcell.")
   physical_location: Optional[str] = Field(
     None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301')."
   )
-
-  class Config:
-    """Pydantic configuration for WorkcellBase."""
-
-    from_attributes = True
 
 
 class WorkcellCreate(WorkcellBase):
@@ -68,7 +56,7 @@ class WorkcellUpdate(BaseModel):
   )
 
 
-class WorkcellResponse(WorkcellBase):
+class WorkcellResponse(WorkcellBase, TimestampedModel):
   """Represents a workcell for API responses.
 
   This model extends `WorkcellBase` by adding system-generated identifiers
@@ -76,22 +64,21 @@ class WorkcellResponse(WorkcellBase):
   responses.
   """
 
-  db_accession_id: UUID7 = Field(description="The unique database ID of the workcell.")
-  created_at: Optional[datetime.datetime] = Field(
-    None, description="Timestamp when the workcell was created (UTC)."
-  )
-  updated_at: Optional[datetime.datetime] = Field(
-    None, description="Timestamp when the workcell was last updated (UTC)."
-  )
+  accession_id: UUID7 = Field(description="The unique database ID of the workcell.")
   machines: List[MachineResponse] = Field(
     default_factory=list, description="List of machines associated with this workcell."
   )
 
-  resources: Optional[List[ResourceInstanceResponse]] = Field(
+  resources: Optional[List[ResourceResponse]] = Field(
     default_factory=list, description="List of resources associated with this workcell."
   )
 
   decks: Optional[List[DeckStateResponse]] = Field(
     default_factory=list,
-    description="List of deck instanceurations associated with this workcell.",
+    description="List of deck configurations associated with this workcell.",
   )
+
+  class Config(TimestampedModel.Config):
+    """Pydantic configuration for WorkcellResponse."""
+
+    pass

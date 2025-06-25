@@ -3,9 +3,8 @@
 # This file contains the FastAPI router for all function data output endpoints,
 # including data outputs from protocol function calls and plate visualization data.
 
-import datetime
 from functools import partial
-from typing import Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status

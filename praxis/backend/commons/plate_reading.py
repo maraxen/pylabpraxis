@@ -1,7 +1,8 @@
+import datetime
+
 from praxis.protocol.standalone_task import (
   StandaloneTask,
 )  # Assuming it's in the same protocol submodule
-import datetime
 
 
 class PlateReaderTask(StandaloneTask):

@@ -14,9 +14,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-  from .resource_orm import ResourceInstanceOrm
+  from .resource_orm import ResourceOrm
 
 import uuid
+
 from sqlalchemy import (
   JSON,
   UUID,
@@ -30,10 +31,10 @@ from sqlalchemy import (
   Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
+from praxis.backend.models.asset_management_orm import Asset
+from praxis.backend.models.enums import AssetType
 from praxis.backend.models.workcell_orm import WorkcellOrm
-from praxis.backend.utils.db import Base
 
 
 class MachineStatusEnum(enum.Enum):
@@ -92,126 +93,87 @@ class MachineCategoryEnum(enum.Enum):
     ]
 
 
-class MachineOrm(Base):
+class MachineOrm(Asset):
   """SQLAlchemy ORM model representing a physical machine or machine.
 
-  This model stores details about automation hardware, including its status,
-  configuration, and relationships to deck instances and resource instances.
+  This model tracks individual physical items of lab machines,
+  including their unique name, category, status, and connection details.
   """
 
   __tablename__ = "machines"
+  __mapper_args__ = {"polymorphic_identity": AssetType.MACHINE}
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  user_friendly_name: Mapped[str] = mapped_column(
-    String, nullable=False, unique=True, index=True
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID, ForeignKey("assets.accession_id"), primary_key=True
   )
-  python_fqn: Mapped[str] = mapped_column(
-    String,
+
+  machine_category: Mapped[MachineCategoryEnum] = mapped_column(
+    SAEnum(MachineCategoryEnum, name="machine_category_enum"),
     nullable=False,
-    comment="Fully qualified PyLabRobot class name \
-          (e.g., pylabrobot.liquid_handling.hamilton.STAR)",
-  )
-  category: Mapped[Optional[MachineCategoryEnum]] = mapped_column(
-    SAEnum(MachineCategoryEnum, name="category_enum"),
-    nullable=True,
     index=True,
-    comment="Praxis-defined category based on PLR class",
   )
-  backend_config_json: Mapped[Optional[dict]] = mapped_column(
-    JSON, nullable=True, comment="JSON storing PLR backend connection details"
+  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  manufacturer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  serial_number: Mapped[Optional[str]] = mapped_column(
+    String, nullable=True, unique=True
   )
-  pylabrobot_runtime_config_json: Mapped[Optional[dict]] = mapped_column(
-    JSON,
-    nullable=True,
-    comment="Runtime configuration and defaults from introspection",
+  installation_date: Mapped[Optional[datetime]] = mapped_column(
+    DateTime(timezone=True), nullable=True
   )
-
-  deck_type_definition_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.accession_id"), nullable=True, index=True
-  )
-
-  current_status: Mapped[MachineStatusEnum] = mapped_column(
+  status: Mapped[MachineStatusEnum] = mapped_column(
     SAEnum(MachineStatusEnum, name="machine_status_enum"),
     default=MachineStatusEnum.OFFLINE,
     nullable=False,
-  )
-  status_details: Mapped[Optional[str]] = mapped_column(
-    Text, nullable=True, comment="More details on error or current operation"
-  )
-  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("protocol_runs.run_accession_id", ondelete="SET NULL"),
-    nullable=True,
     index=True,
-  )  # Link to ProtocolRunOrm.run_accession_id
-
-  workcell_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("workcells.accession_id"),
-    nullable=True,
-    index=True,
-    comment="FK to workcell table",
   )
-
-  # Link to Workcell table
-  workcell: Mapped[Optional["WorkcellOrm"]] = relationship(
-    "WorkcellOrm", foreign_keys=[workcell_accession_id], back_populates="machines"
-  )
-
-  physical_location_description: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True
-  )
-  properties_json: Mapped[Optional[dict]] = mapped_column(
+  connection_info: Mapped[Optional[dict]] = mapped_column(
     JSON,
     nullable=True,
-    comment="Additional machine-specific properties, calibration data",
+    comment="e.g., {'backend': 'hamilton', 'address': '192.168.1.1'}",
+  )
+  is_simulation_override: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+
+  workcell_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID, ForeignKey("workcells.accession_id"), nullable=True
+  )
+  workcell: Mapped[Optional["WorkcellOrm"]] = relationship(
+    "WorkcellOrm", back_populates="machines"
   )
 
+  # If this machine is also a resource (e.g., a shaker that can hold a plate)
+  is_resource: Mapped[bool] = mapped_column(Boolean, default=False)
+  resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID,
+    ForeignKey("resources.accession_id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+  )
+  resource_counterpart: Mapped[Optional["ResourceOrm"]] = relationship(
+    "ResourceOrm",
+    back_populates="machine_counterpart",
+    foreign_keys=[resource_counterpart_accession_id],
+  )
+
+  # If this machine has a deck (e.g., a liquid handler)
+  deck_instances = relationship("DeckOrm", back_populates="deck_machine")
+
+  # Resources located on/in this machine
+  located_resource_instances = relationship(
+    "ResourceOrm", back_populates="location_machine"
+  )
+
+  # Additional fields for machine state tracking
   last_seen_online: Mapped[Optional[datetime]] = mapped_column(
     DateTime(timezone=True), nullable=True
   )
-  created_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
-  )
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-  )
-
-  is_resource: Mapped[bool] = mapped_column(
-    "is_resource",
-    Boolean,
-    default=False,
-    nullable=False,
-    comment="Indicates if this machine is a resource (e.g., a lab machine)",
-  )
-
-  resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("resource_instances.accession_id", ondelete="SET NULL"),
-    nullable=True,
-    index=True,
-    comment="Link to ResourceInstanceOrm if this machine is a resource",
-  )
-
-  resource_counterpart: Mapped[Optional["ResourceInstanceOrm"]] = relationship(
-    "ResourceInstanceOrm",
-    foreign_keys=[resource_counterpart_accession_id],
-    back_populates="machine_counterpart",
-    uselist=False,
-  )
-
-  deck_instances = relationship("DeckInstanceOrm", back_populates="parent_machine")
-
-  located_resource_instances = relationship(
-    "ResourceInstanceOrm", back_populates="location_machine"
-  )
-
-  # Relationship to data outputs
-  data_outputs = relationship(
-    "FunctionDataOutputOrm", back_populates="machine", cascade="all, delete-orphan"
-  )
+  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID(as_uuid=True), nullable=True
+  )  # TODO: Add ForeignKey to protocol_runs
 
   def __repr__(self):
-    """Render a string representation of the MachineOrm instance."""
-    return f"<MachineOrm(id={self.accession_id}, name='{self.user_friendly_name}', \
-          type='{self.python_fqn}')>"
+    """Return a string representation of the MachineOrm object."""
+    return (
+      f"<MachineOrm(id={self.accession_id}, name='{self.name}', "
+      f"category='{self.machine_category.value}', status='{self.status.value}')>"
+    )

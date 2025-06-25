@@ -1,45 +1,40 @@
-"""
-Utilities for inspecting PyLabRobot resources and machines.
-"""
+"""Utilities for inspecting PyLabRobot resources and machines."""
 
 # Standard Library Imports
-import inspect
 import importlib
-import pkgutil
+import inspect
 import logging
+import pkgutil
+from inspect import isabstract
 from typing import (
   Any,
   Dict,
   List,
   Optional,
+  Set,
   Type,
   Union,
-  Set,
-  Tuple,
-  Callable,
-  get_type_hints,
 )
 
+from pylabrobot.machines.machine import Machine
 
 # PyLabRobot Imports
 from pylabrobot.resources import (
   Deck as Deck,
+)
+from pylabrobot.resources import (
   Resource as Resource,
+)
+from pylabrobot.resources import (
   ResourceHolder,
 )
-from pylabrobot.machines.machine import Machine
-from pylabrobot.resources.coordinate import Coordinate
 from pylabrobot.resources.carrier import (
   Carrier,
   PlateCarrier,
   TipCarrier,
   TroughCarrier,
 )
-
-from pylabrobot.resources.plate import Plate
-from pylabrobot.resources.tip_rack import TipRack
 from pylabrobot.resources.trough import Trough
-from inspect import isabstract
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +108,7 @@ def get_constructor_params_with_defaults(
         continue
       params[name] = param.default
   except Exception as e:
-    logger.error(f"Error inspecting constructor for {get_class_fqn(klass)}: {e}")
+    logger.error("Error inspecting constructor for %s: %s", get_class_fqn(klass), e)
   return params
 
 
@@ -128,7 +123,7 @@ def is_resource_subclass(item_class: Type[Any]) -> bool:
 
 
 def is_machine_subclass(item_class: Type[Any]) -> bool:
-  """Check if a class is a non-abstract subclass of pylabrobot.machines.machine.Machine."""
+  """Check if a class is a non-abstract subclass of Machine."""
   return (
     inspect.isclass(item_class)
     and issubclass(item_class, Machine)
@@ -193,9 +188,9 @@ def _discover_classes_in_module_recursive(
             )
           )
   except ImportError as e:
-    logger.warning(f"Could not import module {module_name}: {e}")
+    logger.warning("Could not import module %s: %s", module_name, e)
   except Exception as e:
-    logger.error(f"Error processing module {module_name}: {e}")
+    logger.error("Error processing module %s: %s", module_name, e)
   return found_classes
 
 
@@ -232,6 +227,7 @@ def get_all_classes(
 def get_resource_classes(
   concrete_only: bool = True,
 ) -> Dict[str, Type[Resource]]:
+  """Return all resource classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names=[
       "pylabrobot.resources",
@@ -245,6 +241,7 @@ def get_resource_classes(
 def get_machine_classes(
   concrete_only: bool = True,
 ) -> Dict[str, Type[Machine]]:
+  """Return all machine classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names="pylabrobot.machines",
     parent_class=Machine,
@@ -253,6 +250,7 @@ def get_machine_classes(
 
 
 def get_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
+  """Return all deck classes from PyLabRobot modules."""
   all_decks = get_all_classes(  # type: ignore
     base_module_names=[
       "pylabrobot.resources",
@@ -272,9 +270,7 @@ def get_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
 def discover_deck_classes(
   packages: Union[str, List[str]] = "pylabrobot.resources",
 ) -> Dict[str, Type[Deck]]:
-  """
-  Discover all non-abstract PLR Deck subclasses within the specified Python package(s).
-  """
+  """Discover all non-abstract PLR Deck subclasses in the given Python package(s)."""
   package_list = [packages] if isinstance(packages, str) else list(packages)
   discovered_deck_classes: Dict[str, Type[Deck]] = {}
   visited_modules: Set[str] = set()
@@ -290,18 +286,18 @@ def discover_deck_classes(
         if issubclass(deck_class, Deck) and deck_class is not Deck:
           discovered_deck_classes[fqn] = deck_class  # type: ignore
     except ImportError:
-      logger.warning(f"Package {package_name} not found during deck discovery.")
+      logger.warning("Package %s not found during deck discovery.", package_name)
     except Exception as e:
-      logger.error(f"Error discovering deck classes in package {package_name}: {e}")
+      logger.error("Error discovering deck classes in package %s: %s", package_name, e)
   return discovered_deck_classes
 
 
 def _get_accepted_categories_for_resource_holder(
   holder: ResourceHolder, parent_carrier: Optional[Carrier] = None
 ) -> List[str]:
-  """
-  Helper to determine accepted resource categories for a ResourceHolder.
-  Infers based on the type of the holder or its parent carrier.
+  """Determine accepted resource categories for a ResourceHolder.
+
+  Infer based on the type of the holder or its parent carrier.
   """
   accepted_categories: List[str] = []
 
@@ -321,246 +317,282 @@ def _get_accepted_categories_for_resource_holder(
       accepted_categories.append("Plate")
     elif isinstance(holder, TipCarrier):
       accepted_categories.append("TipRack")
-    elif isinstance(holder, TroughCarrier):  # Added TroughCarrier check
-      accepted_categories.append("Trough")
-    elif isinstance(holder, Trough):  # Troughs are ResourceHolders
-      accepted_categories.append("Trough")
-    # Heuristic: If the holder's class name suggests a type
     elif "Plate" in holder.__class__.__name__ and "Plate" not in accepted_categories:
       accepted_categories.append("Plate")
     elif "Tip" in holder.__class__.__name__ and "TipRack" not in accepted_categories:
       accepted_categories.append("TipRack")
+    elif isinstance(holder, Trough):
+      accepted_categories.append("Trough")
+    # Add other holder type checks here if needed
 
-  # Fallback if no specific category could be inferred
-  if not accepted_categories:
-    accepted_categories.append("Resource")  # General resource
-
-  return list(set(accepted_categories))  # Unique categories
+  return accepted_categories
 
 
-def _get_method_signature_details(method: Callable) -> Dict[str, Any]:
-  """Helper to get details of a method's signature."""
-  sig_details: Dict[str, Any] = {"name": method.__name__, "parameters": []}
-  try:
-    signature = inspect.signature(method)
-    type_hints = get_type_hints(method)  # Get resolved type hints
+def get_resource_holder_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[ResourceHolder]]:
+  """Return all resource holder and specific carrier classes.
 
-    for name, param in signature.parameters.items():
-      param_info = {
-        "name": name,
-        "annotation": str(type_hints.get(name, param.annotation)),  # Use resolved hint
-        "default": param.default
-        if param.default is not inspect.Parameter.empty
-        else "REQUIRED",
-      }
-      sig_details["parameters"].append(param_info)
-  except (
-    ValueError,
-    TypeError,
-  ) as e:
-    logger.warning(
-      f"Could not get signature or type hints for method {method.__name__}: {e}"
+  Includes holders and specific carriers from PyLabRobot modules.
+  """
+  return get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=ResourceHolder,
+    concrete_only=concrete_only,
+  )
+
+
+def get_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Carrier]]:
+  """Return all carrier classes (including plate, tip, and trough carriers).
+
+  Includes all carrier types from PyLabRobot modules.
+  """
+  return get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=Carrier,
+    concrete_only=concrete_only,
+  )
+
+
+def get_plate_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[PlateCarrier]]:
+  """Return all plate carrier classes from PyLabRobot modules."""
+  return get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=PlateCarrier,
+    concrete_only=concrete_only,
+  )
+
+
+def get_tip_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[TipCarrier]]:
+  """Return all tip carrier classes from PyLabRobot modules."""
+  return get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=TipCarrier,
+    concrete_only=concrete_only,
+  )
+
+
+def get_trough_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[TroughCarrier]]:
+  """Return all trough carrier classes from PyLabRobot modules."""
+  return get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=TroughCarrier,
+    concrete_only=concrete_only,
+  )
+
+
+def get_all_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Carrier]]:
+  """Return all carrier classes.
+
+  Includes all carrier types (including plate, tip, and trough carriers) from PyLabRobot
+  modules.
+
+  Args:
+    concrete_only: If True, only return non-abstract classes.
+
+  Returns:
+    A dictionary of fully qualified class names to carrier class objects.
+
+  """
+  all_carriers = get_all_classes(  # type: ignore
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=Carrier,
+    concrete_only=concrete_only,
+  )
+  return {
+    fqn: carrier_class
+    for fqn, carrier_class in all_carriers.items()
+    if carrier_class is not Carrier
+  }
+
+
+def get_all_deck_and_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Union[Deck, Carrier]]]:
+  """Return all deck and carrier classes from PyLabRobot modules."""
+  all_decks = get_deck_classes(concrete_only=concrete_only)
+  all_carriers = get_all_carrier_classes(concrete_only=concrete_only)
+  return {**all_decks, **all_carriers}
+
+
+def get_all_resource_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Resource]]:
+  """Return all resource classes (including holders and specific carriers) from PyLabRobot modules."""
+  all_resources = get_resource_classes(concrete_only=concrete_only)
+  all_holders = get_resource_holder_classes(concrete_only=concrete_only)
+  return {**all_resources, **all_holders}
+
+
+def get_all_machine_and_deck_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Union[Machine, Deck]]]:
+  """Return all machine and deck classes from PyLabRobot modules."""
+  all_machines = get_machine_classes(concrete_only=concrete_only)
+  all_decks = get_deck_classes(concrete_only=concrete_only)
+  return {**all_machines, **all_decks}
+
+
+def get_all_classes_with_inspection(
+  base_module_names: Union[str, List[str]] = "pylabrobot",
+  parent_class: Optional[Type[Any]] = None,
+  concrete_only: bool = False,
+) -> Dict[str, Type[Any]]:
+  """Get all classes with enhanced inspection from base module(s) and their submodules.
+
+  This function extends get_all_classes by applying additional inspection logic
+  to discover and filter classes based on custom criteria.
+
+  Args:
+    base_module_names: A single module name or a list of names to start discovery.
+    parent_class: The parent class to filter by. If None, all classes are returned.
+    concrete_only: If True, only return non-abstract classes.
+
+  Returns:
+    A dictionary of fully qualified class names to class objects.
+
+  """
+  all_classes: Dict[str, Type[Any]] = {}
+  visited_modules: Set[str] = set()
+  module_list = (
+    [base_module_names] if isinstance(base_module_names, str) else base_module_names
+  )
+  for base_module_name in module_list:
+    all_classes.update(
+      _discover_classes_in_module_recursive(
+        base_module_name, parent_class, concrete_only, visited_modules
+      )
     )
-    sig_details["error"] = str(e)
-  return sig_details
+
+  # --- Additional Inspection Logic ---
+
+  # Filter out abstract classes and interfaces, keeping only concrete classes
+  if concrete_only:
+    all_classes = {
+      name: klass
+      for name, klass in all_classes.items()
+      if not inspect.isabstract(klass) and not isabstract(klass)
+    }
+
+  return all_classes
+
+
+def get_all_resource_and_machine_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Any]]:
+  """Return all resources and machine classes.
+
+  Includes holders, specific carriers, and machines from PyLabRobot modules.
+  """
+  all_resources = get_all_resource_classes(concrete_only=concrete_only)
+  all_machines = get_machine_classes(concrete_only=concrete_only)
+  return {**all_resources, **all_machines}
+
+
+def get_deck_and_carrier_classes(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Any]]:
+  """Return all deck and carrier classes with enhanced inspection.
+
+  Includes all deck and carrier classes from PyLabRobot modules.
+  """
+  all_decks_and_carriers = get_all_classes_with_inspection(
+    base_module_names=[
+      "pylabrobot.resources",
+      "pylabrobot.liquid_handling.resources",
+    ],
+    parent_class=Carrier,
+    concrete_only=concrete_only,
+  )
+  return {
+    fqn: deck_or_carrier_class
+    for fqn, deck_or_carrier_class in all_decks_and_carriers.items()
+    if deck_or_carrier_class is not Carrier
+  }
+
+
+def get_all_resource_and_machine_classes_enhanced(
+  concrete_only: bool = True,
+) -> Dict[str, Type[Any]]:
+  """Return all resources and machine classes with enhanced inspection.
+
+  Includes holders, specific carriers, and machines from PyLabRobot modules.
+  """
+  all_resources_and_machines = get_all_classes_with_inspection(
+    base_module_names="pylabrobot",
+    parent_class=Machine,
+    concrete_only=concrete_only,
+  )
+  return {
+    fqn: resource_or_machine_class
+    for fqn, resource_or_machine_class in all_resources_and_machines.items()
+    if resource_or_machine_class is not Machine
+  }
 
 
 def get_deck_details(deck_class: Type[Deck]) -> Dict[str, Any]:
+  """Return detailed info about a Deck class.
+
+  Includes all position-to-location methods and their signatures.
   """
-  Extracts detailed information about a PLR Deck subclass.
-  """
-  details: Dict[str, Any] = {"fqn": get_class_fqn(deck_class)}
-  details["constructor_args"] = get_constructor_params_with_defaults(deck_class)
+  details = {
+    "fqn": get_class_fqn(deck_class),
+    "constructor_args": get_constructor_params_with_defaults(deck_class),
+    "assignment_methods": [],
+    "category": getattr(deck_class, "category", None),
+    "model": getattr(deck_class, "model", None),
+  }
 
-  deck_instance: Optional[Deck] = None
-  temp_deck_name = f"temp_inspection_{deck_class.__name__}"
-
-  try:
-    required_params = get_constructor_params_with_defaults(
-      deck_class, required_only=True
-    )
-    if not required_params or list(required_params.keys()) == ["name"]:
-      deck_instance = deck_class(name=temp_deck_name)
-    elif "name" in inspect.signature(deck_class.__init__).parameters:
-      logger.warning(
-        f"Deck class {details['fqn']} has required constructor parameters "
-        f"other than 'name': {required_params}. Attempting instantiation with only 'name'. "
-        f"This might provide incomplete default layout info."
+  # Find all *_to_location methods
+  for name, method in inspect.getmembers(deck_class, inspect.isfunction):
+    if name.endswith("_to_location"):
+      sig = inspect.signature(method)
+      params = [
+        {
+          "name": pname,
+          "annotation": str(param.annotation),
+          "default": (
+            param.default if param.default is not inspect.Parameter.empty else None
+          ),
+        }
+        for pname, param in sig.parameters.items()
+      ]
+      details["assignment_methods"].append(
+        {
+          "name": name,
+          "signature": str(sig),
+          "parameters": params,
+          "doc": inspect.getdoc(method),
+        }
       )
-      deck_instance = deck_class(name=temp_deck_name)
-    else:  # Cannot satisfy constructor easily
-      logger.error(
-        f"Cannot auto-instantiate deck {details['fqn']} due to complex constructor: "
-        f"{required_params}"
-      )
-      raise ValueError(f"Complex constructor for {details['fqn']}")
 
-    details["serialized_properties"] = deck_instance.serialize()
-    details["category"] = deck_instance.category
-    details["model"] = getattr(deck_instance, "model", None)
-    details["default_size_x_mm"] = deck_instance.get_size_x()
-    details["default_size_y_mm"] = deck_instance.get_size_y()
-    details["default_size_z_mm"] = deck_instance.get_size_z()
-
-  except Exception as e:
-    logger.error(f"Could not instantiate or fully inspect deck {details['fqn']}: {e}")
-    details["serialized_properties"] = None
-    details["category"] = "deck"
-    details["model"] = None
-    details["default_size_x_mm"] = None
-    details["default_size_y_mm"] = None
-    details["default_size_z_mm"] = None
-
-  # Deck Assignment Interface Inspection
-  assignment_methods_info: List[Dict[str, Any]] = []
-
-  for method_name, method_obj in inspect.getmembers(deck_class, inspect.isfunction):
-    if (
-      method_name in deck_class.__dict__
-      or (
-        hasattr(Deck, method_name)
-        and getattr(deck_class, method_name) == getattr(Deck, method_name)
-      )
-      or any(
-        method_name in base_cls.__dict__
-        for base_cls in deck_class.__mro__
-        if issubclass(base_cls, Deck)
-      )
-    ):
-      assignment_methods_info.append(_get_method_signature_details(method_obj))
-  details["assignment_methods_info"] = assignment_methods_info
-
-  details["pose_to_location_methods"] = [
-    getattr(deck_class, method[0])
-    for method in inspect.getmembers(deck_class, inspect.isfunction)
-    if method[0].endswith("_to_location")
-  ]
-
-  if not details["pose_to_location_methods"]:
-    # Fallback to serialized method if no specificposition_to_location methods found
-    details["pose_to_location_method"] = getattr(
-      deck_class, "rail_to_location", getattr(deck_class, "assign_child_resource")
-    )
-
-  if len(details["pose_to_location_methods"]) == 1:
-    details["pose_to_location_method"] = details["pose_to_location_methods"][0]
-
-  elif len(details["pose_to_location_methods"]) > 1:
-    # If multiple methods, choose the first one for now
-    details["pose_to_location_method"] = details["pose_to_location_methods"][0]
-    logger.warning(
-      f"Multipleposition_to_location methods found in {details['fqn']}."
-      f" Using the first one: {details['pose_to_location_method'].__name__}"
-    )
-  del details["pose_to_location_methods"]
-
-  # pull the arg names from the method signature
-  for param in details["pose_to_location_method"].get("parameters", []):
-    if param["name"] == "self":
-      continue
-    if param["type"] == "bool":
-      continue  # for now, assume its some kind of setting
-    details["pose_arg_name"] = param.get("name", "rail")
-
-  constructor_layout_hints = {}
-  for param_name, default_value in details["constructor_args"].items():
-    if "rail" in param_name or "num_slots" == param_name or "slot_names" == param_name:
-      constructor_layout_hints[param_name] = str(
-        default_value
-      )  # Store as string for JSON
-  details["constructor_layout_hints"] = constructor_layout_hints
-
+  # Optionally, add more deck metadata here
   return details
-
-
-def get_asset_details(asset_fqn: str) -> Dict[str, Any]:
-  """
-  Extracts details for any PLR Resource or Machine FQN.
-  """
-  properties: Dict[str, Any] = {"fqn": asset_fqn}
-  try:
-    module_name, class_name = asset_fqn.rsplit(".", 1)
-    module = importlib.import_module(module_name)
-    asset_class = getattr(module, class_name)
-    instance = None
-
-    if not inspect.isclass(asset_class):
-      logger.error(f"{asset_fqn} is not a class.")
-      return {"fqn": asset_fqn, "error": "Not a class."}
-
-    if isabstract(asset_class):
-      logger.error(f"{asset_fqn} is an abstract class.")
-      return {"fqn": asset_fqn, "error": "Abstract class."}
-
-    constructor_params_for_asset = get_constructor_params_with_defaults(asset_class)
-
-    if issubclass(asset_class, Resource):
-      try:
-        required_params = get_constructor_params_with_defaults(
-          asset_class, required_only=True
-        )
-        if not required_params or list(required_params.keys()) == ["name"]:
-          instance = asset_class(name=f"temp_inspect_{class_name}", **required_params)
-        elif (
-          "name" in constructor_params_for_asset
-        ):  # Try with name if other required exist
-          instance = asset_class(name=f"temp_inspect_{class_name}", **required_params)
-        else:
-          if not required_params:
-            instance = asset_class(**required_params)
-          else:
-            raise ValueError(
-              f"Complex constructor with required params: {required_params}"
-            )
-      except Exception as e:
-        logger.warning(
-          f"Failed to instantiate PLR Resource {asset_fqn} simply: {e}. Params: "
-          f"{constructor_params_for_asset}"
-        )
-
-    elif issubclass(asset_class, Machine):
-      try:
-        required_params = get_constructor_params_with_defaults(
-          asset_class, required_only=True
-        )
-        instance = asset_class(**required_params)
-      except Exception as e:
-        logger.warning(
-          f"Failed to instantiate PLR Machine {asset_fqn} simply: "
-          f"{e}. Params: {constructor_params_for_asset}"
-        )
-    else:
-      logger.warning(
-        f"{asset_fqn} is not a recognized PLR Resource or Machine subclass."
-      )
-      return {"fqn": asset_fqn, "error": "Not a PLR Resource or Machine."}
-
-    if instance:
-      try:
-        if hasattr(instance, "serialize") and callable(instance.serialize):
-          properties.update(instance.serialize())
-        properties["name"] = getattr(instance, "name", f"temp_inspect_{class_name}")
-        properties["category"] = getattr(instance, "category", None)
-        properties["model"] = getattr(instance, "model", None)
-        if isinstance(instance, Resource):
-          properties["size_x"] = instance.get_size_x()
-          properties["size_y"] = instance.get_size_y()
-          properties["size_z"] = instance.get_size_z()
-      except Exception as e:
-        logger.error(
-          f"Error during serialization/property extraction for {asset_fqn}: {e}"
-        )
-        properties["serialization_error"] = str(e)
-    else:
-      properties["instantiation_error"] = (
-        f"Could not create an instance of {asset_fqn} for detail extraction. "
-        f"Constructor params: {constructor_params_for_asset}"
-      )
-
-  except ImportError:
-    return {"fqn": asset_fqn, "error": "Module not found."}
-  except AttributeError:
-    return {"fqn": asset_fqn, "error": "Class not found in module."}
-  except Exception as e:
-    return {"fqn": asset_fqn, "error": f"Unexpected error: {e}"}
-  return properties

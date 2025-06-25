@@ -23,7 +23,6 @@ from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import (
   PROTOCOL_REGISTRY,
   PraxisRunContext,
-  PraxisState,
   serialize_arguments,
 )
 from praxis.backend.models import (

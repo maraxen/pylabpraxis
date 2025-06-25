@@ -8,24 +8,16 @@ This includes Resource Definitions, Resource Instances, and their management.
 
 """
 
-import datetime
 from functools import partial
 from typing import Any, Dict, List, Optional
 
-import uuid
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
-)
-from praxis.backend.services.entity_linking import (
-  _create_or_link_machine_counterpart_for_resource,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
