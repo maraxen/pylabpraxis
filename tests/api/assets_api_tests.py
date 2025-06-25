@@ -1,13 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY
-import json
 import datetime
+import json
+from unittest.mock import ANY, MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-# Router to be tested
-from praxis.backend.api.resources import router as assets_router
 
 # Pydantic models for request/response validation and constructing test data
 from praxis.backend.api.resources import (
@@ -15,9 +12,11 @@ from praxis.backend.api.resources import (
   ResourceInventoryDataOut,
 )
 
+# Router to be tested
+from praxis.backend.api.resources import router as assets_router
+
 # ORM Model mock for service layer
 from praxis.backend.database_models.asset_management_orm import ResourceInstanceOrm
-
 
 # Setup FastAPI app and TestClient
 app = FastAPI()

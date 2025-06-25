@@ -16,7 +16,6 @@ from praxis.backend.models.protocol_pydantic_models import (
 )
 from praxis.backend.services.discovery_service import ProtocolDiscoveryService
 
-
 # --- Fixtures ---
 
 

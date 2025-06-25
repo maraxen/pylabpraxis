@@ -1,5 +1,5 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
-"""Service layer for Deck Data Management.
+# pylint: disable=broad-except, too-many-lines
+"""Service layer for Deck Type Definition Management.
 
 praxis/db_services/deck_data_service.py
 
@@ -36,7 +36,7 @@ UUID = uuid.UUID
 async def _process_position_definitions(
   db: AsyncSession,
   deck_type_orm: DeckTypeDefinitionOrm,
-  position_definitions_data: Optional[List[Dict[str, Any]]],
+  position_definitions: Optional[List[Dict[str, Any]]],
   log_prefix: str,
 ):
   """Handle the deletion and creation of position definitions.
@@ -48,7 +48,7 @@ async def _process_position_definitions(
       db (AsyncSession): The database session.
       deck_type_orm (DeckTypeDefinitionOrm): The deck type ORM object to which
           position definitions will be added.
-      position_definitions_data (Optional[List[Dict[str, Any]]]): A list of
+      position_definitions (Optional[List[Dict[str, Any]]]): A list of
         dictionaries, each representing a position definition for this deck type.
       log_prefix (str): Prefix for logging messages to identify the operation.
 
@@ -58,61 +58,76 @@ async def _process_position_definitions(
       Exception: For any unexpected errors during the process.
 
   """
-  if position_definitions_data is not None:
+  if position_definitions is not None:
     logger.info(
       "%s Replacing existing position definitions with %s new ones.",
       log_prefix,
-      len(position_definitions_data),
+      len(position_definitions),
     )
-    # Delete existing position definitions for this deck type
-    if deck_type_orm.accession_id:  # Ensure we have an ID to link positions
+
+    if deck_type_orm.accession_id:
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
         DeckPositionDefinitionOrm.deck_type_id == deck_type_orm.accession_id
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
-        logger.debug(
-          "%s Deleting existing position '%s'.",
-          log_prefix,
-          position.position_accession_id,
-        )
         await db.delete(position)
-      await db.flush()  # Process deletions to avoid conflicts with new additions
-      logger.debug("%s Existing position definitions deleted.", log_prefix)
+      await db.flush() # Ensure deletions are processed before adding new ones
+      logger.debug("%s Existing position definitions for deck type ID %s deleted.",
+                   log_prefix, deck_type_orm.accession_id)
 
     # Add new position definitions
-    for position_data in position_definitions_data:
+    for position_data in position_definitions:
       position_accession_id = position_data.get(
         "position_accession_id", "UNKNOWN_POSE"
-      )  # Use position_accession_id
+      )
+      x_coord = position_data.get("x_coord", 0.0)
+      y_coord = position_data.get("y_coord", 0.0)
+      z_coord = position_data.get("z_coord", 0.0)
+
       logger.debug(
-        "%s Adding new position definition: '%s'.",
+        "%s Adding new position definition: '%s' (%.2f, %.2f, %.2f).",
         log_prefix,
         position_accession_id,
-      )
-      position_specific_details = position_data.get(
-        "position_specific_details_json", {}
+        x_coord, y_coord, z_coord
       )
 
+      # Prioritize compatible_resource_fqns if provided directly in the input data
+      compatible_resource_fqns_data = position_data.get("compatible_resource_fqns")
+
       # Map Pydantic fields to position_specific_details if not direct ORM fields
-      if position_data.get("pylabrobot_position_type_name"):
-        position_specific_details["pylabrobot_position_type_name"] = position_data[
-          "pylabrobot_position_type_name"
-        ]
-      if position_data.get("allowed_resource_definition_names"):
-        position_specific_details["allowed_resource_definition_names"] = position_data[
-          "allowed_resource_definition_names"
-        ]
-      if position_data.get("accepts_tips") is not None:
-        position_specific_details["accepts_tips"] = position_data["accepts_tips"]
+      # If not provided directly, build it from individual fields.
+      # This assumes the Pydantic model will send individual fields if compatible_resource_fqns is not set.
+      if compatible_resource_fqns_data is None:
+        compatible_resource_fqns_data = {}
+        if position_data.get("pylabrobot_position_type_name"):
+          compatible_resource_fqns_data["pylabrobot_position_type_name"] = position_data[
+            "pylabrobot_position_type_name"
+          ]
+        if position_data.get("allowed_resource_definition_names"):
+          compatible_resource_fqns_data["allowed_resource_definition_names"] = position_data[
+            "allowed_resource_definition_names"
+          ]
+        if position_data.get("accepts_tips") is not None:
+          compatible_resource_fqns_data["accepts_tips"] = position_data["accepts_tips"]
+        if position_data.get("accepts_plates") is not None:
+          compatible_resource_fqns_data["accepts_plates"] = position_data["accepts_plates"]
+        if position_data.get("accepts_tubes") is not None:
+          compatible_resource_fqns_data["accepts_tubes"] = position_data["accepts_tubes"]
+        if position_data.get("notes") is not None:
+          compatible_resource_fqns_data["notes"] = position_data["notes"]
+
+      # Ensure it's None if empty, to avoid storing empty JSON objects unnecessarily
+      if not compatible_resource_fqns_data:
+          compatible_resource_fqns_data = None
 
       position_orm = DeckPositionDefinitionOrm(
         deck_type_id=deck_type_orm.accession_id,
         position_accession_id=position_accession_id,
-        x_coord=position_data.get("x_coord", 0.0),
-        y_coord=position_data.get("y_coord", 0.0),
-        z_coord=position_data.get("z_coord", 0.0),
-        compatible_resource_fqns=position_specific_details,
+        x_coord=x_coord,
+        y_coord=y_coord,
+        z_coord=z_coord,
+        compatible_resource_fqns=compatible_resource_fqns_data,
       )
       db.add(position_orm)
 
@@ -220,7 +235,7 @@ async def create_deck_type_definition(
     error_message = f"{log_prefix} Integrity error creating deck type. Details: {e}"
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     error_message = f"{log_prefix} Unexpected error creating deck type. Rolling back."
     logger.exception(error_message)
@@ -336,7 +351,7 @@ async def update_deck_type_definition(
     logger.debug("%s Flushed deck type definition changes.", log_prefix)
 
     await _process_position_definitions(
-      db, deck_type_orm, position_definitions_data, log_prefix
+      db, deck_type_orm, position_definitions, log_prefix
     )
 
     await db.commit()
@@ -374,7 +389,7 @@ async def update_deck_type_definition(
     error_message = f"{log_prefix} Database integrity error during update. Details: {e}"
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
     raise e
@@ -409,24 +424,33 @@ async def read_deck_type_definition(
   return deck_type_def
 
 
-async def read_deck_type_definition_by_fqn(
-  db: AsyncSession, python_fqn: str
+async def read_deck_type_definition_by_name(
+  db: AsyncSession, name: str
 ) -> Optional[DeckTypeDefinitionOrm]:
-  """Retrieve a specific deck type definition by its PyLabRobot FQN."""
-  logger.info("Attempting to retrieve deck type definition by FQN: '%s'.", python_fqn)
+  """Retrieve a specific deck type definition by its name.
+
+  Args:
+      db (AsyncSession): The database session.
+      name (str): The name of the deck type definition to retrieve.
+
+  Returns:
+      Optional[DeckTypeDefinitionOrm]: The deck type definition object
+      if found, otherwise None.
+
+  """
+  logger.info("Attempting to retrieve deck type definition with name: '%s'.", name)
   stmt = (
     select(DeckTypeDefinitionOrm)
     .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .filter(DeckTypeDefinitionOrm.python_fqn == python_fqn)
+    .filter(DeckTypeDefinitionOrm.name == name)
   )
   result = await db.execute(stmt)
   deck_type_def = result.scalar_one_or_none()
   if deck_type_def:
-    logger.info("Successfully retrieved deck type definition by FQN '%s'.", python_fqn)
+    logger.info("Successfully retrieved deck type definition '%s' (ID: %s).", name, deck_type_def.accession_id)
   else:
-    logger.info("Deck type definition with FQN '%s' not found.", python_fqn)
+    logger.info("Deck type definition with name '%s' not found.", name)
   return deck_type_def
-
 
 async def read_deck_type_definitions(
   db: AsyncSession, limit: int = 100, offset: int = 0
@@ -455,11 +479,7 @@ async def delete_deck_type_definition(
   log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, deleting):"
   logger.info("%s Attempting to delete.", log_prefix)
 
-  stmt = select(DeckTypeDefinitionOrm).filter(
-    DeckTypeDefinitionOrm.accession_id == deck_type_accession_id
-  )
-  result = await db.execute(stmt)
-  deck_type_orm = result.scalar_one_or_none()
+  deck_type_orm = await read_deck_type_definition(db, deck_type_accession_id)
   if not deck_type_orm:
     error_message = (
       f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found."
@@ -471,7 +491,7 @@ async def delete_deck_type_definition(
     await db.delete(deck_type_orm)
     await db.commit()
     logger.info("%s Successfully deleted.", log_prefix)
-  except Exception as e:
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during deletion. Rolling back.", log_prefix)
     raise e

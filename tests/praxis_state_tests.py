@@ -1,11 +1,12 @@
-import pytest  # type: ignore
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest  # type: ignore
+import redis  # For mocking redis.exceptions.ConnectionError
 
 from praxis.backend.services.state import (
   PraxisState as PraxisState,
 )  # Assuming State is aliased as PraxisState typically
-import redis  # For mocking redis.exceptions.ConnectionError
 
 
 # Mock Redis client for all tests in this file

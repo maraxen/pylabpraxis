@@ -1,8 +1,9 @@
 """Tests for ProtocolExecutionService in praxis.backend.core.protocol_execution_service."""
 
-import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
 from praxis.backend.models import ProtocolRunStatusEnum

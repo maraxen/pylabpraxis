@@ -12,12 +12,12 @@ from praxis.backend.models import (
 # Import the service functions to be tested
 from praxis.backend.services import (
   create_resource_definition,
+  create_resource_instance,  # Also needed for a deletion test
   delete_resource_definition,
   list_resource_definitions,
   read_resource_definition,
   read_resource_definition_by_fqn,
   update_resource_definition,
-  create_resource_instance,  # Also needed for a deletion test
 )
 
 # --- Pytest Fixtures ---

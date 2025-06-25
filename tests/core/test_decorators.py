@@ -14,13 +14,13 @@ from typing import Callable, Dict, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from pylabrobot.resources import Plate, TipRack, Resource
+from pylabrobot.resources import Plate, Resource, TipRack
 
 from praxis.backend.core.decorators import (
   DEFAULT_DECK_PARAM_NAME,
   DEFAULT_STATE_PARAM_NAME,
-  protocol_function,
   praxis_run_context_cv,
+  protocol_function,
 )
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY, PraxisRunContext

@@ -80,13 +80,38 @@ class DeckPositionDefinitionBase(BaseModel):
   types, and physical location coordinates.
   """
 
-  position_accession_id: str | int
+  position_accession_id: str
+  x_coord: float
+  y_coord: float
+  z_coord: float
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   """Model for creating a new deck position definition."""
 
-  pass
+  pylabrobot_position_type_name: Optional[str] = Field(
+    None, description="PyLabRobot specific position type name."
+  )
+  allowed_resource_definition_names: Optional[List[str]] = Field(
+    None,
+    description="List of specific resource definition names allowed at this position.",
+  )
+  accepts_tips: Optional[bool] = Field(
+    None, description="Indicates if the position accepts tips."
+  )
+  accepts_plates: Optional[bool] = Field(
+    None, description="Indicates if the position accepts plates."
+  )
+  accepts_tubes: Optional[bool] = Field(
+    None, description="Indicates if the position accepts tubes."
+  )
+  notes: Optional[str] = Field(None, description="Additional notes for the position.")
+
+  compatible_resource_fqns: Optional[Dict[str, Any]] = Field(
+    None,
+    description="Additional, position-specific details as a JSON-serializable"
+    " dictionary.",
+  )
 
 
 class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
@@ -94,6 +119,7 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
 
   accession_id: UUID7
   deck_type_accession_id: UUID7
+  compatible_resource_fqns: Optional[Dict[str, Any]] = None
 
   class Config:
     """Pydantic configuration."""
@@ -114,6 +140,7 @@ class DeckTypeDefinitionBase(BaseModel):
   python_fqn: str
   description: Optional[str] = None
   positioning_config: PositioningConfig
+  position_definitions: Optional[List[DeckPositionDefinitionCreate]] = None
 
 
 class DeckTypeDefinitionCreate(DeckTypeDefinitionBase):
@@ -141,3 +168,4 @@ class DeckTypeDefinitionUpdate(BaseModel):
   python_fqn: Optional[str] = None
   description: Optional[str] = None
   positioning_config: Optional[PositioningConfig] = None
+  position_definitions: Optional[List[DeckPositionDefinitionCreate]] = None

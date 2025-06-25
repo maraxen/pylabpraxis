@@ -11,22 +11,22 @@ from praxis.backend.api.dependencies import get_db
 from praxis.backend.models import (
   DeckCreate,
   DeckResponse,
-  DeckUpdate,
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
+  DeckUpdate,
 )
 from praxis.backend.services import (
   create_deck,
   create_deck_type_definition,
   delete_deck,
   delete_deck_type_definition,
-  read_decks,
-  read_deck_type_definitions,
   read_deck,
   read_deck_by_name,
   read_deck_type_definition,
-  read_deck_type_definition_by_fqn,
+  read_deck_type_definition_by_name,
+  read_deck_type_definitions,
+  read_decks,
   update_deck,
   update_deck_type_definition,
 )
@@ -45,7 +45,7 @@ log_deck_api_errors = partial(
 deck_type_accession_resolver = partial(
   get_accession_id_from_accession,
   get_func=read_deck_type_definition,
-  get_by_name_func=read_deck_type_definition_by_fqn,
+  get_by_name_func=read_deck_type_definition_by_name,
   entity_type_name="Deck Type Definition",
 )
 

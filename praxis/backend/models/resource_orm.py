@@ -186,11 +186,24 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
     UUID, primary_key=True, default=uuid7, index=True
   )
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
-  fqn: Mapped[str] = mapped_column(
+  python_fqn: Mapped[str] = mapped_column(  # Renamed from 'fqn' to 'python_fqn'
     String,
     nullable=False,
     index=True,
     comment="Fully qualified name of the resource definition.",
+  )
+  resource_type: Mapped[Optional[str]] = mapped_column(
+    String, nullable=True, comment="Human-readable type of the resource."
+  )
+  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  is_consumable: Mapped[bool] = mapped_column(Boolean, default=True)
+  nominal_volume_ul: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  material: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  manufacturer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  plr_definition_details_json: Mapped[Optional[dict]] = mapped_column(
+    JSON,
+    nullable=True,
+    comment="Additional PyLabRobot specific definition details as JSON.",
   )
 
   size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -302,12 +315,12 @@ class ResourceOrm(Asset):
 
   def __repr__(self):
     """Return a string representation of the ResourceOrm object."""
-    fqn = (
-      self.resource_definition.fqn
+    python_fqn = (
+      self.resource_definition.python_fqn
       if self.resource_definition and hasattr(self.resource_definition, "fqn")
       else "N/A"
     )
     return (
       f"<ResourceOrm(accession_id={self.accession_id}, name='{self.name}',"
-      f" type='{fqn}')>"
+      f" type='{python_fqn}')> status={self.current_status.value}, "
     )

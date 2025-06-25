@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,9 +8,9 @@ from sqlalchemy.future import select
 from praxis.backend.models import (
   DeckInstanceOrm,
   DeckInstancePositionResourceOrm,
-  ResourceInstanceOrm,
   MachineOrm,
   ResourceDefinitionCatalogOrm,
+  ResourceInstanceOrm,
 )
 from praxis.backend.services.deck_instance import (
   create_deck_instance,

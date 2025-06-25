@@ -1,11 +1,13 @@
-import unittest
-import os
-import tempfile
-from praxis.utils.state import RuntimeState
-from shelve import DbfilenameShelf
-import shutil
 import errno
+import os
+import shutil
+import tempfile
 import time
+import unittest
+from shelve import DbfilenameShelf
+
+from praxis.utils.state import RuntimeState
+
 
 class TestState(unittest.TestCase):
 

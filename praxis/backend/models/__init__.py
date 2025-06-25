@@ -10,7 +10,7 @@ the database schema is in sync with the ORM models.
 from __future__ import annotations
 
 from .asset_orm import Asset
-from .asset_pydantic_models import AssetBase, AssetResponse
+from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
 from .deck_orm import DeckOrm, DeckPositionDefinitionOrm, DeckTypeDefinitionOrm
 from .deck_pydantic_models import (
   DeckBase,
@@ -78,7 +78,12 @@ from .protocol_pydantic_models import (
   RuntimeAssetRequirement,
   UIHint,
 )
-from .resource_orm import ResourceOrm, ResourceStatusEnum
+from .resource_orm import (
+  ResourceCategoryEnum,
+  ResourceDefinitionOrm,
+  ResourceOrm,
+  ResourceStatusEnum,
+)
 from .resource_pydantic_models import (
   ResourceDefinitionBase,
   ResourceDefinitionCreate,
@@ -124,7 +129,7 @@ from .workcell_pydantic_models import (
 
 __all__ = [
   # Asset and base models
-  "AssetOrm",
+  "Asset",
   "AssetBase",
   "AssetResponse",
   # Decks
@@ -228,4 +233,10 @@ __all__ = [
   "WorkcellCreate",
   "WorkcellResponse",
   "WorkcellUpdate",
+  "Asset",
+  "AssetUpdate",
+  "DeckPositionDefinitionOrm",
+  "DeckTypeDefinitionOrm",
+  "ResourceCategoryEnum",
+  "ResourceDefinitionOrm",
 ]

@@ -1,14 +1,15 @@
-import pytest  # type: ignore
 import inspect
-from typing import Optional, Dict, Any, Union, List
 from dataclasses import is_dataclass
+from typing import Any, Dict, List, Optional, Union
+
+import pytest  # type: ignore
 
 from praxis.backend.core.decorators import protocol_function
 from praxis.backend.core.run_context import PraxisRunContext, PraxisState, Resource
 from praxis.backend.protocol_core.protocol_definition_models import (
+  AssetRequirementModel,
   FunctionProtocolDefinitionModel,
   ParameterMetadataModel,
-  AssetRequirementModel,
   UIHint,
 )
 

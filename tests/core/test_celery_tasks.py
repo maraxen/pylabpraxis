@@ -3,7 +3,7 @@
 
 import asyncio
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from celery.result import EagerResult

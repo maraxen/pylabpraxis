@@ -1,13 +1,13 @@
 # alembic/env.py
-from praxis.backend.utils.db import Base as PraxisBase, PRAXIS_DATABASE_URL as DATABASE_URL
-import praxis.backend.database_models # type: ignore
 # TODO: Remove this import if not needed
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
+import praxis.backend.database_models  # type: ignore
 from alembic import context
+from praxis.backend.utils.db import PRAXIS_DATABASE_URL as DATABASE_URL
+from praxis.backend.utils.db import Base as PraxisBase
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

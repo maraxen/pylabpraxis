@@ -1,5 +1,5 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
-"""Service layer for Deck Data Management.
+# pylint: disable=broad-except, too-many-lines
+"""Service layer for Deck Instance Management.
 
 This service layer interacts with deck-related data in the database, providing
 functions to create, read, update, and delete decks.
@@ -65,7 +65,7 @@ async def create_deck(db: AsyncSession, deck_create: DeckCreate) -> DeckOrm:
     error_message = f"Deck with name '{deck_create.name}' already exists. Details: {e}"
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     logger.exception("Error creating deck '%s'. Rolling back.", deck_create.name)
     await db.rollback()
     raise e
@@ -218,7 +218,7 @@ async def update_deck(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error updating deck ID %s. Rolling back.",
@@ -261,7 +261,7 @@ async def delete_deck(db: AsyncSession, deck_accession_id: UUID) -> bool:
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error deleting deck ID %s. Rolling back.", deck_accession_id

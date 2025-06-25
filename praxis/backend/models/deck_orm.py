@@ -1,10 +1,10 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring,invalid-name
 """Define SQLAlchemy ORM models for deck management.
 
-praxis/database_models/deck_management_orm.py
+praxis/database_models/deck_orm.py
 
-This module contains ORM models for managing deck instanceurations, positions,
-and types. These models represent the structure of deck instanceurations,
+This module contains ORM models for managing decks, positions,
+and types. These models represent the structure of deck,
 positions within those configurations, and definitions of deck types, including
 their positions and instance definitions. The models are designed to work with
 SQLAlchemy and provide a consistent interface for interacting with the database.
@@ -14,6 +14,7 @@ ORM models include:
   of deck.
 - DeckTypeDefinitionOrm: Defines a type of deck, mapping to a PyLabRobot deck
   class.
+- DeckOrm: Represents a physical deck instance in the lab.
 
 """
 
@@ -105,8 +106,8 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
           serialized constructor hints for the deck type.
       additional_properties_json (Optional[dict[str, Any]]): JSON field to store
           additional properties for the deck type.
-      positioning_config_json (Optional[dict[str, Any]]): JSON field to store positioning
-          configuration, such as the method and parameters for calculating
+      positioning_config_json (Optional[dict[str, Any]]): JSON field to store
+          positioning configuration, such as the method and parameters for calculating
           coordinates from slot names.
       positions (list[DeckPositionDefinitionOrm]): A list of all defined
           positions (slots) available on this deck type.
@@ -196,8 +197,11 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   y_coord: Mapped[float] = mapped_column(Float, nullable=False)
   z_coord: Mapped[float] = mapped_column(Float, nullable=False)
 
+  # Reverting to compatible_resource_fqns as per user request
   compatible_resource_fqns: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+    JSON,
+    nullable=True,
+    comment="JSON field to store additional, position-specific details.",
   )
 
   deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(

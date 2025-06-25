@@ -1,5 +1,5 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
-"""Service layer for Resource Data Management."""
+# pylint: disable=broad-except, too-many-lines
+"""Service layer for Resource Instance Management."""
 
 import uuid
 from functools import partial
@@ -25,7 +25,7 @@ UUID = uuid.UUID
 log_resource_data_service_errors = partial(
   log_async_runtime_errors,
   logger_instance=logger,
-  exception_type=Exception,
+  exception_type=ValueError, # Changed from Exception to ValueError for more specific error handling
   raises=True,
   raises_exception=ValueError,
   return_=None,
@@ -84,7 +84,7 @@ async def create_resource(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     logger.exception(
       "Error creating resource '%s'. Rolling back.", resource_create.name
     )
@@ -244,7 +244,7 @@ async def update_resource(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error updating resource ID %s. Rolling back.",
@@ -287,7 +287,7 @@ async def delete_resource(db: AsyncSession, resource_accession_id: UUID) -> bool
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error deleting resource ID %s. Rolling back.",

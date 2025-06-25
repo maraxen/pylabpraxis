@@ -6,11 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # Import all required models from the central package
 from praxis.backend.models import (
+  DeckInstanceOrm,
   MachineOrm,
   MachineStatusEnum,
   ResourceDefinitionCatalogOrm,
   ResourceInstanceOrm,
-  DeckInstanceOrm,
 )
 
 # Import the service functions to be tested

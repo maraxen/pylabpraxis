@@ -1,5 +1,5 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
-"""Manage resource-related database interactions.
+# pylint: disable=broad-except, too-many-lines
+"""Service layer for Resource Type Definition Management.
 
 praxis/db_services/resource_data_service.py
 
@@ -128,12 +128,12 @@ async def create_resource_definition(
       )
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    error_message = (
+    error_message = ( # Catch all for truly unexpected errors
       f"{log_prefix} Database integrity error during creation. Details: {e}"
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
     raise e
@@ -144,7 +144,9 @@ async def create_resource_definition(
 
 @log_resource_data_service_errors(
   prefix="Resource Definition Error: Updating resource definition - ",
-  suffix=" Please ensure the parameters are correct and the resource definition exists.",
+  suffix=(
+    " Please ensure the parameters are correct and the resource definition exists."
+  ),
 )
 async def update_resource_definition(
   db: AsyncSession,
@@ -241,7 +243,7 @@ async def update_resource_definition(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
     raise e
@@ -414,7 +416,7 @@ async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e:
+  except Exception as e: # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error deleting resource definition '%s'. Rolling back.",

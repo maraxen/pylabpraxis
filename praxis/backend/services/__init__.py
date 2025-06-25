@@ -23,7 +23,7 @@ from .deck_type_definition import (
   create_deck_type_definition,
   delete_deck_type_definition,
   read_deck_type_definition,
-  read_deck_type_definition_by_fqn,
+  read_deck_type_definition_by_name,
   read_deck_type_definitions,
   update_deck_type_definition,
 )
@@ -33,6 +33,8 @@ from .discovery_service import (
   get_origin,
   is_pylabrobot_resource,
   serialize_type_hint_str,
+)
+from .discovery_service import (
   upsert_function_protocol_definition as upsert_discovered_function_protocol_definition,
 )
 from .function_output_data import (
@@ -117,7 +119,7 @@ __all__ = [
   "create_deck_type_definition",
   "delete_deck_type_definition",
   "read_deck_type_definition",
-  "read_deck_type_definition_by_fqn",
+  "read_deck_type_definition_by_name",
   "read_deck_type_definitions",
   "update_deck_type_definition",
   # Discovery Service

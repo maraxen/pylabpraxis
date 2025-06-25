@@ -1,27 +1,27 @@
-import pytest
-from unittest.mock import MagicMock, patch, call, ANY
-import subprocess
-
 import json  # For dummy JSON data
+import subprocess
+from unittest.mock import ANY, MagicMock, call, patch
+
+import pytest
 
 from praxis.backend.core.orchestrator import Orchestrator, ProtocolCancelledError
-from praxis.backend.database_models.protocol_definitions_orm import (
-  ProtocolRunStatusEnum,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  FileSystemProtocolSourceOrm,  # For mock_protocol_def_orm
-  ProtocolSourceRepositoryOrm,  # ADDED for GitOps tests
-)
-from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.core.run_context import (
   Deck,
   PraxisRunContext,
 )  # ADDED for DeckLoading tests in Orchestrator
+from praxis.backend.database_models.protocol_definitions_orm import (
+  FileSystemProtocolSourceOrm,  # For mock_protocol_def_orm
+  FunctionProtocolDefinitionOrm,
+  ProtocolRunOrm,
+  ProtocolRunStatusEnum,
+  ProtocolSourceRepositoryOrm,  # ADDED for GitOps tests
+)
 from praxis.backend.protocol_core.protocol_definition_models import (
+  AssetRequirementModel,
   FunctionProtocolDefinitionModel,
   ParameterMetadataModel,
-  AssetRequirementModel,
 )
+from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError
 
 # Mock for services that Orchestrator uses internally

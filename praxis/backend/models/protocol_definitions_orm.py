@@ -136,8 +136,8 @@ class FileSystemProtocolSourceOrm(Base):
   def __repr__(self):
     """Return a string representation of the FileSystemProtocolSourceOrm instance."""
     return (
-      f"<FileSystemProtocolSourceOrm(id={self.accession_id}, name='{self.name}', base_path=\
-      '{self.base_path}')>"
+      f"<FileSystemProtocolSourceOrm(id={self.accession_id}, name='{self.name}', "
+      f"base_path='{self.base_path}')>"
     )
 
 

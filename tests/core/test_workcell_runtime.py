@@ -21,8 +21,7 @@ from praxis.backend.models import (
 from praxis.backend.utils.errors import WorkcellRuntimeError
 
 # Correctly import the distinct mock classes
-from .test_workcell import MockMachineResource, MockPureResource, MockBackend
-
+from .test_workcell import MockBackend, MockMachineResource, MockPureResource
 
 # --- Fixtures ---
 

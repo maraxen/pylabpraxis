@@ -14,14 +14,14 @@ from praxis.backend.models import (
   ResourceInstanceOrm,
 )
 from praxis.backend.services.deck_position import (
-  create_deck_position_item,
   create_deck_position_definitions,
-  delete_deck_position_item,
+  create_deck_position_item,
   delete_deck_position_definition,
+  delete_deck_position_item,
   read_deck_position_item,
   read_position_definitions_for_deck_type,
-  update_deck_position_item,
   update_deck_position_definition,
+  update_deck_position_item,
 )
 
 # Mark all tests in this file as asyncio

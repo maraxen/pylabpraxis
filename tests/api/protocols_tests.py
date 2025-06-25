@@ -1,8 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
+import redis.exceptions
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-import redis.exceptions
 
 # Import the router from the module where it's defined
 from praxis.backend.api.protocols import router as protocols_router
