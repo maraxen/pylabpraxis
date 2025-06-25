@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
-  ResourceDefinitionCatalogOrm,
+  ResourceDefinitionOrm,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -49,10 +49,10 @@ async def create_resource_definition(
   material: Optional[str] = None,
   manufacturer: Optional[str] = None,
   plr_definition_details_json: Optional[Dict[str, Any]] = None,
-) -> ResourceDefinitionCatalogOrm:
+) -> ResourceDefinitionOrm:
   """Add a new resource definition to the catalog.
 
-  This function creates a new `ResourceDefinitionCatalogOrm`.
+  This function creates a new `ResourceDefinitionOrm`.
 
   Args:
       db (AsyncSession): The database session.
@@ -76,7 +76,7 @@ async def create_resource_definition(
           dictionary. Defaults to None.
 
   Returns:
-      ResourceDefinitionCatalogOrm: The created resource definition object.
+      ResourceDefinitionOrm: The created resource definition object.
 
   Raises:
       ValueError: If a resource definition with the same `name` already exists.
@@ -88,9 +88,7 @@ async def create_resource_definition(
 
   # Check if a resource definition with this name already exists
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -100,8 +98,8 @@ async def create_resource_definition(
     logger.error(error_message)
     raise ValueError(error_message)
 
-  # Create a new ResourceDefinitionCatalogOrm
-  def_orm = ResourceDefinitionCatalogOrm(
+  # Create a new ResourceDefinitionOrm
+  def_orm = ResourceDefinitionOrm(
     name=name,
     python_fqn=python_fqn,
     resource_type=resource_type,
@@ -128,12 +126,12 @@ async def create_resource_definition(
         f"{log_prefix} A resource definition with name "
         f"'{name}' already exists (integrity check failed). Details: {e}"
       )
-      logger.error(error_message, exc_info=True)
+      logger.exception(error_message)
       raise ValueError(error_message) from e
     error_message = (
       f"{log_prefix} Database integrity error during creation. Details: {e}"
     )
-    logger.error(error_message, exc_info=True)
+    logger.exception(error_message)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
@@ -159,21 +157,21 @@ async def update_resource_definition(
   material: Optional[str] = None,
   manufacturer: Optional[str] = None,
   plr_definition_details_json: Optional[Dict[str, Any]] = None,
-) -> ResourceDefinitionCatalogOrm:
+) -> ResourceDefinitionOrm:
   """Update an existing resource definition in the catalog.
 
   Args:
       db (AsyncSession): The database session.
       name (str): The unique PyLabRobot definition name
           for the resource to update (e.g., "tip_rack_1000ul").
-      python_fqn (Optional[str], optional): The fully qualified Python name of the resource class.
-          Defaults to None.
+      python_fqn (Optional[str], optional): The fully qualified Python name of the
+          resource class. Defaults to None.
       resource_type (Optional[str], optional): A human-readable
           name for the resource type. Defaults to None.
       description (Optional[str], optional): A description of the resource.
           Defaults to None.
-      is_consumable (Optional[bool], optional): Indicates if the resource is consumable.
-          Defaults to None.
+      is_consumable (Optional[bool], optional): Indicates if the resource is
+          consumable. Defaults to None.
       nominal_volume_ul (Optional[float], optional): The nominal volume in
           microliters, if applicable. Defaults to None.
       material (Optional[str], optional): The material of the resource.
@@ -185,11 +183,12 @@ async def update_resource_definition(
           dictionary. Defaults to None.
 
   Returns:
-      ResourceDefinitionCatalogOrm: The updated resource definition object.
+      ResourceDefinitionOrm: The updated resource definition object.
 
   Raises:
       ValueError: If the resource definition with the provided `name` is not found,
-                  or if an integrity error occurs (e.g., duplicate FQN if `python_fqn` is changed).
+                  or if an integrity error occurs (e.g., duplicate FQN if
+                  `python_fqn` is changed).
       Exception: For any other unexpected errors during the process.
 
   """
@@ -198,14 +197,14 @@ async def update_resource_definition(
 
   # Fetch the existing resource definition
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
   )
   def_orm = result.scalar_one_or_none()
 
   if not def_orm:
-    error_message = f"{log_prefix} ResourceDefinitionCatalogOrm with name '{name}' not found for update."
+    error_message = (
+      f"{log_prefix} ResourceDefinitionOrm with name '{name}' not found for update."
+    )
     logger.error(error_message)
     raise ValueError(error_message)
   logger.info("%s Found existing definition for update.", log_prefix)
@@ -237,9 +236,10 @@ async def update_resource_definition(
     await db.rollback()
     error_message = (
       f"{log_prefix} Integrity error during update. "
-      f"This might occur if a unique constraint is violated (e.g., duplicate FQN). Details: {e}"
+      f"This might occur if a unique constraint is violated "
+      f"(e.g., duplicate FQN). Details: {e}"
     )
-    logger.error(error_message, exc_info=True)
+    logger.exception(error_message)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()
@@ -252,7 +252,7 @@ async def update_resource_definition(
 
 async def read_resource_definition(
   db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
+) -> Optional[ResourceDefinitionOrm]:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
   Args:
@@ -261,7 +261,7 @@ async def read_resource_definition(
           resource to retrieve.
 
   Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
+      Optional[ResourceDefinitionOrm]: The resource definition object
       if found, otherwise None.
 
   """
@@ -270,9 +270,7 @@ async def read_resource_definition(
     name,
   )
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
@@ -282,13 +280,13 @@ async def read_resource_definition(
   return resource_def
 
 
-async def list_resource_definitions(
+async def read_resource_definitions(
   db: AsyncSession,
   manufacturer: Optional[str] = None,
   is_consumable: Optional[bool] = None,
   limit: int = 100,
   offset: int = 0,
-) -> List[ResourceDefinitionCatalogOrm]:
+) -> List[ResourceDefinitionOrm]:
   """List resource definitions with optional filtering and pagination.
 
   Args:
@@ -301,7 +299,7 @@ async def list_resource_definitions(
       offset (int): The number of results to skip before returning. Defaults to 0.
 
   Returns:
-      List[ResourceDefinitionCatalogOrm]: A list of resource definition objects
+      List[ResourceDefinitionOrm]: A list of resource definition objects
       matching the criteria.
 
   """
@@ -313,16 +311,14 @@ async def list_resource_definitions(
     limit,
     offset,
   )
-  stmt = select(ResourceDefinitionCatalogOrm)
+  stmt = select(ResourceDefinitionOrm)
   if manufacturer:
-    stmt = stmt.filter(
-      ResourceDefinitionCatalogOrm.manufacturer.ilike(f"%{manufacturer}%")
-    )
+    stmt = stmt.filter(ResourceDefinitionOrm.manufacturer.ilike(f"%{manufacturer}%"))
     logger.debug("Filtering by manufacturer: '%s'.", manufacturer)
   if is_consumable is not None:
-    stmt = stmt.filter(ResourceDefinitionCatalogOrm.is_consumable == is_consumable)
+    stmt = stmt.filter(ResourceDefinitionOrm.is_consumable == is_consumable)
     logger.debug("Filtering by is_consumable: %s.", is_consumable)
-  stmt = stmt.order_by(ResourceDefinitionCatalogOrm.name).limit(limit).offset(offset)
+  stmt = stmt.order_by(ResourceDefinitionOrm.name).limit(limit).offset(offset)
   result = await db.execute(stmt)
   resource_defs = list(result.scalars().all())
   logger.info("Found %d resource definitions.", len(resource_defs))
@@ -331,7 +327,7 @@ async def list_resource_definitions(
 
 async def read_resource_definition_by_name(
   db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
+) -> Optional[ResourceDefinitionOrm]:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
   This is an alias for `read_resource_definition`.
@@ -342,7 +338,7 @@ async def read_resource_definition_by_name(
           resource to retrieve.
 
   Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
+      Optional[ResourceDefinitionOrm]: The resource definition object
       if found, otherwise None.
 
   """
@@ -351,23 +347,21 @@ async def read_resource_definition_by_name(
 
 async def read_resource_definition_by_fqn(
   db: AsyncSession, python_fqn: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
+) -> Optional[ResourceDefinitionOrm]:
   """Retrieve a resource definition by its Python fully qualified name (FQN).
 
   Args:
-      db (AsyncSession): The database session.
+      db: The database session.
       python_fqn (str): The Python FQN of the resource to retrieve.
 
   Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
+      Optional[ResourceDefinitionOrm]: The resource definition object
       if found, otherwise None.
 
   """
   logger.info("Retrieving resource definition by Python FQN: '%s'.", python_fqn)
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.python_fqn == python_fqn
-    )
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.python_fqn == python_fqn)
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
@@ -418,7 +412,7 @@ async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
       f"Cannot delete resource definition '{name}' "
       f"due to existing references (e.g., resource instances). Details: {e}"
     )
-    logger.error(error_message, exc_info=True)
+    logger.exception(error_message)
     raise ValueError(error_message) from e
   except Exception as e:
     await db.rollback()

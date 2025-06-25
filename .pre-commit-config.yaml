@@ -13,19 +13,19 @@ repos:
         additional_dependencies: [types-requests]
         args: [--check-untyped-defs]
 
-  - repo: https://github.com/pycqa/pylint
-    rev: v3.3.7
-    hooks:
-      - id: pylint
-        args: [--disable=C0103]
-
-#  - repo: local
+#  - repo: https://github.com/pycqa/pylint
+#    rev: v3.3.7
 #    hooks:
-#      - id: pytest
-#        name: pytest
-#        entry: pytest
-#        language: system
-#        types: [python]
-#        pass_filenames: false
-#        always_run: true
-#        args: [-v]
+#      - id: pylint
+#        args: [--disable=C0103]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        args: [-v]

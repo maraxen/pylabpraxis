@@ -25,6 +25,7 @@ from praxis.backend.models import (
 from praxis.backend.models.resource_pydantic_models import (
   ResourceCreate,
   ResourceResponse,
+  ResourceUpdate,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -39,11 +40,11 @@ log_resource_api_errors = partial(
   log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
 )
 
-resource_instance_resolve_accession = partial(
+resource_resolve_accession = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_resource_instance,
-  get_by_name_func=svc.read_resource_instance_by_name,
-  entity_type_name="Resource Instance",
+  get_func=svc.read_resource,
+  get_by_name_func=svc.read_resource_by_name,
+  entity_type_name="Resource",
 )
 
 
@@ -59,7 +60,7 @@ resource_instance_resolve_accession = partial(
   status_code=status.HTTP_201_CREATED,
   tags=["Resource Definitions"],
 )
-async def create_resource_definition(
+async def create_resource_definition_endpoint(
   definition: ResourceDefinitionCreate, db: AsyncSession = Depends(get_db)
 ):
   """Create a new resource definition in the catalog."""
@@ -81,7 +82,9 @@ async def create_resource_definition(
   response_model=ResourceDefinitionResponse,
   tags=["Resource Definitions"],
 )
-async def get_resource_definition(name: str, db: AsyncSession = Depends(get_db)):
+async def read_resource_definition_endpoint(
+  name: str, db: AsyncSession = Depends(get_db)
+):
   """Retrieve a resource definition by name."""
   db_def = await svc.read_resource_definition(db, name)
   if db_def is None:
@@ -100,11 +103,11 @@ async def get_resource_definition(name: str, db: AsyncSession = Depends(get_db))
   response_model=List[ResourceDefinitionResponse],
   tags=["Resource Definitions"],
 )
-async def list_resource_definitions(
+async def read_resource_definitions_endpoint(
   db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
 ):
   """List all available resource definitions."""
-  return await svc.list_resource_definitions(db, limit=limit, offset=offset)
+  return await svc.read_resource_definitions(db, limit=limit, offset=offset)
 
 
 @log_resource_api_errors(
@@ -118,7 +121,7 @@ async def list_resource_definitions(
   response_model=ResourceDefinitionResponse,
   tags=["Resource Definitions"],
 )
-async def update_resource_definition(
+async def update_resource_definition_endpoint(
   name: str,
   definition_update: ResourceDefinitionUpdate,
   db: AsyncSession = Depends(get_db),
@@ -147,7 +150,9 @@ async def update_resource_definition(
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Resource Definitions"],
 )
-async def delete_resource_definition(name: str, db: AsyncSession = Depends(get_db)):
+async def delete_resource_definition_endpoint(
+  name: str, db: AsyncSession = Depends(get_db)
+):
   """Delete a resource definition."""
   success = await svc.delete_resource_definition(db, name)
   if not success:
@@ -157,13 +162,13 @@ async def delete_resource_definition(name: str, db: AsyncSession = Depends(get_d
   return None
 
 
-# --- Resource Instance Endpoints ---
+# --- Resource Endpoints ---
 
 
 @log_resource_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to create resource instance: ",
+  prefix="Failed to create resource: ",
   suffix="",
 )
 @router.post(
@@ -172,10 +177,10 @@ async def delete_resource_definition(name: str, db: AsyncSession = Depends(get_d
   status_code=status.HTTP_201_CREATED,
   tags=["Resources"],
 )
-async def create_resource_instance(
+async def create_resource_endpoint(
   request: ResourceCreate, db: AsyncSession = Depends(get_db)
 ):
-  """Create a new resource instance."""
+  """Create a new resource."""
   try:
     # If resource_definition_accession_id is not provided, try to resolve from FQN
     if request.resource_definition_accession_id is None and request.fqn:
@@ -188,7 +193,7 @@ async def create_resource_instance(
           detail=f"Resource definition with FQN '{request.fqn}' not found.",
         )
       request.resource_definition_accession_id = definition_orm.accession_id
-    resource_orm = await svc.create_resource_instance(
+    resource_orm = await svc.create_resource(
       db=db,
       resource_create=request,
     )
@@ -200,21 +205,36 @@ async def create_resource_instance(
 @log_resource_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to list resource instances: ",
+  prefix="Failed to list resources: ",
+  suffix="",
+)
+@router.get("/", response_model=List[ResourceResponse], tags=["Resources"])
+async def read_resources_endpoint(
+  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
+):
+  """List all resources."""
+  resources = await svc.read_resources(db, limit=limit, offset=offset)
+  return [ResourceResponse.model_validate(res) for res in resources]
+
+
+@log_resource_api_errors(
+  exception_type=HTTPException,
+  raises=True,
+  prefix="Failed to get resource: ",
   suffix="",
 )
 @router.get(
-  "/{name}",
+  "/{accession}",
   response_model=ResourceResponse,
   tags=["Resources"],
 )
-async def get_resource_instance(
+async def read_resource_endpoint(
   accession: str | UUID, db: AsyncSession = Depends(get_db)
 ):
-  """Retrieve a resource instance."""
+  """Retrieve a resource."""
   try:
-    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
+    accession_id = await resource_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource(db, resource_accession_id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
     return ResourceResponse.model_validate(resource)
@@ -225,28 +245,27 @@ async def get_resource_instance(
 @log_resource_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to list resource instances: ",
+  prefix="Failed to update resource: ",
   suffix="",
 )
 @router.put(
-  "/{instance_accession_id}",
+  "/{accession}",
   response_model=ResourceResponse,
   tags=["Resources"],
 )
-async def update_resource(
+async def update_resource_endpoint(
   accession: str | UUID,
-  request: ResourceResponse,
+  request: ResourceUpdate,
   db: AsyncSession = Depends(get_db),
 ):
-  """Update an existing resource instance."""
+  """Update an existing resource."""
   try:
-    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
+    accession_id = await resource_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource(db, resource_accession_id=accession_id)
     if resource is None:
       raise HTTPException(status_code=404, detail="Resource not found")
-    update_data = request.model_dump(exclude_unset=True)
-    updated_resource = await svc.update_resource_instance(
-      db=db, instance_accession_id=accession_id, **update_data
+    updated_resource = await svc.update_resource(
+      db=db, resource_accession_id=accession_id, resource_update=request
     )
     return ResourceResponse.model_validate(updated_resource)
 
@@ -257,25 +276,24 @@ async def update_resource(
 @log_resource_api_errors(
   exception_type=HTTPException,
   raises=True,
-  prefix="Failed to delete resource instance: ",
+  prefix="Failed to delete resource: ",
   suffix="",
 )
 @router.delete(
-  "/{instance_accession_id}",
+  "/{accession}",
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Resources"],
 )
-async def delete_resource(accession: str | UUID, db: AsyncSession = Depends(get_db)):
-  """Delete a resource instance by name or ID."""
+async def delete_resource_endpoint(
+  accession: str | UUID, db: AsyncSession = Depends(get_db)
+):
+  """Delete a resource by name or ID."""
   try:
-    success = False
-    accession_id = await resource_instance_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource_instance(db, instance_accession_id=accession_id)
+    accession_id = await resource_resolve_accession(accession=accession, db=db)
+    resource = await svc.read_resource(db, resource_accession_id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
-    success = await svc.delete_resource_instance(
-      db, instance_accession_id=resource.accession_id
-    )
+    success = await svc.delete_resource(db, resource_accession_id=resource.accession_id)
     if not success:
       raise HTTPException(status_code=404, detail="Resource not found")
     return None

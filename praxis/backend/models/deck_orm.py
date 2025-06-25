@@ -93,7 +93,19 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
       python_fqn (str): The fully qualified name of the PyLabRobot deck class
           (e.g., "pylabrobot.liquid_handling.backends.hamilton.STARDeck").
       description (Optional[str]): A detailed description of the deck type.
-      positioning_config_json (Optional[dict]): JSON field to store positioning
+      plr_category (Optional[str]): The category of the deck type in PyLabRobot.
+      default_size_x_mm (Optional[float]): The default size in X dimension in mm.
+      default_size_y_mm (Optional[float]): The default size in Y dimension in mm.
+      default_size_z_mm (Optional[float]): The default size in Z dimension in mm.
+      serialized_constructor_args_json (Optional[dict[str, Any]]): JSON field to store
+          serialized constructor arguments for the deck type.
+      serialized_assignment_methods_json (Optional[dict[str, Any]]): JSON field to store
+          serialized assignment methods for the deck type.
+      serialized_constructor_hints_json (Optional[dict[str, Any]]): JSON field to store
+          serialized constructor hints for the deck type.
+      additional_properties_json (Optional[dict[str, Any]]): JSON field to store
+          additional properties for the deck type.
+      positioning_config_json (Optional[dict[str, Any]]): JSON field to store positioning
           configuration, such as the method and parameters for calculating
           coordinates from slot names.
       positions (list[DeckPositionDefinitionOrm]): A list of all defined
@@ -104,6 +116,9 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
   """
 
   __tablename__ = "deck_type_definitions"
+  __table_args__ = (
+    UniqueConstraint("python_fqn", name="uq_deck_type_definitions_python_fqn"),
+  )
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID, primary_key=True, index=True, default=uuid.uuid4
@@ -111,6 +126,22 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
   python_fqn: Mapped[str] = mapped_column(String, nullable=False, index=True)
   description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  plr_category: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  default_size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  default_size_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  default_size_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  serialized_constructor_args_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    JSON, nullable=True
+  )
+  serialized_assignment_methods_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    JSON, nullable=True
+  )
+  serialized_constructor_hints_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    JSON, nullable=True
+  )
+  additional_properties_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    JSON, nullable=True
+  )
   positioning_config_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
     JSON, nullable=True
   )

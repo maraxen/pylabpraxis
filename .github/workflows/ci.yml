@@ -67,34 +67,6 @@ jobs:
       run: |
         mypy praxis --check-untyped-defs
 
-  pylint:
-    name: Pylint Analysis
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pylint-${{ hashFiles('**/pyproject.toml', '**/setup.py') }}
-        restore-keys: |
-          ${{ runner.os }}-pylint-
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-
-    - name: Lint with pylint
-      run: |
-        pylint praxis --disable=C0103
-
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest

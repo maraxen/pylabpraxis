@@ -9,7 +9,7 @@ the database schema is in sync with the ORM models.
 
 from __future__ import annotations
 
-from .asset_management_orm import Asset
+from .asset_orm import Asset
 from .asset_pydantic_models import AssetBase, AssetResponse
 from .deck_orm import DeckOrm, DeckPositionDefinitionOrm, DeckTypeDefinitionOrm
 from .deck_pydantic_models import (

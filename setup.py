@@ -49,7 +49,7 @@ extras_dev = (
     "sphinx_copybutton",
     "pytest",
     "pytest-timeout",
-    "pylint",
+    "ruff",
     "mypy",
     "responses",
     "freezegun",

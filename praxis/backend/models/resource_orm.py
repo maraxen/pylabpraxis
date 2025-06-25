@@ -31,7 +31,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from praxis.backend.models.asset_management_orm import Asset
+from praxis.backend.models.asset_orm import Asset
 from praxis.backend.models.enums import AssetType
 from praxis.backend.models.timestamp_mixin import TimestampMixin
 from praxis.backend.utils.db import Base
