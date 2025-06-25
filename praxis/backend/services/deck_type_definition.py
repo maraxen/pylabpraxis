@@ -72,15 +72,16 @@ async def _process_position_definitions(
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
         await db.delete(position)
-      await db.flush() # Ensure deletions are processed before adding new ones
-      logger.debug("%s Existing position definitions for deck type ID %s deleted.",
-                   log_prefix, deck_type_orm.accession_id)
+      await db.flush()  # Ensure deletions are processed before adding new ones
+      logger.debug(
+        "%s Existing position definitions for deck type ID %s deleted.",
+        log_prefix,
+        deck_type_orm.accession_id,
+      )
 
     # Add new position definitions
     for position_data in position_definitions:
-      position_accession_id = position_data.get(
-        "position_accession_id", "UNKNOWN_POSE"
-      )
+      position_accession_id = position_data.get("position_accession_id", "UNKNOWN_POSE")
       x_coord = position_data.get("x_coord", 0.0)
       y_coord = position_data.get("y_coord", 0.0)
       z_coord = position_data.get("z_coord", 0.0)
@@ -89,37 +90,39 @@ async def _process_position_definitions(
         "%s Adding new position definition: '%s' (%.2f, %.2f, %.2f).",
         log_prefix,
         position_accession_id,
-        x_coord, y_coord, z_coord
+        x_coord,
+        y_coord,
+        z_coord,
       )
 
-      # Prioritize compatible_resource_fqns if provided directly in the input data
       compatible_resource_fqns_data = position_data.get("compatible_resource_fqns")
 
-      # Map Pydantic fields to position_specific_details if not direct ORM fields
-      # If not provided directly, build it from individual fields.
-      # This assumes the Pydantic model will send individual fields if compatible_resource_fqns is not set.
       if compatible_resource_fqns_data is None:
         compatible_resource_fqns_data = {}
         if position_data.get("pylabrobot_position_type_name"):
-          compatible_resource_fqns_data["pylabrobot_position_type_name"] = position_data[
-            "pylabrobot_position_type_name"
-          ]
+          compatible_resource_fqns_data["pylabrobot_position_type_name"] = (
+            position_data["pylabrobot_position_type_name"]
+          )
         if position_data.get("allowed_resource_definition_names"):
-          compatible_resource_fqns_data["allowed_resource_definition_names"] = position_data[
-            "allowed_resource_definition_names"
-          ]
+          compatible_resource_fqns_data["allowed_resource_definition_names"] = (
+            position_data["allowed_resource_definition_names"]
+          )
         if position_data.get("accepts_tips") is not None:
           compatible_resource_fqns_data["accepts_tips"] = position_data["accepts_tips"]
         if position_data.get("accepts_plates") is not None:
-          compatible_resource_fqns_data["accepts_plates"] = position_data["accepts_plates"]
+          compatible_resource_fqns_data["accepts_plates"] = position_data[
+            "accepts_plates"
+          ]
         if position_data.get("accepts_tubes") is not None:
-          compatible_resource_fqns_data["accepts_tubes"] = position_data["accepts_tubes"]
+          compatible_resource_fqns_data["accepts_tubes"] = position_data[
+            "accepts_tubes"
+          ]
         if position_data.get("notes") is not None:
           compatible_resource_fqns_data["notes"] = position_data["notes"]
 
       # Ensure it's None if empty, to avoid storing empty JSON objects unnecessarily
       if not compatible_resource_fqns_data:
-          compatible_resource_fqns_data = None
+        compatible_resource_fqns_data = None
 
       position_orm = DeckPositionDefinitionOrm(
         deck_type_id=deck_type_orm.accession_id,
@@ -447,10 +450,15 @@ async def read_deck_type_definition_by_name(
   result = await db.execute(stmt)
   deck_type_def = result.scalar_one_or_none()
   if deck_type_def:
-    logger.info("Successfully retrieved deck type definition '%s' (ID: %s).", name, deck_type_def.accession_id)
+    logger.info(
+      "Successfully retrieved deck type definition '%s' (ID: %s).",
+      name,
+      deck_type_def.accession_id,
+    )
   else:
     logger.info("Deck type definition with name '%s' not found.", name)
   return deck_type_def
+
 
 async def read_deck_type_definitions(
   db: AsyncSession, limit: int = 100, offset: int = 0

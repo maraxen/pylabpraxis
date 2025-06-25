@@ -128,11 +128,9 @@ from .workcell_pydantic_models import (
 )
 
 __all__ = [
-  # Asset and base models
   "Asset",
   "AssetBase",
   "AssetResponse",
-  # Decks
   "DeckOrm",
   "DeckBase",
   "DeckCreate",
@@ -147,7 +145,6 @@ __all__ = [
   "DeckTypeDefinitionUpdate",
   "DeckUpdate",
   "PositioningConfig",
-  # Machines
   "MachineOrm",
   "MachineCategoryEnum",
   "MachineStatusEnum",
@@ -155,7 +152,6 @@ __all__ = [
   "MachineCreate",
   "MachineResponse",
   "MachineUpdate",
-  # Resources
   "ResourceOrm",
   "ResourceStatusEnum",
   "ResourceDefinitionBase",
@@ -166,7 +162,6 @@ __all__ = [
   "ResourceInventoryDataOut",
   "ResourceInventoryItemCount",
   "ResourceInventoryReagentItem",
-  # Protocols
   "FileSystemProtocolSourceOrm",
   "FunctionCallLogOrm",
   "FunctionCallStatusEnum",
@@ -187,7 +182,6 @@ __all__ = [
   "ProtocolStatus",
   "RuntimeAssetRequirement",
   "UIHint",
-  # Function data outputs
   "DataOutputTypeEnum",
   "FunctionDataOutputOrm",
   "SpatialContextEnum",
@@ -204,7 +198,6 @@ __all__ = [
   "WellDataOutputCreate",
   "WellDataOutputResponse",
   "WellDataOutputUpdate",
-  # Scheduler
   "AssetReservationOrm",
   "AssetReservationStatusEnum",
   "ScheduleEntryOrm",
@@ -225,7 +218,6 @@ __all__ = [
   "ScheduleProtocolRequest",
   "SchedulerMetricsResponse",
   "SchedulerSystemStatusResponse",
-  # Users & workcells
   "UserOrm",
   "WorkcellOrm",
   "WorkcellStatusEnum",

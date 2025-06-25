@@ -1,7 +1,9 @@
-# <filename>praxis/backend/api/resources.py</filename>
-#
-# This file contains the FastAPI router for all resource-related endpoints,
-# including resource definitions (catalog) and resource instances.
+"""FastAPI router for all resource-related endpoints.
+
+This module defines endpoints for managing resource definitions and resources,
+including creation, retrieval, updating, and deletion. It uses the service layer
+to interact with the database and handle business logic.
+"""
 
 from functools import partial
 from typing import List

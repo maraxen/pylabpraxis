@@ -372,8 +372,11 @@ class ProtocolRunOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the ProtocolRunOrm instance."""
-    return f"<ProtocolRunOrm(id={self.accession_id}, run_accession_id='{self.run_accession_id}', \
-      status='{self.status.name}')>"
+    return (
+      f"<ProtocolRunOrm(id={self.accession_id}, "
+      f"run_accession_id='{self.run_accession_id}', "
+      f"status='{self.status.name}')>"
+    )
 
 
 class FunctionCallLogOrm(Base):
@@ -427,5 +430,8 @@ class FunctionCallLogOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the FunctionCallLogOrm instance."""
-    return f"<FunctionCallLogOrm(id={self.accession_id}, run_accession_id={self.protocol_run_accession_id}, \
-      seq={self.sequence_in_run}, status='{self.status.name}')>"
+    return (
+      f"<FunctionCallLogOrm(id={self.accession_id}, "
+      f"run_accession_id={self.protocol_run_accession_id}, "
+      f"seq={self.sequence_in_run}, status='{self.status.name}')>"
+    )
