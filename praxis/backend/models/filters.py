@@ -24,6 +24,7 @@ class SearchFilters(BaseModel):
   protocol_run_accession_id: UUID7 | None = Field(None, description="Filter by associated protocol run ID.")
   machine_accession_id: UUID7 | None = Field(None, description="Filter by associated machine ID.")
   resource_accession_id: UUID7 | None = Field(None, description="Filter by associated resource ID.")
+  parent_accession_id: UUID7 | None = Field(None, description="Filter by parent asset ID.")
 
   class Config:
     from_attributes = True

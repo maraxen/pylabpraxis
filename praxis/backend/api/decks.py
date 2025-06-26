@@ -14,6 +14,7 @@ from praxis.backend.models import (
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
   DeckUpdate,
+  SearchFilters,
 )
 from praxis.backend.services import (
   create_deck,
@@ -204,10 +205,11 @@ async def create_deck_endpoint(request: DeckCreate, db: AsyncSession = Depends(g
 )
 @router.get("/", response_model=list[DeckResponse], tags=["Decks"])
 async def read_decks_endpoint(
-  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
+  db: AsyncSession = Depends(get_db),
+  filters: SearchFilters = Depends(),
 ):
   """List all decks."""
-  return await read_decks(db, limit=limit, offset=offset)
+  return await read_decks(db, filters=filters)
 
 
 @log_deck_api_errors(

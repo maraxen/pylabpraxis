@@ -716,3 +716,24 @@ iotop
 4. Clear orphaned call logs
 
 This comprehensive architecture documentation provides the foundation for understanding, deploying, and maintaining the refactored protocol execution system.
+### Standardized API Filtering
+
+To ensure consistency and ease of use, PyLabPraxis employs a standardized filtering mechanism for all `GET` list endpoints (e.g., `/machines/`, `/resources/`, `/protocols/runs/`). This approach combines generic, reusable filters with entity-specific ones.
+
+1.  **Generic Filters (`SearchFilters`)**:
+    -   A common Pydantic model, `praxis.backend.models.filters.SearchFilters`, defines standard filtering parameters that apply across most entities. These include:
+        -   `limit`: For pagination.
+        -   `offset`: For pagination.
+        -   `date_range_start` / `date_range_end`: For filtering by creation/update timestamps.
+        -   `property_filters`: For key-value filtering on JSON fields.
+        -   Common relationship IDs like `protocol_run_accession_id`, `machine_accession_id`, `resource_accession_id`, and `parent_accession_id`.
+    -   In API endpoints, these are automatically populated from query parameters using FastAPI's dependency injection: `filters: SearchFilters = Depends()`.
+
+2.  **Entity-Specific Filters**:
+    -   Filters that are unique to a specific entity (e.g., `status` for machines, `data_types` for data outputs) are defined as separate `Query()` parameters in the API endpoint signature.
+    -   This keeps the `SearchFilters` model clean and generic while providing clear, self-documenting parameters for specific filtering needs.
+
+3.  **Service and Query Builder Integration**:
+    -   The API endpoint passes both the generic `filters` object and any specific filter arguments to the corresponding service layer method.
+    -   The service method then uses helper functions from `praxis.backend.services.utils.query_builder` (like `apply_pagination`, `apply_date_range_filters`) to build the SQLAlchemy query from the `SearchFilters` object.
+    -   Specific filters are applied directly within the service method, creating a clean separation between generic and specific query logic.

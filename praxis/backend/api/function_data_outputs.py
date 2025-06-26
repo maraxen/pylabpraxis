@@ -76,29 +76,23 @@ async def create_function_data_output(
   response_model=list[FunctionDataOutputResponse],
 )
 async def list_function_data_outputs(
-  filters: SearchFilters = Depends(),
-  data_types: list[DataOutputTypeEnum] | None = Query(None, description="Filter by data types"),
-  spatial_contexts: list[SpatialContextEnum] | None = Query(None, description="Filter by spatial context"),
-  has_numeric_data: bool | None = Query(None, description="Filter for entries with numeric data"),
-  has_file_data: bool | None = Query(None, description="Filter for entries with file attachments"),
-  min_quality_score: float | None = Query(None, ge=0.0, le=1.0, description="Minimum quality score"),
+  filters: SearchFilters = Depends(), # Handles limit, offset, date_range, common IDs
+  data_types: list[DataOutputTypeEnum] | None = Query(None, description="Filter by data types."),
+  spatial_contexts: list[SpatialContextEnum] | None = Query(None, description="Filter by spatial context."),
+  has_numeric_data: bool | None = Query(None, description="Filter for entries with numeric data."),
+  has_file_data: bool | None = Query(None, description="Filter for entries with file attachments."),
+  min_quality_score: float | None = Query(None, ge=0.0, le=1.0, description="Minimum quality score."),
   db: AsyncSession = Depends(get_db),
 ) -> list[FunctionDataOutputResponse]:
   """Get function data outputs with optional filtering."""
-  # Update the filters object with specific query parameters
-  filters.data_types = data_types
-  filters.spatial_contexts = spatial_contexts
-  filters.has_numeric_data = has_numeric_data
-  filters.has_file_data = has_file_data
-  filters.min_quality_score = min_quality_score
-
-  # The `filters` object already contains `limit`, `offset`, `date_range_start`,
-  # `date_range_end`, `protocol_run_accession_id`, `machine_accession_id`,
-  # `resource_accession_id` from the Depends() injection.
-
   result = await svc.list_function_data_outputs(
     db=db,
     filters=filters,
+    data_types=data_types,
+    spatial_contexts=spatial_contexts,
+    has_numeric_data=has_numeric_data,
+    has_file_data=has_file_data,
+    min_quality_score=min_quality_score,
   )
   return [FunctionDataOutputResponse.model_validate(item) for item in result]
 

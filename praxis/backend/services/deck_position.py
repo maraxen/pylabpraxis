@@ -325,7 +325,7 @@ async def _process_position_definitions(
     # Delete existing position definitions for this deck type
     if deck_type_orm.accession_id:  # Ensure we have an ID to link positions
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
-        DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_orm.accession_id,
+        DeckPositionDefinitionOrm.deck_type_id == deck_type_orm.accession_id,
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
@@ -360,7 +360,7 @@ async def _process_position_definitions(
         position_specific_details["notes"] = position_data["notes"]
 
       new_position = DeckPositionDefinitionOrm(
-        deck_type_definition_accession_id=deck_type_orm.accession_id,  # type: ignore
+        deck_type_id=deck_type_orm.accession_id,  # type: ignore
         name=name,
         nominal_x_mm=position_data.get("location_x_mm"),
         nominal_y_mm=position_data.get("location_y_mm"),
@@ -375,7 +375,7 @@ async def _process_position_definitions(
 
 async def create_deck_position_definitions(
   db: AsyncSession,
-  deck_type_definition_accession_id: uuid.UUID,
+  deck_type_id: uuid.UUID,
   new_positions_data: list[dict[str, Any]],
 ) -> list[DeckPositionDefinitionOrm]:
   """Add multiple new position definitions to an existing deck type definition.
@@ -385,7 +385,7 @@ async def create_deck_position_definitions(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_accession_id (int): The ID of the deck type definition to which
+    deck_type_id (int): The ID of the deck type definition to which
       to create the positions.
     new_positions_data (list[dict[str, Any]]): A list of dictionaries, each
       representing a new position definition. Each dictionary should contain:
@@ -409,12 +409,12 @@ async def create_deck_position_definitions(
     objects.
 
   Raises:
-    ValueError: If the `deck_type_definition_accession_id` does not exist, or if a position
+    ValueError: If the `deck_type_id` does not exist, or if a position
       name conflict occurs during creation.
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_definition_accession_id}):"
+  log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_id}):"
   logger.info(
     "%s Attempting to create %s new position definitions.",
     log_prefix,
@@ -424,15 +424,14 @@ async def create_deck_position_definitions(
   # First, check if the parent DeckTypeDefinitionOrm exists
   deck_type_result = await db.execute(
     select(DeckTypeDefinitionOrm).filter(
-      DeckTypeDefinitionOrm.accession_id == deck_type_definition_accession_id,
+      DeckTypeDefinitionOrm.accession_id == deck_type_id,
     ),
   )
   deck_type_orm = deck_type_result.scalar_one_or_none()
 
   if not deck_type_orm:
     error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_definition_accession_id} not found."
-      " Cannot create position definitions."
+      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_id} not found." " Cannot create position definitions."
     )
     logger.error(error_message)
     raise ValueError(error_message)
@@ -466,7 +465,7 @@ async def create_deck_position_definitions(
         position_specific_details["notes"] = position_data["notes"]
 
       new_position = DeckPositionDefinitionOrm(
-        deck_type_definition_accession_id=deck_type_definition_accession_id,
+        deck_type_id=deck_type_id,
         name=name,
         nominal_x_mm=position_data.get("location_x_mm"),
         nominal_y_mm=position_data.get("location_y_mm"),
@@ -516,7 +515,7 @@ async def create_deck_position_definitions(
 
 async def update_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_accession_id: uuid.UUID,
+  deck_type_id: uuid.UUID,
   name: str,
   location_x_mm: float | None = None,
   location_y_mm: float | None = None,
@@ -533,7 +532,7 @@ async def update_deck_position_definition(
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_accession_id (int): The ID of the parent deck type definition.
+    deck_type_id (int): The ID of the parent deck type definition.
     name (str): The unique name of the position to update.
     location_x_mm (Optional[float], optional): Nominal X coordinate of the position.
     location_y_mm (Optional[float], optional): Nominal Y coordinate of the position.
@@ -557,14 +556,14 @@ async def update_deck_position_definition(
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, Position: '{name}'):"
+  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_id}, Position: '{name}'):"
   logger.info("%s Attempting to update.", log_prefix)
 
   # First, fetch the specific position definition
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_id == deck_type_id,
     )
     .filter(DeckPositionDefinitionOrm.name == name),
   )
@@ -635,14 +634,14 @@ async def update_deck_position_definition(
 
 async def delete_deck_position_definition(
   db: AsyncSession,
-  deck_type_definition_accession_id: uuid.UUID,
+  deck_type_id: uuid.UUID,
   name: str,
 ) -> None:
   """Delete a specific position definition from a deck type definition.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_accession_id (int): The ID of the parent deck type definition.
+    deck_type_id (int): The ID of the parent deck type definition.
     name (str): The unique name of the position to delete.
 
   Returns:
@@ -653,7 +652,7 @@ async def delete_deck_position_definition(
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_definition_accession_id}, \
+  log_prefix = f"Deck Position Definition (Deck Type ID: {deck_type_id}, \
     Position: '{name}'):"
   logger.info("%s Attempting to delete.", log_prefix)
 
@@ -661,7 +660,7 @@ async def delete_deck_position_definition(
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_id == deck_type_id,
     )
     .filter(DeckPositionDefinitionOrm.name == name),
   )
@@ -688,13 +687,13 @@ async def delete_deck_position_definition(
 
 async def read_position_definitions_for_deck_type(
   db: AsyncSession,
-  deck_type_definition_accession_id: uuid.UUID,
+  deck_type_id: uuid.UUID,
 ) -> list[DeckPositionDefinitionOrm]:
   """Retrieve all position definitions associated with a specific deck type definition ID.
 
   Args:
     db (AsyncSession): The database session.
-    deck_type_definition_accession_id (uuid.UUID): The ID of the deck type definition.
+    deck_type_id (uuid.UUID): The ID of the deck type definition.
 
   Returns:
     list[DeckPositionDefinitionOrm]: A list of position definitions for the specified
@@ -702,30 +701,27 @@ async def read_position_definitions_for_deck_type(
     does not exist.
 
   Raises:
-    ValueError: If the `deck_type_definition_accession_id` does not exist.
+    ValueError: If the `deck_type_id` does not exist.
 
   """
   logger.info(
     "Attempting to retrieve position definitions for deck type ID: %s.",
-    deck_type_definition_accession_id,
+    deck_type_id,
   )
   deck_type_exists_result = await db.execute(
     select(DeckTypeDefinitionOrm.accession_id).filter(
-      DeckTypeDefinitionOrm.accession_id == deck_type_definition_accession_id,
+      DeckTypeDefinitionOrm.accession_id == deck_type_id,
     ),
   )
   if not deck_type_exists_result.scalar_one_or_none():
-    error_message = (
-      f"DeckTypeDefinitionOrm with id {deck_type_definition_accession_id} not found. "
-      "Cannot retrieve position definitions."
-    )
+    error_message = f"DeckTypeDefinitionOrm with id {deck_type_id} not found. " "Cannot retrieve position definitions."
     logger.error(error_message)
     raise ValueError(error_message)
 
   stmt = (
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_id == deck_type_id,
     )
     .order_by(
       DeckPositionDefinitionOrm.name,
@@ -736,6 +732,6 @@ async def read_position_definitions_for_deck_type(
   logger.info(
     "Found %s position definitions for deck type ID %s.",
     len(positions),
-    deck_type_definition_accession_id,
+    deck_type_id,
   )
   return positions

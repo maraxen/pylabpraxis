@@ -23,6 +23,7 @@ from .deck_pydantic_models import (
   DeckTypeDefinitionBase,
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionResponse,
+  DeckTypeDefinitionUpdate,
   DeckUpdate,
   PositioningConfig,
 )

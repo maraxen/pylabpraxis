@@ -250,14 +250,13 @@ async def cancel_schedule(
 @router.get("/schedules", response_model=ScheduleListResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def list_schedules(
-  status: list[ScheduleEntryStatus] | None = Query(None),
-  protocol_run_ids: list[uuid.UUID] | None = Query(None),
-  priority_min: int | None = Query(None, ge=1, le=10),
-  priority_max: int | None = Query(None, ge=1, le=10),
-  created_after: datetime | None = Query(None),
-  created_before: datetime | None = Query(None),
-  include_completed: bool = Query(False),
-  include_cancelled: bool = Query(False),
+  filters: SearchFilters = Depends(), # Handles limit, offset, date_range
+  status: list[ScheduleEntryStatus] | None = Query(None, description="Filter by schedule status."),
+  protocol_run_ids: list[uuid.UUID] | None = Query(None, description="Filter by specific protocol run IDs."),
+  priority_min: int | None = Query(None, ge=1, le=10, description="Minimum priority."),
+  priority_max: int | None = Query(None, ge=1, le=10, description="Maximum priority."),
+  include_completed: bool = Query(False, description="Include completed schedules."),
+  include_cancelled: bool = Query(False, description="Include cancelled schedules."),
   db: AsyncSession = Depends(get_db),
 ) -> ScheduleListResponse:
   """List scheduled protocol runs with optional filters."""
@@ -266,18 +265,13 @@ async def list_schedules(
   if status:
     status_filter = [ScheduleStatusEnum(s.value) for s in status]
 
-  # Populate SearchFilters from query parameters
-  filters = SearchFilters(
-    limit=filters.limit, offset=filters.offset, # These come from Depends()
-    date_range_start=created_after, date_range_end=created_before,
-    priority_min=priority_min, priority_max=priority_max,
-  )
-
   schedules = await scheduler_svc.list_schedule_entries(
     db,
     filters=filters,
     status_filter=status_filter,
     protocol_run_ids=protocol_run_ids,
+    priority_min=priority_min,
+    priority_max=priority_max,
     include_completed=include_completed,
     include_cancelled=include_cancelled,
   )

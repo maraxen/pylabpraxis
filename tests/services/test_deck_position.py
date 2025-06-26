@@ -271,7 +271,7 @@ class TestDeckPositionDefinitionService:
 
     updated_def = await update_deck_position_definition(
       db=db,
-      deck_type_definition_accession_id=deck_type.accession_id,
+      deck_type_id=deck_type.accession_id,
       name="UpdatableSlot",
       location_z_mm=5.5,
       notes="This slot has been updated.",

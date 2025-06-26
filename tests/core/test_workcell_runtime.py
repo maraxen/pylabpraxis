@@ -158,7 +158,7 @@ class TestAssetLifecycle:
       accession_id=machine_id,
       name="TestBot",
       fqn="my_module.MockMachineResource",
-      backend_config_json={},
+      properties_json={},
       is_resource=True,  # This machine is also a resource
     )
     # Use the mock that has both machine and resource properties
@@ -309,7 +309,7 @@ class TestDeckOperations:
 
     mock_read_deck.return_value = MagicMock(
       accession_id=deck_id,
-      deck_type_definition_accession_id=uuid.uuid4(),
+      deck_type_id=uuid.uuid4(),
     )
     mock_deck_type_orm = MagicMock(
       spec=DeckTypeDefinitionOrm,

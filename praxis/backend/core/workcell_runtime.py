@@ -259,7 +259,7 @@ class WorkcellRuntime:
   async def _get_calculated_location(
     self,
     target_deck: Deck,
-    deck_type_definition_accession_id: uuid.UUID,
+    deck_type_id: uuid.UUID,
     position_accession_id: str | int | uuid.UUID,
     positioning_config: PositioningConfig | None,
   ) -> Coordinate:
@@ -274,7 +274,7 @@ class WorkcellRuntime:
 
     Args:
         target_deck (Deck): The live PyLabRobot Deck object.
-        deck_type_definition_accession_id (uuid.UUID): The ID of the associated
+        deck_type_id (uuid.UUID): The ID of the associated
         DeckTypeDefinition.
         position_accession_id (Union[str, int, uuid.UUID]): The human-interpretable identifier for
         the position.
@@ -293,13 +293,13 @@ class WorkcellRuntime:
       logger.info(
         "No general positioning config for deck type ID %s, "
         "attempting to find position in DeckPositionDefinitionOrm.",
-        deck_type_definition_accession_id,
+        deck_type_id,
       )
       if isinstance(position_accession_id, (str, int, uuid.UUID)):
         async with self.db_session_factory() as db_session:
           all_deck_position_definitions = await svc.read_position_definitions_for_deck_type(
             db_session,
-            deck_type_definition_accession_id,
+            deck_type_id,
           )
           found_position_def = next(
             (
@@ -318,12 +318,12 @@ class WorkcellRuntime:
             )
           raise WorkcellRuntimeError(
             f"Position '{position_accession_id}' not found in predefined deck position "
-            f"definitions for deck type ID {deck_type_definition_accession_id}.",
+            f"definitions for deck type ID {deck_type_id}.",
           )
       else:
         raise WorkcellRuntimeError(
           f"No positioning configuration provided for deck type ID "
-          f"{deck_type_definition_accession_id}. Cannot determine position location.",
+          f"{deck_type_id}. Cannot determine position location.",
         )
     else:
       method_name = positioning_config.method_name
@@ -457,7 +457,7 @@ class WorkcellRuntime:
       )
       try:
         TargetClass = _get_class_from_fqn(machine_orm.fqn)
-        machine_config = machine_orm.backend_config_json or {}
+        machine_config = machine_orm.properties_json or {}
         instance_name = machine_orm.name
 
         init_params = machine_config.copy()
@@ -582,7 +582,7 @@ class WorkcellRuntime:
         )
 
       async with self.db_session_factory() as db_session:
-        deck_orm_entry = await svc.read_deck_by_parent_machine_accession_id(
+        deck_orm_entry = await svc.read_decks_by_machine_id(
           db_session,
           machine_orm.accession_id,
         )
@@ -1045,7 +1045,7 @@ class WorkcellRuntime:
         raise WorkcellRuntimeError(
           f"Deck ORM ID {deck_orm_accession_id} not found in database.",
         )
-      deck_orm_type_definition_accession_id = deck_orm.deck_type_definition_accession_id
+      deck_orm_type_definition_accession_id = deck_orm.deck_type_id
 
       if deck_orm_type_definition_accession_id is None:
         raise WorkcellRuntimeError(
@@ -1079,7 +1079,7 @@ class WorkcellRuntime:
       elif position_accession_id is not None:
         final_location_for_plr = await self._get_calculated_location(
           target_deck=target_deck,
-          deck_type_definition_accession_id=deck_type_definition_orm.accession_id,
+          deck_type_id=deck_type_definition_orm.accession_id,
           position_accession_id=position_accession_id,
           positioning_config=positioning_config,
         )

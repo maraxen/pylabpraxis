@@ -84,12 +84,12 @@ class TestWorkcellRuntimeDeviceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.return_value = mock_plr_machine_backend_class
-        machine_orm = ManagedDeviceOrmMock(id=1, name="Device1", fqn="some.DeviceClass", backend_config_json={"param": "value"})
+        machine_orm = ManagedDeviceOrmMock(id=1, name="Device1", fqn="some.DeviceClass", properties_json={"param": "value"})
 
         backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
         mock_get_class.assert_called_once_with("some.DeviceClass")
-        # Check if constructor was called with name and params from backend_config_json
+        # Check if constructor was called with name and params from properties_json
         # This depends on how _get_class_from_fqn and constructor inspection work.
         # For now, assume it's called. A more specific check would be on mock_plr_machine_backend_class.
         mock_plr_machine_backend_class.assert_called_with(name="Device1", param="value") # Assuming name is passed, and param from config
@@ -124,7 +124,7 @@ class TestWorkcellRuntimeDeviceHandling:
             # To make isinstance(mock_plr_deck_class.return_value, ActualDeckClassMocked) true:
             mock_plr_deck_class.return_value.__class__ = ActualDeckClassMocked # Make the instance's class the mocked Deck
 
-            machine_orm = ManagedDeviceOrmMock(id=2, name="MainDeck", fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
+            machine_orm = ManagedDeviceOrmMock(id=2, name="MainDeck", fqn="pylabrobot.resources.deck.Deck", properties_json={})
 
             backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
