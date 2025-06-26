@@ -312,7 +312,7 @@ The asset-related backend models have been **unified and modernized**. All asset
   - All asset types now use a common set of fields: `accession_id`, `name`, `fqn`, `asset_type`, `location`, `plr_state`, `plr_definition`, `properties_json`.
   - Relationships between assets (e.g., resource <-> machine) are standardized and explicit.
 - **Obsolete Fields Removed:**
-  - Legacy fields (e.g., `user_assigned_name`, old FQN fields, `ResourceOrm`, `DeckOrm`) are gone.
+  - Legacy fields (e.g., `name`, old FQN fields, `ResourceOrm`, `DeckOrm`) are gone.
   - All ORM and Pydantic models are consistent and up to date.
 - **Exports Updated:**
   - Only current, valid models and enums are exported in `models/__init__.py`.

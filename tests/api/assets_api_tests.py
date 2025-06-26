@@ -71,7 +71,7 @@ class TestResourceInventoryAPI:
     mock_orm.properties_json = inventory_dict
     self.mock_get_resource.return_value = mock_orm
 
-    response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
+    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
 
     assert response.status_code == 200
     self.mock_get_resource.assert_called_once_with(
@@ -88,7 +88,7 @@ class TestResourceInventoryAPI:
 
   def test_get_resource_instance_inventory_not_found(self):
     self.mock_get_resource.return_value = None
-    response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
+    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
     assert response.status_code == 404
     self.mock_get_resource.assert_called_once_with(
       self.mock_db_session,
@@ -100,7 +100,7 @@ class TestResourceInventoryAPI:
     mock_orm.properties_json = None  # Or {}
     self.mock_get_resource.return_value = mock_orm
 
-    response = client.get(f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory")
+    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
     assert response.status_code == 200
     # Expecting ResourceInventoryDataOut default values (all None)
     expected_empty_data = ResourceInventoryDataOut().model_dump()  # Pydantic v2
@@ -151,7 +151,7 @@ class TestResourceInventoryAPI:
       iso_now = mock_now.isoformat()
 
       response = client.put(
-        f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory",
+        f"/resource/{self.MOCK_INSTANCE_ID}/inventory",
         json=request_payload_dict,
       )
 
@@ -187,7 +187,7 @@ class TestResourceInventoryAPI:
       "last_updated_by": self.MOCK_USER_ID,
     }
     response = client.put(
-      f"/resource_instances/{self.MOCK_INSTANCE_ID}/inventory",
+      f"/resource/{self.MOCK_INSTANCE_ID}/inventory",
       json=request_payload_dict,
     )
     assert response.status_code == 404

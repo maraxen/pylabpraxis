@@ -100,23 +100,19 @@ async def _process_position_definitions(
       if compatible_resource_fqns_data is None:
         compatible_resource_fqns_data = {}
         if position_data.get("pylabrobot_position_type_name"):
-          compatible_resource_fqns_data["pylabrobot_position_type_name"] = (
-            position_data["pylabrobot_position_type_name"]
-          )
+          compatible_resource_fqns_data["pylabrobot_position_type_name"] = position_data[
+            "pylabrobot_position_type_name"
+          ]
         if position_data.get("allowed_resource_definition_names"):
-          compatible_resource_fqns_data["allowed_resource_definition_names"] = (
-            position_data["allowed_resource_definition_names"]
-          )
+          compatible_resource_fqns_data["allowed_resource_definition_names"] = position_data[
+            "allowed_resource_definition_names"
+          ]
         if position_data.get("accepts_tips") is not None:
           compatible_resource_fqns_data["accepts_tips"] = position_data["accepts_tips"]
         if position_data.get("accepts_plates") is not None:
-          compatible_resource_fqns_data["accepts_plates"] = position_data[
-            "accepts_plates"
-          ]
+          compatible_resource_fqns_data["accepts_plates"] = position_data["accepts_plates"]
         if position_data.get("accepts_tubes") is not None:
-          compatible_resource_fqns_data["accepts_tubes"] = position_data[
-            "accepts_tubes"
-          ]
+          compatible_resource_fqns_data["accepts_tubes"] = position_data["accepts_tubes"]
         if position_data.get("notes") is not None:
           compatible_resource_fqns_data["notes"] = position_data["notes"]
 
@@ -137,7 +133,7 @@ async def _process_position_definitions(
 
 async def create_deck_type_definition(
   db: AsyncSession,
-  python_fqn: str,
+  fqn: str,
   name: str,
   description: str | None = None,
   plr_category: str | None = None,
@@ -155,7 +151,7 @@ async def create_deck_type_definition(
 
   Args:
       db (AsyncSession): The database session.
-      python_fqn (str): The fully qualified name of the PyLabRobot deck class.
+      fqn (str): The fully qualified name of the PyLabRobot deck class.
       name (str): A human-readable name for the deck type.
       description (Optional[str], optional): A detailed description of the deck type.
           Defaults to None.
@@ -178,28 +174,28 @@ async def create_deck_type_definition(
       DeckTypeDefinitionOrm: The created deck type definition object.
 
   Raises:
-      ValueError: If a deck type with the same `python_fqn` already exists.
+      ValueError: If a deck type with the same `fqn` already exists.
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = f"Deck Type (FQN: '{python_fqn}', creating new):"
+  log_prefix = f"Deck Type (FQN: '{fqn}', creating new):"
   logger.info("%s Attempting to create new deck type definition.", log_prefix)
 
   # Check if a deck type with this FQN already exists
   result = await db.execute(
-    select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.python_fqn == python_fqn),
+    select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.fqn == fqn),
   )
   if result.scalar_one_or_none():
     error_message = (
       f"{log_prefix} A deck type definition with FQN "
-      f"'{python_fqn}' already exists. Use the update function for existing "
+      f"'{fqn}' already exists. Use the update function for existing "
       f"definitions."
     )
     logger.error(error_message)
     raise ValueError(error_message)
 
   deck_type_orm = DeckTypeDefinitionOrm(
-    python_fqn=python_fqn,
+    fqn=fqn,
     name=name,
     description=description,
     plr_category=plr_category,
@@ -207,9 +203,7 @@ async def create_deck_type_definition(
     default_size_y_mm=default_size_y_mm,
     default_size_z_mm=default_size_z_mm,
     serialized_constructor_args_json=serialized_constructor_args_json,
-    positioning_config_json=(
-      positioning_config.model_dump() if positioning_config else None
-    ),
+    positioning_config_json=(positioning_config.model_dump() if positioning_config else None),
   )
 
   db.add(deck_type_orm)
@@ -248,7 +242,7 @@ async def create_deck_type_definition(
 async def update_deck_type_definition(
   db: AsyncSession,
   deck_type_accession_id: UUID,
-  python_fqn: str,
+  fqn: str,
   name: str,
   description: str | None = None,
   manufacturer: str | None = None,
@@ -277,33 +271,29 @@ async def update_deck_type_definition(
   )
   deck_type_orm = result.scalar_one_or_none()
   if not deck_type_orm:
-    error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id "
-      f"{deck_type_accession_id} not found for update."
-    )
+    error_message = f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found for update."
     logger.error(error_message)
     raise ValueError(error_message)
   logger.info("%s Found existing deck type for update.", log_prefix)
 
   # Check for FQN conflict if it's being changed
-  if deck_type_orm.python_fqn != python_fqn:
+  if deck_type_orm.fqn != fqn:
     existing_fqn_check = await db.execute(
       select(DeckTypeDefinitionOrm)
-      .filter(DeckTypeDefinitionOrm.python_fqn == python_fqn)
+      .filter(DeckTypeDefinitionOrm.fqn == fqn)
       .filter(
         DeckTypeDefinitionOrm.accession_id != deck_type_accession_id,
       ),  # Exclude the current record
     )
     if existing_fqn_check.scalar_one_or_none():
       error_message = (
-        f"{log_prefix} Cannot update FQN to '{python_fqn}' as it already "
-        f"exists for another deck type definition."
+        f"{log_prefix} Cannot update FQN to '{fqn}' as it already exists for another deck type definition."
       )
       logger.error(error_message)
       raise ValueError(error_message)
 
   # Update attributes
-  deck_type_orm.python_fqn = python_fqn
+  deck_type_orm.fqn = fqn
   deck_type_orm.name = name
   deck_type_orm.plr_category = plr_category
   deck_type_orm.default_size_x_mm = default_size_x_mm
@@ -348,13 +338,14 @@ async def update_deck_type_definition(
     logger.debug("%s Updated additional_properties_json.", log_prefix)
 
   try:
-    await (
-      db.flush()
-    )  # Flush to ensure deck_type_orm.accession_id is correct for position ops
+    await db.flush()  # Flush to ensure deck_type_orm.accession_id is correct for position ops
     logger.debug("%s Flushed deck type definition changes.", log_prefix)
 
     await _process_position_definitions(
-      db, deck_type_orm, position_definitions, log_prefix,
+      db,
+      deck_type_orm,
+      position_definitions,
+      log_prefix,
     )
 
     await db.commit()
@@ -375,18 +366,12 @@ async def update_deck_type_definition(
 
   except IntegrityError as e:
     await db.rollback()
-    if "uq_deck_type_definitions_python_fqn" in str(e.orig):
-      error_message = (
-        f"{log_prefix} A deck type definition with PyLabRobot FQN "
-        f"'{python_fqn}' already exists. Details: {e}"
-      )
+    if "uq_deck_type_definitions_fqn" in str(e.orig):
+      error_message = f"{log_prefix} A deck type definition with PyLabRobot FQN '{fqn}' already exists. Details: {e}"
       logger.exception(error_message)
       raise ValueError(error_message) from e
     if "uq_deck_position" in str(e.orig):
-      error_message = (
-        f"{log_prefix} A position definition with a conflicting name was"
-        f" attempted. Details: {e}"
-      )
+      error_message = f"{log_prefix} A position definition with a conflicting name was attempted. Details: {e}"
       logger.exception(error_message)
       raise ValueError(error_message) from e
     error_message = f"{log_prefix} Database integrity error during update. Details: {e}"
@@ -402,7 +387,8 @@ async def update_deck_type_definition(
 
 
 async def read_deck_type_definition(
-  db: AsyncSession, deck_type_accession_id: uuid.UUID,
+  db: AsyncSession,
+  deck_type_accession_id: uuid.UUID,
 ) -> DeckTypeDefinitionOrm | None:
   """Retrieve a specific deck type definition by its ID."""
   logger.info(
@@ -428,7 +414,8 @@ async def read_deck_type_definition(
 
 
 async def read_deck_type_definition_by_name(
-  db: AsyncSession, name: str,
+  db: AsyncSession,
+  name: str,
 ) -> DeckTypeDefinitionOrm | None:
   """Retrieve a specific deck type definition by its name.
 
@@ -461,11 +448,15 @@ async def read_deck_type_definition_by_name(
 
 
 async def read_deck_type_definitions(
-  db: AsyncSession, limit: int = 100, offset: int = 0,
+  db: AsyncSession,
+  limit: int = 100,
+  offset: int = 0,
 ) -> list[DeckTypeDefinitionOrm]:
   """List all deck type definitions with pagination."""
   logger.info(
-    "Listing deck type definitions with limit: %s, offset: %s.", limit, offset,
+    "Listing deck type definitions with limit: %s, offset: %s.",
+    limit,
+    offset,
   )
   stmt = (
     select(DeckTypeDefinitionOrm)
@@ -481,7 +472,8 @@ async def read_deck_type_definitions(
 
 
 async def delete_deck_type_definition(
-  db: AsyncSession, deck_type_accession_id: uuid.UUID,
+  db: AsyncSession,
+  deck_type_accession_id: uuid.UUID,
 ) -> None:
   """Delete a deck type definition by its ID."""
   log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, deleting):"
@@ -489,9 +481,7 @@ async def delete_deck_type_definition(
 
   deck_type_orm = await read_deck_type_definition(db, deck_type_accession_id)
   if not deck_type_orm:
-    error_message = (
-      f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found."
-    )
+    error_message = f"{log_prefix} DeckTypeDefinitionOrm with id {deck_type_accession_id} not found."
     logger.error(error_message)
     raise ValueError(error_message)
 

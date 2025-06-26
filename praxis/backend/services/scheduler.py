@@ -18,12 +18,17 @@ from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.filters import SearchFilters
 from praxis.backend.models.scheduler_orm import (
   AssetReservationOrm,
   AssetReservationStatusEnum,
   ScheduleEntryOrm,
   ScheduleHistoryOrm,
   ScheduleStatusEnum,
+)
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 from praxis.backend.utils.uuid import uuid7
@@ -209,16 +214,13 @@ async def read_schedule_entry_by_protocol_run(
 
 async def list_schedule_entries(
   db: AsyncSession,
-  status_filter: list[ScheduleStatusEnum] | None = None,
-  protocol_run_ids: list[uuid.UUID] | None = None,
-  priority_min: int | None = None,
-  priority_max: int | None = None,
-  created_after: datetime | None = None,
-  created_before: datetime | None = None,
-  include_completed: bool = False,
-  include_cancelled: bool = False,
-  limit: int = 50,
-  offset: int = 0,
+  filters: SearchFilters,
+  status_filter: list[ScheduleStatusEnum] | None = None, # Specific filter
+  protocol_run_ids: list[uuid.UUID] | None = None, # Specific filter
+  priority_min: int | None = None, # Specific filter
+  priority_max: int | None = None, # Specific filter
+  include_completed: bool = False, # Specific filter
+  include_cancelled: bool = False, # Specific filter
   order_by: str = "created_at",
   order_desc: bool = True,
 ) -> list[ScheduleEntryOrm]:
@@ -270,17 +272,15 @@ async def list_schedule_entries(
   if protocol_run_ids:
     stmt = stmt.filter(ScheduleEntryOrm.protocol_run_accession_id.in_(protocol_run_ids))
 
-  if priority_min is not None:
-    stmt = stmt.filter(ScheduleEntryOrm.priority >= priority_min)
+  if filters.priority_min is not None:
+    stmt = stmt.filter(ScheduleEntryOrm.priority >= filters.priority_min)
 
-  if priority_max is not None:
-    stmt = stmt.filter(ScheduleEntryOrm.priority <= priority_max)
+  if filters.priority_max is not None:
+    stmt = stmt.filter(ScheduleEntryOrm.priority <= filters.priority_max)
 
-  if created_after:
-    stmt = stmt.filter(ScheduleEntryOrm.created_at >= created_after)
-
-  if created_before:
-    stmt = stmt.filter(ScheduleEntryOrm.created_at <= created_before)
+  # Apply generic filters from query_builder
+  stmt = apply_date_range_filters(stmt, filters, ScheduleEntryOrm.created_at)
+  stmt = apply_pagination(stmt, filters)
 
   # Apply ordering
   if order_by == "created_at":
@@ -296,9 +296,6 @@ async def list_schedule_entries(
     stmt = stmt.order_by(desc(order_col))
   else:
     stmt = stmt.order_by(asc(order_col))
-
-  # Apply pagination
-  stmt = stmt.offset(offset).limit(limit)
 
   # Include reservations
   stmt = stmt.options(selectinload(ScheduleEntryOrm.asset_reservations))
@@ -570,13 +567,12 @@ async def read_asset_reservation(
 
 async def list_asset_reservations(
   db: AsyncSession,
-  schedule_entry_accession_id: uuid.UUID | None = None,
-  asset_type: str | None = None,
-  asset_name: str | None = None,
-  status_filter: list[AssetReservationStatusEnum] | None = None,
-  active_only: bool = False,
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters,
+  schedule_entry_accession_id: uuid.UUID | None = None, # Specific filter
+  asset_type: str | None = None, # Specific filter
+  asset_name: str | None = None, # Specific filter
+  status_filter: list[AssetReservationStatusEnum] | None = None, # Specific filter
+  active_only: bool = False, # Specific filter
 ) -> list[AssetReservationOrm]:
   """List asset reservations with optional filters.
 
@@ -623,7 +619,11 @@ async def list_asset_reservations(
       ),
     )
 
-  stmt = stmt.order_by(AssetReservationOrm.created_at).offset(offset).limit(limit)
+  # Apply generic filters from query_builder
+  stmt = apply_date_range_filters(stmt, filters, AssetReservationOrm.created_at)
+  stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(AssetReservationOrm.created_at)
 
   result = await db.execute(stmt)
   return list(result.scalars().all())

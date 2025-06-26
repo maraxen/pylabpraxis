@@ -1,4 +1,3 @@
-# <filename>praxis/backend/api/workcell_api.py</filename>
 """Workcell API endpoints.
 
 This file contains the FastAPI router for workcell-related endpoints,
@@ -18,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import praxis.backend.services as svc
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.models import (
+  SearchFilters,
   WorkcellCreate,
   WorkcellResponse,
   WorkcellUpdate,
@@ -98,13 +98,12 @@ async def get_workcell(accession: str, db: AsyncSession = Depends(get_db)):
   response_model=list[WorkcellResponse],
   tags=["Workcells"],
 )
-async def list_workcells(
-  db: AsyncSession = Depends(get_db),
-  limit: int = 100,
-  offset: int = 0,
+async def list_workcells( # pylint: disable=too-many-arguments
+  db: AsyncSession = Depends(get_db), # pylint: disable=too-many-arguments
+  filters: SearchFilters = Depends(), # pylint: disable=too-many-arguments
 ):
   """List all workcells."""
-  return await svc.list_workcells(db, limit=limit, offset=offset)
+  return await svc.list_workcells(db, filters=filters)
 
 
 @log_workcell_api_errors(

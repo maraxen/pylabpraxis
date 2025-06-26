@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models import (
-  ResourceDefinitionCatalogOrm,
+  ResourceDefinitionOrm,
 )
 
 
@@ -33,7 +33,7 @@ async def read_plate_dimensions(
 
   # Get the resource instance and its definition
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm)
+    select(ResourceDefinitionOrm)
     .join(ResourceOrm)
     .filter(ResourceOrm.accession_id == plate_resource_instance_accession_id),
   )

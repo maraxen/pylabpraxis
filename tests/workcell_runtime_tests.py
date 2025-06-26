@@ -84,7 +84,7 @@ class TestWorkcellRuntimeDeviceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.return_value = mock_plr_machine_backend_class
-        machine_orm = ManagedDeviceOrmMock(id=1, user_friendly_name="Device1", python_fqn="some.DeviceClass", backend_config_json={"param": "value"})
+        machine_orm = ManagedDeviceOrmMock(id=1, name="Device1", fqn="some.DeviceClass", backend_config_json={"param": "value"})
 
         backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
@@ -124,7 +124,7 @@ class TestWorkcellRuntimeDeviceHandling:
             # To make isinstance(mock_plr_deck_class.return_value, ActualDeckClassMocked) true:
             mock_plr_deck_class.return_value.__class__ = ActualDeckClassMocked # Make the instance's class the mocked Deck
 
-            machine_orm = ManagedDeviceOrmMock(id=2, user_friendly_name="MainDeck", python_fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
+            machine_orm = ManagedDeviceOrmMock(id=2, name="MainDeck", fqn="pylabrobot.resources.deck.Deck", backend_config_json={})
 
             backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
@@ -137,7 +137,7 @@ class TestWorkcellRuntimeDeviceHandling:
         self, mock_get_class: MagicMock, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.side_effect = ImportError("Module not found")
-        machine_orm = ManagedDeviceOrmMock(id=3, user_friendly_name="ErrorDevice", python_fqn="bad.fqn.Device")
+        machine_orm = ManagedDeviceOrmMock(id=3, name="ErrorDevice", fqn="bad.fqn.Device")
 
         backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
 
@@ -168,7 +168,7 @@ class TestWorkcellRuntimeResourceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock # Added ads mock
     ):
         mock_get_class.return_value = mock_plr_resource_class
-        resource_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", name="some.ResourceFQN") # Name used for instance
+        resource_orm = ResourceOrmMock(id=1, name="Plate1", name="some.ResourceFQN") # Name used for instance
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "some.ResourceFQN") # Pass FQN
 
@@ -182,7 +182,7 @@ class TestWorkcellRuntimeResourceHandling:
         self, mock_get_class: MagicMock, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.side_effect = ImportError("Cannot import resource class")
-        resource_orm = ResourceOrmMock(id=2, user_assigned_name="BadPlate", name="bad.fqn.Resource")
+        resource_orm = ResourceOrmMock(id=2, name="BadPlate", name="bad.fqn.Resource")
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "bad.fqn.Resource")
 

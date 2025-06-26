@@ -8,15 +8,15 @@ from sqlalchemy.future import select
 from praxis.backend.models import (
   DeckPositionResourceOrm,
   MachineOrm,
-  ResourceDefinitionCatalogOrm,
+  ResourceDefinitionOrm,
   ResourceOrm,
 )
 from praxis.backend.services.deck_instance import (
   create_deck_instance,
   delete_deck_instance,
-  list_deck_instances,
-  read_deck_instance,
-  read_deck_instance_by_name,
+  list_deck,
+  read_deck,
+  read_deck_by_name,
   update_deck_instance,
 )
 
@@ -28,15 +28,15 @@ pytestmark = pytest.mark.asyncio
 async def setup_test_data(db: AsyncSession):
   """Set up initial data required for deck instance tests."""
   # 1. Create a resource definition for a deck
-  deck_def = ResourceDefinitionCatalogOrm(
+  deck_def = ResourceDefinitionOrm(
     name="test_deck_definition",
-    python_fqn="pylabrobot.resources.hamilton.STARDeck",
+    fqn="pylabrobot.resources.hamilton.STARDeck",
     category="deck",
   )
   # 2. Create a resource definition for a plate
-  plate_def = ResourceDefinitionCatalogOrm(
+  plate_def = ResourceDefinitionOrm(
     name="corning_96_wellplate_360ul_flat",
-    python_fqn="pylabrobot.resources.corning_96_wellplate_360ul_flat",
+    fqn="pylabrobot.resources.corning_96_wellplate_360ul_flat",
     category="plate",
   )
   db.add_all([deck_def, plate_def])
@@ -45,7 +45,7 @@ async def setup_test_data(db: AsyncSession):
   # 3. Create a parent machine
   parent_machine = MachineOrm(
     name="TestLiquidHandler",
-    python_fqn="pylabrobot.liquid_handling.liquid_handler.LiquidHandler",
+    fqn="pylabrobot.liquid_handling.liquid_handler.LiquidHandler",
     accession_id=uuid.uuid4(),
   )
   db.add(parent_machine)
@@ -85,19 +85,19 @@ class TestDeckService:
     """Test successful creation of a deck instance without position items."""
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "MyTestDeck"
-    python_fqn = "pylabrobot.resources.hamilton.STARDeck"
+    fqn = "pylabrobot.resources.hamilton.STARDeck"
 
     created_deck = await create_deck_instance(
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
-      python_fqn=python_fqn,
+      fqn=fqn,
       description="A test description.",
     )
 
     assert created_deck is not None
     assert created_deck.name == deck_name
-    assert created_deck.python_fqn == python_fqn
+    assert created_deck.fqn == fqn
     assert created_deck.deck_accession_id == deck_resource.accession_id
     assert created_deck.description == "A test description."
     assert len(created_deck.position_items) == 0
@@ -128,7 +128,7 @@ class TestDeckService:
       db=db,
       name="DeckWithPositions",
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="pylabrobot.resources.hamilton.STARDeck",
+      fqn="pylabrobot.resources.hamilton.STARDeck",
       position_items_data=position_data,
     )
 
@@ -165,7 +165,7 @@ class TestDeckService:
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="fqn.1",
+      fqn="fqn.1",
     )
 
     with pytest.raises(ValueError, match="already exists"):
@@ -173,7 +173,7 @@ class TestDeckService:
         db=db,
         name=deck_name,
         deck_accession_id=deck_resource.accession_id,
-        python_fqn="fqn.2",
+        fqn="fqn.2",
       )
 
   async def test_create_deck_instance_invalid_deck_id_fails(self, db: AsyncSession):
@@ -184,10 +184,10 @@ class TestDeckService:
         db=db,
         name="InvalidDeck",
         deck_accession_id=non_existent_id,
-        python_fqn="fqn.1",
+        fqn="fqn.1",
       )
 
-  async def test_read_deck_instance(
+  async def test_read_deck(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -198,21 +198,21 @@ class TestDeckService:
       db=db,
       name="ReadableDeck",
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="fqn.read",
+      fqn="fqn.read",
     )
 
-    fetched_deck = await read_deck_instance(db, deck.accession_id)
+    fetched_deck = await read_deck(db, deck.accession_id)
     assert fetched_deck is not None
     assert fetched_deck.accession_id == deck.accession_id
     assert fetched_deck.name == "ReadableDeck"
 
-  async def test_read_deck_instance_not_found(self, db: AsyncSession):
+  async def test_read_deck_not_found(self, db: AsyncSession):
     """Test that reading a non-existent deck instance returns None."""
     non_existent_id = uuid.uuid4()
-    fetched_deck = await read_deck_instance(db, non_existent_id)
+    fetched_deck = await read_deck(db, non_existent_id)
     assert fetched_deck is None
 
-  async def test_read_deck_instance_by_name(
+  async def test_read_deck_by_name(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -224,14 +224,14 @@ class TestDeckService:
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="fqn.name",
+      fqn="fqn.name",
     )
 
-    fetched_deck = await read_deck_instance_by_name(db, deck_name)
+    fetched_deck = await read_deck_by_name(db, deck_name)
     assert fetched_deck is not None
     assert fetched_deck.name == deck_name
 
-  async def test_list_deck_instances(
+  async def test_list_deck(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -251,22 +251,22 @@ class TestDeckService:
       "fqn.list.2",
     )
 
-    all_decks = await list_deck_instances(db)
+    all_decks = await list_deck(db)
     assert len(all_decks) >= 2  # GTE to account for other tests' data
 
     # Test filtering
-    filtered_decks = await list_deck_instances(
+    filtered_decks = await list_deck(
       db,
       deck_accession_id=deck_resource.accession_id,
     )
     assert len(filtered_decks) >= 2
 
     # Test limit
-    limited_decks = await list_deck_instances(db, limit=1)
+    limited_decks = await list_deck(db, limit=1)
     assert len(limited_decks) == 1
 
     # Test offset
-    offset_decks = await list_deck_instances(db, limit=1, offset=1)
+    offset_decks = await list_deck(db, limit=1, offset=1)
     assert len(offset_decks) == 1
     assert offset_decks[0].name != limited_decks[0].name
 
@@ -283,7 +283,7 @@ class TestDeckService:
       db=db,
       name="DeckToUpdate",
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="fqn.update.initial",
+      fqn="fqn.update.initial",
     )
 
     updated_name = "DeckHasBeenUpdated"
@@ -318,10 +318,7 @@ class TestDeckService:
     assert final_deck is not None
     assert len(final_deck.position_items) == 1
     assert final_deck.position_items[0].position_name == "C3"
-    assert (
-      final_deck.position_items[0].resource_instance_accession_id
-      == plate_resource.accession_id
-    )
+    assert final_deck.position_items[0].resource_instance_accession_id == plate_resource.accession_id
 
   async def test_update_deck_instance_not_found(self, db: AsyncSession):
     """Test that updating a non-existent deck instance returns None."""
@@ -353,13 +350,13 @@ class TestDeckService:
       db=db,
       name="DeckToDelete",
       deck_accession_id=deck_resource.accession_id,
-      python_fqn="fqn.delete",
+      fqn="fqn.delete",
       position_items_data=position_data,
     )
     deck_id = deck.accession_id
 
     # Ensure it's in the DB before deleting
-    assert await read_deck_instance(db, deck_id) is not None
+    assert await read_deck(db, deck_id) is not None
     pos_item_result = await db.execute(
       select(DeckPositionResourceOrm).filter_by(deck_accession_id=deck_id),
     )
@@ -370,7 +367,7 @@ class TestDeckService:
     assert result is True
 
     # Verify it's gone
-    assert await read_deck_instance(db, deck_id) is None
+    assert await read_deck(db, deck_id) is None
 
     # Verify position items are also gone (due to cascade)
     pos_item_result = await db.execute(

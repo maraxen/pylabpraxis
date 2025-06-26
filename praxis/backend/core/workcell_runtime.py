@@ -151,17 +151,13 @@ class WorkcellRuntime:
         )
 
         now = datetime.datetime.now(datetime.timezone.utc)
-        if (
-          now - last_disk_backup_time
-        ).total_seconds() >= self._main_workcell.backup_interval:
+        if (now - last_disk_backup_time).total_seconds() >= self._main_workcell.backup_interval:
           disk_backup_path = self._main_workcell.save_file.replace(
             ".json",
             f"_{self._main_workcell.backup_num}.json",
           )
           self._main_workcell.save_state_to_file(disk_backup_path)
-          self._main_workcell.backup_num = (
-            self._main_workcell.backup_num + 1
-          ) % self._main_workcell.num_backups
+          self._main_workcell.backup_num = (self._main_workcell.backup_num + 1) % self._main_workcell.num_backups
           last_disk_backup_time = now
           logger.info(
             "Workcell state for ID %s backed up to disk: %s.",
@@ -301,11 +297,9 @@ class WorkcellRuntime:
       )
       if isinstance(position_accession_id, (str, int, uuid.UUID)):
         async with self.db_session_factory() as db_session:
-          all_deck_position_definitions = (
-            await svc.read_position_definitions_for_deck_type(
-              db_session,
-              deck_type_definition_accession_id,
-            )
+          all_deck_position_definitions = await svc.read_position_definitions_for_deck_type(
+            db_session,
+            deck_type_definition_accession_id,
           )
           found_position_def = next(
             (
@@ -316,17 +310,11 @@ class WorkcellRuntime:
             ),
             None,
           )
-          if (
-            found_position_def
-            and found_position_def.nominal_x_mm is not None
-            and found_position_def.nominal_y_mm is not None
-          ):
+          if found_position_def and found_position_def.nominal_x_mm and found_position_def.nominal_y_mm:
             return Coordinate(
               x=found_position_def.nominal_x_mm,
               y=found_position_def.nominal_y_mm,
-              z=found_position_def.nominal_z_mm
-              if found_position_def.nominal_z_mm is not None
-              else 0.0,
+              z=found_position_def.nominal_z_mm if found_position_def.nominal_z_mm is not None else 0.0,
             )
           raise WorkcellRuntimeError(
             f"Position '{position_accession_id}' not found in predefined deck position "
@@ -427,7 +415,7 @@ class WorkcellRuntime:
     if machine_orm.accession_id in self._active_machines:
       logger.info(
         "WorkcellRuntime: Machine '%s' (ID: %s) already active. Returning existing instance.",
-        machine_orm.user_friendly_name,
+        machine_orm.name,
         machine_orm.accession_id,
       )
       return self._active_machines[machine_orm.accession_id]
@@ -437,8 +425,7 @@ class WorkcellRuntime:
       machine_orm.is_resource
       and machine_orm.resource_counterpart
       and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart_accession_id
-      == machine_orm.accession_id
+      and machine_orm.resource_counterpart.machine_counterpart_accession_id == machine_orm.accession_id
     ):
       resource_orm = machine_orm.resource_counterpart
       if resource_orm.accession_id in self._active_resources:
@@ -446,9 +433,9 @@ class WorkcellRuntime:
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) is linked to active Resource "
           " '%s' (ID: %s). Reusing existing PLR object as the machine instance.",
-          machine_orm.user_friendly_name,
+          machine_orm.name,
           machine_orm.accession_id,
-          resource_orm.user_assigned_name,
+          resource_orm.name,
           resource_orm.accession_id,
         )
         if not isinstance(shared_plr_instance, Machine):
@@ -464,14 +451,14 @@ class WorkcellRuntime:
     else:
       logger.info(
         "WorkcellRuntime: Initializing new machine '%s' (ID: %s) using class '%s'.",
-        machine_orm.user_friendly_name,
+        machine_orm.name,
         machine_orm.accession_id,
-        machine_orm.python_fqn,
+        machine_orm.fqn,
       )
       try:
-        TargetClass = _get_class_from_fqn(machine_orm.python_fqn)
+        TargetClass = _get_class_from_fqn(machine_orm.fqn)
         machine_config = machine_orm.backend_config_json or {}
-        instance_name = machine_orm.user_friendly_name
+        instance_name = machine_orm.name
 
         init_params = machine_config.copy()
         sig = inspect.signature(TargetClass.__init__)
@@ -480,28 +467,20 @@ class WorkcellRuntime:
           init_params["name"] = instance_name
         elif "name" in init_params and init_params["name"] != instance_name:
           logger.warning(
-            "WorkcellRuntime: 'name' in machine_config for %s differs. Using"
-            " user_friendly_name.",
+            "WorkcellRuntime: 'name' in machine_config for %s differs. Using name.",
             instance_name,
           )
           init_params["name"] = instance_name
 
-        valid_init_params = {
-          k: v for k, v in init_params.items() if k in sig.parameters
-        }
+        valid_init_params = {k: v for k, v in init_params.items() if k in sig.parameters}
         extra_params = {k: v for k, v in init_params.items() if k not in sig.parameters}
-        if (
-          extra_params
-          and "options" in sig.parameters
-          and isinstance(init_params.get("options"), dict)
-        ):
+        if extra_params and "options" in sig.parameters and isinstance(init_params.get("options"), dict):
           valid_init_params.setdefault("options", {}).update(extra_params)
         elif extra_params and "options" in sig.parameters:
           valid_init_params["options"] = extra_params
         elif extra_params:
           logger.warning(
-            "WorkcellRuntime: Extra parameters in machine_config for %s not"
-            " accepted by %s.__init__: %s",
+            "WorkcellRuntime: Extra parameters in machine_config for %s not accepted by %s.__init__: %s",
             instance_name,
             TargetClass.__name__,
             extra_params.keys(),
@@ -511,7 +490,7 @@ class WorkcellRuntime:
 
         if not isinstance(machine_instance, Machine):
           raise TypeError(
-            f"Machine '{machine_orm.user_friendly_name}' initialized, but it is "
+            f"Machine '{machine_orm.name}' initialized, but it is "
             f"not a valid PyLabRobot Machine instance. "
             f"Type is {type(machine_instance).__name__}.",
           )
@@ -523,20 +502,16 @@ class WorkcellRuntime:
         ):
           logger.info(
             "WorkcellRuntime: Calling setup() for '%s'...",
-            machine_orm.user_friendly_name,
+            machine_orm.name,
           )
           try:
             await machine_instance.setup()
           except Exception as e:
-            error_message = (
-              f"Failed to call setup() for machine "
-              f"'{machine_orm.user_friendly_name}': {str(e)[:250]}"
-            )
+            error_message = f"Failed to call setup() for machine '{machine_orm.name}': {str(e)[:250]}"
             raise WorkcellRuntimeError(error_message)
         else:
           raise WorkcellRuntimeError(
-            f"Machine '{machine_orm.user_friendly_name}' does not have a valid"
-            " setup() method that is callable and awaitable.",
+            f"Machine '{machine_orm.name}' does not have a valid" " setup() method that is callable and awaitable.",
           )
       # Justification: This wraps the dynamic instantiation and setup of a PyLabRobot
       # object, which can fail in numerous ways (missing dependencies, connection
@@ -544,8 +519,8 @@ class WorkcellRuntime:
       # update the machine's status to ERROR, and raise a specific runtime error.
       except Exception as e:  # pylint: disable=broad-except
         error_message = f"Failed to instantiate or setup machine \
-                '{machine_orm.user_friendly_name}'\
-                (ID: {machine_orm.accession_id}) using class '{machine_orm.python_fqn}': \
+                '{machine_orm.name}'\
+                (ID: {machine_orm.accession_id}) using class '{machine_orm.fqn}': \
                 {str(e)[:250]}"
         async with self.db_session_factory() as db_session:
           await svc.update_machine_status(
@@ -561,7 +536,7 @@ class WorkcellRuntime:
     self._main_workcell.add_asset(machine_instance)
     logger.info(
       "WorkcellRuntime: Machine '%s' (ID: %s) added to main Workcell container.",
-      machine_orm.user_friendly_name,
+      machine_orm.name,
       machine_orm.accession_id,
     )
 
@@ -569,8 +544,7 @@ class WorkcellRuntime:
       machine_orm.is_resource
       and machine_orm.resource_counterpart
       and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart_accession_id
-      == machine_orm.accession_id
+      and machine_orm.resource_counterpart.machine_counterpart_accession_id == machine_orm.accession_id
     ):
       resource_orm = machine_orm.resource_counterpart
       if isinstance(machine_instance, Resource):
@@ -581,9 +555,9 @@ class WorkcellRuntime:
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) also registered as Resource "
           "'%s' (ID: %s) in _active_resources, sharing the same PLR object.",
-          machine_orm.user_friendly_name,
+          machine_orm.name,
           machine_orm.accession_id,
-          resource_orm.user_assigned_name,
+          resource_orm.name,
           resource_orm.accession_id,
         )
       else:
@@ -591,7 +565,7 @@ class WorkcellRuntime:
           "WorkcellRuntime: Machine '%s' (ID: %s) is flagged as a resource "
           "counterpart, but its PLR object type '%s' is not a PyLabRobot Resource"
           " subclass. It will not be registered in _active_resources.",
-          machine_orm.user_friendly_name,
+          machine_orm.name,
           machine_orm.accession_id,
           type(machine_instance).__name__,
         )
@@ -603,12 +577,12 @@ class WorkcellRuntime:
       machine_deck: Deck = machine_instance.deck
       if not isinstance(machine_deck, Deck):
         raise TypeError(
-          f"Machine '{machine_orm.user_friendly_name}' has a 'deck' attribute, "
+          f"Machine '{machine_orm.name}' has a 'deck' attribute, "
           f"but it is not a Deck instance. Type is {type(machine_deck)}.",
         )
 
       async with self.db_session_factory() as db_session:
-        deck_orm_entry = await svc.read_deck_instance_by_parent_machine_accession_id(
+        deck_orm_entry = await svc.read_deck_by_parent_machine_accession_id(
           db_session,
           machine_orm.accession_id,
         )
@@ -622,7 +596,7 @@ class WorkcellRuntime:
             (ID: %s) to active decks.",
             deck_orm_entry.accession_id,
             machine_deck.name,
-            machine_orm.user_friendly_name,
+            machine_orm.name,
             machine_orm.accession_id,
           )
         else:
@@ -630,7 +604,7 @@ class WorkcellRuntime:
             "Machine '%s' (ID: %s) has a .deck attribute, but no corresponding DeckOrm \
             entry found with parent_machine_accession_id=%s. Deck not registered in \
               _active_decks.",
-            machine_orm.user_friendly_name,
+            machine_orm.name,
             machine_orm.accession_id,
             machine_orm.accession_id,
           )
@@ -678,9 +652,8 @@ class WorkcellRuntime:
 
     if resource_orm.accession_id in self._active_resources:
       logger.info(
-        "WorkcellRuntime: Resource '%s' (ID: %s) already active. Returning "
-        "existing instance.",
-        resource_orm.user_assigned_name,
+        "WorkcellRuntime: Resource '%s' (ID: %s) already active. Returning existing instance.",
+        resource_orm.name,
         resource_orm.accession_id,
       )
       return self._active_resources[resource_orm.accession_id]
@@ -690,8 +663,7 @@ class WorkcellRuntime:
       resource_orm.is_machine
       and resource_orm.machine_counterpart
       and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart_accession_id
-      == resource_orm.accession_id
+      and resource_orm.machine_counterpart.resource_counterpart_accession_id == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
       if machine_orm.accession_id in self._active_machines:
@@ -699,9 +671,9 @@ class WorkcellRuntime:
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) is linked to active Machine "
           "'%s' (ID: %s). Reusing existing PLR object as the resource instance.",
-          resource_orm.user_assigned_name,
+          resource_orm.name,
           resource_orm.accession_id,
-          machine_orm.user_friendly_name,
+          machine_orm.name,
           machine_orm.accession_id,
         )
         if not isinstance(shared_plr_instance, Resource):
@@ -717,21 +689,21 @@ class WorkcellRuntime:
     else:
       logger.info(
         "Creating new PLR resource '%s' (ID: %s) using definition FQN '%s'.",
-        resource_orm.user_assigned_name,
+        resource_orm.name,
         resource_orm.accession_id,
         resource_definition_fqn,
       )
 
       try:
         ResourceClass = _get_class_from_fqn(resource_definition_fqn)
-        resource_instance = ResourceClass(name=resource_orm.user_assigned_name)
+        resource_instance = ResourceClass(name=resource_orm.name)
       # Justification: This wraps the dynamic instantiation of a PyLabRobot resource,
       # which can fail for various reasons. A broad catch is necessary to handle any
       # failure, log it, update the resource's status to ERROR, and raise a specific runtime error.
       except Exception as e:  # pylint: disable=broad-except
         error_message = (
           f"Failed to create PLR resource for "
-          f"'{resource_orm.user_assigned_name}' using FQN '"
+          f"'{resource_orm.name}' using FQN '"
           f"{resource_definition_fqn}': {str(e)[:250]}"
         )
         if hasattr(resource_orm, "id") and resource_orm.accession_id is not None:
@@ -759,7 +731,7 @@ class WorkcellRuntime:
     self._main_workcell.add_asset(resource_instance)
     logger.info(
       "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main Workcell.",
-      resource_orm.user_assigned_name,
+      resource_orm.name,
       resource_orm.accession_id,
     )
 
@@ -767,8 +739,7 @@ class WorkcellRuntime:
       resource_orm.is_machine
       and resource_orm.machine_counterpart
       and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart_accession_id
-      == resource_orm.accession_id
+      and resource_orm.machine_counterpart.resource_counterpart_accession_id == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
       if isinstance(resource_instance, Machine):
@@ -779,9 +750,9 @@ class WorkcellRuntime:
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) also registered as Machine "
           "'%s' (ID: %s) in _active_machines, sharing the same PLR object.",
-          resource_orm.user_assigned_name,
+          resource_orm.name,
           resource_orm.accession_id,
-          machine_orm.user_friendly_name,
+          machine_orm.name,
           machine_orm.accession_id,
         )
       else:
@@ -789,7 +760,7 @@ class WorkcellRuntime:
           "WorkcellRuntime: Resource '%s' (ID: %s) is flagged as a machine "
           "counterpart, but its PLR object type '%s' is not a PyLabRobot Machine "
           "subclass. It will not be registered in _active_machines.",
-          resource_orm.user_assigned_name,
+          resource_orm.name,
           resource_orm.accession_id,
           type(resource_instance).__name__,
         )
@@ -815,8 +786,7 @@ class WorkcellRuntime:
       )
     if not isinstance(machine, Machine):
       raise TypeError(
-        f"Machine with ORM ID {machine_orm_accession_id} is not a valid Machine instance."
-        f" Type is {type(machine)}.",
+        f"Machine with ORM ID {machine_orm_accession_id} is not a valid Machine instance. Type is {type(machine)}.",
       )
     return machine
 
@@ -916,8 +886,7 @@ class WorkcellRuntime:
       )
     if not isinstance(deck, Deck):
       raise TypeError(
-        f"Deck with ORM ID {deck_orm_accession_id} is not a valid PyLabRobot Deck instance."
-        f" Type is {type(deck)}.",
+        f"Deck with ORM ID {deck_orm_accession_id} is not a valid PyLabRobot Deck instance. Type is {type(deck)}.",
       )
     return deck
 
@@ -1037,8 +1006,7 @@ class WorkcellRuntime:
     """
     if location is None and position_accession_id is None:
       raise WorkcellRuntimeError(
-        "Either 'location' or 'position_accession_id' must be provided to assign a resource"
-        " to a deck.",
+        "Either 'location' or 'position_accession_id' must be provided to assign a resource to a deck.",
       )
 
     if target in self._active_machines:
@@ -1072,7 +1040,7 @@ class WorkcellRuntime:
         )
 
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.read_deck_instance(db_session, deck_orm_accession_id)
+      deck_orm = await svc.read_deck(db_session, deck_orm_accession_id)
       if deck_orm is None:
         raise WorkcellRuntimeError(
           f"Deck ORM ID {deck_orm_accession_id} not found in database.",
@@ -1251,8 +1219,7 @@ class WorkcellRuntime:
       )
       return getattr(machine, action_name)(**(params or {}))
     raise AttributeError(
-      f"Machine for ID {machine_orm_accession_id} (type: {type(machine).__name__})"
-      f" has no action '{action_name}'.",
+      f"Machine for ID {machine_orm_accession_id} (type: {type(machine).__name__}) has no action '{action_name}'.",
     )
 
   @log_workcell_runtime_errors(
@@ -1304,31 +1271,25 @@ class WorkcellRuntime:
 
     """
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.read_deck_instance(db_session, deck_orm_accession_id)
+      deck_orm = await svc.read_deck(db_session, deck_orm_accession_id)
 
-      if (
-        deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None
-      ):
+      if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None:
         raise WorkcellRuntimeError(
           f"Deck ORM ID {deck_orm_accession_id} not found in database.",
         )
 
       response_positions: list[dict[str, Any]] = []
 
-      resources_on_deck: list[ResourceOrm] = await svc.list_resource_instances(
+      resources_on_deck: list[ResourceOrm] = await svc.read_resources(
         db=db_session,
         location_machine_accession_id=deck_orm.accession_id,
       )
 
       for lw_instance in resources_on_deck:
         if lw_instance.current_deck_position_name is not None:
-          if (
-            not hasattr(lw_instance, "resource_definition")
-            or not lw_instance.resource_definition
-          ):
+          if not hasattr(lw_instance, "resource_definition") or not lw_instance.resource_definition:
             logger.warning(
-              "Resource instance ID %s is missing resource_definition relationship."
-              " Skipping.",
+              "Resource instance ID %s is missing resource_definition relationship. Skipping.",
               lw_instance.accession_id,
             )
             continue
@@ -1340,14 +1301,10 @@ class WorkcellRuntime:
 
           resource_info_data = {
             "resource_instance_accession_id": lw_instance.accession_id,
-            "user_assigned_name": (
-              lw_instance.user_assigned_name or f"Resource_{lw_instance.accession_id}"
-            ),
+            "name": (lw_instance.name or f"Resource_{lw_instance.accession_id}"),
             "name": lw_def.name,
-            "python_fqn": lw_def.python_fqn,
-            "category": (
-              str(lw_def.plr_category.value) if lw_def.plr_category else None
-            ),
+            "fqn": lw_def.fqn,
+            "category": (str(lw_def.plr_category.value) if lw_def.plr_category else None),
             "size_x_mm": lw_def.size_x_mm,
             "size_y_mm": lw_def.size_y_mm,
             "size_z_mm": lw_def.size_z_mm,
@@ -1395,7 +1352,7 @@ class WorkcellRuntime:
       deck_state_data = {
         "deck_accession_id": deck_orm.accession_id,
         "name": deck_orm.name or f"Deck_{deck_orm.accession_id}",
-        "python_fqn": deck_orm.python_fqn,
+        "fqn": deck_orm.fqn,
         "size_x_mm": deck_size_x,
         "size_y_mm": deck_size_y,
         "size_z_mm": deck_size_z,

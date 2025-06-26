@@ -26,6 +26,7 @@ from .deck_pydantic_models import (
   DeckUpdate,
   PositioningConfig,
 )
+from .filters import SearchFilters
 from .function_data_output_orm import (
   DataOutputTypeEnum,
   FunctionDataOutputOrm,
@@ -34,7 +35,6 @@ from .function_data_output_orm import (
 )
 from .function_data_output_pydantic_models import (
   DataExportRequest,
-  DataSearchFilters,
   FunctionDataOutputBase,
   FunctionDataOutputCreate,
   FunctionDataOutputResponse,
@@ -54,6 +54,7 @@ from .machine_pydantic_models import (
   MachineUpdate,
 )
 from .protocol_definitions_orm import (
+  AssetRequirementOrm,
   FileSystemProtocolSourceOrm,
   FunctionCallLogOrm,
   FunctionCallStatusEnum,
@@ -187,7 +188,7 @@ __all__ = [
   "SpatialContextEnum",
   "WellDataOutputOrm",
   "DataExportRequest",
-  "DataSearchFilters",
+  "SearchFilters",
   "FunctionDataOutputBase",
   "FunctionDataOutputCreate",
   "FunctionDataOutputResponse",
@@ -229,6 +230,8 @@ __all__ = [
   "AssetUpdate",
   "DeckPositionDefinitionOrm",
   "DeckTypeDefinitionOrm",
+  "SearchFilters",
   "ResourceCategoryEnum",
   "ResourceDefinitionOrm",
+  "AssetRequirementOrm",
 ]

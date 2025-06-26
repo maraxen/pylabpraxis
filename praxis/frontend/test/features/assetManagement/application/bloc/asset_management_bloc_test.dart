@@ -24,7 +24,7 @@ void main() {
       metadata: {},
       isAvailable: true,
     );
-    final resourceDef1 = ResourceDefinitionCatalogOrm(
+    final resourceDef1 = ResourceDefinitionOrm(
       pylabrobotDefinitionName:
           'lwDef1', // TODO: replace with actual definition name
       pythonFqn: 'com.praxis.resource.ResourceDef1',
@@ -41,9 +41,7 @@ void main() {
     );
 
     final List<ManagedDeviceOrm> mockDevices = [machine1];
-    final List<ResourceDefinitionCatalogOrm> mockResourceDefinitions = [
-      resourceDef1,
-    ];
+    final List<ResourceDefinitionOrm> mockResourceDefinitions = [resourceDef1];
     final List<ResourceOrm> mockResources = [resource1];
     final List<DeckLayoutOrm> mockDeckLayouts = [deckLayout1];
 

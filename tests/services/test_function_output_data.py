@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import all required ORM and Pydantic models from the top-level package
 from praxis.backend.models import (
   DataOutputTypeEnum,
-  DataSearchFilters,
+  SearchFilters,
   DeckOrm,
   FunctionCallLogOrm,
   FunctionDataOutputCreate,
@@ -43,15 +43,15 @@ async def setup_dependencies(db: AsyncSession):
     protocol_run_accession_id=protocol_run.accession_id,
     function_name="test_function",
   )
-  machine = MachineOrm(user_friendly_name="Test Machine", python_fqn="machine.fqn")
+  machine = MachineOrm(name="Test Machine", fqn="machine.fqn")
   resource_instance = ResourceOrm(
-    user_assigned_name="Test Resource",
+    name="Test Resource",
     name="test_resource_def",
   )
   deck_instance = DeckOrm(
     name="Test Deck",
     deck_accession_id=uuid.uuid4(),
-    python_fqn="deck.fqn",
+    fqn="deck.fqn",
   )
 
   db.add_all([function_call_log, machine, resource_instance, deck_instance])
@@ -124,10 +124,7 @@ class TestFunctionDataOutputService:
     assert created_output.accession_id is not None
     assert created_output.data_key == "test_measurement"
     assert created_output.data_value_numeric == 123.45
-    assert (
-      created_output.protocol_run_accession_id
-      == base_data_output_create.protocol_run_accession_id
-    )
+    assert created_output.protocol_run_accession_id == base_data_output_create.protocol_run_accession_id
 
   async def test_read_function_data_output(
     self,
@@ -237,8 +234,7 @@ class TestFunctionDataOutputService:
         file_path="/path/to/img.png",
         data_quality_score=0.5,
         data_value_numeric=None,
-        measurement_timestamp=datetime.datetime.now(datetime.timezone.utc)
-        - datetime.timedelta(days=1),
+        measurement_timestamp=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1),
       ),
     )
 
@@ -255,9 +251,9 @@ class TestFunctionDataOutputService:
       ),
     )
 
-    # FIX: Provide all optional arguments to the DataSearchFilters constructor.
+    # FIX: Provide all optional arguments to the SearchFilters constructor.
     # Test filter by data type
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=[DataOutputTypeEnum.PLATE_IMAGE],
@@ -275,7 +271,7 @@ class TestFunctionDataOutputService:
     assert results[0].data_type == DataOutputTypeEnum.PLATE_IMAGE
 
     # Test filter by has_numeric_data
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=None,
@@ -292,7 +288,7 @@ class TestFunctionDataOutputService:
     assert len(results) == 2
 
     # Test filter by min_quality_score
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=None,

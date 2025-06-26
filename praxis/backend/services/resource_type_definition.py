@@ -35,13 +35,12 @@ log_resource_data_service_errors = partial(
 
 @log_resource_data_service_errors(
   prefix="Resource Definition Error: Creating resource definition - ",
-  suffix=" Please ensure the parameters are correct and the resource definition does "
-  "not already exist.",
+  suffix=" Please ensure the parameters are correct and the resource definition does not already exist.",
 )
 async def create_resource_definition(
   db: AsyncSession,
   name: str,
-  python_fqn: str,
+  fqn: str,
   resource_type: str | None = None,
   description: str | None = None,
   is_consumable: bool = True,
@@ -58,7 +57,7 @@ async def create_resource_definition(
       db (AsyncSession): The database session.
       name (str): The unique PyLabRobot definition name
           for the resource (e.g., "tip_rack_1000ul").
-      python_fqn (str): The fully qualified Python name of the resource class.
+      fqn (str): The fully qualified Python name of the resource class.
       resource_type (Optional[str], optional): A human-readable
           name for the resource type. Defaults to None.
       description (Optional[str], optional): A description of the resource.
@@ -101,7 +100,7 @@ async def create_resource_definition(
   # Create a new ResourceDefinitionOrm
   def_orm = ResourceDefinitionOrm(
     name=name,
-    python_fqn=python_fqn,
+    fqn=fqn,
     resource_type=resource_type,
     description=description,
     is_consumable=is_consumable,
@@ -144,14 +143,12 @@ async def create_resource_definition(
 
 @log_resource_data_service_errors(
   prefix="Resource Definition Error: Updating resource definition - ",
-  suffix=(
-    " Please ensure the parameters are correct and the resource definition exists."
-  ),
+  suffix=(" Please ensure the parameters are correct and the resource definition exists."),
 )
 async def update_resource_definition(
   db: AsyncSession,
   name: str,  # Identifier for the resource definition to update
-  python_fqn: str | None = None,
+  fqn: str | None = None,
   resource_type: str | None = None,
   description: str | None = None,
   is_consumable: bool | None = None,
@@ -166,7 +163,7 @@ async def update_resource_definition(
       db (AsyncSession): The database session.
       name (str): The unique PyLabRobot definition name
           for the resource to update (e.g., "tip_rack_1000ul").
-      python_fqn (Optional[str], optional): The fully qualified Python name of the
+      fqn (Optional[str], optional): The fully qualified Python name of the
           resource class. Defaults to None.
       resource_type (Optional[str], optional): A human-readable
           name for the resource type. Defaults to None.
@@ -190,7 +187,7 @@ async def update_resource_definition(
   Raises:
       ValueError: If the resource definition with the provided `name` is not found,
                   or if an integrity error occurs (e.g., duplicate FQN if
-                  `python_fqn` is changed).
+                  `fqn` is changed).
       Exception: For any other unexpected errors during the process.
 
   """
@@ -204,16 +201,14 @@ async def update_resource_definition(
   def_orm = result.scalar_one_or_none()
 
   if not def_orm:
-    error_message = (
-      f"{log_prefix} ResourceDefinitionOrm with name '{name}' not found for update."
-    )
+    error_message = f"{log_prefix} ResourceDefinitionOrm with name '{name}' not found for update."
     logger.error(error_message)
     raise ValueError(error_message)
   logger.info("%s Found existing definition for update.", log_prefix)
 
   # Update attributes if provided
-  if python_fqn is not None:
-    def_orm.python_fqn = python_fqn
+  if fqn is not None:
+    def_orm.fqn = fqn
   if resource_type is not None:
     def_orm.resource_type = resource_type
   if description is not None:
@@ -307,8 +302,7 @@ async def read_resource_definitions(
 
   """
   logger.info(
-    "Listing resource definitions with filters: manufacturer='%s', "
-    "is_consumable=%s, limit=%d, offset=%d.",
+    "Listing resource definitions with filters: manufacturer='%s', is_consumable=%s, limit=%d, offset=%d.",
     manufacturer,
     is_consumable,
     limit,
@@ -351,30 +345,30 @@ async def read_resource_definition_by_name(
 
 async def read_resource_definition_by_fqn(
   db: AsyncSession,
-  python_fqn: str,
+  fqn: str,
 ) -> ResourceDefinitionOrm | None:
   """Retrieve a resource definition by its Python fully qualified name (FQN).
 
   Args:
       db: The database session.
-      python_fqn (str): The Python FQN of the resource to retrieve.
+      fqn (str): The Python FQN of the resource to retrieve.
 
   Returns:
       Optional[ResourceDefinitionOrm]: The resource definition object
       if found, otherwise None.
 
   """
-  logger.info("Retrieving resource definition by Python FQN: '%s'.", python_fqn)
+  logger.info("Retrieving resource definition by Python FQN: '%s'.", fqn)
   result = await db.execute(
     select(ResourceDefinitionOrm).filter(
-      ResourceDefinitionOrm.python_fqn == python_fqn,
+      ResourceDefinitionOrm.fqn == fqn,
     ),
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
-    logger.info("Found resource definition by FQN '%s'.", python_fqn)
+    logger.info("Found resource definition by FQN '%s'.", fqn)
   else:
-    logger.info("Resource definition with FQN '%s' not found.", python_fqn)
+    logger.info("Resource definition with FQN '%s' not found.", fqn)
   return resource_def
 
 

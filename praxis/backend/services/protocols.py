@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload, selectinload
 
 from praxis.backend.models import (
-  AssetDefinitionOrm,
+  AssetRequirementOrm,
   FileSystemProtocolSourceOrm,
   FunctionCallLogOrm,
   FunctionCallStatusEnum,
@@ -31,6 +31,11 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ProtocolSourceRepositoryOrm,
   ProtocolSourceStatusEnum,
+)
+from praxis.backend.models.filters import SearchFilters
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
 )
 from praxis.backend.utils.uuid import uuid7
 
@@ -74,7 +79,9 @@ async def create_protocol_source_repository(
 
   # Check if a repository with this name already exists
   result = await db.execute(
-    select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name),
+    select(ProtocolSourceRepositoryOrm).filter(
+      ProtocolSourceRepositoryOrm.name == name,
+    ),
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -230,7 +237,8 @@ async def update_protocol_source_repository(
 
 
 async def read_protocol_source_repository(
-  db: AsyncSession, source_accession_id: uuid.UUID,
+  db: AsyncSession,
+  source_accession_id: uuid.UUID,
 ) -> ProtocolSourceRepositoryOrm | None:
   """Retrieve a protocol source repository by its ID.
 
@@ -259,7 +267,8 @@ async def read_protocol_source_repository(
 
 
 async def read_protocol_source_repository_by_name(
-  db: AsyncSession, name: str,
+  db: AsyncSession,
+  name: str,
 ) -> ProtocolSourceRepositoryOrm | None:
   """Retrieve a protocol source repository by its unique name.
 
@@ -275,7 +284,9 @@ async def read_protocol_source_repository_by_name(
   log_prefix = f"Protocol Source Repository (Name: '{name}'):"
   logger.info("%s Attempting to read by name.", log_prefix)
   result = await db.execute(
-    select(ProtocolSourceRepositoryOrm).filter(ProtocolSourceRepositoryOrm.name == name),
+    select(ProtocolSourceRepositoryOrm).filter(
+      ProtocolSourceRepositoryOrm.name == name,
+    ),
   )
   repo = result.scalar_one_or_none()
   if repo:
@@ -287,10 +298,9 @@ async def read_protocol_source_repository_by_name(
 
 async def list_protocol_source_repositories(
   db: AsyncSession,
-  status: ProtocolSourceStatusEnum | None = None,
-  auto_sync_enabled: bool | None = None,
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters,
+  status: ProtocolSourceStatusEnum | None = None, # Specific filter
+  auto_sync_enabled: bool | None = None, # Specific filter
 ) -> list[ProtocolSourceRepositoryOrm]:
   """List protocol source repositories with optional filtering and pagination.
 
@@ -308,11 +318,10 @@ async def list_protocol_source_repositories(
   """
   logger.info(
     "Listing protocol source repositories with filters: status=%s, "
-    "auto_sync_enabled=%s, limit=%d, offset=%d.",
+    "auto_sync_enabled=%s, %s.",
     status,
     auto_sync_enabled,
-    limit,
-    offset,
+    filters.model_dump_json(),
   )
   stmt = select(ProtocolSourceRepositoryOrm)
   if status is not None:
@@ -324,7 +333,10 @@ async def list_protocol_source_repositories(
     )
     logger.debug("Filtering by auto_sync_enabled: %s.", auto_sync_enabled)
 
-  stmt = stmt.order_by(ProtocolSourceRepositoryOrm.name).limit(limit).offset(offset)
+  stmt = apply_date_range_filters(stmt, filters, ProtocolSourceRepositoryOrm.created_at)
+  stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(ProtocolSourceRepositoryOrm.name)
   result = await db.execute(stmt)
   repositories = list(result.scalars().all())
   logger.info("Found %d protocol source repositories.", len(repositories))
@@ -363,7 +375,9 @@ async def create_file_system_protocol_source(
 
   # Check if a file system source with this name already exists
   result = await db.execute(
-    select(FileSystemProtocolSourceOrm).filter(FileSystemProtocolSourceOrm.name == name),
+    select(FileSystemProtocolSourceOrm).filter(
+      FileSystemProtocolSourceOrm.name == name,
+    ),
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -669,7 +683,7 @@ async def upsert_function_protocol_definition(
           raise ValueError(
             f"{log_prefix} Failed to get ID for new protocol definition.",
           )
-      asset_orm = AssetDefinitionOrm(
+      asset_orm = AssetRequirementOrm(
         protocol_definition_accession_id=def_orm.accession_id,
       )
       db.add(asset_orm)  # Add new asset to session
@@ -677,8 +691,8 @@ async def upsert_function_protocol_definition(
     else:
       logger.debug("%s Updating existing asset: %s.", log_prefix, asset_model.name)
 
-    asset_orm.name = asset_model.name  # type: ignore
-    asset_orm.fqn = asset_model.fqn  # type: ignore
+    asset_orm.name = asset_model.name
+    asset_orm.fqn = asset_model.fqn
     asset_orm.optional = asset_model.optional
     asset_orm.default_value_repr = asset_model.default_value_repr
     asset_orm.description = asset_model.description
@@ -846,7 +860,9 @@ async def update_protocol_run_status(
     if new_status == ProtocolRunStatusEnum.RUNNING and not db_protocol_run.start_time:
       db_protocol_run.start_time = utc_now
       logger.debug(
-        "Protocol run ID %d started at %s.", protocol_run_accession_id, utc_now,
+        "Protocol run ID %d started at %s.",
+        protocol_run_accession_id,
+        utc_now,
       )
 
     if new_status in [
@@ -961,7 +977,8 @@ async def log_function_call_start(
     await db.commit()
     await db.refresh(call_log)
     logger.info(
-      "Successfully logged function call start (ID: %d).", call_log.accession_id,
+      "Successfully logged function call start (ID: %d).",
+      call_log.accession_id,
     )
   except IntegrityError as e:
     await db.rollback()
@@ -1305,17 +1322,17 @@ async def read_protocol_definition_details(
     )
   else:
     logger.info(
-      "Protocol definition '%s' not found with specified criteria.", accession_id,
+      "Protocol definition '%s' not found with specified criteria.",
+      accession_id,
     )
   return protocol_def
 
 
 async def list_protocol_definitions(
   db: AsyncSession,
-  limit: int = 100,
-  offset: int = 0,
-  source_name: str | None = None,
-  is_top_level: bool | None = None,
+  filters: SearchFilters,
+  source_name: str | None = None, # Specific filter
+  is_top_level: bool | None = None, # Specific filter
   category: str | None = None,
   tags: list[str] | None = None,
   include_deprecated: bool = False,
@@ -1352,8 +1369,6 @@ async def list_protocol_definitions(
     category,
     tags,
     include_deprecated,
-    limit,
-    offset,
   )
   stmt = select(FunctionProtocolDefinitionOrm).options(
     selectinload(FunctionProtocolDefinitionOrm.parameters),
@@ -1399,13 +1414,12 @@ async def list_protocol_definitions(
       stmt = stmt.filter(FunctionProtocolDefinitionOrm.tags.op("?")(tag))
     logger.debug("Filtering by tags: %s.", tags)
 
-  stmt = (
-    stmt.order_by(
-      desc(FunctionProtocolDefinitionOrm.name),
-      desc(FunctionProtocolDefinitionOrm.version),
-    )
-    .limit(limit)
-    .offset(offset)
+  stmt = apply_date_range_filters(stmt, filters, FunctionProtocolDefinitionOrm.created_at)
+  stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(
+    desc(FunctionProtocolDefinitionOrm.name),
+    desc(FunctionProtocolDefinitionOrm.version),
   )
   result = await db.execute(stmt)
   protocol_defs = list(result.scalars().all())
@@ -1414,7 +1428,8 @@ async def list_protocol_definitions(
 
 
 async def read_protocol_run(
-  db: AsyncSession, run_accession_id: uuid.UUID,
+  db: AsyncSession,
+  run_accession_id: uuid.UUID,
 ) -> ProtocolRunOrm | None:
   """Retrieve a protocol run by its unique GUID.
 
@@ -1453,7 +1468,8 @@ async def read_protocol_run(
 
 
 async def read_protocol_run_by_name(
-  db: AsyncSession, name: str,
+  db: AsyncSession,
+  name: str,
 ) -> ProtocolRunOrm | None:
   """Retrieve a protocol run by its name.
 
@@ -1498,10 +1514,9 @@ async def read_protocol_run_by_name(
 
 async def list_protocol_runs(
   db: AsyncSession,
-  limit: int = 100,
-  offset: int = 0,
-  protocol_definition_accession_id: uuid.UUID | None = None,
-  protocol_name: str | None = None,
+  filters: SearchFilters,
+  protocol_definition_accession_id: uuid.UUID | None = None, # Specific filter
+  protocol_name: str | None = None, # Specific filter
   status: ProtocolRunStatusEnum | None = None,
 ) -> list[ProtocolRunOrm]:
   """List protocol runs with optional filtering and pagination.
@@ -1529,8 +1544,6 @@ async def list_protocol_runs(
     protocol_definition_accession_id,
     protocol_name,
     status,
-    limit,
-    offset,
   )
   stmt = select(ProtocolRunOrm).options(
     joinedload(ProtocolRunOrm.top_level_protocol_definition),
@@ -1556,10 +1569,12 @@ async def list_protocol_runs(
     stmt = stmt.filter(ProtocolRunOrm.status == status)
     logger.debug("Filtering by status: '%s'.", status.name)
 
-  stmt = (
-    stmt.order_by(desc(ProtocolRunOrm.start_time), desc(ProtocolRunOrm.accession_id))
-    .limit(limit)
-    .offset(offset)
+  stmt = apply_date_range_filters(stmt, filters, ProtocolRunOrm.start_time)
+  stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(
+    desc(ProtocolRunOrm.start_time),
+    desc(ProtocolRunOrm.accession_id),
   )
   result = await db.execute(stmt)
   protocol_runs = list(result.scalars().all())

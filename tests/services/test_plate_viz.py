@@ -25,7 +25,7 @@ async def setup_dependencies(db: AsyncSession):
   """Fixture to create and commit all necessary dependency ORM objects for the tests."""
   run = ProtocolRunOrm(name="Test Run for Viz")
   plate_resource = ResourceOrm(
-    user_assigned_name="TestPlate1",
+    name="TestPlate1",
     name="corning_96_wellplate_360ul_flat",
   )
 

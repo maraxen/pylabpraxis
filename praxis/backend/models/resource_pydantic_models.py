@@ -51,8 +51,7 @@ class ResourceCreate(ResourceBase):
   machine_fqn: str | None = Field(
     default=None,
     description=(
-      "The FQN for the machine counterpart. Required if is_machine is True and no "
-      "counterpart ID is provided."
+      "The FQN for the machine counterpart. Required if is_machine is True and no counterpart ID is provided."
     ),
   )
   machine_properties_json: dict[str, Any] | None = Field(
@@ -102,7 +101,7 @@ class ResourceDefinitionBase(BaseModel):
 
   accession_id: UUID7
   name: str
-  python_fqn: str
+  fqn: str
   resource_type: str | None = None
   description: str | None = None
   is_consumable: bool = True
@@ -130,7 +129,7 @@ class ResourceDefinitionCreate(ResourceDefinitionBase):
 class ResourceDefinitionUpdate(BaseModel):
   """Specifies the fields that can be updated for an existing resource definition."""
 
-  python_fqn: str | None = None
+  fqn: str | None = None
   resource_type: str | None = None
   description: str | None = None
   nominal_volume_ul: float | None = None

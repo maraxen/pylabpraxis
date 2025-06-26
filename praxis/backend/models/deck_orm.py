@@ -61,21 +61,30 @@ class DeckOrm(ResourceOrm):
   __mapper_args__ = {"polymorphic_identity": "deck"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("resources.accession_id"), primary_key=True,
+    UUID,
+    ForeignKey("resources.accession_id"),
+    primary_key=True,
   )
 
   machine_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID, ForeignKey("machines.accession_id"), nullable=True, index=True,
+    UUID,
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
   )
   machine: Mapped[Optional["MachineOrm"]] = relationship(
-    "MachineOrm", back_populates="decks",
+    "MachineOrm",
+    back_populates="decks",
   )
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True, # type: ignore
+    UUID,
+    ForeignKey("deck_type_definitions.accession_id"),
+    index=True,  # type: ignore
   )
   deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm", back_populates="deck_instances",
+    "DeckTypeDefinitionOrm",
+    back_populates="deck",
   )
 
 
@@ -91,7 +100,7 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
   Attributes:
       accession_id (uuid.UUID): Unique identifier for the deck type definition.
       name (str): A human-readable name for the deck type (e.g., "Hamilton STAR Deck").
-      python_fqn (str): The fully qualified name of the PyLabRobot deck class
+      fqn (str): The fully qualified name of the PyLabRobot deck class
           (e.g., "pylabrobot.liquid_handling.backends.hamilton.STARDeck").
       description (Optional[str]): A detailed description of the deck type.
       plr_category (Optional[str]): The category of the deck type in PyLabRobot.
@@ -111,40 +120,46 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
           coordinates from slot names.
       positions (list[DeckPositionDefinitionOrm]): A list of all defined
           positions (slots) available on this deck type.
-      deck_instances (list[DeckOrm]): A list of all physical deck instances
+      deck (list[DeckOrm]): A list of all physical deck instances
           of this type.
 
   """
 
   __tablename__ = "deck_type_definitions"
-  __table_args__ = (
-    UniqueConstraint("python_fqn", name="uq_deck_type_definitions_python_fqn"),
-  )
+  __table_args__ = (UniqueConstraint("fqn", name="uq_deck_type_definitions_fqn"),)
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, index=True, default=uuid.uuid4,
+    UUID,
+    primary_key=True,
+    index=True,
+    default=uuid.uuid4,
   )
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
-  python_fqn: Mapped[str] = mapped_column(String, nullable=False, index=True)
+  fqn: Mapped[str] = mapped_column(String, nullable=False, index=True)
   description: Mapped[str | None] = mapped_column(Text, nullable=True)
   plr_category: Mapped[str | None] = mapped_column(String, nullable=True)
   default_size_x_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
   default_size_y_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
   default_size_z_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
   serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON, nullable=True,
+    JSON,
+    nullable=True,
   )
   serialized_assignment_methods_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON, nullable=True,
+    JSON,
+    nullable=True,
   )
   serialized_constructor_hints_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON, nullable=True,
+    JSON,
+    nullable=True,
   )
   additional_properties_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON, nullable=True,
+    JSON,
+    nullable=True,
   )
   positioning_config_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON, nullable=True,
+    JSON,
+    nullable=True,
   )
 
   positions: Mapped[list["DeckPositionDefinitionOrm"]] = relationship(
@@ -152,8 +167,9 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
     back_populates="deck_type",
     cascade="all, delete-orphan",
   )
-  deck_instances: Mapped[list["DeckOrm"]] = relationship(
-    "DeckOrm", back_populates="deck_type",
+  deck: Mapped[list["DeckOrm"]] = relationship(
+    "DeckOrm",
+    back_populates="deck_type",
   )
 
 
@@ -181,16 +197,19 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (
-    UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),
-  )
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),)
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, index=True, default=uuid.uuid4,
+    UUID,
+    primary_key=True,
+    index=True,
+    default=uuid.uuid4,
   )
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True,
-  ) # type: ignore
+    UUID,
+    ForeignKey("deck_type_definitions.accession_id"),
+    index=True,
+  )  # type: ignore
   position_accession_id: Mapped[str] = mapped_column(String, nullable=False)
 
   x_coord: Mapped[float] = mapped_column(Float, nullable=False)
@@ -205,5 +224,6 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   )
 
   deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm", back_populates="positions",
+    "DeckTypeDefinitionOrm",
+    back_populates="positions",
   )

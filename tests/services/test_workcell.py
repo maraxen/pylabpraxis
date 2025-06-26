@@ -38,12 +38,13 @@ async def existing_workcell(db: AsyncSession) -> WorkcellOrm:
 
 @pytest.fixture
 async def machine_in_workcell(
-  db: AsyncSession, existing_workcell: WorkcellOrm,
+  db: AsyncSession,
+  existing_workcell: WorkcellOrm,
 ) -> MachineOrm:
   """Fixture that creates a machine and assigns it to the existing_workcell."""
   machine = MachineOrm(
-    user_friendly_name=f"MachineInWorkcell_{uuid.uuid4()}",
-    python_fqn="machine.in.workcell.fqn",
+    name=f"MachineInWorkcell_{uuid.uuid4()}",
+    fqn="machine.in.workcell.fqn",
     workcell_accession_id=existing_workcell.accession_id,
   )
   db.add(machine)
@@ -64,7 +65,10 @@ class TestWorkcellService:
     location = "Room 101"
 
     created_wc = await create_workcell(
-      db, name=name, description=description, physical_location=location,
+      db,
+      name=name,
+      description=description,
+      physical_location=location,
     )
     assert created_wc is not None
     assert created_wc.name == name
@@ -82,14 +86,18 @@ class TestWorkcellService:
     assert read_by_name.accession_id == created_wc.accession_id
 
   async def test_create_workcell_fails_on_duplicate_name(
-    self, db: AsyncSession, existing_workcell: WorkcellOrm,
+    self,
+    db: AsyncSession,
+    existing_workcell: WorkcellOrm,
   ):
     """Test that creating a workcell with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_workcell(db, name=existing_workcell.name)
 
   async def test_update_workcell(
-    self, db: AsyncSession, existing_workcell: WorkcellOrm,
+    self,
+    db: AsyncSession,
+    existing_workcell: WorkcellOrm,
   ):
     """Test updating various fields of a workcell."""
     new_desc = "An updated description."
@@ -148,7 +156,9 @@ class TestWorkcellService:
     assert result is False
 
   async def test_read_and_update_workcell_state(
-    self, db: AsyncSession, existing_workcell: WorkcellOrm,
+    self,
+    db: AsyncSession,
+    existing_workcell: WorkcellOrm,
   ):
     """Test reading and updating the JSON state of a workcell."""
     # Test reading the initial state
@@ -158,7 +168,9 @@ class TestWorkcellService:
     # Test updating the state
     new_state = {"status": "running", "progress": 50, "last_op": "aspirate"}
     updated_wc = await update_workcell_state(
-      db, existing_workcell.accession_id, new_state,
+      db,
+      existing_workcell.accession_id,
+      new_state,
     )
     assert updated_wc is not None
     assert updated_wc.latest_state_json == new_state

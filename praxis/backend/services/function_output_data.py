@@ -15,12 +15,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from praxis.backend.models import (
-  DataSearchFilters,
   FunctionDataOutputCreate,
   FunctionDataOutputUpdate,
+  SearchFilters,
 )
 from praxis.backend.models.function_data_output_orm import (
   FunctionDataOutputOrm,
+)
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
+  apply_specific_id_filters,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -40,7 +45,8 @@ log_data_output_errors = partial(
   suffix="Please ensure all required parameters are provided and valid.",
 )
 async def create_function_data_output(
-  db: AsyncSession, data_output: FunctionDataOutputCreate,
+  db: AsyncSession,
+  data_output: FunctionDataOutputCreate,
 ) -> FunctionDataOutputOrm:
   """Create a new function data output record.
 
@@ -55,9 +61,7 @@ async def create_function_data_output(
     ValueError: If validation fails or required data is missing
 
   """
-  log_prefix = (
-    f"Data Output (Type: {data_output.data_type.value}, Key: '{data_output.data_key}'):"
-  )
+  log_prefix = f"Data Output (Type: {data_output.data_type.value}, Key: '{data_output.data_key}'):"
   logger.info("%s Creating new function data output.", log_prefix)
 
   # Create the ORM instance
@@ -79,8 +83,7 @@ async def create_function_data_output(
     data_units=data_output.data_units,
     data_quality_score=data_output.data_quality_score,
     measurement_conditions_json=data_output.measurement_conditions_json,
-    measurement_timestamp=data_output.measurement_timestamp
-    or datetime.datetime.utcnow(),
+    measurement_timestamp=data_output.measurement_timestamp or datetime.datetime.utcnow(),
     sequence_in_function=data_output.sequence_in_function,
     derived_from_data_output_accession_id=data_output.derived_from_data_output_accession_id,
     processing_metadata_json=data_output.processing_metadata_json,
@@ -110,7 +113,8 @@ async def create_function_data_output(
 
 
 async def read_function_data_output(
-  db: AsyncSession, data_output_accession_id: UUID,
+  db: AsyncSession,
+  data_output_accession_id: UUID,
 ) -> FunctionDataOutputOrm | None:
   """Read a function data output by ID.
 
@@ -139,7 +143,8 @@ async def read_function_data_output(
 
 
 async def list_function_data_outputs(
-  db: AsyncSession, filters: DataSearchFilters, limit: int = 100, offset: int = 0,
+  db: AsyncSession,
+  filters: SearchFilters,
 ) -> list[FunctionDataOutputOrm]:
   """List function data outputs with filtering.
 
@@ -159,20 +164,7 @@ async def list_function_data_outputs(
     joinedload(FunctionDataOutputOrm.machine),
   )
 
-  # Apply filters
   conditions = []
-
-  if filters.protocol_run_accession_id:
-    conditions.append(
-      FunctionDataOutputOrm.protocol_run_accession_id
-      == filters.protocol_run_accession_id,
-    )
-
-  if filters.function_call_log_accession_id:
-    conditions.append(
-      FunctionDataOutputOrm.function_call_log_accession_id
-      == filters.function_call_log_accession_id,
-    )
 
   if filters.data_types:
     conditions.append(FunctionDataOutputOrm.data_type.in_(filters.data_types))
@@ -180,27 +172,6 @@ async def list_function_data_outputs(
   if filters.spatial_contexts:
     conditions.append(
       FunctionDataOutputOrm.spatial_context.in_(filters.spatial_contexts),
-    )
-
-  if filters.machine_accession_id:
-    conditions.append(
-      FunctionDataOutputOrm.machine_accession_id == filters.machine_accession_id,
-    )
-
-  if filters.resource_instance_accession_id:
-    conditions.append(
-      FunctionDataOutputOrm.resource_instance_accession_id
-      == filters.resource_instance_accession_id,
-    )
-
-  if filters.date_range_start:
-    conditions.append(
-      FunctionDataOutputOrm.measurement_timestamp >= filters.date_range_start,
-    )
-
-  if filters.date_range_end:
-    conditions.append(
-      FunctionDataOutputOrm.measurement_timestamp <= filters.date_range_end,
     )
 
   if filters.has_numeric_data is not None:
@@ -223,11 +194,12 @@ async def list_function_data_outputs(
   if conditions:
     query = query.filter(and_(*conditions))
 
-  query = (
-    query.order_by(FunctionDataOutputOrm.measurement_timestamp.desc())
-    .limit(limit)
-    .offset(offset)
-  )
+  # Apply generic filters from query_builder
+  query = apply_specific_id_filters(query, filters, FunctionDataOutputOrm)
+  query = apply_date_range_filters(query, filters, FunctionDataOutputOrm.measurement_timestamp)
+  query = apply_pagination(query, filters)
+
+  query = query.order_by(FunctionDataOutputOrm.measurement_timestamp.desc())
 
   result = await db.execute(query)
   return list(result.scalars().all())
@@ -289,7 +261,8 @@ async def update_function_data_output(
   suffix="Please ensure the ID is valid and the record exists.",
 )
 async def delete_function_data_output(
-  db: AsyncSession, data_output_accession_id: UUID,
+  db: AsyncSession,
+  data_output_accession_id: UUID,
 ) -> bool:
   """Delete a function data output record by ID.
 

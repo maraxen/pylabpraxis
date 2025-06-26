@@ -58,13 +58,17 @@ class ProtocolDiscoveryService:
   """
 
   def __init__(
-    self, db_session_factory: async_sessionmaker[AsyncSession] | None = None,
-  ):
+    self,
+    db_session_factory: async_sessionmaker[AsyncSession] | None = None,
+  ) -> None:
     """Initialize the ProtocolDiscoveryService.
 
     Args:
       db_session_factory: An async session factory for database operations.
         If not provided, the service will not be able to upsert definitions.
+
+    Returns:
+      None
 
     """
     self.db_session_factory = db_session_factory
@@ -106,9 +110,7 @@ class ProtocolDiscoveryService:
     if isinstance(search_paths, str):
       search_paths = [search_paths]
 
-    extracted_definitions: list[
-      tuple[FunctionProtocolDefinitionModel, Callable | None]
-    ] = []  # type: ignore
+    extracted_definitions: list[tuple[FunctionProtocolDefinitionModel, Callable | None]] = []  # type: ignore
     processed_func_accession_ids: set[int] = set()
     loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
@@ -130,18 +132,17 @@ class ProtocolDiscoveryService:
           if file.endswith(".py") and not file.startswith("_"):
             module_file_path = os.path.join(root, file)
             rel_module_path = os.path.relpath(
-              module_file_path, potential_package_parent,
+              module_file_path,
+              potential_package_parent,
             )
             module_import_name = os.path.splitext(rel_module_path)[0].replace(
-              os.sep, ".",
+              os.sep,
+              ".",
             )
 
             try:
               module = None
-              if (
-                module_import_name in loaded_module_names
-                and module_import_name in sys.modules
-              ):
+              if module_import_name in loaded_module_names and module_import_name in sys.modules:
                 module = importlib.reload(sys.modules[module_import_name])
               else:
                 module = importlib.import_module(module_import_name)
@@ -156,7 +157,8 @@ class ProtocolDiscoveryService:
 
                 protocol_def_attr = getattr(func_obj, "_protocol_definition", None)
                 if protocol_def_attr and isinstance(
-                  protocol_def_attr, FunctionProtocolDefinitionModel,
+                  protocol_def_attr,
+                  FunctionProtocolDefinitionModel,
                 ):
                   extracted_definitions.append((protocol_def_attr, func_obj))
                 else:
@@ -169,10 +171,9 @@ class ProtocolDiscoveryService:
                     param_obj_sig,
                   ) in sig.parameters.items():
                     param_type_hint = param_obj_sig.annotation
-                    is_opt = (
-                      get_origin(param_type_hint) is Union
-                      and type(None) in get_args(param_type_hint)
-                    ) or (param_obj_sig.default is not inspect.Parameter.empty)
+                    is_opt = (get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)) or (
+                      param_obj_sig.default is not inspect.Parameter.empty
+                    )
                     fqn = fqn_from_hint(param_type_hint)
 
                     type_for_plr_check = param_type_hint
@@ -181,9 +182,7 @@ class ProtocolDiscoveryService:
                       get_args(param_type_hint),
                     )
                     if origin_check is Union and type(None) in args_check:
-                      non_none_args = [
-                        arg for arg in args_check if arg is not type(None)
-                      ]
+                      non_none_args = [arg for arg in args_check if arg is not type(None)]
                       if len(non_none_args) == 1:
                         type_for_plr_check = non_none_args[0]
 
@@ -260,8 +259,7 @@ class ProtocolDiscoveryService:
     """
     if not self.db_session_factory:
       logger.error(
-        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService."
-        " Cannot upsert definitions.",
+        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService." " Cannot upsert definitions.",
       )
       return []
 
@@ -275,8 +273,7 @@ class ProtocolDiscoveryService:
       return []
 
     logger.info(
-      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. "
-      f"Upserting to DB...",
+      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. " f"Upserting to DB...",
     )
     upserted_definitions_orm: list[Any] = []
 
@@ -304,9 +301,7 @@ class ProtocolDiscoveryService:
           )
           upserted_definitions_orm.append(def_orm)
 
-          protocol_unique_key = (
-            f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
-          )
+          protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
 
           func_ref_protocol_def = getattr(func_ref, "_protocol_definition", None)
           if func_ref and func_ref_protocol_def is protocol_pydantic_model:
@@ -315,9 +310,7 @@ class ProtocolDiscoveryService:
 
           if protocol_unique_key in PROTOCOL_REGISTRY:
             if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = (
-                def_orm.accession_id
-              )
+              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = def_orm.accession_id
               pydantic_def_in_registry = PROTOCOL_REGISTRY[protocol_unique_key].get(
                 "pydantic_definition",
               )  # type: ignore
@@ -341,11 +334,7 @@ class ProtocolDiscoveryService:
       # Commit happens when the session context manager exits if no exceptions
 
     num_successful_upserts = len(
-      [
-        d
-        for d in upserted_definitions_orm
-        if hasattr(d, "id") and d.accession_id is not None
-      ],
+      [d for d in upserted_definitions_orm if hasattr(d, "id") and d.accession_id is not None],
     )
     logger.info(
       f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB.",

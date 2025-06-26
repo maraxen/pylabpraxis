@@ -27,15 +27,12 @@ class DeckCreate(ResourceCreate, DeckBase):
   """Model for creating a new deck."""
 
 
-
 class DeckUpdate(ResourceUpdate):
   """Model for updating a deck."""
 
 
-
 class DeckResponse(ResourceResponse, DeckBase):
   """Model for API responses for a deck."""
-
 
 
 class PositioningConfig(BaseModel):
@@ -48,19 +45,19 @@ class PositioningConfig(BaseModel):
 
   method_name: str = Field(
     ...,
-    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location',"
-    "'slot_to_location').",
+    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location','slot_to_location').",
   )
   arg_name: str = Field(
     ...,
-    description="Name of the argument for the position in the method (e.g., 'rail', "
-    "'slot').",
+    description="Name of the argument for the position in the method (e.g., 'rail', 'slot').",
   )
   arg_type: Literal["str", "int"] = Field(
-    "str", description="Expected type of the position argument ('str' or 'int').",
+    "str",
+    description="Expected type of the position argument ('str' or 'int').",
   )
   params: dict[str, Any] | None = Field(
-    None, description="Additional parameters for the positioning method.",
+    None,
+    description="Additional parameters for the positioning method.",
   )
 
   class Config:
@@ -87,27 +84,30 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   """Model for creating a new deck position definition."""
 
   pylabrobot_position_type_name: str | None = Field(
-    None, description="PyLabRobot specific position type name.",
+    None,
+    description="PyLabRobot specific position type name.",
   )
   allowed_resource_definition_names: list[str] | None = Field(
     None,
     description="List of specific resource definition names allowed at this position.",
   )
   accepts_tips: bool | None = Field(
-    None, description="Indicates if the position accepts tips.",
+    None,
+    description="Indicates if the position accepts tips.",
   )
   accepts_plates: bool | None = Field(
-    None, description="Indicates if the position accepts plates.",
+    None,
+    description="Indicates if the position accepts plates.",
   )
   accepts_tubes: bool | None = Field(
-    None, description="Indicates if the position accepts tubes.",
+    None,
+    description="Indicates if the position accepts tubes.",
   )
   notes: str | None = Field(None, description="Additional notes for the position.")
 
   compatible_resource_fqns: dict[str, Any] | None = Field(
     None,
-    description="Additional, position-specific details as a JSON-serializable"
-    " dictionary.",
+    description="Additional, position-specific details as a JSON-serializable dictionary.",
   )
 
 
@@ -128,12 +128,11 @@ class DeckPositionDefinitionUpdate(BaseModel):
   """Model for updating a deck position definition."""
 
 
-
 class DeckTypeDefinitionBase(BaseModel):
   """Base model for a deck type definition."""
 
   name: str
-  python_fqn: str
+  fqn: str
   description: str | None = None
   positioning_config: PositioningConfig
   position_definitions: list[DeckPositionDefinitionCreate] | None = None
@@ -141,7 +140,6 @@ class DeckTypeDefinitionBase(BaseModel):
 
 class DeckTypeDefinitionCreate(DeckTypeDefinitionBase):
   """Model for creating a new deck type definition."""
-
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
@@ -160,7 +158,7 @@ class DeckTypeDefinitionUpdate(BaseModel):
   """Model for updating a deck type definition."""
 
   name: str | None = None
-  python_fqn: str | None = None
+  fqn: str | None = None
   description: str | None = None
   positioning_config: PositioningConfig | None = None
   position_definitions: list[DeckPositionDefinitionCreate] | None = None

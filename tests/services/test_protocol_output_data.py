@@ -35,11 +35,11 @@ async def setup_summary_data(db: AsyncSession):
     function_name="complex_assay",
   )
   machine = MachineOrm(
-    user_friendly_name=f"SummaryMachine_{uuid.uuid4()}",
-    python_fqn="machine.fqn",
+    name=f"SummaryMachine_{uuid.uuid4()}",
+    fqn="machine.fqn",
   )
   resource = ResourceOrm(
-    user_assigned_name="SummaryResource",
+    name="SummaryResource",
     name="summary_resource_def",
   )
 
@@ -157,20 +157,14 @@ class TestProtocolOutputDataService:
 
     # 5. Test data timeline aggregation
     assert len(summary.data_timeline) == 3  # 2 events at timestamp1, 1 at timestamp2
-    timeline_events = {
-      (event["data_type"], event["count"]) for event in summary.data_timeline
-    }
+    timeline_events = {(event["data_type"], event["count"]) for event in summary.data_timeline}
     assert ("absorbance_reading", 1) in timeline_events
     assert ("plate_image", 1) in timeline_events
     assert ("error_log", 1) in timeline_events
     # Check that another absorbance reading was added to the summary at a different timestamp
     assert (
       len(
-        [
-          event
-          for event in summary.data_timeline
-          if event["data_type"] == "absorbance_reading"
-        ],
+        [event for event in summary.data_timeline if event["data_type"] == "absorbance_reading"],
       )
       == 2
     )

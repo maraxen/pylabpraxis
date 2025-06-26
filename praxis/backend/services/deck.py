@@ -7,7 +7,8 @@ functions to create, read, update, and delete decks.
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -15,6 +16,13 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
 from praxis.backend.models.deck_pydantic_models import DeckCreate, DeckUpdate
+from praxis.backend.models.filters import SearchFilters
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
+  apply_property_filters,
+  apply_specific_id_filters,
+)
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -107,35 +115,43 @@ async def read_deck(db: AsyncSession, deck_accession_id: UUID) -> DeckOrm | None
 
 async def read_decks(
   db: AsyncSession,
-  parent_accession_id: UUID | None = None,
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters,
 ) -> list[DeckOrm]:
   """List all decks, with optional filtering by parent ID.
 
   Args:
       db: The database session.
-      parent_accession_id: The ID of the parent asset to filter by.
-      limit: The maximum number of results to return.
-      offset: The number of results to skip.
+      filters: Search and filter criteria.
 
   Returns:
       A list of deck objects.
 
   """
   logger.info(
-    "Listing decks with parent ID filter: %s, limit: %s, offset: %s.",
-    parent_accession_id,
-    limit,
-    offset,
+    "Listing decks with filters: %s",
+    filters.model_dump_json(),
   )
   stmt = select(DeckOrm).options(
     joinedload(DeckOrm.parent),
     joinedload(DeckOrm.deck_type),
   )
-  if parent_accession_id is not None:
-    stmt = stmt.filter(DeckOrm.parent_accession_id == parent_accession_id)
-  stmt = stmt.order_by(DeckOrm.name).limit(limit).offset(offset)
+
+  conditions = []
+
+  if filters.parent_accession_id is not None:
+    conditions.append(DeckOrm.parent_accession_id == filters.parent_accession_id)
+
+  if conditions:
+    stmt = stmt.filter(and_(*conditions))
+
+  # Apply generic filters from query_builder
+  stmt = apply_specific_id_filters(stmt, filters, DeckOrm)
+  stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
+  stmt = apply_property_filters(stmt, filters, DeckOrm.properties_json.cast(JSONB))
+
+  stmt = stmt.order_by(DeckOrm.name)
+  stmt = apply_pagination(stmt, filters)
+
   result = await db.execute(stmt)
   decks = list(result.scalars().all())
   logger.info("Found %s decks.", len(decks))
@@ -145,29 +161,31 @@ async def read_decks(
 async def read_decks_by_machine_id(
   db: AsyncSession,
   machine_accession_id: UUID,
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters | None = None,
 ) -> list[DeckOrm]:
   """List all decks associated with a specific machine ID.
 
   Args:
       db: The database session.
       machine_accession_id: The ID of the machine to filter by.
-      limit: The maximum number of results to return.
-      offset: The number of results to skip.
+      filters: Optional SearchFilters for pagination and date range.
 
   Returns:
       A list of deck objects.
 
   """
   logger.info(
-    "Listing decks for machine ID: %s, limit: %s, offset: %s.",
+    "Listing decks for machine ID: %s.",
     machine_accession_id,
-    limit,
-    offset,
   )
   stmt = select(DeckOrm).filter(DeckOrm.machine_id == machine_accession_id)
-  stmt = stmt.order_by(DeckOrm.name).limit(limit).offset(offset)
+
+  if filters:
+    stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
+    stmt = apply_property_filters(stmt, filters, DeckOrm.properties_json.cast(JSONB))
+    stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(DeckOrm.name)
   result = await db.execute(stmt)
   decks = list(result.scalars().all())
   logger.info("Found %s decks for machine ID %s.", len(decks), machine_accession_id)

@@ -51,7 +51,7 @@ def mock_plate_parsing_helpers(mocker):
 @pytest.fixture
 async def plate_resource(db: AsyncSession) -> ResourceOrm:
   """Fixture for a plate ResourceOrm."""
-  plate = ResourceOrm(user_assigned_name="TestPlateForWells", name="plate_def")
+  plate = ResourceOrm(name="TestPlateForWells", name="plate_def")
   db.add(plate)
   await db.commit()
   return plate

@@ -133,7 +133,7 @@ class FunctionDataOutputOrm(Base):
 
   resource_instance_accession_id: Mapped[UUID | None] = mapped_column(
     UUID,
-    ForeignKey("resource_instances.accession_id"),
+    ForeignKey("resource.accession_id"),
     nullable=True,
     index=True,
   )
@@ -147,7 +147,7 @@ class FunctionDataOutputOrm(Base):
 
   deck_instance_accession_id: Mapped[UUID | None] = mapped_column(
     UUID,
-    ForeignKey("deck_instances.accession_id"),
+    ForeignKey("deck.accession_id"),
     nullable=True,
     index=True,
   )
@@ -326,7 +326,7 @@ class WellDataOutputOrm(Base):
 
   plate_resource_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("resource_instances.accession_id"),
+    ForeignKey("resource.accession_id"),
     nullable=False,
     index=True,
   )
@@ -379,8 +379,4 @@ class WellDataOutputOrm(Base):
 
   def __repr__(self):
     """Return a string representation of the WellDataOutputOrm instance."""
-    return (
-      f"<WellDataOutputOrm(id={self.accession_id}, "
-      f"well={self.well_name}, "
-      f"value={self.data_value})>"
-    )
+    return f"<WellDataOutputOrm(id={self.accession_id}, well={self.well_name}, value={self.data_value})>"

@@ -20,6 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from praxis.backend.models import WorkcellOrm
+from praxis.backend.models.filters import SearchFilters
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
+)
 from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
@@ -64,7 +69,9 @@ async def create_workcell(
     await db.commit()
     await db.refresh(workcell_orm)
     logger.info(
-      "Successfully created workcell '%s' with ID %s.", name, workcell_orm.accession_id,
+      "Successfully created workcell '%s' with ID %s.",
+      name,
+      workcell_orm.accession_id,
     )
     return workcell_orm
   except IntegrityError as e:
@@ -79,7 +86,8 @@ async def create_workcell(
 
 
 async def read_workcell(
-  db: AsyncSession, workcell_accession_id: uuid.UUID,
+  db: AsyncSession,
+  workcell_accession_id: uuid.UUID,
 ) -> WorkcellOrm | None:
   """Retrieve a specific workcell by its ID.
 
@@ -122,11 +130,7 @@ async def read_workcell_by_name(db: AsyncSession, name: str) -> WorkcellOrm | No
 
   """
   logger.info("Attempting to retrieve workcell with name: '%s'.", name)
-  stmt = (
-    select(WorkcellOrm)
-    .options(selectinload(WorkcellOrm.machines))
-    .filter(WorkcellOrm.name == name)
-  )
+  stmt = select(WorkcellOrm).options(selectinload(WorkcellOrm.machines)).filter(WorkcellOrm.name == name)
   result = await db.execute(stmt)
   workcell = result.scalar_one_or_none()
   if workcell:
@@ -137,27 +141,24 @@ async def read_workcell_by_name(db: AsyncSession, name: str) -> WorkcellOrm | No
 
 
 async def list_workcells(
-  db: AsyncSession, limit: int = 100, offset: int = 0,
+  db: AsyncSession,
+  filters: SearchFilters,
 ) -> list[WorkcellOrm]:
   """List all workcells with pagination.
 
   Args:
     db (AsyncSession): The database session.
-    limit (int): The maximum number of results to return.
-    offset (int): The number of results to skip before returning.
+    filters (SearchFilters): The search filters to apply.
 
   Returns:
     list[WorkcellOrm]: A list of workcell objects.
 
   """
-  logger.info("Listing workcells with limit: %d, offset: %d.", limit, offset)
-  stmt = (
-    select(WorkcellOrm)
-    .options(selectinload(WorkcellOrm.machines))
-    .order_by(WorkcellOrm.name)
-    .limit(limit)
-    .offset(offset)
-  )
+  logger.info("Listing workcells with filters: %s", filters.model_dump_json())
+  stmt = select(WorkcellOrm).options(selectinload(WorkcellOrm.machines)).order_by(WorkcellOrm.name)
+  stmt = apply_date_range_filters(stmt, filters, WorkcellOrm.created_at)
+  stmt = apply_pagination(stmt, filters)
+  stmt = stmt.order_by(WorkcellOrm.name)
   result = await db.execute(stmt)
   workcells = list(result.scalars().all())
   logger.info("Found %d workcells.", len(workcells))
@@ -206,10 +207,7 @@ async def update_workcell(
     logger.debug("Updating description for workcell '%s'.", original_name)
     workcell_orm.description = description
     updates_made = True
-  if (
-    physical_location is not None
-    and workcell_orm.physical_location != physical_location
-  ):
+  if physical_location is not None and workcell_orm.physical_location != physical_location:
     logger.debug("Updating physical location for workcell '%s'.", original_name)
     workcell_orm.physical_location = physical_location
     updates_made = True
@@ -289,13 +287,15 @@ async def delete_workcell(db: AsyncSession, workcell_accession_id: uuid.UUID) ->
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_accession_id,
+      "Unexpected error deleting workcell ID %s. Rolling back.",
+      workcell_accession_id,
     )
     raise e
 
 
 async def read_workcell_state(
-  db_session: AsyncSession, workcell_accession_id: uuid.UUID,
+  db_session: AsyncSession,
+  workcell_accession_id: uuid.UUID,
 ) -> dict[str, Any] | None:
   """Retrieve the latest JSON-serialized state of a workcell from the database.
 
@@ -326,7 +326,9 @@ async def read_workcell_state(
 
 
 async def update_workcell_state(
-  db_session: AsyncSession, workcell_accession_id: uuid.UUID, state_json: dict[str, Any],
+  db_session: AsyncSession,
+  workcell_accession_id: uuid.UUID,
+  state_json: dict[str, Any],
 ) -> WorkcellOrm:
   """Update the latest_state_json for a specific WorkcellOrm entry.
 

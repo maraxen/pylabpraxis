@@ -7,7 +7,7 @@ from praxis.backend.main import app # Assuming your FastAPI app instance is here
 from praxis.backend.database_models.asset_management_orm import (
     ManagedDeviceOrm,
     ResourceOrm,
-    ResourceDefinitionCatalogOrm,
+    ResourceDefinitionOrm,
     PraxisDeviceCategoryEnum,
     ManagedDeviceStatusEnum,
     PlrCategoryEnum,
@@ -31,21 +31,21 @@ INVALID_DEVICE_ID = 999
 def test_deck_info_model():
     data = {
         "id": 1,
-        "user_friendly_name": "Main Deck",
-        "python_fqn": "pylabrobot.resources.Deck",
+        "name": "Main Deck",
+        "fqn": "pylabrobot.resources.Deck",
         "current_status": "ONLINE",
     }
     deck_info = DeckInfo.model_validate(data)
     assert deck_info.accession_id == data["id"]
-    assert deck_info.user_friendly_name == data["user_friendly_name"]
+    assert deck_info.name == data["name"]
     assert deck_info.model_dump()["current_status"] == "ONLINE"
 
 def test_resource_info_model():
     data = {
         "resource_instance_accession_id": 10,
-        "user_assigned_name": "Reagent Plate 1",
+        "name": "Reagent Plate 1",
         "name": "corning_96_wellplate_360ul_flat",
-        "python_fqn": "pylabrobot.resources.Plate",
+        "fqn": "pylabrobot.resources.Plate",
         "category": "PLATE",
         "size_x_mm": 127.0,
         "size_y_mm": 85.0,
@@ -60,9 +60,9 @@ def test_resource_info_model():
 
 def test_slot_info_model():
     resource_data = {
-        "resource_instance_accession_id": 10, "user_assigned_name": "Reagent Plate 1",
+        "resource_instance_accession_id": 10, "name": "Reagent Plate 1",
         "name": "corning_96_wellplate_360ul_flat",
-        "python_fqn": "pylabrobot.resources.Plate", "category": "PLATE"
+        "fqn": "pylabrobot.resources.Plate", "category": "PLATE"
     }
     data = {
         "name": "A1",
@@ -75,14 +75,14 @@ def test_slot_info_model():
     assert slot_info.name == data["name"]
     assert slot_info.resource is not None
     assert slot_info.resource.resource_instance_accession_id == resource_data["resource_instance_accession_id"]
-    assert slot_info.model_dump()["resource"]["user_assigned_name"] == "Reagent Plate 1"
+    assert slot_info.model_dump()["resource"]["name"] == "Reagent Plate 1"
 
 def test_deck_state_response_model():
     slot_data = {"name": "A1", "resource": None}
     data = {
         "deck_accession_id": 1,
-        "user_friendly_name": "Main Deck",
-        "python_fqn": "pylabrobot.resources.Deck",
+        "name": "Main Deck",
+        "fqn": "pylabrobot.resources.Deck",
         "size_x_mm": 500.0,
         "size_y_mm": 300.0,
         "size_z_mm": 20.0,
@@ -96,9 +96,9 @@ def test_deck_state_response_model():
 
 def test_deck_update_message_model():
     resource_data = {
-        "resource_instance_accession_id": 10, "user_assigned_name": "Tip Box",
+        "resource_instance_accession_id": 10, "name": "Tip Box",
         "name": "opentrons_96_tiprack_300ul",
-        "python_fqn": "pylabrobot.resources.TipRack", "category": "TIP_RACK"
+        "fqn": "pylabrobot.resources.TipRack", "category": "TIP_RACK"
     }
     data = {
         "deck_accession_id": 1,
@@ -172,15 +172,15 @@ def setup_basic_machines(db_session: Session) -> None:
     """Sets up a basic DECK machine and a NON-DECK machine."""
     deck_machine = ManagedDeviceOrm(
         id=VALID_DECK_ID,
-        user_friendly_name="Test Deck 1",
-        python_fqn="pylabrobot.resources.Deck",
+        name="Test Deck 1",
+        fqn="pylabrobot.resources.Deck",
         praxis_machine_category=PraxisDeviceCategoryEnum.DECK,
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
     non_deck_machine = ManagedDeviceOrm(
         id=VALID_NON_DECK_ID,
-        user_friendly_name="Test Heater 1",
-        python_fqn="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
+        name="Test Heater 1",
+        fqn="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
         praxis_machine_category=PraxisDeviceCategoryEnum.GENERIC_DEVICE, # Or another non-DECK category
         current_status=ManagedDeviceStatusEnum.ONLINE,
     )
@@ -205,8 +205,8 @@ def test_list_available_decks_with_data(client: TestClient, db_session: Session,
 
     deck_info = data[0]
     assert deck_info["id"] == VALID_DECK_ID
-    assert deck_info["user_friendly_name"] == "Test Deck 1"
-    assert deck_info["python_fqn"] == "pylabrobot.resources.Deck"
+    assert deck_info["name"] == "Test Deck 1"
+    assert deck_info["fqn"] == "pylabrobot.resources.Deck"
     assert deck_info["current_status"] == "ONLINE" # Enum .name or .value
 
 def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session):
@@ -227,20 +227,20 @@ def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Sess
 def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) -> None:
     """Fixture to set up a deck with some resource on it."""
     # Resource Definition
-    plate_def = ResourceDefinitionCatalogOrm(
+    plate_def = ResourceDefinitionOrm(
         id=1,
-        user_friendly_name="Standard 96 Well Plate Def",
+        name="Standard 96 Well Plate Def",
         name="corning_96_wellplate_360ul_flat",
-        python_fqn="pylabrobot.resources.Plate",
+        fqn="pylabrobot.resources.Plate",
         plr_category=PlrCategoryEnum.PLATE,
         size_x_mm=127.76, size_y_mm=85.48, size_z_mm=14.35,
         nominal_volume_ul=380.0
     )
-    tip_rack_def = ResourceDefinitionCatalogOrm(
+    tip_rack_def = ResourceDefinitionOrm(
         id=2,
-        user_friendly_name="Standard 300ul Tip Rack Def",
+        name="Standard 300ul Tip Rack Def",
         name="opentrons_96_tiprack_300ul",
-        python_fqn="pylabrobot.resources.TipRack",
+        fqn="pylabrobot.resources.TipRack",
         plr_category=PlrCategoryEnum.TIP_RACK,
     )
     db_session.add_all([plate_def, tip_rack_def])
@@ -249,7 +249,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     # Resource s
     plate_instance = ResourceOrm(
         id=1,
-        user_assigned_name="PlateOnDeck",
+        name="PlateOnDeck",
         resource_definition_accession_id=plate_def.accession_id,
         location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="A1",
@@ -258,7 +258,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     )
     tip_rack_instance = ResourceOrm(
         id=2,
-        user_assigned_name="TipsOnDeck",
+        name="TipsOnDeck",
         resource_definition_accession_id=tip_rack_def.accession_id,
         location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="B2",
@@ -267,7 +267,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     # Resource not on this deck
     other_plate_instance = ResourceOrm(
         id=3,
-        user_assigned_name="PlateInStorage",
+        name="PlateInStorage",
         resource_definition_accession_id=plate_def.accession_id,
         location_machine_accession_id=None, # Not on any deck
         current_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
@@ -284,8 +284,8 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
     data = response.json()
 
     assert data["deck_accession_id"] == VALID_DECK_ID
-    assert data["user_friendly_name"] == "Test Deck 1"
-    assert data["python_fqn"] == "pylabrobot.resources.Deck"
+    assert data["name"] == "Test Deck 1"
+    assert data["fqn"] == "pylabrobot.resources.Deck"
     # Placeholder dimensions might be None or specific values if set in WorkcellRuntime
     assert "size_x_mm" in data
     assert "slots" in data
@@ -296,7 +296,7 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
     # Check PlateOnDeck in A1
     assert "A1" in slots_with_resource
     plate_info = slots_with_resource["A1"]
-    assert plate_info["user_assigned_name"] == "PlateOnDeck"
+    assert plate_info["name"] == "PlateOnDeck"
     assert plate_info["name"] == "corning_96_wellplate_360ul_flat"
     assert plate_info["category"] == "PLATE"
     assert plate_info["properties_json"] == {"sample_type": "plasma"}
@@ -304,12 +304,12 @@ def test_get_specific_deck_state_with_resource(client: TestClient, db_session: S
     # Check TipsOnDeck in B2
     assert "B2" in slots_with_resource
     tip_rack_info = slots_with_resource["B2"]
-    assert tip_rack_info["user_assigned_name"] == "TipsOnDeck"
+    assert tip_rack_info["name"] == "TipsOnDeck"
     assert tip_rack_info["name"] == "opentrons_96_tiprack_300ul"
     assert tip_rack_info["category"] == "TIP_RACK"
 
     # Ensure no other resource is reported for this deck
-    all_resource_names_on_deck = [lw["user_assigned_name"] for lw in slots_with_resource.values()]
+    all_resource_names_on_deck = [lw["name"] for lw in slots_with_resource.values()]
     assert "PlateInStorage" not in all_resource_names_on_deck
 
     # TODO: Add checks for empty slots if get_deck_state_representation is updated to include them.
@@ -339,7 +339,7 @@ def test_websocket_deck_updates_connection_and_broadcast(client: TestClient, db_
         assert message_data["slot_name"] == test_message_payload["slot_name"]
 
         assert message_data["resource_info"] is not None
-        assert message_data["resource_info"]["user_assigned_name"] == test_message_payload["resource_name"]
+        assert message_data["resource_info"]["name"] == test_message_payload["resource_name"]
         assert "timestamp" in message_data
 
         websocket.close()

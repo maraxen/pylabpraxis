@@ -328,10 +328,10 @@ void main() {
     });
   });
 
-  group('ResourceDefinitionCatalogOrm - CRUD', () {
+  group('ResourceDefinitionOrm - CRUD', () {
     final resourceDefJson = {
       'name': 'test_plate',
-      'python_fqn': 'pylabrobot.resources.Plate',
+      'fqn': 'pylabrobot.resources.Plate',
       'size_x_mm': 127.0,
       'size_y_mm': 85.0,
       'size_z_mm': 14.0,
@@ -339,9 +339,7 @@ void main() {
       'model': 'TestModel123',
       // other fields as needed by your model ...
     };
-    final resourceDefOrm = ResourceDefinitionCatalogOrm.fromJson(
-      resourceDefJson,
-    );
+    final resourceDefOrm = ResourceDefinitionOrm.fromJson(resourceDefJson);
     final assetResponseJsonForResourceDef = {
       'name': resourceDefOrm.pylabrobotDefinitionName,
       'type': 'resource', // or 'resource' depending on implementation
@@ -351,7 +349,7 @@ void main() {
     };
 
     group('getResourceDefinitions', () {
-      test('returns list of ResourceDefinitionCatalogOrm on success', () async {
+      test('returns list of ResourceDefinitionOrm on success', () async {
         // Assumes /api/assets/types/resource returns AssetResponse which needs mapping
         final responseData = [
           assetResponseJsonForResourceDef,
@@ -367,7 +365,7 @@ void main() {
 
         final result = await assetApiService.getResourceDefinitions();
 
-        expect(result, isA<List<ResourceDefinitionCatalogOrm>>());
+        expect(result, isA<List<ResourceDefinitionOrm>>());
         expect(result.length, 2);
         expect(
           result[0].pylabrobotDefinitionName,
@@ -403,7 +401,7 @@ void main() {
     });
 
     group('createResourceDefinition', () {
-      test('returns ResourceDefinitionCatalogOrm on success', () async {
+      test('returns ResourceDefinitionOrm on success', () async {
         // Assumes /api/assets/resource returns AssetResponse which needs mapping
         when(
           mockDio.post('/api/assets/resource', data: anyNamed('data')),
@@ -420,7 +418,7 @@ void main() {
           resourceDefOrm,
         );
 
-        expect(result, isA<ResourceDefinitionCatalogOrm>());
+        expect(result, isA<ResourceDefinitionOrm>());
         expect(
           result.pylabrobotDefinitionName,
           resourceDefOrm.pylabrobotDefinitionName,
@@ -490,7 +488,7 @@ void main() {
     };
     final resourceJson = {
       'id': 1,
-      'user_assigned_name': 'Test LW  1',
+      'name': 'Test LW  1',
       'name': 'test_plate_def',
       'properties_json':
           inventoryDataJson, // This contains the inventory details
@@ -502,11 +500,8 @@ void main() {
 
     group('getResources (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        when(mockDio.get('/api/assets/resource_instances')).thenThrow(
-          createDioError(
-            statusCode: 501,
-            path: '/api/assets/resource_instances',
-          ),
+        when(mockDio.get('/api/assets/resource')).thenThrow(
+          createDioError(statusCode: 501, path: '/api/assets/resource'),
         );
         expect(
           () => assetApiService.getResources(),
@@ -518,15 +513,9 @@ void main() {
     group('createResource (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
         when(
-          mockDio.post(
-            '/api/assets/resource_instances',
-            data: anyNamed('data'),
-          ),
+          mockDio.post('/api/assets/resource', data: anyNamed('data')),
         ).thenThrow(
-          createDioError(
-            statusCode: 501,
-            path: '/api/assets/resource_instances',
-          ),
+          createDioError(statusCode: 501, path: '/api/assets/resource'),
         );
         expect(
           () => assetApiService.createResource(resourceOrm),
@@ -541,11 +530,11 @@ void main() {
             resourceOrm.accession_id!
                 .toString(); // Assuming ID is non-null for a created instance
         when(
-          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+          mockDio.get('/api/assets/resource/$instanceId/inventory'),
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/assets/resource_instances/$instanceId/inventory',
+              path: '/api/assets/resource/$instanceId/inventory',
             ),
             data: inventoryDataJson,
             statusCode: 200,
@@ -565,18 +554,18 @@ void main() {
         );
         expect(result.userAssignedName, ' $instanceId (Inventory)');
         verify(
-          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+          mockDio.get('/api/assets/resource/$instanceId/inventory'),
         ).called(1);
       });
 
       test('throws ApiException on API error for getResourceById', () async {
         final instanceId = resourceOrm.accession_id!.toString();
         when(
-          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+          mockDio.get('/api/assets/resource/$instanceId/inventory'),
         ).thenThrow(
           createDioError(
             statusCode: 404,
-            path: '/api/assets/resource_instances/$instanceId/inventory',
+            path: '/api/assets/resource/$instanceId/inventory',
           ),
         );
         expect(
@@ -606,13 +595,13 @@ void main() {
 
         when(
           mockDio.put(
-            '/api/assets/resource_instances/$instanceId/inventory',
+            '/api/assets/resource/$instanceId/inventory',
             data: anyNamed('data'),
           ),
         ).thenAnswer(
           (_) async => Response(
             requestOptions: RequestOptions(
-              path: '/api/assets/resource_instances/$instanceId/inventory',
+              path: '/api/assets/resource/$instanceId/inventory',
             ),
             data: updatedInventoryJson,
             statusCode: 200,
@@ -632,7 +621,7 @@ void main() {
         );
         verify(
           mockDio.put(
-            '/api/assets/resource_instances/$instanceId/inventory',
+            '/api/assets/resource/$instanceId/inventory',
             data: anyNamed('data'),
           ),
         ).called(1);
@@ -667,13 +656,13 @@ void main() {
 
         when(
           mockDio.put(
-            '/api/assets/resource_instances/$instanceId/inventory',
+            '/api/assets/resource/$instanceId/inventory',
             data: anyNamed('data'),
           ),
         ).thenThrow(
           createDioError(
             statusCode: 500,
-            path: '/api/assets/resource_instances/$instanceId/inventory',
+            path: '/api/assets/resource/$instanceId/inventory',
           ),
         );
         expect(
@@ -686,12 +675,10 @@ void main() {
     group('deleteResource (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
         final instanceId = resourceOrm.accession_id!.toString();
-        when(
-          mockDio.delete('/api/assets/resource_instances/$instanceId'),
-        ).thenThrow(
+        when(mockDio.delete('/api/assets/resource/$instanceId')).thenThrow(
           createDioError(
             statusCode: 501,
-            path: '/api/assets/resource_instances/$instanceId',
+            path: '/api/assets/resource/$instanceId',
           ),
         );
         expect(

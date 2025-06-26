@@ -63,9 +63,7 @@ async def create_deck_position_item(
   deck_orm = deck_result.scalar_one_or_none()
 
   if not deck_orm:
-    error_message = (
-      f"DeckOrm with id {deck_accession_id} not found. " "Cannot create position item."
-    )
+    error_message = f"DeckOrm with id {deck_accession_id} not found. " "Cannot create position item."
     logger.error(error_message)
     raise ValueError(error_message)
 
@@ -77,10 +75,7 @@ async def create_deck_position_item(
       ),
     )
     if not resource_instance_result.scalar_one_or_none():
-      error_message = (
-        f"ResourceOrm with id {resource_instance_accession_id} not found. "
-        "Cannot create position item."
-      )
+      error_message = f"ResourceOrm with id {resource_instance_accession_id} not found. " "Cannot create position item."
       logger.error(error_message)
       raise ValueError(error_message)
 
@@ -88,7 +83,7 @@ async def create_deck_position_item(
   if expected_resource_definition_name is not None:
     if not await read_resource_definition(db, expected_resource_definition_name):
       error_message = (
-        f"ResourceDefinitionCatalogOrm with name '{expected_resource_definition_name}' "
+        f"ResourceDefinitionOrm with name '{expected_resource_definition_name}' "
         "not found. Cannot create position item."
       )
       logger.error(error_message)
@@ -115,8 +110,7 @@ async def create_deck_position_item(
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error creating position item '{name}' to deck instance ID"
-      f" {deck_accession_id}. Details: {e}"
+      f"Integrity error creating position item '{name}' to deck instance ID" f" {deck_accession_id}. Details: {e}"
     )
     logger.error(error_message)
     return None
@@ -204,10 +198,7 @@ async def update_deck_position_item(
 
   original_position_accession_id = position_item.position_accession_id
 
-  if (
-    position_accession_id is not None
-    and position_item.position_accession_id != position_accession_id
-  ):
+  if position_accession_id is not None and position_item.position_accession_id != position_accession_id:
     logger.debug(
       "Updating position ID from '%s' to '%s'.",
       original_position_accession_id,
@@ -225,10 +216,7 @@ async def update_deck_position_item(
       ),
     )
     if not resource_instance_result.scalar_one_or_none():
-      error_message = (
-        f"ResourceOrm with id {resource_instance_accession_id} not found. "
-        "Cannot update position item."
-      )
+      error_message = f"ResourceOrm with id {resource_instance_accession_id} not found. " "Cannot update position item."
       logger.error(error_message)
       raise ValueError(error_message)
     logger.debug(
@@ -239,12 +227,11 @@ async def update_deck_position_item(
     position_item.resource_instance_accession_id = resource_instance_accession_id
   if expected_resource_definition_name is not None and (
     not position_item.expected_resource_definition_name
-    or position_item.expected_resource_definition_name
-    != expected_resource_definition_name
+    or position_item.expected_resource_definition_name != expected_resource_definition_name
   ):
     if not await read_resource_definition(db, expected_resource_definition_name):
       error_message = (
-        f"ResourceDefinitionCatalogOrm with name '{expected_resource_definition_name}' "
+        f"ResourceDefinitionOrm with name '{expected_resource_definition_name}' "
         "not found. Cannot update position item."
       )
       logger.error(error_message)
@@ -262,10 +249,7 @@ async def update_deck_position_item(
     return position_item
   except IntegrityError as e:
     await db.rollback()
-    error_message = (
-      f"Integrity error updating position item ID {position_item_accession_id}. "
-      f"Details: {e}"
-    )
+    error_message = f"Integrity error updating position item ID {position_item_accession_id}. " f"Details: {e}"
     logger.error(error_message, exc_info=True)
     return None
 
@@ -341,8 +325,7 @@ async def _process_position_definitions(
     # Delete existing position definitions for this deck type
     if deck_type_orm.accession_id:  # Ensure we have an ID to link positions
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
-        DeckPositionDefinitionOrm.deck_type_definition_accession_id
-        == deck_type_orm.accession_id,
+        DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_orm.accession_id,
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
@@ -362,9 +345,7 @@ async def _process_position_definitions(
 
       # Map Pydantic fields to position_specific_details if not direct ORM fields
       if position_data.get("pylabrobot_position_type_name"):
-        position_specific_details["pylabrobot_position_type_name"] = position_data[
-          "pylabrobot_position_type_name"
-        ]
+        position_specific_details["pylabrobot_position_type_name"] = position_data["pylabrobot_position_type_name"]
       if position_data.get("allowed_resource_definition_names"):
         position_specific_details["allowed_resource_definition_names"] = position_data[
           "allowed_resource_definition_names"
@@ -387,9 +368,7 @@ async def _process_position_definitions(
         accepted_resource_categories_json=position_data.get(
           "allowed_resource_categories",
         ),
-        position_specific_details_json=position_specific_details
-        if position_specific_details
-        else None,
+        position_specific_details_json=position_specific_details if position_specific_details else None,
       )
       db.add(new_position)
 
@@ -435,9 +414,7 @@ async def create_deck_position_definitions(
     Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = (
-    f"Deck Position Definitions (Deck Type ID: {deck_type_definition_accession_id}):"
-  )
+  log_prefix = f"Deck Position Definitions (Deck Type ID: {deck_type_definition_accession_id}):"
   logger.info(
     "%s Attempting to create %s new position definitions.",
     log_prefix,
@@ -474,9 +451,7 @@ async def create_deck_position_definitions(
 
       # Map Pydantic-like fields to position_specific_details_json
       if position_data.get("pylabrobot_position_type_name"):
-        position_specific_details["pylabrobot_position_type_name"] = position_data[
-          "pylabrobot_position_type_name"
-        ]
+        position_specific_details["pylabrobot_position_type_name"] = position_data["pylabrobot_position_type_name"]
       if position_data.get("allowed_resource_definition_names"):
         position_specific_details["allowed_resource_definition_names"] = position_data[
           "allowed_resource_definition_names"
@@ -499,9 +474,7 @@ async def create_deck_position_definitions(
         accepted_resource_categories_json=position_data.get(
           "allowed_resource_categories",
         ),
-        position_specific_details_json=position_specific_details
-        if position_specific_details
-        else None,
+        position_specific_details_json=position_specific_details if position_specific_details else None,
       )
       db.add(new_position)
       created_positions.append(new_position)
@@ -591,8 +564,7 @@ async def update_deck_position_definition(
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id
-      == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
     )
     .filter(DeckPositionDefinitionOrm.name == name),
   )
@@ -623,13 +595,9 @@ async def update_deck_position_definition(
   current_position_details = position_orm.position_specific_details_json or {}
 
   if pylabrobot_position_type_name is not None:
-    current_position_details["pylabrobot_position_type_name"] = (
-      pylabrobot_position_type_name
-    )
+    current_position_details["pylabrobot_position_type_name"] = pylabrobot_position_type_name
   if allowed_resource_definition_names is not None:
-    current_position_details["allowed_resource_definition_names"] = (
-      allowed_resource_definition_names
-    )
+    current_position_details["allowed_resource_definition_names"] = allowed_resource_definition_names
   if accepts_tips is not None:
     current_position_details["accepts_tips"] = accepts_tips
   if accepts_plates is not None:
@@ -693,8 +661,7 @@ async def delete_deck_position_definition(
   result = await db.execute(
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id
-      == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
     )
     .filter(DeckPositionDefinitionOrm.name == name),
   )
@@ -758,8 +725,7 @@ async def read_position_definitions_for_deck_type(
   stmt = (
     select(DeckPositionDefinitionOrm)
     .filter(
-      DeckPositionDefinitionOrm.deck_type_definition_accession_id
-      == deck_type_definition_accession_id,
+      DeckPositionDefinitionOrm.deck_type_definition_accession_id == deck_type_definition_accession_id,
     )
     .order_by(
       DeckPositionDefinitionOrm.name,

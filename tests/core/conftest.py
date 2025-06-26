@@ -11,7 +11,7 @@ from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.models import (
   MachineOrm,
   MachineStatusEnum,
-  ResourceDefinitionCatalogOrm,
+  ResourceDefinitionOrm,
   ResourceOrm,
   ResourceStatusEnum,
 )
@@ -58,8 +58,8 @@ def machine_orm_factory():
   def _factory(**kwargs):
     defaults = {
       "accession_id": TEST_MACHINE_ID,
-      "user_friendly_name": "Test OT-2",
-      "python_fqn": "pylabrobot.liquid_handling.ot_2.OT_2",
+      "name": "Test OT-2",
+      "fqn": "pylabrobot.liquid_handling.ot_2.OT_2",
       "current_status": MachineStatusEnum.AVAILABLE,
       "current_protocol_run_accession_id": None,
     }
@@ -71,19 +71,19 @@ def machine_orm_factory():
 
 @pytest.fixture
 def resource_definition_factory():
-  """Create ResourceDefinitionCatalogOrm instances."""
+  """Create ResourceDefinitionOrm instances."""
 
   def _factory(**kwargs):
     defaults = {
       "name": "cos_96_wellplate_100ul",
-      "python_fqn": "pylabrobot.resources.corning_costar.plates.cos_96_wellplate_100ul",
+      "fqn": "pylabrobot.resources.corning_costar.plates.cos_96_wellplate_100ul",
       "resource_type": "Plate",
       "is_consumable": True,
       "plr_definition_details_json": {"size_x": 127.0, "size_y": 86.0},
     }
     defaults.update(kwargs)
     # Using a MagicMock allows attribute access without a full ORM model
-    mock_orm = MagicMock(spec=ResourceDefinitionCatalogOrm)
+    mock_orm = MagicMock(spec=ResourceDefinitionOrm)
     for key, value in defaults.items():
       setattr(mock_orm, key, value)
     return mock_orm
@@ -98,8 +98,8 @@ def resource_instance_factory():
   def _factory(**kwargs):
     defaults = {
       "accession_id": TEST_RESOURCE_ID,
-      "user_assigned_name": "Test Plate 1",
-      "python_fqn": "cos_96_wellplate_100ul",
+      "name": "Test Plate 1",
+      "fqn": "cos_96_wellplate_100ul",
       "current_status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       "current_protocol_run_accession_id": None,
       "location_machine_accession_id": None,

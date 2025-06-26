@@ -119,10 +119,10 @@ class TestAcquireResource:
     resource_instance_factory,
   ):
     res_def = resource_definition_factory(name=self.RESOURCE_DEF_NAME)
-    res_inst = resource_instance_factory(python_fqn=self.RESOURCE_DEF_NAME)
+    res_inst = resource_instance_factory(fqn=self.RESOURCE_DEF_NAME)
     mock_workcell_runtime.create_or_get_resource.return_value = MagicMock()
     with (
-      patch("praxis.backend.services.list_resource_instances") as mock_list,
+      patch("praxis.backend.services.read_resources") as mock_list,
       patch(
         "praxis.backend.services.read_resource_definition",
         return_value=res_def,
@@ -142,7 +142,7 @@ class TestAcquireResource:
       mock_update.assert_awaited_once()
 
   async def test_acquire_resource_fails_if_none_found(self, asset_manager):
-    with patch("praxis.backend.services.list_resource_instances", return_value=[]):
+    with patch("praxis.backend.services.read_resources", return_value=[]):
       with pytest.raises(AssetAcquisitionError):
         await asset_manager.acquire_resource(
           TEST_PROTOCOL_RUN_ID,
@@ -179,7 +179,7 @@ class TestReleaseAssets:
     res_def = resource_definition_factory()
     with (
       patch(
-        "praxis.backend.services.read_resource_instance",
+        "praxis.backend.services.read_resource",
         return_value=res_inst,
       ),
       patch(

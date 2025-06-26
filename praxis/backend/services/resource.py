@@ -4,16 +4,24 @@
 import uuid
 from functools import partial
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from praxis.backend.models.filters import SearchFilters
 from praxis.backend.models.resource_orm import ResourceOrm
 from praxis.backend.models.resource_pydantic_models import (
   ResourceCreate,
   ResourceUpdate,
+)
+from praxis.backend.services.utils.query_builder import (
+  apply_date_range_filters,
+  apply_pagination,
+  apply_property_filters,
+  apply_specific_id_filters,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -57,7 +65,7 @@ async def create_resource(
   """
   logger.info(
     "Attempting to create resource '%s' for parent ID %s.",
-    resource_create.name,  # type: ignore
+    resource_create.name,
     resource_create.parent_accession_id,
   )
 
@@ -74,7 +82,7 @@ async def create_resource(
     await db.refresh(resource_orm)
     logger.info(
       "Successfully created resource '%s' with ID %s.",
-      resource_orm.name,  # type: ignore
+      resource_orm.name,
       resource_orm.accession_id,
     )
   except IntegrityError as e:
@@ -124,8 +132,8 @@ async def read_resource(
   if resource:
     logger.info(
       "Successfully retrieved resource ID %s: '%s'.",
-      resource_accession_id,  # type: ignore
-      resource.name,  # type: ignore
+      resource_accession_id,
+      resource.name,
     )
   else:
     logger.info("Resource with ID %s not found.", resource_accession_id)
@@ -134,36 +142,54 @@ async def read_resource(
 
 async def read_resources(
   db: AsyncSession,
-  parent_accession_id: UUID | None = None,
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters,
+  fqn: str | None = None, # Specific filter
+  status: str | None = None, # Specific filter
 ) -> list[ResourceOrm]:
   """List all resources, with optional filtering by parent ID.
 
   Args:
       db: The database session.
-      parent_accession_id: The ID of the parent asset to filter by.
-      limit: The maximum number of results to return.
-      offset: The number of results to skip.
+      filters: Search and filter criteria.
+      fqn: Optional FQN to filter resources by.
+      status: Optional status to filter resources by.
 
   Returns:
       A list of resource objects.
 
   """
   logger.info(
-    "Listing resources with parent ID filter: %s, limit: %s, offset: %s.",
-    parent_accession_id,
-    limit,
-    offset,
+    "Listing resources with filters: %s",
+    filters.model_dump_json(),
   )
   stmt = select(ResourceOrm).options(
     joinedload(ResourceOrm.parent),
     selectinload(ResourceOrm.children),
     joinedload(ResourceOrm.resource_definition),
   )
-  if parent_accession_id is not None:
-    stmt = stmt.filter(ResourceOrm.parent_accession_id == parent_accession_id)
-  stmt = stmt.order_by(ResourceOrm.name).limit(limit).offset(offset)
+
+  conditions = []
+
+  if filters.parent_accession_id is not None:
+    conditions.append(ResourceOrm.parent_accession_id == filters.parent_accession_id)
+
+  if fqn:
+    conditions.append(ResourceOrm.fqn == fqn)
+
+  if status:
+    conditions.append(ResourceOrm.current_status == status)
+
+  if conditions:
+    stmt = stmt.filter(and_(*conditions))
+
+  # Apply generic filters from query_builder
+  stmt = apply_specific_id_filters(stmt, filters, ResourceOrm)
+  stmt = apply_date_range_filters(stmt, filters, ResourceOrm.created_at)
+  stmt = apply_property_filters(stmt, filters, ResourceOrm.properties_json.cast(JSONB))
+
+  stmt = apply_pagination(stmt, filters)
+
+  stmt = stmt.order_by(ResourceOrm.name)
   result = await db.execute(stmt)
   resources = list(result.scalars().all())
   logger.info("Found %s resources.", len(resources))
@@ -196,7 +222,7 @@ async def read_resource_by_name(db: AsyncSession, name: str) -> ResourceOrm | No
   if resource:
     logger.info("Successfully retrieved resource by name '%s'.", name)
   else:
-    logger.info("Resource with name '%s' not found.", name)  # type: ignore
+    logger.info("Resource with name '%s' not found.", name)
   return resource
 
 
@@ -235,8 +261,8 @@ async def update_resource(
     await db.refresh(resource_orm)
     logger.info(
       "Successfully updated resource ID %s: '%s'.",
-      resource_accession_id,  # type: ignore
-      resource_orm.name,  # type: ignore
+      resource_accession_id,
+      resource_orm.name,
     )
     return await read_resource(db, resource_accession_id)
   except IntegrityError as e:

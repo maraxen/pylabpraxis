@@ -23,6 +23,7 @@ from praxis.backend.models import (
   MachineResponse,
   MachineStatusEnum,
   MachineUpdate,
+  SearchFilters,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -100,22 +101,18 @@ async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
 )
 async def list_machines(
   db: AsyncSession = Depends(get_db),
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters = Depends(),
   status: MachineStatusEnum | None = None,
   pylabrobot_class_filter: str | None = None,
-  workcell_accession_id: UUID | None = None,
   name_filter: str | None = None,
 ):
   """List all machines with optional filtering."""
   return await svc.list_machines(
     db,
+    filters=filters,
     status=status,
     pylabrobot_class_filter=pylabrobot_class_filter,
-    workcell_accession_id=workcell_accession_id,
     name_filter=name_filter,
-    limit=limit,
-    offset=offset,
   )
 
 

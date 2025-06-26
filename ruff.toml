@@ -4,7 +4,7 @@ select = ["ALL"]
 
 # ignore = ["E501"] # Example: ignore line too long for general code
 
-line-length = 88
+line-length = 120
 indent-width = 2
 fix = true
 target-version = "py310"

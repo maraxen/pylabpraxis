@@ -36,7 +36,7 @@ from unittest.mock import call, patch # Ensure patch is imported
 from praxis.backend.protocol_core.protocol_definition_models import ParameterMetadataModel, AssetRequirementModel
 from praxis.backend.database_models.asset_management_orm import (
     ResourceStatusEnum, ManagedDeviceStatusEnum,
-    ResourceDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
+    ResourceDefinitionOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
     ResourceOrm as ResourceOrmReal
 )
 # Import WorkcellRuntime to patch its methods (though we'll mock its instance methods)

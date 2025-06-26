@@ -156,8 +156,8 @@ class TestAssetLifecycle:
     mock_machine_orm = MagicMock(
       spec=MachineOrm,
       accession_id=machine_id,
-      user_friendly_name="TestBot",
-      python_fqn="my_module.MockMachineResource",
+      name="TestBot",
+      fqn="my_module.MockMachineResource",
       backend_config_json={},
       is_resource=True,  # This machine is also a resource
     )
@@ -191,8 +191,8 @@ class TestAssetLifecycle:
     mock_machine_orm = MagicMock(
       spec=MachineOrm,
       accession_id=machine_id,
-      user_friendly_name="FailyBot",
-      python_fqn="my_module.FailyMachine",
+      name="FailyBot",
+      fqn="my_module.FailyMachine",
     )
     # This mock will be returned by the patched _get_class_from_fqn
     mock_failing_machine_cls = MagicMock()
@@ -224,7 +224,7 @@ class TestAssetLifecycle:
     mock_resource_orm = MagicMock(
       spec=ResourceOrm,
       accession_id=resource_id,
-      user_assigned_name="TestPlate",
+      name="TestPlate",
       is_machine=False,
     )
     # Use the pure resource mock
@@ -292,7 +292,7 @@ class TestDeckOperations:
     )
     return deck_id, resource_id, mock_deck
 
-  @patch("praxis.backend.services.read_deck_instance")
+  @patch("praxis.backend.services.read_deck")
   @patch("praxis.backend.services.read_deck_type_definition")
   @patch("praxis.backend.services.update_resource_instance_location_and_status")
   async def test_assign_resource_to_deck_by_position(

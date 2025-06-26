@@ -40,12 +40,10 @@ class _FakeManagedDeviceOrm_0 extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakeResourceDefinitionCatalogOrm_1 extends _i1.SmartFake
-    implements _i3.ResourceDefinitionCatalogOrm {
-  _FakeResourceDefinitionCatalogOrm_1(
-    Object parent,
-    Invocation parentInvocation,
-  ) : super(parent, parentInvocation);
+class _FakeResourceDefinitionOrm_1 extends _i1.SmartFake
+    implements _i3.ResourceDefinitionOrm {
+  _FakeResourceDefinitionOrm_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
 }
 
 class _FakeResourceOrm_2 extends _i1.SmartFake implements _i4.ResourceOrm {
@@ -162,24 +160,23 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
           as _i8.Future<void>);
 
   @override
-  _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>> getResourceDefinitions() =>
+  _i8.Future<List<_i3.ResourceDefinitionOrm>> getResourceDefinitions() =>
       (super.noSuchMethod(
             Invocation.method(#getResourceDefinitions, []),
-            returnValue:
-                _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>>.value(
-                  <_i3.ResourceDefinitionCatalogOrm>[],
-                ),
+            returnValue: _i8.Future<List<_i3.ResourceDefinitionOrm>>.value(
+              <_i3.ResourceDefinitionOrm>[],
+            ),
           )
-          as _i8.Future<List<_i3.ResourceDefinitionCatalogOrm>>);
+          as _i8.Future<List<_i3.ResourceDefinitionOrm>>);
 
   @override
-  _i8.Future<_i3.ResourceDefinitionCatalogOrm> createResourceDefinition(
-    _i3.ResourceDefinitionCatalogOrm? resourceDefinition,
+  _i8.Future<_i3.ResourceDefinitionOrm> createResourceDefinition(
+    _i3.ResourceDefinitionOrm? resourceDefinition,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#createResourceDefinition, [resourceDefinition]),
-            returnValue: _i8.Future<_i3.ResourceDefinitionCatalogOrm>.value(
-              _FakeResourceDefinitionCatalogOrm_1(
+            returnValue: _i8.Future<_i3.ResourceDefinitionOrm>.value(
+              _FakeResourceDefinitionOrm_1(
                 this,
                 Invocation.method(#createResourceDefinition, [
                   resourceDefinition,
@@ -187,20 +184,20 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
               ),
             ),
           )
-          as _i8.Future<_i3.ResourceDefinitionCatalogOrm>);
+          as _i8.Future<_i3.ResourceDefinitionOrm>);
 
   @override
-  _i8.Future<_i3.ResourceDefinitionCatalogOrm> updateResourceDefinition(
+  _i8.Future<_i3.ResourceDefinitionOrm> updateResourceDefinition(
     String? resourceDefinitionId,
-    _i3.ResourceDefinitionCatalogOrm? resourceDefinition,
+    _i3.ResourceDefinitionOrm? resourceDefinition,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateResourceDefinition, [
               resourceDefinitionId,
               resourceDefinition,
             ]),
-            returnValue: _i8.Future<_i3.ResourceDefinitionCatalogOrm>.value(
-              _FakeResourceDefinitionCatalogOrm_1(
+            returnValue: _i8.Future<_i3.ResourceDefinitionOrm>.value(
+              _FakeResourceDefinitionOrm_1(
                 this,
                 Invocation.method(#updateResourceDefinition, [
                   resourceDefinitionId,
@@ -209,7 +206,7 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
               ),
             ),
           )
-          as _i8.Future<_i3.ResourceDefinitionCatalogOrm>);
+          as _i8.Future<_i3.ResourceDefinitionOrm>);
 
   @override
   _i8.Future<void> deleteResourceDefinition(String? resourceDefinitionId) =>

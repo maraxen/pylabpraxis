@@ -26,7 +26,7 @@ from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
 if TYPE_CHECKING:
-  from .protocol_definitions_orm import AssetDefinitionOrm
+  from .protocol_definitions_orm import AssetRequirementOrm
 
 
 class ProtocolStartRequest(BaseModel):
@@ -169,7 +169,7 @@ class AssetRequirementModel(BaseModel):
   """
 
   accession_id: UUID7
-  name: str  # type: ignore
+  name: str
   fqn: str
   optional: bool = False
   default_value_repr: str | None = None
@@ -235,7 +235,7 @@ class RuntimeAssetRequirement:
   @classmethod
   def from_asset_definition_orm(
     cls,
-    asset_def_orm: "AssetDefinitionOrm",
+    asset_def_orm: "AssetRequirementOrm",  # Type hint for ORM model
     asset_type: str = "asset",
     estimated_duration_ms: int | None = None,
     priority: int = 1,
@@ -247,7 +247,7 @@ class RuntimeAssetRequirement:
     # Convert ORM to AssetRequirementModel
     asset_requirement = AssetRequirementModel(
       accession_id=asset_def_orm.accession_id,
-      name=asset_def_orm.name,  # type: ignore
+      name=asset_def_orm.name,
       fqn=asset_def_orm.fqn,
       optional=asset_def_orm.optional,
       default_value_repr=asset_def_orm.default_value_repr,

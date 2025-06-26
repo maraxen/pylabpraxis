@@ -184,7 +184,7 @@ class AssetReservationOrm(Base):
   asset_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   asset_instance_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("asset_instances.accession_id"),
+    ForeignKey("asset.accession_id"),
     nullable=True,
     index=True,
   )

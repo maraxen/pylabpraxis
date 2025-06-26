@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.models import (
   DeckOrm,
   DeckTypeDefinitionOrm,
-  ResourceDefinitionCatalogOrm,
+  ResourceDefinitionOrm,
   ResourceOrm,
 )
 from praxis.backend.services.deck_position import (
@@ -28,13 +28,13 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 async def setup_test_data_for_items(db: AsyncSession) -> dict[str, Any]:
   """Set up data for testing DeckPositionResourceOrm operations."""
-  deck_def = ResourceDefinitionCatalogOrm(
+  deck_def = ResourceDefinitionOrm(
     name="deck_def_for_pos_test",
-    python_fqn="some.deck.def",
+    fqn="some.deck.def",
   )
-  plate_def = ResourceDefinitionCatalogOrm(
+  plate_def = ResourceDefinitionOrm(
     name="plate_def_for_pos_test",
-    python_fqn="some.plate.def",
+    fqn="some.plate.def",
   )
   db.add_all([deck_def, plate_def])
   await db.flush()
@@ -55,7 +55,7 @@ async def setup_test_data_for_items(db: AsyncSession) -> dict[str, Any]:
   deck_instance = DeckOrm(
     name="DeckForPosTest",
     deck_accession_id=deck_resource.accession_id,
-    python_fqn="some.deck.fqn",
+    fqn="some.deck.fqn",
     accession_id=uuid.uuid4(),
   )
   db.add(deck_instance)
@@ -281,10 +281,7 @@ class TestDeckPositionDefinitionService:
     assert updated_def.name == "UpdatableSlot"
     assert updated_def.nominal_z_mm == 5.5
     assert updated_def.position_specific_details_json is not None
-    assert (
-      updated_def.position_specific_details_json.get("notes")
-      == "This slot has been updated."
-    )
+    assert updated_def.position_specific_details_json.get("notes") == "This slot has been updated."
 
   async def test_update_non_existent_position_definition_fails(
     self,

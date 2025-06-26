@@ -22,6 +22,7 @@ from praxis.backend.models import (
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
   ProtocolStartRequest,
+  SearchFilters,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -66,8 +67,7 @@ protocol_run_accession_resolver = partial(
 )
 async def list_protocol_definitions(
   db: AsyncSession = Depends(get_db),
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters = Depends(),
   source_name: str | None = None,
   is_top_level: bool | None = None,
   category: str | None = None,
@@ -76,9 +76,8 @@ async def list_protocol_definitions(
 ):
   """List all available protocol definitions."""
   return await svc.list_protocol_definitions(
-    db,
-    limit=limit,
-    offset=offset,
+    db=db,
+    filters=filters,
     source_name=source_name,
     is_top_level=is_top_level,
     category=category,
@@ -193,17 +192,15 @@ async def create_protocol_run(
 )
 async def list_protocol_runs(
   db: AsyncSession = Depends(get_db),
-  limit: int = 100,
-  offset: int = 0,
+  filters: SearchFilters = Depends(),
   protocol_definition_accession_id: UUID | None = None,
   protocol_name: str | None = None,
   status: ProtocolRunStatusEnum | None = None,
 ):
   """List all protocol runs with optional filtering."""
   return await svc.list_protocol_runs(
-    db,
-    limit=limit,
-    offset=offset,
+    db=db,
+    filters=filters,
     protocol_definition_accession_id=protocol_definition_accession_id,
     protocol_name=protocol_name,
     status=status,

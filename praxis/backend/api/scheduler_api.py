@@ -16,6 +16,7 @@ from praxis.backend.api.dependencies import get_db
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
+from praxis.backend.models.filters import SearchFilters
 from praxis.backend.models.scheduler_orm import ScheduleStatusEnum
 from praxis.backend.models.scheduler_pydantic import (
   AssetAvailabilityResponse,
@@ -257,8 +258,6 @@ async def list_schedules(
   created_before: datetime | None = Query(None),
   include_completed: bool = Query(False),
   include_cancelled: bool = Query(False),
-  limit: int = Query(50, ge=1, le=1000),
-  offset: int = Query(0, ge=0),
   db: AsyncSession = Depends(get_db),
 ) -> ScheduleListResponse:
   """List scheduled protocol runs with optional filters."""
@@ -267,23 +266,25 @@ async def list_schedules(
   if status:
     status_filter = [ScheduleStatusEnum(s.value) for s in status]
 
-  schedules = await scheduler_svc.list_schedule_entries(
-    db,
-    status_filter=status_filter,
-    protocol_run_ids=protocol_run_ids,
-    priority_min=priority_min,
-    priority_max=priority_max,
-    created_after=created_after,
-    created_before=created_before,
-    include_completed=include_completed,
-    include_cancelled=include_cancelled,
-    limit=limit + 1,  # Get one extra to check if there are more
-    offset=offset,
+  # Populate SearchFilters from query parameters
+  filters = SearchFilters(
+    limit=filters.limit, offset=filters.offset, # These come from Depends()
+    date_range_start=created_after, date_range_end=created_before,
+    priority_min=priority_min, priority_max=priority_max,
   )
 
-  has_more = len(schedules) > limit
+  schedules = await scheduler_svc.list_schedule_entries(
+    db,
+    filters=filters,
+    status_filter=status_filter,
+    protocol_run_ids=protocol_run_ids,
+    include_completed=include_completed,
+    include_cancelled=include_cancelled,
+  )
+
+  has_more = len(schedules) > filters.limit
   if has_more:
-    schedules = schedules[:limit]
+    schedules = schedules[:filters.limit]
 
   # Get total count (simplified - in production, you'd want to optimize this)
   total_count = len(schedules)  # This is incorrect but functional for now
@@ -295,8 +296,8 @@ async def list_schedules(
   return ScheduleListResponse(
     schedules=schedule_responses,
     total_count=total_count,
-    limit=limit,
-    offset=offset,
+    limit=filters.limit,
+    offset=filters.offset,
     has_more=has_more,
   )
 

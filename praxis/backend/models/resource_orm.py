@@ -183,17 +183,22 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
   __tablename__ = "resource_definition_catalog"
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, default=uuid7, index=True,
+    UUID,
+    primary_key=True,
+    default=uuid7,
+    index=True,
   )
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
-  python_fqn: Mapped[str] = mapped_column(  # Renamed from 'fqn' to 'python_fqn'
+  fqn: Mapped[str] = mapped_column(  # Renamed from 'fqn' to 'fqn'
     String,
     nullable=False,
     index=True,
     comment="Fully qualified name of the resource definition.",
   )
   resource_type: Mapped[str | None] = mapped_column(
-    String, nullable=True, comment="Human-readable type of the resource.",
+    String,
+    nullable=True,
+    comment="Human-readable type of the resource.",
   )
   description: Mapped[str | None] = mapped_column(Text, nullable=True)
   is_consumable: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -230,16 +235,15 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
   )
 
   resource_list: Mapped[list["ResourceOrm"]] = relationship(
-    "ResourceOrm", back_populates="resource_definition",
+    "ResourceOrm",
+    back_populates="resource_definition",
   )
 
   is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
 
   def __repr__(self):
     """Return a string representation of the ResourceDefinitionOrm object."""
-    return (
-      f"<ResourceDefinitionOrm(name='{self.name}', category='{self.plr_category}')>"
-    )
+    return f"<ResourceDefinitionOrm(name='{self.name}', category='{self.plr_category}')>"
 
 
 class ResourceOrm(Asset):
@@ -254,7 +258,10 @@ class ResourceOrm(Asset):
   __mapper_args__ = {"polymorphic_identity": "resource"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("assets.accession_id"), primary_key=True, default=uuid7,
+    UUID,
+    ForeignKey("assets.accession_id"),
+    primary_key=True,
+    default=uuid7,
   )
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   asset_type: Mapped[AssetType] = mapped_column(
@@ -265,7 +272,10 @@ class ResourceOrm(Asset):
 
   # Hierarchical relationship
   parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID, ForeignKey("resources.accession_id"), nullable=True, index=True,
+    UUID,
+    ForeignKey("resources.accession_id"),
+    nullable=True,
+    index=True,
   )
   parent: Mapped[Optional["ResourceOrm"]] = relationship(
     "ResourceOrm",
@@ -274,7 +284,9 @@ class ResourceOrm(Asset):
     foreign_keys=[parent_accession_id],
   )
   children: Mapped[list["ResourceOrm"]] = relationship(
-    "ResourceOrm", back_populates="parent", cascade="all, delete-orphan",
+    "ResourceOrm",
+    back_populates="parent",
+    cascade="all, delete-orphan",
   )
 
   # Definition
@@ -285,7 +297,8 @@ class ResourceOrm(Asset):
     index=True,
   )
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
-    "ResourceDefinitionOrm", back_populates="resource_list",
+    "ResourceDefinitionOrm",
+    back_populates="resource_list",
   )
 
   # State
@@ -315,12 +328,12 @@ class ResourceOrm(Asset):
 
   def __repr__(self):
     """Return a string representation of the ResourceOrm object."""
-    python_fqn = (
-      self.resource_definition.python_fqn  # type: ignore
+    fqn = (
+      self.resource_definition.fqn  # type: ignore
       if self.resource_definition and hasattr(self.resource_definition, "fqn")
       else "N/A"
     )
     return (
       f"<ResourceOrm(accession_id={self.accession_id}, name='{self.name}',"
-      f" type='{python_fqn}')> status={self.current_status.value}, "
+      f" type='{fqn}')> status={self.current_status.value}, "
     )
