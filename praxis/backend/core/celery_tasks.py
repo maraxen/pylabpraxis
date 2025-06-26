@@ -1,5 +1,5 @@
-# pylint: disable=broad-except,fixme
-"""Celery tasks for protocol execution.
+# pylint: disable=fixme
+"""Celery tasks for protocol execution. # broad-except is justified at task level.
 
 This module defines the async tasks for executing protocols in the background.
 It imports the shared Celery application instance and defines the business
@@ -107,6 +107,10 @@ def execute_protocol_run_task(
       _execute_protocol_async(run_uuid, user_params, initial_state, self.request.id)
     )
     task_logger.info("Protocol execution task completed for run_id=%s", protocol_run_id)
+    # pylint: disable-next=broad-except
+    # Justification: This is a top-level Celery task handler. Catching broad Exception
+    # ensures that any unhandled error during async execution is caught, logged, and
+    # the protocol run status is updated to FAILED, preventing silent failures.
     return result
   except Exception as e:
     error_msg = f"Protocol execution failed for run_id={protocol_run_id}: {e}"
@@ -190,6 +194,9 @@ async def _execute_protocol_async(
         exc_info=True,
       )
       # Ensure status is marked as FAILED on any exception within this block.
+      # pylint: disable-next=broad-except
+      # Justification: This is a critical error handling path within an async task.
+      # Catching broad Exception ensures that the protocol run status is updated to FAILED.
       await db_session.rollback()
       await svc.update_protocol_run_status(
         db=db_session,
@@ -231,6 +238,9 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
       task_logger.info(
         "Successfully updated run_id=%s to FAILED status.", protocol_run_id
       )
+    # pylint: disable-next=broad-except
+    # Justification: This is a last-resort error handler for DB updates.
+    # Catching broad Exception is necessary to prevent further unhandled exceptions.
     except Exception as e:
       # If this fails, we log it, but there's little else we can do.
       task_logger.critical(

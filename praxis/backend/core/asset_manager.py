@@ -1,5 +1,5 @@
-# noqa: F401
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,logging-fstring-interpolation
+# broad-except is disabled at method level where justified, not globally.
 """Manages the lifecycle and allocation of physical laboratory assets.
 
 praxis/core/asset_manager.py
@@ -90,7 +90,9 @@ class AssetManager:
     self.db: AsyncSession = db_session
     self.workcell_runtime = workcell_runtime
 
-    self.EXCLUDED_BASE_CLASSES: List[Type[Resource]] = [
+    self.EXCLUDED_BASE_CLASSES: List[
+      Type[Resource]
+    ] = [  # TODO: maybe just inspect if it's abstract?
       Carrier,
       Container,
       Deck,
@@ -211,7 +213,7 @@ class AssetManager:
           "AM_EXTRACT_ORDER: Ordering not found in details for %s.",
           resource_class.__name__,
         )
-    except Exception as e:
+    except (TypeError, KeyError, ValueError, IndexError) as e: # More specific exceptions
       logger.exception(
         "AM_EXTRACT_ORDER: Error extracting ordering for %s: %s",
         resource_class.__name__,
@@ -345,6 +347,7 @@ class AssetManager:
                   param_info["type"],
                   fqn,
                 )
+        # pylint: disable-next=broad-except
         except Exception as e_param:
           logger.warning(
             "AM_SYNC: Error inspecting constructor for %s: %s.", fqn, e_param
@@ -359,6 +362,7 @@ class AssetManager:
           else:  # Should not happen if constructor is standard
             logger.warning("AM_SYNC: Instantiation of %s returned None.", fqn)
             serialized_data = {}
+        # pylint: disable-next=broad-except
         except Exception as inst_err:
           logger.warning(
             "AM_SYNC: Instantiation/serialization of %s failed: %s. Kwargs: %s",
@@ -508,6 +512,9 @@ class AssetManager:
           if serialized_data:
             del serialized_data
 
+    # The broad-except disable is justified here because this is a sync function
+    # that should attempt to process all items, logging errors for individual
+    # failures rather than stopping the entire sync operation.
     logger.info(
       "AM_SYNC: Sync complete. Added: %d, Updated: %d", added_count, updated_count
     )

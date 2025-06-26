@@ -1,5 +1,5 @@
-# pylint: disable=too-many-arguments,broad-except,fixme
-"""Protocol Scheduler - Manages protocol execution scheduling and asset allocation.
+# pylint: disable=too-many-arguments,fixme
+"""Protocol Scheduler - Manages protocol execution scheduling and asset allocation. # broad-except is justified at method level.
 
 This module provides the scheduling layer between the API and the Orchestrator,
 handling asset analysis, reservation, and asynchronous task queueing.
@@ -232,6 +232,9 @@ class ProtocolScheduler:
       )
       return True
 
+    # pylint: disable-next=broad-except
+    # Justification: This is a critical step in asset reservation. Catching broad Exception
+    # ensures that any unhandled error leads to a rollback of reservations and a False return.
     except Exception as e:
       logger.error(
         "Error during asset reservation for run %s: %s",

@@ -28,13 +28,6 @@ from .deck_type_definition import (
   update_deck_type_definition,
 )
 from .discovery_service import (
-  get_actual_type_str_from_hint,
-  get_args,
-  get_origin,
-  is_pylabrobot_resource,
-  serialize_type_hint_str,
-)
-from .discovery_service import (
   upsert_function_protocol_definition as upsert_discovered_function_protocol_definition,
 )
 from .function_output_data import (
@@ -122,12 +115,6 @@ __all__ = [
   "read_deck_type_definition_by_name",
   "read_deck_type_definitions",
   "update_deck_type_definition",
-  # Discovery Service
-  "get_actual_type_str_from_hint",
-  "get_args",
-  "get_origin",
-  "is_pylabrobot_resource",
-  "serialize_type_hint_str",
   "upsert_discovered_function_protocol_definition",
   # Function Output Data
   "create_function_data_output",

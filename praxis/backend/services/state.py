@@ -3,6 +3,7 @@
 import json
 import uuid
 from typing import Any, Dict, Optional
+from praxis.backend.configure import PraxisConfiguration
 
 import redis
 from redis.exceptions import ConnectionError
@@ -59,9 +60,9 @@ class PraxisState:
 
   def __init__(
     self,
-    redis_host: str = "localhost",
-    redis_port: int = 6379,
-    redis_db: int = 0,
+    config: PraxisConfiguration = PraxisConfiguration(),
+    redis_host: Optional[str] = None, # Deprecated, use config
+    redis_port: Optional[int] = None, # Deprecated, use config
     run_accession_id: uuid.UUID = uuid7(),
   ):
     """Initialize the State instance."""
@@ -71,17 +72,18 @@ class PraxisState:
       self.run_accession_id: uuid.UUID = run_accession_id
       self.redis_key: str = f"praxis_state:{self.run_accession_id}"
 
+    # Use provided values or fall back to configuration
+    _redis_host = redis_host if redis_host is not None else config.redis_host
+    _redis_port = redis_port if redis_port is not None else config.redis_port
+    _redis_db = redis_db if redis_db is not None else config.redis_db
+
     try:
       self.redis_client = redis.Redis(
-        host=redis_host, port=redis_port, db=redis_db, decode_responses=False
+        host=_redis_host, port=_redis_port, db=_redis_db, decode_responses=False
       )
       self.redis_client.ping()
       logger.info(
-        "Redis client connected for PraxisState (run_accession_id: %s) at %s:%s/%s",
-        self.run_accession_id,
-        redis_host,
-        redis_port,
-        redis_db,
+        "Redis client connected for PraxisState (run_accession_id: %s) at %s:%s/%s", self.run_accession_id, _redis_host, _redis_port, _redis_db
       )
     except ConnectionError as e:
       logger.error(

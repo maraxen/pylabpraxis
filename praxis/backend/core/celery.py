@@ -1,5 +1,5 @@
-# pylint: disable=broad-except,fixme
-"""Celery application factory.
+# pylint: disable=fixme
+"""Celery application factory. # broad-except is handled in celery_tasks.py
 
 This module provides the configured Celery application instance
 for use by worker and application code.

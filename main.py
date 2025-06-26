@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 from praxis.backend.api import function_data_outputs, protocols, resources, workcell_api
+from praxis.backend.api.scheduler_api import initialize_scheduler_components
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.orchestrator import Orchestrator
@@ -80,13 +81,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 3. Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
+    # Pass praxis_config to WorkcellRuntime
     workcell_runtime = WorkcellRuntime(
       db_session_factory=AsyncSessionLocal,
-      workcell_name="praxis_workcell",
-      workcell_save_file="workcell_state.json",  # TODO: populate from config
+      config=praxis_config,
     )
     logger.info("WorkcellRuntime initialized successfully.")
     db_session = await anext(get_async_db_session())
+    # AssetManager still needs a direct db_session for now
     asset_manager = AssetManager(
       db_session=db_session, workcell_runtime=workcell_runtime
     )
@@ -99,6 +101,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       workcell_runtime=workcell_runtime,
     )
     logger.info("Orchestrator dependencies initialized.")
+
+    # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
+    logger.info("Initializing scheduler components...")
+    await initialize_scheduler_components(AsyncSessionLocal, praxis_config)
 
     # 4. Store the fully initialized orchestrator in the app state
     # This makes it accessible to all API routes via the `request` object.

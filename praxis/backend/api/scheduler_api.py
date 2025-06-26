@@ -8,6 +8,7 @@ scheduler core components and provides comprehensive scheduling capabilities.
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.core.asset_lock_manager import AssetLockManager
+from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.scheduler import ProtocolScheduler
 from praxis.backend.models.scheduler_orm import ScheduleStatusEnum
 from praxis.backend.models.scheduler_pydantic import (
@@ -66,17 +68,19 @@ def get_asset_manager() -> AssetLockManager:
 
 
 async def initialize_scheduler_components(
-  db_session_factory, redis_url: str = "redis://localhost:6379/0"
+  db_session_factory, config: PraxisConfiguration = PraxisConfiguration()
 ):
   """Initialize global scheduler components."""
   global _global_scheduler, _global_asset_lock_manager
 
-  _global_asset_lock_manager = AssetLockManager(redis_url=redis_url)
+  _global_asset_lock_manager = AssetLockManager(config=config)
   await _global_asset_lock_manager.initialize()
+  logger.info("AssetLockManager initialized.")
 
   _global_scheduler = ProtocolScheduler(
     db_session_factory=db_session_factory,
-    redis_url=redis_url,
+    asset_lock_manager=_global_asset_lock_manager,
+    config=config,
   )
 
   logger.info("Scheduler components initialized")

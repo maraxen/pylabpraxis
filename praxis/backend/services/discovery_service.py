@@ -43,95 +43,13 @@ from praxis.backend.services.protocols import (
   upsert_function_protocol_definition,
 )
 from praxis.backend.utils.uuid import uuid7
+from praxis.backend.utils.type_inspection import (
+  fqn_from_hint,
+  is_pylabrobot_resource,
+  serialize_type_hint,
+)
 
 logger = logging.getLogger(__name__)
-
-
-# --- Helper Functions (copied from decorators.py modification plan) ---
-# These helpers do not involve DB IO, so they remain synchronous.
-def is_pylabrobot_resource(obj_type: Any) -> bool:
-  """Check if the given type hint is a PylabRobot resource type.
-
-  This checks if the type is a subclass of Resource or a Union that includes it.
-
-  Args:
-    obj_type: The type hint to check, can be a type or Union.
-
-  Returns:
-    bool: True if the type is a PylabRobot resource type, False otherwise.
-
-  Raises:
-    TypeError: If obj_type is not a valid type hint or Union.
-
-  """
-  if obj_type is inspect.Parameter.empty:
-    return False
-  origin = get_origin(obj_type)
-  t_args = get_args(obj_type)
-  if origin is Union:
-    return any(is_pylabrobot_resource(arg) for arg in t_args if arg is not type(None))
-  try:
-    if inspect.isclass(obj_type):
-      return issubclass(obj_type, Resource)
-  except TypeError:
-    pass
-  return False
-
-
-def get_actual_type_str_from_hint(type_hint: Any) -> str:
-  """Get the actual type string from a type hint.
-
-  Handles Union types, NoneType, and PylabRobot resource types.
-
-  Args:
-    type_hint: The type hint to process, can be a type or Union.
-
-  Returns:
-    str: The string representation of the actual type, or "Any" if empty.
-
-  """
-  if type_hint == inspect.Parameter.empty:
-    return "Any"
-  actual_type = type_hint
-  origin = get_origin(type_hint)
-  t_args = get_args(type_hint)
-  if origin is Union and type(None) in t_args:
-    non_none_args = [arg for arg in t_args if arg is not type(None)]
-    if len(non_none_args) == 1:
-      actual_type = non_none_args[0]
-    else:
-      actual_type = non_none_args[0] if non_none_args else type_hint  # type: ignore
-  if hasattr(actual_type, "__name__"):
-    module = getattr(actual_type, "__module__", "")
-    if (
-      module.startswith("praxis.")
-      or module.startswith("pylabrobot.")
-      or module == "builtins"
-    ):
-      return (
-        f"{module}.{actual_type.__name__}"
-        if module and module != "builtins"
-        else actual_type.__name__
-      )
-    return actual_type.__name__
-  return str(actual_type)
-
-
-def serialize_type_hint_str(type_hint: Any) -> str:
-  """Serialize a type hint to a string representation.
-
-  Handles Union types, NoneType, and PylabRobot resource types.
-
-  Args:
-    type_hint: The type hint to serialize, can be a type or Union.
-
-  Returns:
-    str: The string representation of the type hint, or "Any" if empty.
-
-  """
-  if type_hint == inspect.Parameter.empty:
-    return "Any"
-  return str(type_hint)
 
 
 # --- End Helper Functions ---
@@ -260,7 +178,7 @@ class ProtocolDiscoveryService:
                       get_origin(param_type_hint) is Union
                       and type(None) in get_args(param_type_hint)
                     ) or (param_obj_sig.default is not inspect.Parameter.empty)
-                    actual_type_str = get_actual_type_str_from_hint(param_type_hint)
+                    fqn = fqn_from_hint(param_type_hint)
 
                     type_for_plr_check = param_type_hint
                     origin_check, args_check = (
@@ -276,8 +194,8 @@ class ProtocolDiscoveryService:
 
                     common_args = {
                       "name": param_name,
-                      "type_hint_str": serialize_type_hint_str(param_type_hint),
-                      "actual_type_str": actual_type_str,
+                      "type_hint": serialize_type_hint(param_type_hint),
+                      "fqn": fqn,
                       "optional": is_opt,
                       "default_value_repr": repr(param_obj_sig.default)
                       if param_obj_sig.default is not inspect.Parameter.empty
@@ -316,7 +234,7 @@ class ProtocolDiscoveryService:
 
   async def discover_and_upsert_protocols(
     self,
-    search_paths: Union[str, List[str]],
+    search_paths: Union[str, List[str]], # Re-added search_paths argument
     source_repository_accession_id: Optional[uuid.UUID] = None,
     commit_hash: Optional[str] = None,
     file_system_source_accession_id: Optional[uuid.UUID] = None,
@@ -352,18 +270,7 @@ class ProtocolDiscoveryService:
       )
       return []
 
-    if not (
-      (source_repository_accession_id and commit_hash)
-      or file_system_source_accession_id
-    ):
-      logger.warning(
-        "DiscoveryService: No source linkage provided for discovery. Protocols may not "
-        "be correctly linked or upserted if service requires it."
-      )
-
-    logger.info(
-      f"DiscoveryService: Starting protocol discovery in paths: {search_paths}..."
-    )
+    logger.info(f"DiscoveryService: Starting protocol discovery in paths: {search_paths}...")
     extracted_definitions = self._extract_protocol_definitions_from_paths(search_paths)
 
     if not extracted_definitions:

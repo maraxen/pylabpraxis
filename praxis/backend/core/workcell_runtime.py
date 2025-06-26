@@ -29,6 +29,7 @@ from typing import (
 from pylabrobot.machines import Machine
 from pylabrobot.resources import Coordinate, Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from praxis.backend.configure import PraxisConfiguration
 
 import praxis.backend.services as svc
 from praxis.backend.core.workcell import Workcell
@@ -72,8 +73,7 @@ class WorkcellRuntime:
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
-    workcell_name: str,
-    workcell_save_file: str,
+    config: PraxisConfiguration,
   ):
     """Initialize the WorkcellRuntime.
 
@@ -91,8 +91,8 @@ class WorkcellRuntime:
     self._last_initialized_deck_orm_accession_id: Optional[uuid.UUID] = None
 
     self._main_workcell = Workcell(
-      name=workcell_name,
-      save_file=workcell_save_file,
+      name="praxis_workcell", # Hardcoded name for now, can be configurable later
+      save_file=config.workcell_state_file,
       backup_interval=60,
       num_backups=3,
     )

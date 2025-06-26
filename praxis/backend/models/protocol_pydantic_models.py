@@ -288,6 +288,7 @@ class FunctionProtocolDefinitionModel(BaseModel):
   solo_execution: bool = False
   preconfigure_deck: bool = False
   deck_param_name: Optional[str] = None
+  deck_construction_function_fqn: Optional[str] = None # New field for deck construction callable
   state_param_name: Optional[str] = "state"
 
   category: Optional[str] = None

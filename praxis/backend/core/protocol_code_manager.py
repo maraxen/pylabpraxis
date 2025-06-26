@@ -371,6 +371,28 @@ class ProtocolCodeManager:
 
     return func_wrapper, pydantic_def
 
+  def _load_callable_from_fqn(self, fqn: str) -> Callable:
+    """Dynamically load a callable (function or class) from its fully qualified name.
+
+    Args:
+        fqn (str): The fully qualified name of the callable (e.g., "my_module.my_function").
+
+    Returns:
+        Callable: The loaded callable object.
+
+    Raises:
+        ValueError: If the FQN is invalid or the callable cannot be found.
+        ImportError: If the module cannot be imported.
+        AttributeError: If the callable is not found within the module.
+    """
+    if not fqn or "." not in fqn:
+      raise ValueError(f"Invalid fully qualified name for callable: {fqn}")
+
+    module_name, callable_name = fqn.rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    return getattr(module, callable_name)
+
+
   async def prepare_protocol_code(
     self, protocol_def_orm: FunctionProtocolDefinitionOrm
   ) -> Tuple[Callable, FunctionProtocolDefinitionModel]:
