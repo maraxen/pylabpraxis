@@ -13,7 +13,7 @@ It also includes functions to manage position definitions for deck types.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -36,7 +36,7 @@ UUID = uuid.UUID
 async def _process_position_definitions(
   db: AsyncSession,
   deck_type_orm: DeckTypeDefinitionOrm,
-  position_definitions: Optional[List[Dict[str, Any]]],
+  position_definitions: list[dict[str, Any]] | None,
   log_prefix: str,
 ):
   """Handle the deletion and creation of position definitions.
@@ -48,7 +48,7 @@ async def _process_position_definitions(
       db (AsyncSession): The database session.
       deck_type_orm (DeckTypeDefinitionOrm): The deck type ORM object to which
           position definitions will be added.
-      position_definitions (Optional[List[Dict[str, Any]]]): A list of
+      position_definitions (Optional[list[dict[str, Any]]]): A list of
         dictionaries, each representing a position definition for this deck type.
       log_prefix (str): Prefix for logging messages to identify the operation.
 
@@ -67,7 +67,7 @@ async def _process_position_definitions(
 
     if deck_type_orm.accession_id:
       existing_positions_stmt = select(DeckPositionDefinitionOrm).filter(
-        DeckPositionDefinitionOrm.deck_type_id == deck_type_orm.accession_id
+        DeckPositionDefinitionOrm.deck_type_id == deck_type_orm.accession_id,
       )
       result = await db.execute(existing_positions_stmt)
       for position in result.scalars().all():
@@ -139,14 +139,14 @@ async def create_deck_type_definition(
   db: AsyncSession,
   python_fqn: str,
   name: str,
-  description: Optional[str] = None,
-  plr_category: Optional[str] = None,
-  default_size_x_mm: Optional[float] = None,
-  default_size_y_mm: Optional[float] = None,
-  default_size_z_mm: Optional[float] = None,
-  serialized_constructor_args_json: Optional[Dict[str, Any]] = None,
-  positioning_config: Optional[PositioningConfig] = None,
-  position_definitions: Optional[List[Dict[str, Any]]] = None,
+  description: str | None = None,
+  plr_category: str | None = None,
+  default_size_x_mm: float | None = None,
+  default_size_y_mm: float | None = None,
+  default_size_z_mm: float | None = None,
+  serialized_constructor_args_json: dict[str, Any] | None = None,
+  positioning_config: PositioningConfig | None = None,
+  position_definitions: list[dict[str, Any]] | None = None,
 ) -> DeckTypeDefinitionOrm:
   """Add a new deck type definition to the catalog.
 
@@ -167,11 +167,11 @@ async def create_deck_type_definition(
           Defaults to None.
       default_size_z_mm (Optional[float], optional): Default height of the deck in mm.
           Defaults to None.
-      serialized_constructor_args_json (Optional[Dict[str, Any]], optional):
+      serialized_constructor_args_json (Optional[dict[str, Any]], optional):
           Serialized constructor arguments for the PyLabRobot class. Defaults to None.
       positioning_config (Optional[PositioningConfig], optional):
           Configuration for positioning logic. Defaults to None.
-      position_definitions (Optional[List[Dict[str, Any]]], optional):
+      position_definitions (Optional[list[dict[str, Any]]], optional):
           A list of position definitions for this deck type. Defaults to None.
 
   Returns:
@@ -187,7 +187,7 @@ async def create_deck_type_definition(
 
   # Check if a deck type with this FQN already exists
   result = await db.execute(
-    select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.python_fqn == python_fqn)
+    select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.python_fqn == python_fqn),
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -250,20 +250,20 @@ async def update_deck_type_definition(
   deck_type_accession_id: UUID,
   python_fqn: str,
   name: str,
-  description: Optional[str] = None,
-  manufacturer: Optional[str] = None,
-  model: Optional[str] = None,
-  notes: Optional[str] = None,
-  plr_category: Optional[str] = "deck",
-  default_size_x_mm: Optional[float] = None,
-  default_size_y_mm: Optional[float] = None,
-  default_size_z_mm: Optional[float] = None,
-  positioning_config: Optional[PositioningConfig] = None,
-  serialized_constructor_args_json: Optional[Dict[str, Any]] = None,
-  serialized_assignment_methods_json: Optional[Dict[str, Any]] = None,
-  serialized_constructor_hints_json: Optional[Dict[str, Any]] = None,
-  additional_properties_input_json: Optional[Dict[str, Any]] = None,
-  position_definitions: Optional[List[Dict[str, Any]]] = None,
+  description: str | None = None,
+  manufacturer: str | None = None,
+  model: str | None = None,
+  notes: str | None = None,
+  plr_category: str | None = "deck",
+  default_size_x_mm: float | None = None,
+  default_size_y_mm: float | None = None,
+  default_size_z_mm: float | None = None,
+  positioning_config: PositioningConfig | None = None,
+  serialized_constructor_args_json: dict[str, Any] | None = None,
+  serialized_assignment_methods_json: dict[str, Any] | None = None,
+  serialized_constructor_hints_json: dict[str, Any] | None = None,
+  additional_properties_input_json: dict[str, Any] | None = None,
+  position_definitions: list[dict[str, Any]] | None = None,
 ) -> DeckTypeDefinitionOrm:
   """Update an existing deck type definition."""
   log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, updating):"
@@ -273,7 +273,7 @@ async def update_deck_type_definition(
   result = await db.execute(
     select(DeckTypeDefinitionOrm)
     .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id)
+    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id),
   )
   deck_type_orm = result.scalar_one_or_none()
   if not deck_type_orm:
@@ -291,8 +291,8 @@ async def update_deck_type_definition(
       select(DeckTypeDefinitionOrm)
       .filter(DeckTypeDefinitionOrm.python_fqn == python_fqn)
       .filter(
-        DeckTypeDefinitionOrm.accession_id != deck_type_accession_id
-      )  # Exclude the current record
+        DeckTypeDefinitionOrm.accession_id != deck_type_accession_id,
+      ),  # Exclude the current record
     )
     if existing_fqn_check.scalar_one_or_none():
       error_message = (
@@ -354,7 +354,7 @@ async def update_deck_type_definition(
     logger.debug("%s Flushed deck type definition changes.", log_prefix)
 
     await _process_position_definitions(
-      db, deck_type_orm, position_definitions, log_prefix
+      db, deck_type_orm, position_definitions, log_prefix,
     )
 
     await db.commit()
@@ -365,7 +365,7 @@ async def update_deck_type_definition(
     refreshed_deck_type_result = await db.execute(
       select(DeckTypeDefinitionOrm)
       .options(selectinload(DeckTypeDefinitionOrm.positions))
-      .filter(DeckTypeDefinitionOrm.accession_id == deck_type_orm.accession_id)
+      .filter(DeckTypeDefinitionOrm.accession_id == deck_type_orm.accession_id),
     )
     deck_type_orm = refreshed_deck_type_result.scalar_one()
     logger.debug(
@@ -402,8 +402,8 @@ async def update_deck_type_definition(
 
 
 async def read_deck_type_definition(
-  db: AsyncSession, deck_type_accession_id: uuid.UUID
-) -> Optional[DeckTypeDefinitionOrm]:
+  db: AsyncSession, deck_type_accession_id: uuid.UUID,
+) -> DeckTypeDefinitionOrm | None:
   """Retrieve a specific deck type definition by its ID."""
   logger.info(
     "Attempting to retrieve deck type definition with ID: %s.",
@@ -428,8 +428,8 @@ async def read_deck_type_definition(
 
 
 async def read_deck_type_definition_by_name(
-  db: AsyncSession, name: str
-) -> Optional[DeckTypeDefinitionOrm]:
+  db: AsyncSession, name: str,
+) -> DeckTypeDefinitionOrm | None:
   """Retrieve a specific deck type definition by its name.
 
   Args:
@@ -461,11 +461,11 @@ async def read_deck_type_definition_by_name(
 
 
 async def read_deck_type_definitions(
-  db: AsyncSession, limit: int = 100, offset: int = 0
-) -> List[DeckTypeDefinitionOrm]:
+  db: AsyncSession, limit: int = 100, offset: int = 0,
+) -> list[DeckTypeDefinitionOrm]:
   """List all deck type definitions with pagination."""
   logger.info(
-    "Listing deck type definitions with limit: %s, offset: %s.", limit, offset
+    "Listing deck type definitions with limit: %s, offset: %s.", limit, offset,
   )
   stmt = (
     select(DeckTypeDefinitionOrm)
@@ -481,7 +481,7 @@ async def read_deck_type_definitions(
 
 
 async def delete_deck_type_definition(
-  db: AsyncSession, deck_type_accession_id: uuid.UUID
+  db: AsyncSession, deck_type_accession_id: uuid.UUID,
 ) -> None:
   """Delete a deck type definition by its ID."""
   log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, deleting):"

@@ -18,7 +18,7 @@ class PlateReaderTask(StandaloneTask):
     config_file="config.ini",
   ):
     super().__init__(
-      experiment_name, estimated_duration, registry, data_instance, config_file
+      experiment_name, estimated_duration, registry, data_instance, config_file,
     )
     self.plate_name = plate_name
     self.measurement_type = measurement_type
@@ -30,7 +30,7 @@ class PlateReaderTask(StandaloneTask):
 
     # Calculate the earliest time this task can finish
     earliest_finish_time = datetime.datetime.now() + datetime.timedelta(
-      seconds=self.estimated_duration
+      seconds=self.estimated_duration,
     )
 
     # Check if there's a conflict (with a buffer)
@@ -53,7 +53,7 @@ class PlateReaderTask(StandaloneTask):
   async def _execute(self):
     # Simulate performing plate reader operation
     print(
-      f"Performing {self.measurement_type} on plate {self.plate_name} for wells {self.wells}."
+      f"Performing {self.measurement_type} on plate {self.plate_name} for wells {self.wells}.",
     )
     await asyncio.sleep(self.estimated_duration)  # Simulate time taken for operation
     print(f"Finished {self.measurement_type} on plate {self.plate_name}.")
@@ -82,6 +82,6 @@ class PlateReaderTask(StandaloneTask):
   async def _stop(self):
     # Release the plate reader lock
     self.registry.release_lock(
-      "plate_reader", self.experiment_name, self.task_accession_id
+      "plate_reader", self.experiment_name, self.task_accession_id,
     )
     print("Plate reader lock released.")

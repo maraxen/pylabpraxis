@@ -11,7 +11,7 @@ from praxis.backend.models import (
   FunctionCallLogOrm,
   FunctionDataOutputOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
   SpatialContextEnum,
   WellDataOutputCreate,
   WellDataOutputOrm,
@@ -34,10 +34,12 @@ from praxis.backend.services import (
 def mock_plate_parsing_helpers(mocker):
   """Mock the helper functions for plate parsing and dimension reading."""
   mocker.patch(
-    "praxis.backend.services.function_output_data.parse_well_name", return_value=(0, 0)
+    "praxis.backend.services.function_output_data.parse_well_name",
+    return_value=(0, 0),
   )
   mocker.patch(
-    "praxis.backend.services.function_output_data.calculate_well_index", return_value=0
+    "praxis.backend.services.function_output_data.calculate_well_index",
+    return_value=0,
   )
   mocker.patch(
     "praxis.backend.services.function_output_data.read_plate_dimensions",
@@ -47,9 +49,9 @@ def mock_plate_parsing_helpers(mocker):
 
 
 @pytest.fixture
-async def plate_resource(db: AsyncSession) -> ResourceInstanceOrm:
-  """Fixture for a plate ResourceInstanceOrm."""
-  plate = ResourceInstanceOrm(user_assigned_name="TestPlateForWells", name="plate_def")
+async def plate_resource(db: AsyncSession) -> ResourceOrm:
+  """Fixture for a plate ResourceOrm."""
+  plate = ResourceOrm(user_assigned_name="TestPlateForWells", name="plate_def")
   db.add(plate)
   await db.commit()
   return plate
@@ -57,12 +59,14 @@ async def plate_resource(db: AsyncSession) -> ResourceInstanceOrm:
 
 @pytest.fixture
 async def func_data_output(
-  db: AsyncSession, plate_resource: ResourceInstanceOrm
+  db: AsyncSession,
+  plate_resource: ResourceOrm,
 ) -> FunctionDataOutputOrm:
   """Fixture for a parent FunctionDataOutputOrm."""
   run = ProtocolRunOrm(name="Well Data Test Run")
   f_call = FunctionCallLogOrm(
-    protocol_run_accession_id=run.accession_id, function_name="read_wells"
+    protocol_run_accession_id=run.accession_id,
+    function_name="read_wells",
   )
   db.add_all([run, f_call])
   await db.commit()
@@ -85,7 +89,7 @@ async def func_data_output(
 async def existing_well_data(
   db: AsyncSession,
   func_data_output: FunctionDataOutputOrm,
-  plate_resource: ResourceInstanceOrm,
+  plate_resource: ResourceOrm,
   mock_plate_parsing_helpers,
 ) -> WellDataOutputOrm:
   """Fixture that creates a single WellDataOutputOrm for testing."""
@@ -111,7 +115,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     func_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceInstanceOrm,
+    plate_resource: ResourceOrm,
     mock_plate_parsing_helpers,
   ):
     """Test creating a single well data record and reading it back."""
@@ -143,13 +147,16 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     func_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceInstanceOrm,
+    plate_resource: ResourceOrm,
     mock_plate_parsing_helpers,
   ):
     """Test creating a batch of well data outputs from a dictionary."""
     well_data_dict = {"A1": 0.1, "A2": 0.2, "H12": 1.2}
     created_wells = await create_well_data_outputs(
-      db, func_data_output.accession_id, plate_resource.accession_id, well_data_dict
+      db,
+      func_data_output.accession_id,
+      plate_resource.accession_id,
+      well_data_dict,
     )
     assert len(created_wells) == 3
 
@@ -160,7 +167,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     func_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceInstanceOrm,
+    plate_resource: ResourceOrm,
     mocker,
   ):
     """Test creating well data from a flat array, relying on plate dimensions."""
@@ -173,7 +180,10 @@ class TestWellDataOutputService:
 
     data_array = [0.1, 0.2, 0.3, 0.4]
     created_wells = await create_well_data_outputs_from_flat_array(
-      db, func_data_output.accession_id, plate_resource.accession_id, data_array
+      db,
+      func_data_output.accession_id,
+      plate_resource.accession_id,
+      data_array,
     )
     assert len(created_wells) == 4
 
@@ -188,7 +198,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     func_data_output: FunctionDataOutputOrm,
-    plate_resource: ResourceInstanceOrm,
+    plate_resource: ResourceOrm,
     mocker,
   ):
     """Test that creating from a flat array fails if plate dimensions are not found."""
@@ -200,18 +210,26 @@ class TestWellDataOutputService:
 
     with pytest.raises(ValueError, match="Could not determine plate dimensions"):
       await create_well_data_outputs_from_flat_array(
-        db, func_data_output.accession_id, plate_resource.accession_id, [0.1, 0.2]
+        db,
+        func_data_output.accession_id,
+        plate_resource.accession_id,
+        [0.1, 0.2],
       )
 
   async def test_update_well_data_output(
-    self, db: AsyncSession, existing_well_data: WellDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_well_data: WellDataOutputOrm,
   ):
     """Test updating an existing well data record."""
     update_model = WellDataOutputUpdate(
-      data_value=0.66, metadata_json={"source": "update_test"}
+      data_value=0.66,
+      metadata_json={"source": "update_test"},
     )
     updated_well = await update_well_data_output(
-      db, existing_well_data.accession_id, update_model
+      db,
+      existing_well_data.accession_id,
+      update_model,
     )
 
     assert updated_well is not None
@@ -219,14 +237,17 @@ class TestWellDataOutputService:
     assert updated_well.well_name == "A1"  # Ensure other fields are untouched
 
   async def test_read_well_data_outputs_with_filters(
-    self, db: AsyncSession, existing_well_data: WellDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_well_data: WellDataOutputOrm,
   ):
     """Test the filtering capabilities of the read_well_data_outputs function."""
     # existing_well_data is in row 0, col 0
 
     # Filter by plate
     results = await read_well_data_outputs(
-      db, plate_resource_id=existing_well_data.plate_resource_instance_accession_id
+      db,
+      plate_resource_id=existing_well_data.plate_resource_instance_accession_id,
     )
     assert len(results) == 1
     assert results[0].accession_id == existing_well_data.accession_id
@@ -240,7 +261,9 @@ class TestWellDataOutputService:
     assert len(results) == 0
 
   async def test_delete_well_data_output(
-    self, db: AsyncSession, existing_well_data: WellDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_well_data: WellDataOutputOrm,
   ):
     """Test deleting a well data output record."""
     well_id = existing_well_data.accession_id

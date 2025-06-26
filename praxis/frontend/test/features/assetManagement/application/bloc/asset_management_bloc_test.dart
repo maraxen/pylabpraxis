@@ -4,7 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/features/assetManagement/application/bloc/asset_management_bloc.dart';
 import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_orm.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 
 // Assuming mock_services.mocks.dart is generated in praxis/frontend/test/mocks/
@@ -29,8 +29,8 @@ void main() {
           'lwDef1', // TODO: replace with actual definition name
       pythonFqn: 'com.praxis.resource.ResourceDef1',
     );
-    final resourceInstance1 = ResourceInstanceOrm(
-      userAssignedName: 'Resource Instance 1',
+    final resource1 = ResourceOrm(
+      userAssignedName: 'Resource  1',
       pylabrobotDefinitionName: resourceDef1.pylabrobotDefinitionName,
     );
     final deckLayout1 = DeckLayoutOrm(
@@ -44,7 +44,7 @@ void main() {
     final List<ResourceDefinitionCatalogOrm> mockResourceDefinitions = [
       resourceDef1,
     ];
-    final List<ResourceInstanceOrm> mockResourceInstances = [resourceInstance1];
+    final List<ResourceOrm> mockResources = [resource1];
     final List<DeckLayoutOrm> mockDeckLayouts = [deckLayout1];
 
     test('initial state is AssetManagementInitial', () {
@@ -65,8 +65,8 @@ void main() {
             mockAssetApiService.getResourceDefinitions(),
           ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getResourceInstances(),
-          ).thenAnswer((_) async => mockResourceInstances);
+            mockAssetApiService.getResources(),
+          ).thenAnswer((_) async => mockResources);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -79,14 +79,14 @@ void main() {
               AssetManagementLoadSuccess(
                 machines: mockDevices,
                 resourceDefinitions: mockResourceDefinitions,
-                resourceInstances: mockResourceInstances,
+                resources: mockResources,
                 deckLayouts: mockDeckLayouts,
               ),
             ],
         verify: (_) {
           verify(mockAssetApiService.getDevices()).called(1);
           verify(mockAssetApiService.getResourceDefinitions()).called(1);
-          verify(mockAssetApiService.getResourceInstances()).called(1);
+          verify(mockAssetApiService.getResources()).called(1);
           verify(mockAssetApiService.getDeckLayouts()).called(1);
         },
       );
@@ -102,8 +102,8 @@ void main() {
             mockAssetApiService.getResourceDefinitions(),
           ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getResourceInstances(),
-          ).thenAnswer((_) async => mockResourceInstances);
+            mockAssetApiService.getResources(),
+          ).thenAnswer((_) async => mockResources);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -147,8 +147,8 @@ void main() {
             mockAssetApiService.getResourceDefinitions(),
           ).thenAnswer((_) async => mockResourceDefinitions);
           when(
-            mockAssetApiService.getResourceInstances(),
-          ).thenAnswer((_) async => mockResourceInstances);
+            mockAssetApiService.getResources(),
+          ).thenAnswer((_) async => mockResources);
           when(
             mockAssetApiService.getDeckLayouts(),
           ).thenAnswer((_) async => mockDeckLayouts);
@@ -163,7 +163,7 @@ void main() {
               AssetManagementLoadSuccess(
                 machines: [newDevice],
                 resourceDefinitions: mockResourceDefinitions,
-                resourceInstances: mockResourceInstances,
+                resources: mockResources,
                 deckLayouts: mockDeckLayouts,
               ),
             ],

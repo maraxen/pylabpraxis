@@ -1,12 +1,11 @@
 # pylint: disable=broad-except, too-many-lines
-"""Service layer for Deck Instance Management.
+"""Service layer for Deck  Management.
 
 This service layer interacts with deck-related data in the database, providing
 functions to create, read, update, and delete decks.
 """
 
 import uuid
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -65,7 +64,7 @@ async def create_deck(db: AsyncSession, deck_create: DeckCreate) -> DeckOrm:
     error_message = f"Deck with name '{deck_create.name}' already exists. Details: {e}"
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     logger.exception("Error creating deck '%s'. Rolling back.", deck_create.name)
     await db.rollback()
     raise e
@@ -73,7 +72,7 @@ async def create_deck(db: AsyncSession, deck_create: DeckCreate) -> DeckOrm:
   return deck_orm
 
 
-async def read_deck(db: AsyncSession, deck_accession_id: UUID) -> Optional[DeckOrm]:
+async def read_deck(db: AsyncSession, deck_accession_id: UUID) -> DeckOrm | None:
   """Retrieve a specific deck by its ID.
 
   Args:
@@ -108,10 +107,10 @@ async def read_deck(db: AsyncSession, deck_accession_id: UUID) -> Optional[DeckO
 
 async def read_decks(
   db: AsyncSession,
-  parent_accession_id: Optional[UUID] = None,
+  parent_accession_id: UUID | None = None,
   limit: int = 100,
   offset: int = 0,
-) -> List[DeckOrm]:
+) -> list[DeckOrm]:
   """List all decks, with optional filtering by parent ID.
 
   Args:
@@ -143,7 +142,39 @@ async def read_decks(
   return decks
 
 
-async def read_deck_by_name(db: AsyncSession, name: str) -> Optional[DeckOrm]:
+async def read_decks_by_machine_id(
+  db: AsyncSession,
+  machine_accession_id: UUID,
+  limit: int = 100,
+  offset: int = 0,
+) -> list[DeckOrm]:
+  """List all decks associated with a specific machine ID.
+
+  Args:
+      db: The database session.
+      machine_accession_id: The ID of the machine to filter by.
+      limit: The maximum number of results to return.
+      offset: The number of results to skip.
+
+  Returns:
+      A list of deck objects.
+
+  """
+  logger.info(
+    "Listing decks for machine ID: %s, limit: %s, offset: %s.",
+    machine_accession_id,
+    limit,
+    offset,
+  )
+  stmt = select(DeckOrm).filter(DeckOrm.machine_id == machine_accession_id)
+  stmt = stmt.order_by(DeckOrm.name).limit(limit).offset(offset)
+  result = await db.execute(stmt)
+  decks = list(result.scalars().all())
+  logger.info("Found %s decks for machine ID %s.", len(decks), machine_accession_id)
+  return decks
+
+
+async def read_deck_by_name(db: AsyncSession, name: str) -> DeckOrm | None:
   """Retrieve a specific deck by its name.
 
   Args:
@@ -176,7 +207,7 @@ async def update_deck(
   db: AsyncSession,
   deck_accession_id: UUID,
   deck_update: DeckUpdate,
-) -> Optional[DeckOrm]:
+) -> DeckOrm | None:
   """Update an existing deck.
 
   Args:
@@ -218,7 +249,7 @@ async def update_deck(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error updating deck ID %s. Rolling back.",
@@ -261,9 +292,10 @@ async def delete_deck(db: AsyncSession, deck_accession_id: UUID) -> bool:
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting deck ID %s. Rolling back.", deck_accession_id
+      "Unexpected error deleting deck ID %s. Rolling back.",
+      deck_accession_id,
     )
     raise e

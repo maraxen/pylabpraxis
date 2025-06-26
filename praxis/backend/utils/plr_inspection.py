@@ -8,12 +8,6 @@ import pkgutil
 from inspect import isabstract
 from typing import (
   Any,
-  Dict,
-  List,
-  Optional,
-  Set,
-  Type,
-  Union,
 )
 
 from pylabrobot.machines.machine import Machine
@@ -39,14 +33,14 @@ from pylabrobot.resources.trough import Trough
 logger = logging.getLogger(__name__)
 
 
-def get_class_fqn(klass: Type[Any]) -> str:
+def get_class_fqn(klass: type[Any]) -> str:
   """Get the fully qualified name of a class."""
   return f"{klass.__module__}.{klass.__name__}"
 
 
 def get_module_classes(
-  module: Any, parent_class: Optional[Type[Any]] = None, concrete_only: bool = False
-) -> Dict[str, Type[Any]]:
+  module: Any, parent_class: type[Any] | None = None, concrete_only: bool = False,
+) -> dict[str, type[Any]]:
   """Get all classes from a module that are subclasses of parent_class.
 
   Args:
@@ -64,13 +58,13 @@ def get_module_classes(
       continue
     # Ensure the class is defined in the module itself, not just imported.
     if obj.__module__ != module.__name__ and not obj.__module__.startswith(
-      module.__name__ + "."
+      module.__name__ + ".",
     ):
       # Allow classes from submodules of the given module if module is a package root
       is_submodule_class = False
       if hasattr(module, "__path__"):  # Check if module is a package
         for importer, modname, ispkg in pkgutil.iter_modules(
-          module.__path__, module.__name__ + "."
+          module.__path__, module.__name__ + ".",
         ):
           if obj.__module__.startswith(modname):
             is_submodule_class = True
@@ -85,8 +79,8 @@ def get_module_classes(
 
 
 def get_constructor_params_with_defaults(
-  klass: Type[Any], required_only: bool = False
-) -> Dict[str, Any]:
+  klass: type[Any], required_only: bool = False,
+) -> dict[str, Any]:
   """Get the constructor parameters and their default values for a class.
 
   Args:
@@ -112,7 +106,7 @@ def get_constructor_params_with_defaults(
   return params
 
 
-def is_resource_subclass(item_class: Type[Any]) -> bool:
+def is_resource_subclass(item_class: type[Any]) -> bool:
   """Check if a class is a non-abstract subclass of pylabrobot.resources.Resource."""
   return (
     inspect.isclass(item_class)
@@ -122,7 +116,7 @@ def is_resource_subclass(item_class: Type[Any]) -> bool:
   )
 
 
-def is_machine_subclass(item_class: Type[Any]) -> bool:
+def is_machine_subclass(item_class: type[Any]) -> bool:
   """Check if a class is a non-abstract subclass of Machine."""
   return (
     inspect.isclass(item_class)
@@ -132,7 +126,7 @@ def is_machine_subclass(item_class: Type[Any]) -> bool:
   )
 
 
-def is_deck_subclass(item_class: Type[Any]) -> bool:
+def is_deck_subclass(item_class: type[Any]) -> bool:
   """Check if a class is a non-abstract subclass of pylabrobot.resources.Deck."""
   return (
     inspect.isclass(item_class)
@@ -144,10 +138,10 @@ def is_deck_subclass(item_class: Type[Any]) -> bool:
 
 def _discover_classes_in_module_recursive(
   module_name: str,
-  parent_class: Optional[Type[Any]],
+  parent_class: type[Any] | None,
   concrete_only: bool,
-  visited_modules: Set[str],
-) -> Dict[str, Type[Any]]:
+  visited_modules: set[str],
+) -> dict[str, type[Any]]:
   """Discover classes in a module and its submodules recursively.
 
   Args:
@@ -164,19 +158,19 @@ def _discover_classes_in_module_recursive(
     return {}
   visited_modules.add(module_name)
 
-  found_classes: Dict[str, Type[Any]] = {}
+  found_classes: dict[str, type[Any]] = {}
   try:
     module = importlib.import_module(module_name)
     classes_in_module = get_module_classes(module, parent_class, concrete_only)
     for klass_name, klass in classes_in_module.items():
       if klass.__module__.startswith(
-        module_name
+        module_name,
       ):  # Check it's defined in or under this module path
         found_classes[get_class_fqn(klass)] = klass
 
     if hasattr(module, "__path__"):
       for _, sub_module_name, _ in pkgutil.walk_packages(
-        module.__path__, module_name + "."
+        module.__path__, module_name + ".",
       ):
         if sub_module_name not in visited_modules:
           found_classes.update(
@@ -185,7 +179,7 @@ def _discover_classes_in_module_recursive(
               parent_class,
               concrete_only,
               visited_modules,
-            )
+            ),
           )
   except ImportError as e:
     logger.warning("Could not import module %s: %s", module_name, e)
@@ -195,10 +189,10 @@ def _discover_classes_in_module_recursive(
 
 
 def get_all_classes(
-  base_module_names: Union[str, List[str]] = "pylabrobot",
-  parent_class: Optional[Type[Any]] = None,
+  base_module_names: str | list[str] = "pylabrobot",
+  parent_class: type[Any] | None = None,
   concrete_only: bool = False,
-) -> Dict[str, Type[Any]]:
+) -> dict[str, type[Any]]:
   """Get all PyLabRobot classes from base module(s) and their submodules.
 
   Args:
@@ -210,23 +204,23 @@ def get_all_classes(
     A dictionary of fully qualified class names to class objects.
 
   """
-  all_classes: Dict[str, Type[Any]] = {}
-  visited_modules: Set[str] = set()
+  all_classes: dict[str, type[Any]] = {}
+  visited_modules: set[str] = set()
   module_list = (
     [base_module_names] if isinstance(base_module_names, str) else base_module_names
   )
   for base_module_name in module_list:
     all_classes.update(
       _discover_classes_in_module_recursive(
-        base_module_name, parent_class, concrete_only, visited_modules
-      )
+        base_module_name, parent_class, concrete_only, visited_modules,
+      ),
     )
   return all_classes
 
 
 def get_resource_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Resource]]:
+) -> dict[str, type[Resource]]:
   """Return all resource classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names=[
@@ -240,7 +234,7 @@ def get_resource_classes(
 
 def get_machine_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Machine]]:
+) -> dict[str, type[Machine]]:
   """Return all machine classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names="pylabrobot.machines",
@@ -249,7 +243,7 @@ def get_machine_classes(
   )
 
 
-def get_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
+def get_deck_classes(concrete_only: bool = True) -> dict[str, type[Deck]]:
   """Return all deck classes from PyLabRobot modules."""
   all_decks = get_all_classes(  # type: ignore
     base_module_names=[
@@ -268,12 +262,12 @@ def get_deck_classes(concrete_only: bool = True) -> Dict[str, Type[Deck]]:
 
 
 def discover_deck_classes(
-  packages: Union[str, List[str]] = "pylabrobot.resources",
-) -> Dict[str, Type[Deck]]:
+  packages: str | list[str] = "pylabrobot.resources",
+) -> dict[str, type[Deck]]:
   """Discover all non-abstract PLR Deck subclasses in the given Python package(s)."""
   package_list = [packages] if isinstance(packages, str) else list(packages)
-  discovered_deck_classes: Dict[str, Type[Deck]] = {}
-  visited_modules: Set[str] = set()
+  discovered_deck_classes: dict[str, type[Deck]] = {}
+  visited_modules: set[str] = set()
   for package_name in package_list:
     try:
       deck_classes_in_pkg = _discover_classes_in_module_recursive(
@@ -293,13 +287,13 @@ def discover_deck_classes(
 
 
 def _get_accepted_categories_for_resource_holder(
-  holder: ResourceHolder, parent_carrier: Optional[Carrier] = None
-) -> List[str]:
+  holder: ResourceHolder, parent_carrier: Carrier | None = None,
+) -> list[str]:
   """Determine accepted resource categories for a ResourceHolder.
 
   Infer based on the type of the holder or its parent carrier.
   """
-  accepted_categories: List[str] = []
+  accepted_categories: list[str] = []
 
   # Check the parent carrier first, as it's often more specific
   if parent_carrier:
@@ -330,7 +324,7 @@ def _get_accepted_categories_for_resource_holder(
 
 def get_resource_holder_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[ResourceHolder]]:
+) -> dict[str, type[ResourceHolder]]:
   """Return all resource holder and specific carrier classes.
 
   Includes holders and specific carriers from PyLabRobot modules.
@@ -347,7 +341,7 @@ def get_resource_holder_classes(
 
 def get_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Carrier]]:
+) -> dict[str, type[Carrier]]:
   """Return all carrier classes (including plate, tip, and trough carriers).
 
   Includes all carrier types from PyLabRobot modules.
@@ -364,7 +358,7 @@ def get_carrier_classes(
 
 def get_plate_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[PlateCarrier]]:
+) -> dict[str, type[PlateCarrier]]:
   """Return all plate carrier classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names=[
@@ -378,7 +372,7 @@ def get_plate_carrier_classes(
 
 def get_tip_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[TipCarrier]]:
+) -> dict[str, type[TipCarrier]]:
   """Return all tip carrier classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names=[
@@ -392,7 +386,7 @@ def get_tip_carrier_classes(
 
 def get_trough_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[TroughCarrier]]:
+) -> dict[str, type[TroughCarrier]]:
   """Return all trough carrier classes from PyLabRobot modules."""
   return get_all_classes(  # type: ignore
     base_module_names=[
@@ -406,7 +400,7 @@ def get_trough_carrier_classes(
 
 def get_all_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Carrier]]:
+) -> dict[str, type[Carrier]]:
   """Return all carrier classes.
 
   Includes all carrier types (including plate, tip, and trough carriers) from PyLabRobot
@@ -436,7 +430,7 @@ def get_all_carrier_classes(
 
 def get_all_deck_and_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Union[Deck, Carrier]]]:
+) -> dict[str, type[Deck | Carrier]]:
   """Return all deck and carrier classes from PyLabRobot modules."""
   all_decks = get_deck_classes(concrete_only=concrete_only)
   all_carriers = get_all_carrier_classes(concrete_only=concrete_only)
@@ -445,7 +439,7 @@ def get_all_deck_and_carrier_classes(
 
 def get_all_resource_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Resource]]:
+) -> dict[str, type[Resource]]:
   """Return all resource classes (including holders and specific carriers) from PyLabRobot modules."""
   all_resources = get_resource_classes(concrete_only=concrete_only)
   all_holders = get_resource_holder_classes(concrete_only=concrete_only)
@@ -454,7 +448,7 @@ def get_all_resource_classes(
 
 def get_all_machine_and_deck_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Union[Machine, Deck]]]:
+) -> dict[str, type[Machine | Deck]]:
   """Return all machine and deck classes from PyLabRobot modules."""
   all_machines = get_machine_classes(concrete_only=concrete_only)
   all_decks = get_deck_classes(concrete_only=concrete_only)
@@ -462,10 +456,10 @@ def get_all_machine_and_deck_classes(
 
 
 def get_all_classes_with_inspection(
-  base_module_names: Union[str, List[str]] = "pylabrobot",
-  parent_class: Optional[Type[Any]] = None,
+  base_module_names: str | list[str] = "pylabrobot",
+  parent_class: type[Any] | None = None,
   concrete_only: bool = False,
-) -> Dict[str, Type[Any]]:
+) -> dict[str, type[Any]]:
   """Get all classes with enhanced inspection from base module(s) and their submodules.
 
   This function extends get_all_classes by applying additional inspection logic
@@ -480,16 +474,16 @@ def get_all_classes_with_inspection(
     A dictionary of fully qualified class names to class objects.
 
   """
-  all_classes: Dict[str, Type[Any]] = {}
-  visited_modules: Set[str] = set()
+  all_classes: dict[str, type[Any]] = {}
+  visited_modules: set[str] = set()
   module_list = (
     [base_module_names] if isinstance(base_module_names, str) else base_module_names
   )
   for base_module_name in module_list:
     all_classes.update(
       _discover_classes_in_module_recursive(
-        base_module_name, parent_class, concrete_only, visited_modules
-      )
+        base_module_name, parent_class, concrete_only, visited_modules,
+      ),
     )
 
   # --- Additional Inspection Logic ---
@@ -507,7 +501,7 @@ def get_all_classes_with_inspection(
 
 def get_all_resource_and_machine_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Any]]:
+) -> dict[str, type[Any]]:
   """Return all resources and machine classes.
 
   Includes holders, specific carriers, and machines from PyLabRobot modules.
@@ -519,7 +513,7 @@ def get_all_resource_and_machine_classes(
 
 def get_deck_and_carrier_classes(
   concrete_only: bool = True,
-) -> Dict[str, Type[Any]]:
+) -> dict[str, type[Any]]:
   """Return all deck and carrier classes with enhanced inspection.
 
   Includes all deck and carrier classes from PyLabRobot modules.
@@ -541,7 +535,7 @@ def get_deck_and_carrier_classes(
 
 def get_all_resource_and_machine_classes_enhanced(
   concrete_only: bool = True,
-) -> Dict[str, Type[Any]]:
+) -> dict[str, type[Any]]:
   """Return all resources and machine classes with enhanced inspection.
 
   Includes holders, specific carriers, and machines from PyLabRobot modules.
@@ -558,7 +552,7 @@ def get_all_resource_and_machine_classes_enhanced(
   }
 
 
-def get_deck_details(deck_class: Type[Deck]) -> Dict[str, Any]:
+def get_deck_details(deck_class: type[Deck]) -> dict[str, Any]:
   """Return detailed info about a Deck class.
 
   Includes all position-to-location methods and their signatures.
@@ -591,7 +585,7 @@ def get_deck_details(deck_class: Type[Deck]) -> Dict[str, Any]:
           "signature": str(sig),
           "parameters": params,
           "doc": inspect.getdoc(method),
-        }
+        },
       )
 
   # Optionally, add more deck metadata here

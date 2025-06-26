@@ -1,5 +1,3 @@
-import asyncio
-import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -7,11 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import all required models
 from praxis.backend.models import (
-  AssetReservationOrm,
   AssetReservationStatusEnum,
   ProtocolRunOrm,
   ScheduleEntryOrm,
-  ScheduleHistoryOrm,
   ScheduleStatusEnum,
 )
 
@@ -30,7 +26,6 @@ from praxis.backend.services.scheduler import (
   read_schedule_entry,
   read_schedule_entry_by_protocol_run,
   update_asset_reservation_status,
-  update_schedule_entry_priority,
   update_schedule_entry_status,
 )
 
@@ -48,7 +43,7 @@ async def protocol_run(db: AsyncSession) -> ProtocolRunOrm:
 
 @pytest.fixture
 async def schedule_entry(
-  db: AsyncSession, protocol_run: ProtocolRunOrm
+  db: AsyncSession, protocol_run: ProtocolRunOrm,
 ) -> ScheduleEntryOrm:
   """Fixture that creates a standard schedule entry for testing."""
   return await create_schedule_entry(db, protocol_run.accession_id, priority=5)
@@ -63,11 +58,11 @@ class TestScheduleEntryService:
   """Tests for schedule entry management."""
 
   async def test_create_and_read_schedule_entry(
-    self, db: AsyncSession, protocol_run: ProtocolRunOrm
+    self, db: AsyncSession, protocol_run: ProtocolRunOrm,
   ):
     """Test creating a schedule entry and reading it back."""
     entry = await create_schedule_entry(
-      db, protocol_run_accession_id=protocol_run.accession_id, priority=10
+      db, protocol_run_accession_id=protocol_run.accession_id, priority=10,
     )
     assert entry.protocol_run_accession_id == protocol_run.accession_id
     assert entry.status == ScheduleStatusEnum.QUEUED
@@ -80,30 +75,30 @@ class TestScheduleEntryService:
 
     # Test read by protocol run ID
     read_by_run = await read_schedule_entry_by_protocol_run(
-      db, protocol_run.accession_id
+      db, protocol_run.accession_id,
     )
     assert read_by_run is not None
     assert read_by_run.accession_id == entry.accession_id
 
   async def test_create_duplicate_schedule_entry_fails(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test that creating a schedule entry for an already scheduled run fails."""
     with pytest.raises(ValueError, match="already exists"):
       await create_schedule_entry(db, schedule_entry.protocol_run_accession_id)
 
   async def test_update_schedule_entry_status(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test updating the status of a schedule entry."""
     updated_entry = await update_schedule_entry_status(
-      db, schedule_entry.accession_id, new_status=ScheduleStatusEnum.RUNNING
+      db, schedule_entry.accession_id, new_status=ScheduleStatusEnum.RUNNING,
     )
     assert updated_entry is not None
     assert updated_entry.status == ScheduleStatusEnum.RUNNING
 
   async def test_list_schedule_entries_with_filters(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test filtering and ordering when listing schedule entries."""
     # Create another entry to test filtering
@@ -119,14 +114,14 @@ class TestScheduleEntryService:
 
     # Test ordering
     all_entries_prio_asc = await list_schedule_entries(
-      db, order_by="priority", order_desc=False
+      db, order_by="priority", order_desc=False,
     )
     assert len(all_entries_prio_asc) == 2
     assert all_entries_prio_asc[0].priority == 1
     assert all_entries_prio_asc[1].priority == 5
 
   async def test_delete_schedule_entry(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test deleting a schedule entry."""
     entry_id = schedule_entry.accession_id
@@ -139,7 +134,7 @@ class TestAssetReservationService:
   """Tests for asset reservation management."""
 
   async def test_create_and_read_asset_reservation(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test creating and reading an asset reservation."""
     reservation = await create_asset_reservation(
@@ -156,20 +151,20 @@ class TestAssetReservationService:
     assert read_res.asset_name == "Hamilton_STAR_1"
 
   async def test_update_asset_reservation_status(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test updating the status of an asset reservation."""
     reservation = await create_asset_reservation(
-      db, schedule_entry.accession_id, "plate", "plate_1"
+      db, schedule_entry.accession_id, "plate", "plate_1",
     )
     updated_res = await update_asset_reservation_status(
-      db, reservation.accession_id, new_status=AssetReservationStatusEnum.RESERVED
+      db, reservation.accession_id, new_status=AssetReservationStatusEnum.RESERVED,
     )
     assert updated_res is not None
     assert updated_res.status == AssetReservationStatusEnum.RESERVED
 
   async def test_cleanup_expired_reservations(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test cleaning up reservations that have expired."""
     now = datetime.now(timezone.utc)
@@ -195,7 +190,7 @@ class TestAssetReservationService:
     assert cleaned_count == 1
 
     reservations = await list_asset_reservations(
-      db, schedule_entry_accession_id=schedule_entry.accession_id, limit=10
+      db, schedule_entry_accession_id=schedule_entry.accession_id, limit=10,
     )
     expired_found = False
     active_found = False
@@ -213,12 +208,12 @@ class TestScheduleHistoryService:
   """Tests for schedule history and metrics."""
 
   async def test_log_schedule_event_and_get_history(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test that events are logged and can be retrieved."""
     # The 'create' call already logged one event. Now log another.
     await log_schedule_event(
-      db, schedule_entry.accession_id, "TEST_EVENT", message="A custom test event."
+      db, schedule_entry.accession_id, "TEST_EVENT", message="A custom test event.",
     )
     await db.commit()
 
@@ -229,14 +224,14 @@ class TestScheduleHistoryService:
     assert history[1].event_type == "SCHEDULE_CREATED"
 
   async def test_get_scheduling_metrics(
-    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm
+    self, db: AsyncSession, schedule_entry: ScheduleEntryOrm,
   ):
     """Test the aggregation of scheduling metrics."""
     start_time = datetime.now(timezone.utc) - timedelta(seconds=1)
 
     # Create some history
     await update_schedule_entry_status(
-      db, schedule_entry.accession_id, ScheduleStatusEnum.DISPATCHED
+      db, schedule_entry.accession_id, ScheduleStatusEnum.DISPATCHED,
     )
     await update_schedule_entry_status(
       db,
@@ -246,7 +241,7 @@ class TestScheduleHistoryService:
     )
     # Manually log an event with duration
     await log_schedule_event(
-      db, schedule_entry.accession_id, "ANALYSIS_COMPLETE", duration_ms=150
+      db, schedule_entry.accession_id, "ANALYSIS_COMPLETE", duration_ms=150,
     )
     await db.commit()
 

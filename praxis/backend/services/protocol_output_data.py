@@ -31,7 +31,7 @@ log_data_output_errors = partial(
 
 
 async def read_protocol_run_data_summary(
-  db: AsyncSession, protocol_run_accession_id: UUID
+  db: AsyncSession, protocol_run_accession_id: UUID,
 ) -> ProtocolRunDataSummary:
   """Get a summary of all data outputs for a protocol run.
 
@@ -46,16 +46,16 @@ async def read_protocol_run_data_summary(
   # Count total data outputs
   total_count_result = await db.execute(
     select(func.count(FunctionDataOutputOrm.accession_id)).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
-    )
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    ),
   )
   total_data_outputs = total_count_result.scalar()
 
   # Get unique data types
   data_types_result = await db.execute(
     select(FunctionDataOutputOrm.data_type.distinct()).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
-    )
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    ),
   )
   data_types = [dt.value for dt in data_types_result.scalars().all()]
 
@@ -65,8 +65,8 @@ async def read_protocol_run_data_summary(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
         FunctionDataOutputOrm.machine_accession_id.is_not(None),
-      )
-    )
+      ),
+    ),
   )
   machines_used = list(machines_result.scalars().all())
 
@@ -76,8 +76,8 @@ async def read_protocol_run_data_summary(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
         FunctionDataOutputOrm.resource_instance_accession_id.is_not(None),
-      )
-    )
+      ),
+    ),
   )
   resource_with_data = list(resource_result.scalars().all())
 
@@ -89,12 +89,12 @@ async def read_protocol_run_data_summary(
       func.count(FunctionDataOutputOrm.accession_id),
     )
     .filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
     )
     .group_by(
-      FunctionDataOutputOrm.measurement_timestamp, FunctionDataOutputOrm.data_type
+      FunctionDataOutputOrm.measurement_timestamp, FunctionDataOutputOrm.data_type,
     )
-    .order_by(FunctionDataOutputOrm.measurement_timestamp)
+    .order_by(FunctionDataOutputOrm.measurement_timestamp),
   )
 
   data_timeline = [
@@ -112,8 +112,8 @@ async def read_protocol_run_data_summary(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
         FunctionDataOutputOrm.file_path.is_not(None),
-      )
-    )
+      ),
+    ),
   )
 
   file_attachments = [

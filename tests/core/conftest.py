@@ -12,8 +12,8 @@ from praxis.backend.models import (
   MachineOrm,
   MachineStatusEnum,
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
+  ResourceOrm,
+  ResourceStatusEnum,
 )
 
 # --- Static Test UUIDs (version 7) ---
@@ -46,7 +46,8 @@ def mock_workcell_runtime() -> AsyncMock:
 def asset_manager(mock_db_session, mock_workcell_runtime) -> AssetManager:
   """Provide an AssetManager instance with mocked dependencies."""
   return AssetManager(
-    db_session=mock_db_session, workcell_runtime=mock_workcell_runtime
+    db_session=mock_db_session,
+    workcell_runtime=mock_workcell_runtime,
   )
 
 
@@ -92,20 +93,20 @@ def resource_definition_factory():
 
 @pytest.fixture
 def resource_instance_factory():
-  """Create ResourceInstanceOrm instances."""
+  """Create ResourceOrm instances."""
 
   def _factory(**kwargs):
     defaults = {
       "accession_id": TEST_RESOURCE_ID,
       "user_assigned_name": "Test Plate 1",
       "python_fqn": "cos_96_wellplate_100ul",
-      "current_status": ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+      "current_status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       "current_protocol_run_accession_id": None,
       "location_machine_accession_id": None,
       "current_deck_position_name": None,
     }
     defaults.update(kwargs)
-    return ResourceInstanceOrm(**defaults)
+    return ResourceOrm(**defaults)
 
   return _factory
 

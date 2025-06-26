@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 def get_orchestrator(request: Request) -> Orchestrator:
   """Get orchestrator instance from request state."""
   app = request.app
-  orchestrator: Optional[Orchestrator] = getattr(app.state, "orchestrator", None)
+  orchestrator: Orchestrator | None = getattr(app.state, "orchestrator", None)
   if orchestrator is None:
     raise HTTPException(
       status_code=500,
@@ -32,8 +32,8 @@ def get_orchestrator(request: Request) -> Orchestrator:
 def get_workcell_runtime(request: Request) -> WorkcellRuntime:
   """Get WorkcellRuntime instance from request state."""
   app = request.app
-  workcell_runtime: Optional[WorkcellRuntime] = getattr(
-    app.state, "workcell_runtime", None
+  workcell_runtime: WorkcellRuntime | None = getattr(
+    app.state, "workcell_runtime", None,
   )
   if workcell_runtime is None:
     raise HTTPException(

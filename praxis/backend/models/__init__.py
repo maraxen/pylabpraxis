@@ -23,7 +23,6 @@ from .deck_pydantic_models import (
   DeckTypeDefinitionBase,
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionResponse,
-  DeckTypeDefinitionUpdate,
   DeckUpdate,
   PositioningConfig,
 )
@@ -142,6 +141,7 @@ __all__ = [
   "DeckTypeDefinitionBase",
   "DeckTypeDefinitionCreate",
   "DeckTypeDefinitionResponse",
+  "DeckTypeDefinitionUpdate",
   "DeckTypeDefinitionUpdate",
   "DeckUpdate",
   "PositioningConfig",

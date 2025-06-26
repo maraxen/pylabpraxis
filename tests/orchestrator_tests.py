@@ -19,7 +19,6 @@ from praxis.backend.database_models.protocol_definitions_orm import (
 from praxis.backend.protocol_core.protocol_definition_models import (
   AssetRequirementModel,
   FunctionProtocolDefinitionModel,
-  ParameterMetadataModel,
 )
 from praxis.backend.services.state import PraxisState as PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError
@@ -86,7 +85,7 @@ def mock_protocol_def_orm():  # Removed self
   pdo.source_repository = None
   pdo.file_system_source_accession_id = 1
   pdo.file_system_source = MagicMock(
-    spec=FileSystemProtocolSourceOrm, base_path="dummy/path"
+    spec=FileSystemProtocolSourceOrm, base_path="dummy/path",
   )
   pdo.commit_hash = None
   pdo.is_top_level = True
@@ -123,10 +122,10 @@ def mock_protocol_run_orm():  # Removed self
 
 @pytest.fixture
 def orchestrator_instance(
-  mock_db_session, mock_asset_manager
+  mock_db_session, mock_asset_manager,
 ):  # Removed self from params
   with patch(
-    "praxis.backend.core.orchestrator.create_protocol_run", mock_create_protocol_run
+    "praxis.backend.core.orchestrator.create_protocol_run", mock_create_protocol_run,
   ), patch(
     "praxis.backend.core.orchestrator.update_protocol_run_status",
     mock_update_protocol_run_status,
@@ -134,11 +133,11 @@ def orchestrator_instance(
     "praxis.backend.core.orchestrator.get_protocol_definition_details",
     mock_get_protocol_definition_details,
   ), patch(
-    "praxis.backend.core.orchestrator.get_control_command", mock_run_control_get
+    "praxis.backend.core.orchestrator.get_control_command", mock_run_control_get,
   ), patch(
-    "praxis.backend.core.orchestrator.clear_control_command", mock_run_control_clear
+    "praxis.backend.core.orchestrator.clear_control_command", mock_run_control_clear,
   ), patch(
-    "praxis.backend.core.orchestrator.AssetManager", return_value=mock_asset_manager
+    "praxis.backend.core.orchestrator.AssetManager", return_value=mock_asset_manager,
   ), patch("time.sleep", MagicMock()) as mock_sleep:
     mock_create_protocol_run.reset_mock()
     mock_update_protocol_run_status.reset_mock()
@@ -182,10 +181,10 @@ class TestOrchestratorExecutionControl:
     mock_create_protocol_run.return_value = mock_protocol_run_orm
 
     orchestrator._prepare_protocol_code = MagicMock(
-      return_value=(mock_protocol_wrapper_func, decorator_meta)
+      return_value=(mock_protocol_wrapper_func, decorator_meta),
     )
     orchestrator._prepare_arguments = MagicMock(
-      return_value=({}, None, [])
+      return_value=({}, None, []),
     )  # No assets for this test
 
     mock_run_control_get.side_effect = [
@@ -205,13 +204,13 @@ class TestOrchestratorExecutionControl:
 
     expected_status_calls = [
       call(
-        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
+        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING,
       ),  # Set after successful prep & before pause check
       call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSING),
       call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED),
       call(ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RESUMING),
       call(
-        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
+        ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING,
       ),  # Set after resume
       call(
         ANY,
@@ -241,14 +240,14 @@ class TestOrchestratorExecutionControl:
     mock_get_protocol_definition_details.return_value = protocol_def
     mock_create_protocol_run.return_value = mock_protocol_run_orm
     orchestrator._prepare_protocol_code = MagicMock(
-      return_value=(mock_protocol_wrapper_func, decorator_meta)
+      return_value=(mock_protocol_wrapper_func, decorator_meta),
     )
 
     acquired_assets_info = [
-      {"type": "machine", "orm_accession_id": 123, "name_in_protocol": "mock_machine"}
+      {"type": "machine", "orm_accession_id": 123, "name_in_protocol": "mock_machine"},
     ]
     orchestrator._prepare_arguments = MagicMock(
-      return_value=({}, None, acquired_assets_info)
+      return_value=({}, None, acquired_assets_info),
     )
 
     mock_run_control_get.side_effect = [
@@ -268,16 +267,16 @@ class TestOrchestratorExecutionControl:
     actual_calls = mock_update_protocol_run_status.call_args_list
 
     assert actual_calls[0] == call(
-      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING,
     )
     assert actual_calls[1] == call(
-      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSING,
     )
     assert actual_calls[2] == call(
-      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED,
     )
     assert actual_calls[3] == call(
-      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.CANCELING
+      ANY, mock_protocol_run_orm.accession_id, ProtocolRunStatusEnum.CANCELING,
     )
     assert actual_calls[4] == call(
       ANY,
@@ -289,7 +288,7 @@ class TestOrchestratorExecutionControl:
     mock_protocol_wrapper_func.assert_not_called()
 
     orchestrator.asset_manager.release_machine.assert_called_once_with(
-      machine_orm_accession_id=123
+      machine_orm_accession_id=123,
     )
     orchestrator.asset_manager.release_resource.assert_not_called()
 
@@ -336,7 +335,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_clone_repo_if_checkout_path_does_not_exist(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -361,7 +360,7 @@ class TestOrchestratorGitOps:
     # Simulate successful subprocess calls
     mock_subprocess_run.side_effect = [
       MagicMock(
-        stdout="true", returncode=0
+        stdout="true", returncode=0,
       ),  # git clone (simulated via _run_git_command)
       MagicMock(stdout="true", returncode=0),  # git checkout (simulated)
       MagicMock(stdout=commit_hash, returncode=0),  # git rev-parse HEAD (simulated)
@@ -372,7 +371,7 @@ class TestOrchestratorGitOps:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
       mock_protocol_func.protocol_metadata = {
-        "db_accession_id": protocol_def.accession_id
+        "db_accession_id": protocol_def.accession_id,
       }  # Make it seem decorated
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
@@ -421,7 +420,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_clone_repo_if_checkout_path_exists_empty_not_git(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -454,7 +453,7 @@ class TestOrchestratorGitOps:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
       mock_protocol_func.protocol_metadata = {
-        "db_accession_id": protocol_def.accession_id
+        "db_accession_id": protocol_def.accession_id,
       }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
@@ -482,7 +481,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_fetch_repo_if_checkout_path_is_git_repo(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -508,7 +507,7 @@ class TestOrchestratorGitOps:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
       mock_protocol_func.protocol_metadata = {
-        "db_accession_id": protocol_def.accession_id
+        "db_accession_id": protocol_def.accession_id,
       }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
@@ -535,7 +534,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_checkout_path_exists_not_git_not_empty_raises_value_error(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -551,7 +550,7 @@ class TestOrchestratorGitOps:
         stderr="Not a git repository",
         returncode=128,
         cmd=["git", "rev-parse", "--is-inside-work-tree"],
-      )
+      ),
     ]
 
     with pytest.raises(
@@ -575,7 +574,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_git_checkout_head_verification_fail_raises_runtime_error(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -587,15 +586,15 @@ class TestOrchestratorGitOps:
 
     mock_subprocess_run.side_effect = [
       MagicMock(
-        stdout="true", returncode=0
+        stdout="true", returncode=0,
       ),  # git rev-parse --is-inside-work-tree (success)
       MagicMock(stdout="", returncode=0),  # git fetch origin
       MagicMock(stdout="", returncode=0),  # git checkout <commit_hash>
       MagicMock(
-        stdout=wrong_commit_hash, returncode=0
+        stdout=wrong_commit_hash, returncode=0,
       ),  # git rev-parse HEAD returns different hash
       MagicMock(
-        stdout=commit_hash, returncode=0
+        stdout=commit_hash, returncode=0,
       ),  # git rev-parse <commit_hash>^{commit} (resolves to target)
     ]
 
@@ -612,7 +611,7 @@ class TestOrchestratorGitOps:
   @patch("praxis.backend.core.orchestrator.os")
   @patch("praxis.backend.core.orchestrator.subprocess.run")
   def test_git_command_fails_raises_runtime_error(
-    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm
+    self, mock_subprocess_run, mock_os, orchestrator_instance, mock_git_protocol_def_orm,
   ):
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
@@ -623,10 +622,10 @@ class TestOrchestratorGitOps:
     # Simulate git fetch failing
     mock_subprocess_run.side_effect = [
       MagicMock(
-        stdout="true", returncode=0
+        stdout="true", returncode=0,
       ),  # git rev-parse --is-inside-work-tree (success)
       subprocess.CalledProcessError(
-        returncode=1, cmd=["git", "fetch", "origin"], stderr="Fetch failed"
+        returncode=1, cmd=["git", "fetch", "origin"], stderr="Fetch failed",
       ),
     ]
 
@@ -652,13 +651,13 @@ class TestOrchestratorGitOps:
     assert protocol_def.file_system_source is not None
 
     with patch("importlib.import_module") as mock_import_module, patch(
-      "praxis.backend.core.orchestrator.subprocess.run"
+      "praxis.backend.core.orchestrator.subprocess.run",
     ) as mock_subproc_run:
       mock_module = MagicMock()
       mock_protocol_func = MagicMock()
       # Ensure metadata matches the db_accession_id from the mock_protocol_def_orm
       mock_protocol_func.protocol_metadata = {
-        "db_accession_id": protocol_def.accession_id
+        "db_accession_id": protocol_def.accession_id,
       }
       setattr(mock_module, protocol_def.function_name, mock_protocol_func)
       mock_import_module.return_value = mock_module
@@ -713,7 +712,7 @@ class TestOrchestratorArgumentPreparation:
     user_input_params = {"my_deck": "MyDeckLayoutName"}
     mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromString")
     orchestrator.asset_manager.apply_deck_instance = MagicMock(
-      return_value=mock_live_deck_obj
+      return_value=mock_live_deck_obj,
     )
 
     final_args, _, _ = orchestrator._prepare_arguments(
@@ -755,7 +754,7 @@ class TestOrchestratorArgumentPreparation:
 
     mock_live_deck_obj = MagicMock(name="LiveDeckObjectFromDeck")
     orchestrator.asset_manager.apply_deck_instance = MagicMock(
-      return_value=mock_live_deck_obj
+      return_value=mock_live_deck_obj,
     )
 
     final_args, _, _ = orchestrator._prepare_arguments(
@@ -796,7 +795,7 @@ class TestOrchestratorArgumentPreparation:
     orchestrator.asset_manager.apply_deck_instance = MagicMock()
 
     with pytest.raises(
-      ValueError, match="Mandatory deck parameter 'mandatory_deck' was not provided"
+      ValueError, match="Mandatory deck parameter 'mandatory_deck' was not provided",
     ):
       orchestrator._prepare_arguments(
         protocol_def,
@@ -863,11 +862,11 @@ class TestOrchestratorArgumentPreparation:
 
     user_input_params = {"deck_will_fail": "SomeDeckLayout"}
     orchestrator.asset_manager.apply_deck_instance = MagicMock(
-      side_effect=AssetAcquisitionError("Deck config failed in AM")
+      side_effect=AssetAcquisitionError("Deck config failed in AM"),
     )
 
     with pytest.raises(
-      ValueError, match="Failed to acquire mandatory asset 'deck_will_fail'"
+      ValueError, match="Failed to acquire mandatory asset 'deck_will_fail'",
     ):  # Error is wrapped
       orchestrator._prepare_arguments(
         protocol_def,
@@ -961,7 +960,7 @@ class TestOrchestratorArgumentPreparation:
     # Mock AssetManager's acquire_asset
     live_asset_mock = MagicMock(name="LivePlateAsset")
     orchestrator.asset_manager.acquire_asset = MagicMock(
-      return_value=(live_asset_mock, 1, "resource")
+      return_value=(live_asset_mock, 1, "resource"),
     )
 
     final_args, _, acquired_assets = orchestrator._prepare_arguments(
@@ -973,7 +972,7 @@ class TestOrchestratorArgumentPreparation:
     )
 
     mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.assert_called_once_with(
-      mock_db_session, "pylabrobot.resources.plate.Plate"
+      mock_db_session, "pylabrobot.resources.plate.Plate",
     )
     orchestrator.asset_manager.acquire_asset.assert_called_once()
     called_asset_req: AssetRequirementModel = (
@@ -1008,7 +1007,7 @@ class TestOrchestratorArgumentPreparation:
 
     live_asset_mock = MagicMock(name="LivePipetteAsset")
     orchestrator.asset_manager.acquire_asset = MagicMock(
-      return_value=(live_asset_mock, 2, "machine")
+      return_value=(live_asset_mock, 2, "machine"),
     )
 
     final_args, _, acquired_assets = orchestrator._prepare_arguments(
@@ -1021,7 +1020,7 @@ class TestOrchestratorArgumentPreparation:
 
     # It will try to resolve as resource first
     mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.assert_called_once_with(
-      mock_db_session, "pylabrobot.liquid_handling.pipettes.Pipette"
+      mock_db_session, "pylabrobot.liquid_handling.pipettes.Pipette",
     )
     orchestrator.asset_manager.acquire_asset.assert_called_once()
     called_asset_req: AssetRequirementModel = (
@@ -1049,16 +1048,15 @@ class TestOrchestratorArgumentPreparation:
     protocol_def, decorator_meta = mock_protocol_def_orm
 
     # Need to import Optional from typing for the signature
-    from typing import Optional as TypingOptional
 
-    def original_protocol(optional_rack: TypingOptional[MockPlrTipRack]):
+    def original_protocol(optional_rack: MockPlrTipRack | None):
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
 
     mock_asset_data_service_in_orchestrator.get_resource_definition_by_fqn.return_value = None  # Treat as machine for simplicity here
     orchestrator.asset_manager.acquire_asset = MagicMock(
-      side_effect=AssetAcquisitionError("Cannot acquire optional rack")
+      side_effect=AssetAcquisitionError("Cannot acquire optional rack"),
     )
 
     final_args, _, acquired_assets = orchestrator._prepare_arguments(
@@ -1148,7 +1146,7 @@ class TestOrchestratorArgumentPreparation:
 
     live_asset_mock = MagicMock(name="LiveExplicitPlate")
     orchestrator.asset_manager.acquire_asset = MagicMock(
-      return_value=(live_asset_mock, 3, "resource")
+      return_value=(live_asset_mock, 3, "resource"),
     )
 
     final_args, _, acquired_assets = orchestrator._prepare_arguments(
@@ -1220,14 +1218,14 @@ class TestOrchestratorArgumentPreparation:
 
     # This is the mock for the actual user-written protocol function
     user_protocol_function_mock = MagicMock(
-      return_value={"status": "user_code_completed"}
+      return_value={"status": "user_code_completed"},
     )
 
     def mock_protocol_wrapper_side_effect(*args, **kwargs):
       # This simulates the decorator's command handling logic
       # __praxis_run_context__ is passed by the orchestrator to the wrapper
       ctx = kwargs.get(
-        "__praxis_run_context__", mock_praxis_run_context
+        "__praxis_run_context__", mock_praxis_run_context,
       )  # Fallback for safety
 
       # Simulate 1st command check in decorator (before user code)
@@ -1273,32 +1271,32 @@ class TestOrchestratorArgumentPreparation:
 
       # If resumed, the actual user function is called
       result = user_protocol_function_mock(
-        *args, **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"}
+        *args, **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"},
       )
       return result
 
     mock_wrapper_func_instance = MagicMock(
-      side_effect=mock_protocol_wrapper_side_effect
+      side_effect=mock_protocol_wrapper_side_effect,
     )
     # Attach the original metadata, as Orchestrator uses it
     mock_wrapper_func_instance.protocol_metadata = decorator_meta
 
     orchestrator._prepare_protocol_code = MagicMock(
-      return_value=(mock_wrapper_func_instance, decorator_meta)
+      return_value=(mock_wrapper_func_instance, decorator_meta),
     )
     orchestrator._prepare_arguments = MagicMock(
       return_value=(
         {},
         PraxisState(run_accession_id=mock_protocol_run_orm.run_accession_id),
         [],
-      )
+      ),
     )
     mock_get_protocol_definition_details.return_value = protocol_def
     mock_create_protocol_run.return_value = mock_protocol_run_orm
 
     # Execute
     result = orchestrator.execute_protocol(
-      protocol_name="TestProtocol", user_input_params={}
+      protocol_name="TestProtocol", user_input_params={},
     )
 
     # Assertions
@@ -1329,14 +1327,14 @@ class TestOrchestratorArgumentPreparation:
       ),
     ]
     mock_decorator_update_status.assert_has_calls(
-      decorator_status_calls, any_order=False
+      decorator_status_calls, any_order=False,
     )
 
     mock_decorator_clear_cmd.assert_has_calls(
       [
         call(mock_protocol_run_orm.run_accession_id),  # For PAUSE
         call(mock_protocol_run_orm.run_accession_id),  # For RESUME
-      ]
+      ],
     )
     assert mock_decorator_clear_cmd.call_count == 2
     assert mock_decorator_sleep.call_count >= 2  # At least two sleeps during pause
@@ -1358,7 +1356,7 @@ class TestOrchestratorArgumentPreparation:
   @patch("praxis.backend.protocol_core.decorators.clear_control_command")
   @patch("praxis.backend.protocol_core.decorators.update_protocol_run_status")
   @patch(
-    "praxis.backend.protocol_core.decorators.time.sleep"
+    "praxis.backend.protocol_core.decorators.time.sleep",
   )  # Though not used in cancel path
   def test_cancel_during_protocol_step(
     self,
@@ -1415,16 +1413,16 @@ class TestOrchestratorArgumentPreparation:
           output_data_json=ANY,
         )
         raise ProtocolCancelledError(
-          f"Cancelled by user during step {ctx.run_accession_id}"
+          f"Cancelled by user during step {ctx.run_accession_id}",
         )
 
       user_protocol_function_mock(
-        *args, **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"}
+        *args, **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"},
       )
       return {"status": "should_not_complete"}
 
     mock_wrapper_func_instance = MagicMock(
-      side_effect=mock_protocol_wrapper_side_effect
+      side_effect=mock_protocol_wrapper_side_effect,
     )
     mock_wrapper_func_instance.protocol_metadata = decorator_meta
 
@@ -1434,18 +1432,18 @@ class TestOrchestratorArgumentPreparation:
         "type": "machine",
         "orm_accession_id": 789,
         "name_in_protocol": "test_machine_cancel",
-      }
+      },
     ]
     orchestrator._prepare_arguments = MagicMock(
       return_value=(
         {},
         PraxisState(run_accession_id=mock_protocol_run_orm.run_accession_id),
         acquired_assets_info,
-      )
+      ),
     )
 
     orchestrator._prepare_protocol_code = MagicMock(
-      return_value=(mock_wrapper_func_instance, decorator_meta)
+      return_value=(mock_wrapper_func_instance, decorator_meta),
     )
     mock_get_protocol_definition_details.return_value = protocol_def
     mock_create_protocol_run.return_value = mock_protocol_run_orm
@@ -1472,10 +1470,10 @@ class TestOrchestratorArgumentPreparation:
       ),
     ]
     mock_decorator_update_status.assert_has_calls(
-      decorator_status_calls, any_order=False
+      decorator_status_calls, any_order=False,
     )
     mock_decorator_clear_cmd.assert_called_once_with(
-      mock_protocol_run_orm.run_accession_id
+      mock_protocol_run_orm.run_accession_id,
     )
 
     # Check Orchestrator's final status update (should be CANCELLED by the orchestrator itself due to the raised error)
@@ -1493,6 +1491,6 @@ class TestOrchestratorArgumentPreparation:
 
     # Check asset release
     mock_asset_manager.release_machine.assert_called_once_with(
-      machine_orm_accession_id=789
+      machine_orm_accession_id=789,
     )
     mock_asset_manager.release_resource.assert_not_called()

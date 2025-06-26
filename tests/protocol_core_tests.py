@@ -1,33 +1,27 @@
-import inspect
-from dataclasses import is_dataclass
-from typing import Any, Dict, List, Optional, Union
 
 import pytest  # type: ignore
 
 from praxis.backend.core.decorators import protocol_function
 from praxis.backend.core.run_context import PraxisRunContext, PraxisState, Resource
 from praxis.backend.protocol_core.protocol_definition_models import (
-  AssetRequirementModel,
   FunctionProtocolDefinitionModel,
-  ParameterMetadataModel,
-  UIHint,
 )
 
 
 # Dummy PLR-like classes for type hinting in tests
 class DummyPipette(
-  Resource
+  Resource,
 ):  # Assuming Resource can be instantiated like this for test
   def __init__(self, name: str, **kwargs):
     super().__init__(
-      name=name, size_x=1, size_y=1, size_z=1, category="dummy_pipette", **kwargs
+      name=name, size_x=1, size_y=1, size_z=1, category="dummy_pipette", **kwargs,
     )  # Provide dummy sizes
 
 
 class DummyPlate(Resource):
   def __init__(self, name: str, **kwargs):
     super().__init__(
-      name=name, size_x=1, size_y=1, size_z=1, category="dummy_plate", **kwargs
+      name=name, size_x=1, size_y=1, size_z=1, category="dummy_plate", **kwargs,
     )
 
 
@@ -61,8 +55,8 @@ def complex_protocol_function_def():
     state: PraxisState,
     pipette: DummyPipette,
     count: int = 5,
-    name: Optional[str] = None,
-    target_plate: Optional[DummyPlate] = None,
+    name: str | None = None,
+    target_plate: DummyPlate | None = None,
   ):
     """Docstring for complex func."""
     return f"ran {count} times for {name or 'default'} with {pipette.name} and {target_plate.name if target_plate else 'no plate'}"
@@ -148,7 +142,6 @@ class TestProtocolFunctionDecoratorMetadata:
     @protocol_function()
     def _func_with_docstring(state: PraxisState):
       """This is the docstring."""
-      pass
 
     model = _func_with_docstring._protocol_definition
     assert model.description == "This is the docstring."
@@ -221,7 +214,7 @@ class TestPraxisRunContext:
     # This new_parent_call_log_db_accession_id is the log ID of the function that is *creating* this nested context.
     # So, for the nested function, this ID will be its parent's log ID.
     nested_context = parent_context.create_context_for_nested_call(
-      new_parent_call_log_db_accession_id=100
+      new_parent_call_log_db_accession_id=100,
     )
 
     assert (

@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Generator
 from praxis.backend.main import app # Assuming your FastAPI app instance is here
 from praxis.backend.database_models.asset_management_orm import (
     ManagedDeviceOrm,
-    ResourceInstanceOrm,
+    ResourceOrm,
     ResourceDefinitionCatalogOrm,
     PraxisDeviceCategoryEnum,
     ManagedDeviceStatusEnum,
@@ -246,31 +246,31 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     db_session.add_all([plate_def, tip_rack_def])
     db_session.commit() # Commit definitions so they can be referenced
 
-    # Resource Instances
-    plate_instance = ResourceInstanceOrm(
+    # Resource s
+    plate_instance = ResourceOrm(
         id=1,
         user_assigned_name="PlateOnDeck",
         resource_definition_accession_id=plate_def.accession_id,
         location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="A1",
-        current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+        current_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
         properties_json={"sample_type": "plasma"}
     )
-    tip_rack_instance = ResourceInstanceOrm(
+    tip_rack_instance = ResourceOrm(
         id=2,
         user_assigned_name="TipsOnDeck",
         resource_definition_accession_id=tip_rack_def.accession_id,
         location_machine_accession_id=VALID_DECK_ID, # Place on Test Deck 1
         current_deck_slot_name="B2",
-        current_status=ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+        current_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
     )
     # Resource not on this deck
-    other_plate_instance = ResourceInstanceOrm(
+    other_plate_instance = ResourceOrm(
         id=3,
         user_assigned_name="PlateInStorage",
         resource_definition_accession_id=plate_def.accession_id,
         location_machine_accession_id=None, # Not on any deck
-        current_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+        current_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
     )
 
     db_session.add_all([plate_instance, tip_rack_instance, other_plate_instance])

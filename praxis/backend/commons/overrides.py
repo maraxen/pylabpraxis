@@ -1,7 +1,7 @@
 import importlib
 import inspect
 import pkgutil
-from typing import Type, TypeVar
+from typing import TypeVar
 
 from pylabrobot.machines import Machine
 
@@ -28,11 +28,11 @@ def get_class_members(library_name: str, subpackage, base_class_name: str):
 
   all_members = {}
   base_class = getattr(
-    importlib.import_module(name=library_name + "." + subpackage), base_class_name
+    importlib.import_module(name=library_name + "." + subpackage), base_class_name,
   )
 
   for _, module_name, _ in pkgutil.walk_packages(
-    importlib.import_module(library_name).__path__, prefix=f"{library_name}."
+    importlib.import_module(library_name).__path__, prefix=f"{library_name}.",
   ):
     module = importlib.import_module(module_name)
     for name, obj in inspect.getmembers(module):
@@ -47,10 +47,10 @@ def new_init(self, *args, **kwargs):
     if args:
       raise ValueError("All arguments must be keyword arguments when using praxis.")
     if "name" in kwargs:
-      setattr(self, "name", kwargs["name"])
+      self.name = kwargs["name"]
       kwargs.pop("name")
     else:
-      setattr(self, "name", None)
+      self.name = None
     self.backend = kwargs["backend"]
     self._setup_finished = False
   else:
@@ -64,7 +64,7 @@ def new_serialize(self):
   }
 
 
-def patch_subclasses() -> dict[str, Type[Machine]]:
+def patch_subclasses() -> dict[str, type[Machine]]:
   """Adds new __init__ and serialize methods to all subclasses of a base class. Specifically, it adds
   a name attribute to all subclasses of the Machine class.
 
@@ -78,7 +78,7 @@ def patch_subclasses() -> dict[str, Type[Machine]]:
   """
   new_objs = {}
   for name, obj in get_class_members(
-    library_name="pylabrobot", subpackage="machines", base_class_name=Machine.__name__
+    library_name="pylabrobot", subpackage="machines", base_class_name=Machine.__name__,
   ).items():
     if inspect.isclass(obj) and issubclass(obj, Machine):
       obj.__init__ = new_init  # type: ignore

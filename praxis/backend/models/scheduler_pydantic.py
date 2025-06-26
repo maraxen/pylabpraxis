@@ -8,7 +8,7 @@ providing type safety and validation for scheduling operations.
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -42,14 +42,14 @@ class ResourceRequirementRequest(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   resource_type: str = Field(
-    ..., description="Type of resource (machine, resource, deck)"
+    ..., description="Type of resource (machine, resource, deck)",
   )
   resource_name: str = Field(..., description="Name/identifier of the resource")
-  required_capabilities: Optional[Dict[str, Any]] = Field(
-    default=None, description="Required capabilities for the resource"
+  required_capabilities: dict[str, Any] | None = Field(
+    default=None, description="Required capabilities for the resource",
   )
-  estimated_duration_ms: Optional[int] = Field(
-    default=None, description="Estimated duration in milliseconds"
+  estimated_duration_ms: int | None = Field(
+    default=None, description="Estimated duration in milliseconds",
   )
   priority: int = Field(default=1, description="Priority level (1-10)")
 
@@ -62,21 +62,21 @@ class ResourceReservationResponse(BaseModel):
   accession_id: uuid.UUID
   resource_type: str
   resource_name: str
-  resource_identifier: Optional[str]
+  resource_identifier: str | None
   status: ResourceReservationStatus
-  redis_lock_key: Optional[str]
-  redis_reservation_id: Optional[uuid.UUID]
-  required_capabilities: Optional[Dict[str, Any]] = Field(
-    alias="required_capabilities_json"
+  redis_lock_key: str | None
+  redis_reservation_id: uuid.UUID | None
+  required_capabilities: dict[str, Any] | None = Field(
+    alias="required_capabilities_json",
   )
-  constraint_details: Optional[Dict[str, Any]] = Field(alias="constraint_details_json")
+  constraint_details: dict[str, Any] | None = Field(alias="constraint_details_json")
   created_at: datetime
-  reserved_at: Optional[datetime]
-  released_at: Optional[datetime]
-  expires_at: Optional[datetime]
-  estimated_duration_ms: Optional[int]
-  status_details: Optional[str]
-  error_details: Optional[Dict[str, Any]] = Field(alias="error_details_json")
+  reserved_at: datetime | None
+  released_at: datetime | None
+  expires_at: datetime | None
+  estimated_duration_ms: int | None
+  status_details: str | None
+  error_details: dict[str, Any] | None = Field(alias="error_details_json")
 
 
 class ScheduleProtocolRequest(BaseModel):
@@ -85,21 +85,21 @@ class ScheduleProtocolRequest(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   protocol_run_id: uuid.UUID = Field(
-    ..., description="ID of the protocol run to schedule"
+    ..., description="ID of the protocol run to schedule",
   )
-  user_params: Dict[str, Any] = Field(..., description="User-provided parameters")
-  initial_state: Optional[Dict[str, Any]] = Field(
-    default=None, description="Initial state data for the protocol"
+  user_params: dict[str, Any] = Field(..., description="User-provided parameters")
+  initial_state: dict[str, Any] | None = Field(
+    default=None, description="Initial state data for the protocol",
   )
   priority: int = Field(default=1, description="Schedule priority (1-10)")
-  estimated_duration_ms: Optional[int] = Field(
-    default=None, description="Estimated execution duration"
+  estimated_duration_ms: int | None = Field(
+    default=None, description="Estimated execution duration",
   )
-  resource_requirements: Optional[List[ResourceRequirementRequest]] = Field(
-    default=None, description="Override resource requirements analysis"
+  resource_requirements: list[ResourceRequirementRequest] | None = Field(
+    default=None, description="Override resource requirements analysis",
   )
-  scheduling_constraints: Optional[Dict[str, Any]] = Field(
-    default=None, description="Additional scheduling constraints"
+  scheduling_constraints: dict[str, Any] | None = Field(
+    default=None, description="Additional scheduling constraints",
   )
 
 
@@ -113,18 +113,18 @@ class ScheduleEntryResponse(BaseModel):
   status: ScheduleEntryStatus
   priority: int
   created_at: datetime
-  scheduled_at: Optional[datetime]
-  started_at: Optional[datetime]
-  completed_at: Optional[datetime]
-  estimated_duration_ms: Optional[int]
-  estimated_resource_count: Optional[int]
-  analysis_details: Optional[Dict[str, Any]] = Field(alias="analysis_details_json")
-  scheduling_metadata: Optional[Dict[str, Any]] = Field(
-    alias="scheduling_metadata_json"
+  scheduled_at: datetime | None
+  started_at: datetime | None
+  completed_at: datetime | None
+  estimated_duration_ms: int | None
+  estimated_resource_count: int | None
+  analysis_details: dict[str, Any] | None = Field(alias="analysis_details_json")
+  scheduling_metadata: dict[str, Any] | None = Field(
+    alias="scheduling_metadata_json",
   )
-  error_details: Optional[Dict[str, Any]] = Field(alias="error_details_json")
-  status_details: Optional[str]
-  resource_reservations: Optional[List[ResourceReservationResponse]] = None
+  error_details: dict[str, Any] | None = Field(alias="error_details_json")
+  status_details: str | None
+  resource_reservations: list[ResourceReservationResponse] | None = None
 
 
 class ScheduleStatusResponse(BaseModel):
@@ -133,11 +133,11 @@ class ScheduleStatusResponse(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   schedule_entry: ScheduleEntryResponse
-  protocol_name: Optional[str]
-  protocol_version: Optional[str]
-  queue_position: Optional[int]
-  estimated_start_time: Optional[datetime]
-  resource_availability: Optional[Dict[str, Any]]
+  protocol_name: str | None
+  protocol_version: str | None
+  queue_position: int | None
+  estimated_start_time: datetime | None
+  resource_availability: dict[str, Any] | None
 
 
 class CancelScheduleRequest(BaseModel):
@@ -145,7 +145,7 @@ class CancelScheduleRequest(BaseModel):
 
   model_config = ConfigDict(from_attributes=True)
 
-  reason: Optional[str] = Field(default=None, description="Reason for cancellation")
+  reason: str | None = Field(default=None, description="Reason for cancellation")
   force: bool = Field(default=False, description="Force cancellation even if running")
 
 
@@ -155,12 +155,12 @@ class ScheduleAnalysisResponse(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   protocol_run_id: uuid.UUID
-  resource_requirements: List[ResourceRequirementRequest]
-  estimated_duration_ms: Optional[int]
+  resource_requirements: list[ResourceRequirementRequest]
+  estimated_duration_ms: int | None
   analysis_timestamp: datetime
-  analysis_details: Dict[str, Any]
-  warnings: Optional[List[str]] = None
-  errors: Optional[List[str]] = None
+  analysis_details: dict[str, Any]
+  warnings: list[str] | None = None
+  errors: list[str] | None = None
 
 
 class SchedulerSystemStatusResponse(BaseModel):
@@ -186,14 +186,14 @@ class SchedulerSystemStatusResponse(BaseModel):
   database_healthy: bool
 
   # Performance metrics
-  average_queue_time_ms: Optional[float]
-  average_execution_time_ms: Optional[float]
-  system_load_percentage: Optional[float]
+  average_queue_time_ms: float | None
+  average_execution_time_ms: float | None
+  system_load_percentage: float | None
 
   # Current system state
   timestamp: datetime
   uptime_seconds: int
-  last_cleanup_timestamp: Optional[datetime]
+  last_cleanup_timestamp: datetime | None
 
 
 class ScheduleHistoryResponse(BaseModel):
@@ -205,19 +205,19 @@ class ScheduleHistoryResponse(BaseModel):
   schedule_entry_accession_id: uuid.UUID
   event_type: str
   event_timestamp: datetime
-  previous_status: Optional[str]
-  new_status: Optional[str]
-  duration_ms: Optional[int]
-  resource_analysis_time_ms: Optional[int]
-  resource_reservation_time_ms: Optional[int]
-  queue_wait_time_ms: Optional[int]
-  active_schedules_count: Optional[int]
-  system_load_metrics: Optional[Dict[str, Any]] = Field(
-    alias="system_load_metrics_json"
+  previous_status: str | None
+  new_status: str | None
+  duration_ms: int | None
+  resource_analysis_time_ms: int | None
+  resource_reservation_time_ms: int | None
+  queue_wait_time_ms: int | None
+  active_schedules_count: int | None
+  system_load_metrics: dict[str, Any] | None = Field(
+    alias="system_load_metrics_json",
   )
-  event_details: Optional[Dict[str, Any]] = Field(alias="event_details_json")
-  error_details: Optional[Dict[str, Any]] = Field(alias="error_details_json")
-  triggered_by: Optional[str]
+  event_details: dict[str, Any] | None = Field(alias="event_details_json")
+  error_details: dict[str, Any] | None = Field(alias="error_details_json")
+  triggered_by: str | None
 
 
 class ScheduleListRequest(BaseModel):
@@ -225,25 +225,25 @@ class ScheduleListRequest(BaseModel):
 
   model_config = ConfigDict(from_attributes=True)
 
-  status: Optional[List[ScheduleEntryStatus]] = Field(
-    default=None, description="Filter by schedule status"
+  status: list[ScheduleEntryStatus] | None = Field(
+    default=None, description="Filter by schedule status",
   )
-  protocol_run_ids: Optional[List[uuid.UUID]] = Field(
-    default=None, description="Filter by specific protocol run IDs"
+  protocol_run_ids: list[uuid.UUID] | None = Field(
+    default=None, description="Filter by specific protocol run IDs",
   )
-  priority_min: Optional[int] = Field(default=None, description="Minimum priority")
-  priority_max: Optional[int] = Field(default=None, description="Maximum priority")
-  created_after: Optional[datetime] = Field(
-    default=None, description="Filter by creation time (after)"
+  priority_min: int | None = Field(default=None, description="Minimum priority")
+  priority_max: int | None = Field(default=None, description="Maximum priority")
+  created_after: datetime | None = Field(
+    default=None, description="Filter by creation time (after)",
   )
-  created_before: Optional[datetime] = Field(
-    default=None, description="Filter by creation time (before)"
+  created_before: datetime | None = Field(
+    default=None, description="Filter by creation time (before)",
   )
   include_completed: bool = Field(
-    default=False, description="Include completed schedules"
+    default=False, description="Include completed schedules",
   )
   include_cancelled: bool = Field(
-    default=False, description="Include cancelled schedules"
+    default=False, description="Include cancelled schedules",
   )
   limit: int = Field(default=50, ge=1, le=1000, description="Maximum results")
   offset: int = Field(default=0, ge=0, description="Results offset")
@@ -254,7 +254,7 @@ class ScheduleListResponse(BaseModel):
 
   model_config = ConfigDict(from_attributes=True)
 
-  schedules: List[ScheduleEntryResponse]
+  schedules: list[ScheduleEntryResponse]
   total_count: int
   limit: int
   offset: int
@@ -269,9 +269,9 @@ class AssetAvailabilityResponse(BaseModel):
   asset_type: str
   asset_name: str
   is_available: bool
-  current_reservation: Optional[ResourceReservationResponse]
-  estimated_available_at: Optional[datetime]
-  alternative_assets: Optional[List[str]]
+  current_reservation: ResourceReservationResponse | None
+  estimated_available_at: datetime | None
+  alternative_assets: list[str] | None
 
 
 class SchedulePriorityUpdateRequest(BaseModel):
@@ -280,7 +280,7 @@ class SchedulePriorityUpdateRequest(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   new_priority: int = Field(..., ge=1, le=10, description="New priority level")
-  reason: Optional[str] = Field(default=None, description="Reason for priority change")
+  reason: str | None = Field(default=None, description="Reason for priority change")
 
 
 class SchedulerMetricsResponse(BaseModel):
@@ -306,7 +306,7 @@ class SchedulerMetricsResponse(BaseModel):
   # Resource utilization
   peak_concurrent_protocols: int
   average_resource_utilization_percentage: float
-  most_contested_resources: List[Dict[str, Any]]
+  most_contested_resources: list[dict[str, Any]]
 
   # Error metrics
   scheduling_errors: int

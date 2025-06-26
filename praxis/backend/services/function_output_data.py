@@ -7,7 +7,6 @@ attribution, spatial context, and data visualization.
 
 import datetime
 from functools import partial
-from typing import List, Optional
 from uuid import UUID
 
 from sqlalchemy import and_, delete, select
@@ -41,7 +40,7 @@ log_data_output_errors = partial(
   suffix="Please ensure all required parameters are provided and valid.",
 )
 async def create_function_data_output(
-  db: AsyncSession, data_output: FunctionDataOutputCreate
+  db: AsyncSession, data_output: FunctionDataOutputCreate,
 ) -> FunctionDataOutputOrm:
   """Create a new function data output record.
 
@@ -111,8 +110,8 @@ async def create_function_data_output(
 
 
 async def read_function_data_output(
-  db: AsyncSession, data_output_accession_id: UUID
-) -> Optional[FunctionDataOutputOrm]:
+  db: AsyncSession, data_output_accession_id: UUID,
+) -> FunctionDataOutputOrm | None:
   """Read a function data output by ID.
 
   Args:
@@ -133,15 +132,15 @@ async def read_function_data_output(
       joinedload(FunctionDataOutputOrm.deck_instance),
       selectinload(FunctionDataOutputOrm.well_data_outputs),
     )
-    .filter(FunctionDataOutputOrm.accession_id == data_output_accession_id)
+    .filter(FunctionDataOutputOrm.accession_id == data_output_accession_id),
   )
 
   return result.scalar_one_or_none()
 
 
 async def list_function_data_outputs(
-  db: AsyncSession, filters: DataSearchFilters, limit: int = 100, offset: int = 0
-) -> List[FunctionDataOutputOrm]:
+  db: AsyncSession, filters: DataSearchFilters, limit: int = 100, offset: int = 0,
+) -> list[FunctionDataOutputOrm]:
   """List function data outputs with filtering.
 
   Args:
@@ -166,13 +165,13 @@ async def list_function_data_outputs(
   if filters.protocol_run_accession_id:
     conditions.append(
       FunctionDataOutputOrm.protocol_run_accession_id
-      == filters.protocol_run_accession_id
+      == filters.protocol_run_accession_id,
     )
 
   if filters.function_call_log_accession_id:
     conditions.append(
       FunctionDataOutputOrm.function_call_log_accession_id
-      == filters.function_call_log_accession_id
+      == filters.function_call_log_accession_id,
     )
 
   if filters.data_types:
@@ -180,28 +179,28 @@ async def list_function_data_outputs(
 
   if filters.spatial_contexts:
     conditions.append(
-      FunctionDataOutputOrm.spatial_context.in_(filters.spatial_contexts)
+      FunctionDataOutputOrm.spatial_context.in_(filters.spatial_contexts),
     )
 
   if filters.machine_accession_id:
     conditions.append(
-      FunctionDataOutputOrm.machine_accession_id == filters.machine_accession_id
+      FunctionDataOutputOrm.machine_accession_id == filters.machine_accession_id,
     )
 
   if filters.resource_instance_accession_id:
     conditions.append(
       FunctionDataOutputOrm.resource_instance_accession_id
-      == filters.resource_instance_accession_id
+      == filters.resource_instance_accession_id,
     )
 
   if filters.date_range_start:
     conditions.append(
-      FunctionDataOutputOrm.measurement_timestamp >= filters.date_range_start
+      FunctionDataOutputOrm.measurement_timestamp >= filters.date_range_start,
     )
 
   if filters.date_range_end:
     conditions.append(
-      FunctionDataOutputOrm.measurement_timestamp <= filters.date_range_end
+      FunctionDataOutputOrm.measurement_timestamp <= filters.date_range_end,
     )
 
   if filters.has_numeric_data is not None:
@@ -218,7 +217,7 @@ async def list_function_data_outputs(
 
   if filters.min_quality_score is not None:
     conditions.append(
-      FunctionDataOutputOrm.data_quality_score >= filters.min_quality_score
+      FunctionDataOutputOrm.data_quality_score >= filters.min_quality_score,
     )
 
   if conditions:
@@ -242,7 +241,7 @@ async def update_function_data_output(
   db: AsyncSession,
   data_output_accession_id: UUID,
   data_output_update: FunctionDataOutputUpdate,
-) -> Optional[FunctionDataOutputOrm]:
+) -> FunctionDataOutputOrm | None:
   """Update a function data output record.
 
   Args:
@@ -280,7 +279,7 @@ async def update_function_data_output(
     return data_output_orm
   except Exception as e:
     await db.rollback()
-    error_msg = f"Failed to update data output: {str(e)}"
+    error_msg = f"Failed to update data output: {e!s}"
     logger.error("%s %s", log_prefix, error_msg)
     raise ValueError(error_msg) from e
 
@@ -290,7 +289,7 @@ async def update_function_data_output(
   suffix="Please ensure the ID is valid and the record exists.",
 )
 async def delete_function_data_output(
-  db: AsyncSession, data_output_accession_id: UUID
+  db: AsyncSession, data_output_accession_id: UUID,
 ) -> bool:
   """Delete a function data output record by ID.
 
@@ -312,8 +311,8 @@ async def delete_function_data_output(
   try:
     result = await db.execute(
       delete(FunctionDataOutputOrm).where(
-        FunctionDataOutputOrm.accession_id == data_output_accession_id
-      )
+        FunctionDataOutputOrm.accession_id == data_output_accession_id,
+      ),
     )
     await db.commit()
 
@@ -326,6 +325,6 @@ async def delete_function_data_output(
 
   except Exception as e:
     await db.rollback()
-    error_msg = f"Failed to delete data output: {str(e)}"
+    error_msg = f"Failed to delete data output: {e!s}"
     logger.error("%s %s", log_prefix, error_msg)
     raise ValueError(error_msg) from e

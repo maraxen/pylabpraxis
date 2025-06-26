@@ -4,13 +4,13 @@
 praxis/db_services/machine_data_service.py
 
 Service layer for interacting with machine-related data in the database.
-This includes Machine Definitions, Machine Instances, and Machine configurations.
+This includes Machine Definitions, Machine s, and Machine configurations.
 """
 
 import datetime
 import uuid
+from collections.abc import Sequence
 from functools import partial
-from typing import List, Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -47,25 +47,25 @@ async def create_machine(
   machine_create: MachineCreate,
 ) -> MachineOrm:
   """Add a new machine.
-
-  This function creates a new `MachineOrm` based on the provided Pydantic model.
+  # type: ignore
+   This function creates a new `MachineOrm` based on the provided Pydantic model.
 
   Args:
-      db (AsyncSession): The database session.
-      machine_create (MachineCreate): The Pydantic model containing the data for the
-          new machine.
+       db (AsyncSession): The database session.
+       machine_create (MachineCreate): The Pydantic model containing the data for the
+           new machine.
 
   Returns:
-      MachineOrm: The created machine object.
+       MachineOrm: The created machine object.
 
   Raises:
-      ValueError: If a machine with the same `name` already exists.
-      Exception: For any other unexpected errors during the process.
+       ValueError: If a machine with the same `name` already exists.
+       Exception: For any other unexpected errors during the process.
 
   """
   create_data = machine_create.model_dump()
   name = create_data["name"]
-  log_prefix = f"Machine (Name: '{name}', creating new):"
+  log_prefix = f"Machine (Name: '{name}', creating new):"  # type: ignore
   logger.info("%s Attempting to create new machine.", log_prefix)
 
   # Check if a machine with this name already exists
@@ -87,7 +87,7 @@ async def create_machine(
     status=create_data.get("status", MachineStatusEnum.OFFLINE),
     status_details=create_data.get("status_details"),
     workcell_accession_id=create_data.get("workcell_id"),
-    location=create_data.get("location"),
+    location=create_data.get("location"),  # type: ignore
     properties_json=create_data.get("properties_json"),
   )
   db.add(machine_orm)
@@ -102,14 +102,14 @@ async def create_machine(
       machine_orm=machine_orm,
       is_resource=create_data.get("is_resource", False),
       resource_counterpart_accession_id=create_data.get(
-        "resource_counterpart_accession_id"
+        "resource_counterpart_accession_id",
       ),
       resource_def_name=create_data.get("resource_def_name"),
       resource_properties_json=create_data.get("resource_properties_json"),
       resource_initial_status=create_data.get("resource_initial_status"),
     )
 
-    await db.commit()
+    await db.commit()  # type: ignore
     await db.refresh(machine_orm)
     if machine_orm.resource_counterpart:
       await db.refresh(machine_orm.resource_counterpart)
@@ -164,12 +164,12 @@ async def update_machine(
 
   """
   update_data = machine_update.model_dump(exclude_unset=True)
-  log_prefix = f"Machine (ID: {machine_accession_id}, updating):"
+  log_prefix = f"Machine (ID: {machine_accession_id}, updating):"  # type: ignore
   logger.info("%s Attempting to update machine.", log_prefix)
 
   # Fetch the existing machine
   result = await db.execute(
-    select(MachineOrm).filter(MachineOrm.accession_id == machine_accession_id)
+    select(MachineOrm).filter(MachineOrm.accession_id == machine_accession_id),
   )
   machine_orm = result.scalar_one_or_none()
   if not machine_orm:
@@ -186,7 +186,7 @@ async def update_machine(
     existing_name_check = await db.execute(
       select(MachineOrm)
       .filter(MachineOrm.name == name)
-      .filter(MachineOrm.accession_id != machine_accession_id)
+      .filter(MachineOrm.accession_id != machine_accession_id),
     )
     if existing_name_check.scalar_one_or_none():
       error_message = (
@@ -225,7 +225,7 @@ async def update_machine(
       machine_orm=machine_orm,
       is_resource=effective_is_resource,
       resource_counterpart_accession_id=update_data.get(
-        "resource_counterpart_accession_id"
+        "resource_counterpart_accession_id",
       ),
       resource_def_name=update_data.get("resource_def_name"),
       resource_properties_json=update_data.get("resource_properties_json"),
@@ -233,7 +233,7 @@ async def update_machine(
     )
 
     await db.commit()
-    await db.refresh(machine_orm)
+    await db.refresh(machine_orm)  # type: ignore
     if machine_orm.resource_counterpart:
       await db.refresh(machine_orm.resource_counterpart)
     logger.info("%s Successfully committed updated machine.", log_prefix)
@@ -255,14 +255,14 @@ async def update_machine(
 
 
 async def read_machine(
-  db: AsyncSession, machine_accession_id: uuid.UUID
-) -> Optional[MachineOrm]:
-  """Retrieve a specific machine by its ID."""
+  db: AsyncSession, machine_accession_id: uuid.UUID,
+) -> MachineOrm | None:
+  """Retrieve a specific machine by its ID."""  # type: ignore
   logger.info("Attempting to retrieve machine with ID: %s.", machine_accession_id)
   result = await db.execute(
     select(MachineOrm)
     .options(joinedload(MachineOrm.resource_counterpart))
-    .filter(MachineOrm.accession_id == machine_accession_id)
+    .filter(MachineOrm.accession_id == machine_accession_id),
   )
   machine = result.scalar_one_or_none()
   if machine:
@@ -276,13 +276,13 @@ async def read_machine(
   return machine
 
 
-async def read_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineOrm]:
+async def read_machine_by_name(db: AsyncSession, name: str) -> MachineOrm | None:
   """Retrieve a specific machine by its name."""
   logger.info("Attempting to retrieve machine with name: '%s'.", name)
-  result = await db.execute(
+  result = await db.execute(  # type: ignore
     select(MachineOrm)
     .options(joinedload(MachineOrm.resource_counterpart))
-    .filter(MachineOrm.name == name)
+    .filter(MachineOrm.name == name),
   )
   machine = result.scalar_one_or_none()
   if machine:
@@ -293,9 +293,9 @@ async def read_machine_by_name(db: AsyncSession, name: str) -> Optional[MachineO
 
 
 async def read_machines_by_workcell_id(
-  db: AsyncSession, workcell_accession_id: uuid.UUID
+  db: AsyncSession, workcell_accession_id: uuid.UUID,
 ) -> Sequence[MachineOrm]:
-  """Retrieve all machines associated with a specific workcell ID."""
+  """Retrieve all machines associated with a specific workcell ID."""  # type: ignore
   logger.info("Retrieving machines for workcell ID: %s.", workcell_accession_id)
   stmt = (
     select(MachineOrm)
@@ -306,24 +306,24 @@ async def read_machines_by_workcell_id(
   result = await db.execute(stmt)
   machines = result.scalars().all()
   logger.info(
-    "Found %d machines for workcell ID %s.", len(machines), workcell_accession_id
+    "Found %d machines for workcell ID %s.", len(machines), workcell_accession_id,
   )
   return machines
 
 
 async def list_machines(
   db: AsyncSession,
-  status: Optional[MachineStatusEnum] = None,
-  pylabrobot_class_filter: Optional[str] = None,
-  workcell_accession_id: Optional[uuid.UUID] = None,
-  current_protocol_run_accession_id_filter: Optional[uuid.UUID] = None,
-  name_filter: Optional[str] = None,
+  status: MachineStatusEnum | None = None,
+  pylabrobot_class_filter: str | None = None,
+  workcell_accession_id: uuid.UUID | None = None,
+  current_protocol_run_accession_id_filter: uuid.UUID | None = None,
+  name_filter: str | None = None,
   limit: int = 100,
   offset: int = 0,
-) -> List[MachineOrm]:
-  """List all machines with optional filtering and pagination."""
+) -> list[MachineOrm]:
+  """List all machines with optional filtering and pagination."""  # type: ignore
   logger.info(
-    "Listing machines with various filters (limit=%d, offset=%d).", limit, offset
+    "Listing machines with various filters (limit=%d, offset=%d).", limit, offset,
   )
   stmt = select(MachineOrm).options(joinedload(MachineOrm.resource_counterpart))
   if status:
@@ -335,7 +335,7 @@ async def list_machines(
   if current_protocol_run_accession_id_filter:
     stmt = stmt.filter(
       MachineOrm.current_protocol_run_accession_id
-      == current_protocol_run_accession_id_filter
+      == current_protocol_run_accession_id_filter,
     )
   if name_filter:
     stmt = stmt.filter(MachineOrm.name.ilike(f"%{name_filter}%"))
@@ -350,10 +350,10 @@ async def update_machine_status(
   db: AsyncSession,
   machine_accession_id: uuid.UUID,
   new_status: MachineStatusEnum,
-  status_details: Optional[str] = None,
-  current_protocol_run_accession_id: Optional[uuid.UUID] = None,
-) -> Optional[MachineOrm]:
-  """Update the status of a specific machine."""
+  status_details: str | None = None,
+  current_protocol_run_accession_id: uuid.UUID | None = None,
+) -> MachineOrm | None:
+  """Update the status of a specific machine."""  # type: ignore
   logger.info(
     "Attempting to update status for machine ID %s to '%s'.",
     machine_accession_id,
@@ -362,24 +362,23 @@ async def update_machine_status(
   machine_orm = await read_machine(db, machine_accession_id)
   if not machine_orm:
     logger.warning(
-      "Machine with ID %s not found for status update.", machine_accession_id
+      "Machine with ID %s not found for status update.", machine_accession_id,
     )
     return None
 
   logger.debug(
-    "Machine '%s' (ID: %s) status changing from '%s' to '%s'.",
+    "Machine '%s' (ID: %s) status changing from '%s' to '%s'.",  # type: ignore
     machine_orm.name,
     machine_accession_id,
     machine_orm.status.value,
     new_status.value,
   )
   machine_orm.status = new_status
-  machine_orm.status_details = status_details
 
   if new_status == MachineStatusEnum.IN_USE:
     machine_orm.current_protocol_run_accession_id = current_protocol_run_accession_id
     logger.debug(
-      "Machine '%s' (ID: %s) set to IN_USE with protocol run GUID: %s.",
+      "Machine '%s' (ID: %s) set to IN_USE with protocol run GUID: %s.",  # type: ignore
       machine_orm.name,
       machine_accession_id,
       current_protocol_run_accession_id,
@@ -388,7 +387,7 @@ async def update_machine_status(
     machine_orm.current_protocol_run_accession_id == current_protocol_run_accession_id
   ):
     machine_orm.current_protocol_run_accession_id = None
-    logger.debug(
+    logger.debug(  # type: ignore
       "Machine '%s' (ID: %s) protocol run GUID cleared as it matches the "
       "current one and status is no longer IN_USE.",
       machine_orm.name,
@@ -397,7 +396,7 @@ async def update_machine_status(
 
   if new_status != MachineStatusEnum.OFFLINE:
     machine_orm.last_seen_online = datetime.datetime.now(datetime.timezone.utc)
-    logger.debug(
+    logger.debug(  # type: ignore
       "Machine '%s' (ID: %s) last seen online updated.",
       machine_orm.name,
       machine_accession_id,
@@ -405,7 +404,7 @@ async def update_machine_status(
 
   try:
     await db.commit()
-    await db.refresh(machine_orm)
+    await db.refresh(machine_orm)  # type: ignore
     logger.info(
       "Successfully updated status for machine ID %s to '%s'.",
       machine_accession_id,
@@ -423,7 +422,7 @@ async def update_machine_status(
 
 async def delete_machine(db: AsyncSession, machine_accession_id: uuid.UUID) -> bool:
   """Delete a specific machine by its ID."""
-  logger.info("Attempting to delete machine with ID: %s.", machine_accession_id)
+  logger.info("Attempting to delete machine with ID: %s.", machine_accession_id)  # type: ignore
   machine_orm = await read_machine(db, machine_accession_id)
   if not machine_orm:
     logger.warning("Machine with ID %s not found for deletion.", machine_accession_id)
@@ -448,6 +447,6 @@ async def delete_machine(db: AsyncSession, machine_accession_id: uuid.UUID) -> b
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting machine ID %s. Rolling back.", machine_accession_id
+      "Unexpected error deleting machine ID %s. Rolling back.", machine_accession_id,
     )
     raise e

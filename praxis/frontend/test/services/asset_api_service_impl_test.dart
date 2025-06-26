@@ -4,7 +4,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
-import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart';
+import 'package:praxis_lab_management/src/data/models/resource_orm.dart';
 import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
 import 'package:praxis_lab_management/src/core/network/dio_client.dart';
@@ -483,14 +483,14 @@ void main() {
     });
   });
 
-  group('ResourceInstanceOrm - CRUD', () {
+  group('ResourceOrm - CRUD', () {
     final inventoryDataJson = {
       'praxis_inventory_schema_version': '1.0',
       'consumable_state': 'new',
     };
-    final resourceInstanceJson = {
+    final resourceJson = {
       'id': 1,
-      'user_assigned_name': 'Test LW Instance 1',
+      'user_assigned_name': 'Test LW  1',
       'name': 'test_plate_def',
       'properties_json':
           inventoryDataJson, // This contains the inventory details
@@ -498,11 +498,9 @@ void main() {
       'workspaceId':
           'ws1', // Assuming workspaceId is part of your frontend model
     };
-    final resourceInstanceOrm = ResourceInstanceOrm.fromJson(
-      resourceInstanceJson,
-    );
+    final resourceOrm = ResourceOrm.fromJson(resourceJson);
 
-    group('getResourceInstances (placeholder)', () {
+    group('getResources (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
         when(mockDio.get('/api/assets/resource_instances')).thenThrow(
           createDioError(
@@ -511,13 +509,13 @@ void main() {
           ),
         );
         expect(
-          () => assetApiService.getResourceInstances(),
+          () => assetApiService.getResources(),
           throwsA(isA<ApiException>()),
         );
       });
     });
 
-    group('createResourceInstance (placeholder)', () {
+    group('createResource (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
         when(
           mockDio.post(
@@ -531,130 +529,119 @@ void main() {
           ),
         );
         expect(
-          () => assetApiService.createResourceInstance(resourceInstanceOrm),
+          () => assetApiService.createResource(resourceOrm),
           throwsA(isA<ApiException>()),
         );
       });
     });
 
-    group('getResourceInstanceById', () {
-      test(
-        'returns ResourceInstanceOrm (from inventory data) on success',
-        () async {
-          final instanceId =
-              resourceInstanceOrm.accession_id!
-                  .toString(); // Assuming ID is non-null for a created instance
-          when(
-            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
-          ).thenAnswer(
-            (_) async => Response(
-              requestOptions: RequestOptions(
-                path: '/api/assets/resource_instances/$instanceId/inventory',
-              ),
-              data: inventoryDataJson,
-              statusCode: 200,
-            ),
-          );
-
-          final result = await assetApiService.getResourceInstanceById(
-            instanceId,
-          );
-
-          expect(result, isA<ResourceInstanceOrm>());
-          expect(
-            result.accession_id.toString(),
-            instanceId,
-          ); // Compare string IDs if one is string
-          expect(
-            result.inventoryData?.consumableState,
-            inventoryDataJson['consumable_state'],
-          );
-          expect(result.userAssignedName, 'Instance $instanceId (Inventory)');
-          verify(
-            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
-          ).called(1);
-        },
-      );
-
-      test(
-        'throws ApiException on API error for getResourceInstanceById',
-        () async {
-          final instanceId = resourceInstanceOrm.accession_id!.toString();
-          when(
-            mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
-          ).thenThrow(
-            createDioError(
-              statusCode: 404,
+    group('getResourceById', () {
+      test('returns ResourceOrm (from inventory data) on success', () async {
+        final instanceId =
+            resourceOrm.accession_id!
+                .toString(); // Assuming ID is non-null for a created instance
+        when(
+          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+        ).thenAnswer(
+          (_) async => Response(
+            requestOptions: RequestOptions(
               path: '/api/assets/resource_instances/$instanceId/inventory',
             ),
-          );
-          expect(
-            () => assetApiService.getResourceInstanceById(instanceId),
-            throwsA(isA<ApiException>()),
-          );
-        },
-      );
+            data: inventoryDataJson,
+            statusCode: 200,
+          ),
+        );
+
+        final result = await assetApiService.getResourceById(instanceId);
+
+        expect(result, isA<ResourceOrm>());
+        expect(
+          result.accession_id.toString(),
+          instanceId,
+        ); // Compare string IDs if one is string
+        expect(
+          result.inventoryData?.consumableState,
+          inventoryDataJson['consumable_state'],
+        );
+        expect(result.userAssignedName, ' $instanceId (Inventory)');
+        verify(
+          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+        ).called(1);
+      });
+
+      test('throws ApiException on API error for getResourceById', () async {
+        final instanceId = resourceOrm.accession_id!.toString();
+        when(
+          mockDio.get('/api/assets/resource_instances/$instanceId/inventory'),
+        ).thenThrow(
+          createDioError(
+            statusCode: 404,
+            path: '/api/assets/resource_instances/$instanceId/inventory',
+          ),
+        );
+        expect(
+          () => assetApiService.getResourceById(instanceId),
+          throwsA(isA<ApiException>()),
+        );
+      });
     });
 
-    group('updateResourceInstance', () {
-      test(
-        'returns ResourceInstanceOrm with updated inventory on success',
-        () async {
-          final instanceId = resourceInstanceOrm.accession_id!.toString();
-          final updatedInventoryJson = {
-            ...inventoryDataJson,
-            'consumable_state': 'used',
-            'last_updated_at': DateTime.now().toIso8601String(),
-          };
+    group('updateResource', () {
+      test('returns ResourceOrm with updated inventory on success', () async {
+        final instanceId = resourceOrm.accession_id!.toString();
+        final updatedInventoryJson = {
+          ...inventoryDataJson,
+          'consumable_state': 'used',
+          'last_updated_at': DateTime.now().toIso8601String(),
+        };
 
-          // Ensure the resourceInstanceOrm being updated has non-null inventoryData
-          final updatableInstance =
-              resourceInstanceOrm.inventoryData == null
-                  ? ResourceInstanceOrm.fromJson({
-                    ...resourceInstanceJson,
-                    'properties_json': inventoryDataJson,
-                  })
-                  : resourceInstanceOrm;
+        // Ensure the resourceOrm being updated has non-null inventoryData
+        final updatable =
+            resourceOrm.inventoryData == null
+                ? ResourceOrm.fromJson({
+                  ...resourceJson,
+                  'properties_json': inventoryDataJson,
+                })
+                : resourceOrm;
 
-          when(
-            mockDio.put(
-              '/api/assets/resource_instances/$instanceId/inventory',
-              data: anyNamed('data'),
+        when(
+          mockDio.put(
+            '/api/assets/resource_instances/$instanceId/inventory',
+            data: anyNamed('data'),
+          ),
+        ).thenAnswer(
+          (_) async => Response(
+            requestOptions: RequestOptions(
+              path: '/api/assets/resource_instances/$instanceId/inventory',
             ),
-          ).thenAnswer(
-            (_) async => Response(
-              requestOptions: RequestOptions(
-                path: '/api/assets/resource_instances/$instanceId/inventory',
-              ),
-              data: updatedInventoryJson,
-              statusCode: 200,
-            ),
-          );
+            data: updatedInventoryJson,
+            statusCode: 200,
+          ),
+        );
 
-          final result = await assetApiService.updateResourceInstance(
-            instanceId,
-            updatableInstance,
-          );
+        final result = await assetApiService.updateResource(
+          instanceId,
+          updatable,
+        );
 
-          expect(result, isA<ResourceInstanceOrm>());
-          expect(result.accession_id.toString(), instanceId);
-          expect(
-            result.inventoryData?.consumableState,
-            updatedInventoryJson['consumable_state'],
-          );
-          verify(
-            mockDio.put(
-              '/api/assets/resource_instances/$instanceId/inventory',
-              data: anyNamed('data'),
-            ),
-          ).called(1);
-        },
-      );
+        expect(result, isA<ResourceOrm>());
+        expect(result.accession_id.toString(), instanceId);
+        expect(
+          result.inventoryData?.consumableState,
+          updatedInventoryJson['consumable_state'],
+        );
+        verify(
+          mockDio.put(
+            '/api/assets/resource_instances/$instanceId/inventory',
+            data: anyNamed('data'),
+          ),
+        ).called(1);
+      });
 
       test(
-        'throws ArgumentError if inventoryData is null for updateResourceInstance',
+        'throws ArgumentError if inventoryData is null for updateResource',
         () async {
-          final instanceWithoutInventory = ResourceInstanceOrm(
+          final instanceWithoutInventory = ResourceOrm(
             id: 2, // Make sure ID is int if comparing with int
             userAssignedName: "No Inventory",
             pylabrobotDefinitionName: "some_def",
@@ -662,52 +649,43 @@ void main() {
             workspaceId: "ws2", // Ensure all required fields are present
           );
           expect(
-            () => assetApiService.updateResourceInstance(
-              "2",
-              instanceWithoutInventory,
-            ),
+            () => assetApiService.updateResource("2", instanceWithoutInventory),
             throwsA(isA<ArgumentError>()),
           );
         },
       );
 
-      test(
-        'throws ApiException on API error for updateResourceInstance',
-        () async {
-          final instanceId = resourceInstanceOrm.accession_id!.toString();
-          final updatableInstance =
-              resourceInstanceOrm.inventoryData == null
-                  ? ResourceInstanceOrm.fromJson({
-                    ...resourceInstanceJson,
-                    'properties_json': inventoryDataJson,
-                  })
-                  : resourceInstanceOrm;
+      test('throws ApiException on API error for updateResource', () async {
+        final instanceId = resourceOrm.accession_id!.toString();
+        final updatable =
+            resourceOrm.inventoryData == null
+                ? ResourceOrm.fromJson({
+                  ...resourceJson,
+                  'properties_json': inventoryDataJson,
+                })
+                : resourceOrm;
 
-          when(
-            mockDio.put(
-              '/api/assets/resource_instances/$instanceId/inventory',
-              data: anyNamed('data'),
-            ),
-          ).thenThrow(
-            createDioError(
-              statusCode: 500,
-              path: '/api/assets/resource_instances/$instanceId/inventory',
-            ),
-          );
-          expect(
-            () => assetApiService.updateResourceInstance(
-              instanceId,
-              updatableInstance,
-            ),
-            throwsA(isA<ApiException>()),
-          );
-        },
-      );
+        when(
+          mockDio.put(
+            '/api/assets/resource_instances/$instanceId/inventory',
+            data: anyNamed('data'),
+          ),
+        ).thenThrow(
+          createDioError(
+            statusCode: 500,
+            path: '/api/assets/resource_instances/$instanceId/inventory',
+          ),
+        );
+        expect(
+          () => assetApiService.updateResource(instanceId, updatable),
+          throwsA(isA<ApiException>()),
+        );
+      });
     });
 
-    group('deleteResourceInstance (placeholder)', () {
+    group('deleteResource (placeholder)', () {
       test('throws ApiException for placeholder endpoint', () async {
-        final instanceId = resourceInstanceOrm.accession_id!.toString();
+        final instanceId = resourceOrm.accession_id!.toString();
         when(
           mockDio.delete('/api/assets/resource_instances/$instanceId'),
         ).thenThrow(
@@ -717,7 +695,7 @@ void main() {
           ),
         );
         expect(
-          () => assetApiService.deleteResourceInstance(instanceId),
+          () => assetApiService.deleteResource(instanceId),
           throwsA(isA<ApiException>()),
         );
       });

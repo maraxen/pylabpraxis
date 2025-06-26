@@ -14,13 +14,9 @@ import re
 import time
 import traceback
 import uuid
+from collections.abc import Callable
 from typing import (
   Any,
-  Callable,
-  Dict,
-  List,
-  Optional,
-  Tuple,
   Union,
   get_args,
   get_origin,
@@ -80,7 +76,7 @@ class ProtocolRuntimeInfo:
     self,
     pydantic_definition: FunctionProtocolDefinitionModel,
     function_ref: Callable,
-    found_state_param_details: Optional[Dict[str, Any]],
+    found_state_param_details: dict[str, Any] | None,
   ):
     """Initialize the ProtocolRuntimeInfo.
 
@@ -88,15 +84,15 @@ class ProtocolRuntimeInfo:
       pydantic_definition (FunctionProtocolDefinitionModel): The Pydantic model
         definition of the protocol function.
       function_ref (Callable): The actual function reference.
-      found_state_param_details (Optional[Dict[str, Any]]): Details about the
+      found_state_param_details (Optional[dict[str, Any]]): Details about the
         state parameter if it exists.
 
     """
     self.pydantic_definition: FunctionProtocolDefinitionModel = pydantic_definition
     self.function_ref: Callable = function_ref
-    self.callable_wrapper: Optional[Callable] = None
-    self.db_accession_id: Optional[uuid.UUID] = None
-    self.found_state_param_details: Optional[Dict[str, Any]] = found_state_param_details
+    self.callable_wrapper: Callable | None = None
+    self.db_accession_id: uuid.UUID | None = None
+    self.found_state_param_details: dict[str, Any] | None = found_state_param_details
 
 
 def get_callable_fqn(func: Callable) -> str:
@@ -117,26 +113,26 @@ def get_callable_fqn(func: Callable) -> str:
 
 def _create_protocol_definition(
   func: Callable,
-  name: Optional[str],
+  name: str | None,
   version: str,
-  description: Optional[str],
+  description: str | None,
   solo: bool,
   is_top_level: bool,
   preconfigure_deck: bool,
   deck_param_name: str,
-  deck_construction: Optional[Callable],
+  deck_construction: Callable | None,
   state_param_name: str,
-  param_metadata: Dict[str, Dict[str, Any]],
-  category: Optional[str],
-  tags: List[str],
-  top_level_name_format: Optional[str],
-) -> Tuple[FunctionProtocolDefinitionModel, Optional[Dict[str, Any]]]:
+  param_metadata: dict[str, dict[str, Any]],
+  category: str | None,
+  tags: list[str],
+  top_level_name_format: str | None,
+) -> tuple[FunctionProtocolDefinitionModel, dict[str, Any] | None]:
   """Parse a function signature and decorator args to create a protocol definition."""
   resolved_name = name or func.__name__
   if not resolved_name:
     raise ValueError(
       "Protocol function name cannot be empty (either provide 'name' argument or use "
-      "a named function)."
+      "a named function).",
     )
   if (
     is_top_level
@@ -145,14 +141,14 @@ def _create_protocol_definition(
   ):
     raise ValueError(
       f"Top-level protocol name '{resolved_name}' does not match format: "
-      f"{top_level_name_format}"
+      f"{top_level_name_format}",
     )
 
   sig = inspect.signature(func)
-  parameters_list: List[ParameterMetadataModel] = []
-  assets_list: List[AssetRequirementModel] = []
+  parameters_list: list[ParameterMetadataModel] = []
+  assets_list: list[AssetRequirementModel] = []
   found_deck_param = False
-  found_state_param_details: Optional[Dict[str, Any]] = None
+  found_state_param_details: dict[str, Any] | None = None
 
   for param_name_sig, param_obj in sig.parameters.items():
     param_type_hint = param_obj.annotation
@@ -183,7 +179,7 @@ def _create_protocol_definition(
 
     if preconfigure_deck and param_name_sig == deck_param_name:
       parameters_list.append(
-        ParameterMetadataModel(**common_model_args, is_deck_param=True)
+        ParameterMetadataModel(**common_model_args, is_deck_param=True),
       )
       found_deck_param = True
       continue
@@ -219,12 +215,12 @@ def _create_protocol_definition(
   if preconfigure_deck and not found_deck_param:
     raise TypeError(
       f"Protocol '{resolved_name}' (preconfigure_deck=True) missing "
-      f"'{deck_param_name}' param."
+      f"'{deck_param_name}' param.",
     )
   if is_top_level and not found_state_param_details:
     raise TypeError(
       f"Top-level protocol '{resolved_name}' must define a '{state_param_name}' "
-      "parameter."
+      "parameter.",
     )
 
   protocol_definition = FunctionProtocolDefinitionModel(
@@ -254,10 +250,10 @@ def _create_protocol_definition(
 async def _log_call_start(
   context: PraxisRunContext,
   function_def_db_id: uuid.UUID,
-  parent_log_id: Optional[uuid.UUID],
+  parent_log_id: uuid.UUID | None,
   args: tuple,
   kwargs: dict,
-) -> Optional[uuid.UUID]:
+) -> uuid.UUID | None:
   """Log the start of a function call and return its database ID."""
   try:
     sequence_val = context.get_and_increment_sequence_val()
@@ -273,25 +269,25 @@ async def _log_call_start(
     return call_log_entry_orm.accession_id
   except Exception:  # pylint: disable=broad-except
     logger.exception(
-      "Failed to log function call start for run %s", context.run_accession_id
+      "Failed to log function call start for run %s", context.run_accession_id,
     )
     return None
 
 
 def protocol_function(
-  name: Optional[str] = None,
+  name: str | None = None,
   version: str = "0.1.0",
-  description: Optional[str] = None,
+  description: str | None = None,
   solo: bool = False,
   is_top_level: bool = False,
   preconfigure_deck: bool = False,
   deck_param_name: str = DEFAULT_DECK_PARAM_NAME,
-  deck_construction: Optional[Callable] = None,  # New argument
+  deck_construction: Callable | None = None,  # New argument
   state_param_name: str = DEFAULT_STATE_PARAM_NAME,
-  param_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
-  category: Optional[str] = None,
-  tags: Optional[List[str]] = None,
-  top_level_name_format: Optional[str] = TOP_LEVEL_NAME_REGEX,
+  param_metadata: dict[str, dict[str, Any]] | None = None,
+  category: str | None = None,
+  tags: list[str] | None = None,
+  top_level_name_format: str | None = TOP_LEVEL_NAME_REGEX,
 ):
   """Decorate a function for use as a Praxis protocol.
 
@@ -312,9 +308,9 @@ def protocol_function(
     deck_construction (Optional[Callable]): Function to construct the deck.
       This is used when preconfigure_deck is True.
     state_param_name (str): Name of the state parameter for top-level protocols.
-    param_metadata (Optional[Dict[str, Dict[str, Any]]]): Metadata for parameters.
+    param_metadata (Optional[dict[str, dict[str, Any]]]): Metadata for parameters.
     category (Optional[str]): Category for organizing protocols.
-    tags (Optional[List[str]]): Tags for additional categorization.
+    tags (Optional[list[str]]): Tags for additional categorization.
     top_level_name_format (Optional[str]): Regex format for top-level protocol names.
 
   """
@@ -338,7 +334,7 @@ def protocol_function(
       tags=actual_tags,
       top_level_name_format=top_level_name_format,
     )
-    setattr(func, "_protocol_definition", protocol_definition)
+    func._protocol_definition = protocol_definition
 
     protocol_runtime_info = ProtocolRuntimeInfo(
       pydantic_definition=protocol_definition,
@@ -353,14 +349,14 @@ def protocol_function(
       current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
       if not current_meta or not current_meta.db_accession_id:
         raise RuntimeError(
-          f"Protocol '{protocol_unique_key}' not registered or missing DB ID."
+          f"Protocol '{protocol_unique_key}' not registered or missing DB ID.",
         )
 
       parent_context = praxis_run_context_cv.get()
       if parent_context is None:
         raise RuntimeError(
           "No PraxisRunContext found in contextvars. Ensure this function is called "
-          "within a valid Praxis run context."
+          "within a valid Praxis run context.",
         )
 
       this_function_def_db_accession_id = current_meta.db_accession_id
@@ -383,7 +379,7 @@ def protocol_function(
               else {}
             )
 
-      current_call_log_db_accession_id: Optional[uuid.UUID] = None
+      current_call_log_db_accession_id: uuid.UUID | None = None
       parent_log_accession_id_for_this_call = (
         parent_context.current_call_log_db_accession_id
       )
@@ -399,7 +395,7 @@ def protocol_function(
         raise RuntimeError("Failed to log function call start.")
 
       context_for_this_call = parent_context.create_context_for_nested_call(
-        new_parent_call_log_db_accession_id=current_call_log_db_accession_id
+        new_parent_call_log_db_accession_id=current_call_log_db_accession_id,
       )
       token = praxis_run_context_cv.set(context_for_this_call)
 
@@ -435,7 +431,7 @@ def protocol_function(
         else:
           loop = asyncio.get_running_loop()
           result = await loop.run_in_executor(
-            None, functools.partial(func, *processed_args, **processed_kwargs_for_call)
+            None, functools.partial(func, *processed_args, **processed_kwargs_for_call),
           )
 
       except ProtocolCancelledError:
@@ -486,7 +482,7 @@ def protocol_function(
           # Broad except is justified here as we must not let a logging failure
           # interrupt the protocol's exception propagation.
           logger.exception(
-            "Failed to log function call end for '%s'", protocol_definition.name
+            "Failed to log function call end for '%s'", protocol_definition.name,
           )
 
       if error:
@@ -501,7 +497,7 @@ def protocol_function(
 
 
 async def _handle_pause_state(
-  run_accession_id: uuid.UUID, db_session: AsyncSession
+  run_accession_id: uuid.UUID, db_session: AsyncSession,
 ) -> str:
   """Handle the logic when a protocol is in a PAUSED state, waiting for a command."""
   while True:
@@ -510,7 +506,7 @@ async def _handle_pause_state(
 
     if command in ["RESUME", "CANCEL"]:
       logger.info(
-        "Received command '%s' while PAUSED for run %s.", command, run_accession_id
+        "Received command '%s' while PAUSED for run %s.", command, run_accession_id,
       )
       return command
 
@@ -518,7 +514,7 @@ async def _handle_pause_state(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING during pause.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING
+        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING,
       )
       await db_session.commit()
       # TODO: Dispatch to intervention handler
@@ -540,7 +536,7 @@ async def _handle_pause_state(
 
 
 async def _handle_control_commands(
-  run_accession_id: uuid.UUID, db_session: AsyncSession
+  run_accession_id: uuid.UUID, db_session: AsyncSession,
 ) -> None:
   """Check for and handle control commands like PAUSE and CANCEL before execution."""
   while True:
@@ -561,11 +557,11 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s PAUSING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSING
+        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSING,
       )
       await db_session.commit()
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSED
+        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSED,
       )
       await db_session.commit()
 
@@ -575,11 +571,11 @@ async def _handle_control_commands(
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s RESUMING.", run_accession_id)
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.RESUMING
+          db_session, run_accession_id, ProtocolRunStatusEnum.RESUMING,
         )
         await db_session.commit()
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.RUNNING
+          db_session, run_accession_id, ProtocolRunStatusEnum.RUNNING,
         )
         await db_session.commit()
         continue  # Re-check for commands immediately after resuming
@@ -588,7 +584,7 @@ async def _handle_control_commands(
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s CANCELLING after pause.", run_accession_id)
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING
+          db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING,
         )
         await db_session.commit()
         await update_protocol_run_status(
@@ -604,7 +600,7 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s CANCELLING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING
+        db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING,
       )
       await db_session.commit()
       await update_protocol_run_status(
@@ -620,7 +616,7 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING
+        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING,
       )
       await db_session.commit()
       # TODO: dispatch to intervention handler

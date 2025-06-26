@@ -1,7 +1,6 @@
 # pylint: disable=redefined-outer-name, protected-access
 """Unit tests for Celery tasks."""
 
-import asyncio
 import uuid
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -28,7 +27,7 @@ def mock_orchestrator():
   """Provides a mock Orchestrator."""
   orc = AsyncMock()
   orc.execute_existing_protocol_run = AsyncMock(
-    return_value=MagicMock(spec=ProtocolRunOrm, status=ProtocolRunStatusEnum.COMPLETED)
+    return_value=MagicMock(spec=ProtocolRunOrm, status=ProtocolRunStatusEnum.COMPLETED),
   )
   return orc
 
@@ -47,7 +46,7 @@ def mock_db_session_factory():
 def execution_context(mock_orchestrator, mock_db_session_factory):
   """Provides a mock ProtocolExecutionContext."""
   return ProtocolExecutionContext(
-    db_session_factory=mock_db_session_factory, orchestrator=mock_orchestrator
+    db_session_factory=mock_db_session_factory, orchestrator=mock_orchestrator,
   )
 
 
@@ -79,7 +78,7 @@ class TestExecuteProtocolRunTask:
 
     # Patch the global context and the asyncio runner
     with patch(
-      "praxis.backend.core.celery_tasks._execution_context", execution_context
+      "praxis.backend.core.celery_tasks._execution_context", execution_context,
     ), patch("asyncio.run", return_value=expected_result) as mock_asyncio_run:
       # Act
       result = (
@@ -118,7 +117,7 @@ class TestExecuteProtocolRunTask:
 
     # Patch the global context and have asyncio.run raise an exception
     with patch(
-      "praxis.backend.core.celery_tasks._execution_context", execution_context
+      "praxis.backend.core.celery_tasks._execution_context", execution_context,
     ), patch("asyncio.run") as mock_asyncio_run:
       mock_asyncio_run.side_effect = [
         Exception(error_message),
@@ -147,16 +146,16 @@ class TestExecuteProtocolRunTask:
       new_callable=AsyncMock,
       return_value=mock_run_orm,
     ) as mock_read, patch(
-      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock
+      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock,
     ) as mock_update:
       # Act
       from praxis.backend.core.celery_tasks import _execute_protocol_async
 
       with patch(
-        "praxis.backend.core.celery_tasks._execution_context", execution_context
+        "praxis.backend.core.celery_tasks._execution_context", execution_context,
       ):
         result = await _execute_protocol_async(
-          TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID
+          TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID,
         )
 
       # Assert
@@ -187,13 +186,13 @@ class TestExecuteProtocolRunTask:
       new_callable=AsyncMock,
       return_value=mock_run_orm,
     ), patch(
-      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock
+      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock,
     ) as mock_update:
       # Act & Assert
       from praxis.backend.core.celery_tasks import _execute_protocol_async
 
       with patch(
-        "praxis.backend.core.celery_tasks._execution_context", execution_context
+        "praxis.backend.core.celery_tasks._execution_context", execution_context,
       ):
         with pytest.raises(RuntimeError, match="Test Fail"):
           await _execute_protocol_async(TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID)

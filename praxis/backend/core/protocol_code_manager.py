@@ -17,7 +17,7 @@ import importlib
 import os
 import subprocess
 import sys
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 from praxis.backend.models import (
   FunctionProtocolDefinitionModel,
@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 
 @contextlib.contextmanager
-def temporary_sys_path(path_to_add: Optional[str]):
+def temporary_sys_path(path_to_add: str | None):
   """Add a path to sys.path temporarily.
 
   A context manager to temporarily add a path to sys.path.
@@ -189,7 +189,7 @@ class ProtocolCodeManager:
       raise RuntimeError(error_message) from None
 
   async def _ensure_git_repo_and_fetch(
-    self, git_url: str, checkout_path: str, repo_name_for_logging: str
+    self, git_url: str, checkout_path: str, repo_name_for_logging: str,
   ) -> None:
     """Ensure a git repo exists at checkout_path, clones if not, and fetches updates.
 
@@ -237,11 +237,11 @@ class ProtocolCodeManager:
           raise ValueError(
             f"Path '{checkout_path}' for repo '{repo_name_for_logging}' is a Git repository, "
             f"but its remote 'origin' URL ('{current_remote_url}') does not match the expected "
-            f"URL ('{git_url}'). Manual intervention required."
+            f"URL ('{git_url}'). Manual intervention required.",
           )
       except RuntimeError as e:
         raise ValueError(
-          f"Failed to verify remote URL for existing repo at '{checkout_path}'. Error: {e}"
+          f"Failed to verify remote URL for existing repo at '{checkout_path}'. Error: {e}",
         ) from e
 
       logger.info(
@@ -250,14 +250,14 @@ class ProtocolCodeManager:
         repo_name_for_logging,
       )
       await self._run_git_command(
-        ["git", "fetch", "origin", "--prune"], cwd=checkout_path
+        ["git", "fetch", "origin", "--prune"], cwd=checkout_path,
       )
     else:
       if os.path.exists(checkout_path):
         if os.listdir(checkout_path):
           raise ValueError(
             f"Path '{checkout_path}' for repo '{repo_name_for_logging}' exists, "
-            f"is not Git, and not empty. Cannot clone."
+            f"is not Git, and not empty. Cannot clone.",
           )
         logger.info(
           "CODE-GIT: Path '%s' for repo '%s' exists and is empty. Cloning into it.",
@@ -284,7 +284,7 @@ class ProtocolCodeManager:
       await self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
 
   async def _checkout_specific_commit(
-    self, checkout_path: str, commit_hash: str, repo_name_for_logging: str
+    self, checkout_path: str, commit_hash: str, repo_name_for_logging: str,
   ) -> None:
     """Checkout a specific commit and verify it's correct.
 
@@ -306,7 +306,7 @@ class ProtocolCodeManager:
 
     # Verify the checkout was successful
     current_commit = await self._run_git_command(
-      ["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True
+      ["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True,
     )
     resolved_target_commit = await self._run_git_command(
       ["git", "rev-parse", commit_hash + "^{commit}"],
@@ -316,7 +316,7 @@ class ProtocolCodeManager:
     if current_commit != resolved_target_commit:
       raise RuntimeError(
         f"Failed to checkout commit '{commit_hash}'. HEAD is at '{current_commit}', "
-        f"expected '{resolved_target_commit}'. Repo: '{repo_name_for_logging}'"
+        f"expected '{resolved_target_commit}'. Repo: '{repo_name_for_logging}'",
       )
     logger.info(
       "CODE-GIT: Successfully checked out '%s' (resolved to '%s').",
@@ -325,8 +325,8 @@ class ProtocolCodeManager:
     )
 
   def _load_protocol_function(
-    self, module_name: str, function_name: str, module_path: Optional[str] = None
-  ) -> Tuple[Callable, FunctionProtocolDefinitionModel]:
+    self, module_name: str, function_name: str, module_path: str | None = None,
+  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
     """Load a protocol function from its module.
 
     Args:
@@ -353,20 +353,20 @@ class ProtocolCodeManager:
     if not hasattr(module, function_name):
       raise AttributeError(
         f"Function '{function_name}' not found in module '{module_name}' "
-        f"from path '{module_path or 'PYTHONPATH'}'."
+        f"from path '{module_path or 'PYTHONPATH'}'.",
       )
 
     func_wrapper = getattr(module, function_name)
-    pydantic_def: Optional[FunctionProtocolDefinitionModel] = getattr(
-      func_wrapper, "_protocol_definition", None
+    pydantic_def: FunctionProtocolDefinitionModel | None = getattr(
+      func_wrapper, "_protocol_definition", None,
     )
 
     if not pydantic_def or not isinstance(
-      pydantic_def, FunctionProtocolDefinitionModel
+      pydantic_def, FunctionProtocolDefinitionModel,
     ):
       raise AttributeError(
         f"Function '{function_name}' in '{module_name}' is not a valid @protocol_function "
-        f"(missing or invalid _protocol_definition attribute)."
+        f"(missing or invalid _protocol_definition attribute).",
       )
 
     return func_wrapper, pydantic_def
@@ -384,6 +384,7 @@ class ProtocolCodeManager:
         ValueError: If the FQN is invalid or the callable cannot be found.
         ImportError: If the module cannot be imported.
         AttributeError: If the callable is not found within the module.
+
     """
     if not fqn or "." not in fqn:
       raise ValueError(f"Invalid fully qualified name for callable: {fqn}")
@@ -394,8 +395,8 @@ class ProtocolCodeManager:
 
 
   async def prepare_protocol_code(
-    self, protocol_def_orm: FunctionProtocolDefinitionOrm
-  ) -> Tuple[Callable, FunctionProtocolDefinitionModel]:
+    self, protocol_def_orm: FunctionProtocolDefinitionOrm,
+  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
     """Prepare protocol code for execution from its ORM definition.
 
     This method handles all the complexities of loading protocol code from various sources:
@@ -420,7 +421,7 @@ class ProtocolCodeManager:
       protocol_def_orm.name,
       protocol_def_orm.version,
     )
-    module_path_to_add_for_sys_path: Optional[str] = None
+    module_path_to_add_for_sys_path: str | None = None
 
     # Handle Git repository sources
     if (
@@ -433,12 +434,12 @@ class ProtocolCodeManager:
 
       if not checkout_path or not commit_hash_to_checkout or not repo.git_url:
         raise ValueError(
-          f"Incomplete Git source info for protocol '{protocol_def_orm.name}'."
+          f"Incomplete Git source info for protocol '{protocol_def_orm.name}'.",
         )
 
       await self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
       await self._checkout_specific_commit(
-        checkout_path, commit_hash_to_checkout, repo.name
+        checkout_path, commit_hash_to_checkout, repo.name,
       )
       module_path_to_add_for_sys_path = checkout_path
 
@@ -450,7 +451,7 @@ class ProtocolCodeManager:
       fs_source = protocol_def_orm.file_system_source
       if not os.path.isdir(fs_source.base_path):
         raise ValueError(
-          f"Invalid base path '{fs_source.base_path}' for FS source '{fs_source.name}'."
+          f"Invalid base path '{fs_source.base_path}' for FS source '{fs_source.name}'.",
         )
       module_path_to_add_for_sys_path = fs_source.base_path
 

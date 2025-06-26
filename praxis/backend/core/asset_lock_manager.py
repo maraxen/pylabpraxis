@@ -10,7 +10,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -48,8 +48,8 @@ class AssetLockManager:
     self.lock_retry_delay_ms = lock_retry_delay_ms
     self.max_lock_retries = max_lock_retries
 
-    self._redis_pool: Optional[redis.ConnectionPool] = None
-    self._redis_client: Optional[redis.Redis] = None
+    self._redis_pool: redis.ConnectionPool | None = None
+    self._redis_client: redis.Redis | None = None
 
     logger.info("AssetLockManager initialized with Redis: %s", redis_url)
 
@@ -101,8 +101,8 @@ class AssetLockManager:
     asset_name: str,
     protocol_run_id: uuid.UUID,
     reservation_id: uuid.UUID,
-    timeout_seconds: Optional[int] = None,
-    required_capabilities: Optional[Dict[str, Any]] = None,
+    timeout_seconds: int | None = None,
+    required_capabilities: dict[str, Any] | None = None,
   ) -> bool:
     """Acquire a distributed lock for an asset.
 
@@ -201,7 +201,7 @@ class AssetLockManager:
     asset_type: str,
     asset_name: str,
     reservation_id: uuid.UUID,
-    protocol_run_id: Optional[uuid.UUID] = None,
+    protocol_run_id: uuid.UUID | None = None,
   ) -> bool:
     """Release a distributed lock for an asset.
 
@@ -249,13 +249,12 @@ class AssetLockManager:
           reservation_id,
         )
         return True
-      else:
-        logger.warning(
-          "Failed to release asset lock %s - lock not owned by reservation %s",
-          lock_key,
-          reservation_id,
-        )
-        return False
+      logger.warning(
+        "Failed to release asset lock %s - lock not owned by reservation %s",
+        lock_key,
+        reservation_id,
+      )
+      return False
 
     except Exception as e:
       logger.error(
@@ -301,7 +300,7 @@ class AssetLockManager:
               try:
                 reservation_id = uuid.UUID(current_value)
                 if await self.release_asset_lock(
-                  asset_type, asset_name, reservation_id
+                  asset_type, asset_name, reservation_id,
                 ):
                   released_count += 1
               except ValueError:
@@ -339,7 +338,7 @@ class AssetLockManager:
     self,
     asset_type: str,
     asset_name: str,
-  ) -> Optional[Dict[str, Any]]:
+  ) -> dict[str, Any] | None:
     """Check if an asset is currently available.
 
     Args:
@@ -368,14 +367,13 @@ class AssetLockManager:
 
         if reservation_data_str:
           return json.loads(reservation_data_str)
-        else:
-          # Lock exists but no metadata, return basic info
-          return {
-            "reservation_id": lock_value,
-            "asset_type": asset_type,
-            "asset_name": asset_name,
-            "status": "locked_no_metadata",
-          }
+        # Lock exists but no metadata, return basic info
+        return {
+          "reservation_id": lock_value,
+          "asset_type": asset_type,
+          "asset_name": asset_name,
+          "status": "locked_no_metadata",
+        }
 
       except (ValueError, json.JSONDecodeError):
         # Invalid lock value or metadata
@@ -447,7 +445,7 @@ class AssetLockManager:
 
               if expires_at_str:
                 expires_at = datetime.fromisoformat(
-                  expires_at_str.replace("Z", "+00:00")
+                  expires_at_str.replace("Z", "+00:00"),
                 )
                 if datetime.now(timezone.utc) > expires_at:
                   # Lock has expired, clean it up
@@ -494,7 +492,7 @@ class AssetLockManager:
       )
       return cleaned_count
 
-  async def get_system_status(self) -> Dict[str, Any]:
+  async def get_system_status(self) -> dict[str, Any]:
     """Get current system status for monitoring.
 
     Returns:

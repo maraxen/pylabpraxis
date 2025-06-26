@@ -1,6 +1,5 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 import redis.exceptions
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
@@ -12,7 +11,7 @@ from praxis.backend.utils.run_control import ALLOWED_COMMANDS
 # Setup FastAPI app and TestClient
 app = FastAPI()
 app.include_router(
-  protocols_router, prefix="/api/protocols"
+  protocols_router, prefix="/api/protocols",
 )  # Match the prefix used in tests
 
 client = TestClient(app)
@@ -26,11 +25,11 @@ class TestProtocolCommandsAPI:
   def test_send_pause_command_success(self, mock_send_control_command_redis):
     mock_send_control_command_redis.return_value = True
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"},
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {
-      "message": f"Command 'PAUSE' sent to run '{TEST_RUN_GUID}'"
+      "message": f"Command 'PAUSE' sent to run '{TEST_RUN_GUID}'",
     }
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "PAUSE")
 
@@ -38,11 +37,11 @@ class TestProtocolCommandsAPI:
   def test_send_resume_command_success(self, mock_send_control_command_redis):
     mock_send_control_command_redis.return_value = True
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "RESUME"}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "RESUME"},
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {
-      "message": f"Command 'RESUME' sent to run '{TEST_RUN_GUID}'"
+      "message": f"Command 'RESUME' sent to run '{TEST_RUN_GUID}'",
     }
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "RESUME")
 
@@ -50,11 +49,11 @@ class TestProtocolCommandsAPI:
   def test_send_cancel_command_success(self, mock_send_control_command_redis):
     mock_send_control_command_redis.return_value = True
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "CANCEL"}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "CANCEL"},
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {
-      "message": f"Command 'CANCEL' sent to run '{TEST_RUN_GUID}'"
+      "message": f"Command 'CANCEL' sent to run '{TEST_RUN_GUID}'",
     }
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "CANCEL")
 
@@ -62,7 +61,7 @@ class TestProtocolCommandsAPI:
   def test_send_invalid_command(self, mock_send_control_command_redis):
     invalid_command = "INVALID_COMMAND"
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": invalid_command}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": invalid_command},
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "detail" in response.json()
@@ -73,10 +72,10 @@ class TestProtocolCommandsAPI:
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
   def test_send_command_redis_error(self, mock_send_control_command_redis):
     mock_send_control_command_redis.side_effect = redis.exceptions.RedisError(
-      "Test Redis Error"
+      "Test Redis Error",
     )
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"},
     )
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert "detail" in response.json()
@@ -91,7 +90,7 @@ class TestProtocolCommandsAPI:
       False  # Simulate Redis command sending failure
     )
     response = client.post(
-      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"}
+      f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"},
     )
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert "detail" in response.json()

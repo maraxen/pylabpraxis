@@ -3,12 +3,11 @@
 
 import sys
 import uuid
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pylabrobot.resources import Plate
 
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY
 from praxis.backend.models.protocol_pydantic_models import (
@@ -73,7 +72,7 @@ def my_decorated_protocol(
 ):
     '''Docstring for decorated protocol.'''
     pass
-"""
+""",
   )
 
   # File 2: A protocol to be discovered via inference
@@ -88,7 +87,7 @@ def my_inferred_protocol(p: Plate, num_transfers: int, speed: Optional[float] = 
 
 def not_a_protocol():
     return "hello"
-"""
+""",
   )
 
   (protocols_dir / "_ignored_file.py").write_text("def ignored_func(): pass")
@@ -111,7 +110,7 @@ class TestProtocolDiscoveryService:
   def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files):
     """Test that _extract_protocol_definitions_from_paths finds all valid protocols."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
+      str(protocol_files),
     )
     assert len(definitions) == 2
     names = {model.name for model, func in definitions}
@@ -119,11 +118,11 @@ class TestProtocolDiscoveryService:
     assert "my_inferred_protocol" in names
 
   def test_decorated_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files
+    self, discovery_service, protocol_files,
   ):
     """Verify the content of a protocol definition from a decorator."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
+      str(protocol_files),
     )
     decorated_def, func = next(
       d for d in definitions if d[0].name == "decorated_transfer"
@@ -137,11 +136,11 @@ class TestProtocolDiscoveryService:
     assert "tips" in asset_names
 
   def test_inferred_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files
+    self, discovery_service, protocol_files,
   ):
     """Verify the content of an inferred protocol definition."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
+      str(protocol_files),
     )
     inferred_def, func = next(
       d for d in definitions if d[0].name == "my_inferred_protocol"
@@ -156,7 +155,7 @@ class TestProtocolDiscoveryService:
     assert assets["p"].optional is False
 
   async def test_discover_and_upsert_happy_path(
-    self, discovery_service, protocol_files
+    self, discovery_service, protocol_files,
   ):
     """Test the full discover and upsert flow, including registry updates."""
     # Manually populate the registry as the decorator would
@@ -169,7 +168,7 @@ class TestProtocolDiscoveryService:
       function_name="my_decorated_protocol",
     )
     PROTOCOL_REGISTRY["decorated_transfer_v1.1.0"] = {
-      "pydantic_definition": decorated_def
+      "pydantic_definition": decorated_def,
     }
     mock_orm = MagicMock()
     mock_orm.accession_id = uuid.uuid4()
@@ -180,7 +179,7 @@ class TestProtocolDiscoveryService:
     ) as mock_upsert:
       mock_upsert.return_value = mock_orm
       result_orms = await discovery_service.discover_and_upsert_protocols(
-        str(protocol_files)
+        str(protocol_files),
       )
       assert len(result_orms) == 2
       registry_entry = PROTOCOL_REGISTRY.get("decorated_transfer_v1.1.0")

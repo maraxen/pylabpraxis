@@ -45,7 +45,7 @@ class Notifier:
     self.smtp_password = smtp_password
 
   def send_email(
-    self, sender_email: str, recipient_email: str, subject: str, body: str
+    self, sender_email: str, recipient_email: str, subject: str, body: str,
   ):
     """Send an email using the configured SMTP server.
 

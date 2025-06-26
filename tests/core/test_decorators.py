@@ -7,11 +7,9 @@ global PROTOCOL_REGISTRY from becoming shared state across tests and ensures
 each test case is self-contained and deterministic.
 """
 
-import inspect
-import json
 import uuid
-from typing import Callable, Dict, Optional, Union
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from collections.abc import Callable
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pylabrobot.resources import Plate, Resource, TipRack
@@ -27,7 +25,6 @@ from praxis.backend.core.run_context import PROTOCOL_REGISTRY, PraxisRunContext
 from praxis.backend.models import (
   FunctionCallStatusEnum,
   ProtocolRunStatusEnum,
-  UIHint,
 )
 
 # --- Test Constants (Static UUIDv7) ---
@@ -71,8 +68,7 @@ def mock_run_context() -> MagicMock:
 
 @pytest.mark.asyncio
 class TestProtocolDecoratorSetup:
-  """
-  Tests the decorator's setup-time behavior (static analysis, registry population).
+  """Tests the decorator's setup-time behavior (static analysis, registry population).
   Functions are decorated inside each test to ensure isolation.
   """
 
@@ -83,10 +79,10 @@ class TestProtocolDecoratorSetup:
     async def my_protocol(
       state: dict,
       source: Plate,
-      tips: Optional[TipRack],
+      tips: TipRack | None,
       volume: float = 100.0,
       enabled: bool = True,
-      target: Union[Plate, None] = None,
+      target: Plate | None = None,
     ):
       """A sample protocol."""
 
@@ -153,7 +149,7 @@ class TestProtocolDecoratorSetup:
 
     decorator = await protocol_function(is_top_level=True)
     with pytest.raises(
-      TypeError, match=f"must define a '{DEFAULT_STATE_PARAM_NAME}' parameter"
+      TypeError, match=f"must define a '{DEFAULT_STATE_PARAM_NAME}' parameter",
     ):
       decorator(invalid_top_level)
 
@@ -180,8 +176,7 @@ class TestProtocolDecoratorSetup:
 
 @pytest.mark.asyncio
 class TestProtocolDecoratorRuntime:
-  """
-  Tests the decorator's runtime wrapper logic.
+  """Tests the decorator's runtime wrapper logic.
   Uses a fixture to provide a pre-decorated function for testing.
   """
 
@@ -195,7 +190,7 @@ class TestProtocolDecoratorRuntime:
       return {"status": "ok", "volume_processed": volume}
 
     decorator = await protocol_function(
-      name="runtime_protocol", version="1.0", is_top_level=True
+      name="runtime_protocol", version="1.0", is_top_level=True,
     )
     decorated_func = decorator(my_runtime_protocol)
     PROTOCOL_REGISTRY["runtime_protocol_v1.0"].db_accession_id = TEST_DEF_ID
@@ -209,7 +204,7 @@ class TestProtocolDecoratorRuntime:
       return "sync complete"
 
     decorator = await protocol_function(
-      name="sync_protocol", version="1.0", is_top_level=True
+      name="sync_protocol", version="1.0", is_top_level=True,
     )
     decorated_func = decorator(my_sync_protocol)
     PROTOCOL_REGISTRY["sync_protocol_v1.0"].db_accession_id = TEST_DEF_ID
@@ -222,7 +217,7 @@ class TestProtocolDecoratorRuntime:
   )
   @patch("praxis.backend.core.decorators.log_function_call_end", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock
+    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock,
   )
   async def test_wrapper_successful_execution(
     self,
@@ -255,7 +250,7 @@ class TestProtocolDecoratorRuntime:
   )
   @patch("praxis.backend.core.decorators.log_function_call_end", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock
+    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock,
   )
   async def test_wrapper_handles_sync_function(
     self,
@@ -285,7 +280,7 @@ class TestProtocolDecoratorRuntime:
   )
   @patch("praxis.backend.core.decorators.log_function_call_end", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock
+    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock,
   )
   async def test_wrapper_handles_exception(
     self,
@@ -310,7 +305,7 @@ class TestProtocolDecoratorRuntime:
     assert "ValueError" in end_kwargs["error_traceback"]
 
   async def test_wrapper_fails_without_valid_context(
-    self, decorated_protocol, monkeypatch
+    self, decorated_protocol, monkeypatch,
   ):
     """Test that calling a decorated function without a proper context raises a RuntimeError."""
     monkeypatch.setattr(praxis_run_context_cv, "get", lambda: None)
@@ -324,7 +319,7 @@ class TestProtocolDecoratorRuntime:
     new_callable=AsyncMock,
   )
   @patch(
-    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock
+    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock,
   )
   async def test_run_control_cancel(
     self,
@@ -356,7 +351,7 @@ class TestProtocolDecoratorRuntime:
   )
   @patch("praxis.backend.core.decorators.log_function_call_end", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock
+    "praxis.backend.core.decorators.log_function_call_start", new_callable=AsyncMock,
   )
   async def test_run_control_pause_resume(
     self,

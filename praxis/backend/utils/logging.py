@@ -2,8 +2,9 @@
 
 import logging
 import traceback
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Type
+from typing import Any
 
 
 def get_logger(name):  # TODO: change to use built-in logging.getLogger and config
@@ -20,16 +21,16 @@ def get_logger(name):  # TODO: change to use built-in logging.getLogger and conf
 def _process_exception(
   logger_instance: logging.Logger,
   exception: Exception,
-  exception_type: Type[Exception],
+  exception_type: type[Exception],
   raises: bool,
-  raises_exception: Type[Exception],
+  raises_exception: type[Exception],
   prefix: str,
   suffix: str,
   return_: Any,
 ) -> Any:
   """Process the exception to generate a custom error message."""
   error_message = f"{prefix}{exception.__class__.__name__}: \
-    {str(exception)}{suffix}".strip()
+    {exception!s}{suffix}".strip()
   logger_instance.error(error_message)
   traceback.print_exc()
   full_error_message = f"{error_message} {traceback.format_exc()}"
@@ -49,9 +50,9 @@ def _process_exception(
 
 def log_async_runtime_errors(
   logger_instance: logging.Logger,
-  exception_type: Type[Exception] = Exception,
+  exception_type: type[Exception] = Exception,
   raises: bool = True,
-  raises_exception: Type[Exception] = Exception,
+  raises_exception: type[Exception] = Exception,
   prefix: str = "",
   suffix: str = "",
   return_: Any = None,
@@ -112,9 +113,9 @@ def log_async_runtime_errors(
 
 def log_runtime_errors(
   logger_instance: logging.Logger,
-  exception_type: Type[Exception] = Exception,
+  exception_type: type[Exception] = Exception,
   raises: bool = True,
-  raises_exception: Type[Exception] = Exception,
+  raises_exception: type[Exception] = Exception,
   prefix: str = "",
   suffix: str = "",
   return_: Any = None,

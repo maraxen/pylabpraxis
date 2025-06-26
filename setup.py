@@ -4,7 +4,7 @@ from setuptools import find_packages, setup  # type: ignore
 
 from .__version__ import __version__
 
-with open("README.md", "r", encoding="utf-8") as f:
+with open("README.md", encoding="utf-8") as f:
   long_description = f.read()
 
 

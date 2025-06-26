@@ -1,4 +1,3 @@
-import datetime
 import uuid
 
 import pytest
@@ -7,11 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import all required models from the central package
 from praxis.backend.models import (
   MachineOrm,
-  MachineStatusEnum,
   ProtocolRunOrm,
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
+  ResourceOrm,
+  ResourceStatusEnum,
 )
 
 # Import the service functions to be tested
@@ -45,7 +43,8 @@ async def resource_def(db: AsyncSession) -> ResourceDefinitionCatalogOrm:
 async def machine(db: AsyncSession) -> MachineOrm:
   """Fixture for a MachineOrm to use for location and counterpart tests."""
   m = MachineOrm(
-    user_friendly_name=f"TestMachine_{uuid.uuid4()}", python_fqn="machine.fqn"
+    user_friendly_name=f"TestMachine_{uuid.uuid4()}",
+    python_fqn="machine.fqn",
   )
   db.add(m)
   await db.commit()
@@ -63,8 +62,9 @@ async def protocol_run(db: AsyncSession) -> ProtocolRunOrm:
 
 @pytest.fixture
 async def existing_resource(
-  db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
-) -> ResourceInstanceOrm:
+  db: AsyncSession,
+  resource_def: ResourceDefinitionCatalogOrm,
+) -> ResourceOrm:
   """Fixture that creates a standard resource instance for testing."""
   return await create_resource_instance(
     db,
@@ -77,11 +77,13 @@ async def existing_resource(
 pytestmark = pytest.mark.asyncio
 
 
-class TestResourceInstanceService:
-  """Test suite for the Resource Instance service layer."""
+class TestResourceService:
+  """Test suite for the Resource  service layer."""
 
   async def test_create_and_read_resource_instance(
-    self, db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
+    self,
+    db: AsyncSession,
+    resource_def: ResourceDefinitionCatalogOrm,
   ):
     """Test creating a simple resource and reading it back by ID and name."""
     name = f"MyPlate_{uuid.uuid4()}"
@@ -110,7 +112,9 @@ class TestResourceInstanceService:
     assert read_by_name.accession_id == resource.accession_id
 
   async def test_create_resource_as_new_machine(
-    self, db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
+    self,
+    db: AsyncSession,
+    resource_def: ResourceDefinitionCatalogOrm,
   ):
     """Test creating a resource that is also a new machine counterpart."""
     name = f"MachineResource_{uuid.uuid4()}"
@@ -138,7 +142,9 @@ class TestResourceInstanceService:
       )
 
   async def test_update_resource_instance(
-    self, db: AsyncSession, existing_resource: ResourceInstanceOrm
+    self,
+    db: AsyncSession,
+    existing_resource: ResourceOrm,
   ):
     """Test updating various fields of a resource instance."""
     updated_resource = await update_resource_instance(
@@ -164,7 +170,7 @@ class TestResourceInstanceService:
       f"PlateA_{uuid.uuid4()}",
       resource_def.python_fqn,
       resource_def.accession_id,
-      initial_status=ResourceInstanceStatusEnum.IN_USE,
+      initial_status=ResourceStatusEnum.IN_USE,
       properties_json={"type": "assay"},
     )
     await create_resource_instance(
@@ -172,16 +178,17 @@ class TestResourceInstanceService:
       f"PlateB_{uuid.uuid4()}",
       resource_def.python_fqn,
       resource_def.accession_id,
-      initial_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+      initial_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       properties_json={"type": "reagent"},
     )
 
     # Filter by status
     in_use_resources = await list_resource_instances(
-      db, status=ResourceInstanceStatusEnum.IN_USE
+      db,
+      status=ResourceStatusEnum.IN_USE,
     )
     assert len(in_use_resources) == 1
-    assert in_use_resources[0].current_status == ResourceInstanceStatusEnum.IN_USE
+    assert in_use_resources[0].current_status == ResourceStatusEnum.IN_USE
 
     # Filter by FQN
     by_fqn = await list_resource_instances(db, python_fqn=resource_def.python_fqn)
@@ -196,22 +203,19 @@ class TestResourceInstanceService:
   async def test_update_resource_location_and_status(
     self,
     db: AsyncSession,
-    existing_resource: ResourceInstanceOrm,
+    existing_resource: ResourceOrm,
     machine: MachineOrm,
     protocol_run: ProtocolRunOrm,
   ):
     """Test the dedicated function for updating location, status, and properties."""
-    assert (
-      existing_resource.current_status
-      == ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
-    )
+    assert existing_resource.current_status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
     assert existing_resource.properties_json is None
 
     # Move to machine, set to IN_USE, and update properties
     updated_resource = await update_resource_instance_location_and_status(
       db,
       resource_instance_accession_id=existing_resource.accession_id,
-      new_status=ResourceInstanceStatusEnum.IN_USE,
+      new_status=ResourceStatusEnum.IN_USE,
       location_machine_accession_id=machine.accession_id,
       current_deck_position_name="A1",
       properties_json_update={"content": "reagent_X"},
@@ -219,7 +223,7 @@ class TestResourceInstanceService:
     )
 
     assert updated_resource is not None
-    assert updated_resource.current_status == ResourceInstanceStatusEnum.IN_USE
+    assert updated_resource.current_status == ResourceStatusEnum.IN_USE
     assert updated_resource.location_machine_accession_id == machine.accession_id
     assert updated_resource.current_deck_position_name == "A1"
     assert updated_resource.properties_json is not None
@@ -233,7 +237,7 @@ class TestResourceInstanceService:
     back_to_storage = await update_resource_instance_location_and_status(
       db,
       resource_instance_accession_id=existing_resource.accession_id,
-      new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+      new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       location_machine_accession_id=None,
       current_deck_position_name=None,
       physical_location_description="Fridge 1, Shelf 2",
@@ -241,9 +245,7 @@ class TestResourceInstanceService:
     )
 
     assert back_to_storage is not None
-    assert (
-      back_to_storage.current_status == ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
-    )
+    assert back_to_storage.current_status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
     assert back_to_storage.location_machine_accession_id is None
     assert back_to_storage.current_protocol_run_accession_id is None
     assert back_to_storage.properties_json is not None
@@ -251,7 +253,9 @@ class TestResourceInstanceService:
     assert back_to_storage.properties_json["concentration"] == "10mM"
 
   async def test_delete_resource_instance(
-    self, db: AsyncSession, existing_resource: ResourceInstanceOrm
+    self,
+    db: AsyncSession,
+    existing_resource: ResourceOrm,
   ):
     """Test deleting a resource instance by ID and by name."""
     # Delete by ID

@@ -26,6 +26,6 @@ async def split_tips_along_columns(wells: list[Well]) -> list[list[Well]]:
     raise ValueError("Invalid well type.")
   columns = [(await parse_well_name(well))[0] for well in wells]
   return [
-    [well for column, well in zip(columns, wells) if column == i]
+    [well for column, well in zip(columns, wells, strict=False) if column == i]
     for i in range(max(columns) + 1)
   ]

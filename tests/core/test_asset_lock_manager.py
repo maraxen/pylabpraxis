@@ -1,10 +1,9 @@
 # pylint: disable=protected-access, redefined-outer-name, unused-argument
 """Unit tests for the AssetLockManager."""
 
-import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -113,7 +112,7 @@ class TestAssetLockManagerInitialization:
         await manager.initialize()
 
   async def test_close_success(
-    self, asset_lock_manager, mock_redis_client, mock_redis_pool
+    self, asset_lock_manager, mock_redis_client, mock_redis_pool,
   ):
     """Test that close calls disconnect on the client and pool."""
     # The fixture handles initialization and close, so we just check the mocks
@@ -127,7 +126,7 @@ class TestAssetLockManagerInitialization:
     manager = AssetLockManager()
     with pytest.raises(RuntimeError, match="Redis client not initialized"):
       await manager.acquire_asset_lock(
-        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID
+        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID,
       )
 
 
@@ -136,30 +135,30 @@ class TestAcquireAssetLock:
   """Tests for the acquire_asset_lock method."""
 
   async def test_acquire_lock_success_first_try(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test successfully acquiring a lock on the first attempt."""
     mock_redis_client.set.return_value = True  # Simulate successful SET NX
 
     with freeze_time("2023-01-01 12:00:00 UTC") as frozen_time:
       result = await asset_lock_manager.acquire_asset_lock(
-        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID
+        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID,
       )
 
       assert result is True
       lock_key = asset_lock_manager._get_asset_lock_key(
-        TEST_ASSET_TYPE, TEST_ASSET_NAME
+        TEST_ASSET_TYPE, TEST_ASSET_NAME,
       )
       mock_redis_client.set.assert_awaited_once_with(
-        lock_key, str(TEST_RESERVATION_ID), nx=True, ex=DEFAULT_LOCK_TIMEOUT
+        lock_key, str(TEST_RESERVATION_ID), nx=True, ex=DEFAULT_LOCK_TIMEOUT,
       )
 
       # Verify reservation metadata storage
       reservation_key = asset_lock_manager._get_reservation_data_key(
-        TEST_RESERVATION_ID
+        TEST_RESERVATION_ID,
       )
       expected_expires_at = frozen_time.time_to_freeze + timedelta(
-        seconds=DEFAULT_LOCK_TIMEOUT
+        seconds=DEFAULT_LOCK_TIMEOUT,
       )
       expected_data = {
         "reservation_id": str(TEST_RESERVATION_ID),
@@ -171,27 +170,27 @@ class TestAcquireAssetLock:
         "required_capabilities": {},
       }
       mock_redis_client.setex.assert_awaited_once_with(
-        reservation_key, DEFAULT_LOCK_TIMEOUT, json.dumps(expected_data)
+        reservation_key, DEFAULT_LOCK_TIMEOUT, json.dumps(expected_data),
       )
 
       # Verify protocol lock tracking
       protocol_locks_key = asset_lock_manager._get_protocol_locks_key(
-        TEST_PROTOCOL_RUN_ID
+        TEST_PROTOCOL_RUN_ID,
       )
       mock_redis_client.sadd.assert_awaited_once_with(protocol_locks_key, lock_key)
       mock_redis_client.expire.assert_awaited_once_with(
-        protocol_locks_key, DEFAULT_LOCK_TIMEOUT
+        protocol_locks_key, DEFAULT_LOCK_TIMEOUT,
       )
 
   async def test_acquire_lock_failure_contention(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test failing to acquire a lock because it's already held."""
     mock_redis_client.set.return_value = False  # Simulate lock is taken
 
     with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
       result = await asset_lock_manager.acquire_asset_lock(
-        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID
+        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID,
       )
 
       assert result is False
@@ -201,7 +200,7 @@ class TestAcquireAssetLock:
       mock_redis_client.sadd.assert_not_awaited()
 
   async def test_acquire_lock_success_with_retry(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test acquiring a lock after a few failed attempts."""
     mock_redis_client.set.side_effect = [
@@ -212,7 +211,7 @@ class TestAcquireAssetLock:
 
     with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
       result = await asset_lock_manager.acquire_asset_lock(
-        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID
+        TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID,
       )
 
       assert result is True
@@ -226,7 +225,7 @@ class TestAcquireAssetLock:
     mock_redis_client.set.side_effect = Exception("Redis network error")
 
     result = await asset_lock_manager.acquire_asset_lock(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID
+      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_PROTOCOL_RUN_ID, TEST_RESERVATION_ID,
     )
 
     assert result is False
@@ -241,14 +240,14 @@ class TestReleaseAssetLock:
     mock_redis_client.eval.return_value = 1  # Lua script returns 1 on success
 
     result = await asset_lock_manager.release_asset_lock(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID, TEST_PROTOCOL_RUN_ID
+      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID, TEST_PROTOCOL_RUN_ID,
     )
 
     assert result is True
     lock_key = asset_lock_manager._get_asset_lock_key(TEST_ASSET_TYPE, TEST_ASSET_NAME)
     reservation_key = asset_lock_manager._get_reservation_data_key(TEST_RESERVATION_ID)
     protocol_locks_key = asset_lock_manager._get_protocol_locks_key(
-      TEST_PROTOCOL_RUN_ID
+      TEST_PROTOCOL_RUN_ID,
     )
 
     # Verify atomic check-and-delete was called
@@ -262,7 +261,7 @@ class TestReleaseAssetLock:
     mock_redis_client.srem.assert_awaited_once_with(protocol_locks_key, lock_key)
 
   async def test_release_lock_failure_not_owner(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test failing to release a lock not owned by the reservation_id."""
     mock_redis_client.eval.return_value = (
@@ -270,7 +269,7 @@ class TestReleaseAssetLock:
     )
 
     result = await asset_lock_manager.release_asset_lock(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID
+      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID,
     )
 
     assert result is False
@@ -283,7 +282,7 @@ class TestReleaseAssetLock:
     mock_redis_client.eval.side_effect = Exception("Redis script error")
 
     result = await asset_lock_manager.release_asset_lock(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID
+      TEST_ASSET_TYPE, TEST_ASSET_NAME, TEST_RESERVATION_ID,
     )
 
     assert result is False
@@ -301,18 +300,18 @@ class TestReleaseAllProtocolLocks:
     res_id2 = uuid.UUID("018f3dd6-b816-728b-8a4a-50f0c2999516")
 
     protocol_locks_key = asset_lock_manager._get_protocol_locks_key(
-      TEST_PROTOCOL_RUN_ID
+      TEST_PROTOCOL_RUN_ID,
     )
     mock_redis_client.smembers.return_value = {lock_key1, lock_key2}
     mock_redis_client.get.side_effect = [str(res_id1), str(res_id2)]
 
     # Patch release_asset_lock to simplify this test
     with patch.object(
-      asset_lock_manager, "release_asset_lock", new_callable=AsyncMock
+      asset_lock_manager, "release_asset_lock", new_callable=AsyncMock,
     ) as mock_release:
       mock_release.return_value = True
       released_count = await asset_lock_manager.release_all_protocol_locks(
-        TEST_PROTOCOL_RUN_ID
+        TEST_PROTOCOL_RUN_ID,
       )
 
       assert released_count == 2
@@ -323,19 +322,19 @@ class TestReleaseAllProtocolLocks:
       mock_redis_client.delete.assert_awaited_once_with(protocol_locks_key)
 
   async def test_release_all_with_invalid_lock_value(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test cleanup when a lock value is not a valid UUID."""
     lock_key = f"praxis:asset_lock:{TEST_ASSET_TYPE}:{TEST_ASSET_NAME}"
     protocol_locks_key = asset_lock_manager._get_protocol_locks_key(
-      TEST_PROTOCOL_RUN_ID
+      TEST_PROTOCOL_RUN_ID,
     )
 
     mock_redis_client.smembers.return_value = {lock_key}
     mock_redis_client.get.return_value = "invalid-uuid-string"
 
     released_count = await asset_lock_manager.release_all_protocol_locks(
-      TEST_PROTOCOL_RUN_ID
+      TEST_PROTOCOL_RUN_ID,
     )
 
     assert released_count == 1
@@ -348,7 +347,7 @@ class TestReleaseAllProtocolLocks:
     """Test releasing when the protocol has no locks."""
     mock_redis_client.smembers.return_value = set()
     released_count = await asset_lock_manager.release_all_protocol_locks(
-      TEST_PROTOCOL_RUN_ID
+      TEST_PROTOCOL_RUN_ID,
     )
     assert released_count == 0
     mock_redis_client.delete.assert_awaited_once()  # Deletes the empty set
@@ -363,13 +362,13 @@ class TestCheckAssetAvailability:
     lock_key = asset_lock_manager._get_asset_lock_key(TEST_ASSET_TYPE, TEST_ASSET_NAME)
     mock_redis_client.get.return_value = None
     result = await asset_lock_manager.check_asset_availability(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME
+      TEST_ASSET_TYPE, TEST_ASSET_NAME,
     )
     assert result is None
     mock_redis_client.get.assert_awaited_once_with(lock_key)
 
   async def test_check_locked_with_metadata(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test checking a locked asset with valid metadata."""
     reservation_data = {"reservation_id": str(TEST_RESERVATION_ID), "status": "ok"}
@@ -382,7 +381,7 @@ class TestCheckAssetAvailability:
     ]
 
     result = await asset_lock_manager.check_asset_availability(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME
+      TEST_ASSET_TYPE, TEST_ASSET_NAME,
     )
     assert result == reservation_data
     assert mock_redis_client.get.await_args_list[0].args == (lock_key,)
@@ -394,7 +393,7 @@ class TestCheckAssetAvailability:
     mock_redis_client.get.side_effect = [str(TEST_RESERVATION_ID), None]
 
     result = await asset_lock_manager.check_asset_availability(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME
+      TEST_ASSET_TYPE, TEST_ASSET_NAME,
     )
     assert result == {
       "reservation_id": str(TEST_RESERVATION_ID),
@@ -409,7 +408,7 @@ class TestCheckAssetAvailability:
     mock_redis_client.get.return_value = "not-a-uuid"
 
     result = await asset_lock_manager.check_asset_availability(
-      TEST_ASSET_TYPE, TEST_ASSET_NAME
+      TEST_ASSET_TYPE, TEST_ASSET_NAME,
     )
     assert result == {
       "reservation_id": "not-a-uuid",
@@ -526,7 +525,7 @@ class TestSystemStatus:
       }
 
   async def test_get_system_status_redis_error(
-    self, asset_lock_manager, mock_redis_client
+    self, asset_lock_manager, mock_redis_client,
   ):
     """Test system status returning an error on Redis failure."""
     mock_redis_client.scan_iter.side_effect = Exception("Redis is down")

@@ -11,7 +11,7 @@ allowing them to access only the assets they have explicitly declared as require
 """
 
 import json
-from typing import Any, List, Optional, Set, cast
+from typing import Any, cast
 
 import inflection
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
@@ -85,7 +85,7 @@ class Workcell:
 
     if "other_machines" not in self.refs:
       self.refs["other_machines"] = {}
-      setattr(self, "other_machines", self.refs["other_machines"])
+      self.other_machines = self.refs["other_machines"]
 
   @property
   def all_machines(self) -> dict[str, Machine]:
@@ -145,7 +145,7 @@ class Workcell:
       and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id]
+        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id],
       )
       liquid_handler.deck = deck
     else:
@@ -165,14 +165,14 @@ class Workcell:
       if isinstance(child, Resource) and child.name in state:
         child.load_state(state[child.name])
 
-  def save_state_to_file(self, fn: str, indent: Optional[int] = 4):
+  def save_state_to_file(self, fn: str, indent: int | None = 4):
     """Save the current state of all workcell resources to a JSON file."""
     with open(fn, "w", encoding="utf-8") as f:
       json.dump(self.serialize_all_state(), f, indent=indent)
 
   def load_state_from_file(self, fn: str):
     """Load the state of all workcell resources from a JSON file."""
-    with open(fn, "r", encoding="utf-8") as f:
+    with open(fn, encoding="utf-8") as f:
       content = json.load(f)
     self.load_all_state(content)
 
@@ -199,12 +199,12 @@ class WorkcellView:
     self,
     parent_workcell: Workcell,
     protocol_name: str,
-    required_assets: List[AssetRequirementModel],
+    required_assets: list[AssetRequirementModel],
   ):
     """Initialize the protocol view with required assets."""
     self.parent = parent_workcell
     self.protocol_name = protocol_name
-    self._required_asset_names: Set[str] = {asset.name for asset in required_assets}
+    self._required_asset_names: set[str] = {asset.name for asset in required_assets}
 
   def __contains__(self, asset_name: str) -> bool:
     """Check if an asset was declared as required by the protocol."""
@@ -220,7 +220,7 @@ class WorkcellView:
     if name not in self._required_asset_names:
       raise AttributeError(
         f"Protocol '{self.protocol_name}' attempted to access asset '{name}' "
-        "but did not declare it as a requirement."
+        "but did not declare it as a requirement.",
       )
 
     # Safely delegate the attribute access to the parent Workcell

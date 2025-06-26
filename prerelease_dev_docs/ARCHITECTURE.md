@@ -117,7 +117,7 @@ live_obj, orm_id, asset_type = await asset_manager.acquire_asset(
 
 # Release assets after protocol completion
 await asset_manager.release_machine(machine_orm_id, MachineStatusEnum.AVAILABLE)
-await asset_manager.release_resource(resource_orm_id, ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE)
+await asset_manager.release_resource(resource_orm_id, ResourceStatusEnum.AVAILABLE_IN_STORAGE)
 ```
 
 ### 7. **AssetLockManager** (`asset_lock_manager.py`)
@@ -261,7 +261,7 @@ async def my_protocol(
     state: PraxisState,
     __praxis_run_context__: PraxisRunContext,
     __function_db_accession_id__: uuid.UUID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Protocol implementation
     await lh.aspirate(volume)
     return {"success": True}
@@ -341,7 +341,7 @@ ProtocolExecutionService
 ### Resource Conflict Resolution
 The system uses a multi-layered approach to handle resource conflicts:
 
-1. **Database-level**: Asset status tracking in ResourceInstanceOrm and MachineOrm
+1. **Database-level**: Asset status tracking in ResourceOrm and MachineOrm
 2. **Redis-level**: Distributed locks via AssetLockManager for atomic reservations
 3. **Scheduler-level**: Resource requirement analysis and pre-execution validation
 4. **Runtime-level**: Live object state management in WorkcellRuntime

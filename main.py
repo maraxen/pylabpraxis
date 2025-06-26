@@ -1,8 +1,8 @@
 """Core backend application for PyLabPraxis."""
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,10 +61,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     and re-raise the exception to prevent the application from starting.
 
   """
-  db_service_instance: Optional[PraxisDBService] = None
-  orchestrator: Optional[Orchestrator] = None
-  asset_manager: Optional[AssetManager] = None
-  workcell_runtime: Optional[WorkcellRuntime] = None
+  db_service_instance: PraxisDBService | None = None
+  orchestrator: Orchestrator | None = None
+  asset_manager: AssetManager | None = None
+  workcell_runtime: WorkcellRuntime | None = None
   try:
     logger.info("Application startup sequence initiated...")
 
@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing PraxisDBService...")
     assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
     db_service_instance = await PraxisDBService.initialize(
-      keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG
+      keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG,
     )
     logger.info("PraxisDBService initialized successfully.")
 
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_session = await anext(get_async_db_session())
     # AssetManager still needs a direct db_session for now
     asset_manager = AssetManager(
-      db_session=db_session, workcell_runtime=workcell_runtime
+      db_session=db_session, workcell_runtime=workcell_runtime,
     )
 
     # 3. Instantiate and initialize the Orchestrator with its dependencies
@@ -159,7 +159,7 @@ app.add_middleware(
 
 # --- API Router Inclusion ---
 app.include_router(
-  function_data_outputs.router, prefix="/api/v1/data-outputs", tags=["Data Outputs"]
+  function_data_outputs.router, prefix="/api/v1/data-outputs", tags=["Data Outputs"],
 )
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["Workcell"])

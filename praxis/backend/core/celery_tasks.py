@@ -1,5 +1,5 @@
 # pylint: disable=fixme
-"""Celery tasks for protocol execution. # broad-except is justified at task level.
+"""Celery tasks for protocol execution.
 
 This module defines the async tasks for executing protocols in the background.
 It imports the shared Celery application instance and defines the business
@@ -10,7 +10,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from celery.utils.log import get_task_logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -33,7 +33,7 @@ class ProtocolExecutionContext:
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
-    orchestrator: Optional[Any] = None,  # Avoid circular import with type hint
+    orchestrator: Any | None = None,  # Avoid circular import with type hint
   ):
     """Initialize the protocol execution context.
 
@@ -47,7 +47,7 @@ class ProtocolExecutionContext:
 
 
 # This global context will be initialized once during application startup.
-_execution_context: Optional[ProtocolExecutionContext] = None
+_execution_context: ProtocolExecutionContext | None = None
 
 
 def initialize_celery_context(
@@ -69,9 +69,9 @@ def initialize_celery_context(
 def execute_protocol_run_task(
   self,
   protocol_run_id: str,
-  user_params: Dict[str, Any],
-  initial_state: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+  user_params: dict[str, Any],
+  initial_state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
   """Celery task to execute a full protocol run.
 
   This is the main entry point for a background protocol execution. It bridges
@@ -104,21 +104,22 @@ def execute_protocol_run_task(
   try:
     # Use asyncio.run to manage the event loop for the async logic.
     result = asyncio.run(
-      _execute_protocol_async(run_uuid, user_params, initial_state, self.request.id)
+      _execute_protocol_async(run_uuid, user_params, initial_state, self.request.id),
     )
     task_logger.info("Protocol execution task completed for run_id=%s", protocol_run_id)
-    # pylint: disable-next=broad-except
     # Justification: This is a top-level Celery task handler. Catching broad Exception
     # ensures that any unhandled error during async execution is caught, logged, and
     # the protocol run status is updated to FAILED, preventing silent failures.
-    return result
-  except Exception as e:
+    return result  # type: ignore
+  except Exception as e:  # pylint: disable=broad-except
     error_msg = f"Protocol execution failed for run_id={protocol_run_id}: {e}"
     task_logger.error(error_msg, exc_info=True)
     # Attempt to update the run status to FAILED in the database.
     try:
       asyncio.run(_update_run_status_on_error(run_uuid, str(e)))
-    except Exception as update_error:
+    # Justification: This is a last-resort error handler. If updating the DB
+    # status fails, we must catch it to prevent the Celery worker from crashing.
+    except Exception as update_error:  # pylint: disable=broad-except
       task_logger.error(
         "Critical error: Failed to update protocol run status after task failure. Error: %s",
         update_error,
@@ -128,10 +129,10 @@ def execute_protocol_run_task(
 
 async def _execute_protocol_async(
   protocol_run_id: uuid.UUID,
-  user_params: Dict[str, Any],
-  initial_state: Optional[Dict[str, Any]],
+  user_params: dict[str, Any],
+  initial_state: dict[str, Any] | None,
   celery_task_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
   """Asynchronously executes a protocol run using the Orchestrator.
 
   Args:
@@ -154,7 +155,7 @@ async def _execute_protocol_async(
   async with _execution_context.db_session_factory() as db_session:
     try:
       protocol_run_orm = await svc.read_protocol_run(
-        db_session, run_accession_id=protocol_run_id
+        db_session, run_accession_id=protocol_run_id,
       )
       if not protocol_run_orm:
         raise ValueError(f"Protocol run {protocol_run_id} not found.")
@@ -168,7 +169,7 @@ async def _execute_protocol_async(
           {
             "status": "Execution started by Celery worker",
             "celery_task_id": celery_task_id,
-          }
+          },
         ),
       )
       await db_session.commit()
@@ -176,7 +177,7 @@ async def _execute_protocol_async(
       # Delegate the core execution logic to the orchestrator.
       result_run_orm = (
         await _execution_context.orchestrator.execute_existing_protocol_run(
-          protocol_run_orm, user_params, initial_state
+          protocol_run_orm, user_params, initial_state,
         )
       )
 
@@ -186,7 +187,10 @@ async def _execute_protocol_async(
         "final_status": result_run_orm.status.value,
         "message": "Protocol executed successfully via Orchestrator.",
       }
-    except Exception as e:
+    # Justification: This is the primary error handler for the async execution logic.
+    # A broad except is necessary to catch any failure from the Orchestrator,
+    # log it, and ensure the database state is updated to FAILED before re-raising.
+    except Exception as e:  # pylint: disable=broad-except
       task_logger.error(
         "Error during async protocol execution for run_id=%s: %s",
         protocol_run_id,
@@ -194,9 +198,6 @@ async def _execute_protocol_async(
         exc_info=True,
       )
       # Ensure status is marked as FAILED on any exception within this block.
-      # pylint: disable-next=broad-except
-      # Justification: This is a critical error handling path within an async task.
-      # Catching broad Exception ensures that the protocol run status is updated to FAILED.
       await db_session.rollback()
       await svc.update_protocol_run_status(
         db=db_session,
@@ -206,7 +207,7 @@ async def _execute_protocol_async(
           {
             "error": str(e),
             "status": "Protocol execution failed in Celery worker.",
-          }
+          },
         ),
       )
       await db_session.commit()
@@ -217,7 +218,7 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
   """A final-resort function to update a protocol run's status to FAILED."""
   if not _execution_context:
     task_logger.error(
-      "Cannot update run status on error: Execution context is missing."
+      "Cannot update run status on error: Execution context is missing.",
     )
     return
 
@@ -231,17 +232,17 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
           {
             "error": error_message,
             "status": "A critical error occurred in the Celery task.",
-          }
+          },
         ),
       )
       await db_session.commit()
       task_logger.info(
-        "Successfully updated run_id=%s to FAILED status.", protocol_run_id
+        "Successfully updated run_id=%s to FAILED status.", protocol_run_id,
       )
-    # pylint: disable-next=broad-except
     # Justification: This is a last-resort error handler for DB updates.
-    # Catching broad Exception is necessary to prevent further unhandled exceptions.
-    except Exception as e:
+    # Catching broad Exception is necessary to prevent further unhandled exceptions
+    # from crashing the Celery worker during its own error handling process.
+    except Exception as e:  # pylint: disable=broad-except
       # If this fails, we log it, but there's little else we can do.
       task_logger.critical(
         "Could not update run status for run_id=%s. DB may be unreachable. Error: %s",
@@ -251,7 +252,7 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
 
 
 @celery_app.task(name="health_check")
-def health_check() -> Dict[str, str]:
+def health_check() -> dict[str, str]:
   """A simple health check task to verify that Celery workers are responsive."""
   return {
     "status": "healthy",

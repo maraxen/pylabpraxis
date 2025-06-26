@@ -8,7 +8,6 @@ attribution, spatial context, and data visualization.
 """
 
 from functools import partial
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -39,9 +38,9 @@ async def read_plate_data_visualization(
   db: AsyncSession,
   plate_resource_instance_accession_id: UUID,
   data_type: DataOutputTypeEnum,
-  protocol_run_accession_id: Optional[UUID] = None,
-  function_call_log_accession_id: Optional[UUID] = None,
-) -> Optional[PlateDataVisualization]:
+  protocol_run_accession_id: UUID | None = None,
+  function_call_log_accession_id: UUID | None = None,
+) -> PlateDataVisualization | None:
   """Get plate data formatted for visualization.
 
   Args:
@@ -64,19 +63,19 @@ async def read_plate_data_visualization(
         WellDataOutputOrm.plate_resource_instance_accession_id
         == plate_resource_instance_accession_id,
         FunctionDataOutputOrm.data_type == data_type,
-      )
+      ),
     )
   )
 
   if protocol_run_accession_id:
     query = query.filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
     )
 
   if function_call_log_accession_id:
     query = query.filter(
       FunctionDataOutputOrm.function_call_log_accession_id
-      == function_call_log_accession_id
+      == function_call_log_accession_id,
     )
 
   query = query.order_by(FunctionDataOutputOrm.measurement_timestamp.desc())

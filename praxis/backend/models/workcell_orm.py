@@ -6,7 +6,7 @@ including their names, descriptions, and relationships to associated machines.
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import JSON, UUID, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -54,19 +54,19 @@ class WorkcellOrm(TimestampMixin, Base):
 
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   name: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-  physical_location: Mapped[Optional[str]] = mapped_column(
+  description: Mapped[str | None] = mapped_column(Text, nullable=True)
+  physical_location: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     comment="Physical location of the workcell (e.g., 'Lab 2, Room 301')",
   )
 
-  latest_state_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
+  latest_state_json: Mapped[dict[str, Any] | None] = mapped_column(
     JSON,
     nullable=True,
     comment="JSON representation of the latest state of the workcell",
   )
-  last_state_update_time: Mapped[Optional[datetime]] = mapped_column(
+  last_state_update_time: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp of the last state update",

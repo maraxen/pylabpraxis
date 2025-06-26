@@ -1,7 +1,7 @@
 """Unit tests for the ProtocolScheduler."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -170,7 +170,7 @@ async def test_reserve_assets_failure_and_rollback(scheduler):
 @patch("praxis.backend.core.scheduler.execute_protocol_run_task")
 @patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_execution_success(
-  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session
+  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session,
 ):
   """Test successful scheduling of a protocol."""
   mock_celery_task.delay.return_value = MagicMock(id="test_task_id")
@@ -194,7 +194,7 @@ async def test_schedule_protocol_execution_success(
 @pytest.mark.asyncio
 @patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_asset_failure(
-  mock_svc, scheduler, protocol_run_orm, mock_db_session
+  mock_svc, scheduler, protocol_run_orm, mock_db_session,
 ):
   """Test scheduling failure due to asset reservation."""
   scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
@@ -220,7 +220,7 @@ async def test_cancel_scheduled_run(scheduler):
   req.asset_type = "asset"
   req.asset_name = "cancellable_asset"
   entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[req]
+    protocol_run_id=run_id, protocol_name="test", required_assets=[req],
   )
   scheduler._active_schedules[run_id] = entry
   scheduler._asset_reservations["asset:cancellable_asset"] = {run_id}
@@ -237,7 +237,7 @@ async def test_get_schedule_status(scheduler):
   """Test getting schedule status."""
   run_id = uuid.uuid4()
   entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[]
+    protocol_run_id=run_id, protocol_name="test", required_assets=[],
   )
   scheduler._active_schedules[run_id] = entry
 
@@ -255,10 +255,10 @@ async def test_list_active_schedules(scheduler):
   run_id1 = uuid.uuid4()
   run_id2 = uuid.uuid4()
   scheduler._active_schedules[run_id1] = ScheduleEntry(
-    protocol_run_id=run_id1, protocol_name="p1", required_assets=[]
+    protocol_run_id=run_id1, protocol_name="p1", required_assets=[],
   )
   scheduler._active_schedules[run_id2] = ScheduleEntry(
-    protocol_run_id=run_id2, protocol_name="p2", required_assets=[]
+    protocol_run_id=run_id2, protocol_name="p2", required_assets=[],
   )
 
   schedules = await scheduler.list_active_schedules()

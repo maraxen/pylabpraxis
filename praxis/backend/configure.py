@@ -2,7 +2,7 @@
 
 import configparser
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class PraxisConfiguration:
@@ -29,14 +29,14 @@ class PraxisConfiguration:
     config.read(config_file)
     return config
 
-  def _get_section_dict(self, section_name: str) -> Dict[str, str]:
+  def _get_section_dict(self, section_name: str) -> dict[str, str]:
     """Get a section from the config parser as a dictionary of strings.
 
     Args:
       section_name (str): The name of the section to retrieve.
 
     Returns:
-      Dict[str, str]: A dictionary of key-value pairs from the section.
+      dict[str, str]: A dictionary of key-value pairs from the section.
 
     """
     if section_name not in self._config_parser:
@@ -44,7 +44,7 @@ class PraxisConfiguration:
     return dict(self._config_parser[section_name])
 
   @property
-  def _database_section(self) -> Dict[str, str]:
+  def _database_section(self) -> dict[str, str]:
     """Return the 'database' section as a dictionary."""
     return self._get_section_dict("database")
 
@@ -59,7 +59,7 @@ class PraxisConfiguration:
 
     """
     dsn = self._database_section.get(
-      "praxis_dsn", "postgresql://praxis:praxis@localhost:5432/praxis_db"
+      "praxis_dsn", "postgresql://praxis:praxis@localhost:5432/praxis_db",
     )
     if not dsn.startswith(("postgresql://", "postgres://")):
       return f"postgresql://{dsn}"
@@ -76,14 +76,14 @@ class PraxisConfiguration:
 
     """
     dsn = self._database_section.get(
-      "keycloak_dsn", "postgresql://keycloak:keycloak@localhost:5432/keycloak"
+      "keycloak_dsn", "postgresql://keycloak:keycloak@localhost:5432/keycloak",
     )
     if not dsn.startswith(("postgresql://", "postgres://")):
       return f"postgresql://{dsn}"
     return dsn
 
   @property
-  def _email_section(self) -> Dict[str, str]:
+  def _email_section(self) -> dict[str, str]:
     """Return the 'email' section as a dictionary."""
     return self._get_section_dict("email")
 
@@ -108,7 +108,7 @@ class PraxisConfiguration:
     return self._email_section.get("smtp_password", "")
 
   @property
-  def _redis_section(self) -> Dict[str, str]:
+  def _redis_section(self) -> dict[str, str]:
     """Return the 'redis' section as a dictionary."""
     return self._get_section_dict("redis")
 
@@ -133,7 +133,7 @@ class PraxisConfiguration:
     return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
   @property
-  def _celery_section(self) -> Dict[str, str]:
+  def _celery_section(self) -> dict[str, str]:
     """Return the 'celery' section as a dictionary."""
     return self._get_section_dict("celery")
 
@@ -148,7 +148,7 @@ class PraxisConfiguration:
     return self._celery_section.get("backend", "redis://localhost:6379/0")
 
   @property
-  def _logging_section(self) -> Dict[str, str]:
+  def _logging_section(self) -> dict[str, str]:
     """Return the 'logging' section as a dictionary."""
     return self._get_section_dict("logging")
 
@@ -162,7 +162,7 @@ class PraxisConfiguration:
     """Return the log file path."""
     return self._logging_section.get("logfile", "/var/log/praxis/praxis.log")
 
-  def _output_directories_section(self) -> Dict[str, str]:
+  def _output_directories_section(self) -> dict[str, str]:
     """Return the 'output_directories' section as a dictionary."""
     return self._get_section_dict("output_directories")
 
@@ -170,21 +170,21 @@ class PraxisConfiguration:
   def protocol_output_directory(self) -> str:
     """Return the protocol output directory path."""
     path = self._output_directories_section.get("protocol_output", "./protocol_output")
-    os.makedirs(path, exist_ok=True) # Ensure the directory exists
+    os.makedirs(path, exist_ok=True)  # Ensure the directory exists
     return path
 
   @property
-  def _admin_section(self) -> Dict[str, str]:
+  def _admin_section(self) -> dict[str, str]:
     """Return the 'admin' section as a dictionary."""
     return self._get_section_dict("admin")
 
   @property
-  def admin_credentials(self) -> Dict[str, str]:
+  def admin_credentials(self) -> dict[str, str]:
     """Return the admin credentials."""
     return self._admin_section
 
   @property
-  def _protocol_directories_section(self) -> Dict[str, str]:
+  def _protocol_directories_section(self) -> dict[str, str]:
     """Return the 'protocol_directories' section as a dictionary."""
     return self._get_section_dict("protocol_directories")
 
@@ -197,29 +197,29 @@ class PraxisConfiguration:
     default_path = os.path.join(os.path.dirname(__file__), "protocol", "protocols")
     path = self._protocol_directories_section.get("default_directory", default_path)
     os.makedirs(
-      path, exist_ok=True
+      path, exist_ok=True,
     )  # Use exist_ok=True to avoid error if it already exists
     return path
 
   @property
-  def additional_directories(self) -> List[str]:
+  def additional_directories(self) -> list[str]:
     """Return a list of additional protocol directories."""
     dirs_str = self._protocol_directories_section.get("additional_directories", "")
     return [d.strip() for d in dirs_str.split(",") if d.strip()]
 
   @property
-  def _protocol_discovery_section(self) -> Dict[str, str]:
+  def _protocol_discovery_section(self) -> dict[str, str]:
     """Return the 'protocol_discovery' section as a dictionary."""
     return self._get_section_dict("protocol_discovery")
 
   @property
-  def protocol_discovery_dirs(self) -> List[str]:
+  def protocol_discovery_dirs(self) -> list[str]:
     """Return a list of protocol discovery directories."""
     dirs_str = self._protocol_discovery_section.get("directories", "")
     return [d.strip() for d in dirs_str.split(",") if d.strip()]
 
   @property
-  def all_protocol_source_paths(self) -> List[str]:
+  def all_protocol_source_paths(self) -> list[str]:
     """Return a list of all directories where protocol source code can be found.
 
     Combines default, additional, and discovery directories, ensuring uniqueness
@@ -241,18 +241,18 @@ class PraxisConfiguration:
     return sorted(list(all_paths))
 
   @property
-  def _keycloak_section(self) -> Dict[str, str]:
+  def _keycloak_section(self) -> dict[str, str]:
     """Return the 'keycloak' section as a dictionary, handling its potential absence."""
     # This section might not exist initially, so handle it gracefully
     if not self._config_parser.has_section("keycloak"):
       return {}
     return self._get_section_dict("keycloak")
 
-  def get_keycloak_config(self) -> Dict[str, Optional[str]]:
+  def get_keycloak_config(self) -> dict[str, str | None]:
     """Get Keycloak configuration.
 
     Returns:
-        Dict[str, Optional[str]]: A dictionary containing Keycloak configuration
+        dict[str, Optional[str]]: A dictionary containing Keycloak configuration
         details.
 
     """
@@ -283,7 +283,7 @@ class PraxisConfiguration:
       self._config_parser.write(f)
 
   @property
-  def smtp_details(self) -> Dict[str, Any]:
+  def smtp_details(self) -> dict[str, Any]:
     """Get SMTP server details."""
     return {
       "smtp_server": self.smtp_server,

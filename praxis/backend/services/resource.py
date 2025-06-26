@@ -1,9 +1,8 @@
 # pylint: disable=broad-except, too-many-lines
-"""Service layer for Resource Instance Management."""
+"""Service layer for Resource  Management."""
 
 import uuid
 from functools import partial
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -39,7 +38,8 @@ log_resource_data_service_errors = partial(
   ),
 )
 async def create_resource(
-  db: AsyncSession, resource_create: ResourceCreate
+  db: AsyncSession,
+  resource_create: ResourceCreate,
 ) -> ResourceOrm:
   """Create a new resource.
 
@@ -57,7 +57,7 @@ async def create_resource(
   """
   logger.info(
     "Attempting to create resource '%s' for parent ID %s.",
-    resource_create.name,
+    resource_create.name,  # type: ignore
     resource_create.parent_accession_id,
   )
 
@@ -74,7 +74,7 @@ async def create_resource(
     await db.refresh(resource_orm)
     logger.info(
       "Successfully created resource '%s' with ID %s.",
-      resource_orm.name,
+      resource_orm.name,  # type: ignore
       resource_orm.accession_id,
     )
   except IntegrityError as e:
@@ -86,7 +86,8 @@ async def create_resource(
     raise ValueError(error_message) from e
   except Exception as e:  # Catch all for truly unexpected errors
     logger.exception(
-      "Error creating resource '%s'. Rolling back.", resource_create.name
+      "Error creating resource '%s'. Rolling back.",
+      resource_create.name,
     )
     await db.rollback()
     raise e
@@ -95,8 +96,9 @@ async def create_resource(
 
 
 async def read_resource(
-  db: AsyncSession, resource_accession_id: UUID
-) -> Optional[ResourceOrm]:
+  db: AsyncSession,
+  resource_accession_id: UUID,
+) -> ResourceOrm | None:
   """Retrieve a specific resource by its ID.
 
   Args:
@@ -122,8 +124,8 @@ async def read_resource(
   if resource:
     logger.info(
       "Successfully retrieved resource ID %s: '%s'.",
-      resource_accession_id,
-      resource.name,
+      resource_accession_id,  # type: ignore
+      resource.name,  # type: ignore
     )
   else:
     logger.info("Resource with ID %s not found.", resource_accession_id)
@@ -132,10 +134,10 @@ async def read_resource(
 
 async def read_resources(
   db: AsyncSession,
-  parent_accession_id: Optional[UUID] = None,
+  parent_accession_id: UUID | None = None,
   limit: int = 100,
   offset: int = 0,
-) -> List[ResourceOrm]:
+) -> list[ResourceOrm]:
   """List all resources, with optional filtering by parent ID.
 
   Args:
@@ -168,7 +170,7 @@ async def read_resources(
   return resources
 
 
-async def read_resource_by_name(db: AsyncSession, name: str) -> Optional[ResourceOrm]:
+async def read_resource_by_name(db: AsyncSession, name: str) -> ResourceOrm | None:
   """Retrieve a specific resource by its name.
 
   Args:
@@ -194,7 +196,7 @@ async def read_resource_by_name(db: AsyncSession, name: str) -> Optional[Resourc
   if resource:
     logger.info("Successfully retrieved resource by name '%s'.", name)
   else:
-    logger.info("Resource with name '%s' not found.", name)
+    logger.info("Resource with name '%s' not found.", name)  # type: ignore
   return resource
 
 
@@ -202,7 +204,7 @@ async def update_resource(
   db: AsyncSession,
   resource_accession_id: UUID,
   resource_update: ResourceUpdate,
-) -> Optional[ResourceOrm]:
+) -> ResourceOrm | None:
   """Update an existing resource.
 
   Args:
@@ -233,8 +235,8 @@ async def update_resource(
     await db.refresh(resource_orm)
     logger.info(
       "Successfully updated resource ID %s: '%s'.",
-      resource_accession_id,
-      resource_orm.name,
+      resource_accession_id,  # type: ignore
+      resource_orm.name,  # type: ignore
     )
     return await read_resource(db, resource_accession_id)
   except IntegrityError as e:
@@ -275,8 +277,8 @@ async def delete_resource(db: AsyncSession, resource_accession_id: UUID) -> bool
     await db.commit()
     logger.info(
       "Successfully deleted resource ID %s: '%s'.",
-      resource_accession_id,
-      resource_orm.name,
+      resource_accession_id,  # type: ignore
+      resource_orm.name,  # type: ignore
     )
     return True
   except IntegrityError as e:

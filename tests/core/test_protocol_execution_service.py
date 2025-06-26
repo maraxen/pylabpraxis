@@ -47,7 +47,7 @@ def orchestrator():
 
 @pytest.fixture
 def service(
-  db_session_factory, asset_manager, workcell_runtime, scheduler, orchestrator
+  db_session_factory, asset_manager, workcell_runtime, scheduler, orchestrator,
 ):
   """Fixture for ProtocolExecutionService with all dependencies mocked."""
   return ProtocolExecutionService(

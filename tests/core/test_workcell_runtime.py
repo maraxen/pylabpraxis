@@ -1,9 +1,8 @@
 # pylint: disable=redefined-outer-name, protected-access, unused-argument, too-many-arguments, invalid-name
 """Unit tests for the WorkcellRuntime component."""
 
-import asyncio
 import uuid
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from pylabrobot.resources import Coordinate, Deck
@@ -15,8 +14,8 @@ from praxis.backend.models import (
   MachineOrm,
   MachineStatusEnum,
   PositioningConfig,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
+  ResourceOrm,
+  ResourceStatusEnum,
 )
 from praxis.backend.utils.errors import WorkcellRuntimeError
 
@@ -85,7 +84,10 @@ class TestWorkcellRuntimeLifecycle:
   @patch("praxis.backend.services.create_workcell")
   @patch("praxis.backend.services.read_workcell_state", new_callable=AsyncMock)
   async def test_link_workcell_to_db_creates_new(
-    self, mock_read_state, mock_create_workcell, workcell_runtime
+    self,
+    mock_read_state,
+    mock_create_workcell,
+    workcell_runtime,
   ):
     """Test that a new workcell is created in the DB if one doesn't exist."""
     mock_read_state.return_value = None  # No prior state
@@ -101,7 +103,10 @@ class TestWorkcellRuntimeLifecycle:
   @patch("praxis.backend.services.create_workcell")
   @patch("praxis.backend.services.read_workcell_state", new_callable=AsyncMock)
   async def test_link_workcell_to_db_loads_existing(
-    self, mock_read_state, mock_create_workcell, workcell_runtime
+    self,
+    mock_read_state,
+    mock_create_workcell,
+    workcell_runtime,
   ):
     """Test that existing state is loaded from the DB."""
     existing_state = {"some_state": "value"}
@@ -113,7 +118,7 @@ class TestWorkcellRuntimeLifecycle:
 
     mock_create_workcell.assert_awaited_once()  # Still links
     workcell_runtime._main_workcell.load_all_state.assert_called_once_with(
-      existing_state
+      existing_state,
     )
 
   @patch("asyncio.create_task")
@@ -140,7 +145,11 @@ class TestAssetLifecycle:
 
   @patch("praxis.backend.services.update_machine_status")
   async def test_initialize_machine_resource_success(
-    self, mock_update_status, mock_get_fqn, workcell_runtime, mock_main_workcell
+    self,
+    mock_update_status,
+    mock_get_fqn,
+    workcell_runtime,
+    mock_main_workcell,
   ):
     """Test the successful initialization of a machine that is also a resource."""
     machine_id = uuid.uuid4()
@@ -164,12 +173,18 @@ class TestAssetLifecycle:
     assert workcell_runtime._active_machines[machine_id] is initialized_machine
     mock_main_workcell.add_asset.assert_called_once_with(initialized_machine)
     mock_update_status.assert_awaited_with(
-      ANY, machine_id, MachineStatusEnum.AVAILABLE, ANY
+      ANY,
+      machine_id,
+      MachineStatusEnum.AVAILABLE,
+      ANY,
     )
 
   @patch("praxis.backend.services.update_machine_status")
   async def test_initialize_machine_fails_on_setup(
-    self, mock_update_status, mock_get_fqn, workcell_runtime
+    self,
+    mock_update_status,
+    mock_get_fqn,
+    workcell_runtime,
   ):
     """Test that initialization fails if the machine's setup method fails."""
     machine_id = uuid.uuid4()
@@ -182,7 +197,7 @@ class TestAssetLifecycle:
     # This mock will be returned by the patched _get_class_from_fqn
     mock_failing_machine_cls = MagicMock()
     mock_failing_machine_cls.return_value.setup.side_effect = ConnectionError(
-      "Failed to connect"
+      "Failed to connect",
     )
     mock_get_fqn.return_value = mock_failing_machine_cls
 
@@ -190,17 +205,24 @@ class TestAssetLifecycle:
       await workcell_runtime.initialize_machine(mock_machine_orm)
 
     mock_update_status.assert_awaited_with(
-      ANY, machine_id, MachineStatusEnum.ERROR, ANY
+      ANY,
+      machine_id,
+      MachineStatusEnum.ERROR,
+      ANY,
     )
 
   @patch("praxis.backend.services.update_resource_instance_location_and_status")
   async def test_create_or_get_resource_success(
-    self, mock_update_status, mock_get_fqn, workcell_runtime, mock_main_workcell
+    self,
+    mock_update_status,
+    mock_get_fqn,
+    workcell_runtime,
+    mock_main_workcell,
   ):
     """Test successful creation of a new pure resource."""
     resource_id = uuid.uuid4()
     mock_resource_orm = MagicMock(
-      spec=ResourceInstanceOrm,
+      spec=ResourceOrm,
       accession_id=resource_id,
       user_assigned_name="TestPlate",
       is_machine=False,
@@ -209,7 +231,8 @@ class TestAssetLifecycle:
     mock_get_fqn.return_value = MockPureResource
 
     initialized_resource = await workcell_runtime.create_or_get_resource(
-      mock_resource_orm, "pylabrobot.resources.Plate"
+      mock_resource_orm,
+      "pylabrobot.resources.Plate",
     )
 
     assert isinstance(initialized_resource, MockPureResource)
@@ -224,7 +247,10 @@ class TestAssetLifecycle:
 
   @patch("praxis.backend.services.update_machine_status")
   async def test_shutdown_machine(
-    self, mock_update_status, mock_get_fqn, workcell_runtime
+    self,
+    mock_update_status,
+    mock_get_fqn,
+    workcell_runtime,
   ):
     """Test successfully shutting down a machine."""
     machine_id = uuid.uuid4()
@@ -237,7 +263,10 @@ class TestAssetLifecycle:
     assert hasattr(mock_plr_machine, "stop")
     assert machine_id not in workcell_runtime._active_machines
     mock_update_status.assert_awaited_with(
-      ANY, machine_id, MachineStatusEnum.OFFLINE, "Machine shut down."
+      ANY,
+      machine_id,
+      MachineStatusEnum.OFFLINE,
+      "Machine shut down.",
     )
 
 
@@ -259,7 +288,7 @@ class TestDeckOperations:
     resource_id = uuid.uuid4()
     workcell_runtime._active_decks[deck_id] = mock_deck
     workcell_runtime._active_resources[resource_id] = MockPureResource(
-      name="plate_to_assign"
+      name="plate_to_assign",
     )
     return deck_id, resource_id, mock_deck
 
@@ -279,20 +308,24 @@ class TestDeckOperations:
     position_id = "A1"
 
     mock_read_deck.return_value = MagicMock(
-      accession_id=deck_id, deck_type_definition_accession_id=uuid.uuid4()
+      accession_id=deck_id,
+      deck_type_definition_accession_id=uuid.uuid4(),
     )
     mock_deck_type_orm = MagicMock(
       spec=DeckTypeDefinitionOrm,
       accession_id=uuid.uuid4(),
       positioning_config_json=PositioningConfig(
-        method_name="get_item", arg_name="identifier", arg_type="str", params={}
+        method_name="get_item",
+        arg_name="identifier",
+        arg_type="str",
+        params={},
       ).model_dump(),
     )
     mock_read_deck_type.return_value = mock_deck_type_orm
     mock_deck.get_item.return_value = Coordinate(10, 20, 30)
 
     await workcell_runtime.assign_resource_to_deck(
-      resource_instance_orm_accession_id=resource_id,
+      resource_orm_accession_id=resource_id,
       target=deck_id,
       position_accession_id=position_id,
     )
@@ -305,14 +338,17 @@ class TestDeckOperations:
     mock_update_status.assert_awaited_once_with(
       ANY,
       resource_id,
-      ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+      ResourceStatusEnum.AVAILABLE_ON_DECK,
       location_machine_accession_id=deck_id,
       current_deck_position_name="A1",
     )
 
   @patch("praxis.backend.services.update_resource_instance_location_and_status")
   async def test_clear_deck_position(
-    self, mock_update_status, workcell_runtime, setup_assets
+    self,
+    mock_update_status,
+    workcell_runtime,
+    setup_assets,
   ):
     """Test clearing a resource from a deck position."""
     deck_id, resource_id, mock_deck = setup_assets
@@ -321,14 +357,16 @@ class TestDeckOperations:
     mock_deck.get_resource.return_value = resource_in_pos
 
     await workcell_runtime.clear_deck_position(
-      deck_id, position_name, resource_instance_orm_accession_id=resource_id
+      deck_id,
+      position_name,
+      resource_orm_accession_id=resource_id,
     )
 
     mock_deck.unassign_child_resource.assert_called_once_with(resource_in_pos)
     mock_update_status.assert_awaited_with(
       ANY,
       resource_id,
-      ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+      ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       location_machine_accession_id=None,
       current_deck_position_name=None,
     )

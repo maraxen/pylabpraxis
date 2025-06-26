@@ -6,7 +6,6 @@ including machine creation, retrieval, updates, and deletion.
 """
 
 from functools import partial
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -35,7 +34,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_machine_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 machine_accession_resolver = partial(
@@ -96,17 +95,17 @@ async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
 )
 @router.get(
   "/",
-  response_model=List[MachineResponse],
+  response_model=list[MachineResponse],
   tags=["Machines"],
 )
 async def list_machines(
   db: AsyncSession = Depends(get_db),
   limit: int = 100,
   offset: int = 0,
-  status: Optional[MachineStatusEnum] = None,
-  pylabrobot_class_filter: Optional[str] = None,
-  workcell_accession_id: Optional[UUID] = None,
-  name_filter: Optional[str] = None,
+  status: MachineStatusEnum | None = None,
+  pylabrobot_class_filter: str | None = None,
+  workcell_accession_id: UUID | None = None,
+  name_filter: str | None = None,
 ):
   """List all machines with optional filtering."""
   return await svc.list_machines(
@@ -141,7 +140,7 @@ async def update_machine(
 
   try:
     updated_machine = await svc.update_machine(
-      db=db, machine_accession_id=machine_id, machine_update=machine_update
+      db=db, machine_accession_id=machine_id, machine_update=machine_update,
     )
     if not updated_machine:
       raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
@@ -164,8 +163,8 @@ async def update_machine(
 async def update_machine_status(
   accession: str,
   new_status: MachineStatusEnum,
-  status_details: Optional[str] = None,
-  current_protocol_run_accession_id: Optional[UUID] = None,
+  status_details: str | None = None,
+  current_protocol_run_accession_id: UUID | None = None,
   db: AsyncSession = Depends(get_db),
 ):
   """Update the status of a machine."""

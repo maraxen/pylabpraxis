@@ -4,7 +4,6 @@
 # including data outputs from protocol function calls and plate visualization data.
 
 from functools import partial
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -38,7 +37,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_data_output_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 
@@ -72,19 +71,19 @@ async def create_function_data_output(
 )
 @router.get(
   "/outputs",
-  response_model=List[FunctionDataOutputResponse],
+  response_model=list[FunctionDataOutputResponse],
 )
 async def list_function_data_outputs(
-  function_call_log_accession_id: Optional[UUID] = Query(None),
-  protocol_run_accession_id: Optional[UUID] = Query(None),
-  machine_accession_id: Optional[UUID] = Query(None),
-  resource_accession_id: Optional[UUID] = Query(None),
-  data_types: Optional[List[DataOutputTypeEnum]] = Query(None),
-  spatial_contexts: Optional[List[SpatialContextEnum]] = Query(None),
+  function_call_log_accession_id: UUID | None = Query(None),
+  protocol_run_accession_id: UUID | None = Query(None),
+  machine_accession_id: UUID | None = Query(None),
+  resource_accession_id: UUID | None = Query(None),
+  data_types: list[DataOutputTypeEnum] | None = Query(None),
+  spatial_contexts: list[SpatialContextEnum] | None = Query(None),
   offset: int = Query(0, ge=0),
   limit: int = Query(100, ge=1, le=1000),
   db: AsyncSession = Depends(get_db),
-) -> List[FunctionDataOutputResponse]:
+) -> list[FunctionDataOutputResponse]:
   """Get function data outputs with optional filtering."""
   data_search_filters = DataSearchFilters.model_validate(
     {
@@ -94,7 +93,7 @@ async def list_function_data_outputs(
       "resource_accession_id": resource_accession_id,
       "data_types": data_types,
       "spatial_contexts": spatial_contexts,
-    }
+    },
   )
   result = await svc.list_function_data_outputs(
     db=db,
@@ -206,19 +205,19 @@ async def create_well_data_output(
 )
 @router.get(
   "/well-outputs",
-  response_model=List[WellDataOutputResponse],
+  response_model=list[WellDataOutputResponse],
 )
 async def read_well_data_outputs(
-  plate_resource_id: Optional[UUID] = Query(None),
-  function_call_id: Optional[UUID] = Query(None),
-  protocol_run_id: Optional[UUID] = Query(None),
-  data_type: Optional[DataOutputTypeEnum] = Query(None),
-  well_row: Optional[int] = Query(None, ge=0),
-  well_column: Optional[int] = Query(None, ge=0),
+  plate_resource_id: UUID | None = Query(None),
+  function_call_id: UUID | None = Query(None),
+  protocol_run_id: UUID | None = Query(None),
+  data_type: DataOutputTypeEnum | None = Query(None),
+  well_row: int | None = Query(None, ge=0),
+  well_column: int | None = Query(None, ge=0),
   skip: int = Query(0, ge=0),
   limit: int = Query(100, ge=1, le=1000),
   db: AsyncSession = Depends(get_db),
-) -> List[WellDataOutputResponse]:
+) -> list[WellDataOutputResponse]:
   """Get well data outputs with optional filtering."""
   result = await svc.read_well_data_outputs(
     db=db,
@@ -319,9 +318,9 @@ async def delete_well_data_output(
 )
 async def read_plate_visualization_data(
   plate_resource_id: UUID,
-  data_type: Optional[DataOutputTypeEnum] = Query(None),
-  function_call_id: Optional[UUID] = Query(None),
-  protocol_run_id: Optional[UUID] = Query(None),
+  data_type: DataOutputTypeEnum | None = Query(None),
+  function_call_id: UUID | None = Query(None),
+  protocol_run_id: UUID | None = Query(None),
   db: AsyncSession = Depends(get_db),
 ) -> PlateDataVisualization:
   """Get plate visualization data for a specific plate resource."""

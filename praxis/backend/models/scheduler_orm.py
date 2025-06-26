@@ -16,10 +16,6 @@ Key Features:
 import enum
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-  pass
 
 from sqlalchemy import (
   JSON,
@@ -92,44 +88,54 @@ class ScheduleEntryOrm(Base):
 
   # Scheduling metadata
   scheduled_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), nullable=False
+    DateTime(timezone=True),
+    server_default=func.now(),
+    nullable=False,
   )
-  asset_analysis_completed_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  asset_analysis_completed_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
-  assets_reserved_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  assets_reserved_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
-  execution_started_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  execution_started_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
-  execution_completed_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  execution_completed_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
 
   # Asset requirements and analysis
   required_asset_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-  asset_requirements_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-  estimated_duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+  asset_requirements_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  estimated_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
   # Celery integration
-  celery_task_id: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, index=True
+  celery_task_id: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    index=True,
   )
-  celery_queue_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  celery_queue_name: Mapped[str | None] = mapped_column(String, nullable=True)
 
   # Status tracking
   retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
   max_retries: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
-  last_error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
   # Metadata
-  user_params_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-  initial_state_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+  user_params_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  initial_state_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
   # Timestamps
   created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), nullable=False
+    DateTime(timezone=True),
+    server_default=func.now(),
+    nullable=False,
   )
   updated_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True),
@@ -141,10 +147,14 @@ class ScheduleEntryOrm(Base):
   # Relationships
   protocol_run = relationship("ProtocolRunOrm", back_populates="schedule_entry")
   asset_reservations = relationship(
-    "AssetReservationOrm", back_populates="schedule_entry", cascade="all, delete-orphan"
+    "AssetReservationOrm",
+    back_populates="schedule_entry",
+    cascade="all, delete-orphan",
   )
   schedule_history = relationship(
-    "ScheduleHistoryOrm", back_populates="schedule_entry", cascade="all, delete-orphan"
+    "ScheduleHistoryOrm",
+    back_populates="schedule_entry",
+    cascade="all, delete-orphan",
   )
 
 
@@ -159,16 +169,24 @@ class AssetReservationOrm(Base):
 
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("schedule_entries.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("schedule_entries.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   # Asset identification
   asset_type: Mapped[str] = mapped_column(
-    String, nullable=False, index=True
+    String,
+    nullable=False,
+    index=True,
   )  # "machine", "asset", "deck"
   asset_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
-  asset_instance_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("asset_instances.accession_id"), nullable=True, index=True
+  asset_instance_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("asset_instances.accession_id"),
+    nullable=True,
+    index=True,
   )
   # Reservation details
   status: Mapped[AssetReservationStatusEnum] = mapped_column(
@@ -180,33 +198,42 @@ class AssetReservationOrm(Base):
 
   # Redis lock information
   redis_lock_key: Mapped[str] = mapped_column(String, nullable=False, index=True)
-  redis_lock_value: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  redis_lock_value: Mapped[str | None] = mapped_column(String, nullable=True)
   lock_timeout_seconds: Mapped[int] = mapped_column(
-    Integer, default=3600, nullable=False
+    Integer,
+    default=3600,
+    nullable=False,
   )  # 1 hour default
 
   # Timing
-  reserved_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  reserved_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
-  released_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  released_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
-  expires_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  expires_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    nullable=True,
   )
 
   # Reservation metadata
-  required_capabilities_json: Mapped[Optional[dict]] = mapped_column(
-    JSON, nullable=True
+  required_capabilities_json: Mapped[dict | None] = mapped_column(
+    JSON,
+    nullable=True,
   )
-  estimated_usage_duration_ms: Mapped[Optional[int]] = mapped_column(
-    Integer, nullable=True
+  estimated_usage_duration_ms: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
   )
 
   # Timestamps
   created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), nullable=False
+    DateTime(timezone=True),
+    server_default=func.now(),
+    nullable=False,
   )
   updated_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True),
@@ -230,28 +257,36 @@ class ScheduleHistoryOrm(Base):
 
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("schedule_entries.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("schedule_entries.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   # Event details
   event_type: Mapped[str] = mapped_column(
-    String, nullable=False, index=True
+    String,
+    nullable=False,
+    index=True,
   )  # "status_change", "asset_reservation", "error", etc.
-  from_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  to_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  from_status: Mapped[str | None] = mapped_column(String, nullable=True)
+  to_status: Mapped[str | None] = mapped_column(String, nullable=True)
 
   # Event data
-  event_data_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-  message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-  error_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  event_data_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  message: Mapped[str | None] = mapped_column(Text, nullable=True)
+  error_details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
   # Performance metrics
-  duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-  asset_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+  duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+  asset_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
   # Timestamp
   timestamp: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    DateTime(timezone=True),
+    server_default=func.now(),
+    nullable=False,
+    index=True,
   )
 
   # Relationships
@@ -271,7 +306,9 @@ class SchedulerMetricsOrm(Base):
 
   # Time period for metrics
   metric_date: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), nullable=False, index=True
+    DateTime(timezone=True),
+    nullable=False,
+    index=True,
   )
   hour_of_day: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # 0-23
 
@@ -282,28 +319,35 @@ class SchedulerMetricsOrm(Base):
   protocols_cancelled: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
   # Performance metrics
-  avg_scheduling_time_ms: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  avg_execution_time_ms: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  avg_queue_wait_time_ms: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+  avg_scheduling_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+  avg_execution_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+  avg_queue_wait_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
 
   # Asset metrics
   asset_conflicts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-  avg_asset_reservation_time_ms: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True
+  avg_asset_reservation_time_ms: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
   )
   max_concurrent_protocols: Mapped[int] = mapped_column(
-    Integer, default=0, nullable=False
+    Integer,
+    default=0,
+    nullable=False,
   )
 
   # System metrics
-  celery_queue_length: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+  celery_queue_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
   redis_operations_count: Mapped[int] = mapped_column(
-    Integer, default=0, nullable=False
+    Integer,
+    default=0,
+    nullable=False,
   )
 
   # Timestamps
   created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), nullable=False
+    DateTime(timezone=True),
+    server_default=func.now(),
+    nullable=False,
   )
   updated_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True),
@@ -315,7 +359,9 @@ class SchedulerMetricsOrm(Base):
   # Constraints
   __table_args__ = (
     UniqueConstraint(
-      "metric_date", "hour_of_day", name="uq_scheduler_metrics_date_hour"
+      "metric_date",
+      "hour_of_day",
+      name="uq_scheduler_metrics_date_hour",
     ),
   )
 
@@ -328,7 +374,7 @@ class SchedulerMetricsOrm(Base):
 # In ProtocolRunOrm:
 # schedule_entry = relationship("ScheduleEntryOrm", back_populates="protocol_run", uselist=False)
 
-# In AssetInstanceOrm:
+# In AssetOrm:
 # asset_reservations = relationship("AssetReservationOrm", foreign_keys="AssetReservationOrm.asset_instance_accession_id")
 
 # In MachineOrm:

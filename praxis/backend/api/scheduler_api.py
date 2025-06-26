@@ -8,15 +8,13 @@ scheduler core components and provides comprehensive scheduling capabilities.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from functools import partial
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
-from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.configure import PraxisConfiguration
+from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
 from praxis.backend.models.scheduler_orm import ScheduleStatusEnum
 from praxis.backend.models.scheduler_pydantic import (
@@ -41,8 +39,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 
 # This would be injected via dependency injection in a real application
-_global_scheduler: Optional[ProtocolScheduler] = None
-_global_asset_lock_manager: Optional[AssetLockManager] = None
+_global_scheduler: ProtocolScheduler | None = None
+_global_asset_lock_manager: AssetLockManager | None = None
 
 
 def get_scheduler() -> ProtocolScheduler:
@@ -68,7 +66,7 @@ def get_asset_manager() -> AssetLockManager:
 
 
 async def initialize_scheduler_components(
-  db_session_factory, config: PraxisConfiguration = PraxisConfiguration()
+  db_session_factory, config: PraxisConfiguration = PraxisConfiguration(),
 ):
   """Initialize global scheduler components."""
   global _global_scheduler, _global_asset_lock_manager
@@ -111,7 +109,7 @@ async def schedule_protocol(
 
   # Check if already scheduled
   existing_schedule = await scheduler_svc.read_schedule_entry_by_protocol_run(
-    db, request.protocol_run_id
+    db, request.protocol_run_id,
   )
   if existing_schedule:
     raise HTTPException(
@@ -134,7 +132,7 @@ async def schedule_protocol(
 
   # Get the created schedule entry
   schedule_entry = await scheduler_svc.read_schedule_entry_by_protocol_run(
-    db, request.protocol_run_id, include_reservations=True
+    db, request.protocol_run_id, include_reservations=True,
   )
 
   if not schedule_entry:
@@ -155,7 +153,7 @@ async def get_schedule_status(
 ) -> ScheduleStatusResponse:
   """Get the current status of a scheduled protocol run."""
   schedule_entry = await scheduler_svc.read_schedule_entry(
-    db, schedule_id, include_reservations=True
+    db, schedule_id, include_reservations=True,
   )
   if not schedule_entry:
     raise HTTPException(
@@ -165,7 +163,7 @@ async def get_schedule_status(
 
   # Get protocol information
   protocol_run = await protocol_svc.read_protocol_run(
-    db, schedule_entry.protocol_run_accession_id
+    db, schedule_entry.protocol_run_accession_id,
   )
 
   protocol_name = None
@@ -178,7 +176,7 @@ async def get_schedule_status(
   # Calculate queue position (simplified)
   queue_position = None
   if schedule_entry.status == ScheduleStatusEnum.QUEUED:
-    # TODO: Add scheduler service method or include in model to get queue position
+    # TODO(marielle): Add scheduler service method or include in model to get queue position
     # queued_before = await scheduler_svc.get_queue_position(db, schedule_id)
     # queue_position = queued_before + 1
     queue_position = None  # Placeholder until service method is implemented
@@ -227,7 +225,7 @@ async def cancel_schedule(
 
   # Cancel the schedule
   success = await scheduler.cancel_scheduled_run(
-    schedule_entry.protocol_run_accession_id
+    schedule_entry.protocol_run_accession_id,
   )
   if not success:
     raise HTTPException(
@@ -251,12 +249,12 @@ async def cancel_schedule(
 @router.get("/schedules", response_model=ScheduleListResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def list_schedules(
-  status: Optional[List[ScheduleEntryStatus]] = Query(None),
-  protocol_run_ids: Optional[List[uuid.UUID]] = Query(None),
-  priority_min: Optional[int] = Query(None, ge=1, le=10),
-  priority_max: Optional[int] = Query(None, ge=1, le=10),
-  created_after: Optional[datetime] = Query(None),
-  created_before: Optional[datetime] = Query(None),
+  status: list[ScheduleEntryStatus] | None = Query(None),
+  protocol_run_ids: list[uuid.UUID] | None = Query(None),
+  priority_min: int | None = Query(None, ge=1, le=10),
+  priority_max: int | None = Query(None, ge=1, le=10),
+  created_after: datetime | None = Query(None),
+  created_before: datetime | None = Query(None),
   include_completed: bool = Query(False),
   include_cancelled: bool = Query(False),
   limit: int = Query(50, ge=1, le=1000),
@@ -344,7 +342,7 @@ async def check_asset_availability(
 ) -> AssetAvailabilityResponse:
   """Check if a specific asset is currently available."""
   availability_data = await asset_manager.check_asset_availability(
-    asset_type, asset_name
+    asset_type, asset_name,
   )
 
   is_available = availability_data is None
@@ -407,14 +405,14 @@ async def get_system_status(
 
 
 @router.get(
-  "/schedule/{schedule_id}/history", response_model=List[ScheduleHistoryResponse]
+  "/schedule/{schedule_id}/history", response_model=list[ScheduleHistoryResponse],
 )
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_schedule_history(
   schedule_id: uuid.UUID,
   limit: int = Query(100, ge=1, le=1000),
   db: AsyncSession = Depends(get_db),
-) -> List[ScheduleHistoryResponse]:
+) -> list[ScheduleHistoryResponse]:
   """Get the scheduling history for a specific schedule entry."""
   history_entries = await scheduler_svc.get_schedule_history(db, schedule_id, limit)
 
@@ -424,8 +422,8 @@ async def get_schedule_history(
 @router.get("/metrics", response_model=SchedulerMetricsResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_scheduler_metrics(
-  start_time: Optional[datetime] = Query(None),
-  end_time: Optional[datetime] = Query(None),
+  start_time: datetime | None = Query(None),
+  end_time: datetime | None = Query(None),
   db: AsyncSession = Depends(get_db),
 ) -> SchedulerMetricsResponse:
   """Get scheduler performance metrics for a time period."""
@@ -469,7 +467,7 @@ async def get_scheduler_metrics(
 async def cleanup_expired_asset_locks(
   db: AsyncSession = Depends(get_db),
   asset_manager: AssetLockManager = Depends(get_asset_manager),
-) -> Dict[str, int]:
+) -> dict[str, int]:
   """Clean up expired asset_locks and reservations."""
   # Clean up database reservations
   db_cleanup_count = await scheduler_svc.cleanup_expired_reservations(db)

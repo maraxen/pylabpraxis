@@ -96,7 +96,7 @@ class TestOrchestratorExecution:
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_happy_path(
@@ -137,7 +137,7 @@ class TestOrchestratorExecution:
       [
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.RUNNING),
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.COMPLETED, ANY),
-      ]
+      ],
     )
     mock_workcell_runtime_cls.assert_called_once()
     mock_asset_manager_cls.assert_called_once()
@@ -150,7 +150,7 @@ class TestOrchestratorExecution:
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_handles_exception(
@@ -189,14 +189,14 @@ class TestOrchestratorExecution:
       [
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.RUNNING),
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.FAILED, ANY),
-      ]
+      ],
     )
     mock_workcell_runtime.teardown.assert_awaited_once()
 
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_handles_cancellation(
@@ -241,10 +241,10 @@ class TestOrchestratorScenarios:
   """Tests various edge cases and scenarios for the Orchestrator."""
 
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_raises_error_if_protocol_not_found(
-    self, mock_get_protocol_def: AsyncMock, orchestrator: Orchestrator
+    self, mock_get_protocol_def: AsyncMock, orchestrator: Orchestrator,
   ):
     """Test that an error is raised if a protocol definition cannot be found."""
     # Arrange
@@ -260,7 +260,7 @@ class TestOrchestratorScenarios:
 
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_raises_error_if_asset_is_missing(
     self,
@@ -283,7 +283,7 @@ class TestOrchestratorScenarios:
 
     # Act & Assert
     with pytest.raises(
-      ValueError, match="Could not find a required asset 'test_asset'"
+      ValueError, match="Could not find a required asset 'test_asset'",
     ):
       await orchestrator.execute_protocol(
         protocol_name=TEST_PROTOCOL_NAME,
@@ -293,7 +293,7 @@ class TestOrchestratorScenarios:
 
   @patch("praxis.backend.core.orchestrator.ProtocolCodeManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_loads_protocol_not_in_registry(
     self,

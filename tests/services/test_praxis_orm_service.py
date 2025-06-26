@@ -1,9 +1,7 @@
-import asyncio
 import configparser
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import asyncpg
 import pytest
 from sqlalchemy import select, text
 
@@ -58,7 +56,7 @@ class TestPraxisDBService:
     mock_create_pool.return_value = mock_pool
 
     service = await PraxisDBService.initialize(
-      keycloak_dsn="postgresql://user:pass@host/db"
+      keycloak_dsn="postgresql://user:pass@host/db",
     )
 
     mock_create_pool.assert_called_once()
@@ -77,7 +75,7 @@ class TestPraxisDBService:
     # Patch sleep to speed up the test
     with patch("asyncio.sleep", new_callable=AsyncMock):
       with pytest.raises(
-        ConnectionError, match="Could not establish Keycloak database connection"
+        ConnectionError, match="Could not establish Keycloak database connection",
       ):
         await PraxisDBService.initialize(keycloak_dsn="postgresql://user:pass@host/db")
     assert mock_create_pool.call_count == 3  # _max_retries = 3
@@ -88,19 +86,19 @@ class TestPraxisDBService:
 
     # Patch the service's session provider to use our test factory
     with patch(
-      "praxis.backend.services.praxis_orm_service.AsyncSessionLocal", db_session_factory
+      "praxis.backend.services.praxis_orm_service.AsyncSessionLocal", db_session_factory,
     ):
       # Test successful commit
       async with service.get_praxis_session() as session:
         user = UserOrm(
-          accession_id=uuid.uuid4(), username="test_commit", email="commit@test.com"
+          accession_id=uuid.uuid4(), username="test_commit", email="commit@test.com",
         )
         session.add(user)
 
       # Verify in a new session
       async with db_session_factory() as session:
         result = await session.execute(
-          select(UserOrm).where(UserOrm.username == "test_commit")
+          select(UserOrm).where(UserOrm.username == "test_commit"),
         )
         assert result.scalar_one_or_none() is not None
 
@@ -120,7 +118,7 @@ class TestPraxisDBService:
       # Verify in a new session that the user was not added
       async with db_session_factory() as session:
         result = await session.execute(
-          select(UserOrm).where(UserOrm.username == "test_rollback")
+          select(UserOrm).where(UserOrm.username == "test_rollback"),
         )
         assert result.scalar_one_or_none() is None
 
@@ -175,12 +173,12 @@ class TestPraxisDBService:
     async with db_session_factory() as session:
       await session.execute(text("CREATE TABLE sql_test (id INTEGER, name TEXT)"))
       await session.execute(
-        text("INSERT INTO sql_test VALUES (1, 'alpha'), (2, 'beta')")
+        text("INSERT INTO sql_test VALUES (1, 'alpha'), (2, 'beta')"),
       )
       await session.commit()
 
     with patch(
-      "praxis.backend.services.praxis_orm_service.AsyncSessionLocal", db_session_factory
+      "praxis.backend.services.praxis_orm_service.AsyncSessionLocal", db_session_factory,
     ):
       # Test fetch_all
       rows = await service.fetch_all_sql("SELECT * FROM sql_test ORDER BY id")
@@ -189,7 +187,7 @@ class TestPraxisDBService:
 
       # Test fetch_one
       row = await service.fetch_one_sql(
-        "SELECT * FROM sql_test WHERE id = :id", params={"id": 2}
+        "SELECT * FROM sql_test WHERE id = :id", params={"id": 2},
       )
       assert row is not None
       assert row["name"] == "beta"
@@ -232,8 +230,8 @@ def test_get_keycloak_dsn_from_config(mocker):
         "host": "localhost",
         "port": "5432",
         "dbname": "keycloak_db",
-      }
-    }
+      },
+    },
   )
   dsn = _get_keycloak_dsn_from_config()
   assert dsn == "postgresql://testuser:testpassword@localhost:5432/keycloak_db"

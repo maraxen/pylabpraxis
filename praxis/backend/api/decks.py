@@ -1,7 +1,6 @@
 """FastAPI router for all deck-related endpoints."""
 
 from functools import partial
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -38,7 +37,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_deck_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 # --- Deck Type Definition Endpoints ---
@@ -62,7 +61,7 @@ deck_type_accession_resolver = partial(
   tags=["Deck Type Definitions"],
 )
 async def create_deck_type_definition_endpoint(
-  request: DeckTypeDefinitionCreate, db: AsyncSession = Depends(get_db)
+  request: DeckTypeDefinitionCreate, db: AsyncSession = Depends(get_db),
 ):
   """Create a new deck type definition."""
   try:
@@ -78,11 +77,11 @@ async def create_deck_type_definition_endpoint(
 )
 @router.get(
   "/types",
-  response_model=List[DeckTypeDefinitionResponse],
+  response_model=list[DeckTypeDefinitionResponse],
   tags=["Deck Type Definitions"],
 )
 async def read_deck_type_definitions_endpoint(
-  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
+  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
 ):
   """List all available deck type definitions."""
   return await read_deck_type_definitions(db, limit=limit, offset=offset)
@@ -99,11 +98,11 @@ async def read_deck_type_definitions_endpoint(
   tags=["Deck Type Definitions"],
 )
 async def read_deck_type_definition_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, db: AsyncSession = Depends(get_db),
 ):
   """Retrieve a deck type definition by its ID (UUID) or fully-qualified name."""
   deck_type_definition_accession_id = await deck_type_accession_resolver(
-    accession=accession, db=db
+    accession=accession, db=db,
   )
   db_def = await read_deck_type_definition(db, deck_type_definition_accession_id)
   if db_def is None:
@@ -128,7 +127,7 @@ async def update_deck_type_definition_endpoint(
 ):
   """Update an existing deck type definition."""
   deck_type_definition_accession_id = await deck_type_accession_resolver(
-    accession=accession, db=db
+    accession=accession, db=db,
   )
   try:
     updated_def = await update_deck_type_definition(
@@ -157,18 +156,17 @@ async def update_deck_type_definition_endpoint(
   tags=["Deck Type Definitions"],
 )
 async def delete_deck_type_definition_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, db: AsyncSession = Depends(get_db),
 ):
   """Delete a deck type definition."""
   deck_type_definition_accession_id = await deck_type_accession_resolver(
-    accession=accession, db=db
+    accession=accession, db=db,
   )
   if not await delete_deck_type_definition(db, deck_type_definition_accession_id):
     raise HTTPException(
       status_code=404,
       detail=f"Deck type definition '{accession}' not found.",
     )
-  return None
 
 
 # --- Deck Endpoints ---
@@ -204,9 +202,9 @@ async def create_deck_endpoint(request: DeckCreate, db: AsyncSession = Depends(g
   raises=True,
   prefix="Failed to list decks: ",
 )
-@router.get("/", response_model=List[DeckResponse], tags=["Decks"])
+@router.get("/", response_model=list[DeckResponse], tags=["Decks"])
 async def read_decks_endpoint(
-  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
+  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
 ):
   """List all decks."""
   return await read_decks(db, limit=limit, offset=offset)
@@ -243,13 +241,13 @@ async def read_deck_endpoint(accession: str | UUID, db: AsyncSession = Depends(g
   tags=["Decks"],
 )
 async def update_deck_endpoint(
-  accession: str | UUID, request: DeckUpdate, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, request: DeckUpdate, db: AsyncSession = Depends(get_db),
 ):
   """Update an existing deck."""
   try:
     deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
     updated_deck = await update_deck(
-      db=db, deck_accession_id=deck_accession_id, deck_update=request
+      db=db, deck_accession_id=deck_accession_id, deck_update=request,
     )
     if not updated_deck:
       raise HTTPException(status_code=404, detail="Deck not found")
@@ -269,10 +267,9 @@ async def update_deck_endpoint(
   tags=["Decks"],
 )
 async def delete_deck_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, db: AsyncSession = Depends(get_db),
 ):
   """Delete a deck."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
   if not await delete_deck(db, deck_accession_id):
     raise HTTPException(status_code=404, detail="Deck not found")
-  return None

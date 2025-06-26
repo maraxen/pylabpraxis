@@ -5,7 +5,6 @@ including protocol definitions, protocol runs, and protocol execution.
 """
 
 from functools import partial
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -34,7 +33,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_protocol_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 protocol_definition_accession_resolver = partial(
@@ -62,17 +61,17 @@ protocol_run_accession_resolver = partial(
 )
 @router.get(
   "/definitions",
-  response_model=List[FunctionProtocolDefinitionOrm],
+  response_model=list[FunctionProtocolDefinitionOrm],
   tags=["Protocol Definitions"],
 )
 async def list_protocol_definitions(
   db: AsyncSession = Depends(get_db),
   limit: int = 100,
   offset: int = 0,
-  source_name: Optional[str] = None,
-  is_top_level: Optional[bool] = None,
-  category: Optional[str] = None,
-  tags: Optional[List[str]] = None,
+  source_name: str | None = None,
+  is_top_level: bool | None = None,
+  category: str | None = None,
+  tags: list[str] | None = None,
   include_deprecated: bool = False,
 ):
   """List all available protocol definitions."""
@@ -102,11 +101,11 @@ async def list_protocol_definitions(
 async def get_protocol_definition(accession: str, db: AsyncSession = Depends(get_db)):
   """Retrieve a protocol definition by accession ID or name."""
   definition_id = await protocol_definition_accession_resolver(
-    db=db, accession=accession
+    db=db, accession=accession,
   )
 
   db_definition = await svc.read_protocol_definition(
-    db, definition_accession_id=definition_id
+    db, definition_accession_id=definition_id,
   )
   if db_definition is None:
     raise HTTPException(status_code=404, detail="Protocol definition not found")
@@ -127,13 +126,13 @@ async def get_protocol_definition(accession: str, db: AsyncSession = Depends(get
 async def get_protocol_definition_details(
   name: str,
   db: AsyncSession = Depends(get_db),
-  version: Optional[str] = None,
-  source_name: Optional[str] = None,
-  commit_hash: Optional[str] = None,
+  version: str | None = None,
+  source_name: str | None = None,
+  commit_hash: str | None = None,
 ):
   """Retrieve detailed protocol definition by name with optional filters."""
   db_definition = await svc.read_protocol_definition_by_name(
-    db, name=name, version=version, source_name=source_name, commit_hash=commit_hash
+    db, name=name, version=version, source_name=source_name, commit_hash=commit_hash,
   )
   if db_definition is None:
     raise HTTPException(status_code=404, detail="Protocol definition not found")
@@ -156,7 +155,7 @@ async def get_protocol_definition_details(
   tags=["Protocol Runs"],
 )
 async def create_protocol_run(
-  protocol_start: ProtocolStartRequest, db: AsyncSession = Depends(get_db)
+  protocol_start: ProtocolStartRequest, db: AsyncSession = Depends(get_db),
 ):
   """Create a new protocol run."""
   if not protocol_start.protocol_definition_accession_id:
@@ -189,16 +188,16 @@ async def create_protocol_run(
 )
 @router.get(
   "/runs",
-  response_model=List[ProtocolRunOrm],
+  response_model=list[ProtocolRunOrm],
   tags=["Protocol Runs"],
 )
 async def list_protocol_runs(
   db: AsyncSession = Depends(get_db),
   limit: int = 100,
   offset: int = 0,
-  protocol_definition_accession_id: Optional[UUID] = None,
-  protocol_name: Optional[str] = None,
-  status: Optional[ProtocolRunStatusEnum] = None,
+  protocol_definition_accession_id: UUID | None = None,
+  protocol_name: str | None = None,
+  status: ProtocolRunStatusEnum | None = None,
 ):
   """List all protocol runs with optional filtering."""
   return await svc.list_protocol_runs(
@@ -246,8 +245,8 @@ async def get_protocol_run(accession: str, db: AsyncSession = Depends(get_db)):
 async def update_protocol_run_status(
   accession: str,
   new_status: ProtocolRunStatusEnum,
-  output_data_json: Optional[str] = None,
-  final_state_json: Optional[str] = None,
+  output_data_json: str | None = None,
+  final_state_json: str | None = None,
   db: AsyncSession = Depends(get_db),
 ):
   """Update the status of a protocol run."""
@@ -263,7 +262,7 @@ async def update_protocol_run_status(
     )
     if not updated_run:
       raise HTTPException(
-        status_code=404, detail=f"Protocol run '{accession}' not found."
+        status_code=404, detail=f"Protocol run '{accession}' not found.",
       )
     return updated_run
   except ValueError as e:

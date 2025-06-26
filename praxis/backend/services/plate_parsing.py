@@ -5,7 +5,6 @@ managing data outputs from protocol function calls, with support for resource
 attribution, spatial context, and data visualization.
 """
 
-from typing import Dict, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
@@ -17,8 +16,9 @@ from praxis.backend.models import (
 
 
 async def read_plate_dimensions(
-  db: AsyncSession, plate_resource_instance_accession_id: UUID
-) -> Optional[Dict[str, int]]:
+  db: AsyncSession,
+  plate_resource_instance_accession_id: UUID,
+) -> dict[str, int] | None:
   """Get plate dimensions from the resource definition.
 
   Args:
@@ -29,13 +29,13 @@ async def read_plate_dimensions(
     Dictionary with 'rows' and 'columns' keys, or None if not found
 
   """
-  from praxis.backend.models.resource_orm import ResourceInstanceOrm
+  from praxis.backend.models.resource_orm import ResourceOrm
 
   # Get the resource instance and its definition
   result = await db.execute(
     select(ResourceDefinitionCatalogOrm)
-    .join(ResourceInstanceOrm)
-    .filter(ResourceInstanceOrm.accession_id == plate_resource_instance_accession_id)
+    .join(ResourceOrm)
+    .filter(ResourceOrm.accession_id == plate_resource_instance_accession_id),
   )
 
   resource_def = result.scalar_one_or_none()
@@ -78,20 +78,20 @@ async def read_plate_dimensions(
   # Common plate formats
   if "96" in resource_name:
     return {"rows": 8, "columns": 12}
-  elif "384" in resource_name:
+  if "384" in resource_name:
     return {"rows": 16, "columns": 24}
-  elif "1536" in resource_name:
+  if "1536" in resource_name:
     return {"rows": 32, "columns": 48}
-  elif "24" in resource_name:
+  if "24" in resource_name:
     return {"rows": 4, "columns": 6}
-  elif "48" in resource_name:
+  if "48" in resource_name:
     return {"rows": 6, "columns": 8}
 
   # Default fallback
   return None
 
 
-def parse_well_name(well_name: str) -> Tuple[int, int]:
+def parse_well_name(well_name: str) -> tuple[int, int]:
   """Parse well name (e.g., 'A1') to row/column indices.
 
   Args:

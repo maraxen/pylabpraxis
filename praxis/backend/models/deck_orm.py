@@ -19,7 +19,7 @@ ORM models include:
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import (
   JSON,
@@ -61,21 +61,21 @@ class DeckOrm(ResourceOrm):
   __mapper_args__ = {"polymorphic_identity": "deck"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("resources.accession_id"), primary_key=True
+    UUID, ForeignKey("resources.accession_id"), primary_key=True,
   )
 
-  machine_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("machines.accession_id"), nullable=True, index=True
+  machine_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID, ForeignKey("machines.accession_id"), nullable=True, index=True,
   )
   machine: Mapped[Optional["MachineOrm"]] = relationship(
-    "MachineOrm", back_populates="decks"
+    "MachineOrm", back_populates="decks",
   )
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True
+    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True, # type: ignore
   )
   deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm", back_populates="deck_instances"
+    "DeckTypeDefinitionOrm", back_populates="deck_instances",
   )
 
 
@@ -122,38 +122,38 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
   )
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, index=True, default=uuid.uuid4
+    UUID, primary_key=True, index=True, default=uuid.uuid4,
   )
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
   python_fqn: Mapped[str] = mapped_column(String, nullable=False, index=True)
-  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-  plr_category: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  default_size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  default_size_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  default_size_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  serialized_constructor_args_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+  description: Mapped[str | None] = mapped_column(Text, nullable=True)
+  plr_category: Mapped[str | None] = mapped_column(String, nullable=True)
+  default_size_x_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  default_size_y_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  default_size_z_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSON, nullable=True,
   )
-  serialized_assignment_methods_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+  serialized_assignment_methods_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSON, nullable=True,
   )
-  serialized_constructor_hints_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+  serialized_constructor_hints_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSON, nullable=True,
   )
-  additional_properties_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+  additional_properties_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSON, nullable=True,
   )
-  positioning_config_json: Mapped[Optional[dict[str, Any]]] = mapped_column(
-    JSON, nullable=True
+  positioning_config_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSON, nullable=True,
   )
 
-  positions: Mapped[List["DeckPositionDefinitionOrm"]] = relationship(
+  positions: Mapped[list["DeckPositionDefinitionOrm"]] = relationship(
     "DeckPositionDefinitionOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
   )
-  deck_instances: Mapped[List["DeckOrm"]] = relationship(
-    "DeckOrm", back_populates="deck_type"
+  deck_instances: Mapped[list["DeckOrm"]] = relationship(
+    "DeckOrm", back_populates="deck_type",
   )
 
 
@@ -186,11 +186,11 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   )
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, index=True, default=uuid.uuid4
+    UUID, primary_key=True, index=True, default=uuid.uuid4,
   )
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True
-  )
+    UUID, ForeignKey("deck_type_definitions.accession_id"), index=True,
+  ) # type: ignore
   position_accession_id: Mapped[str] = mapped_column(String, nullable=False)
 
   x_coord: Mapped[float] = mapped_column(Float, nullable=False)
@@ -198,12 +198,12 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   z_coord: Mapped[float] = mapped_column(Float, nullable=False)
 
   # Reverting to compatible_resource_fqns as per user request
-  compatible_resource_fqns: Mapped[Optional[dict[str, Any]]] = mapped_column(
+  compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
     JSON,
     nullable=True,
     comment="JSON field to store additional, position-specific details.",
   )
 
   deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm", back_populates="positions"
+    "DeckTypeDefinitionOrm", back_populates="positions",
   )

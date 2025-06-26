@@ -10,9 +10,8 @@ from praxis.backend.models import (
   FunctionCallLogOrm,
   FunctionDataOutputOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
-  WellDataOutputOrm,
-  WellDataOutputResponse,  # Needed for type hints
+  ResourceOrm,
+  WellDataOutputOrm,  # Needed for type hints
 )
 
 # Import the service function to be tested
@@ -25,8 +24,9 @@ from praxis.backend.services.plate_viz import read_plate_data_visualization
 async def setup_dependencies(db: AsyncSession):
   """Fixture to create and commit all necessary dependency ORM objects for the tests."""
   run = ProtocolRunOrm(name="Test Run for Viz")
-  plate_resource = ResourceInstanceOrm(
-    user_assigned_name="TestPlate1", name="corning_96_wellplate_360ul_flat"
+  plate_resource = ResourceOrm(
+    user_assigned_name="TestPlate1",
+    name="corning_96_wellplate_360ul_flat",
   )
 
   db.add_all([run, plate_resource])
@@ -38,7 +38,8 @@ async def setup_dependencies(db: AsyncSession):
 
   # Create a function call log associated with the run
   f_call = FunctionCallLogOrm(
-    protocol_run_accession_id=run.accession_id, function_name="read_plate"
+    protocol_run_accession_id=run.accession_id,
+    function_name="read_plate",
   )
   db.add(f_call)
   await db.commit()
@@ -115,14 +116,18 @@ class TestPlateVizService:
   """Test suite for the plate visualization service."""
 
   async def test_read_plate_data_visualization_success(
-    self, db: AsyncSession, setup_plate_data
+    self,
+    db: AsyncSession,
+    setup_plate_data,
   ):
     """Test successfully retrieving and formatting plate data for visualization."""
     plate_id = setup_plate_data["plate_id"]
     data_type = DataOutputTypeEnum.ABSORBANCE_READING
 
     viz_data = await read_plate_data_visualization(
-      db, plate_resource_instance_accession_id=plate_id, data_type=data_type
+      db,
+      plate_resource_instance_accession_id=plate_id,
+      data_type=data_type,
     )
 
     assert viz_data is not None
@@ -148,7 +153,9 @@ class TestPlateVizService:
     assert viz_data.well_data == []
 
   async def test_read_plate_data_no_data_found(
-    self, db: AsyncSession, setup_plate_data
+    self,
+    db: AsyncSession,
+    setup_plate_data,
   ):
     """Test that None is returned when no data matches the criteria."""
     plate_id = setup_plate_data["plate_id"]
@@ -182,7 +189,8 @@ class TestPlateVizService:
     await db.commit()
     await db.refresh(other_run)
     other_f_call = FunctionCallLogOrm(
-      protocol_run_accession_id=other_run.accession_id, function_name="other_read"
+      protocol_run_accession_id=other_run.accession_id,
+      function_name="other_read",
     )
     db.add(other_f_call)
     await db.commit()

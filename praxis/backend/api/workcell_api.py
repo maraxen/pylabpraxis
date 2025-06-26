@@ -6,7 +6,6 @@ including workcell CRUD operations and legacy orchestrator endpoints.
 """
 
 from functools import partial
-from typing import List
 
 from fastapi import (
   APIRouter,
@@ -32,7 +31,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 log_workcell_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 workcell_accession_resolver = partial(
@@ -96,7 +95,7 @@ async def get_workcell(accession: str, db: AsyncSession = Depends(get_db)):
 )
 @router.get(
   "/",
-  response_model=List[WorkcellResponse],
+  response_model=list[WorkcellResponse],
   tags=["Workcells"],
 )
 async def list_workcells(
@@ -130,7 +129,7 @@ async def update_workcell(
   update_data = workcell_update.model_dump(exclude_unset=True)
   try:
     updated_workcell = await svc.update_workcell(
-      db=db, workcell_accession_id=workcell_id, **update_data
+      db=db, workcell_accession_id=workcell_id, **update_data,
     )
     if not updated_workcell:
       raise HTTPException(status_code=404, detail=f"Workcell '{accession}' not found.")

@@ -35,18 +35,18 @@ except ImportError: # pragma: no cover
 from unittest.mock import call, patch # Ensure patch is imported
 from praxis.backend.protocol_core.protocol_definition_models import ParameterMetadataModel, AssetRequirementModel
 from praxis.backend.database_models.asset_management_orm import (
-    ResourceInstanceStatusEnum, ManagedDeviceStatusEnum,
+    ResourceStatusEnum, ManagedDeviceStatusEnum,
     ResourceDefinitionCatalogOrm, ManagedDeviceOrm as ManagedDeviceOrmReal,
-    ResourceInstanceOrm as ResourceInstanceOrmReal
+    ResourceOrm as ResourceOrmReal
 )
 # Import WorkcellRuntime to patch its methods (though we'll mock its instance methods)
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 
 # Module-level Mock Objects for PLR Live Resources
 MOCK_LIVE_DEVICE = MagicMock(name="MockLivePLRDevice_Global")
-MOCK_LIVE_DEVICE.name = "MockLivePLRDeviceInstance_Global"
+MOCK_LIVE_DEVICE.name = "MockLivePLRDevice_Global"
 MOCK_LIVE_LABWARE = MagicMock(name="MockLivePLRResource_Global")
-MOCK_LIVE_LABWARE.name = "MockLivePLRResourceInstance_Global"
+MOCK_LIVE_LABWARE.name = "MockLivePLRResource_Global"
 
 
 # Dummy PLR resource for type hinting in test protocols
@@ -111,7 +111,7 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_data_services(request): # request is a pytest fixture
-    # --- Mock Instances ---
+    # --- Mock s ---
     mock_fpd_instance = MagicMock(spec=FunctionProtocolDefinitionOrm)
     mock_fpd_instance.accession_id = 12345
     mock_fpd_instance.name = "DefaultMockedProtocol"
@@ -188,7 +188,7 @@ class TestIntegrationDiscoveryExecution:
         self,
         temp_integration_protocols: str,
         mock_db_session: MagicMock,
-        mock_data_services: Dict[str, MagicMock], # MODIFIED: Use new fixture name
+        mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock
     ):
@@ -312,7 +312,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
 
     def test_parameter_validation_fails_on_invalid_type(
         self, temp_integration_protocols: str, mock_db_session: MagicMock,
-        mock_data_services: Dict[str, MagicMock], # MODIFIED: Use new fixture name
+        mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock
     ):
@@ -358,7 +358,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
 
     def test_parameter_validation_fails_on_missing_required(
         self, temp_integration_protocols: str, mock_db_session: MagicMock,
-        mock_data_services: Dict[str, MagicMock], # MODIFIED: Use new fixture name
+        mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock
     ):

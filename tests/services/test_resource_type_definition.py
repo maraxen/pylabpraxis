@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import all required models from the central package
 from praxis.backend.models import (
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
 )
 
 # Import the service functions to be tested
@@ -72,16 +71,16 @@ class TestResourceDefinitionService:
     assert read_by_fqn.accession_id == created_def.accession_id
 
   async def test_create_definition_fails_on_duplicate_name(
-    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm
+    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm,
   ):
     """Test that creating a definition with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_resource_definition(
-        db, name=existing_def.name, python_fqn="some.other.fqn"
+        db, name=existing_def.name, python_fqn="some.other.fqn",
       )
 
   async def test_update_resource_definition(
-    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm
+    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm,
   ):
     """Test updating various fields of a resource definition."""
     new_description = "An updated description for this tip rack."
@@ -106,11 +105,11 @@ class TestResourceDefinitionService:
     """Test that updating a non-existent definition raises ValueError."""
     with pytest.raises(ValueError, match="not found for update"):
       await update_resource_definition(
-        db, name="non-existent-def-name", description="new desc"
+        db, name="non-existent-def-name", description="new desc",
       )
 
   async def test_list_resource_definitions_with_filters(
-    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm
+    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm,
   ):
     """Test the filtering capabilities of the list_resource_definitions function."""
     # Create another definition for robust filtering
@@ -144,7 +143,7 @@ class TestResourceDefinitionService:
   async def test_delete_resource_definition_success(self, db: AsyncSession):
     """Test successfully deleting an unused resource definition."""
     def_to_delete = await create_resource_definition(
-      db, name=f"def_to_delete_{uuid.uuid4()}", python_fqn="to.delete.fqn"
+      db, name=f"def_to_delete_{uuid.uuid4()}", python_fqn="to.delete.fqn",
     )
 
     result = await delete_resource_definition(db, def_to_delete.name)
@@ -154,7 +153,7 @@ class TestResourceDefinitionService:
     assert await read_resource_definition(db, def_to_delete.name) is None
 
   async def test_delete_resource_definition_fails_if_in_use(
-    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm
+    self, db: AsyncSession, existing_def: ResourceDefinitionCatalogOrm,
   ):
     """Test that deleting a definition fails if it's used by a resource instance."""
     # Create a resource instance that uses the definition

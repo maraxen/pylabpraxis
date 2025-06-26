@@ -10,8 +10,7 @@ import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart'
     as _i5;
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart'
     as _i3;
-import 'package:praxis_lab_management/src/data/models/resource_instance_orm.dart'
-    as _i4;
+import 'package:praxis_lab_management/src/data/models/resource_orm.dart' as _i4;
 import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart'
     as _i2;
 import 'package:praxis_lab_management/src/data/models/protocol/deck_layout.dart'
@@ -49,9 +48,8 @@ class _FakeResourceDefinitionCatalogOrm_1 extends _i1.SmartFake
   ) : super(parent, parentInvocation);
 }
 
-class _FakeResourceInstanceOrm_2 extends _i1.SmartFake
-    implements _i4.ResourceInstanceOrm {
-  _FakeResourceInstanceOrm_2(Object parent, Invocation parentInvocation)
+class _FakeResourceOrm_2 extends _i1.SmartFake implements _i4.ResourceOrm {
+  _FakeResourceOrm_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -225,71 +223,61 @@ class MockAssetApiService extends _i1.Mock implements _i7.AssetApiService {
           as _i8.Future<void>);
 
   @override
-  _i8.Future<List<_i4.ResourceInstanceOrm>> getResourceInstances() =>
+  _i8.Future<List<_i4.ResourceOrm>> getResources() =>
       (super.noSuchMethod(
-            Invocation.method(#getResourceInstances, []),
-            returnValue: _i8.Future<List<_i4.ResourceInstanceOrm>>.value(
-              <_i4.ResourceInstanceOrm>[],
+            Invocation.method(#getResources, []),
+            returnValue: _i8.Future<List<_i4.ResourceOrm>>.value(
+              <_i4.ResourceOrm>[],
             ),
           )
-          as _i8.Future<List<_i4.ResourceInstanceOrm>>);
+          as _i8.Future<List<_i4.ResourceOrm>>);
 
   @override
-  _i8.Future<_i4.ResourceInstanceOrm> createResourceInstance(
-    _i4.ResourceInstanceOrm? resourceInstance,
-  ) =>
+  _i8.Future<_i4.ResourceOrm> createResource(_i4.ResourceOrm? resource) =>
       (super.noSuchMethod(
-            Invocation.method(#createResourceInstance, [resourceInstance]),
-            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
-              _FakeResourceInstanceOrm_2(
+            Invocation.method(#createResource, [resource]),
+            returnValue: _i8.Future<_i4.ResourceOrm>.value(
+              _FakeResourceOrm_2(
                 this,
-                Invocation.method(#createResourceInstance, [resourceInstance]),
+                Invocation.method(#createResource, [resource]),
               ),
             ),
           )
-          as _i8.Future<_i4.ResourceInstanceOrm>);
+          as _i8.Future<_i4.ResourceOrm>);
 
   @override
-  _i8.Future<_i4.ResourceInstanceOrm> getResourceInstanceById(
+  _i8.Future<_i4.ResourceOrm> getResourceById(String? instanceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getResourceById, [instanceId]),
+            returnValue: _i8.Future<_i4.ResourceOrm>.value(
+              _FakeResourceOrm_2(
+                this,
+                Invocation.method(#getResourceById, [instanceId]),
+              ),
+            ),
+          )
+          as _i8.Future<_i4.ResourceOrm>);
+
+  @override
+  _i8.Future<_i4.ResourceOrm> updateResource(
     String? instanceId,
+    _i4.ResourceOrm? resource,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#getResourceInstanceById, [instanceId]),
-            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
-              _FakeResourceInstanceOrm_2(
+            Invocation.method(#updateResource, [instanceId, resource]),
+            returnValue: _i8.Future<_i4.ResourceOrm>.value(
+              _FakeResourceOrm_2(
                 this,
-                Invocation.method(#getResourceInstanceById, [instanceId]),
+                Invocation.method(#updateResource, [instanceId, resource]),
               ),
             ),
           )
-          as _i8.Future<_i4.ResourceInstanceOrm>);
+          as _i8.Future<_i4.ResourceOrm>);
 
   @override
-  _i8.Future<_i4.ResourceInstanceOrm> updateResourceInstance(
-    String? instanceId,
-    _i4.ResourceInstanceOrm? resourceInstance,
-  ) =>
+  _i8.Future<void> deleteResource(String? instanceId) =>
       (super.noSuchMethod(
-            Invocation.method(#updateResourceInstance, [
-              instanceId,
-              resourceInstance,
-            ]),
-            returnValue: _i8.Future<_i4.ResourceInstanceOrm>.value(
-              _FakeResourceInstanceOrm_2(
-                this,
-                Invocation.method(#updateResourceInstance, [
-                  instanceId,
-                  resourceInstance,
-                ]),
-              ),
-            ),
-          )
-          as _i8.Future<_i4.ResourceInstanceOrm>);
-
-  @override
-  _i8.Future<void> deleteResourceInstance(String? instanceId) =>
-      (super.noSuchMethod(
-            Invocation.method(#deleteResourceInstance, [instanceId]),
+            Invocation.method(#deleteResource, [instanceId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )

@@ -11,7 +11,7 @@ from praxis.backend.models import (
   FunctionDataOutputOrm,
   MachineOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
   SpatialContextEnum,
 )
 
@@ -25,20 +25,22 @@ from praxis.backend.services.protocol_output_data import (
 
 @pytest.fixture
 async def setup_summary_data(db: AsyncSession):
-  """
-  Fixture to create a rich set of data outputs for a single protocol run,
+  """Fixture to create a rich set of data outputs for a single protocol run,
   enabling a thorough test of the summary aggregation function.
   """
   # Create parent entities
   run = ProtocolRunOrm(name="Summary Test Run")
   f_call = FunctionCallLogOrm(
-    protocol_run_accession_id=run.accession_id, function_name="complex_assay"
+    protocol_run_accession_id=run.accession_id,
+    function_name="complex_assay",
   )
   machine = MachineOrm(
-    user_friendly_name=f"SummaryMachine_{uuid.uuid4()}", python_fqn="machine.fqn"
+    user_friendly_name=f"SummaryMachine_{uuid.uuid4()}",
+    python_fqn="machine.fqn",
   )
-  resource = ResourceInstanceOrm(
-    user_assigned_name="SummaryResource", name="summary_resource_def"
+  resource = ResourceOrm(
+    user_assigned_name="SummaryResource",
+    name="summary_resource_def",
   )
 
   db.add_all([run, f_call, machine, resource])
@@ -48,10 +50,10 @@ async def setup_summary_data(db: AsyncSession):
 
   # Create a diverse set of FunctionDataOutputOrm records for the same run
   timestamp1 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-    minutes=10
+    minutes=10,
   )
   timestamp2 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-    minutes=5
+    minutes=5,
   )
 
   data_outputs = [
@@ -125,7 +127,9 @@ class TestProtocolOutputDataService:
   """Test suite for protocol output data aggregation services."""
 
   async def test_read_protocol_run_data_summary_with_data(
-    self, db: AsyncSession, setup_summary_data
+    self,
+    db: AsyncSession,
+    setup_summary_data,
   ):
     """Test retrieving a data summary for a protocol run with diverse data outputs."""
     run_id = setup_summary_data["run_id"]
@@ -166,7 +170,7 @@ class TestProtocolOutputDataService:
           event
           for event in summary.data_timeline
           if event["data_type"] == "absorbance_reading"
-        ]
+        ],
       )
       == 2
     )

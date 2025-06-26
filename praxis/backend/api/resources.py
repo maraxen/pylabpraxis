@@ -6,7 +6,6 @@ to interact with the database and handle business logic.
 """
 
 from functools import partial
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -39,7 +38,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_resource_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError,
 )
 
 resource_resolve_accession = partial(
@@ -63,7 +62,7 @@ resource_resolve_accession = partial(
   tags=["Resource Definitions"],
 )
 async def create_resource_definition_endpoint(
-  definition: ResourceDefinitionCreate, db: AsyncSession = Depends(get_db)
+  definition: ResourceDefinitionCreate, db: AsyncSession = Depends(get_db),
 ):
   """Create a new resource definition in the catalog."""
   try:
@@ -85,7 +84,7 @@ async def create_resource_definition_endpoint(
   tags=["Resource Definitions"],
 )
 async def read_resource_definition_endpoint(
-  name: str, db: AsyncSession = Depends(get_db)
+  name: str, db: AsyncSession = Depends(get_db),
 ):
   """Retrieve a resource definition by name."""
   db_def = await svc.read_resource_definition(db, name)
@@ -102,11 +101,11 @@ async def read_resource_definition_endpoint(
 )
 @router.get(
   "/definitions",
-  response_model=List[ResourceDefinitionResponse],
+  response_model=list[ResourceDefinitionResponse],
   tags=["Resource Definitions"],
 )
 async def read_resource_definitions_endpoint(
-  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
+  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
 ):
   """List all available resource definitions."""
   return await svc.read_resource_definitions(db, limit=limit, offset=offset)
@@ -134,7 +133,7 @@ async def update_resource_definition_endpoint(
     updated_def = await svc.update_resource_definition(db=db, name=name, **update_data)
     if not updated_def:
       raise HTTPException(
-        status_code=404, detail=f"Resource definition '{name}' not found."
+        status_code=404, detail=f"Resource definition '{name}' not found.",
       )
     return updated_def
   except ValueError as e:
@@ -153,15 +152,14 @@ async def update_resource_definition_endpoint(
   tags=["Resource Definitions"],
 )
 async def delete_resource_definition_endpoint(
-  name: str, db: AsyncSession = Depends(get_db)
+  name: str, db: AsyncSession = Depends(get_db),
 ):
   """Delete a resource definition."""
   success = await svc.delete_resource_definition(db, name)
   if not success:
     raise HTTPException(
-      status_code=404, detail=f"Resource definition '{name}' not found."
+      status_code=404, detail=f"Resource definition '{name}' not found.",
     )
-  return None
 
 
 # --- Resource Endpoints ---
@@ -180,14 +178,14 @@ async def delete_resource_definition_endpoint(
   tags=["Resources"],
 )
 async def create_resource_endpoint(
-  request: ResourceCreate, db: AsyncSession = Depends(get_db)
+  request: ResourceCreate, db: AsyncSession = Depends(get_db),
 ):
   """Create a new resource."""
   try:
     # If resource_definition_accession_id is not provided, try to resolve from FQN
     if request.resource_definition_accession_id is None and request.fqn:
       definition_orm = await svc.read_resource_definition_by_fqn(
-        db=db, python_fqn=request.fqn
+        db=db, python_fqn=request.fqn,
       )
       if not definition_orm:
         raise HTTPException(
@@ -201,7 +199,7 @@ async def create_resource_endpoint(
     )
     return ResourceResponse.model_validate(resource_orm)
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Failed to create resource: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Failed to create resource: {e!s}")
 
 
 @log_resource_api_errors(
@@ -210,9 +208,9 @@ async def create_resource_endpoint(
   prefix="Failed to list resources: ",
   suffix="",
 )
-@router.get("/", response_model=List[ResourceResponse], tags=["Resources"])
+@router.get("/", response_model=list[ResourceResponse], tags=["Resources"])
 async def read_resources_endpoint(
-  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0
+  db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
 ):
   """List all resources."""
   resources = await svc.read_resources(db, limit=limit, offset=offset)
@@ -231,7 +229,7 @@ async def read_resources_endpoint(
   tags=["Resources"],
 )
 async def read_resource_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, db: AsyncSession = Depends(get_db),
 ):
   """Retrieve a resource."""
   try:
@@ -241,7 +239,7 @@ async def read_resource_endpoint(
       raise HTTPException(status_code=404, detail="Resource not found")
     return ResourceResponse.model_validate(resource)
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Failed to get resource: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Failed to get resource: {e!s}")
 
 
 @log_resource_api_errors(
@@ -267,12 +265,12 @@ async def update_resource_endpoint(
     if resource is None:
       raise HTTPException(status_code=404, detail="Resource not found")
     updated_resource = await svc.update_resource(
-      db=db, resource_accession_id=accession_id, resource_update=request
+      db=db, resource_accession_id=accession_id, resource_update=request,
     )
     return ResourceResponse.model_validate(updated_resource)
 
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Failed to update resource: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Failed to update resource: {e!s}")
 
 
 @log_resource_api_errors(
@@ -287,7 +285,7 @@ async def update_resource_endpoint(
   tags=["Resources"],
 )
 async def delete_resource_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db)
+  accession: str | UUID, db: AsyncSession = Depends(get_db),
 ):
   """Delete a resource by name or ID."""
   try:
@@ -298,6 +296,6 @@ async def delete_resource_endpoint(
     success = await svc.delete_resource(db, resource_accession_id=resource.accession_id)
     if not success:
       raise HTTPException(status_code=404, detail="Resource not found")
-    return None
+    return
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Failed to delete resource: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Failed to delete resource: {e!s}")

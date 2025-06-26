@@ -5,7 +5,7 @@ configurations, positioning with "positions" which are human accessible location
 accession_ides (e.g., slots or rails), and decks.
 """
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import UUID7, BaseModel, Field
 
@@ -26,19 +26,16 @@ class DeckBase(ResourceBase):
 class DeckCreate(ResourceCreate, DeckBase):
   """Model for creating a new deck."""
 
-  pass
 
 
 class DeckUpdate(ResourceUpdate):
   """Model for updating a deck."""
 
-  pass
 
 
 class DeckResponse(ResourceResponse, DeckBase):
   """Model for API responses for a deck."""
 
-  pass
 
 
 class PositioningConfig(BaseModel):
@@ -60,10 +57,10 @@ class PositioningConfig(BaseModel):
     "'slot').",
   )
   arg_type: Literal["str", "int"] = Field(
-    "str", description="Expected type of the position argument ('str' or 'int')."
+    "str", description="Expected type of the position argument ('str' or 'int').",
   )
-  params: Optional[Dict[str, Any]] = Field(
-    None, description="Additional parameters for the positioning method."
+  params: dict[str, Any] | None = Field(
+    None, description="Additional parameters for the positioning method.",
   )
 
   class Config:
@@ -89,25 +86,25 @@ class DeckPositionDefinitionBase(BaseModel):
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   """Model for creating a new deck position definition."""
 
-  pylabrobot_position_type_name: Optional[str] = Field(
-    None, description="PyLabRobot specific position type name."
+  pylabrobot_position_type_name: str | None = Field(
+    None, description="PyLabRobot specific position type name.",
   )
-  allowed_resource_definition_names: Optional[List[str]] = Field(
+  allowed_resource_definition_names: list[str] | None = Field(
     None,
     description="List of specific resource definition names allowed at this position.",
   )
-  accepts_tips: Optional[bool] = Field(
-    None, description="Indicates if the position accepts tips."
+  accepts_tips: bool | None = Field(
+    None, description="Indicates if the position accepts tips.",
   )
-  accepts_plates: Optional[bool] = Field(
-    None, description="Indicates if the position accepts plates."
+  accepts_plates: bool | None = Field(
+    None, description="Indicates if the position accepts plates.",
   )
-  accepts_tubes: Optional[bool] = Field(
-    None, description="Indicates if the position accepts tubes."
+  accepts_tubes: bool | None = Field(
+    None, description="Indicates if the position accepts tubes.",
   )
-  notes: Optional[str] = Field(None, description="Additional notes for the position.")
+  notes: str | None = Field(None, description="Additional notes for the position.")
 
-  compatible_resource_fqns: Optional[Dict[str, Any]] = Field(
+  compatible_resource_fqns: dict[str, Any] | None = Field(
     None,
     description="Additional, position-specific details as a JSON-serializable"
     " dictionary.",
@@ -119,7 +116,7 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
 
   accession_id: UUID7
   deck_type_accession_id: UUID7
-  compatible_resource_fqns: Optional[Dict[str, Any]] = None
+  compatible_resource_fqns: dict[str, Any] | None = None
 
   class Config:
     """Pydantic configuration."""
@@ -130,7 +127,6 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
 class DeckPositionDefinitionUpdate(BaseModel):
   """Model for updating a deck position definition."""
 
-  pass
 
 
 class DeckTypeDefinitionBase(BaseModel):
@@ -138,22 +134,21 @@ class DeckTypeDefinitionBase(BaseModel):
 
   name: str
   python_fqn: str
-  description: Optional[str] = None
+  description: str | None = None
   positioning_config: PositioningConfig
-  position_definitions: Optional[List[DeckPositionDefinitionCreate]] = None
+  position_definitions: list[DeckPositionDefinitionCreate] | None = None
 
 
 class DeckTypeDefinitionCreate(DeckTypeDefinitionBase):
   """Model for creating a new deck type definition."""
 
-  pass
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
   """Model for API responses for a deck type definition."""
 
   accession_id: UUID7
-  positions: List[DeckPositionDefinitionResponse]
+  positions: list[DeckPositionDefinitionResponse]
 
   class Config:
     """Pydantic configuration."""
@@ -164,8 +159,14 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
 class DeckTypeDefinitionUpdate(BaseModel):
   """Model for updating a deck type definition."""
 
-  name: Optional[str] = None
-  python_fqn: Optional[str] = None
-  description: Optional[str] = None
-  positioning_config: Optional[PositioningConfig] = None
-  position_definitions: Optional[List[DeckPositionDefinitionCreate]] = None
+  name: str | None = None
+  python_fqn: str | None = None
+  description: str | None = None
+  positioning_config: PositioningConfig | None = None
+  position_definitions: list[DeckPositionDefinitionCreate] | None = None
+
+  class Config:
+    """Pydantic configuration."""
+
+    from_attributes = True
+    use_enum_values = True

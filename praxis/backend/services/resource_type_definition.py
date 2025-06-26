@@ -4,12 +4,12 @@
 praxis/db_services/resource_data_service.py
 
 Service layer for interacting with resource-related data in the database.
-This includes Resource Definitions, Resource Instances, and their management.
+This includes Resource Definitions, Resource s, and their management.
 
 """
 
 from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -42,13 +42,13 @@ async def create_resource_definition(
   db: AsyncSession,
   name: str,
   python_fqn: str,
-  resource_type: Optional[str] = None,
-  description: Optional[str] = None,
+  resource_type: str | None = None,
+  description: str | None = None,
   is_consumable: bool = True,
-  nominal_volume_ul: Optional[float] = None,
-  material: Optional[str] = None,
-  manufacturer: Optional[str] = None,
-  plr_definition_details_json: Optional[Dict[str, Any]] = None,
+  nominal_volume_ul: float | None = None,
+  material: str | None = None,
+  manufacturer: str | None = None,
+  plr_definition_details_json: dict[str, Any] | None = None,
 ) -> ResourceDefinitionOrm:
   """Add a new resource definition to the catalog.
 
@@ -71,7 +71,7 @@ async def create_resource_definition(
           Defaults to None.
       manufacturer (Optional[str], optional): The manufacturer of the resource.
           Defaults to None.
-      plr_definition_details_json (Optional[Dict[str, Any]], optional):
+      plr_definition_details_json (Optional[dict[str, Any]], optional):
           Additional PyLabRobot specific definition details as a JSON-serializable
           dictionary. Defaults to None.
 
@@ -88,7 +88,7 @@ async def create_resource_definition(
 
   # Check if a resource definition with this name already exists
   result = await db.execute(
-    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name),
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -120,7 +120,7 @@ async def create_resource_definition(
   except IntegrityError as e:
     await db.rollback()
     if "uq_resource_definitions_name" in str(
-      e.orig
+      e.orig,
     ):  # Placeholder for actual constraint name
       error_message = (
         f"{log_prefix} A resource definition with name "
@@ -128,12 +128,12 @@ async def create_resource_definition(
       )
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    error_message = ( # Catch all for truly unexpected errors
+    error_message = (  # Catch all for truly unexpected errors
       f"{log_prefix} Database integrity error during creation. Details: {e}"
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
     raise e
@@ -151,14 +151,14 @@ async def create_resource_definition(
 async def update_resource_definition(
   db: AsyncSession,
   name: str,  # Identifier for the resource definition to update
-  python_fqn: Optional[str] = None,
-  resource_type: Optional[str] = None,
-  description: Optional[str] = None,
-  is_consumable: Optional[bool] = None,
-  nominal_volume_ul: Optional[float] = None,
-  material: Optional[str] = None,
-  manufacturer: Optional[str] = None,
-  plr_definition_details_json: Optional[Dict[str, Any]] = None,
+  python_fqn: str | None = None,
+  resource_type: str | None = None,
+  description: str | None = None,
+  is_consumable: bool | None = None,
+  nominal_volume_ul: float | None = None,
+  material: str | None = None,
+  manufacturer: str | None = None,
+  plr_definition_details_json: dict[str, Any] | None = None,
 ) -> ResourceDefinitionOrm:
   """Update an existing resource definition in the catalog.
 
@@ -180,7 +180,7 @@ async def update_resource_definition(
           Defaults to None.
       manufacturer (Optional[str], optional): The manufacturer of the resource.
           Defaults to None.
-      plr_definition_details_json (Optional[Dict[str, Any]], optional):
+      plr_definition_details_json (Optional[dict[str, Any]], optional):
           Additional PyLabRobot specific definition details as a JSON-serializable
           dictionary. Defaults to None.
 
@@ -199,7 +199,7 @@ async def update_resource_definition(
 
   # Fetch the existing resource definition
   result = await db.execute(
-    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name),
   )
   def_orm = result.scalar_one_or_none()
 
@@ -243,7 +243,7 @@ async def update_resource_definition(
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
     raise e
@@ -253,8 +253,9 @@ async def update_resource_definition(
 
 
 async def read_resource_definition(
-  db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionOrm]:
+  db: AsyncSession,
+  name: str,
+) -> ResourceDefinitionOrm | None:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
   Args:
@@ -272,7 +273,7 @@ async def read_resource_definition(
     name,
   )
   result = await db.execute(
-    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name)
+    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.name == name),
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
@@ -284,11 +285,11 @@ async def read_resource_definition(
 
 async def read_resource_definitions(
   db: AsyncSession,
-  manufacturer: Optional[str] = None,
-  is_consumable: Optional[bool] = None,
+  manufacturer: str | None = None,
+  is_consumable: bool | None = None,
   limit: int = 100,
   offset: int = 0,
-) -> List[ResourceDefinitionOrm]:
+) -> list[ResourceDefinitionOrm]:
   """List resource definitions with optional filtering and pagination.
 
   Args:
@@ -301,7 +302,7 @@ async def read_resource_definitions(
       offset (int): The number of results to skip before returning. Defaults to 0.
 
   Returns:
-      List[ResourceDefinitionOrm]: A list of resource definition objects
+      list[ResourceDefinitionOrm]: A list of resource definition objects
       matching the criteria.
 
   """
@@ -328,8 +329,9 @@ async def read_resource_definitions(
 
 
 async def read_resource_definition_by_name(
-  db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionOrm]:
+  db: AsyncSession,
+  name: str,
+) -> ResourceDefinitionOrm | None:
   """Retrieve a resource definition by its PyLabRobot definition name.
 
   This is an alias for `read_resource_definition`.
@@ -348,8 +350,9 @@ async def read_resource_definition_by_name(
 
 
 async def read_resource_definition_by_fqn(
-  db: AsyncSession, python_fqn: str
-) -> Optional[ResourceDefinitionOrm]:
+  db: AsyncSession,
+  python_fqn: str,
+) -> ResourceDefinitionOrm | None:
   """Retrieve a resource definition by its Python fully qualified name (FQN).
 
   Args:
@@ -363,7 +366,9 @@ async def read_resource_definition_by_fqn(
   """
   logger.info("Retrieving resource definition by Python FQN: '%s'.", python_fqn)
   result = await db.execute(
-    select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.python_fqn == python_fqn)
+    select(ResourceDefinitionOrm).filter(
+      ResourceDefinitionOrm.python_fqn == python_fqn,
+    ),
   )
   resource_def = result.scalar_one_or_none()
   if resource_def:
@@ -416,7 +421,7 @@ async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
     )
     logger.exception(error_message)
     raise ValueError(error_message) from e
-  except Exception as e: # Catch all for truly unexpected errors
+  except Exception as e:  # Catch all for truly unexpected errors
     await db.rollback()
     logger.exception(
       "Unexpected error deleting resource definition '%s'. Rolling back.",

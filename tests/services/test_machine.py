@@ -6,11 +6,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # Import all required models from the central package
 from praxis.backend.models import (
-  DeckInstanceOrm,
+  DeckOrm,
   MachineOrm,
   MachineStatusEnum,
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
 )
 
 # Import the service functions to be tested
@@ -38,7 +38,8 @@ class ProtocolRunOrm(Base):
   __tablename__ = "protocol_runs"
   # The machine ORM references 'run_accession_id', so we name it that way.
   run_accession_id: Mapped[uuid.UUID] = mapped_column(
-    primary_key=True, default=uuid.uuid4
+    primary_key=True,
+    default=uuid.uuid4,
   )
 
 
@@ -60,11 +61,13 @@ async def resource_def(db: AsyncSession) -> ResourceDefinitionCatalogOrm:
 
 @pytest.fixture
 async def existing_resource(
-  db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
-) -> ResourceInstanceOrm:
-  """Fixture for a pre-existing ResourceInstanceOrm to test linking."""
-  resource = ResourceInstanceOrm(
-    user_assigned_name="ExistingResourceForLinking", name=resource_def.name
+  db: AsyncSession,
+  resource_def: ResourceDefinitionCatalogOrm,
+) -> ResourceOrm:
+  """Fixture for a pre-existing ResourceOrm to test linking."""
+  resource = ResourceOrm(
+    user_assigned_name="ExistingResourceForLinking",
+    name=resource_def.name,
   )
   db.add(resource)
   await db.commit()
@@ -100,7 +103,9 @@ class TestMachineService:
     assert machine.resource_counterpart is None
 
   async def test_create_machine_as_new_resource(
-    self, db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
+    self,
+    db: AsyncSession,
+    resource_def: ResourceDefinitionCatalogOrm,
   ):
     """Test creating a machine that is also a new resource counterpart."""
     name = f"MachineAsResource_{uuid.uuid4()}"
@@ -117,7 +122,9 @@ class TestMachineService:
     assert machine.resource_counterpart.is_machine is True
 
   async def test_create_machine_fails_on_duplicate_name(
-    self, db: AsyncSession, existing_machine: MachineOrm
+    self,
+    db: AsyncSession,
+    existing_machine: MachineOrm,
   ):
     """Test that creating a machine with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
@@ -128,7 +135,9 @@ class TestMachineService:
       )
 
   async def test_read_machine_and_read_by_name(
-    self, db: AsyncSession, existing_machine: MachineOrm
+    self,
+    db: AsyncSession,
+    existing_machine: MachineOrm,
   ):
     """Test reading a machine by its ID and by its name."""
     from_id = await read_machine(db, existing_machine.accession_id)
@@ -140,7 +149,9 @@ class TestMachineService:
     assert from_name.accession_id == existing_machine.accession_id
 
   async def test_update_machine_simple_fields(
-    self, db: AsyncSession, existing_machine: MachineOrm
+    self,
+    db: AsyncSession,
+    existing_machine: MachineOrm,
   ):
     """Test updating simple properties of a machine."""
     updated_machine = await update_machine(
@@ -154,7 +165,9 @@ class TestMachineService:
     assert updated_machine.properties_json["calibration_factor"] == 1.05
 
   async def test_update_machine_name_and_resource_sync(
-    self, db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
+    self,
+    db: AsyncSession,
+    resource_def: ResourceDefinitionCatalogOrm,
   ):
     """Test that updating a machine's name also syncs to its resource counterpart."""
     name = f"SyncMachine_{uuid.uuid4()}"
@@ -168,7 +181,9 @@ class TestMachineService:
 
     new_name = f"SyncedName_{uuid.uuid4()}"
     await update_machine(
-      db, machine_accession_id=machine.accession_id, user_friendly_name=new_name
+      db,
+      machine_accession_id=machine.accession_id,
+      user_friendly_name=new_name,
     )
 
     await db.refresh(machine, ["resource_counterpart"])
@@ -180,7 +195,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-    existing_resource: ResourceInstanceOrm,
+    existing_resource: ResourceOrm,
   ):
     """Test updating a machine to link it to an existing resource."""
     assert existing_machine.is_resource is False
@@ -229,7 +244,9 @@ class TestMachineService:
     assert results[0].user_friendly_name == name2
 
   async def test_update_machine_status(
-    self, db: AsyncSession, existing_machine: MachineOrm
+    self,
+    db: AsyncSession,
+    existing_machine: MachineOrm,
   ):
     """Test the dedicated function for updating machine status."""
     protocol_run = ProtocolRunOrm()
@@ -263,11 +280,13 @@ class TestMachineService:
     assert await read_machine(db, machine_id) is None
 
   async def test_delete_machine_with_dependency_fails(
-    self, db: AsyncSession, existing_machine: MachineOrm
+    self,
+    db: AsyncSession,
+    existing_machine: MachineOrm,
   ):
     """Test that deleting a machine with a foreign key dependency fails gracefully."""
     # Create a deck instance that depends on the machine
-    deck = DeckInstanceOrm(
+    deck = DeckOrm(
       name="DeckOnMachine",
       deck_accession_id=uuid.uuid4(),
       python_fqn="deck.fqn",

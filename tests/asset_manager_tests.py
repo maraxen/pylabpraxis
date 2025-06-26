@@ -10,13 +10,13 @@ from praxis.backend.core.asset_manager import AssetManager, AssetAcquisitionErro
 
 # Dependent ORM-like Mocks
 ManagedDeviceOrmMock = MagicMock
-ResourceInstanceOrmMock = MagicMock
+ResourceOrmMock = MagicMock
 ResourceDefinitionCatalogOrmMock = MagicMock
 AssetRequirementModelMock = MagicMock
 
 # Enums
 from praxis.backend.database_models.asset_management_orm import (
-    ManagedDeviceStatusEnum, ResourceInstanceStatusEnum, PraxisDeviceCategoryEnum, ResourceCategoryEnum,
+    ManagedDeviceStatusEnum, ResourceStatusEnum, PraxisDeviceCategoryEnum, ResourceCategoryEnum,
     DeckLayoutOrm, DeckSlotOrm # ADDED for DeckLoading tests
 )
 from praxis.protocol_core.definitions import Deck as ProtocolDeck # ADDED for DeckLoading tests
@@ -34,11 +34,11 @@ class MockResource:
         self.size_z: Optional[float] = kwargs.get("size_z")
         self.capacity: Optional[float] = kwargs.get("capacity")
         self._dimensions: Optional[Any] = kwargs.get("dimensions_obj")
-        self._wells_data: List[Any] = kwargs.get("wells_data", [])
+        self._wells_data: list[Any] = kwargs.get("wells_data", [])
         self.__class__.__module__ = "pylabrobot.resources.mocked"
 
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         return {"name": self.name, "model": self.model, "category": self.category_str or "mock_resource_category"}
 
     def get_size_x(self) -> Optional[float]: return self.size_x
@@ -57,7 +57,7 @@ class MockResource:
         return self._wells_data[index]
 
     @property
-    def wells(self) -> List[Any]:
+    def wells(self) -> list[Any]:
         return self._wells_data
 
 class MockPlrContainer(MockResource):
@@ -163,7 +163,7 @@ class MockBaseResource: # Simplified base for these tests
 
     def __init__(self, name: str, **kwargs: Any):
         self.name = name
-        # Instance attributes override class attributes if instance is created
+        #  attributes override class attributes if instance is created
         self.model = kwargs.get("model", self.model)
         self.resource_type = kwargs.get("resource_type", self.resource_type)
         self.__class__.__module__ = kwargs.get("module_name", "pylabrobot.resources.mock_sync_tests")
@@ -171,7 +171,7 @@ class MockBaseResource: # Simplified base for these tests
         self.__class__.__name__ = self.__class__.__name__
 
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         # Basic serialization, subclasses should extend
         return {"name": self.name, "model": self.model, "resource_type": self.resource_type}
 
@@ -181,8 +181,8 @@ class MockBaseItemizedResource(MockBaseResource):
 
     def __init__(self, name: str, **kwargs: Any):
         super().__init__(name, **kwargs)
-        self.items: List[Any] = kwargs.get("items", [])
-        self.wells: List[Any] = kwargs.get("wells", [])
+        self.items: list[Any] = kwargs.get("items", [])
+        self.wells: list[Any] = kwargs.get("wells", [])
         # Ensure __name__ is set on the instance's class
         self.__class__.__name__ = self.__class__.__name__
 
@@ -196,7 +196,7 @@ class MockResourceSimple(MockBaseResource):
 
     def __init__(self, name: str, **kwargs: Any):
         super().__init__(name, **kwargs)
-        # Instance attributes
+        #  attributes
         self.size_x: float = 10.0
         self.size_y: float = 20.0
         self.size_z: float = 30.0
@@ -205,7 +205,7 @@ class MockResourceSimple(MockBaseResource):
         self.__class__.__name__ = "MockResourceSimple"
 
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         data = super().serialize()
         data.update({
             "size_x": self.size_x, "size_y": self.size_y, "size_z": self.size_z,
@@ -226,7 +226,7 @@ class MockResourceItemized(MockBaseItemizedResource):
         self.__class__.__name__ = "MockResourceItemized"
 
 
-    def serialize(self) -> Dict[str, Any]:
+    def serialize(self) -> dict[str, Any]:
         data = super().serialize()
         data.update({
             "num_items": self.num_items,
@@ -346,7 +346,7 @@ def mock_ads_service():
         mock_ads.get_resource_instance.return_value = None
         mock_ads.get_resource_definition.return_value = None
         mock_ads.add_or_update_resource_definition.return_value = MagicMock(spec=ResourceDefinitionCatalogOrmMock)
-        mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrmMock)
+        mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceOrmMock)
         yield mock_ads
 
 
@@ -417,14 +417,14 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
+        mock_lw_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
         mock_ads_service.list_resource_instances.side_effect = [
             [],
-            [mock_lw_instance_orm]
+            [mock_lw_orm]
         ]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
-        updated_mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", current_status=ResourceInstanceStatusEnum.IN_USE)
-        mock_ads_service.update_resource_instance_location_and_status.return_value = updated_mock_lw_instance_orm
+        updated_mock_lw_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", current_status=ResourceStatusEnum.IN_USE)
+        mock_ads_service.update_resource_instance_location_and_status.return_value = updated_mock_lw_orm
 
         live_resource, orm_accession_id, lw_type = asset_manager.acquire_resource(
             protocol_run_accession_id="run123",
@@ -434,12 +434,12 @@ class TestAssetManagerAcquireResource:
 
         mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, "some_plate_def_name")
         mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
-            resource_instance_orm=mock_lw_instance_orm,
+            resource_orm=mock_lw_orm,
             resource_definition_fqn="pylabrobot.resources.plate.Plate"
         )
         mock_ads_service.update_resource_instance_location_and_status.assert_called_with(
-            asset_manager.db, mock_lw_instance_orm.accession_id,
-            new_status=ResourceInstanceStatusEnum.IN_USE,
+            asset_manager.db, mock_lw_orm.accession_id,
+            new_status=ResourceStatusEnum.IN_USE,
             current_protocol_run_accession_id="run123",
             status_details="In use by run run123"
         )
@@ -451,13 +451,13 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
+        mock_lw_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", name="some_plate_def_name")
         mock_deck_orm = ManagedDeviceOrmMock(id=10, user_friendly_name="MainDeck")
 
-        mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
+        mock_ads_service.list_resource_instances.return_value = [mock_lw_orm]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
         mock_ads_service.list_managed_machines.return_value = [mock_deck_orm]
-        mock_ads_service.update_resource_instance_location_and_status.return_value = mock_lw_instance_orm
+        mock_ads_service.update_resource_instance_location_and_status.return_value = mock_lw_orm
 
         location_constraints = {"deck_name": "MainDeck", "slot_name": "A1"}
         asset_manager.acquire_resource(
@@ -474,26 +474,26 @@ class TestAssetManagerAcquireResource:
             deck_machine_orm_accession_id=mock_deck_orm.accession_id,
             slot_name="A1",
             resource_plr_object=mock_workcell_runtime.create_or_get_resource_plr_object.return_value,
-            resource_instance_orm_accession_id=mock_lw_instance_orm.accession_id
+            resource_orm_accession_id=mock_lw_orm.accession_id
         )
         mock_ads_service.update_resource_instance_location_and_status.assert_called_with(
-            asset_manager.db, mock_lw_instance_orm.accession_id,
-            new_status=ResourceInstanceStatusEnum.IN_USE,
+            asset_manager.db, mock_lw_orm.accession_id,
+            new_status=ResourceStatusEnum.IN_USE,
             current_protocol_run_accession_id="run123",
             status_details="In use by run run123"
         )
 
     def test_acquire_resource_fqn_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, name="unknown_def_name")
-        mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
+        mock_lw_orm = ResourceOrmMock(id=1, name="unknown_def_name")
+        mock_ads_service.list_resource_instances.return_value = [mock_lw_orm]
         mock_ads_service.get_resource_definition.return_value = None
 
         with pytest.raises(AssetAcquisitionError, match="Python FQN not found for resource definition 'unknown_def_name'"):
             asset_manager.acquire_resource("run123", "lw", "unknown_def_name")
 
         mock_ads_service.update_resource_instance_location_and_status.assert_called_once_with(
-            db=asset_manager.db, resource_instance_accession_id=mock_lw_instance_orm.accession_id,
-            new_status=ResourceInstanceStatusEnum.ERROR,
+            db=asset_manager.db, resource_instance_accession_id=mock_lw_orm.accession_id,
+            new_status=ResourceStatusEnum.ERROR,
             status_details=ANY
         )
 
@@ -501,8 +501,8 @@ class TestAssetManagerAcquireResource:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_workcell_runtime: MagicMock, mock_resource_def: MagicMock
     ):
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="def")
-        mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
+        mock_lw_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", name="def")
+        mock_ads_service.list_resource_instances.return_value = [mock_lw_orm]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
         mock_workcell_runtime.create_or_get_resource_plr_object.return_value = None
 
@@ -528,14 +528,14 @@ class TestAssetManagerRelease:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock
     ):
         asset_manager.release_resource(
-            resource_instance_orm_accession_id=1,
-            final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+            resource_orm_accession_id=1,
+            final_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             status_details="Stored after run"
         )
         mock_workcell_runtime.clear_deck_slot.assert_not_called()
         mock_ads_service.update_resource_instance_location_and_status.assert_called_once_with(
             asset_manager.db, 1,
-            new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+            new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             properties_json_update=None,
             location_machine_accession_id=None,
             current_deck_slot_name=None,
@@ -547,18 +547,18 @@ class TestAssetManagerRelease:
         self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock
     ):
         asset_manager.release_resource(
-            resource_instance_orm_accession_id=1,
-            final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+            resource_orm_accession_id=1,
+            final_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             clear_from_deck_machine_accession_id=10,
             clear_from_slot_name="A1",
             status_details="Cleared from deck and stored"
         )
         mock_workcell_runtime.clear_deck_slot.assert_called_once_with(
-            deck_machine_orm_accession_id=10, slot_name="A1", resource_instance_orm_accession_id=1
+            deck_machine_orm_accession_id=10, slot_name="A1", resource_orm_accession_id=1
         )
         mock_ads_service.update_resource_instance_location_and_status.assert_called_once_with(
             asset_manager.db, 1,
-            new_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+            new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             properties_json_update=None,
             location_machine_accession_id=None,
             current_deck_slot_name=None,
@@ -636,7 +636,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
                 self.capacity = capacity
                 self.__class__.__module__ = "mock_pylabrobot_module.plates"
 
-            def serialize(self) -> Dict[str, Any]:
+            def serialize(self) -> dict[str, Any]:
                 return {"custom_field": "value", "name": self.name, "model": self.model, "category_str": "plate"}
 
         mock_module = MagicMock()
@@ -984,21 +984,21 @@ class TestAssetManagerDeckLoading:
         return deck_machine
 
     @pytest.fixture
-    def mock_slot_orm(self, mock_resource_instance_orm):
+    def mock_slot_orm(self, mock_resource_orm):
         slot = MagicMock(spec=DeckSlotOrm)
         slot.accession_id = 101
         slot.slot_name = "A1"
-        slot.pre_assigned_resource_instance_accession_id = mock_resource_instance_orm.accession_id
+        slot.pre_assigned_resource_instance_accession_id = mock_resource_orm.accession_id
         slot.default_resource_definition_accession_id = None
         return slot
 
     @pytest.fixture
-    def mock_resource_instance_orm(self):
-        lw_instance = MagicMock(spec=ResourceInstanceOrm)
+    def mock_resource_orm(self):
+        lw_instance = MagicMock(spec=ResourceOrm)
         lw_instance.accession_id = 201
         lw_instance.user_assigned_name = "TestPlateOnDeck"
         lw_instance.name = "test_plate_def_name"
-        lw_instance.current_status = ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE
+        lw_instance.current_status = ResourceStatusEnum.AVAILABLE_IN_STORAGE
         lw_instance.current_protocol_run_accession_id = None
         lw_instance.location_machine_accession_id = None
         lw_instance.current_deck_slot_name = None
@@ -1062,14 +1062,14 @@ class TestAssetManagerDeckLoading:
     def test_successful_deck_config_with_one_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
-        mock_resource_instance_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
+        mock_resource_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
     ):
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         live_plr_deck_obj = MagicMock(name="LiveDeck")
         mock_workcell_runtime.initialize_machine_backend.return_value = live_plr_deck_obj
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
 
         live_plr_resource_obj = MagicMock(name="LiveTestPlate")
@@ -1077,22 +1077,22 @@ class TestAssetManagerDeckLoading:
 
         asset_manager.apply_deck_instance(ProtocolDeck(name="TestDeckLayout"), "run123") # Test with Deck input
 
-        mock_ads_service.get_resource_instance.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.accession_id)
-        mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_instance_orm.name)
+        mock_ads_service.get_resource_instance.assert_called_once_with(asset_manager.db, mock_resource_orm.accession_id)
+        mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_orm.name)
         mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
-            resource_instance_orm=mock_resource_instance_orm,
+            resource_orm=mock_resource_orm,
             resource_definition_fqn=mock_resource_def_catalog_orm.python_fqn
         )
         mock_workcell_runtime.assign_resource_to_deck_slot.assert_called_once_with(
             deck_machine_orm_accession_id=mock_deck_machine_orm.accession_id,
             slot_name=mock_slot_orm.slot_name,
             resource_plr_object=live_plr_resource_obj,
-            resource_instance_orm_accession_id=mock_resource_instance_orm.accession_id
+            resource_orm_accession_id=mock_resource_orm.accession_id
         )
         mock_ads_service.update_resource_instance_location_and_status.assert_called_once_with(
             db=asset_manager.db,
-            resource_instance_accession_id=mock_resource_instance_orm.accession_id,
-            new_status=ResourceInstanceStatusEnum.IN_USE,
+            resource_instance_accession_id=mock_resource_orm.accession_id,
+            new_status=ResourceStatusEnum.IN_USE,
             current_protocol_run_accession_id="run123",
             location_machine_accession_id=mock_deck_machine_orm.accession_id,
             current_deck_slot_name=mock_slot_orm.slot_name,
@@ -1103,16 +1103,16 @@ class TestAssetManagerDeckLoading:
     def test_resource_instance_not_available_for_slot(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
-        mock_resource_instance_orm, mock_workcell_runtime: MagicMock
+        mock_resource_orm, mock_workcell_runtime: MagicMock
     ):
-        mock_resource_instance_orm.current_status = ResourceInstanceStatusEnum.IN_USE # Not available
-        mock_resource_instance_orm.current_protocol_run_accession_id = "another_run"
+        mock_resource_orm.current_status = ResourceStatusEnum.IN_USE # Not available
+        mock_resource_orm.current_protocol_run_accession_id = "another_run"
 
         mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_orm
 
         with pytest.raises(AssetAcquisitionError, match="is not available"):
             asset_manager.apply_deck_instance("TestDeckLayout", "run123")
@@ -1120,7 +1120,7 @@ class TestAssetManagerDeckLoading:
     def test_resource_def_fqn_not_found_for_slot_resource(
         self, asset_manager: AssetManager, mock_ads_service: MagicMock,
         mock_deck_layout_orm, mock_deck_machine_orm, mock_slot_orm,
-        mock_resource_instance_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
+        mock_resource_orm, mock_resource_def_catalog_orm, mock_workcell_runtime: MagicMock
     ):
         mock_resource_def_catalog_orm.python_fqn = None # FQN missing
 
@@ -1128,7 +1128,7 @@ class TestAssetManagerDeckLoading:
         mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
         mock_workcell_runtime.initialize_machine_backend.return_value = MagicMock()
         mock_ads_service.get_deck_slots_for_layout.return_value = [mock_slot_orm]
-        mock_ads_service.get_resource_instance.return_value = mock_resource_instance_orm
+        mock_ads_service.get_resource_instance.return_value = mock_resource_orm
         mock_ads_service.get_resource_definition.return_value = mock_resource_def_catalog_orm
 
         with pytest.raises(AssetAcquisitionError, match="Python FQN not found for resource definition"):
@@ -1139,13 +1139,13 @@ class TestAssetManagerLogging:
 
     def test_acquire_resource_logs_property_constraints(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock, caplog):
         # Setup for a successful resource acquisition to reach the logging point
-        mock_lw_instance_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="PlateLogTest", name="log_plate_def")
+        mock_lw_orm = ResourceOrmMock(id=1, user_assigned_name="PlateLogTest", name="log_plate_def")
         mock_resource_def = ResourceDefinitionCatalogOrmMock()
         mock_resource_def.python_fqn = "pylabrobot.resources.plate.Plate" # Valid FQN
 
-        mock_ads_service.list_resource_instances.return_value = [mock_lw_instance_orm]
+        mock_ads_service.list_resource_instances.return_value = [mock_lw_orm]
         mock_ads_service.get_resource_definition.return_value = mock_resource_def
-        mock_ads_service.update_resource_instance_location_and_status.return_value = mock_lw_instance_orm
+        mock_ads_service.update_resource_instance_location_and_status.return_value = mock_lw_orm
         mock_workcell_runtime.create_or_get_resource_plr_object.return_value = MagicMock(name="live_logging_plate")
 
         property_constraints_payload = {"min_volume_ul": 10, "is_sterile": True}
@@ -1174,12 +1174,12 @@ class TestAssetManagerLogging:
         # Mock the get_resource_instance call that might happen if workcell_runtime is None or other logic paths
         # For this test, we are primarily interested in the log message generated by release_resource itself.
         # The actual update logic is tested elsewhere.
-        mock_ads_service.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrm)
+        mock_ads_service.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceOrm)
 
 
         asset_manager.release_resource(
-            resource_instance_orm_accession_id=555,
-            final_status=ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE,
+            resource_orm_accession_id=555,
+            final_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             final_properties_json_update=final_props_update,
             status_details="Logging properties update on release"
         )

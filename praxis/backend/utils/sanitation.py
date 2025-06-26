@@ -1,6 +1,6 @@
 import warnings
 from functools import wraps
-from typing import Any, Literal, Optional, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pylabrobot.resources import Plate, TipRack, TipSpot, Well
 
@@ -32,7 +32,7 @@ def liquid_handler_setup_check(func):
   async def wrapper(*args, **kwargs):
     if len(args) == 0 and "liquid_handler" not in kwargs:
       raise ValueError("No liquid handler provided")
-    elif args:
+    if args:
       liquid_handler = args[0]
     else:
       liquid_handler = kwargs["liquid_handler"]
@@ -43,7 +43,7 @@ def liquid_handler_setup_check(func):
   return wrapper
 
 
-async def coerce_to_list(items: list | tuple, target_length: Optional[int]) -> list:
+async def coerce_to_list(items: list | tuple, target_length: int | None) -> list:
   """Coerces the given items into a list.
 
   Args:
@@ -61,20 +61,19 @@ async def coerce_to_list(items: list | tuple, target_length: Optional[int]) -> l
       new_items.append(None)
     elif not isinstance(item, (list, tuple)):
       new_items.append([item] * target_length)
+    elif len(item) == 1:
+      new_items.append(item * target_length)
+    elif len(item) == target_length:
+      new_items.append(item)
     else:
-      if len(item) == 1:
-        new_items.append(item * target_length)
-      elif len(item) == target_length:
-        new_items.append(item)
-      else:
-        raise ValueError(
-          f"Expected list of length {target_length} but got list of length \
-          {len(item)}"
-        )
+      raise ValueError(
+        f"Expected list of length {target_length} but got list of length \
+          {len(item)}",
+      )
   return new_items
 
 
-async def fill_in_default(val: Optional[list[T]], default: list[T]) -> list[T]:
+async def fill_in_default(val: list[T] | None, default: list[T]) -> list[T]:
   """Util for converting an argument to the appropriate format for low level methods."""
   t = type(default[0])
   # if the val is None, use the default.
@@ -86,7 +85,7 @@ async def fill_in_default(val: Optional[list[T]], default: list[T]) -> list[T]:
   # if the val is a list, it must be of the correct length.
   if len(val) != len(default):
     raise ValueError(
-      f"Value length must equal num operations ({len(default)}), but is {val}"
+      f"Value length must equal num operations ({len(default)}), but is {val}",
     )
   # if the val is a list of the correct length, the values must be of the right type.
   if not all(isinstance(v, t) for v in val):
@@ -96,10 +95,10 @@ async def fill_in_default(val: Optional[list[T]], default: list[T]) -> list[T]:
 
 
 async def fill_in_defaults(
-  items: list[Optional[list[T]]], defaults: list[list[T]]
+  items: list[list[T] | None], defaults: list[list[T]],
 ) -> list[list[T]]:
   """Util for converting an argument to the appropriate format for low level methods."""
-  return [await fill_in_default(val, default) for val, default in zip(items, defaults)]
+  return [await fill_in_default(val, default) for val, default in zip(items, defaults, strict=False)]
 
 
 async def type_check(items: list, types: list, in_list: bool = False) -> None:
@@ -116,7 +115,7 @@ async def type_check(items: list, types: list, in_list: bool = False) -> None:
     types list.
 
   """
-  for item, item_type in zip(items, types):
+  for item, item_type in zip(items, types, strict=False):
     if in_list:
       if not all(isinstance(i, item_type) for i in item):
         raise ValueError(f"Expected {item_type} but got {type(item)}")
@@ -127,7 +126,7 @@ async def type_check(items: list, types: list, in_list: bool = False) -> None:
 async def check_list_length(
   items: list[Any] | list[list[Any]],
   coerce_length: bool = False,
-  target_length: Optional[int] = None,
+  target_length: int | None = None,
 ) -> list[list[Any]]:
   """Check the length of a list or a list of lists.
 
@@ -150,10 +149,9 @@ async def check_list_length(
       if len(items) == 1 and coerce_length:
         assert target_length is not None, "Expected target length to be provided"
         return items * target_length
-      else:
-        raise ValueError(
-          f"Expected list of length {length} but got list of length {len(items)}"
-        )
+      raise ValueError(
+        f"Expected list of length {length} but got list of length {len(items)}",
+      )
   new_items = []
   for item in items:
     if not isinstance(item, list):
@@ -166,7 +164,7 @@ async def check_list_length(
         new_items.append(item * target_length)
       else:
         raise ValueError(
-          f"Expected list of length {length} but got list of length {len(item)}"
+          f"Expected list of length {length} but got list of length {len(item)}",
         )
   if all(len(item) == target_length for item in items):
     return items
@@ -206,9 +204,9 @@ async def tip_mapping(
   tips: TipRack | list[TipSpot],
   sources: list[Well],
   source_plate: Plate,
-  target_plate: Optional[Plate] = None,
-  targets: Optional[list[Well]] = None,
-  map_tips: Optional[Literal["source", "target"]] = None,
+  target_plate: Plate | None = None,
+  targets: list[Well] | None = None,
+  map_tips: Literal["source", "target"] | None = None,
 ) -> list[TipSpot]:
   """Check if tips can be mapped between either source or destination containers based on if they
   are wells, and that the number of tips is sufficient for the number of sources and targets.
@@ -234,10 +232,9 @@ async def tip_mapping(
   if isinstance(tips, list):
     if all(isinstance(tip, TipSpot) for tip in tips):
       return [tip for tip in tips if isinstance(tip, TipSpot)]  # mypy compatible return
-    else:
-      raise ValueError(
-        "Invalid type for tip. Must be a list of TipSpot objects or TipRack."
-      )
+    raise ValueError(
+      "Invalid type for tip. Must be a list of TipSpot objects or TipRack.",
+    )
   if map_tips is None:
     map_tips = "source"
   if map_tips not in ["source", "target"]:
@@ -245,7 +242,7 @@ async def tip_mapping(
   if targets is None and map_tips == "target":
     warnings.warn(
       "No target containers provided, mapping tips to source containers."
-      "Please set map_tips to 'source' to map to source containers."
+      "Please set map_tips to 'source' to map to source containers.",
     )
     targets = sources
   map_onto = sources if map_tips == "source" else targets
@@ -254,26 +251,25 @@ async def tip_mapping(
     tip_number = tips.num_items
   else:
     raise ValueError(
-      "Invalid type for tip. Must be a list of TipSpot objects or single TipRack."
+      "Invalid type for tip. Must be a list of TipSpot objects or single TipRack.",
     )
   if tip_number < len(map_onto):
     raise ValueError(
-      "Insufficient number of tips for the number of sources or targets."
+      "Insufficient number of tips for the number of sources or targets.",
     )
   if isinstance(tips, TipRack):
     output_tips = []
     if not all(isinstance(item, Well) for item in map_onto):
       raise ValueError(
         "Cannot map between source or target containers and tip rack. Specify \
-        tips as list[TipSpot]."
+        tips as list[TipSpot].",
       )
     for well in map_onto:
       assert isinstance(well, Well), "Expected Well object"  # mypy compatible assert
       well_number = await well_to_int(well, source_plate)
       if not tips[well_number][0].has_tip():
         raise ValueError("Tip rack does not have tip at specified location.")
-      else:
-        output_tips.append(tips[well_number][0])
+      output_tips.append(tips[well_number][0])
   return output_tips
 
 

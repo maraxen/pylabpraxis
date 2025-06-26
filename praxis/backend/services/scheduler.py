@@ -12,7 +12,7 @@ management.
 import uuid
 from datetime import datetime, timezone
 from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,10 +51,10 @@ async def create_schedule_entry(
   db: AsyncSession,
   protocol_run_accession_id: uuid.UUID,
   priority: int = 1,
-  estimated_duration_ms: Optional[int] = None,
-  estimated_resource_count: Optional[int] = None,
-  analysis_details_json: Optional[Dict[str, Any]] = None,
-  scheduling_metadata_json: Optional[Dict[str, Any]] = None,
+  estimated_duration_ms: int | None = None,
+  estimated_resource_count: int | None = None,
+  analysis_details_json: dict[str, Any] | None = None,
+  scheduling_metadata_json: dict[str, Any] | None = None,
 ) -> ScheduleEntryOrm:
   """Create a new schedule entry for a protocol run.
 
@@ -71,9 +71,9 @@ async def create_schedule_entry(
           duration in milliseconds. Defaults to None.
       estimated_resource_count (Optional[int], optional): Estimated number of
           assets required for execution. Defaults to None.
-      analysis_details_json (Optional[Dict[str, Any]], optional): Asset
+      analysis_details_json (Optional[dict[str, Any]], optional): Asset
           requirements analysis results stored as JSON. Defaults to None.
-      scheduling_metadata_json (Optional[Dict[str, Any]], optional): Additional
+      scheduling_metadata_json (Optional[dict[str, Any]], optional): Additional
           user-provided scheduling parameters stored as JSON. Defaults to None.
 
   Returns:
@@ -92,8 +92,8 @@ async def create_schedule_entry(
   # Check if a schedule entry for this protocol run already exists
   existing_entry = await db.execute(
     select(ScheduleEntryOrm).filter(
-      ScheduleEntryOrm.protocol_run_accession_id == protocol_run_accession_id
-    )
+      ScheduleEntryOrm.protocol_run_accession_id == protocol_run_accession_id,
+    ),
   )
   if existing_entry.scalar_one_or_none():
     error_message = (
@@ -153,7 +153,7 @@ async def read_schedule_entry(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,
   include_reservations: bool = True,
-) -> Optional[ScheduleEntryOrm]:
+) -> ScheduleEntryOrm | None:
   """Read a schedule entry by ID.
 
   Args:
@@ -168,7 +168,7 @@ async def read_schedule_entry(
 
   """
   stmt = select(ScheduleEntryOrm).filter(
-    ScheduleEntryOrm.accession_id == schedule_entry_accession_id
+    ScheduleEntryOrm.accession_id == schedule_entry_accession_id,
   )
 
   if include_reservations:
@@ -182,7 +182,7 @@ async def read_schedule_entry_by_protocol_run(
   db: AsyncSession,
   protocol_run_accession_id: uuid.UUID,
   include_reservations: bool = True,
-) -> Optional[ScheduleEntryOrm]:
+) -> ScheduleEntryOrm | None:
   """Read a schedule entry by protocol run ID.
 
   Args:
@@ -197,7 +197,7 @@ async def read_schedule_entry_by_protocol_run(
 
   """
   stmt = select(ScheduleEntryOrm).filter(
-    ScheduleEntryOrm.protocol_run_accession_id == protocol_run_accession_id
+    ScheduleEntryOrm.protocol_run_accession_id == protocol_run_accession_id,
   )
 
   if include_reservations:
@@ -209,26 +209,26 @@ async def read_schedule_entry_by_protocol_run(
 
 async def list_schedule_entries(
   db: AsyncSession,
-  status_filter: Optional[List[ScheduleStatusEnum]] = None,
-  protocol_run_ids: Optional[List[uuid.UUID]] = None,
-  priority_min: Optional[int] = None,
-  priority_max: Optional[int] = None,
-  created_after: Optional[datetime] = None,
-  created_before: Optional[datetime] = None,
+  status_filter: list[ScheduleStatusEnum] | None = None,
+  protocol_run_ids: list[uuid.UUID] | None = None,
+  priority_min: int | None = None,
+  priority_max: int | None = None,
+  created_after: datetime | None = None,
+  created_before: datetime | None = None,
   include_completed: bool = False,
   include_cancelled: bool = False,
   limit: int = 50,
   offset: int = 0,
   order_by: str = "created_at",
   order_desc: bool = True,
-) -> List[ScheduleEntryOrm]:
+) -> list[ScheduleEntryOrm]:
   """List schedule entries with optional filters.
 
   Args:
       db (AsyncSession): The database session.
-      status_filter (Optional[List[ScheduleStatusEnum]], optional): Filter by
+      status_filter (Optional[list[ScheduleStatusEnum]], optional): Filter by
           specific statuses. Defaults to None.
-      protocol_run_ids (Optional[List[uuid.UUID]], optional): Filter by specific
+      protocol_run_ids (Optional[list[uuid.UUID]], optional): Filter by specific
           protocol run IDs. Defaults to None.
       priority_min (Optional[int], optional): Minimum priority filter.
           Defaults to None.
@@ -249,7 +249,7 @@ async def list_schedule_entries(
           Defaults to True.
 
   Returns:
-      List[ScheduleEntryOrm]: List of schedule entry objects matching the filters.
+      list[ScheduleEntryOrm]: List of schedule entry objects matching the filters.
 
   """
   stmt = select(ScheduleEntryOrm)
@@ -311,10 +311,10 @@ async def update_schedule_entry_status(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,
   new_status: ScheduleStatusEnum,
-  error_details: Optional[str] = None,
-  started_at: Optional[datetime] = None,
-  completed_at: Optional[datetime] = None,
-) -> Optional[ScheduleEntryOrm]:
+  error_details: str | None = None,
+  started_at: datetime | None = None,
+  completed_at: datetime | None = None,
+) -> ScheduleEntryOrm | None:
   """Update the status of a schedule entry.
 
   Args:
@@ -376,8 +376,8 @@ async def update_schedule_entry_priority(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,
   new_priority: int,
-  reason: Optional[str] = None,
-) -> Optional[ScheduleEntryOrm]:
+  reason: str | None = None,
+) -> ScheduleEntryOrm | None:
   """Update the priority of a schedule entry.
 
   Args:
@@ -470,12 +470,12 @@ async def create_asset_reservation(
   schedule_entry_accession_id: uuid.UUID,
   asset_type: str,
   asset_name: str,
-  asset_instance_accession_id: Optional[uuid.UUID] = None,
-  redis_lock_key: Optional[str] = None,
-  redis_lock_value: Optional[str] = None,
-  required_capabilities_json: Optional[Dict[str, Any]] = None,
-  estimated_duration_ms: Optional[int] = None,
-  expires_at: Optional[datetime] = None,
+  asset_instance_accession_id: uuid.UUID | None = None,
+  redis_lock_key: str | None = None,
+  redis_lock_value: str | None = None,
+  required_capabilities_json: dict[str, Any] | None = None,
+  estimated_duration_ms: int | None = None,
+  expires_at: datetime | None = None,
 ) -> AssetReservationOrm:
   """Create a new asset reservation.
 
@@ -490,7 +490,7 @@ async def create_asset_reservation(
           locking. Defaults to None.
       redis_lock_value (Optional[str], optional): Redis lock value for distributed
           locking. Defaults to None.
-      required_capabilities_json (Optional[Dict[str, Any]], optional): Required
+      required_capabilities_json (Optional[dict[str, Any]], optional): Required
           capabilities for the asset. Defaults to None.
       estimated_duration_ms (Optional[int], optional): Estimated usage duration
           in milliseconds. Defaults to None.
@@ -547,7 +547,7 @@ async def create_asset_reservation(
 async def read_asset_reservation(
   db: AsyncSession,
   reservation_accession_id: uuid.UUID,
-) -> Optional[AssetReservationOrm]:
+) -> AssetReservationOrm | None:
   """Read an asset reservation by ID.
 
   Args:
@@ -561,7 +561,7 @@ async def read_asset_reservation(
 
   """
   stmt = select(AssetReservationOrm).filter(
-    AssetReservationOrm.accession_id == reservation_accession_id
+    AssetReservationOrm.accession_id == reservation_accession_id,
   )
 
   result = await db.execute(stmt)
@@ -570,14 +570,14 @@ async def read_asset_reservation(
 
 async def list_asset_reservations(
   db: AsyncSession,
-  schedule_entry_accession_id: Optional[uuid.UUID] = None,
-  asset_type: Optional[str] = None,
-  asset_name: Optional[str] = None,
-  status_filter: Optional[List[AssetReservationStatusEnum]] = None,
+  schedule_entry_accession_id: uuid.UUID | None = None,
+  asset_type: str | None = None,
+  asset_name: str | None = None,
+  status_filter: list[AssetReservationStatusEnum] | None = None,
   active_only: bool = False,
   limit: int = 100,
   offset: int = 0,
-) -> List[AssetReservationOrm]:
+) -> list[AssetReservationOrm]:
   """List asset reservations with optional filters.
 
   Args:
@@ -586,7 +586,7 @@ async def list_asset_reservations(
           schedule entry ID. Defaults to None.
       asset_type (Optional[str], optional): Filter by asset type. Defaults to None.
       asset_name (Optional[str], optional): Filter by asset name. Defaults to None.
-      status_filter (Optional[List[AssetReservationStatusEnum]], optional): Filter by
+      status_filter (Optional[list[AssetReservationStatusEnum]], optional): Filter by
           specific statuses. Defaults to None.
       active_only (bool, optional): Whether to only include active reservations.
           Defaults to False.
@@ -594,14 +594,14 @@ async def list_asset_reservations(
       offset (int, optional): Number of results to skip. Defaults to 0.
 
   Returns:
-      List[AssetReservationOrm]: List of asset reservation objects matching filters.
+      list[AssetReservationOrm]: List of asset reservation objects matching filters.
 
   """
   stmt = select(AssetReservationOrm)
 
   if schedule_entry_accession_id:
     stmt = stmt.filter(
-      AssetReservationOrm.schedule_entry_accession_id == schedule_entry_accession_id
+      AssetReservationOrm.schedule_entry_accession_id == schedule_entry_accession_id,
     )
 
   if asset_type:
@@ -619,8 +619,8 @@ async def list_asset_reservations(
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
           AssetReservationStatusEnum.ACTIVE,
-        ]
-      )
+        ],
+      ),
     )
 
   stmt = stmt.order_by(AssetReservationOrm.created_at).offset(offset).limit(limit)
@@ -633,9 +633,9 @@ async def update_asset_reservation_status(
   db: AsyncSession,
   reservation_accession_id: uuid.UUID,
   new_status: AssetReservationStatusEnum,
-  reserved_at: Optional[datetime] = None,
-  released_at: Optional[datetime] = None,
-) -> Optional[AssetReservationOrm]:
+  reserved_at: datetime | None = None,
+  released_at: datetime | None = None,
+) -> AssetReservationOrm | None:
   """Update the status of an asset reservation.
 
   Args:
@@ -679,7 +679,7 @@ async def update_asset_reservation_status(
 
 async def cleanup_expired_reservations(
   db: AsyncSession,
-  current_time: Optional[datetime] = None,
+  current_time: datetime | None = None,
 ) -> int:
   """Clean up expired asset reservations.
 
@@ -703,9 +703,9 @@ async def cleanup_expired_reservations(
           AssetReservationStatusEnum.PENDING,
           AssetReservationStatusEnum.RESERVED,
           AssetReservationStatusEnum.ACTIVE,
-        ]
+        ],
       ),
-    )
+    ),
   )
 
   result = await db.execute(stmt)
@@ -731,13 +731,13 @@ async def log_schedule_event(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,
   event_type: str,
-  previous_status: Optional[str] = None,
-  new_status: Optional[str] = None,
-  event_details_json: Optional[Dict[str, Any]] = None,
-  error_details_json: Optional[Dict[str, Any]] = None,
-  message: Optional[str] = None,
-  duration_ms: Optional[int] = None,
-  triggered_by: Optional[str] = None,
+  previous_status: str | None = None,
+  new_status: str | None = None,
+  event_details_json: dict[str, Any] | None = None,
+  error_details_json: dict[str, Any] | None = None,
+  message: str | None = None,
+  duration_ms: int | None = None,
+  triggered_by: str | None = None,
 ) -> ScheduleHistoryOrm:
   """Log a scheduling event for history and analytics.
 
@@ -749,9 +749,9 @@ async def log_schedule_event(
           Defaults to None.
       new_status (Optional[str], optional): The new status if applicable.
           Defaults to None.
-      event_details_json (Optional[Dict[str, Any]], optional): Additional event data.
+      event_details_json (Optional[dict[str, Any]], optional): Additional event data.
           Defaults to None.
-      error_details_json (Optional[Dict[str, Any]], optional): Error information if
+      error_details_json (Optional[dict[str, Any]], optional): Error information if
           applicable. Defaults to None.
       message (Optional[str], optional): Human-readable message. Defaults to None.
       duration_ms (Optional[int], optional): Duration of the operation in milliseconds.
@@ -787,7 +787,7 @@ async def get_schedule_history(
   schedule_entry_accession_id: uuid.UUID,
   limit: int = 100,
   offset: int = 0,
-) -> List[ScheduleHistoryOrm]:
+) -> list[ScheduleHistoryOrm]:
   """Get scheduling history for a specific schedule entry.
 
   Args:
@@ -797,13 +797,13 @@ async def get_schedule_history(
       offset (int, optional): Number of results to skip. Defaults to 0.
 
   Returns:
-      List[ScheduleHistoryOrm]: List of history entries for the schedule entry.
+      list[ScheduleHistoryOrm]: List of history entries for the schedule entry.
 
   """
   stmt = (
     select(ScheduleHistoryOrm)
     .filter(
-      ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry_accession_id
+      ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry_accession_id,
     )
     .order_by(desc(ScheduleHistoryOrm.timestamp))
     .offset(offset)
@@ -818,7 +818,7 @@ async def get_scheduling_metrics(
   db: AsyncSession,
   start_time: datetime,
   end_time: datetime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
   """Get scheduling metrics for a time period.
 
   Args:
@@ -827,7 +827,7 @@ async def get_scheduling_metrics(
       end_time (datetime): The end of the time period to analyze.
 
   Returns:
-      Dict[str, Any]: Dictionary containing scheduling metrics including status counts,
+      dict[str, Any]: Dictionary containing scheduling metrics including status counts,
           average durations, error counts, and total events.
 
   """
@@ -838,7 +838,7 @@ async def get_scheduling_metrics(
       and_(
         ScheduleHistoryOrm.timestamp >= start_time,
         ScheduleHistoryOrm.timestamp <= end_time,
-      )
+      ),
     )
     .group_by(ScheduleHistoryOrm.to_status)
   )
@@ -854,7 +854,7 @@ async def get_scheduling_metrics(
       ScheduleHistoryOrm.timestamp >= start_time,
       ScheduleHistoryOrm.timestamp <= end_time,
       ScheduleHistoryOrm.duration_ms.isnot(None),
-    )
+    ),
   )
 
   avg_result = await db.execute(avg_stmt)
@@ -866,7 +866,7 @@ async def get_scheduling_metrics(
       ScheduleHistoryOrm.timestamp >= start_time,
       ScheduleHistoryOrm.timestamp <= end_time,
       ScheduleHistoryOrm.error_details.isnot(None),
-    )
+    ),
   )
 
   error_result = await db.execute(error_count_stmt)

@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def base_deck_type_data() -> Dict[str, Any]:
+def base_deck_type_data() -> dict[str, Any]:
   """Provides a base dictionary of valid data for creating a deck type definition."""
   return {
     "python_fqn": f"pylabrobot.resources.hamilton.STARDeck_{uuid.uuid4()}",
@@ -36,7 +36,7 @@ def base_deck_type_data() -> Dict[str, Any]:
 
 @pytest.fixture
 async def existing_deck_type(
-  db: AsyncSession, base_deck_type_data: Dict[str, Any]
+  db: AsyncSession, base_deck_type_data: dict[str, Any],
 ) -> DeckTypeDefinitionOrm:
   """Creates a DeckTypeDefinitionOrm in the DB for tests that need a pre-existing record."""
   deck_type = await create_deck_type_definition(db=db, **base_deck_type_data)
@@ -47,7 +47,7 @@ class TestDeckTypeDefinitionService:
   """Test suite for deck type definition service functions."""
 
   async def test_create_deck_type_definition_success(
-    self, db: AsyncSession, base_deck_type_data: Dict[str, Any]
+    self, db: AsyncSession, base_deck_type_data: dict[str, Any],
   ):
     """Test successful creation of a deck type definition with minimal data."""
     created_deck_type = await create_deck_type_definition(
@@ -62,7 +62,7 @@ class TestDeckTypeDefinitionService:
     assert created_deck_type.accession_id is not None
 
   async def test_create_deck_type_with_all_args_and_positions(
-    self, db: AsyncSession, base_deck_type_data: Dict[str, Any]
+    self, db: AsyncSession, base_deck_type_data: dict[str, Any],
   ):
     """Test creating a deck type with all optional arguments, including positions."""
     position_data = [
@@ -71,7 +71,7 @@ class TestDeckTypeDefinitionService:
     ]
     # FIX: Explicitly provide arg_type to satisfy linter/constructor requirements.
     pos_config = PositioningConfig(
-      method_name="get_slot", arg_name="slot_name", arg_type="str", params={}
+      method_name="get_slot", arg_name="slot_name", arg_type="str", params={},
     )
     base_deck_type_data["position_definitions_data"] = position_data
     base_deck_type_data["positioning_config"] = pos_config
@@ -92,7 +92,7 @@ class TestDeckTypeDefinitionService:
     }
 
   async def test_create_deck_type_fails_on_duplicate_fqn(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test that creating a deck type with a duplicate FQN raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
@@ -103,7 +103,7 @@ class TestDeckTypeDefinitionService:
       )
 
   async def test_read_deck_type_definition(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test reading a deck type definition by its ID."""
     read_deck = await read_deck_type_definition(db, existing_deck_type.accession_id)
@@ -112,11 +112,11 @@ class TestDeckTypeDefinitionService:
     assert read_deck.display_name == existing_deck_type.display_name
 
   async def test_read_deck_type_definition_by_fqn(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test reading a deck type definition by its FQN."""
     read_deck = await read_deck_type_definition_by_fqn(
-      db, existing_deck_type.pylabrobot_deck_fqn
+      db, existing_deck_type.pylabrobot_deck_fqn,
     )
     assert read_deck is not None
     assert read_deck.pylabrobot_deck_fqn == existing_deck_type.pylabrobot_deck_fqn
@@ -128,7 +128,7 @@ class TestDeckTypeDefinitionService:
     assert await read_deck_type_definition_by_fqn(db, "non.existent.fqn") is None
 
   async def test_update_deck_type_definition(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test updating attributes of an existing deck type."""
     updated_data = {
@@ -154,7 +154,7 @@ class TestDeckTypeDefinitionService:
     )
 
   async def test_update_deck_type_replaces_positions(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test that updating with new position data replaces the old positions."""
     # Add initial positions
@@ -167,7 +167,7 @@ class TestDeckTypeDefinitionService:
     )
 
     refreshed_deck = await read_deck_type_definition(
-      db, existing_deck_type.accession_id
+      db, existing_deck_type.accession_id,
     )
     # FIX: Add assertion to guard against None type.
     assert refreshed_deck is not None
@@ -199,7 +199,7 @@ class TestDeckTypeDefinitionService:
     }
 
   async def test_update_fails_on_fqn_conflict(
-    self, db: AsyncSession, base_deck_type_data: Dict[str, Any]
+    self, db: AsyncSession, base_deck_type_data: dict[str, Any],
   ):
     """Test that updating an FQN to one that already exists fails."""
     deck1_data = base_deck_type_data.copy()
@@ -218,7 +218,7 @@ class TestDeckTypeDefinitionService:
       )
 
   async def test_list_deck_type_definitions(
-    self, db: AsyncSession, base_deck_type_data: Dict[str, Any]
+    self, db: AsyncSession, base_deck_type_data: dict[str, Any],
   ):
     """Test listing deck type definitions with pagination."""
     # Ensure at least 2 exist
@@ -237,7 +237,7 @@ class TestDeckTypeDefinitionService:
     assert offset_defs[0].accession_id != limited_defs[0].accession_id
 
   async def test_delete_deck_type_definition(
-    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm
+    self, db: AsyncSession, existing_deck_type: DeckTypeDefinitionOrm,
   ):
     """Test deleting a deck type definition."""
     deck_type_id = existing_deck_type.accession_id

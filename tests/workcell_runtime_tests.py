@@ -7,18 +7,18 @@ from praxis.backend.core.workcell_runtime import WorkcellRuntime, _get_class_fro
 
 # Dependent ORM-like Mocks
 ManagedDeviceOrmMock = MagicMock
-ResourceInstanceOrmMock = MagicMock
+ResourceOrmMock = MagicMock
 
 # Enums
 from praxis.backend.database_models.asset_management_orm import (
-    ManagedDeviceStatusEnum, ResourceInstanceStatusEnum
+    ManagedDeviceStatusEnum, ResourceStatusEnum
 )
 
 # Mock PLR classes
 @pytest.fixture
 def mock_plr_resource_class():
     klass = MagicMock()
-    klass.return_value = MagicMock(name="mock_plr_resource_instance") # Instance
+    klass.return_value = MagicMock(name="mock_plr_resource_instance") #
     return klass
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def mock_ads_service_wcr():
     # Patch 'ads' where it's used inside workcell_runtime.py
     with patch('praxis.backend.core.workcell_runtime.ads') as mock_ads:
         mock_ads.update_managed_machine_status.return_value = MagicMock(spec=ManagedDeviceOrmMock)
-        mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceInstanceOrmMock)
+        mock_ads.update_resource_instance_location_and_status.return_value = MagicMock(spec=ResourceOrmMock)
         yield mock_ads
 
 @pytest.fixture
@@ -111,7 +111,7 @@ class TestWorkcellRuntimeDeviceHandling:
         with patch('praxis.backend.core.workcell_runtime.Deck', spec=True) as ActualDeckClassMocked:
             # Make our mock_plr_deck_class's instance appear as an instance of the actual (mocked) Deck
             mock_instance = mock_plr_deck_class.return_value # This is the instance of MagicMock that is the "class"
-            mock_instance.name = "TestDeckInstance" # Ensure it has a name attribute like a Resource
+            mock_instance.name = "TestDeck" # Ensure it has a name attribute like a Resource
 
             # Configure _get_class_from_fqn to return our mock_plr_deck_class (which is a MagicMock itself)
             mock_get_class.return_value = mock_plr_deck_class
@@ -168,7 +168,7 @@ class TestWorkcellRuntimeResourceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock # Added ads mock
     ):
         mock_get_class.return_value = mock_plr_resource_class
-        resource_orm = ResourceInstanceOrmMock(id=1, user_assigned_name="Plate1", name="some.ResourceFQN") # Name used for instance
+        resource_orm = ResourceOrmMock(id=1, user_assigned_name="Plate1", name="some.ResourceFQN") # Name used for instance
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "some.ResourceFQN") # Pass FQN
 
@@ -182,7 +182,7 @@ class TestWorkcellRuntimeResourceHandling:
         self, mock_get_class: MagicMock, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         mock_get_class.side_effect = ImportError("Cannot import resource class")
-        resource_orm = ResourceInstanceOrmMock(id=2, user_assigned_name="BadPlate", name="bad.fqn.Resource")
+        resource_orm = ResourceOrmMock(id=2, user_assigned_name="BadPlate", name="bad.fqn.Resource")
 
         plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "bad.fqn.Resource")
 
@@ -192,7 +192,7 @@ class TestWorkcellRuntimeResourceHandling:
         mock_ads_service_wcr.update_resource_instance_location_and_status.assert_called_once_with(
             db=workcell_runtime.db_session,
             resource_instance_accession_id=2,
-            new_status=ResourceInstanceStatusEnum.ERROR,
+            new_status=ResourceStatusEnum.ERROR,
             status_details="Failed to create PLR object for 'BadPlate' using FQN 'bad.fqn.Resource': Cannot import resource class"
         )
 
@@ -203,7 +203,7 @@ class TestWorkcellRuntimeResourceHandling:
         workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
     ):
         # Setup a mock deck object that is an instance of the (mocked) Deck
-        mock_deck_instance = MagicMock(spec=MockActualDeck) # Instance that passes isinstance checks
+        mock_deck_instance = MagicMock(spec=MockActualDeck) #  that passes isinstance checks
         mock_deck_instance.name = "TestDeck"
         mock_deck_instance.assign_child_resource = MagicMock()
 
@@ -216,7 +216,7 @@ class TestWorkcellRuntimeResourceHandling:
 
         mock_deck_instance.assign_child_resource.assert_called_once_with(resource=mock_resource_plr_obj, slot="A1")
         mock_ads_service_wcr.update_resource_instance_location_and_status.assert_called_once_with(
-            workcell_runtime.db_session, resource_instance_accession_id, ResourceInstanceStatusEnum.AVAILABLE_ON_DECK,
+            workcell_runtime.db_session, resource_instance_accession_id, ResourceStatusEnum.AVAILABLE_ON_DECK,
             location_machine_accession_id=10, current_deck_slot_name="A1"
         )
 

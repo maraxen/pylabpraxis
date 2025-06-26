@@ -28,10 +28,10 @@ class TestPraxisState:
       PraxisState(run_accession_id="   ")  # type: ignore
 
   def test_init_connects_to_redis_and_loads_initial_state(
-    self, mock_redis_client: MagicMock
+    self, mock_redis_client: MagicMock,
   ):
     mock_redis_client.get.return_value = json.dumps(
-      {"initial_key": "initial_value"}
+      {"initial_key": "initial_value"},
     ).encode("utf-8")
 
     state = PraxisState(run_accession_id="test_run_123")
@@ -40,7 +40,7 @@ class TestPraxisState:
     mock_redis_client.get.assert_called_once_with("praxis_state:test_run_123")
     assert state.to_dict() == {"initial_key": "initial_value"}
     assert state._data == {
-      "initial_key": "initial_value"
+      "initial_key": "initial_value",
     }  # Check internal representation too
 
   def test_init_handles_empty_state_from_redis(self, mock_redis_client: MagicMock):
@@ -58,7 +58,7 @@ class TestPraxisState:
   def test_init_handles_redis_connection_error(self, mock_redis_client: MagicMock):
     # Configure the constructor mock to make ping raise ConnectionError
     mock_redis_client.ping.side_effect = redis.exceptions.ConnectionError(
-      "Test connection error"
+      "Test connection error",
     )
 
     with pytest.raises(
@@ -84,14 +84,14 @@ class TestPraxisState:
 
     assert state._data["my_key"] == "my_value"
     mock_redis_client.set.assert_called_once_with(
-      "praxis_state:test_run_set", json.dumps({"my_key": "my_value"}).encode("utf-8")
+      "praxis_state:test_run_set", json.dumps({"my_key": "my_value"}).encode("utf-8"),
     )
 
     state["another_key"] = {"nested": 123}
     mock_redis_client.set.assert_called_with(
       "praxis_state:test_run_set",
       json.dumps({"my_key": "my_value", "another_key": {"nested": 123}}).encode(
-        "utf-8"
+        "utf-8",
       ),
     )
     assert state._data["another_key"] == {"nested": 123}
@@ -114,7 +114,7 @@ class TestPraxisState:
 
     assert "key_to_del" not in state._data
     mock_redis_client.set.assert_called_once_with(
-      "praxis_state:test_run_del", json.dumps({"key1": "val1"}).encode("utf-8")
+      "praxis_state:test_run_del", json.dumps({"key1": "val1"}).encode("utf-8"),
     )
 
   def test_get_method(self, mock_redis_client: MagicMock):
@@ -128,7 +128,7 @@ class TestPraxisState:
 
   def test_update_method_saves_to_redis(self, mock_redis_client: MagicMock):
     mock_redis_client.get.return_value = json.dumps({"key1": "val1_orig"}).encode(
-      "utf-8"
+      "utf-8",
     )
     state = PraxisState(run_accession_id="test_run_update")
 
@@ -137,7 +137,7 @@ class TestPraxisState:
     expected_data = {"key1": "val1_new", "key2": "val2"}
     assert state.to_dict() == expected_data
     mock_redis_client.set.assert_called_once_with(
-      "praxis_state:test_run_update", json.dumps(expected_data).encode("utf-8")
+      "praxis_state:test_run_update", json.dumps(expected_data).encode("utf-8"),
     )
 
   def test_to_dict_returns_copy(self, mock_redis_client: MagicMock):
@@ -172,7 +172,7 @@ class TestPraxisState:
 
     expected_data = {"my_attr": "attr_value"}
     mock_redis_client.set.assert_called_once_with(
-      "praxis_state:test_run_attr", json.dumps(expected_data).encode("utf-8")
+      "praxis_state:test_run_attr", json.dumps(expected_data).encode("utf-8"),
     )
 
   def test_attribute_access_get_non_existent(self, mock_redis_client: MagicMock):
@@ -190,7 +190,7 @@ class TestPraxisState:
       "new_accession_id"  # Should be handled by super().__setattr__
     )
     state._data = {
-      "internal_override": "danger"
+      "internal_override": "danger",
     }  # Should be handled by super().__setattr__
 
     assert state.run_accession_id == "new_accession_id"

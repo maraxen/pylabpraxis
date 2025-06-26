@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Well
@@ -22,10 +22,8 @@ async def dilution_checks(
   target_wells: list[int],
   mix_cycles: int,
   tip_rack: TipRack,
-  source_volumes: Optional[float | list[float]] = None,
-  dilution_axis: Optional[
-    Literal["row", "column", "x", "y", 0, 1, "optimal"]
-  ] = "optimal",
+  source_volumes: float | list[float] | None = None,
+  dilution_axis: Literal["row", "column", "x", "y", 0, 1, "optimal"] | None = "optimal",
 ):
   """Checks for errors in the dilution series functions.
 
@@ -77,7 +75,7 @@ async def find_optimal_dilution_strategy(
   target_plate: Plate,
   variables_volumes: float | list[float],
   undiluted_source: bool = True,
-  variable_accession_ids: Optional[list[str]] = None,
+  variable_accession_ids: list[str] | None = None,
 ) -> dict[str, dict]:
   """Finds the optimal dilution strategy for a dilution series and prints the details for what wells
   to use for each variable undiluted or initial dilution source.
@@ -99,7 +97,7 @@ async def find_optimal_dilution_strategy(
   if n_dilutions * n_variables > target_plate.num_items:
     raise ValueError("Number of dilutions exceeds number of wells in plate")
   dilution_factors, variables_volumes = await coerce_to_list(
-    [dilution_factors, variables_volumes]
+    [dilution_factors, variables_volumes],
   )
   assert isinstance(dilution_factors, list) and isinstance(variables_volumes, list)
   dilution_factors, variables_volumes = await check_list_length(
@@ -162,7 +160,7 @@ async def optimal_dilution_transfer(
   target_wells: list[int],
   dilution_tip_rack: TipRack,
   mix_cycles: int = 10,
-  source_volumes: Optional[float | list[float]] = None,
+  source_volumes: float | list[float] | None = None,
 ):
   pass
 
@@ -180,14 +178,12 @@ async def antigen_dilution_series(
   dilution_plate: Plate,
   buffer_tips: TipRack,
   dilution_tips: TipRack,
-  dilution_axis: Optional[
-    Literal["row", "column", "x", "y", 0, 1, "optimal"]
-  ] = "optimal",
+  dilution_axis: Literal["row", "column", "x", "y", 0, 1, "optimal"] | None = "optimal",
   single_buffer: bool = True,
   use_96: bool = True,
 ):
   antigen_volumes, dilution_factors = await coerce_to_list(
-    [antigen_volumes, dilution_factors]
+    [antigen_volumes, dilution_factors],
   )
   assert isinstance(antigen_volumes, list) and isinstance(dilution_factors, list), (
     "Antigen volumes and dilution factors must be lists"
@@ -260,11 +256,11 @@ async def antigen_dilution_series(
   elif len(set(buffer_transfer_volumes)) != 1 and use_96:
     raise ValueError(
       "Buffer transfer volumes not equal but 96 transfer head was specified \
-      for buffer transfer"
+      for buffer transfer",
     )
   else:
     raise NotImplementedError(
-      "More complex dilution factors per variable not implemented"
+      "More complex dilution factors per variable not implemented",
     )
 
 
@@ -282,7 +278,7 @@ async def transfer_buffer96(
     raise RuntimeError("Buffer volume insufficient")
   await liquid_handler.pick_up_tips96(tip_rack=tip_rack)
   await liquid_handler.aspirate96(
-    resource=buffer_reservoir, volume=buffer_transfer_volume
+    resource=buffer_reservoir, volume=buffer_transfer_volume,
   )
   await liquid_handler.dispense96(resource=target_plate, volume=buffer_transfer_volume)
   if return_tips:
@@ -297,7 +293,7 @@ async def serial_dilution(
   variable_dict: dict[str, dict],
   n_dilutions: int,
   dilution_factors: float | list[float],
-  source_volumes: Optional[float | list[float]] = None,
+  source_volumes: float | list[float] | None = None,
   mix_cycles: int = 10,
 ):
   """Completes a serial dilution. Function assumes you are diluting from the top row of the source plate
@@ -319,11 +315,11 @@ async def serial_dilution(
   if source_volumes is None:
     source_volumes = [plate[0][0].max_volume] * len(variable_dict)
   dilution_factors, source_volumes = await coerce_to_list(
-    [dilution_factors, source_volumes]
+    [dilution_factors, source_volumes],
   )
   assert isinstance(dilution_factors, list) and isinstance(source_volumes, list)
   dilution_factors, source_volumes = await check_list_length(
-    [dilution_factors, source_volumes], True, len(variable_dict)
+    [dilution_factors, source_volumes], True, len(variable_dict),
   )
   initial_wells = [variable_dict[var]["initial_well"] for var in variable_dict]
   tip_spots = await tip_mapping(tips=tips, sources=initial_wells, source_plate=plate)
@@ -341,7 +337,7 @@ async def serial_dilution(
       raise ValueError("Invalid dilution strategy")
   print([variable_dict[var]["tip_spot"] for var in single_row])
   await liquid_handler.pick_up_tips(
-    tip_spots=[variable_dict[var]["tip_spot"] for var in single_row]
+    tip_spots=[variable_dict[var]["tip_spot"] for var in single_row],
   )
   for i in range(n_dilutions - 1):
     column_from = i * plate.num_items_y
@@ -356,9 +352,9 @@ async def serial_dilution(
     mix_volume = [int(dilution_volumes[j] * 0.5 * 10) for j in range(len(single_row))]
     mix_speed = [1200] * len(single_row)
     if i == 0:
-      for well, var in zip(plate[wells_from], single_row):
-        setattr(well, "variable_accession_id", variable_dict[var]["id"])
-        setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
+      for well, var in zip(plate[wells_from], single_row, strict=False):
+        well.variable_accession_id = variable_dict[var]["id"]
+        well.dilution_factor = variable_dict[var]["dilution_factor"] ** i
       await liquid_handler.aspirate(
         resources=plate[wells_from],
         vols=dilution_volumes,
@@ -375,77 +371,76 @@ async def serial_dilution(
       mix_volume=mix_volume,
       mix_speed=mix_speed,
     )
-    for well, var in zip(plate[wells_to], single_row):
-      setattr(well, "variable_accession_id", variable_dict[var]["id"])
-      setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
+    for well, var in zip(plate[wells_to], single_row, strict=False):
+      well.variable_accession_id = variable_dict[var]["id"]
+      well.dilution_factor = variable_dict[var]["dilution_factor"] ** i
   await liquid_handler.drop_tips(
-    tip_spots=[variable_dict[var]["tip_spot"] for var in single_row]
+    tip_spots=[variable_dict[var]["tip_spot"] for var in single_row],
   )
   if len(snaked) == 0:
     return
   if len(snaked) > tips.num_items_y:
     raise NotImplementedError("More variables than tips in tip rack")
-  else:
-    await liquid_handler.pick_up_tips(
-      tip_spots=[variable_dict[var]["tip_spot"] for var in snaked]
-    )
-    backward, next_rows = False, False
-    dilution_volumes = [variable_dict[var]["dilution_volume"] for var in snaked]
-    wells_from = [variable_dict[var]["initial_well_index"] for var in snaked]
-    mix_volume = [int(dilution_volumes[j] * 0.5 * 10) for j in range(len(snaked))]
-    mix_speed = [1200] * len(snaked)
-    for i in range(n_dilutions - 1):
-      if any(
-        well + ((-1 if backward else 1) * plate.num_items_y) > plate.num_items
-        for well in wells_from
-      ):
-        next_rows = True
-        backward = True
-      elif backward and any(
-        well + ((-1 if backward else 1) * plate.num_items_y)
-        < variable_dict[snaked[j]]["initial_well_index"]
-        for j, well in enumerate(wells_from)
-      ):
-        next_rows = True
-        backward = False
-      if backward and not next_rows:
-        wells_to = [well - plate.num_items_y for well in wells_from]
-      if not backward and not next_rows:
-        wells_to = [well + plate.num_items_y for well in wells_from]
-      if next_rows:
-        wells_to = [well + len(snaked) for well in wells_from]
-        next_rows = False
-      if i == 0:
-        for well, var in zip(plate[wells_from], snaked):
-          setattr(well, "variable_accession_id", variable_dict[var]["id"])
-          setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
-        await liquid_handler.aspirate(
-          resources=plate[wells_from],
-          use_channels=list(range(len(snaked))),
-          vols=dilution_volumes,
-          homogenization_cycles=[mix_cycles] * len(snaked),
-          homogenization_volume=mix_volume,
-        )
-      else:
-        await liquid_handler.aspirate(
-          resources=plate[wells_from],
-          use_channels=list(range(len(snaked))),
-          vols=dilution_volumes,
-        )
-      await liquid_handler.dispense(
-        resources=plate[wells_to],
+  await liquid_handler.pick_up_tips(
+    tip_spots=[variable_dict[var]["tip_spot"] for var in snaked],
+  )
+  backward, next_rows = False, False
+  dilution_volumes = [variable_dict[var]["dilution_volume"] for var in snaked]
+  wells_from = [variable_dict[var]["initial_well_index"] for var in snaked]
+  mix_volume = [int(dilution_volumes[j] * 0.5 * 10) for j in range(len(snaked))]
+  mix_speed = [1200] * len(snaked)
+  for i in range(n_dilutions - 1):
+    if any(
+      well + ((-1 if backward else 1) * plate.num_items_y) > plate.num_items
+      for well in wells_from
+    ):
+      next_rows = True
+      backward = True
+    elif backward and any(
+      well + ((-1 if backward else 1) * plate.num_items_y)
+      < variable_dict[snaked[j]]["initial_well_index"]
+      for j, well in enumerate(wells_from)
+    ):
+      next_rows = True
+      backward = False
+    if backward and not next_rows:
+      wells_to = [well - plate.num_items_y for well in wells_from]
+    if not backward and not next_rows:
+      wells_to = [well + plate.num_items_y for well in wells_from]
+    if next_rows:
+      wells_to = [well + len(snaked) for well in wells_from]
+      next_rows = False
+    if i == 0:
+      for well, var in zip(plate[wells_from], snaked, strict=False):
+        well.variable_accession_id = variable_dict[var]["id"]
+        well.dilution_factor = variable_dict[var]["dilution_factor"] ** i
+      await liquid_handler.aspirate(
+        resources=plate[wells_from],
         use_channels=list(range(len(snaked))),
         vols=dilution_volumes,
-        mix_cycles=[mix_cycles] * len(snaked),
-        mix_volume=mix_volume,
+        homogenization_cycles=[mix_cycles] * len(snaked),
+        homogenization_volume=mix_volume,
       )
-      for well, var in zip(plate[wells_to], snaked):
-        setattr(well, "variable_accession_id", variable_dict[var]["id"])
-        setattr(well, "dilution_factor", variable_dict[var]["dilution_factor"] ** i)
-      wells_from = wells_to
-    await liquid_handler.drop_tips(
-      tip_spots=[variable_dict[var]["tip_spot"] for var in snaked]
+    else:
+      await liquid_handler.aspirate(
+        resources=plate[wells_from],
+        use_channels=list(range(len(snaked))),
+        vols=dilution_volumes,
+      )
+    await liquid_handler.dispense(
+      resources=plate[wells_to],
+      use_channels=list(range(len(snaked))),
+      vols=dilution_volumes,
+      mix_cycles=[mix_cycles] * len(snaked),
+      mix_volume=mix_volume,
     )
+    for well, var in zip(plate[wells_to], snaked, strict=False):
+      well.variable_accession_id = variable_dict[var]["id"]
+      well.dilution_factor = variable_dict[var]["dilution_factor"] ** i
+    wells_from = wells_to
+  await liquid_handler.drop_tips(
+    tip_spots=[variable_dict[var]["tip_spot"] for var in snaked],
+  )
 
 
 async def handle_dilution(
@@ -469,17 +464,17 @@ async def handle_dilution(
   for i, antigen_accession_id in enumerate(antigen_accession_ids):
     if constant_dilution:
       buffer_transfer_volumes = [
-        antigen_volumes[i] - antigen_volumes[i] / dilution_factors[i]
+        antigen_volumes[i] - antigen_volumes[i] / dilution_factors[i],
       ] * n_dilutions
     else:
       raise NotImplementedError(
-        "More complex dilution factors per variable not implemented"
+        "More complex dilution factors per variable not implemented",
       )
     i
     column_index = i * dilution_plate.num_items_y
     dilution_wells = [j + (column_index) for j in range(n_dilutions)]
     await liquid_handler.pick_up_tips(
-      tip_spots=buffer_tips[column_index : column_index + n_dilutions]
+      tip_spots=buffer_tips[column_index : column_index + n_dilutions],
     )
     await transfer_buffer(
       liquid_handler=liquid_handler,
@@ -490,7 +485,7 @@ async def handle_dilution(
       buffer_total_volume=buffer_total_volume,
     )
     await liquid_handler.drop_tips(
-      tip_spots=buffer_tips[column_index : column_index + n_dilutions]
+      tip_spots=buffer_tips[column_index : column_index + n_dilutions],
     )
   await dilution_series(
     liquid_handler=liquid_handler,
@@ -515,19 +510,19 @@ async def transfer_buffer(
   buffer_wells: int | str | list[int] | list[str] | list[Well],
   mix_cycles: int = 0,
   mix_proportion: float = 0.5,
-  mix_volumes: Optional[float | list[float]] = None,
+  mix_volumes: float | list[float] | None = None,
   single_buffer: bool = True,
 ):
   if single_buffer:
     if isinstance(buffer_total_volume, list):
       if len(buffer_total_volume) > 1:
         raise ValueError(
-          "Total buffer volume variable list, but single buffer specified"
+          "Total buffer volume variable list, but single buffer specified",
         )
     if sum(buffer_transfer_volumes) > buffer_total_volume:
       raise Value("Buffer volume insufficient")
   await liquid_handler.aspirate(
-    resources=buffer_reservoir[buffer_wells], vols=buffer_volumes
+    resources=buffer_reservoir[buffer_wells], vols=buffer_volumes,
   )
   await liquid_handler.dispense(target_plate[target_wells], vols=buffer_volumes)
 
@@ -543,7 +538,7 @@ async def transfer_top_row(
   if source_plate.num_items_x < n_columns or target_plate.num_items_x < n_columns:
     raise ExperimentError(
       f"{'Source' if source_plate.num_items_x < n_columns else 'Target'} \
-      plate does not have enough columns"
+      plate does not have enough columns",
     )
   for i in range(n_columns):
     liquid_handler.pick_up_tips(tip_spots=tips[i * n_columns])
@@ -564,8 +559,8 @@ async def dilution_series(
   dilution_factors: float | list[float],
   source_plate: Plate,  # TODO: allow for reservoir
   mix_cycles: int = 10,
-  source_volumes: Optional[int | list[int]] = None,
-  target_plate: Optional[Plate] = None,
+  source_volumes: int | list[int] | None = None,
+  target_plate: Plate | None = None,
 ):
   """Completes a dilution series. If using replicates, these are treated as separate dilution series.
   Function assumes you are diluting from the top row of the source plate and diluting down the
@@ -593,11 +588,11 @@ async def dilution_series(
     raise ExperimentError("Liquid handler not set up.")
   if n_dilutions > source_plate.num_items_y + 1:
     raise ExperimentError(
-      "Number of dilutions exceeds number of wells per column in plate."
+      "Number of dilutions exceeds number of wells per column in plate.",
     )
   if n_replicates > source_plate.num_items_x:
     raise ExperimentError(
-      "Number of replicates exceeds number of wells per row in plate."
+      "Number of replicates exceeds number of wells per row in plate.",
     )
   if not target_plate or target_plate == source_plate:
     target_plate = source_plate
@@ -626,7 +621,7 @@ async def dilution_series(
       )
       if j != len(range(n_dilutions)):
         await liquid_handler.dispense(
-          target_plate[well_number + 1], vols=[transfer_volume]
+          target_plate[well_number + 1], vols=[transfer_volume],
         )
     await liquid_handler.dispense(
       target_plate[well_number + 1],

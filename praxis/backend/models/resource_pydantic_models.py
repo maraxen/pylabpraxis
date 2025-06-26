@@ -5,7 +5,7 @@ from their generic definitions to specific physical instances and their
 inventory data.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
   from .machine_orm import MachineStatusEnum
 
 # =============================================================================
-# Resource Instance Models
+# Resource  Models
 # =============================================================================
 
 
@@ -25,13 +25,13 @@ class ResourceBase(AssetBase):
   """Base model for a resource instance."""
 
   status: ResourceStatusEnum = Field(default=ResourceStatusEnum.UNKNOWN)
-  resource_definition_accession_id: Optional[UUID7] = None
-  machine_counterpart_accession_id: Optional[UUID7] = None
-  deck_counterpart_accession_id: Optional[UUID7] = None
-  parent_accession_id: Optional[UUID7] = None
-  plr_state: Optional[dict] = None
-  plr_definition: Optional[dict] = None
-  properties_json: Optional[dict] = None
+  resource_definition_accession_id: UUID7 | None = None
+  machine_counterpart_accession_id: UUID7 | None = None
+  deck_counterpart_accession_id: UUID7 | None = None
+  parent_accession_id: UUID7 | None = None
+  plr_state: dict | None = None
+  plr_definition: dict | None = None
+  properties_json: dict | None = None
 
   class Config:
     """Configuration for Pydantic model behavior."""
@@ -48,14 +48,14 @@ class ResourceCreate(ResourceBase):
     description="Indicates if this resource is also registered as a machine instance.",
   )
   # Fields for creating a machine counterpart if is_machine is True
-  machine_fqn: Optional[str] = Field(
+  machine_fqn: str | None = Field(
     default=None,
     description=(
       "The FQN for the machine counterpart. Required if is_machine is True and no "
       "counterpart ID is provided."
     ),
   )
-  machine_properties_json: Optional[Dict[str, Any]] = Field(
+  machine_properties_json: dict[str, Any] | None = Field(
     default=None,
     description="Properties for the new machine counterpart.",
   )
@@ -68,14 +68,14 @@ class ResourceCreate(ResourceBase):
 class ResourceUpdate(AssetUpdate):
   """Model for updating a resource instance."""
 
-  status: Optional[ResourceStatusEnum] = None
-  resource_definition_accession_id: Optional[UUID7] = None
-  machine_counterpart_accession_id: Optional[UUID7] = None
-  deck_counterpart_accession_id: Optional[UUID7] = None
-  parent_accession_id: Optional[UUID7] = None
-  is_machine: Optional[bool] = None
-  machine_fqn: Optional[str] = None
-  machine_properties_json: Optional[Dict[str, Any]] = None
+  status: ResourceStatusEnum | None = None
+  resource_definition_accession_id: UUID7 | None = None
+  machine_counterpart_accession_id: UUID7 | None = None
+  deck_counterpart_accession_id: UUID7 | None = None
+  parent_accession_id: UUID7 | None = None
+  is_machine: bool | None = None
+  machine_fqn: str | None = None
+  machine_properties_json: dict[str, Any] | None = None
   machine_initial_status: Optional["MachineStatusEnum"] = None
 
 
@@ -83,12 +83,10 @@ class ResourceResponse(AssetResponse, ResourceBase):
   """Model for API responses for a resource instance."""
 
   parent: Optional["ResourceResponse"] = None
-  children: List["ResourceResponse"] = []
+  children: list["ResourceResponse"] = []
 
   class Config(AssetResponse.Config, ResourceBase.Config):
     """Pydantic configuration for ResourceResponse."""
-
-    pass
 
 
 ResourceResponse.model_rebuild()
@@ -105,18 +103,18 @@ class ResourceDefinitionBase(BaseModel):
   accession_id: UUID7
   name: str
   python_fqn: str
-  resource_type: Optional[str] = None
-  description: Optional[str] = None
+  resource_type: str | None = None
+  description: str | None = None
   is_consumable: bool = True
   is_machine: bool = False
-  nominal_volume_ul: Optional[float] = None
-  material: Optional[str] = None
-  manufacturer: Optional[str] = None
-  plr_definition_details_json: Optional[Dict[str, Any]] = None
-  size_x_mm: Optional[float] = None
-  size_y_mm: Optional[float] = None
-  size_z_mm: Optional[float] = None
-  model: Optional[str] = None
+  nominal_volume_ul: float | None = None
+  material: str | None = None
+  manufacturer: str | None = None
+  plr_definition_details_json: dict[str, Any] | None = None
+  size_x_mm: float | None = None
+  size_y_mm: float | None = None
+  size_z_mm: float | None = None
+  model: str | None = None
 
   class Config:
     """Pydantic configuration for ResourceDefinitionBase."""
@@ -128,23 +126,21 @@ class ResourceDefinitionBase(BaseModel):
 class ResourceDefinitionCreate(ResourceDefinitionBase):
   """Represents a resource definition for creation requests."""
 
-  pass
-
 
 class ResourceDefinitionUpdate(BaseModel):
   """Specifies the fields that can be updated for an existing resource definition."""
 
-  python_fqn: Optional[str] = None
-  resource_type: Optional[str] = None
-  description: Optional[str] = None
-  nominal_volume_ul: Optional[float] = None
-  material: Optional[str] = None
-  manufacturer: Optional[str] = None
-  plr_definition_details_json: Optional[Dict[str, Any]] = None
-  size_x_mm: Optional[float] = None
-  size_y_mm: Optional[float] = None
-  size_z_mm: Optional[float] = None
-  model: Optional[str] = None
+  python_fqn: str | None = None
+  resource_type: str | None = None
+  description: str | None = None
+  nominal_volume_ul: float | None = None
+  material: str | None = None
+  manufacturer: str | None = None
+  plr_definition_details_json: dict[str, Any] | None = None
+  size_x_mm: float | None = None
+  size_y_mm: float | None = None
+  size_z_mm: float | None = None
+  model: str | None = None
 
 
 class ResourceDefinitionResponse(ResourceDefinitionBase, TimestampedModel):
@@ -153,51 +149,49 @@ class ResourceDefinitionResponse(ResourceDefinitionBase, TimestampedModel):
   class Config(ResourceDefinitionBase.Config, TimestampedModel.Config):
     """Pydantic configuration for ResourceDefinitionResponse."""
 
-    pass
-
 
 class ResourceInventoryReagentItem(BaseModel):
   """Represents a single reagent item within resource inventory data."""
 
   reagent_accession_id: UUID7
-  reagent_name: Optional[str] = None
-  lot_number: Optional[str] = None
-  expiry_date: Optional[str] = None
-  supplier: Optional[str] = None
-  catalog_number: Optional[str] = None
-  date_received: Optional[str] = None
-  date_opened: Optional[str] = None
-  concentration: Optional[Dict[str, Any]] = None
-  initial_quantity: Dict[str, Any]
-  current_quantity: Dict[str, Any]
-  quantity_unit_is_volume: Optional[bool] = True
-  custom_fields: Optional[Dict[str, Any]] = None
+  reagent_name: str | None = None
+  lot_number: str | None = None
+  expiry_date: str | None = None
+  supplier: str | None = None
+  catalog_number: str | None = None
+  date_received: str | None = None
+  date_opened: str | None = None
+  concentration: dict[str, Any] | None = None
+  initial_quantity: dict[str, Any]
+  current_quantity: dict[str, Any]
+  quantity_unit_is_volume: bool | None = True
+  custom_fields: dict[str, Any] | None = None
 
 
 class ResourceInventoryItemCount(BaseModel):
   """Provides counts and usage information for items within a resource inventory."""
 
-  item_type: Optional[str] = None
-  initial_max_items: Optional[int] = None
-  current_available_items: Optional[int] = None
-  positions_used: Optional[List[str]] = None
+  item_type: str | None = None
+  initial_max_items: int | None = None
+  current_available_items: int | None = None
+  positions_used: list[str] | None = None
 
 
 class ResourceInventoryDataIn(BaseModel):
   """Represents inbound inventory data for a resource instance."""
 
-  praxis_inventory_schema_version: Optional[str] = "1.0"
-  reagents: Optional[List[ResourceInventoryReagentItem]] = None
-  item_count: Optional[ResourceInventoryItemCount] = None
-  consumable_state: Optional[str] = None
-  last_updated_by: Optional[str] = None
-  inventory_notes: Optional[str] = None
+  praxis_inventory_schema_version: str | None = "1.0"
+  reagents: list[ResourceInventoryReagentItem] | None = None
+  item_count: ResourceInventoryItemCount | None = None
+  consumable_state: str | None = None
+  last_updated_by: str | None = None
+  inventory_notes: str | None = None
 
 
 class ResourceInventoryDataOut(ResourceInventoryDataIn):
   """Represents outbound inventory data for a resource instance."""
 
-  last_updated_at: Optional[str] = None
+  last_updated_at: str | None = None
 
 
 class ResourceTypeInfo(BaseModel):
@@ -206,7 +200,7 @@ class ResourceTypeInfo(BaseModel):
   name: str
   parent_class: str
   can_create_directly: bool
-  constructor_params: Dict[str, Dict]
+  constructor_params: dict[str, dict]
   doc: str
   module: str
 
@@ -214,4 +208,4 @@ class ResourceTypeInfo(BaseModel):
 class ResourceCategoriesResponse(BaseModel):
   """Organizes resource types by category for categorization and discovery."""
 
-  categories: Dict[str, List[str]]
+  categories: dict[str, list[str]]

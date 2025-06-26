@@ -6,7 +6,6 @@ including authentication credentials, contact details, and account status.
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import UUID, Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,26 +26,26 @@ class UserOrm(Base):
   username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-  full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+  full_name: Mapped[str | None] = mapped_column(String, nullable=True)
   is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-  phone_number: Mapped[Optional[str]] = mapped_column(
+  phone_number: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     index=True,
     comment="User's phone number for SMS notifications",
   )
-  phone_carrier: Mapped[Optional[str]] = mapped_column(
+  phone_carrier: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     comment="User's phone carrier for SMS gateway emails, e.g., 'verizon', 'att'",
   )
 
-  created_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
+  created_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True), server_default=func.now(),
   )
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+  updated_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
   )
 
   def __repr__(self):

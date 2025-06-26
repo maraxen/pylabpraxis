@@ -8,7 +8,8 @@ import inspect
 import json
 import traceback
 import uuid
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -16,7 +17,6 @@ import praxis.backend.services as svc
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
 from praxis.backend.core.run_context import PraxisRunContext
-from praxis.backend.core.workcell import WorkcellView
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
   FunctionProtocolDefinitionModel,
@@ -53,7 +53,7 @@ class Orchestrator:
     db_session_factory: async_sessionmaker[AsyncSession],
     asset_manager: AssetManager,
     workcell_runtime: WorkcellRuntime,
-    protocol_code_manager: Optional[ProtocolCodeManager] = None,
+    protocol_code_manager: ProtocolCodeManager | None = None,
   ):
     """Initialize the Orchestrator.
 
@@ -79,10 +79,10 @@ class Orchestrator:
     self,
     db_session: AsyncSession,
     protocol_name: str,
-    version: Optional[str] = None,
-    commit_hash: Optional[str] = None,
-    source_name: Optional[str] = None,
-  ) -> Optional[FunctionProtocolDefinitionOrm]:
+    version: str | None = None,
+    commit_hash: str | None = None,
+    source_name: str | None = None,
+  ) -> FunctionProtocolDefinitionOrm | None:
     """Retrieve a protocol definition ORM from the database.
 
     Args:
@@ -117,8 +117,9 @@ class Orchestrator:
     )
 
   async def _prepare_protocol_code(
-    self, protocol_def_orm: FunctionProtocolDefinitionOrm
-  ) -> Tuple[Callable, FunctionProtocolDefinitionModel]:
+    self,
+    protocol_def_orm: FunctionProtocolDefinitionOrm,
+  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
     """Load the protocol code from its source using the ProtocolCodeManager.
 
     Args:
@@ -138,7 +139,7 @@ class Orchestrator:
   async def _initialize_run_context(
     self,
     protocol_run_orm: ProtocolRunOrm,
-    initial_state_data: Dict[str, Any],
+    initial_state_data: dict[str, Any],
     db_session: AsyncSession,
   ) -> PraxisRunContext:
     """Initialize PraxisState and PraxisRunContext for a protocol run."""
@@ -149,7 +150,8 @@ class Orchestrator:
     # Capture snapshot of workcell state
     current_workcell_snapshot = self.workcell_runtime.get_state_snapshot()
     await praxis_state.set(
-      "workcell_last_successful_snapshot", current_workcell_snapshot
+      "workcell_last_successful_snapshot",
+      current_workcell_snapshot,
     )
     logger.debug(
       "Workcell state snapshot captured and stored in PraxisState for run %s.",
@@ -164,7 +166,9 @@ class Orchestrator:
     )
 
   async def _handle_pre_execution_checks(
-    self, protocol_run_orm: ProtocolRunOrm, db_session: AsyncSession
+    self,
+    protocol_run_orm: ProtocolRunOrm,
+    db_session: AsyncSession,
   ) -> None:
     """Handle pause/cancel commands before main execution starts."""
     run_accession_id = protocol_run_orm.run_accession_id
@@ -174,7 +178,9 @@ class Orchestrator:
       logger.info("ORCH: Run %s PAUSED before execution.", run_accession_id)
       await clear_control_command(run_accession_id)
       await svc.update_protocol_run_status(
-        db_session, protocol_run_orm.accession_id, ProtocolRunStatusEnum.PAUSED
+        db_session,
+        protocol_run_orm.accession_id,
+        ProtocolRunStatusEnum.PAUSED,
       )
       await db_session.commit()
       while True:
@@ -190,7 +196,7 @@ class Orchestrator:
           )
           await db_session.commit()
           break
-        elif new_command == "CANCEL":
+        if new_command == "CANCEL":
           logger.info("ORCH: Run %s CANCELLED during pause.", run_accession_id)
           await clear_control_command(run_accession_id)
           await svc.update_protocol_run_status(
@@ -201,7 +207,7 @@ class Orchestrator:
           )
           await db_session.commit()
           raise ProtocolCancelledError(
-            f"Run {run_accession_id} cancelled by user during pause."
+            f"Run {run_accession_id} cancelled by user during pause.",
           )
     elif command == "CANCEL":
       logger.info("ORCH: Run %s CANCELLED before execution.", run_accession_id)
@@ -214,34 +220,28 @@ class Orchestrator:
       )
       await db_session.commit()
       raise ProtocolCancelledError(
-        f"Run {run_accession_id} cancelled by user before execution."
+        f"Run {run_accession_id} cancelled by user before execution.",
       )
 
   async def _execute_protocol_main_logic(
     self,
     protocol_run_orm: ProtocolRunOrm,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
-    input_parameters: Dict[str, Any],
+    input_parameters: dict[str, Any],
     praxis_state: PraxisState,
     run_context: PraxisRunContext,
     db_session: AsyncSession,
-  ) -> Tuple[Any, Dict[uuid.UUID, Any]]:  # Return result and acquired_assets_info
+  ) -> tuple[Any, dict[uuid.UUID, Any]]:  # Return result and acquired_assets_info
     """Execute the core protocol logic, including asset acquisition and function call."""
     run_accession_id = protocol_run_orm.run_accession_id
 
     callable_protocol_func, protocol_pydantic_def = await self._prepare_protocol_code(
-      protocol_def_orm
+      protocol_def_orm,
     )
 
     main_workcell_container = self.workcell_runtime.get_main_workcell()
     if not main_workcell_container:
       raise RuntimeError("Main Workcell container not available from WorkcellRuntime.")
-
-    workcell_view_for_protocol = WorkcellView(
-      parent_workcell=main_workcell_container,
-      protocol_name=protocol_pydantic_def.name,
-      required_assets=protocol_pydantic_def.assets,
-    )
 
     (
       prepared_args,
@@ -252,7 +252,6 @@ class Orchestrator:
       protocol_pydantic_def=protocol_pydantic_def,
       input_parameters=input_parameters,
       praxis_state=praxis_state,
-      workcell_view=workcell_view_for_protocol,
       protocol_run_accession_id=run_accession_id,
     )
 
@@ -261,16 +260,17 @@ class Orchestrator:
     await db_session.flush()
 
     # Load deck construction function if specified
-    deck_construction_func: Optional[Callable] = None
+    deck_construction_func: Callable | None = None
     if protocol_pydantic_def.deck_construction_function_fqn:
       deck_construction_func = self.protocol_code_manager._load_callable_from_fqn(
-        protocol_pydantic_def.deck_construction_function_fqn
+        protocol_pydantic_def.deck_construction_function_fqn,
       )
 
     # Execute deck construction function if provided
     if deck_construction_func:
       logger.info(
-        "ORCH: Executing deck construction function for run %s.", run_accession_id
+        "ORCH: Executing deck construction function for run %s.",
+        run_accession_id,
       )
       # Filter prepared_args to only include assets expected by deck_construction_func
       deck_construction_params = inspect.signature(deck_construction_func).parameters
@@ -279,7 +279,8 @@ class Orchestrator:
       }
       await deck_construction_func(**args_for_deck_construction)
       logger.info(
-        "ORCH: Deck construction function completed for run %s.", run_accession_id
+        "ORCH: Deck construction function completed for run %s.",
+        run_accession_id,
       )
 
     logger.info(
@@ -303,16 +304,15 @@ class Orchestrator:
     self,
     db_session: AsyncSession,
     protocol_pydantic_def: FunctionProtocolDefinitionModel,
-    input_parameters: Dict[str, Any],
+    input_parameters: dict[str, Any],
     praxis_state: PraxisState,
-    workcell_view: WorkcellView,
     protocol_run_accession_id: uuid.UUID,
-  ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], Dict[uuid.UUID, Any]]:
+  ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[uuid.UUID, Any]]:
     """Prepare arguments for protocol execution, including acquiring assets."""
     logger.info("Preparing arguments for protocol: %s", protocol_pydantic_def.name)
-    final_args: Dict[str, Any] = {}
-    state_dict_to_pass: Optional[Dict[str, Any]] = None
-    acquired_assets_details: Dict[uuid.UUID, Any] = {}
+    final_args: dict[str, Any] = {}
+    state_dict_to_pass: dict[str, Any] | None = None
+    acquired_assets_details: dict[uuid.UUID, Any] = {}
 
     for param_meta in protocol_pydantic_def.parameters:
       if param_meta.is_deck_param:
@@ -457,7 +457,8 @@ class Orchestrator:
         deck_config_orm_accession_id_to_apply: uuid.UUID
         if isinstance(deck_accession_identifier_from_user, str):
           deck_config_orm = await svc.read_deck_by_name(
-            db_session, deck_accession_identifier_from_user
+            db_session,
+            deck_accession_identifier_from_user,
           )
           if not deck_config_orm:
             raise ValueError(
@@ -469,7 +470,7 @@ class Orchestrator:
           deck_config_orm_accession_id_to_apply = deck_accession_identifier_from_user
 
         live_deck_object = await self.asset_manager.apply_deck_instance(
-          deck_instance_orm_accession_id=deck_config_orm_accession_id_to_apply,
+          deck_orm_accession_id=deck_config_orm_accession_id_to_apply,
           protocol_run_accession_id=protocol_run_accession_id,
         )
         final_args[deck_param_name] = live_deck_object
@@ -512,7 +513,8 @@ class Orchestrator:
     try:
       # Attempt to rollback workcell state
       assert isinstance(
-        praxis_state, PraxisState
+        praxis_state,
+        PraxisState,
       ), "praxis_state must be an instance of PraxisState."
       assert praxis_state is not None, "praxis_state must not be None."
       last_good_snapshot = praxis_state.get("workcell_last_successful_snapshot")
@@ -553,7 +555,7 @@ class Orchestrator:
             "User intervention needed to verify liquid levels and proceed."
           ),
           "traceback": traceback.format_exc(),
-        }
+        },
       )
     elif isinstance(e, PyLabRobotGenericError):
       logger.info(
@@ -567,18 +569,21 @@ class Orchestrator:
           "error_message": str(e),
           "details": "PyLabRobot operation failed.",
           "traceback": traceback.format_exc(),
-        }
+        },
       )
 
     await svc.update_protocol_run_status(
-      db_session, run_accession_id, final_run_status, status_details
+      db_session,
+      run_accession_id,
+      final_run_status,
+      status_details,
     )
 
   async def _finalize_protocol_run(  # This method was already correct, but its usage was not.
     self,
     protocol_run_orm: ProtocolRunOrm,
     praxis_state: PraxisState,
-    acquired_assets_info: Dict[uuid.UUID, Any],
+    acquired_assets_info: dict[uuid.UUID, Any],
     db_session: AsyncSession,
   ) -> None:
     """Finalize the protocol run, update timestamps, state, and release assets."""
@@ -616,7 +621,7 @@ class Orchestrator:
             )
           elif asset_type == "resource":
             await self.asset_manager.release_resource(
-              resource_instance_orm_accession_id=asset_orm_accession_id,
+              resource_orm_accession_id=asset_orm_accession_id,
               final_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
             )
           logger.info(
@@ -639,11 +644,11 @@ class Orchestrator:
   async def execute_protocol(
     self,
     protocol_name: str,
-    input_parameters: Optional[Dict[str, Any]] = None,
-    initial_state_data: Optional[Dict[str, Any]] = None,
-    protocol_version: Optional[str] = None,
-    commit_hash: Optional[str] = None,
-    source_name: Optional[str] = None,
+    input_parameters: dict[str, Any] | None = None,
+    initial_state_data: dict[str, Any] | None = None,
+    protocol_version: str | None = None,
+    commit_hash: str | None = None,
+    source_name: str | None = None,
   ) -> ProtocolRunOrm:
     """Execute a specified protocol.
 
@@ -680,7 +685,11 @@ class Orchestrator:
 
     async with self.db_session_factory() as db_session:
       protocol_def_orm = await self._get_protocol_definition_orm_from_db(
-        db_session, protocol_name, protocol_version, commit_hash, source_name
+        db_session,
+        protocol_name,
+        protocol_version,
+        commit_hash,
+        source_name,
       )
 
       if not protocol_def_orm or not protocol_def_orm.accession_id:
@@ -704,7 +713,9 @@ class Orchestrator:
 
       # Initialize run context
       run_context = await self._initialize_run_context(
-        protocol_run_db_obj, initial_state_data, db_session
+        protocol_run_db_obj,
+        initial_state_data,
+        db_session,
       )
       praxis_state = run_context.canonical_state  # For direct access in this method
 
@@ -715,12 +726,14 @@ class Orchestrator:
       await db_session.refresh(protocol_run_db_obj)
       if protocol_run_db_obj.status == ProtocolRunStatusEnum.PREPARING:
         await svc.update_protocol_run_status(
-          db_session, protocol_run_db_obj.accession_id, ProtocolRunStatusEnum.RUNNING
+          db_session,
+          protocol_run_db_obj.accession_id,
+          ProtocolRunStatusEnum.RUNNING,
         )
         await db_session.commit()
 
       result: Any = None
-      acquired_assets_info: Dict[uuid.UUID, Any] = {}
+      acquired_assets_info: dict[uuid.UUID, Any] = {}
 
       try:
         result, acquired_assets_info = await self._execute_protocol_main_logic(
@@ -741,11 +754,18 @@ class Orchestrator:
         pass  # Status already updated by the handler
       except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
-          run_accession_id, protocol_def_orm.name, e, praxis_state, db_session
+          run_accession_id,
+          protocol_def_orm.name,
+          e,
+          praxis_state,
+          db_session,
         )
       finally:
         await self._finalize_protocol_run(
-          protocol_run_db_obj, praxis_state, acquired_assets_info, db_session
+          protocol_run_db_obj,
+          praxis_state,
+          acquired_assets_info,
+          db_session,
         )
         try:
           await db_session.commit()
@@ -765,8 +785,8 @@ class Orchestrator:
   async def execute_existing_protocol_run(
     self,
     protocol_run_orm: ProtocolRunOrm,
-    user_input_params: Optional[Dict[str, Any]] = None,
-    initial_state_data: Optional[Dict[str, Any]] = None,
+    user_input_params: dict[str, Any] | None = None,
+    initial_state_data: dict[str, Any] | None = None,
   ) -> ProtocolRunOrm:
     """Execute an existing protocol run (typically called from Celery workers)."""
     user_input_params = user_input_params or {}
@@ -802,7 +822,7 @@ class Orchestrator:
             {
               "error": error_msg,
               "details": "Protocol definition not loaded or missing.",
-            }
+            },
           ),
         )
         await db_session.commit()
@@ -812,7 +832,9 @@ class Orchestrator:
 
       # Initialize state and context
       run_context = await self._initialize_run_context(
-        protocol_run_orm, initial_state_data, db_session
+        protocol_run_orm,
+        initial_state_data,
+        db_session,
       )
       praxis_state = run_context.canonical_state
 
@@ -826,12 +848,14 @@ class Orchestrator:
         ProtocolRunStatusEnum.QUEUED,
       ]:
         await svc.update_protocol_run_status(
-          db_session, protocol_run_orm.accession_id, ProtocolRunStatusEnum.RUNNING
+          db_session,
+          protocol_run_orm.accession_id,
+          ProtocolRunStatusEnum.RUNNING,
         )
         await db_session.commit()
 
       result: Any = None
-      acquired_assets_info: Dict[uuid.UUID, Any] = {}
+      acquired_assets_info: dict[uuid.UUID, Any] = {}
 
       try:
         result, acquired_assets_info = await self._execute_protocol_main_logic(
@@ -852,7 +876,11 @@ class Orchestrator:
         pass  # Status already updated by the handler
       except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
-          run_accession_id, protocol_def_orm.name, e, praxis_state, db_session
+          run_accession_id,
+          protocol_def_orm.name,
+          e,
+          praxis_state,
+          db_session,
         )
       finally:
         # The ORM object might be stale after the try/except block, especially
@@ -860,7 +888,10 @@ class Orchestrator:
         final_run_orm = await db_session.get(ProtocolRunOrm, run_accession_id)
         if final_run_orm:
           await self._finalize_protocol_run(
-            final_run_orm, praxis_state, acquired_assets_info, db_session
+            final_run_orm,
+            praxis_state,
+            acquired_assets_info,
+            db_session,
           )
         else:  # Should not happen in normal operation
           logger.error(

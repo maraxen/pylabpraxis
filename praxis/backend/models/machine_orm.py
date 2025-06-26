@@ -104,7 +104,7 @@ class MachineOrm(Asset):
   __mapper_args__ = {"polymorphic_identity": AssetType.MACHINE}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("assets.accession_id"), primary_key=True
+    UUID, ForeignKey("assets.accession_id"), primary_key=True,
   )
 
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(
@@ -112,14 +112,14 @@ class MachineOrm(Asset):
     nullable=False,
     index=True,
   )
-  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-  manufacturer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  serial_number: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, unique=True
+  description: Mapped[str | None] = mapped_column(Text, nullable=True)
+  manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+  model: Mapped[str | None] = mapped_column(String, nullable=True)
+  serial_number: Mapped[str | None] = mapped_column(
+    String, nullable=True, unique=True,
   )
-  installation_date: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  installation_date: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True), nullable=True,
   )
   status: Mapped[MachineStatusEnum] = mapped_column(
     SAEnum(MachineStatusEnum, name="machine_status_enum"),
@@ -127,23 +127,23 @@ class MachineOrm(Asset):
     nullable=False,
     index=True,
   )
-  connection_info: Mapped[Optional[dict]] = mapped_column(
+  connection_info: Mapped[dict | None] = mapped_column(
     JSON,
     nullable=True,
     comment="e.g., {'backend': 'hamilton', 'address': '192.168.1.1'}",
   )
-  is_simulation_override: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+  is_simulation_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
-  workcell_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("workcells.accession_id"), nullable=True
+  workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID, ForeignKey("workcells.accession_id"), nullable=True,
   )
   workcell: Mapped[Optional["WorkcellOrm"]] = relationship(
-    "WorkcellOrm", back_populates="machines"
+    "WorkcellOrm", back_populates="machines",
   )
 
   # If this machine is also a resource (e.g., a shaker that can hold a plate)
   is_resource: Mapped[bool] = mapped_column(Boolean, default=False)
-  resource_counterpart_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+  resource_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resources.accession_id", ondelete="SET NULL"),
     nullable=True,
@@ -160,15 +160,15 @@ class MachineOrm(Asset):
 
   # Resources located on/in this machine
   located_resource_instances = relationship(
-    "ResourceOrm", back_populates="location_machine"
+    "ResourceOrm", back_populates="location_machine",
   )
 
   # Additional fields for machine state tracking
-  last_seen_online: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), nullable=True
+  last_seen_online: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True), nullable=True,
   )
-  current_protocol_run_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID(as_uuid=True), nullable=True
+  current_protocol_run_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID(as_uuid=True), nullable=True,
   )  # TODO: Add ForeignKey to protocol_runs
 
   def __repr__(self):

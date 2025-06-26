@@ -2,9 +2,9 @@
 
 import logging
 import os
+from collections.abc import AsyncGenerator
 from configparser import ConfigParser
 from pathlib import Path
-from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -17,7 +17,7 @@ CONFIG_FILE_PATH = PROJECT_ROOT / "praxis.ini"
 if not CONFIG_FILE_PATH.exists():
   logger.error("Configuration file praxis.ini not found at %s", CONFIG_FILE_PATH)
   raise FileNotFoundError(
-    f"Configuration file praxis.ini not found at {CONFIG_FILE_PATH}"
+    f"Configuration file praxis.ini not found at {CONFIG_FILE_PATH}",
   )
 
 config_parser = ConfigParser()
@@ -27,7 +27,7 @@ config_parser.read(CONFIG_FILE_PATH)
 try:
   praxis_db_user = config_parser.get("database", "user", fallback="user")
   praxis_db_password = config_parser.get(
-    "database", "password", fallback="password"
+    "database", "password", fallback="password",
   )  # TODO: Use a secure method for production
   praxis_db_host = config_parser.get("database", "host", fallback="localhost")
   praxis_db_port = config_parser.get("database", "port", fallback="5432")
@@ -35,7 +35,7 @@ try:
 
   praxis_db_user = os.getenv("POSTGRES_USER", praxis_db_user)
   praxis_db_password = os.getenv(
-    "POSTGRES_PASSWORD", praxis_db_password
+    "POSTGRES_PASSWORD", praxis_db_password,
   )  # TODO: Use a secure method for production
   praxis_db_host = os.getenv("POSTGRES_HOST", praxis_db_host)
   praxis_db_port = os.getenv("POSTGRES_PORT", praxis_db_port)
@@ -63,17 +63,17 @@ keycloak_dsn_from_config = None
 try:
   if config_parser.has_section("keycloak_database"):
     keycloak_db_user = config_parser.get(
-      "keycloak_database", "user", fallback="keycloak_user"
+      "keycloak_database", "user", fallback="keycloak_user",
     )
     keycloak_db_password = config_parser.get(
-      "keycloak_database", "password", fallback="keycloak_password"
+      "keycloak_database", "password", fallback="keycloak_password",
     )
     keycloak_db_host = config_parser.get(
-      "keycloak_database", "host", fallback="localhost"
+      "keycloak_database", "host", fallback="localhost",
     )
     keycloak_db_port = config_parser.get("keycloak_database", "port", fallback="5433")
     keycloak_db_name = config_parser.get(
-      "keycloak_database", "dbname", fallback="keycloak_db"
+      "keycloak_database", "dbname", fallback="keycloak_db",
     )
 
     keycloak_db_user = os.getenv("KEYCLOAK_DB_USER", keycloak_db_user)
@@ -93,7 +93,7 @@ try:
   else:
     logger.info(
       "No [keycloak_database] section in praxis.ini; "
-      "Keycloak DSN not available from this module for PraxisDBService."
+      "Keycloak DSN not available from this module for PraxisDBService.",
     )
 except Exception as e:
   logger.error("Error reading Keycloak database DSN from praxis.ini: %s", e)
@@ -120,7 +120,6 @@ AsyncSessionLocal = async_sessionmaker(
 class Base(DeclarativeBase):
   """Base class for all ORM models."""
 
-  pass
 
 
 # --- Dependency for FastAPI Routes to Get an Async DB Session ---
@@ -154,7 +153,7 @@ async def init_praxis_db_schema():
     async with async_engine.begin() as conn:
       await conn.run_sync(Base.metadata.create_all)
     logger.info(
-      "Praxis database tables created successfully (if they didn't already exist)."
+      "Praxis database tables created successfully (if they didn't already exist).",
     )
   except Exception as e:
     logger.error("Error creating Praxis database tables: %s", e)

@@ -13,10 +13,10 @@ class TimestampedModel(BaseModel):
   """A base model that includes timestamp fields for API responses."""
 
   created_at: datetime.datetime = Field(
-    ..., description="The time the record was created."
+    ..., description="The time the record was created.",
   )
   updated_at: datetime.datetime = Field(
-    ..., description="The time the record was last updated."
+    ..., description="The time the record was last updated.",
   )
 
   class Config:

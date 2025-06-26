@@ -16,10 +16,6 @@ Key Features:
 import enum
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-  pass
 
 from sqlalchemy import (
   JSON,
@@ -98,19 +94,29 @@ class FunctionDataOutputOrm(Base):
   __tablename__ = "function_data_outputs"
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, nullable=False
+    UUID,
+    primary_key=True,
+    nullable=False,
   )
 
   function_call_log_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_call_logs.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("function_call_logs.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("protocol_runs.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("protocol_runs.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   data_type: Mapped[DataOutputTypeEnum] = mapped_column(
-    SAEnum(DataOutputTypeEnum, name="data_output_type_enum"), nullable=False, index=True
+    SAEnum(DataOutputTypeEnum, name="data_output_type_enum"),
+    nullable=False,
+    index=True,
   )
 
   data_key: Mapped[str] = mapped_column(
@@ -125,58 +131,83 @@ class FunctionDataOutputOrm(Base):
     index=True,
   )
 
-  resource_instance_accession_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID, ForeignKey("resource_instances.accession_id"), nullable=True, index=True
+  resource_instance_accession_id: Mapped[UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("resource_instances.accession_id"),
+    nullable=True,
+    index=True,
   )
 
-  machine_accession_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID, ForeignKey("machines.accession_id"), nullable=True, index=True
+  machine_accession_id: Mapped[UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
   )
 
-  deck_instance_accession_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID, ForeignKey("deck_instances.accession_id"), nullable=True, index=True
+  deck_instance_accession_id: Mapped[UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("deck_instances.accession_id"),
+    nullable=True,
+    index=True,
   )
 
-  spatial_coordinates_json: Mapped[Optional[dict]] = mapped_column(
+  spatial_coordinates_json: Mapped[dict | None] = mapped_column(
     JSON,
     nullable=True,
     comment="Spatial coordinates within resource (e.g., {'well': 'A1', 'row': 0, 'col': 0})",
   )
 
-  data_value_numeric: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True, comment="Numeric data values"
+  data_value_numeric: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    comment="Numeric data values",
   )
 
-  data_value_json: Mapped[Optional[dict]] = mapped_column(
-    JSON, nullable=True, comment="Structured data (arrays, objects, etc.)"
+  data_value_json: Mapped[dict | None] = mapped_column(
+    JSON,
+    nullable=True,
+    comment="Structured data (arrays, objects, etc.)",
   )
 
-  data_value_text: Mapped[Optional[str]] = mapped_column(
-    Text, nullable=True, comment="Text data or serialized content"
+  data_value_text: Mapped[str | None] = mapped_column(
+    Text,
+    nullable=True,
+    comment="Text data or serialized content",
   )
 
-  data_value_binary: Mapped[Optional[bytes]] = mapped_column(
-    LargeBinary, nullable=True, comment="Binary data (images, files)"
+  data_value_binary: Mapped[bytes | None] = mapped_column(
+    LargeBinary,
+    nullable=True,
+    comment="Binary data (images, files)",
   )
 
   # File reference (for large files stored externally)
-  file_path: Mapped[Optional[str]] = mapped_column(
-    String(500), nullable=True, comment="Path to external file"
+  file_path: Mapped[str | None] = mapped_column(
+    String(500),
+    nullable=True,
+    comment="Path to external file",
   )
 
-  file_size_bytes: Mapped[Optional[int]] = mapped_column(
-    Integer, nullable=True, comment="File size in bytes"
+  file_size_bytes: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    comment="File size in bytes",
   )
 
-  data_units: Mapped[Optional[str]] = mapped_column(
-    String(50), nullable=True, comment="Units of measurement (e.g., 'nm', 'μL', 'OD')"
+  data_units: Mapped[str | None] = mapped_column(
+    String(50),
+    nullable=True,
+    comment="Units of measurement (e.g., 'nm', 'μL', 'OD')",
   )
 
-  data_quality_score: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True, comment="Quality score (0.0-1.0)"
+  data_quality_score: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    comment="Quality score (0.0-1.0)",
   )
 
-  measurement_conditions_json: Mapped[Optional[dict]] = mapped_column(
+  measurement_conditions_json: Mapped[dict | None] = mapped_column(
     JSON,
     nullable=True,
     comment="Measurement conditions (temperature, wavelength, etc.)",
@@ -189,24 +220,33 @@ class FunctionDataOutputOrm(Base):
     comment="When the measurement/data was captured",
   )
 
-  sequence_in_function: Mapped[Optional[int]] = mapped_column(
-    Integer, nullable=True, comment="Sequence number within the function call"
+  sequence_in_function: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    comment="Sequence number within the function call",
   )
 
-  derived_from_data_output_accession_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID, ForeignKey("function_data_outputs.accession_id"), nullable=True
+  derived_from_data_output_accession_id: Mapped[UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("function_data_outputs.accession_id"),
+    nullable=True,
   )
 
-  processing_metadata_json: Mapped[Optional[dict]] = mapped_column(
-    JSON, nullable=True, comment="Metadata about data processing/transformation"
+  processing_metadata_json: Mapped[dict | None] = mapped_column(
+    JSON,
+    nullable=True,
+    comment="Metadata about data processing/transformation",
   )
 
   created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
+    DateTime(timezone=True),
+    server_default=func.now(),
   )
 
-  updated_at: Mapped[Optional[datetime]] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+  updated_at: Mapped[datetime | None] = mapped_column(
+    DateTime(timezone=True),
+    server_default=func.now(),
+    onupdate=func.now(),
   )
 
   # Relationships
@@ -223,13 +263,15 @@ class FunctionDataOutputOrm(Base):
   )
 
   resource_instance = relationship(
-    "ResourceInstanceOrm",
+    "ResourceOrm",
     foreign_keys=[resource_instance_accession_id],
     back_populates="data_outputs",
   )
 
   machine = relationship(
-    "MachineOrm", foreign_keys=[machine_accession_id], back_populates="data_outputs"
+    "MachineOrm",
+    foreign_keys=[machine_accession_id],
+    back_populates="data_outputs",
   )
 
   deck_instance = relationship(
@@ -239,7 +281,9 @@ class FunctionDataOutputOrm(Base):
   )
 
   derived_from = relationship(
-    "FunctionDataOutputOrm", remote_side=[accession_id], backref="derived_data_outputs"
+    "FunctionDataOutputOrm",
+    remote_side=[accession_id],
+    backref="derived_data_outputs",
   )
 
   well_data_outputs = relationship(
@@ -268,39 +312,58 @@ class WellDataOutputOrm(Base):
   __tablename__ = "well_data_outputs"
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, nullable=False
+    UUID,
+    primary_key=True,
+    nullable=False,
   )
 
   function_data_output_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("function_data_outputs.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("function_data_outputs.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   plate_resource_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("resource_instances.accession_id"), nullable=False, index=True
+    UUID,
+    ForeignKey("resource_instances.accession_id"),
+    nullable=False,
+    index=True,
   )
 
   well_name: Mapped[str] = mapped_column(
-    String(10), nullable=False, comment="Well name (e.g., 'A1', 'H12')"
+    String(10),
+    nullable=False,
+    comment="Well name (e.g., 'A1', 'H12')",
   )
 
   well_row: Mapped[int] = mapped_column(
-    Integer, nullable=False, comment="0-based row index"
+    Integer,
+    nullable=False,
+    comment="0-based row index",
   )
 
   well_column: Mapped[int] = mapped_column(
-    Integer, nullable=False, comment="0-based column index"
+    Integer,
+    nullable=False,
+    comment="0-based column index",
   )
 
-  well_index: Mapped[Optional[int]] = mapped_column(
-    Integer, nullable=True, comment="Linear well index (0-based)"
+  well_index: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    comment="Linear well index (0-based)",
   )
 
-  data_value: Mapped[Optional[float]] = mapped_column(
-    Float, nullable=True, comment="Primary numeric value for this well"
+  data_value: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    comment="Primary numeric value for this well",
   )
 
   created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), server_default=func.now()
+    DateTime(timezone=True),
+    server_default=func.now(),
   )
 
   function_data_output = relationship(
@@ -310,7 +373,8 @@ class WellDataOutputOrm(Base):
   )
 
   plate_resource_instance = relationship(
-    "ResourceInstanceOrm", foreign_keys=[plate_resource_instance_accession_id]
+    "ResourceOrm",
+    foreign_keys=[plate_resource_instance_accession_id],
   )
 
   def __repr__(self):

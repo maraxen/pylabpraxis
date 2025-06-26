@@ -17,6 +17,7 @@ from .deck import (
   read_deck,
   read_deck_by_name,
   read_decks,
+  read_decks_by_machine_id,
   update_deck,
 )
 from .deck_type_definition import (
@@ -107,6 +108,7 @@ __all__ = [
   "read_deck",
   "read_deck_by_name",
   "read_decks",
+  "read_decks_by_machine_id",
   "update_deck",
   # Deck Type Definition
   "create_deck_type_definition",

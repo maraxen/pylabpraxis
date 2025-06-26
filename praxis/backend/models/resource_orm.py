@@ -15,7 +15,7 @@ These models define the database schema for:
 
 import enum
 import uuid
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
   JSON,
@@ -121,7 +121,7 @@ class ResourceCategoryEnum(enum.Enum):
   SCALE = "Scale"
 
   @classmethod
-  def choices(cls) -> List[str]:
+  def choices(cls) -> list[str]:
     """Return a list of valid top-level category choices."""
     # This method returns the top-level categories, similar to how
     # the original `choices` might have been used for a general filter.
@@ -139,7 +139,7 @@ class ResourceCategoryEnum(enum.Enum):
     ]
 
   @classmethod
-  def consumables(cls) -> List[str]:
+  def consumables(cls) -> list[str]:
     """Return a list of common consumable categories.
 
     This list might need refinement based on how 'consumable' is strictly
@@ -157,7 +157,7 @@ class ResourceCategoryEnum(enum.Enum):
     ]
 
   @classmethod
-  def machines(cls) -> List[str]:
+  def machines(cls) -> list[str]:
     """Return a list of resources that are also machines."""
     return [
       cls.ARM.value,
@@ -183,7 +183,7 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
   __tablename__ = "resource_definition_catalog"
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, primary_key=True, default=uuid7, index=True
+    UUID, primary_key=True, default=uuid7, index=True,
   )
   name: Mapped[str] = mapped_column(String, unique=True, index=True)
   python_fqn: Mapped[str] = mapped_column(  # Renamed from 'fqn' to 'python_fqn'
@@ -192,24 +192,24 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
     index=True,
     comment="Fully qualified name of the resource definition.",
   )
-  resource_type: Mapped[Optional[str]] = mapped_column(
-    String, nullable=True, comment="Human-readable type of the resource."
+  resource_type: Mapped[str | None] = mapped_column(
+    String, nullable=True, comment="Human-readable type of the resource.",
   )
-  description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  description: Mapped[str | None] = mapped_column(Text, nullable=True)
   is_consumable: Mapped[bool] = mapped_column(Boolean, default=True)
-  nominal_volume_ul: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  material: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  manufacturer: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  plr_definition_details_json: Mapped[Optional[dict]] = mapped_column(
+  nominal_volume_ul: Mapped[float | None] = mapped_column(Float, nullable=True)
+  material: Mapped[str | None] = mapped_column(String, nullable=True)
+  manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
+  plr_definition_details_json: Mapped[dict | None] = mapped_column(
     JSON,
     nullable=True,
     comment="Additional PyLabRobot specific definition details as JSON.",
   )
 
-  size_x_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  size_y_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  size_z_mm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-  plr_category: Mapped[Optional[str]] = mapped_column(
+  size_x_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  size_y_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  size_z_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+  plr_category: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     index=True,
@@ -219,8 +219,8 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
       " Resource.category or the direct subclass name."
     ),
   )
-  model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  rotation_json: Mapped[Optional[dict]] = mapped_column(
+  model: Mapped[str | None] = mapped_column(String, nullable=True)
+  rotation_json: Mapped[dict | None] = mapped_column(
     JSON,
     nullable=True,
     comment=(
@@ -229,8 +229,8 @@ class ResourceDefinitionOrm(TimestampMixin, Base):
     ),
   )
 
-  resource_list: Mapped[List["ResourceOrm"]] = relationship(
-    "ResourceOrm", back_populates="resource_definition"
+  resource_list: Mapped[list["ResourceOrm"]] = relationship(
+    "ResourceOrm", back_populates="resource_definition",
   )
 
   is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -254,7 +254,7 @@ class ResourceOrm(Asset):
   __mapper_args__ = {"polymorphic_identity": "resource"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID, ForeignKey("assets.accession_id"), primary_key=True, default=uuid7
+    UUID, ForeignKey("assets.accession_id"), primary_key=True, default=uuid7,
   )
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
   asset_type: Mapped[AssetType] = mapped_column(
@@ -264,8 +264,8 @@ class ResourceOrm(Asset):
   )
 
   # Hierarchical relationship
-  parent_accession_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-    UUID, ForeignKey("resources.accession_id"), nullable=True, index=True
+  parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID, ForeignKey("resources.accession_id"), nullable=True, index=True,
   )
   parent: Mapped[Optional["ResourceOrm"]] = relationship(
     "ResourceOrm",
@@ -273,8 +273,8 @@ class ResourceOrm(Asset):
     back_populates="children",
     foreign_keys=[parent_accession_id],
   )
-  children: Mapped[List["ResourceOrm"]] = relationship(
-    "ResourceOrm", back_populates="parent", cascade="all, delete-orphan"
+  children: Mapped[list["ResourceOrm"]] = relationship(
+    "ResourceOrm", back_populates="parent", cascade="all, delete-orphan",
   )
 
   # Definition
@@ -285,19 +285,19 @@ class ResourceOrm(Asset):
     index=True,
   )
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
-    "ResourceDefinitionOrm", back_populates="resource_list"
+    "ResourceDefinitionOrm", back_populates="resource_list",
   )
 
   # State
-  location: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-  properties_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+  location: Mapped[str | None] = mapped_column(String, nullable=True)
+  properties_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
   current_status: Mapped[ResourceStatusEnum] = mapped_column(
     SAEnum(ResourceStatusEnum, name="resource_status_enum"),
     default=ResourceStatusEnum.UNKNOWN,
     nullable=False,
     index=True,
   )
-  status_details: Mapped[Optional[str]] = mapped_column(
+  status_details: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
     comment="Additional details about the current status, e.g., error message",
@@ -316,7 +316,7 @@ class ResourceOrm(Asset):
   def __repr__(self):
     """Return a string representation of the ResourceOrm object."""
     python_fqn = (
-      self.resource_definition.python_fqn
+      self.resource_definition.python_fqn  # type: ignore
       if self.resource_definition and hasattr(self.resource_definition, "fqn")
       else "N/A"
     )

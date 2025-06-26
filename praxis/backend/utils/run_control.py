@@ -1,14 +1,13 @@
 """Run control utilities for orchestrator."""
 
 import uuid
-from typing import List, Optional
 
 import redis
 from redis.exceptions import RedisError
 
 from praxis.backend.configure import get_settings  # To access Redis config
 
-ALLOWED_COMMANDS: List[str] = ["PAUSE", "RESUME", "CANCEL"]
+ALLOWED_COMMANDS: list[str] = ["PAUSE", "RESUME", "CANCEL"]
 COMMAND_KEY_PREFIX = "orchestrator:control"
 
 
@@ -26,7 +25,7 @@ def _get_command_key(run_accession_id: uuid.UUID) -> str:
 
 
 async def send_control_command(
-  run_accession_id: uuid.UUID, command: str, ttl_seconds: int = 3600
+  run_accession_id: uuid.UUID, command: str, ttl_seconds: int = 3600,
 ) -> bool:
   """Send a control command to the orchestrator for a specific run.
 
@@ -39,7 +38,7 @@ async def send_control_command(
   """
   if command not in ALLOWED_COMMANDS:
     raise ValueError(
-      f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}"
+      f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}",
     )
   try:
     r = _get_redis_client()
@@ -52,7 +51,7 @@ async def send_control_command(
     return False
 
 
-async def get_control_command(run_accession_id: uuid.UUID) -> Optional[str]:
+async def get_control_command(run_accession_id: uuid.UUID) -> str | None:
   """Get the control command for a specific run.
 
   Args:

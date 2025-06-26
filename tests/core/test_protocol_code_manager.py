@@ -87,7 +87,7 @@ def test_load_protocol_function_success(monkeypatch):
   def dummy_func():
     pass
 
-  setattr(dummy_func, "_protocol_definition", make_pydantic_def())
+  dummy_func._protocol_definition = make_pydantic_def()
   dummy_mod = types.ModuleType(module_name)
   setattr(dummy_mod, function_name, dummy_func)
   monkeypatch.setitem(sys.modules, module_name, dummy_mod)
@@ -115,7 +115,7 @@ def test_load_protocol_function_invalid_protocol_def(monkeypatch):
   def dummy_func():
     pass
 
-  setattr(dummy_func, "_protocol_definition", None)  # Not a valid pydantic def
+  dummy_func._protocol_definition = None  # Not a valid pydantic def
   dummy_mod = types.ModuleType(module_name)
   setattr(dummy_mod, function_name, dummy_func)
   monkeypatch.setitem(sys.modules, module_name, dummy_mod)
@@ -183,7 +183,7 @@ async def test_prepare_protocol_code_filesystem(monkeypatch, tmp_path):
   fs_source.base_path = str(tmp_path)
   fs_source.name = "fs"
   orm = make_protocol_def_orm(
-    file_system_source_accession_id="fs-acc", file_system_source=fs_source
+    file_system_source_accession_id="fs-acc", file_system_source=fs_source,
   )
 
   def dummy_func():

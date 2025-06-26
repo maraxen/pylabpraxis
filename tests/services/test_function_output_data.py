@@ -8,14 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.models import (
   DataOutputTypeEnum,
   DataSearchFilters,
-  DeckInstanceOrm,
+  DeckOrm,
   FunctionCallLogOrm,
   FunctionDataOutputCreate,
   FunctionDataOutputOrm,
   FunctionDataOutputUpdate,
   MachineOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
   SpatialContextEnum,
 )
 
@@ -40,13 +40,15 @@ async def setup_dependencies(db: AsyncSession):
   await db.refresh(protocol_run)
 
   function_call_log = FunctionCallLogOrm(
-    protocol_run_accession_id=protocol_run.accession_id, function_name="test_function"
+    protocol_run_accession_id=protocol_run.accession_id,
+    function_name="test_function",
   )
   machine = MachineOrm(user_friendly_name="Test Machine", python_fqn="machine.fqn")
-  resource_instance = ResourceInstanceOrm(
-    user_assigned_name="Test Resource", name="test_resource_def"
+  resource_instance = ResourceOrm(
+    user_assigned_name="Test Resource",
+    name="test_resource_def",
   )
-  deck_instance = DeckInstanceOrm(
+  deck_instance = DeckOrm(
     name="Test Deck",
     deck_accession_id=uuid.uuid4(),
     python_fqn="deck.fqn",
@@ -97,7 +99,8 @@ def base_data_output_create(setup_dependencies) -> FunctionDataOutputCreate:
 
 @pytest.fixture
 async def existing_data_output(
-  db: AsyncSession, base_data_output_create: FunctionDataOutputCreate
+  db: AsyncSession,
+  base_data_output_create: FunctionDataOutputCreate,
 ) -> FunctionDataOutputOrm:
   """Fixture to create a data output record in the DB for read/update/delete tests."""
   data_output = await create_function_data_output(db, base_data_output_create)
@@ -111,7 +114,9 @@ class TestFunctionDataOutputService:
   """Test suite for the Function Data Output service layer."""
 
   async def test_create_function_data_output(
-    self, db: AsyncSession, base_data_output_create: FunctionDataOutputCreate
+    self,
+    db: AsyncSession,
+    base_data_output_create: FunctionDataOutputCreate,
   ):
     """Test successful creation of a function data output."""
     created_output = await create_function_data_output(db, base_data_output_create)
@@ -125,7 +130,9 @@ class TestFunctionDataOutputService:
     )
 
   async def test_read_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
   ):
     """Test reading a function data output by its ID."""
     read_output = await read_function_data_output(db, existing_data_output.accession_id)
@@ -140,7 +147,9 @@ class TestFunctionDataOutputService:
     assert await read_function_data_output(db, non_existent_id) is None
 
   async def test_update_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
   ):
     """Test updating a function data output record."""
     update_model = FunctionDataOutputUpdate(
@@ -149,7 +158,9 @@ class TestFunctionDataOutputService:
       measurement_conditions_json=None,
     )
     updated_output = await update_function_data_output(
-      db, existing_data_output.accession_id, update_model
+      db,
+      existing_data_output.accession_id,
+      update_model,
     )
 
     assert updated_output is not None
@@ -158,7 +169,9 @@ class TestFunctionDataOutputService:
     assert updated_output.data_key == existing_data_output.data_key
 
   async def test_delete_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
   ):
     """Test deleting a function data output record."""
     output_id = existing_data_output.accession_id
@@ -175,7 +188,9 @@ class TestFunctionDataOutputService:
     assert result is False
 
   async def test_list_function_data_outputs_with_filters(
-    self, db: AsyncSession, setup_dependencies
+    self,
+    db: AsyncSession,
+    setup_dependencies,
   ):
     """Test the extensive filtering capabilities of the list function."""
     common_args = {

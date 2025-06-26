@@ -142,10 +142,10 @@ def test_serialize_arguments_typeerror_fallback():
     kwargs = {"x": Unserializable()}
     # Patch json.dumps to raise TypeError on first call, then work on fallback
     orig_json_dumps = json.dumps
-    call_count = {'n': 0}
+    call_count = {"n": 0}
     def fake_json_dumps(*a, **kw):
-        if call_count['n'] == 0:
-            call_count['n'] += 1
+        if call_count["n"] == 0:
+            call_count["n"] += 1
             raise TypeError("fail")
         return orig_json_dumps(*a, **kw)
     with patch("json.dumps", side_effect=fake_json_dumps):

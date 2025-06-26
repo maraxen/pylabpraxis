@@ -9,7 +9,6 @@ including:
 """
 
 import uuid
-from typing import Optional
 
 from sqlalchemy import JSON, UUID, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -29,20 +28,20 @@ class Asset(TimestampMixin, Base):
 
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   asset_type: Mapped[AssetType] = mapped_column(
-    Enum(AssetType), nullable=False, index=True
+    Enum(AssetType), nullable=False, index=True,
   )
   name: Mapped[str] = mapped_column(String, nullable=False, index=True)
-  fqn: Mapped[Optional[str]] = mapped_column(
+  fqn: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     index=True,
     comment="Fully qualified name of the asset's class, if applicable.",
   )
-  location: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
-  plr_state: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-  plr_definition: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-  properties_json: Mapped[Optional[dict]] = mapped_column(
-    JSON, nullable=True, comment="Arbitrary metadata about the asset."
+  location: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+  plr_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  plr_definition: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  properties_json: Mapped[dict | None] = mapped_column(
+    JSON, nullable=True, comment="Arbitrary metadata about the asset.",
   )
 
   __mapper_args__ = {"polymorphic_on": asset_type, "polymorphic_identity": "asset"}

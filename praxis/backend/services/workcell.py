@@ -12,7 +12,7 @@ This module provides functions to create, read, update, and delete workcell entr
 import datetime
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 async def create_workcell(
   db: AsyncSession,
   name: str,
-  description: Optional[str] = None,
-  physical_location: Optional[str] = None,
-  initial_state: Optional[dict] = None,
+  description: str | None = None,
+  physical_location: str | None = None,
+  initial_state: dict | None = None,
 ) -> WorkcellOrm:
   """Create a new workcell.
 
@@ -64,7 +64,7 @@ async def create_workcell(
     await db.commit()
     await db.refresh(workcell_orm)
     logger.info(
-      "Successfully created workcell '%s' with ID %s.", name, workcell_orm.accession_id
+      "Successfully created workcell '%s' with ID %s.", name, workcell_orm.accession_id,
     )
     return workcell_orm
   except IntegrityError as e:
@@ -79,8 +79,8 @@ async def create_workcell(
 
 
 async def read_workcell(
-  db: AsyncSession, workcell_accession_id: uuid.UUID
-) -> Optional[WorkcellOrm]:
+  db: AsyncSession, workcell_accession_id: uuid.UUID,
+) -> WorkcellOrm | None:
   """Retrieve a specific workcell by its ID.
 
   Args:
@@ -110,7 +110,7 @@ async def read_workcell(
   return workcell
 
 
-async def read_workcell_by_name(db: AsyncSession, name: str) -> Optional[WorkcellOrm]:
+async def read_workcell_by_name(db: AsyncSession, name: str) -> WorkcellOrm | None:
   """Retrieve a specific workcell by its name.
 
   Args:
@@ -137,8 +137,8 @@ async def read_workcell_by_name(db: AsyncSession, name: str) -> Optional[Workcel
 
 
 async def list_workcells(
-  db: AsyncSession, limit: int = 100, offset: int = 0
-) -> List[WorkcellOrm]:
+  db: AsyncSession, limit: int = 100, offset: int = 0,
+) -> list[WorkcellOrm]:
   """List all workcells with pagination.
 
   Args:
@@ -147,7 +147,7 @@ async def list_workcells(
     offset (int): The number of results to skip before returning.
 
   Returns:
-    List[WorkcellOrm]: A list of workcell objects.
+    list[WorkcellOrm]: A list of workcell objects.
 
   """
   logger.info("Listing workcells with limit: %d, offset: %d.", limit, offset)
@@ -167,10 +167,10 @@ async def list_workcells(
 async def update_workcell(
   db: AsyncSession,
   workcell_accession_id: uuid.UUID,
-  name: Optional[str] = None,
-  description: Optional[str] = None,
-  physical_location: Optional[str] = None,
-) -> Optional[WorkcellOrm]:
+  name: str | None = None,
+  description: str | None = None,
+  physical_location: str | None = None,
+) -> WorkcellOrm | None:
   """Update an existing workcell.
 
   Args:
@@ -289,14 +289,14 @@ async def delete_workcell(db: AsyncSession, workcell_accession_id: uuid.UUID) ->
   except Exception as e:
     await db.rollback()
     logger.exception(
-      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_accession_id
+      "Unexpected error deleting workcell ID %s. Rolling back.", workcell_accession_id,
     )
     raise e
 
 
 async def read_workcell_state(
-  db_session: AsyncSession, workcell_accession_id: uuid.UUID
-) -> Optional[Dict[str, Any]]:
+  db_session: AsyncSession, workcell_accession_id: uuid.UUID,
+) -> dict[str, Any] | None:
   """Retrieve the latest JSON-serialized state of a workcell from the database.
 
   Args:
@@ -304,7 +304,7 @@ async def read_workcell_state(
     workcell_accession_id (uuid.UUID): The ID of the workcell to retrieve the state for.
 
   Returns:
-    Optional[Dict[str, Any]]: The latest state JSON if found, otherwise None.
+    Optional[dict[str, Any]]: The latest state JSON if found, otherwise None.
 
   Raises:
     Exception: If there is an error during the database operation.
@@ -326,14 +326,14 @@ async def read_workcell_state(
 
 
 async def update_workcell_state(
-  db_session: AsyncSession, workcell_accession_id: uuid.UUID, state_json: Dict[str, Any]
+  db_session: AsyncSession, workcell_accession_id: uuid.UUID, state_json: dict[str, Any],
 ) -> WorkcellOrm:
   """Update the latest_state_json for a specific WorkcellOrm entry.
 
   Args:
     db_session (AsyncSession): The database session.
     workcell_accession_id (uuid.UUID): The ID of the workcell to update.
-    state_json (Dict[str, Any]): The new state JSON to set.
+    state_json (dict[str, Any]): The new state JSON to set.
 
   Returns:
     WorkcellOrm: The updated WorkcellOrm object.
@@ -347,7 +347,7 @@ async def update_workcell_state(
     workcell_orm = await db_session.get(WorkcellOrm, workcell_accession_id)
     if not workcell_orm:
       raise ValueError(
-        f"WorkcellOrm with ID {workcell_accession_id} not found for state update."
+        f"WorkcellOrm with ID {workcell_accession_id} not found for state update.",
       )
 
     workcell_orm.latest_state_json = state_json

@@ -21,11 +21,9 @@ class MockBackend(MachineBackend):
 
   async def setup(self):
     """Set up the mock backend (no-op)."""
-    pass
 
   async def stop(self):
     """Stop the mock backend (no-op)."""
-    pass
 
 
 @pytest.fixture
@@ -48,7 +46,7 @@ class MockPureResource(Resource):
   def __init__(self, name: str, category: str = "plates", **kwargs):
     """Initialize the mock pure resource with a name and category."""
     super().__init__(
-      name=name, size_x=10, size_y=10, size_z=10, category=category, **kwargs
+      name=name, size_x=10, size_y=10, size_z=10, category=category, **kwargs,
     )
 
 
@@ -56,11 +54,11 @@ class MockMachineResource(Resource, Machine):
   """A mock asset that is both a machine and a resource."""
 
   def __init__(
-    self, name: str, backend: MockBackend, category: str = "robot_arms", **kwargs
+    self, name: str, backend: MockBackend, category: str = "robot_arms", **kwargs,
   ):
     """Initialize the mock machine resource with a name, backend, and category."""
     Resource.__init__(
-      self, name=name, size_x=1, size_y=1, size_z=1, category=category, **kwargs
+      self, name=name, size_x=1, size_y=1, size_z=1, category=category, **kwargs,
     )
     Machine.__init__(self, backend=backend)
     self.state = "default"
@@ -96,7 +94,7 @@ class TestWorkcell:
   def test_add_pure_resource_asset(self, workcell: Workcell):
     """Test adding a resource-only asset to the workcell."""
     resource = MockPureResource(
-      name="test_plate", category=ResourceCategoryEnum.PLATE.value
+      name="test_plate", category=ResourceCategoryEnum.PLATE.value,
     )
     workcell.add_asset(resource)
     assert resource in workcell.children
@@ -104,11 +102,11 @@ class TestWorkcell:
     assert workcell.plates["test_plate"] == resource  # type: ignore
 
   def test_add_machine_resource_asset(
-    self, workcell: Workcell, mock_backend: MockBackend
+    self, workcell: Workcell, mock_backend: MockBackend,
   ):
     """Test adding an asset that is both a Machine and a Resource."""
     machine_resource = MockMachineResource(
-      name="robot_arm", backend=mock_backend, category="robot_arms"
+      name="robot_arm", backend=mock_backend, category="robot_arms",
     )
     workcell.add_asset(machine_resource)
     assert machine_resource in workcell.children

@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.models import (
   AssetRequirementModel,
   FileSystemProtocolSourceOrm,
-  FunctionCallLogOrm,
   FunctionCallStatusEnum,
   FunctionProtocolDefinitionModel,
   FunctionProtocolDefinitionOrm,
@@ -16,7 +15,6 @@ from praxis.backend.models import (
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
   ProtocolSourceRepositoryOrm,
-  ProtocolSourceStatusEnum,
 )
 
 # Import the service functions to be tested
@@ -24,7 +22,6 @@ from praxis.backend.services.protocols import (
   create_file_system_protocol_source,
   create_protocol_run,
   create_protocol_source_repository,
-  list_active_protocol_sources,
   list_protocol_runs,
   list_protocol_source_repositories,
   log_function_call_end,
@@ -44,7 +41,7 @@ from praxis.backend.services.protocols import (
 async def git_source(db: AsyncSession) -> ProtocolSourceRepositoryOrm:
   """Fixture for a git protocol source repository."""
   return await create_protocol_source_repository(
-    db, name=f"TestGitRepo_{uuid.uuid4()}", git_url="https://github.com/test/repo.git"
+    db, name=f"TestGitRepo_{uuid.uuid4()}", git_url="https://github.com/test/repo.git",
   )
 
 
@@ -52,7 +49,7 @@ async def git_source(db: AsyncSession) -> ProtocolSourceRepositoryOrm:
 async def fs_source(db: AsyncSession) -> FileSystemProtocolSourceOrm:
   """Fixture for a filesystem protocol source."""
   return await create_file_system_protocol_source(
-    db, name=f"TestFSSource_{uuid.uuid4()}", base_path="/tmp/protocols"
+    db, name=f"TestFSSource_{uuid.uuid4()}", base_path="/tmp/protocols",
   )
 
 
@@ -74,7 +71,7 @@ def pydantic_protocol() -> FunctionProtocolDefinitionModel:
         actual_type_str="int",
         optional=False,
         description="First param",
-      )
+      ),
     ],
     assets=[
       AssetRequirementModel(
@@ -82,7 +79,7 @@ def pydantic_protocol() -> FunctionProtocolDefinitionModel:
         name="plate1",
         fqn="pylabrobot.resources.Plate",
         description="A 96-well plate",
-      )
+      ),
     ],
   )
 
@@ -104,11 +101,11 @@ async def protocol_def(
 
 @pytest.fixture
 async def protocol_run(
-  db: AsyncSession, protocol_def: FunctionProtocolDefinitionOrm
+  db: AsyncSession, protocol_def: FunctionProtocolDefinitionOrm,
 ) -> ProtocolRunOrm:
   """Fixture for an existing protocol run in the DB."""
   return await create_protocol_run(
-    db, top_level_protocol_definition_accession_id=protocol_def.accession_id
+    db, top_level_protocol_definition_accession_id=protocol_def.accession_id,
   )
 
 
@@ -123,7 +120,7 @@ class TestProtocolSourceRepositoryService:
   async def test_create_and_read_git_repo(self, db: AsyncSession):
     name = f"MyGitRepo_{uuid.uuid4()}"
     repo = await create_protocol_source_repository(
-      db, name=name, git_url="http://git.test/repo"
+      db, name=name, git_url="http://git.test/repo",
     )
     assert repo.name == name
 
@@ -132,16 +129,16 @@ class TestProtocolSourceRepositoryService:
     assert read_repo.name == name
 
   async def test_update_git_repo(
-    self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm
+    self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm,
   ):
     new_ref = "develop"
     updated_repo = await update_protocol_source_repository(
-      db, source_accession_id=git_source.accession_id, default_ref=new_ref
+      db, source_accession_id=git_source.accession_id, default_ref=new_ref,
     )
     assert updated_repo.default_ref == new_ref
 
   async def test_list_git_repos_by_sync_status(
-    self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm
+    self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm,
   ):
     """Test filtering repositories by their auto_sync_enabled status."""
     # Create a second repo to have a distinct set
@@ -159,7 +156,7 @@ class TestProtocolSourceRepositoryService:
 
     # Test for non-synced repos
     not_synced_repos = await list_protocol_source_repositories(
-      db, auto_sync_enabled=False
+      db, auto_sync_enabled=False,
     )
     assert len(not_synced_repos) == 1
     assert not any(r.accession_id == git_source.accession_id for r in not_synced_repos)
@@ -198,13 +195,13 @@ class TestProtocolDefinitionService:
     pydantic_protocol.parameters[0].description = "Updated description"
     pydantic_protocol.parameters.append(
       ParameterMetadataModel(
-        name="param2", type_hint_str="str", actual_type_str="str", optional=True
-      )
+        name="param2", type_hint_str="str", actual_type_str="str", optional=True,
+      ),
     )
     pydantic_protocol.assets = [
       AssetRequirementModel(
-        accession_id=uuid.uuid4(), name="tip_rack", fqn="pylabrobot.resources.TipRack"
-      )
+        accession_id=uuid.uuid4(), name="tip_rack", fqn="pylabrobot.resources.TipRack",
+      ),
     ]
 
     updated_def = await upsert_function_protocol_definition(
@@ -225,7 +222,7 @@ class TestProtocolRunService:
   """Tests for creating and managing protocol runs."""
 
   async def test_create_and_read_protocol_run(
-    self, db: AsyncSession, protocol_def: FunctionProtocolDefinitionOrm
+    self, db: AsyncSession, protocol_def: FunctionProtocolDefinitionOrm,
   ):
     """Test creating a new protocol run and reading it back."""
     run = await create_protocol_run(db, protocol_def.accession_id)
@@ -237,13 +234,13 @@ class TestProtocolRunService:
     assert read_run.accession_id == run.accession_id
 
   async def test_update_protocol_run_status(
-    self, db: AsyncSession, protocol_run: ProtocolRunOrm
+    self, db: AsyncSession, protocol_run: ProtocolRunOrm,
   ):
     """Test updating the status of a protocol run through its lifecycle."""
     assert protocol_run.start_time is None
 
     await update_protocol_run_status(
-      db, protocol_run.accession_id, ProtocolRunStatusEnum.RUNNING
+      db, protocol_run.accession_id, ProtocolRunStatusEnum.RUNNING,
     )
     await db.refresh(protocol_run)
     assert protocol_run.status == ProtocolRunStatusEnum.RUNNING
@@ -252,7 +249,7 @@ class TestProtocolRunService:
     await asyncio.sleep(0.01)
 
     await update_protocol_run_status(
-      db, protocol_run.accession_id, ProtocolRunStatusEnum.COMPLETED
+      db, protocol_run.accession_id, ProtocolRunStatusEnum.COMPLETED,
     )
     await db.refresh(protocol_run)
     assert protocol_run.status == ProtocolRunStatusEnum.COMPLETED
@@ -260,14 +257,14 @@ class TestProtocolRunService:
     assert protocol_run.duration_ms is not None and protocol_run.duration_ms > 0
 
   async def test_list_protocol_runs(
-    self, db: AsyncSession, protocol_run: ProtocolRunOrm
+    self, db: AsyncSession, protocol_run: ProtocolRunOrm,
   ):
     """Test listing protocol runs with filters."""
     pending_runs = await list_protocol_runs(db, status=ProtocolRunStatusEnum.PENDING)
     assert len(pending_runs) >= 1
 
     completed_runs = await list_protocol_runs(
-      db, status=ProtocolRunStatusEnum.COMPLETED
+      db, status=ProtocolRunStatusEnum.COMPLETED,
     )
     assert len(completed_runs) == 0
 
@@ -316,10 +313,10 @@ class TestFunctionCallLogService:
   ):
     """Test retrieving all function call logs for a specific run."""
     await log_function_call_start(
-      db, protocol_run.accession_id, protocol_def.accession_id, 1, "{}"
+      db, protocol_run.accession_id, protocol_def.accession_id, 1, "{}",
     )
     await log_function_call_start(
-      db, protocol_run.accession_id, protocol_def.accession_id, 2, "{}"
+      db, protocol_run.accession_id, protocol_def.accession_id, 2, "{}",
     )
 
     logs = await read_function_call_logs_for_run(db, protocol_run.accession_id)

@@ -12,10 +12,11 @@ and Assets.
 import asyncio
 import logging
 import os
+from collections.abc import AsyncIterator
 from configparser import ConfigParser
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, Optional
 
 import asyncpg  # For Keycloak database
 from sqlalchemy.ext.asyncio import (
@@ -39,7 +40,7 @@ class PraxisDBService:
   """
 
   _instance: Optional["PraxisDBService"] = None
-  _keycloak_pool: Optional[asyncpg.Pool[Any]] = None
+  _keycloak_pool: asyncpg.Pool[Any] | None = None
   _max_retries = 3
   _retry_delay = 1  # seconds
 
@@ -52,7 +53,7 @@ class PraxisDBService:
   @classmethod
   async def initialize(
     cls,
-    keycloak_dsn: Optional[str] = None,
+    keycloak_dsn: str | None = None,
     min_kc_pool_size: int = 5,
     max_kc_pool_size: int = 10,
   ):
@@ -112,9 +113,9 @@ class PraxisDBService:
               command_timeout=60,
               timeout=10.0,
             )
-            assert cls._keycloak_pool is not None, (
-              "Failed to create Keycloak database pool"
-            )
+            assert (
+              cls._keycloak_pool is not None
+            ), "Failed to create Keycloak database pool"
             async with cls._keycloak_pool.acquire() as conn:  # type: ignore
               await conn.execute("SELECT 1")  # type: ignore
             logger.info("Successfully connected to Keycloak database.")
@@ -140,7 +141,7 @@ class PraxisDBService:
               cls._max_retries,
             )
             raise ConnectionError(
-              f"Could not establish Keycloak database connection: {last_error}"
+              f"Could not establish Keycloak database connection: {last_error}",
             ) from last_error
         except Exception:
           logger.exception("Unexpected error during Keycloak database initialization.")
@@ -148,17 +149,17 @@ class PraxisDBService:
 
       if not cls._keycloak_pool and keycloak_dsn:
         raise ConnectionError(
-          f"Failed to initialize Keycloak pool. Last error: {last_error}"
+          f"Failed to initialize Keycloak pool. Last error: {last_error}",
         )
     else:
       logger.info(
         "Keycloak DSN not provided; Keycloak database pool will not be "
-        "initialized by PraxisDBService."
+        "initialized by PraxisDBService.",
       )
 
     logger.info(
       "PraxisDBService initialized. Praxis DB uses SQLAlchemy async engine "
-      "from praxis.utils.db."
+      "from praxis.utils.db.",
     )
     return cls._instance
 
@@ -229,11 +230,11 @@ class PraxisDBService:
       if conn and self._keycloak_pool:
         await self._keycloak_pool.release(conn)
 
-  async def get_all_users(self) -> Dict[str, Dict[str, Any]]:
+  async def get_all_users(self) -> dict[str, dict[str, Any]]:
     """Retrieve all active users from the Keycloak database.
 
     Returns:
-        Dict[str, Dict[str, Any]]: A dictionary where keys are usernames
+        dict[str, dict[str, Any]]: A dictionary where keys are usernames
         and values are dictionaries containing user details (id, username,
         email, first_name, last_name, is_active). Returns an empty
         dictionary if the Keycloak pool is not initialized or no users are
@@ -251,7 +252,7 @@ class PraxisDBService:
                 FROM user_entity
                 WHERE enabled = true
                 ORDER BY username
-            """
+            """,
       )
       users_dict = {
         record["username"]: {
@@ -267,7 +268,7 @@ class PraxisDBService:
       logger.info("Found %d active users from Keycloak.", len(users_dict))
       return users_dict
 
-  async def execute_sql(self, sql_statement: str, params: Optional[dict] = None):
+  async def execute_sql(self, sql_statement: str, params: dict | None = None):
     """Execute a raw SQL statement on the Praxis database.
 
     Args:
@@ -284,8 +285,8 @@ class PraxisDBService:
       logger.debug("Raw SQL statement executed.")
 
   async def fetch_all_sql(
-    self, sql_query: str, params: Optional[dict] = None
-  ) -> List[Dict[Any, Any]]:
+    self, sql_query: str, params: dict | None = None,
+  ) -> list[dict[Any, Any]]:
     """Fetch all rows from a raw SQL query on the Praxis database.
 
     Args:
@@ -294,7 +295,7 @@ class PraxisDBService:
             bind to the SQL query. Defaults to None.
 
     Returns:
-        List[Dict[Any, Any]]: A list of dictionaries, where each dictionary
+        list[dict[Any, Any]]: A list of dictionaries, where each dictionary
         represents a row from the query result.
 
     """
@@ -308,8 +309,8 @@ class PraxisDBService:
       return rows
 
   async def fetch_one_sql(
-    self, sql_query: str, params: Optional[dict] = None
-  ) -> Optional[Dict[Any, Any]]:
+    self, sql_query: str, params: dict | None = None,
+  ) -> dict[Any, Any] | None:
     """Fetch a single row from a raw SQL query on the Praxis database.
 
     Args:
@@ -318,7 +319,7 @@ class PraxisDBService:
             bind to the SQL query. Defaults to None.
 
     Returns:
-        Optional[Dict[Any, Any]]: A dictionary representing the first row
+        Optional[dict[Any, Any]]: A dictionary representing the first row
         from the query result, or None if no rows are found.
 
     """
@@ -334,7 +335,7 @@ class PraxisDBService:
       logger.debug("No row found.")
       return None
 
-  async def fetch_val_sql(self, sql_query: str, params: Optional[dict] = None) -> Any:
+  async def fetch_val_sql(self, sql_query: str, params: dict | None = None) -> Any:
     """Fetch a single scalar value from a raw SQL query on the Praxis database.
 
     Args:
@@ -376,7 +377,7 @@ class PraxisDBService:
     logger.info("PraxisDBService resources closed.")
 
 
-def _get_keycloak_dsn_from_config() -> Optional[str]:
+def _get_keycloak_dsn_from_config() -> str | None:
   """Retrieve the Keycloak DSN from the praxis.ini configuration file.
 
   Returns:
@@ -390,7 +391,7 @@ def _get_keycloak_dsn_from_config() -> Optional[str]:
 
   if not CONFIG_FILE_PATH.exists():
     logger.warning(
-      "praxis.ini not found at %s for Keycloak DSN lookup.", CONFIG_FILE_PATH
+      "praxis.ini not found at %s for Keycloak DSN lookup.", CONFIG_FILE_PATH,
     )
     return None
 
@@ -401,7 +402,7 @@ def _get_keycloak_dsn_from_config() -> Optional[str]:
     try:
       user = os.getenv("KEYCLOAK_DB_USER", config.get("keycloak_database", "user"))
       password = os.getenv(
-        "KEYCLOAK_DB_PASSWORD", config.get("keycloak_database", "password")
+        "KEYCLOAK_DB_PASSWORD", config.get("keycloak_database", "password"),
       )
       host = os.getenv("KEYCLOAK_DB_HOST", config.get("keycloak_database", "host"))
       port = os.getenv("KEYCLOAK_DB_PORT", config.get("keycloak_database", "port"))

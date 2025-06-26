@@ -1,16 +1,15 @@
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from praxis.backend.models import (
-  DeckInstanceOrm,
-  DeckInstancePositionResourceOrm,
+  DeckPositionResourceOrm,
   MachineOrm,
   ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
 )
 from praxis.backend.services.deck_instance import (
   create_deck_instance,
@@ -18,7 +17,6 @@ from praxis.backend.services.deck_instance import (
   list_deck_instances,
   read_deck_instance,
   read_deck_instance_by_name,
-  read_deck_instance_by_parent_machine_accession_id,
   update_deck_instance,
 )
 
@@ -54,13 +52,13 @@ async def setup_test_data(db: AsyncSession):
   await db.flush()
 
   # 4. Create a resource instance for the deck itself
-  deck_resource = ResourceInstanceOrm(
+  deck_resource = ResourceOrm(
     name="PhysicalDeck1",
     resource_definition_name=deck_def.name,
     accession_id=uuid.uuid4(),
   )
   # 5. Create a resource instance for a plate
-  plate_resource = ResourceInstanceOrm(
+  plate_resource = ResourceOrm(
     name="PlateOnDeck1",
     resource_definition_name=plate_def.name,
     accession_id=uuid.uuid4(),
@@ -76,15 +74,17 @@ async def setup_test_data(db: AsyncSession):
   }
 
 
-class TestDeckInstanceService:
+class TestDeckService:
   """Test suite for deck instance service functions."""
 
   async def test_create_deck_instance_success(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test successful creation of a deck instance without position items."""
     deck_resource = setup_test_data["deck_resource"]
-    deck_name = "MyTestDeckInstance"
+    deck_name = "MyTestDeck"
     python_fqn = "pylabrobot.resources.hamilton.STARDeck"
 
     created_deck = await create_deck_instance(
@@ -103,7 +103,9 @@ class TestDeckInstanceService:
     assert len(created_deck.position_items) == 0
 
   async def test_create_deck_instance_with_positions(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test successful creation of a deck instance with position items."""
     deck_resource = setup_test_data["deck_resource"]
@@ -134,10 +136,12 @@ class TestDeckInstanceService:
     assert len(created_deck.position_items) == 2
 
     pos_a1 = next(
-      (p for p in created_deck.position_items if p.position_name == "A1"), None
+      (p for p in created_deck.position_items if p.position_name == "A1"),
+      None,
     )
     pos_b1 = next(
-      (p for p in created_deck.position_items if p.position_name == "B1"), None
+      (p for p in created_deck.position_items if p.position_name == "B1"),
+      None,
     )
 
     assert pos_a1 is not None
@@ -149,7 +153,9 @@ class TestDeckInstanceService:
     assert pos_b1.expected_resource_definition_name == plate_def.name
 
   async def test_create_deck_instance_duplicate_name_fails(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test that creating a deck instance with a duplicate name raises ValueError."""
     deck_resource = setup_test_data["deck_resource"]
@@ -162,7 +168,7 @@ class TestDeckInstanceService:
       python_fqn="fqn.1",
     )
 
-    with pytest.raises(ValueError, match=f"already exists"):
+    with pytest.raises(ValueError, match="already exists"):
       await create_deck_instance(
         db=db,
         name=deck_name,
@@ -173,7 +179,7 @@ class TestDeckInstanceService:
   async def test_create_deck_instance_invalid_deck_id_fails(self, db: AsyncSession):
     """Test that creating a deck instance with a non-existent deck ID fails."""
     non_existent_id = uuid.uuid4()
-    with pytest.raises(ValueError, match=f"ResourceInstanceOrm.*not found"):
+    with pytest.raises(ValueError, match="ResourceOrm.*not found"):
       await create_deck_instance(
         db=db,
         name="InvalidDeck",
@@ -182,7 +188,9 @@ class TestDeckInstanceService:
       )
 
   async def test_read_deck_instance(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test reading a deck instance by its accession_id."""
     deck_resource = setup_test_data["deck_resource"]
@@ -205,7 +213,9 @@ class TestDeckInstanceService:
     assert fetched_deck is None
 
   async def test_read_deck_instance_by_name(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test reading a deck instance by its unique name."""
     deck_resource = setup_test_data["deck_resource"]
@@ -222,15 +232,23 @@ class TestDeckInstanceService:
     assert fetched_deck.name == deck_name
 
   async def test_list_deck_instances(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test listing deck instances."""
     deck_resource = setup_test_data["deck_resource"]
     await create_deck_instance(
-      db, "DeckList1", deck_resource.accession_id, "fqn.list.1"
+      db,
+      "DeckList1",
+      deck_resource.accession_id,
+      "fqn.list.1",
     )
     await create_deck_instance(
-      db, "DeckList2", deck_resource.accession_id, "fqn.list.2"
+      db,
+      "DeckList2",
+      deck_resource.accession_id,
+      "fqn.list.2",
     )
 
     all_decks = await list_deck_instances(db)
@@ -238,7 +256,8 @@ class TestDeckInstanceService:
 
     # Test filtering
     filtered_decks = await list_deck_instances(
-      db, deck_accession_id=deck_resource.accession_id
+      db,
+      deck_accession_id=deck_resource.accession_id,
     )
     assert len(filtered_decks) >= 2
 
@@ -252,7 +271,9 @@ class TestDeckInstanceService:
     assert offset_decks[0].name != limited_decks[0].name
 
   async def test_update_deck_instance(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test updating various attributes of a deck instance."""
     deck_resource = setup_test_data["deck_resource"]
@@ -285,7 +306,7 @@ class TestDeckInstanceService:
       {
         "position_name": "C3",
         "resource_instance_accession_id": plate_resource.accession_id,
-      }
+      },
     ]
 
     final_deck = await update_deck_instance(
@@ -306,12 +327,16 @@ class TestDeckInstanceService:
     """Test that updating a non-existent deck instance returns None."""
     non_existent_id = uuid.uuid4()
     result = await update_deck_instance(
-      db, deck_accession_id=non_existent_id, name="NewName"
+      db,
+      deck_accession_id=non_existent_id,
+      name="NewName",
     )
     assert result is None
 
   async def test_delete_deck_instance(
-    self, db: AsyncSession, setup_test_data: Dict[str, Any]
+    self,
+    db: AsyncSession,
+    setup_test_data: dict[str, Any],
   ):
     """Test deleting a deck instance."""
     deck_resource = setup_test_data["deck_resource"]
@@ -321,7 +346,7 @@ class TestDeckInstanceService:
       {
         "position_name": "A1",
         "resource_instance_accession_id": plate_resource.accession_id,
-      }
+      },
     ]
 
     deck = await create_deck_instance(
@@ -336,7 +361,7 @@ class TestDeckInstanceService:
     # Ensure it's in the DB before deleting
     assert await read_deck_instance(db, deck_id) is not None
     pos_item_result = await db.execute(
-      select(DeckInstancePositionResourceOrm).filter_by(deck_accession_id=deck_id)
+      select(DeckPositionResourceOrm).filter_by(deck_accession_id=deck_id),
     )
     assert pos_item_result.scalar_one_or_none() is not None
 
@@ -349,7 +374,7 @@ class TestDeckInstanceService:
 
     # Verify position items are also gone (due to cascade)
     pos_item_result = await db.execute(
-      select(DeckInstancePositionResourceOrm).filter_by(deck_accession_id=deck_id)
+      select(DeckPositionResourceOrm).filter_by(deck_accession_id=deck_id),
     )
     assert pos_item_result.scalar_one_or_none() is None
 

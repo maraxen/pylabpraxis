@@ -50,13 +50,13 @@ PyLabPraxis utilizes two main types of data structures, primarily defined within
 
 1. **ORM Models** (e.g., `asset_management_orm.py`, `protocol_definitions_orm.py`, `machine_orm.py`, `deck_orm.py`, `function_data_output_orm.py`):
     * These SQLAlchemy models represent the database schema and are used for persistent storage of all critical information.
-    * Examples include `ProtocolDefinitionOrm`, `ProtocolRunOrm`, `ResourceInstanceOrm`, `MachineOrm`, `FunctionCallLogOrm`, `DeckLayoutOrm`, `FunctionDataOutputOrm`.
+    * Examples include `ProtocolDefinitionOrm`, `ProtocolRunOrm`, `ResourceOrm`, `MachineOrm`, `FunctionCallLogOrm`, `DeckLayoutOrm`, `FunctionDataOutputOrm`.
     * They define the relationships between different entities (e.g., a protocol run consists of multiple function calls; a machine can have multiple resources).
 
 2. **Pydantic Models** (e.g., `asset_pydantic_models.py`, `protocol_pydantic_models.py`, `machine_pydantic_models.py`, `deck_pydantic_models.py`, `function_data_output_pydantic_models.py`):
     * Used for data validation, serialization, and deserialization, especially for API request and response bodies.
     * Ensure type safety and provide clear data contracts for the API.
-    * Examples include `ProtocolStartRequest`, `AssetRequirementModel`, `ResourceInstanceResponse`, `ProtocolInfo`, `DeckLayoutResponse`, `FunctionDataOutputResponse`.
+    * Examples include `ProtocolStartRequest`, `AssetRequirementModel`, `ResourceResponse`, `ProtocolInfo`, `DeckLayoutResponse`, `FunctionDataOutputResponse`.
 
 ## State Management
 
@@ -76,7 +76,7 @@ State management is critical in an automated lab environment and is handled at m
 
 3.  **Database (PostgreSQL)**:
     *   The ultimate source of truth for **persistent configuration, definitions, and historical data**.
-    *   Stores the defined state of assets (e.g., `ResourceInstanceOrm.status`, `MachineOrm.status`), protocol definitions, workcell layouts, and records the history of protocol runs (status, inputs, outputs).
+    *   Stores the defined state of assets (e.g., `ResourceOrm.status`, `MachineOrm.status`), protocol definitions, workcell layouts, and records the history of protocol runs (status, inputs, outputs).
     *   Provides the foundational data for initializing the live, in-memory state objects.
 
 4.  **Redis (beyond `PraxisState`)**:
@@ -312,7 +312,7 @@ The asset-related backend models have been **unified and modernized**. All asset
   - All asset types now use a common set of fields: `accession_id`, `name`, `fqn`, `asset_type`, `location`, `plr_state`, `plr_definition`, `properties_json`.
   - Relationships between assets (e.g., resource <-> machine) are standardized and explicit.
 - **Obsolete Fields Removed:**
-  - Legacy fields (e.g., `user_assigned_name`, old FQN fields, `ResourceInstanceOrm`, `DeckInstanceOrm`) are gone.
+  - Legacy fields (e.g., `user_assigned_name`, old FQN fields, `ResourceOrm`, `DeckOrm`) are gone.
   - All ORM and Pydantic models are consistent and up to date.
 - **Exports Updated:**
   - Only current, valid models and enums are exported in `models/__init__.py`.

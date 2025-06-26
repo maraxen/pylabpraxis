@@ -15,19 +15,14 @@ import os
 import sys
 import traceback
 import uuid
+from collections.abc import Callable
 from typing import (
   Any,
-  Callable,
-  List,
-  Optional,
-  Set,
-  Tuple,
   Union,
   get_args,
   get_origin,
 )
 
-from pylabrobot.resources import Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # MODIFIED
 
 # Global in-memory registry (populated by decorators, updated by this service)
@@ -42,12 +37,12 @@ from praxis.backend.models.protocol_pydantic_models import (
 from praxis.backend.services.protocols import (
   upsert_function_protocol_definition,
 )
-from praxis.backend.utils.uuid import uuid7
 from praxis.backend.utils.type_inspection import (
   fqn_from_hint,
   is_pylabrobot_resource,
   serialize_type_hint,
 )
+from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +58,7 @@ class ProtocolDiscoveryService:
   """
 
   def __init__(
-    self, db_session_factory: Optional[async_sessionmaker[AsyncSession]] = None
+    self, db_session_factory: async_sessionmaker[AsyncSession] | None = None,
   ):
     """Initialize the ProtocolDiscoveryService.
 
@@ -76,8 +71,8 @@ class ProtocolDiscoveryService:
 
   def _extract_protocol_definitions_from_paths(
     self,
-    search_paths: Union[str, List[str]],
-  ) -> List[Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]]:
+    search_paths: str | list[str],
+  ) -> list[tuple[FunctionProtocolDefinitionModel, Callable | None]]:
     """Extract protocol function definitions from Python files in the given paths.
 
     Scans the specified directories for Python files, inspects their functions,
@@ -111,11 +106,11 @@ class ProtocolDiscoveryService:
     if isinstance(search_paths, str):
       search_paths = [search_paths]
 
-    extracted_definitions: List[
-      Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]
+    extracted_definitions: list[
+      tuple[FunctionProtocolDefinitionModel, Callable | None]
     ] = []  # type: ignore
-    processed_func_accession_ids: Set[int] = set()
-    loaded_module_names: Set[str] = set()
+    processed_func_accession_ids: set[int] = set()
+    loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
 
     for path_item in search_paths:
@@ -135,10 +130,10 @@ class ProtocolDiscoveryService:
           if file.endswith(".py") and not file.startswith("_"):
             module_file_path = os.path.join(root, file)
             rel_module_path = os.path.relpath(
-              module_file_path, potential_package_parent
+              module_file_path, potential_package_parent,
             )
             module_import_name = os.path.splitext(rel_module_path)[0].replace(
-              os.sep, "."
+              os.sep, ".",
             )
 
             try:
@@ -161,13 +156,13 @@ class ProtocolDiscoveryService:
 
                 protocol_def_attr = getattr(func_obj, "_protocol_definition", None)
                 if protocol_def_attr and isinstance(
-                  protocol_def_attr, FunctionProtocolDefinitionModel
+                  protocol_def_attr, FunctionProtocolDefinitionModel,
                 ):
                   extracted_definitions.append((protocol_def_attr, func_obj))
                 else:
                   sig = inspect.signature(func_obj)
-                  params_list: List[ParameterMetadataModel] = []
-                  assets_list: List[AssetRequirementModel] = []
+                  params_list: list[ParameterMetadataModel] = []
+                  assets_list: list[AssetRequirementModel] = []
 
                   for (
                     param_name,
@@ -205,7 +200,7 @@ class ProtocolDiscoveryService:
                       assets_list.append(AssetRequirementModel(**common_args))
                     else:
                       params_list.append(
-                        ParameterMetadataModel(**common_args, is_deck_param=False)
+                        ParameterMetadataModel(**common_args, is_deck_param=False),
                       )
 
                   inferred_model = FunctionProtocolDefinitionModel(
@@ -224,7 +219,7 @@ class ProtocolDiscoveryService:
             except Exception as e:
               logger.error(
                 f"DiscoveryService: Could not import/process module "
-                f"'{module_import_name}' from '{module_file_path}': {e}"
+                f"'{module_import_name}' from '{module_file_path}': {e}",
               )
               traceback.print_exc()
       if path_added_to_sys and potential_package_parent in sys.path:
@@ -234,11 +229,11 @@ class ProtocolDiscoveryService:
 
   async def discover_and_upsert_protocols(
     self,
-    search_paths: Union[str, List[str]], # Re-added search_paths argument
-    source_repository_accession_id: Optional[uuid.UUID] = None,
-    commit_hash: Optional[str] = None,
-    file_system_source_accession_id: Optional[uuid.UUID] = None,
-  ) -> List[Any]:
+    search_paths: str | list[str],  # Re-added search_paths argument
+    source_repository_accession_id: uuid.UUID | None = None,
+    commit_hash: str | None = None,
+    file_system_source_accession_id: uuid.UUID | None = None,
+  ) -> list[Any]:
     """Discover protocol functions in the given paths and upsert them to the DB.
 
     Scans the specified paths for Python files, extracts protocol definitions,
@@ -266,11 +261,13 @@ class ProtocolDiscoveryService:
     if not self.db_session_factory:
       logger.error(
         "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService."
-        " Cannot upsert definitions."
+        " Cannot upsert definitions.",
       )
       return []
 
-    logger.info(f"DiscoveryService: Starting protocol discovery in paths: {search_paths}...")
+    logger.info(
+      f"DiscoveryService: Starting protocol discovery in paths: {search_paths}...",
+    )
     extracted_definitions = self._extract_protocol_definitions_from_paths(search_paths)
 
     if not extracted_definitions:
@@ -279,9 +276,9 @@ class ProtocolDiscoveryService:
 
     logger.info(
       f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. "
-      f"Upserting to DB..."
+      f"Upserting to DB...",
     )
-    upserted_definitions_orm: List[Any] = []
+    upserted_definitions_orm: list[Any] = []
 
     async with self.db_session_factory() as session:
       for protocol_pydantic_model, func_ref in extracted_definitions:
@@ -290,12 +287,12 @@ class ProtocolDiscoveryService:
         try:  # TODO: have these pull from the protocol database  ORM
           if source_repository_accession_id and commit_hash:
             protocol_pydantic_model.source_repository_name = str(
-              source_repository_accession_id
+              source_repository_accession_id,
             )
             protocol_pydantic_model.commit_hash = commit_hash
           elif file_system_source_accession_id:
             protocol_pydantic_model.file_system_source_name = str(
-              file_system_source_accession_id
+              file_system_source_accession_id,
             )
 
           def_orm = await upsert_function_protocol_definition(
@@ -314,7 +311,7 @@ class ProtocolDiscoveryService:
           func_ref_protocol_def = getattr(func_ref, "_protocol_definition", None)
           if func_ref and func_ref_protocol_def is protocol_pydantic_model:
             if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              setattr(func_ref_protocol_def, "db_accession_id", def_orm.accession_id)
+              func_ref_protocol_def.db_accession_id = def_orm.accession_id
 
           if protocol_unique_key in PROTOCOL_REGISTRY:
             if hasattr(def_orm, "id") and def_orm.accession_id is not None:
@@ -322,25 +319,23 @@ class ProtocolDiscoveryService:
                 def_orm.accession_id
               )
               pydantic_def_in_registry = PROTOCOL_REGISTRY[protocol_unique_key].get(
-                "pydantic_definition"
+                "pydantic_definition",
               )  # type: ignore
               if pydantic_def_in_registry and isinstance(
                 pydantic_def_in_registry,
                 FunctionProtocolDefinitionModel,
               ):
-                setattr(
-                  pydantic_def_in_registry, "db_accession_id", def_orm.accession_id
-                )
+                pydantic_def_in_registry.db_accession_id = def_orm.accession_id
             else:
               logger.warning(
                 f"DiscoveryService: Upserted ORM object for '{protocol_unique_key}' has"
-                f" no 'id'. Cannot update PROTOCOL_REGISTRY."
+                f" no 'id'. Cannot update PROTOCOL_REGISTRY.",
               )
 
         except Exception as e:
           logger.error(
             f"ERROR: Failed to process or upsert protocol '{protocol_name_for_error} "
-            f"v{protocol_version_for_error}': {e}"
+            f"v{protocol_version_for_error}': {e}",
           )
           traceback.print_exc()
       # Commit happens when the session context manager exits if no exceptions
@@ -350,9 +345,9 @@ class ProtocolDiscoveryService:
         d
         for d in upserted_definitions_orm
         if hasattr(d, "id") and d.accession_id is not None
-      ]
+      ],
     )
     logger.info(
-      f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB."
+      f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB.",
     )
     return upserted_definitions_orm

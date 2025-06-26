@@ -1,6 +1,5 @@
 import json
 import uuid
-from unittest.mock import patch
 
 import fakeredis
 import pytest
@@ -11,8 +10,7 @@ from praxis.backend.services.state import PraxisState
 
 @pytest.fixture
 def mock_redis_client(mocker):
-  """
-  Fixture that patches redis.Redis to use a FakeRedis client.
+  """Fixture that patches redis.Redis to use a FakeRedis client.
   This provides a clean, in-memory redis for each test.
   """
   # Instantiate the fake client

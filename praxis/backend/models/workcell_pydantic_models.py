@@ -10,7 +10,6 @@ Models included:
 - WorkcellResponse
 """
 
-from typing import List, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
@@ -24,9 +23,9 @@ class WorkcellBase(BaseModel):
   """Defines the base properties for a workcell."""
 
   name: str = Field(description="The unique name of the workcell.")
-  description: Optional[str] = Field(None, description="A description of the workcell.")
-  physical_location: Optional[str] = Field(
-    None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301')."
+  description: str | None = Field(None, description="A description of the workcell.")
+  physical_location: str | None = Field(
+    None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
   )
 
 
@@ -37,7 +36,6 @@ class WorkcellCreate(WorkcellBase):
   specifically when creating new workcell entries.
   """
 
-  pass
 
 
 class WorkcellUpdate(BaseModel):
@@ -47,12 +45,12 @@ class WorkcellUpdate(BaseModel):
   attributes.
   """
 
-  name: Optional[str] = Field(None, description="The new unique name of the workcell.")
-  description: Optional[str] = Field(
-    None, description="The new description of the workcell."
+  name: str | None = Field(None, description="The new unique name of the workcell.")
+  description: str | None = Field(
+    None, description="The new description of the workcell.",
   )
-  physical_location: Optional[str] = Field(
-    None, description="The new physical location of the workcell."
+  physical_location: str | None = Field(
+    None, description="The new physical location of the workcell.",
   )
 
 
@@ -65,15 +63,15 @@ class WorkcellResponse(WorkcellBase, TimestampedModel):
   """
 
   accession_id: UUID7 = Field(description="The unique database ID of the workcell.")
-  machines: List[MachineResponse] = Field(
-    default_factory=list, description="List of machines associated with this workcell."
+  machines: list[MachineResponse] = Field(
+    default_factory=list, description="List of machines associated with this workcell.",
   )
 
-  resources: Optional[List[ResourceResponse]] = Field(
-    default_factory=list, description="List of resources associated with this workcell."
+  resources: list[ResourceResponse] | None = Field(
+    default_factory=list, description="List of resources associated with this workcell.",
   )
 
-  decks: Optional[List[DeckStateResponse]] = Field(
+  decks: list[DeckStateResponse] | None = Field(
     default_factory=list,
     description="List of deck configurations associated with this workcell.",
   )
@@ -81,4 +79,3 @@ class WorkcellResponse(WorkcellBase, TimestampedModel):
   class Config(TimestampedModel.Config):
     """Pydantic configuration for WorkcellResponse."""
 
-    pass

@@ -23,7 +23,7 @@ import os
 import uuid
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.services.state import PraxisState as PraxisState
 
-PROTOCOL_REGISTRY: Dict[str, Any] = {}
+PROTOCOL_REGISTRY: dict[str, Any] = {}
 DeckInputType = Union[str, os.PathLike, io.IOBase, Deck]
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class PraxisRunContext:
   # For call logging - these track the *current* state of the call stack
   # This is the FunctionCallLogOrm.accession_id of the *currently executing* function's log entry.
   # For the next nested call, this becomes the parent_function_call_log_db_accession_id.
-  current_call_log_db_accession_id: Optional[uuid.UUID] = None
+  current_call_log_db_accession_id: uuid.UUID | None = None
 
   # Sequence counter for calls within this run_accession_id
   # This should be managed carefully to ensure it's unique and ordered for a given run.
@@ -72,7 +72,7 @@ class PraxisRunContext:
     return current_val
 
   def create_context_for_nested_call(
-    self, new_parent_call_log_db_accession_id: Optional[uuid.UUID]
+    self, new_parent_call_log_db_accession_id: uuid.UUID | None,
   ) -> "PraxisRunContext":
     """Prepare context for a nested function call.
 
@@ -139,5 +139,5 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
       k: str(v) for k, v in kwargs.items() if k != "__praxis_run_context__"
     }
     return json.dumps(
-      {"args": [str(arg) for arg in args], "kwargs": cleaned_kwargs_fallback}
+      {"args": [str(arg) for arg in args], "kwargs": cleaned_kwargs_fallback},
     )
