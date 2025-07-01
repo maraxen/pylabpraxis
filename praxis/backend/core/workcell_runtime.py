@@ -508,7 +508,7 @@ class WorkcellRuntime:
             await machine_instance.setup()
           except Exception as e:
             error_message = f"Failed to call setup() for machine '{machine_orm.name}': {str(e)[:250]}"
-            raise WorkcellRuntimeError(error_message)
+            raise WorkcellRuntimeError(error_message) from e
         else:
           raise WorkcellRuntimeError(
             f"Machine '{machine_orm.name}' does not have a valid" " setup() method that is callable and awaitable.",
@@ -1301,8 +1301,7 @@ class WorkcellRuntime:
 
           resource_info_data = {
             "resource_instance_accession_id": lw_instance.accession_id,
-            "name": (lw_instance.name or f"Resource_{lw_instance.accession_id}"),
-            "name": lw_def.name,
+            "name": (lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"),
             "fqn": lw_def.fqn,
             "category": (str(lw_def.plr_category.value) if lw_def.plr_category else None),
             "size_x_mm": lw_def.size_x_mm,

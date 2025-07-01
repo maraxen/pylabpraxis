@@ -23,45 +23,51 @@ import pylabrobot.resources
 from pylabrobot.resources import (
   Carrier,
   Container,
-  Coordinate,
   Deck,
   ItemizedResource,
   Lid,
-  PetriDish,
-  Plate,
   PlateAdapter,
   PlateHolder,
   Resource,
   ResourceHolder,
   ResourceStack,
-  Tip,
-  TipRack,
   TipSpot,
-  Tube,
-  TubeRack,
   Well,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import praxis.backend.services as svc
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.models import (
-  AssetRequirementModel,
-  MachineOrm,
-  MachineStatusEnum,
-  ResourceCategoryEnum,
-  ResourceOrm,
+from praxis.backend.models.machine_orm import MachineOrm, MachineStatusEnum
+from praxis.backend.models.protocol_models import AssetRequirementModel
+from praxis.backend.models.resource_definition_orm import (
+  ResourceDefinitionOrm,
   ResourceStatusEnum,
 )
-from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
-from praxis.backend.utils.logging import (
-  get_logger,
+from praxis.backend.models.resource_instance_orm import ResourceOrm
+from praxis.backend.services.praxis_orm_service import PraxisORMService
+from praxis.backend.utils.errors import (
+  AssetAcquisitionError,
+  AssetReleaseError,
   log_async_runtime_errors,
   log_runtime_errors,
 )
-from praxis.backend.utils.plr_inspection import get_constructor_params_with_defaults
+from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+
+async_asset_manager_errors = partial(
+  log_async_runtime_errors,
+  logger_instance=logger,
+  raises_exception=AssetAcquisitionError,
+)
+
+asset_manager_errors = partial(
+  log_runtime_errors,
+  logger_instance=logger,
+  raises_exception=AssetAcquisitionError,
+)
 
 async_asset_manager_errors = partial(
   log_async_runtime_errors,
@@ -89,6 +95,7 @@ class AssetManager:
     """
     self.db: AsyncSession = db_session
     self.workcell_runtime = workcell_runtime
+    self.svc = PraxisORMService()
 
     self.EXCLUDED_BASE_CLASSES: list[type[Resource]] = [  # TODO: maybe just inspect if it's abstract?
       Carrier,
@@ -285,231 +292,81 @@ class AssetManager:
       prefix=plr_resources_package.__name__ + ".",
       onerror=lambda x: logger.error("AM_SYNC: Error walking package %s", x),
     ):
-      try:
-        module = importlib.import_module(modname)
-      except ImportError as e:
-        logger.warning(
-          "AM_SYNC: Could not import module %s during sync: %s",
-          modname,
-          e,
-        )
+      added, updated = await self._process_module(modname, processed_fqns)
+      added_count += added
+      updated_count += updated
+
+    return added_count, updated_count
+
+  async def _process_module(self, modname: str, processed_fqns: set[str]) -> tuple[int, int]:
+    added_count = 0
+    updated_count = 0
+    try:
+      module = importlib.import_module(modname)
+    except ImportError as e:
+      logger.warning(
+        "AM_SYNC: Could not import module %s during sync: %s",
+        modname,
+        e,
+      )
+      return added_count, updated_count
+
+    for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
+      fqn = f"{modname}.{class_name}"
+      if fqn in processed_fqns:
         continue
 
-      for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
-        fqn = f"{modname}.{class_name}"
-        if fqn in processed_fqns:
-          continue
-        processed_fqns.add(fqn)
+      processed_fqns.add(fqn)
 
-        logger.debug(
-          "AM_SYNC: Found class %s. Checking if catalogable resource...",
-          fqn,
+      if not self._can_catalog_resource(plr_class_obj):
+        continue
+
+      # Extract metadata
+      category = self._get_category_from_plr_class(plr_class_obj)
+      ordering = self._extract_ordering_from_plr_class(plr_class_obj)
+      short_name = self._get_short_name_from_plr_class(plr_class_obj)
+      description = self._get_description_from_plr_class(plr_class_obj)
+      size_x_mm = self._get_size_x_mm_from_plr_class(plr_class_obj)
+      size_y_mm = self._get_size_y_mm_from_plr_class(plr_class_obj)
+      size_z_mm = self._get_size_z_mm_from_plr_class(plr_class_obj)
+      nominal_volume_ul = self._get_nominal_volume_ul_from_plr_class(plr_class_obj)
+
+      # Check if resource definition already exists
+      existing_resource_def = await self.praxis_orm_service.get_resource_definition_by_fqn(
+        fqn,
+      )
+
+      if existing_resource_def:
+        # Update existing
+        existing_resource_def.name = short_name
+        existing_resource_def.description = description
+        existing_resource_def.plr_category = category
+        existing_resource_def.ordering = ordering
+        existing_resource_def.size_x_mm = size_x_mm
+        existing_resource_def.size_y_mm = size_y_mm
+        existing_resource_def.size_z_mm = size_z_mm
+        existing_resource_def.nominal_volume_ul = nominal_volume_ul
+        await self.praxis_orm_service.update_resource_definition(
+          existing_resource_def,
         )
-
-        if not self._can_catalog_resource(plr_class_obj):
-          logger.debug("AM_SYNC: Skipping %s - not a catalogable resource class.", fqn)
-          continue
-
-        logger.debug("AM_SYNC: Processing potential resource class: %s", fqn)
-        temp_instance: Resource | None = None
-        serialized_data: dict[str, Any] | None = None
-        kwargs_for_instantiation: dict[str, Any] = {
-          "name": f"praxis_sync_temp_{class_name}",
-        }
-
-        try:
-          constructor_params = get_constructor_params_with_defaults(plr_class_obj)
-          for param_name, param_info in constructor_params.items():
-            if param_name in [
-              "self",
-              "name",
-              "category",
-              "model",
-              "size_x",
-              "size_y",
-              "size_z",
-            ]:
-              continue
-            if param_info["required"] and param_info["default"] is inspect.Parameter.empty:
-              param_type_str = str(param_info["type"]).lower()
-              if "optional" in param_type_str:
-                kwargs_for_instantiation[param_name] = None
-              elif "str" in param_type_str:
-                kwargs_for_instantiation[param_name] = f"default_{param_name}"
-              elif "int" in param_type_str:
-                kwargs_for_instantiation[param_name] = 0
-              elif "float" in param_type_str:
-                kwargs_for_instantiation[param_name] = 0.0
-              elif "bool" in param_type_str:
-                kwargs_for_instantiation[param_name] = False
-              elif "list" in param_type_str:
-                kwargs_for_instantiation[param_name] = []
-              elif "dict" in param_type_str:
-                kwargs_for_instantiation[param_name] = {}
-              elif "coordinate" in param_type_str:
-                kwargs_for_instantiation[param_name] = Coordinate(0, 0, 0)
-              else:
-                logger.info(
-                  "AM_SYNC: Cannot auto-default required param '%s' (%s) for %s.",
-                  param_name,
-                  param_info["type"],
-                  fqn,
-                )
-        # pylint: disable-next=broad-except
-        except Exception as e_param:
-          logger.warning(
-            "AM_SYNC: Error inspecting constructor for %s: %s.",
-            fqn,
-            e_param,
-          )
-
-        try:
-          temp_instance = plr_class_obj(**kwargs_for_instantiation)
-          if temp_instance:
-            serialized_data = temp_instance.serialize()
-            if "name" in serialized_data:
-              del serialized_data["name"]
-          else:  # Should not happen if constructor is standard
-            logger.warning("AM_SYNC: Instantiation of %s returned None.", fqn)
-            serialized_data = {}
-        # pylint: disable-next=broad-except
-        except Exception as inst_err:
-          logger.warning(
-            "AM_SYNC: Instantiation/serialization of %s failed: %s. Kwargs: %s",
-            fqn,
-            inst_err,
-            kwargs_for_instantiation,
-          )
-          temp_instance = None
-          serialized_data = {}
-
-        size_x = serialized_data.get("size_x")
-        size_y = serialized_data.get("size_y")
-        size_z = serialized_data.get("size_z")
-        nominal_volume_ul: float | None = None
-        if serialized_data:
-          if "max_volume" in serialized_data:
-            nominal_volume_ul = float(serialized_data["max_volume"])
-          elif "wells" in serialized_data and isinstance(serialized_data["wells"], list) and serialized_data["wells"]:
-            first_well = serialized_data["wells"][0]
-            if isinstance(first_well, dict) and "max_volume" in first_well:
-              nominal_volume_ul = float(first_well["max_volume"])
-          elif "items" in serialized_data and isinstance(serialized_data["items"], list) and serialized_data["items"]:
-            first_item = serialized_data["items"][0]
-            if isinstance(first_item, dict) and "volume" in first_item:
-              nominal_volume_ul = float(first_item["volume"])
-
-        model_name_from_data = serialized_data.get("model") or serialized_data.get("type") or class_name
-        resource_definition_name = class_name
-
-        # Determine plr_category (e.g., "Deck", "Plate", "TipRack")
-        plr_category_val = plr_class_obj.__name__  # Default to class name
-        if temp_instance and hasattr(temp_instance, "category") and temp_instance.category:
-          plr_category_val = temp_instance.category
-        elif issubclass(plr_class_obj, Deck):
-          plr_category_val = "Deck"
-        elif issubclass(plr_class_obj, Plate):
-          plr_category_val = "Plate"
-        elif issubclass(plr_class_obj, TipRack):
-          plr_category_val = "TipRack"
-        # ... (add more specific PLR category mappings if needed) ...
-
-        num_items = self._extract_num_items(plr_class_obj, serialized_data)
-        ordering_str = self._extract_ordering(plr_class_obj, serialized_data)
-        details_for_db = dict(serialized_data)  # Make a copy
-        if num_items is not None:
-          details_for_db["praxis_extracted_num_items"] = num_items
-        if ordering_str is not None:
-          details_for_db["praxis_extracted_ordering"] = ordering_str
-
-        description = inspect.getdoc(plr_class_obj) or fqn
-        # ResourceDefinitionOrm.resource_type is a user-friendly type/model name
-        praxis_display_type_name = model_name_from_data
-
-        is_consumable_flag = any(
-          issubclass(plr_class_obj, consumable_base)
-          for consumable_base in (Plate, TipRack, Tube, TubeRack, PetriDish, Lid, Tip)
+        updated_count += 1
+        logger.debug("AM_SYNC: Updated resource definition: %s", fqn)
+      else:
+        # Create new
+        new_resource_def = ResourceDefinitionOrm(
+          name=short_name,
+          fqn=fqn,
+          description=description,
+          plr_category=category,
+          ordering=ordering,
+          size_x_mm=size_x_mm,
+          size_y_mm=size_y_mm,
+          size_z_mm=size_z_mm,
+          nominal_volume_ul=nominal_volume_ul,
         )
-        if plr_category_val in ResourceCategoryEnum.consumables():
-          is_consumable_flag = True
-        if issubclass(plr_class_obj, Deck):
-          is_consumable_flag = False  # Decks are not consumable
-
-        logger.debug(
-          "AM_SYNC: DB Prep: DefName=%s, FQN=%s, PLRCategory=%s, DisplayType=%s,Consumable=%s",
-          resource_definition_name,
-          fqn,
-          plr_category_val,
-          praxis_display_type_name,
-          is_consumable_flag,
-        )
-
-        try:
-          existing_def_orm = await svc.read_resource_definition(
-            self.db,
-            resource_definition_name,
-          )
-          if not existing_def_orm:
-            added_count += 1
-            logger.info(
-              "AM_SYNC: Added new resource definition: %s",
-              resource_definition_name,
-            )
-            await svc.create_resource_definition(  # TODO(marielle): probably remove excess args from this method
-              db=self.db,
-              name=resource_definition_name,  # PK
-              fqn=fqn,
-              resource_type=praxis_display_type_name,
-              description=description,
-              is_consumable=is_consumable_flag,
-              nominal_volume_ul=nominal_volume_ul,
-              plr_definition_details_json=details_for_db,
-            )
-          else:
-            await svc.update_resource_definition(
-              db=self.db,
-              name=resource_definition_name,
-              fqn=fqn,
-              resource_type=praxis_display_type_name,
-              description=description,
-              is_consumable=is_consumable_flag,
-              nominal_volume_ul=nominal_volume_ul,
-              plr_definition_details_json=details_for_db,
-              # size_x_mm=size_x,
-              # size_y_mm=size_y,
-              # size_z_mm=size_z,
-              # For ResourceDefinitionOrm.plr_category
-              # plr_category=plr_category_val,
-              # For ResourceDefinitionOrm.model
-              # model=model_name_from_data,
-            )
-            updated_count += 1
-            logger.info(
-              "AM_SYNC: Updated existing resource definition: %s",
-              resource_definition_name,
-            )
-
-        except Exception as e_proc:
-          logger.exception(
-            "AM_SYNC: DB save error for %s (Def Name: %s): %s",
-            fqn,
-            resource_definition_name,
-            e_proc,
-          )
-        finally:
-          if temp_instance:
-            del temp_instance
-          if serialized_data:
-            del serialized_data
-
-    # The broad-except disable is justified here because this is a sync function
-    # that should attempt to process all items, logging errors for individual
-    # failures rather than stopping the entire sync operation.
-    logger.info(
-      "AM_SYNC: Sync complete. Added: %d, Updated: %d",
-      added_count,
-      updated_count,
-    )
+        await self.praxis_orm_service.create_resource_definition(new_resource_def)
+        added_count += 1
+        logger.debug("AM_SYNC: Added new resource definition: %s", fqn)
     return added_count, updated_count
 
   async def apply_deck_instance(
@@ -538,7 +395,7 @@ class AssetManager:
       protocol_run_accession_id,
     )
 
-    deck_orm = await svc.read_deck(
+    deck_orm = await self.svc.read_deck(
       self.db,
       deck_orm_accession_id,
     )
@@ -547,7 +404,7 @@ class AssetManager:
         f"Deck ID '{deck_orm_accession_id}' not found.",
       )
 
-    deck_resource_orm = await svc.read_resource(
+    deck_resource_orm = await self.svc.read_resource(
       self.db,
       deck_orm.accession_id,
     )  # TODO: make sure these are synced
@@ -556,7 +413,7 @@ class AssetManager:
         f"Deck Resource ID '{deck_orm.accession_id}' (from Deck '{deck_orm.name}') not found.",
       )
 
-    deck_def_orm = await svc.read_resource_definition(
+    deck_def_orm = await self.svc.read_resource_definition(
       self.db,
       deck_resource_orm.name,
     )
@@ -599,7 +456,7 @@ class AssetManager:
     #    parent_machine_name_for_log =
     # deck_orm.deck_parent_machine.name
 
-    await svc.update_resource(
+    await self.svc.update_resource(
       db=self.db,
       resource_instance_accession_id=deck_resource_orm.accession_id,
       new_status=ResourceStatusEnum.IN_USE,
@@ -618,7 +475,7 @@ class AssetManager:
     for position_item_orm in deck_orm.position_items or []:
       if position_item_orm.resource_instance_accession_id:
         item_to_place_accession_id = position_item_orm.resource_instance_accession_id
-        item_to_place_orm = await svc.read_resource(
+        item_to_place_orm = await self.svc.read_resource(
           self.db,
           item_to_place_accession_id,
         )
@@ -654,7 +511,7 @@ class AssetManager:
             f"{item_to_place_orm.current_status}).",
           )
 
-        item_def_orm = await svc.read_resource_definition(
+        item_def_orm = await self.svc.read_resource_definition(
           self.db,
           item_to_place_orm.fqn,
         )
@@ -672,7 +529,7 @@ class AssetManager:
           target=deck_orm_accession_id,
           position_accession_id=position_item_orm.position_accession_id,
         )
-        await svc.update_resource_instance_location_and_status(
+        await self.svc.update_resource_instance_location_and_status(
           db=self.db,
           resource_instance_accession_id=item_to_place_accession_id,
           new_status=ResourceStatusEnum.IN_USE,
@@ -743,7 +600,7 @@ class AssetManager:
         f"Could not dynamically verify FQN '{fqn_constraint}' during machine acquisition safeguard: {e}",
       )
     # Also check against resource definitions just in case it's cataloged as a deck
-    potential_deck_def = await svc.read_resource_definition_by_fqn(
+    potential_deck_def = await self.svc.read_resource_definition_by_fqn(
       self.db,
       fqn_constraint,
     )
@@ -756,7 +613,7 @@ class AssetManager:
       )
 
     selected_machine_orm: MachineOrm | None = None
-    in_use_by_this_run_list = await svc.list_machines(
+    in_use_by_this_run_list = await self.svc.list_machines(
       self.db,
       pylabrobot_class_filter=fqn_constraint,
       status=MachineStatusEnum.IN_USE,
@@ -765,7 +622,7 @@ class AssetManager:
     if in_use_by_this_run_list:
       selected_machine_orm = in_use_by_this_run_list[0]
     else:
-      available_machines_list = await svc.list_machines(
+      available_machines_list = await self.svc.list_machines(
         self.db,
         status=MachineStatusEnum.AVAILABLE,
         pylabrobot_class_filter=fqn_constraint,
@@ -791,7 +648,7 @@ class AssetManager:
       selected_machine_orm,
     )
     if not live_plr_machine:
-      await svc.update_machine_status(
+      await self.svc.update_machine_status(
         self.db,
         selected_machine_orm.accession_id,
         MachineStatusEnum.ERROR,
@@ -805,7 +662,7 @@ class AssetManager:
       selected_machine_orm.current_status != MachineStatusEnum.IN_USE
       or selected_machine_orm.current_protocol_run_accession_id != uuid.UUID(str(protocol_run_accession_id))
     ):
-      updated_machine_orm = await svc.update_machine_status(
+      updated_machine_orm = await self.svc.update_machine_status(
         self.db,
         selected_machine_orm.accession_id,
         MachineStatusEnum.IN_USE,
@@ -864,7 +721,7 @@ class AssetManager:
 
     resource_instance_to_acquire: ResourceOrm | None = None
     if user_choice_instance_accession_id:
-      instance_orm = await svc.read_resource(
+      instance_orm = await self.svc.read_resource(
         self.db,
         user_choice_instance_accession_id,
       )
@@ -894,7 +751,7 @@ class AssetManager:
         )
       resource_instance_to_acquire = instance_orm
     else:
-      in_use_list = await svc.read_resources(
+      in_use_list = await self.svc.read_resources(
         self.db,
         fqn=fqn,
         status=ResourceStatusEnum.IN_USE,
@@ -904,7 +761,7 @@ class AssetManager:
       if in_use_list:
         resource_instance_to_acquire = in_use_list[0]
       else:
-        on_deck_list = await svc.read_resources(
+        on_deck_list = await self.svc.read_resources(
           self.db,
           fqn=fqn,
           status=ResourceStatusEnum.AVAILABLE_ON_DECK,
@@ -913,7 +770,7 @@ class AssetManager:
         if on_deck_list:
           resource_instance_to_acquire = on_deck_list[0]
         else:
-          in_storage_list = await svc.read_resources(
+          in_storage_list = await self.svc.read_resources(
             self.db,
             fqn=fqn,
             status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
@@ -927,12 +784,12 @@ class AssetManager:
         f"No instance found for definition '{fqn}' matching criteria for run '{protocol_run_accession_id}'.",
       )
 
-    resource_def_orm = await svc.read_resource_definition(
+    resource_def_orm = await self.svc.read_resource_definition(
       self.db,
       resource_instance_to_acquire.fqn,
     )
     if not resource_def_orm or not resource_def_orm.fqn:
-      await svc.update_resource_instance_location_and_status(
+      await self.svc.update_resource_instance_location_and_status(
         db=self.db,
         resource_instance_accession_id=resource_instance_to_acquire.accession_id,
         new_status=ResourceStatusEnum.ERROR,
@@ -947,7 +804,7 @@ class AssetManager:
       resource_definition_fqn=resource_def_orm.fqn,
     )
     if not live_plr_resource:
-      await svc.update_resource_instance_location_and_status(
+      await self.svc.update_resource_instance_location_and_status(
         db=self.db,
         resource_instance_accession_id=resource_instance_to_acquire.accession_id,
         new_status=ResourceStatusEnum.ERROR,
@@ -968,7 +825,7 @@ class AssetManager:
       )  # User-assigned name of the target deck resource
       position_on_deck = location_constraints.get("position_name")
       if deck_user_name and position_on_deck:
-        target_deck_instance = await svc.read_resource_by_name(
+        target_deck_instance = await self.svc.read_resource_by_name(
           self.db,
           deck_user_name,
         )
@@ -977,7 +834,7 @@ class AssetManager:
             f"Target deck resource '{deck_user_name}' not found.",
           )
         # Verify target_deck_instance is a deck
-        target_deck_def = await svc.read_resource_definition(
+        target_deck_def = await self.svc.read_resource_definition(
           self.db,
           target_deck_instance.fqn,
         )
@@ -1036,7 +893,7 @@ class AssetManager:
     )
 
     if needs_db_update:
-      updated_resource_instance = await svc.update_resource_instance_location_and_status(
+      updated_resource_instance = await self.svc.update_resource_instance_location_and_status(
         self.db,
         resource_instance_to_acquire.accession_id,
         new_status=ResourceStatusEnum.IN_USE,
@@ -1065,7 +922,7 @@ class AssetManager:
     status_details: str | None = "Released from run",
   ):
     """Release a Machine (not a Deck)."""
-    machine_to_release = await svc.read_machine(self.db, machine_orm_accession_id)
+    machine_to_release = await self.svc.read_machine(self.db, machine_orm_accession_id)
     if not machine_to_release:
       logger.warning(
         f"AM_RELEASE_MACHINE: Machine ID {machine_orm_accession_id} not found.",
@@ -1087,7 +944,7 @@ class AssetManager:
       return  # Avoid proceeding
 
     await self.workcell_runtime.shutdown_machine(machine_orm_accession_id)
-    updated_machine = await svc.update_machine_status(
+    updated_machine = await self.svc.update_machine_status(
       self.db,
       machine_orm_accession_id,
       final_status,
@@ -1130,7 +987,7 @@ class AssetManager:
         AssetReleaseError: If the resource cannot be released or updated in the DB.
 
     """
-    resource_to_release = await svc.read_resource(
+    resource_to_release = await self.svc.read_resource(
       self.db,
       resource_orm_accession_id,
     )
@@ -1148,7 +1005,7 @@ class AssetManager:
       final_status.name,
     )
 
-    resource_def_orm = await svc.read_resource_definition(
+    resource_def_orm = await self.svc.read_resource_definition(
       self.db,
       resource_to_release.fqn,
     )
@@ -1195,7 +1052,7 @@ class AssetManager:
       final_loc_accession_id_for_ads = clear_from_accession_id
       final_pos_for_ads = clear_from_position_name
 
-    updated_resource = await svc.update_resource_instance_location_and_status(
+    updated_resource = await self.svc.update_resource_instance_location_and_status(
       self.db,
       resource_orm_accession_id,
       final_status,
@@ -1242,7 +1099,7 @@ class AssetManager:
       protocol_run_accession_id,
     )
 
-    resource_def_check = await svc.read_resource_definition(self.db, asset_fqn)
+    resource_def_check = await self.svc.read_resource_definition(self.db, asset_fqn)
 
     if resource_def_check:
       logger.debug(

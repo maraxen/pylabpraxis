@@ -16,10 +16,10 @@ from praxis.backend.api.dependencies import get_db
 # Import all necessary Pydantic models from the central models package
 from praxis.backend.models import (
   FunctionProtocolDefinitionOrm,
+  ProtocolDefinitionFilters,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
   ProtocolStartRequest,
-  SearchFilters,
 )
 
 # Import the service layer, aliased as 'svc' for convenience
@@ -69,23 +69,18 @@ protocol_run_accession_resolver = partial(
   tags=["Protocol Definitions"],
 )
 async def list_protocol_definitions(
+  filters: ProtocolDefinitionFilters = Depends(),
   db: AsyncSession = Depends(get_db),
-  filters: SearchFilters = Depends(),
-  source_name: str | None = None,
-  is_top_level: bool | None = None,
-  category: str | None = None,
-  tags: list[str] | None = None,
-  include_deprecated: bool = False,
 ):
   """List all available protocol definitions."""
   return await protocol_definition_service.get_multi(
     db=db,
-    filters=filters,
-    source_name=source_name,
-    is_top_level=is_top_level,
-    category=category,
-    tags=tags,
-    include_deprecated=include_deprecated,
+    filters=filters.search_filters,
+    source_name=filters.source_name,
+    is_top_level=filters.is_top_level,
+    category=filters.category,
+    tags=filters.tags,
+    include_deprecated=filters.include_deprecated,
   )
 
 

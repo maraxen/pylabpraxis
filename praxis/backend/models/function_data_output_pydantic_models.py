@@ -7,6 +7,7 @@ enabling proper validation, serialization, and API interaction for experimental 
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from pydantic import UUID7, BaseModel, Field, field_validator
 
@@ -379,3 +380,25 @@ class DataExportRequest(BaseModel):
     False,
     description="Whether to flatten hierarchical data",
   )
+
+class FunctionDataOutputFilters(BaseModel):
+    """Model for filtering function data outputs."""
+
+    search_filters: SearchFilters = Field(..., description="Search filters for data selection")
+    data_types: list[DataOutputTypeEnum] | None = Field(None, description="Filter by data types.")
+    spatial_contexts: list[DataOutputSpatialContextEnum] | None = Field(None, description="Filter by spatial context.")
+    has_numeric_data: bool | None = Field(None, description="Filter for entries with numeric data.")
+    has_file_data: bool | None = Field(None, description="Filter for entries with file attachments.")
+    min_quality_score: float | None = Field(None, ge=0.0, le=1.0, description="Minimum quality score.")
+
+class WellDataOutputFilters(BaseModel):
+    """Model for filtering well data outputs."""
+
+    plate_resource_id: UUID | None = Field(None)
+    function_call_id: UUID | None = Field(None)
+    protocol_run_id: UUID | None = Field(None)
+    data_type: DataOutputTypeEnum | None = Field(None)
+    well_row: int | None = Field(None, ge=0)
+    well_column: int | None = Field(None, ge=0)
+    skip: int = Field(0, ge=0)
+    limit: int = Field(100, ge=1, le=1000)

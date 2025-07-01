@@ -12,6 +12,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from praxis.backend.models.filters import SearchFilters
+
 
 class ScheduleEntryStatus(str, Enum):
   """Schedule entry status enum for API."""
@@ -317,3 +319,15 @@ class SchedulerMetricsResponse(BaseModel):
   redis_availability_percentage: float
   database_availability_percentage: float
   celery_task_success_rate: float
+
+
+class ScheduleListFilters(BaseModel):
+    """Model for filtering schedule lists."""
+
+    search_filters: SearchFilters
+    status: list[ScheduleEntryStatus] | None = None
+    protocol_run_ids: list[uuid.UUID] | None = None
+    priority_min: int | None = None
+    priority_max: int | None = None
+    include_completed: bool = False
+    include_cancelled: bool = False

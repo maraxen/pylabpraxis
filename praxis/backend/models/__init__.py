@@ -9,6 +9,7 @@ the database schema is in sync with the ORM models.
 
 from __future__ import annotations
 
+from .asset_lock_manager_pydantic_models import AcquireAssetLock
 from .asset_orm import Asset
 from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
 from .deck_orm import DeckOrm, DeckPositionDefinitionOrm, DeckTypeDefinitionOrm
@@ -38,12 +39,14 @@ from .function_data_output_pydantic_models import (
   DataExportRequest,
   FunctionDataOutputBase,
   FunctionDataOutputCreate,
+  FunctionDataOutputFilters,
   FunctionDataOutputResponse,
   FunctionDataOutputUpdate,
   PlateDataVisualization,
   ProtocolRunDataSummary,
   WellDataOutputBase,
   WellDataOutputCreate,
+  WellDataOutputFilters,
   WellDataOutputResponse,
   WellDataOutputUpdate,
 )
@@ -70,6 +73,7 @@ from .protocol_pydantic_models import (
   AssetRequirementModel,
   FunctionProtocolDefinitionModel,
   ParameterMetadataModel,
+  ProtocolDefinitionFilters,
   ProtocolDirectories,
   ProtocolInfo,
   ProtocolParameters,
@@ -129,6 +133,7 @@ from .workcell_pydantic_models import (
 )
 
 __all__ = [
+  "AcquireAssetLock",
   "Asset",
   "AssetBase",
   "AssetResponse",
@@ -176,6 +181,7 @@ __all__ = [
   "AssetRequirementModel",
   "FunctionProtocolDefinitionModel",
   "ParameterMetadataModel",
+  "ProtocolDefinitionFilters",
   "ProtocolDirectories",
   "ProtocolInfo",
   "ProtocolParameters",
@@ -194,12 +200,14 @@ __all__ = [
   "FunctionDataOutputCreate",
   "FunctionDataOutputResponse",
   "FunctionDataOutputUpdate",
+  "FunctionDataOutputFilters",
   "PlateDataVisualization",
   "ProtocolRunDataSummary",
   "WellDataOutputBase",
   "WellDataOutputCreate",
   "WellDataOutputResponse",
   "WellDataOutputUpdate",
+  "WellDataOutputFilters",
   "AssetReservationOrm",
   "AssetReservationStatusEnum",
   "ScheduleEntryOrm",

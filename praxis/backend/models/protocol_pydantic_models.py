@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
+from praxis.backend.models.filters import SearchFilters
+
 if TYPE_CHECKING:
   from .protocol_definitions_orm import AssetRequirementOrm
 
@@ -323,3 +325,14 @@ class ProtocolParameters(BaseModel):
 
     from_attributes = True
     validate_assignment = True
+
+
+class ProtocolDefinitionFilters(BaseModel):
+  """Model for filtering protocol definitions."""
+
+  search_filters: SearchFilters
+  source_name: str | None = None
+  is_top_level: bool | None = None
+  category: str | None = None
+  tags: list[str] | None = None
+  include_deprecated: bool = False

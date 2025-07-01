@@ -1,5 +1,6 @@
 # pylint: disable=too-many-arguments,fixme
-"""Protocol Scheduler - Manages protocol execution scheduling and asset allocation. # broad-except is justified at method level.
+"""Protocol Scheduler - Manages protocol execution scheduling and asset allocation.
+# broad-except is justified at method level.
 
 This module provides the scheduling layer between the API and the Orchestrator,
 handling asset analysis, reservation, and asynchronous task queueing.
@@ -407,11 +408,11 @@ class ProtocolScheduler:
           str(protocol_run_id), user_params, initial_state,
         )
         celery_task_id = getattr(task_result, "id", None)
-      except AttributeError:
+      except AttributeError as e:
         # Fallback: direct call to Celery task is not supported
         raise RuntimeError(
           "Direct call to execute_protocol_run_task is not supported. Celery worker must be running.",
-        )
+        ) from e
 
       logger.info(
         "Successfully queued protocol run %s with Celery task ID: %s",
