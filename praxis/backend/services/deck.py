@@ -17,6 +17,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from praxis.backend.models import DeckOrm
 from praxis.backend.models.deck_pydantic_models import DeckCreate, DeckUpdate
 from praxis.backend.models.filters import SearchFilters
+from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
@@ -30,290 +31,211 @@ logger = get_logger(__name__)
 UUID = uuid.UUID
 
 
-async def create_deck(db: AsyncSession, deck_create: DeckCreate) -> DeckOrm:
-  """Create a new deck.
+class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
+    """Service for deck-related operations.
+    """
 
-  Args:
-      db: The database session.
-      deck_create: Pydantic model with deck data.
+    async def create(self, db: AsyncSession, *, obj_in: DeckCreate) -> DeckOrm:
+        """Create a new deck."""
+        logger.info(
+            "Attempting to create deck '%s' for parent ID %s.",
+            obj_in.name,
+            obj_in.parent_accession_id,
+        )
 
-  Returns:
-      The created deck object.
+        deck_data = obj_in.model_dump(exclude={"plr_state"})
+        deck_orm = self.model(**deck_data)
 
-  Raises:
-      ValueError: If validation fails.
-      Exception: For any other unexpected errors.
+        if obj_in.plr_state:
+            deck_orm.plr_state = obj_in.plr_state
 
-  """
-  logger.info(
-    "Attempting to create deck '%s' for parent ID %s.",
-    deck_create.name,
-    deck_create.parent_accession_id,
-  )
+        db.add(deck_orm)
 
-  deck_data = deck_create.model_dump(exclude={"plr_state"})
-  deck_orm = DeckOrm(**deck_data)
+        try:
+            await db.commit()
+            await db.refresh(deck_orm)
+            logger.info(
+                "Successfully created deck '%s' with ID %s.",
+                deck_orm.name,
+                deck_orm.accession_id,
+            )
+        except IntegrityError as e:
+            await db.rollback()
+            error_message = (
+                f"Deck with name '{obj_in.name}' already exists. Details: {e}"
+            )
+            logger.exception(error_message)
+            raise ValueError(error_message) from e
+        except Exception as e:  # Catch all for truly unexpected errors
+            logger.exception(
+                "Error creating deck '%s'. Rolling back.", obj_in.name,
+            )
+            await db.rollback()
+            raise e
 
-  if deck_create.plr_state:
-    deck_orm.plr_state = deck_create.plr_state
+        return deck_orm
 
-  db.add(deck_orm)
+    async def get(self, db: AsyncSession, id: UUID) -> DeckOrm | None:
+        """Retrieve a specific deck by its ID."""
+        logger.info("Attempting to retrieve deck with ID: %s.", id)
+        stmt = (
+            select(self.model)
+            .options(
+                joinedload(self.model.parent),
+                joinedload(self.model.deck_type),
+            )
+            .filter(self.model.accession_id == id)
+        )
+        result = await db.execute(stmt)
+        deck = result.scalar_one_or_none()
+        if deck:
+            logger.info(
+                "Successfully retrieved deck ID %s: '%s'.",
+                id,
+                deck.name,
+            )
+        else:
+            logger.info("Deck with ID %s not found.", id)
+        return deck
 
-  try:
-    await db.commit()
-    await db.refresh(deck_orm)
-    logger.info(
-      "Successfully created deck '%s' with ID %s.",
-      deck_orm.name,
-      deck_orm.accession_id,
-    )
-  except IntegrityError as e:
-    await db.rollback()
-    error_message = f"Deck with name '{deck_create.name}' already exists. Details: {e}"
-    logger.exception(error_message)
-    raise ValueError(error_message) from e
-  except Exception as e:  # Catch all for truly unexpected errors
-    logger.exception("Error creating deck '%s'. Rolling back.", deck_create.name)
-    await db.rollback()
-    raise e
+    async def get_multi(
+        self,
+        db: AsyncSession,
+        *,
+        filters: SearchFilters,
+    ) -> list[DeckOrm]:
+        """List all decks, with optional filtering by parent ID."""
+        logger.info(
+            "Listing decks with filters: %s",
+            filters.model_dump_json(),
+        )
+        stmt = select(self.model).options(
+            joinedload(self.model.parent),
+            joinedload(self.model.deck_type),
+        )
 
-  return deck_orm
+        conditions = []
 
+        if filters.parent_accession_id is not None:
+            conditions.append(self.model.parent_accession_id == filters.parent_accession_id)
 
-async def read_deck(db: AsyncSession, deck_accession_id: UUID) -> DeckOrm | None:
-  """Retrieve a specific deck by its ID.
+        if conditions:
+            stmt = stmt.filter(and_(*conditions))
 
-  Args:
-      db: The database session.
-      deck_accession_id: The ID of the deck to retrieve.
+        # Apply generic filters from query_builder
+        stmt = apply_specific_id_filters(stmt, filters, self.model)
+        stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
+        stmt = apply_property_filters(
+            stmt, filters, self.model.properties_json.cast(JSONB),
+        )
 
-  Returns:
-      The deck object if found, otherwise None.
+        stmt = stmt.order_by(self.model.name)
+        stmt = apply_pagination(stmt, filters)
 
-  """
-  logger.info("Attempting to retrieve deck with ID: %s.", deck_accession_id)
-  stmt = (
-    select(DeckOrm)
-    .options(
-      joinedload(DeckOrm.parent),
-      joinedload(DeckOrm.deck_type),
-    )
-    .filter(DeckOrm.accession_id == deck_accession_id)
-  )
-  result = await db.execute(stmt)
-  deck = result.scalar_one_or_none()
-  if deck:
-    logger.info(
-      "Successfully retrieved deck ID %s: '%s'.",
-      deck_accession_id,
-      deck.name,
-    )
-  else:
-    logger.info("Deck with ID %s not found.", deck_accession_id)
-  return deck
+        result = await db.execute(stmt)
+        decks = list(result.scalars().all())
+        logger.info("Found %s decks.", len(decks))
+        return decks
 
+    async def get_by_name(self, db: AsyncSession, name: str) -> DeckOrm | None:
+        """Retrieve a specific deck by its name."""
+        logger.info("Attempting to retrieve deck with name: '%s'.", name)
+        stmt = (
+            select(self.model)
+            .options(
+                joinedload(self.model.parent),
+                joinedload(self.model.deck_type),
+            )
+            .filter(self.model.name == name)
+        )
+        result = await db.execute(stmt)
+        deck = result.scalar_one_or_none()
+        if deck:
+            logger.info("Successfully retrieved deck by name '%s'.", name)
+        else:
+            logger.info("Deck with name '%s' not found.", name)
+        return deck
 
-async def read_decks(
-  db: AsyncSession,
-  filters: SearchFilters,
-) -> list[DeckOrm]:
-  """List all decks, with optional filtering by parent ID.
+    async def update(
+        self, db: AsyncSession, *, db_obj: DeckOrm, obj_in: DeckUpdate,
+    ) -> DeckOrm | None:
+        """Update an existing deck."""
+        logger.info("Attempting to update deck with ID: %s.", db_obj.accession_id)
 
-  Args:
-      db: The database session.
-      filters: Search and filter criteria.
+        update_data = obj_in.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            if hasattr(db_obj, key):
+                setattr(db_obj, key, value)
 
-  Returns:
-      A list of deck objects.
+        if "plr_state" in update_data:
+            flag_modified(db_obj, "plr_state")
 
-  """
-  logger.info(
-    "Listing decks with filters: %s",
-    filters.model_dump_json(),
-  )
-  stmt = select(DeckOrm).options(
-    joinedload(DeckOrm.parent),
-    joinedload(DeckOrm.deck_type),
-  )
+        try:
+            await db.commit()
+            await db.refresh(db_obj)
+            logger.info(
+                "Successfully updated deck ID %s: '%s'.",
+                db_obj.accession_id,
+                db_obj.name,
+            )
+            return await self.get(db, db_obj.accession_id)
+        except IntegrityError as e:
+            await db.rollback()
+            error_message = f"Integrity error while updating deck ID {db_obj.accession_id}. Details: {e}"
+            logger.exception(error_message)
+            raise ValueError(error_message) from e
+        except Exception as e:  # Catch all for truly unexpected errors
+            await db.rollback()
+            logger.exception(
+                "Unexpected error updating deck ID %s. Rolling back.",
+                db_obj.accession_id,
+            )
+            raise e
 
-  conditions = []
+    async def remove(self, db: AsyncSession, *, id: UUID) -> bool:
+        """Delete a specific deck by its ID."""
+        logger.info("Attempting to delete deck with ID: %s.", id)
+        deck_orm = await self.get(db, id)
+        if not deck_orm:
+            logger.warning("Deck with ID %s not found for deletion.", id)
+            return False
 
-  if filters.parent_accession_id is not None:
-    conditions.append(DeckOrm.parent_accession_id == filters.parent_accession_id)
+        try:
+            await db.delete(deck_orm)
+            await db.commit()
+            logger.info(
+                "Successfully deleted deck ID %s: '%s'.",
+                id,
+                deck_orm.name,
+            )
+            return True
+        except IntegrityError as e:
+            await db.rollback()
+            error_message = (
+                f"Integrity error deleting deck ID {id}. "
+                f"This might be due to foreign key constraints. Details: {e}"
+            )
+            logger.exception(error_message)
+            raise ValueError(error_message) from e
+        except Exception as e:  # Catch all for truly unexpected errors
+            await db.rollback()
+            logger.exception(
+                "Unexpected error deleting deck ID %s. Rolling back.",
+                id,
+            )
+            raise e
 
-  if conditions:
-    stmt = stmt.filter(and_(*conditions))
-
-  # Apply generic filters from query_builder
-  stmt = apply_specific_id_filters(stmt, filters, DeckOrm)
-  stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
-  stmt = apply_property_filters(stmt, filters, DeckOrm.properties_json.cast(JSONB))
-
-  stmt = stmt.order_by(DeckOrm.name)
-  stmt = apply_pagination(stmt, filters)
-
-  result = await db.execute(stmt)
-  decks = list(result.scalars().all())
-  logger.info("Found %s decks.", len(decks))
-  return decks
-
-
-async def read_decks_by_machine_id(
-  db: AsyncSession,
-  machine_accession_id: UUID,
-  filters: SearchFilters | None = None,
-) -> list[DeckOrm]:
-  """List all decks associated with a specific machine ID.
-
-  Args:
-      db: The database session.
-      machine_accession_id: The ID of the machine to filter by.
-      filters: Optional SearchFilters for pagination and date range.
-
-  Returns:
-      A list of deck objects.
-
-  """
-  logger.info(
-    "Listing decks for machine ID: %s.",
-    machine_accession_id,
-  )
-  stmt = select(DeckOrm).filter(DeckOrm.machine_id == machine_accession_id)
-
-  if filters:
-    stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
-    stmt = apply_property_filters(stmt, filters, DeckOrm.properties_json.cast(JSONB))
-    stmt = apply_pagination(stmt, filters)
-
-  stmt = stmt.order_by(DeckOrm.name)
-  result = await db.execute(stmt)
-  decks = list(result.scalars().all())
-  logger.info("Found %s decks for machine ID %s.", len(decks), machine_accession_id)
-  return decks
-
-
-async def read_deck_by_name(db: AsyncSession, name: str) -> DeckOrm | None:
-  """Retrieve a specific deck by its name.
-
-  Args:
-      db: The database session.
-      name: The name of the deck to retrieve.
-
-  Returns:
-      The deck object if found, otherwise None.
-
-  """
-  logger.info("Attempting to retrieve deck with name: '%s'.", name)
-  stmt = (
-    select(DeckOrm)
-    .options(
-      joinedload(DeckOrm.parent),
-      joinedload(DeckOrm.deck_type),
-    )
-    .filter(DeckOrm.name == name)
-  )
-  result = await db.execute(stmt)
-  deck = result.scalar_one_or_none()
-  if deck:
-    logger.info("Successfully retrieved deck by name '%s'.", name)
-  else:
-    logger.info("Deck with name '%s' not found.", name)
-  return deck
-
-
-async def update_deck(
-  db: AsyncSession,
-  deck_accession_id: UUID,
-  deck_update: DeckUpdate,
-) -> DeckOrm | None:
-  """Update an existing deck.
-
-  Args:
-      db: The database session.
-      deck_accession_id: The ID of the deck to update.
-      deck_update: Pydantic model with updated data.
-
-  Returns:
-      The updated deck object if successful, otherwise None.
-
-  """
-  logger.info("Attempting to update deck with ID: %s.", deck_accession_id)
-  deck_orm = await read_deck(db, deck_accession_id)
-  if not deck_orm:
-    logger.warning("Deck with ID %s not found for update.", deck_accession_id)
-    return None
-
-  update_data = deck_update.model_dump(exclude_unset=True)
-  for key, value in update_data.items():
-    if hasattr(deck_orm, key):
-      setattr(deck_orm, key, value)
-
-  if "plr_state" in update_data:
-    flag_modified(deck_orm, "plr_state")
-
-  try:
-    await db.commit()
-    await db.refresh(deck_orm)
-    logger.info(
-      "Successfully updated deck ID %s: '%s'.",
-      deck_accession_id,
-      deck_orm.name,
-    )
-    return await read_deck(db, deck_accession_id)
-  except IntegrityError as e:
-    await db.rollback()
-    error_message = (
-      f"Integrity error while updating deck ID {deck_accession_id}. Details: {e}"
-    )
-    logger.exception(error_message)
-    raise ValueError(error_message) from e
-  except Exception as e:  # Catch all for truly unexpected errors
-    await db.rollback()
-    logger.exception(
-      "Unexpected error updating deck ID %s. Rolling back.",
-      deck_accession_id,
-    )
-    raise e
+    async def get_all_decks(self, db: AsyncSession) -> list[DeckOrm]:
+        """Retrieve all decks from the database."""
+        logger.info("Retrieving all decks.")
+        stmt = select(self.model).options(
+            joinedload(self.model.parent),
+            joinedload(self.model.deck_type),
+        )
+        result = await db.execute(stmt)
+        decks = list(result.scalars().all())
+        logger.info("Found %d decks.", len(decks))
+        return decks
 
 
-async def delete_deck(db: AsyncSession, deck_accession_id: UUID) -> bool:
-  """Delete a specific deck by its ID.
-
-  Args:
-      db: The database session.
-      deck_accession_id: The ID of the deck to delete.
-
-  Returns:
-      True if the deletion was successful, False if the deck was not found.
-
-  """
-  logger.info("Attempting to delete deck with ID: %s.", deck_accession_id)
-  deck_orm = await read_deck(db, deck_accession_id)
-  if not deck_orm:
-    logger.warning("Deck with ID %s not found for deletion.", deck_accession_id)
-    return False
-
-  try:
-    await db.delete(deck_orm)
-    await db.commit()
-    logger.info(
-      "Successfully deleted deck ID %s: '%s'.",
-      deck_accession_id,
-      deck_orm.name,
-    )
-    return True
-  except IntegrityError as e:
-    await db.rollback()
-    error_message = (
-      f"Integrity error deleting deck ID {deck_accession_id}. "
-      f"This might be due to foreign key constraints. Details: {e}"
-    )
-    logger.exception(error_message)
-    raise ValueError(error_message) from e
-  except Exception as e:  # Catch all for truly unexpected errors
-    await db.rollback()
-    logger.exception(
-      "Unexpected error deleting deck ID %s. Rolling back.",
-      deck_accession_id,
-    )
-    raise e
+deck_service = DeckService(DeckOrm)

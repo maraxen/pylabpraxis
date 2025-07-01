@@ -14,7 +14,6 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import praxis.backend.services as svc
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.models import (
   SearchFilters,
@@ -22,6 +21,7 @@ from praxis.backend.models import (
   WorkcellResponse,
   WorkcellUpdate,
 )
+from praxis.backend.services.workcell import workcell_service
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -36,8 +36,8 @@ log_workcell_api_errors = partial(
 
 workcell_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_workcell,
-  get_by_name_func=svc.read_workcell_by_name,
+  get_func=workcell_service.get,
+  get_by_name_func=workcell_service.get_by_name,
   entity_type_name="Workcell",
 )
 
@@ -60,7 +60,7 @@ workcell_accession_resolver = partial(
 async def create_workcell(workcell: WorkcellCreate, db: AsyncSession = Depends(get_db)):
   """Create a new workcell."""
   try:
-    created_workcell = await svc.create_workcell(db=db, **workcell.model_dump())
+    created_workcell = await workcell_service.create(db=db, obj_in=workcell)
     return created_workcell
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -81,7 +81,7 @@ async def get_workcell(accession: str, db: AsyncSession = Depends(get_db)):
   """Retrieve a workcell by accession ID or name."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
 
-  db_workcell = await svc.read_workcell(db, workcell_id)
+  db_workcell = await workcell_service.get(db, id=workcell_id)
   if db_workcell is None:
     raise HTTPException(status_code=404, detail="Workcell not found")
   return db_workcell
@@ -103,7 +103,7 @@ async def list_workcells( # pylint: disable=too-many-arguments
   filters: SearchFilters = Depends(), # pylint: disable=too-many-arguments
 ):
   """List all workcells."""
-  return await svc.list_workcells(db, filters=filters)
+  return await workcell_service.get_multi(db, filters=filters)
 
 
 @log_workcell_api_errors(
@@ -124,14 +124,14 @@ async def update_workcell(
 ):
   """Update an existing workcell."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
-
-  update_data = workcell_update.model_dump(exclude_unset=True)
-  try:
-    updated_workcell = await svc.update_workcell(
-      db=db, workcell_accession_id=workcell_id, **update_data,
-    )
-    if not updated_workcell:
+  db_obj = await workcell_service.get(db, id=workcell_id)
+  if not db_obj:
       raise HTTPException(status_code=404, detail=f"Workcell '{accession}' not found.")
+
+  try:
+    updated_workcell = await workcell_service.update(
+      db=db, db_obj=db_obj, obj_in=workcell_update,
+    )
     return updated_workcell
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -152,7 +152,7 @@ async def delete_workcell(accession: str, db: AsyncSession = Depends(get_db)):
   """Delete a workcell."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
 
-  success = await svc.delete_workcell(db, workcell_id)
+  success = await workcell_service.remove(db, id=workcell_id)
   if not success:
     raise HTTPException(
       status_code=404,

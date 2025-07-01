@@ -8,11 +8,16 @@ to interact with the database and handle business logic.
 from functools import partial
 from uuid import UUID
 
+"""FastAPI router for all resource-related endpoints.
+
+This module defines endpoints for managing resource definitions and resources,
+including creation, retrieval, updating, and deletion. It uses the service layer
+to interact with the database and handle business logic.
+"""
+
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
-# Import the service layer, aliased as 'svc' for convenience
-import praxis.backend.services as svc
 
 # Import dependencies from the local 'api' package
 from praxis.backend.api.dependencies import get_db
@@ -28,6 +33,12 @@ from praxis.backend.models.resource_pydantic_models import (
   ResourceCreate,
   ResourceResponse,
   ResourceUpdate,
+)
+
+# Import the service layer, aliased as 'svc' for convenience
+from praxis.backend.services.resource import resource_service
+from praxis.backend.services.resource_type_definition import (
+  resource_definition_service,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -46,8 +57,8 @@ log_resource_api_errors = partial(
 
 resource_resolve_accession = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_resource,
-  get_by_name_func=svc.read_resource_by_name,
+  get_func=resource_service.get,
+  get_by_name_func=resource_service.get_by_name,
   entity_type_name="Resource",
 )
 
@@ -70,7 +81,9 @@ async def create_resource_definition_endpoint(
 ):
   """Create a new resource definition in the catalog."""
   try:
-    created_def = await svc.create_resource_definition(db=db, **definition.model_dump())
+    created_def = await resource_definition_service.create(
+        db=db, obj_in=definition,
+    )
     return created_def
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -92,7 +105,7 @@ async def read_resource_definition_endpoint(
   db: AsyncSession = Depends(get_db),
 ):
   """Retrieve a resource definition by name."""
-  db_def = await svc.read_resource_definition(db, name)
+  db_def = await resource_definition_service.get_by_name(db, name)
   if db_def is None:
     raise HTTPException(status_code=404, detail="Resource definition not found")
   return db_def
@@ -115,7 +128,9 @@ async def read_resource_definitions_endpoint(
   offset: int = 0,
 ):
   """List all available resource definitions."""
-  return await svc.read_resource_definitions(db, limit=limit, offset=offset)
+  return await resource_definition_service.get_multi(
+      db, filters=SearchFilters(limit=limit, offset=offset),
+  )
 
 
 @log_resource_api_errors(
@@ -135,14 +150,16 @@ async def update_resource_definition_endpoint(
   db: AsyncSession = Depends(get_db),
 ):
   """Update an existing resource definition."""
-  update_data = definition_update.model_dump(exclude_unset=True)
-  try:
-    updated_def = await svc.update_resource_definition(db=db, name=name, **update_data)
-    if not updated_def:
+  db_obj = await resource_definition_service.get_by_name(db, name)
+  if not db_obj:
       raise HTTPException(
-        status_code=404,
-        detail=f"Resource definition '{name}' not found.",
+          status_code=404,
+          detail=f"Resource definition '{name}' not found.",
       )
+  try:
+    updated_def = await resource_definition_service.update(
+        db=db, db_obj=db_obj, obj_in=definition_update,
+    )
     return updated_def
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -164,7 +181,13 @@ async def delete_resource_definition_endpoint(
   db: AsyncSession = Depends(get_db),
 ):
   """Delete a resource definition."""
-  success = await svc.delete_resource_definition(db, name)
+  db_obj = await resource_definition_service.get_by_name(db, name)
+  if not db_obj:
+      raise HTTPException(
+          status_code=404,
+          detail=f"Resource definition '{name}' not found.",
+      )
+  success = await resource_definition_service.remove(db, id=db_obj.id)
   if not success:
     raise HTTPException(
       status_code=404,
@@ -195,7 +218,7 @@ async def create_resource_endpoint(
   try:
     # If resource_definition_accession_id is not provided, try to resolve from FQN
     if request.resource_definition_accession_id is None and request.fqn:
-      definition_orm = await svc.read_resource_definition_by_fqn(
+      definition_orm = await resource_definition_service.get_by_fqn(
         db=db,
         fqn=request.fqn,
       )
@@ -205,9 +228,9 @@ async def create_resource_endpoint(
           detail=f"Resource definition with FQN '{request.fqn}' not found.",
         )
       request.resource_definition_accession_id = definition_orm.accession_id
-    resource_orm = await svc.create_resource(
+    resource_orm = await resource_service.create(
       db=db,
-      resource_create=request,
+      obj_in=request,
     )
     return ResourceResponse.model_validate(resource_orm)
   except Exception as e:
@@ -221,14 +244,16 @@ async def create_resource_endpoint(
   suffix="",
 )
 @router.get(
-  "/", response_model=list[ResourceResponse], tags=["Resources"],
+  "/",
+  response_model=list[ResourceResponse],
+  tags=["Resources"],
 )
 async def read_resources_endpoint(
   db: AsyncSession = Depends(get_db),
   filters: SearchFilters = Depends(),
 ):
   """List all resources."""
-  resources = await svc.read_resources(db, filters=filters)
+  resources = await resource_service.get_multi(db, filters=filters)
   return [ResourceResponse.model_validate(res) for res in resources]
 
 
@@ -250,7 +275,7 @@ async def read_resource_endpoint(
   """Retrieve a resource."""
   try:
     accession_id = await resource_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource(db, resource_accession_id=accession_id)
+    resource = await resource_service.get(db, id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
     return ResourceResponse.model_validate(resource)
@@ -277,13 +302,13 @@ async def update_resource_endpoint(
   """Update an existing resource."""
   try:
     accession_id = await resource_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource(db, resource_accession_id=accession_id)
+    resource = await resource_service.get(db, id=accession_id)
     if resource is None:
       raise HTTPException(status_code=404, detail="Resource not found")
-    updated_resource = await svc.update_resource(
+    updated_resource = await resource_service.update(
       db=db,
-      resource_accession_id=accession_id,
-      resource_update=request,
+      db_obj=resource,
+      obj_in=request,
     )
     return ResourceResponse.model_validate(updated_resource)
 
@@ -309,12 +334,13 @@ async def delete_resource_endpoint(
   """Delete a resource by name or ID."""
   try:
     accession_id = await resource_resolve_accession(accession=accession, db=db)
-    resource = await svc.read_resource(db, resource_accession_id=accession_id)
+    resource = await resource_service.get(db, id=accession_id)
     if not resource:
       raise HTTPException(status_code=404, detail="Resource not found")
-    success = await svc.delete_resource(db, resource_accession_id=resource.accession_id)
+    success = await resource_service.remove(db, id=resource.accession_id)
     if not success:
       raise HTTPException(status_code=404, detail="Resource not found")
     return
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Failed to delete resource: {e!s}")
+

@@ -10,9 +10,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import the service layer, aliased as 'svc' for convenience
-import praxis.backend.services as svc
-
 # Import dependencies from the local 'api' package
 from praxis.backend.api.dependencies import get_db
 
@@ -23,6 +20,12 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ProtocolStartRequest,
   SearchFilters,
+)
+
+# Import the service layer, aliased as 'svc' for convenience
+from praxis.backend.services.protocols import (
+  protocol_definition_service,
+  protocol_run_service,
 )
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
@@ -39,15 +42,15 @@ log_protocol_api_errors = partial(
 
 protocol_definition_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_protocol_definition,
-  get_by_name_func=svc.read_protocol_definition_by_name,
+  get_func=protocol_definition_service.get,
+  get_by_name_func=protocol_definition_service.get_by_name,
   entity_type_name="Protocol Definition",
 )
 
 protocol_run_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_protocol_run,
-  get_by_name_func=svc.read_protocol_run_by_name,
+  get_func=protocol_run_service.get,
+  get_by_name_func=protocol_run_service.get_by_name,
   entity_type_name="Protocol Run",
 )
 
@@ -75,7 +78,7 @@ async def list_protocol_definitions(
   include_deprecated: bool = False,
 ):
   """List all available protocol definitions."""
-  return await svc.list_protocol_definitions(
+  return await protocol_definition_service.get_multi(
     db=db,
     filters=filters,
     source_name=source_name,
@@ -103,8 +106,8 @@ async def get_protocol_definition(accession: str, db: AsyncSession = Depends(get
     db=db, accession=accession,
   )
 
-  db_definition = await svc.read_protocol_definition(
-    db, definition_accession_id=definition_id,
+  db_definition = await protocol_definition_service.get(
+    db, id=definition_id,
   )
   if db_definition is None:
     raise HTTPException(status_code=404, detail="Protocol definition not found")
@@ -130,7 +133,7 @@ async def get_protocol_definition_details(
   commit_hash: str | None = None,
 ):
   """Retrieve detailed protocol definition by name with optional filters."""
-  db_definition = await svc.read_protocol_definition_by_name(
+  db_definition = await protocol_definition_service.get_by_name(
     db, name=name, version=version, source_name=source_name, commit_hash=commit_hash,
   )
   if db_definition is None:
@@ -165,14 +168,9 @@ async def create_protocol_run(
 
   try:
     # Let the service layer handle UUID generation
-    created_run = await svc.create_protocol_run(
+    created_run = await protocol_run_service.create(
       db=db,
-      top_level_protocol_definition_accession_id=(
-        protocol_start.protocol_definition_accession_id
-      ),
-      input_parameters_json=(
-        str(protocol_start.parameters) if protocol_start.parameters else None
-      ),
+      obj_in=protocol_start,
     )
     return created_run
   except ValueError as e:
@@ -198,7 +196,7 @@ async def list_protocol_runs(
   status: ProtocolRunStatusEnum | None = None,
 ):
   """List all protocol runs with optional filtering."""
-  return await svc.list_protocol_runs(
+  return await protocol_run_service.get_multi(
     db=db,
     filters=filters,
     protocol_definition_accession_id=protocol_definition_accession_id,
@@ -222,7 +220,7 @@ async def get_protocol_run(accession: str, db: AsyncSession = Depends(get_db)):
   """Retrieve a protocol run by accession ID or name."""
   run_id = await protocol_run_accession_resolver(db=db, accession=accession)
 
-  db_run = await svc.read_protocol_run(db, run_accession_id=run_id)
+  db_run = await protocol_run_service.get(db, id=run_id)
   if db_run is None:
     raise HTTPException(status_code=404, detail="Protocol run not found")
   return db_run
@@ -250,7 +248,7 @@ async def update_protocol_run_status(
   run_id = await protocol_run_accession_resolver(db=db, accession=accession)
 
   try:
-    updated_run = await svc.update_protocol_run_status(
+    updated_run = await protocol_run_service.update_protocol_run_status(
       db=db,
       protocol_run_accession_id=run_id,
       new_status=new_status,

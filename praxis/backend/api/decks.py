@@ -16,20 +16,8 @@ from praxis.backend.models import (
   DeckUpdate,
   SearchFilters,
 )
-from praxis.backend.services import (
-  create_deck,
-  create_deck_type_definition,
-  delete_deck,
-  delete_deck_type_definition,
-  read_deck,
-  read_deck_by_name,
-  read_deck_type_definition,
-  read_deck_type_definition_by_name,
-  read_deck_type_definitions,
-  read_decks,
-  update_deck,
-  update_deck_type_definition,
-)
+from praxis.backend.services.deck import deck_service
+from praxis.backend.services.deck_type_definition import deck_type_definition_service
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -44,8 +32,8 @@ log_deck_api_errors = partial(
 # --- Deck Type Definition Endpoints ---
 deck_type_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=read_deck_type_definition,
-  get_by_name_func=read_deck_type_definition_by_name,
+  get_func=deck_type_definition_service.get,
+  get_by_name_func=deck_type_definition_service.get_by_name,
   entity_type_name="Deck Type Definition",
 )
 
@@ -66,7 +54,7 @@ async def create_deck_type_definition_endpoint(
 ):
   """Create a new deck type definition."""
   try:
-    return await create_deck_type_definition(db=db, **request.model_dump())
+    return await deck_type_definition_service.create(db=db, obj_in=request)
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -85,7 +73,9 @@ async def read_deck_type_definitions_endpoint(
   db: AsyncSession = Depends(get_db), limit: int = 100, offset: int = 0,
 ):
   """List all available deck type definitions."""
-  return await read_deck_type_definitions(db, limit=limit, offset=offset)
+  return await deck_type_definition_service.get_multi(
+      db, filters=SearchFilters(limit=limit, offset=offset),
+  )
 
 
 @log_deck_api_errors(
@@ -105,7 +95,9 @@ async def read_deck_type_definition_endpoint(
   deck_type_definition_accession_id = await deck_type_accession_resolver(
     accession=accession, db=db,
   )
-  db_def = await read_deck_type_definition(db, deck_type_definition_accession_id)
+  db_def = await deck_type_definition_service.get(
+      db, id=deck_type_definition_accession_id,
+  )
   if db_def is None:
     raise HTTPException(status_code=404, detail="Deck type definition not found")
   return db_def
@@ -130,17 +122,20 @@ async def update_deck_type_definition_endpoint(
   deck_type_definition_accession_id = await deck_type_accession_resolver(
     accession=accession, db=db,
   )
-  try:
-    updated_def = await update_deck_type_definition(
-      db=db,
-      deck_type_accession_id=deck_type_definition_accession_id,
-      **request.model_dump(exclude_unset=True),
-    )
-    if not updated_def:
+  db_obj = await deck_type_definition_service.get(
+      db, id=deck_type_definition_accession_id,
+  )
+  if not db_obj:
       raise HTTPException(
-        status_code=404,
-        detail=f"Deck type definition '{accession}' not found.",
+          status_code=404,
+          detail=f"Deck type definition '{accession}' not found.",
       )
+  try:
+    updated_def = await deck_type_definition_service.update(
+      db=db,
+      db_obj=db_obj,
+      obj_in=request,
+    )
     return updated_def
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -163,7 +158,9 @@ async def delete_deck_type_definition_endpoint(
   deck_type_definition_accession_id = await deck_type_accession_resolver(
     accession=accession, db=db,
   )
-  if not await delete_deck_type_definition(db, deck_type_definition_accession_id):
+  if not await deck_type_definition_service.remove(
+      db, id=deck_type_definition_accession_id,
+  ):
     raise HTTPException(
       status_code=404,
       detail=f"Deck type definition '{accession}' not found.",
@@ -173,8 +170,8 @@ async def delete_deck_type_definition_endpoint(
 # --- Deck Endpoints ---
 deck_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=read_deck,
-  get_by_name_func=read_deck_by_name,
+  get_func=deck_service.get,
+  get_by_name_func=deck_service.get_by_name,
   entity_type_name="Deck",
 )
 
@@ -193,7 +190,7 @@ deck_accession_resolver = partial(
 async def create_deck_endpoint(request: DeckCreate, db: AsyncSession = Depends(get_db)):
   """Create a new deck."""
   try:
-    return await create_deck(db=db, deck_create=request)
+    return await deck_service.create(db=db, obj_in=request)
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -209,7 +206,7 @@ async def read_decks_endpoint(
   filters: SearchFilters = Depends(),
 ):
   """List all decks."""
-  return await read_decks(db, filters=filters)
+  return await deck_service.get_multi(db, filters=filters)
 
 
 @log_deck_api_errors(
@@ -225,7 +222,7 @@ async def read_decks_endpoint(
 async def read_deck_endpoint(accession: str | UUID, db: AsyncSession = Depends(get_db)):
   """Retrieve a deck by its ID (UUID) or name."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
-  deck = await read_deck(db, deck_accession_id)
+  deck = await deck_service.get(db, id=deck_accession_id)
 
   if not deck:
     raise HTTPException(status_code=404, detail="Deck not found")
@@ -248,11 +245,12 @@ async def update_deck_endpoint(
   """Update an existing deck."""
   try:
     deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
-    updated_deck = await update_deck(
-      db=db, deck_accession_id=deck_accession_id, deck_update=request,
+    db_obj = await deck_service.get(db, id=deck_accession_id)
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    updated_deck = await deck_service.update(
+      db=db, db_obj=db_obj, obj_in=request,
     )
-    if not updated_deck:
-      raise HTTPException(status_code=404, detail="Deck not found")
     return updated_deck
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -273,5 +271,5 @@ async def delete_deck_endpoint(
 ):
   """Delete a deck."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
-  if not await delete_deck(db, deck_accession_id):
+  if not await deck_service.remove(db, id=deck_accession_id):
     raise HTTPException(status_code=404, detail="Deck not found")

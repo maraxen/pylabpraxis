@@ -68,8 +68,8 @@ class AssetLockManager:
       await self._redis_client.ping()
       logger.info("Redis connection established successfully")
 
-    except Exception as e:
-      logger.error("Failed to initialize Redis connection: %s", e, exc_info=True)
+    except Exception:
+      logger.exception("Failed to initialize Redis connection")
       raise
 
   async def close(self) -> None:
@@ -80,8 +80,8 @@ class AssetLockManager:
       if self._redis_pool:
         await self._redis_pool.disconnect()
       logger.info("Redis connections closed")
-    except Exception as e:
-      logger.error("Error closing Redis connections: %s", e, exc_info=True)
+    except Exception:
+      logger.exception("Error closing Redis connections")
 
   def _get_asset_lock_key(self, asset_type: str, asset_name: str) -> str:
     """Generate Redis key for asset lock."""
@@ -160,7 +160,7 @@ class AssetLockManager:
 
           # Track locks held by this protocol run
           protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
-          await self._redis_client.sadd(protocol_locks_key, lock_key)  # type: ignore
+          await self._redis_client.sadd(protocol_locks_key, lock_key)
           await self._redis_client.expire(protocol_locks_key, timeout)
 
           logger.info(
@@ -187,13 +187,8 @@ class AssetLockManager:
       )
       return False
 
-    except Exception as e:
-      logger.error(
-        "Error acquiring asset lock %s: %s",
-        lock_key,
-        e,
-        exc_info=True,
-      )
+    except Exception:
+      logger.exception("Error acquiring asset lock %s", lock_key)
       return False
 
   async def release_asset_lock(
@@ -231,7 +226,7 @@ class AssetLockManager:
             end
             """
 
-      result = await self._redis_client.eval(lua_script, 1, lock_key, lock_value)  # type: ignore
+      result = await self._redis_client.eval(lua_script, 1, lock_key, lock_value)
 
       if result:
         # Clean up reservation metadata
@@ -241,7 +236,7 @@ class AssetLockManager:
         # Remove from protocol locks tracking
         if protocol_run_id:
           protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
-          await self._redis_client.srem(protocol_locks_key, lock_key)  # type: ignore
+          await self._redis_client.srem(protocol_locks_key, lock_key)
 
         logger.info(
           "Asset lock released: %s (reservation %s)",
@@ -256,13 +251,8 @@ class AssetLockManager:
       )
       return False
 
-    except Exception as e:
-      logger.error(
-        "Error releasing asset lock %s: %s",
-        lock_key,
-        e,
-        exc_info=True,
-      )
+    except Exception:
+      logger.exception("Error releasing asset lock %s", lock_key)
       return False
 
   async def release_all_protocol_locks(self, protocol_run_id: uuid.UUID) -> int:
@@ -283,7 +273,7 @@ class AssetLockManager:
 
     try:
       # Get all locks held by this protocol
-      lock_keys = await self._redis_client.smembers(protocol_locks_key)  # type: ignore
+      lock_keys = await self._redis_client.smembers(protocol_locks_key)
 
       for lock_key in lock_keys:
         try:
@@ -325,13 +315,8 @@ class AssetLockManager:
       )
       return released_count
 
-    except Exception as e:
-      logger.error(
-        "Error releasing all locks for protocol %s: %s",
-        protocol_run_id,
-        e,
-        exc_info=True,
-      )
+    except Exception:
+      logger.exception("Error releasing all locks for protocol %s", protocol_run_id)
       return released_count
 
   async def check_asset_availability(
@@ -385,12 +370,10 @@ class AssetLockManager:
         }
 
     except Exception as e:
-      logger.error(
-        "Error checking asset availability %s:%s: %s",
+      logger.exception(
+        "Error checking asset availability %s:%s",
         asset_type,
         asset_name,
-        e,
-        exc_info=True,
       )
       # Return as unavailable on error to be safe
       return {
@@ -484,12 +467,8 @@ class AssetLockManager:
 
       return cleaned_count
 
-    except Exception as e:
-      logger.error(
-        "Error during lock cleanup: %s",
-        e,
-        exc_info=True,
-      )
+    except Exception:
+      logger.exception("Error during lock cleanup")
       return cleaned_count
 
   async def get_system_status(self) -> dict[str, Any]:
@@ -535,7 +514,7 @@ class AssetLockManager:
       }
 
     except Exception as e:
-      logger.error("Error getting system status: %s", e, exc_info=True)
+      logger.exception("Error getting system status")
       return {
         "error": str(e),
         "timestamp": datetime.now(timezone.utc).isoformat(),

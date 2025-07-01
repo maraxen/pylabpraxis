@@ -110,7 +110,7 @@ async def create_deck_position_item(
   except IntegrityError as e:
     await db.rollback()
     error_message = (
-      f"Integrity error creating position item '{name}' to deck instance ID" f" {deck_accession_id}. Details: {e}"
+      f"Integrity error creating position item '{name}' to deck instance ID {deck_accession_id}. Details: {e}"
     )
     logger.error(error_message)
     return None
@@ -249,7 +249,7 @@ async def update_deck_position_item(
     return position_item
   except IntegrityError as e:
     await db.rollback()
-    error_message = f"Integrity error updating position item ID {position_item_accession_id}. " f"Details: {e}"
+    error_message = f"Integrity error updating position item ID {position_item_accession_id}. Details: {e}"
     logger.error(error_message, exc_info=True)
     return None
 

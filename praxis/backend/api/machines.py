@@ -11,9 +11,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import the service layer, aliased as 'svc' for convenience
-import praxis.backend.services as svc
-
 # Import dependencies from the local 'api' package
 from praxis.backend.api.dependencies import get_db
 
@@ -25,6 +22,9 @@ from praxis.backend.models import (
   MachineUpdate,
   SearchFilters,
 )
+
+# Import the service layer, aliased as 'svc' for convenience
+from praxis.backend.services.machine import machine_service
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -40,8 +40,8 @@ log_machine_api_errors = partial(
 
 machine_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_machine,
-  get_by_name_func=svc.read_machine_by_name,
+  get_func=machine_service.get,
+  get_by_name_func=machine_service.get_by_name,
   entity_type_name="Machine",
 )
 
@@ -61,7 +61,7 @@ machine_accession_resolver = partial(
 async def create_machine(machine: MachineCreate, db: AsyncSession = Depends(get_db)):
   """Create a new machine."""
   try:
-    created_machine = await svc.create_machine(db=db, machine_create=machine)
+    created_machine = await machine_service.create(db=db, obj_in=machine)
     return created_machine
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -82,7 +82,7 @@ async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
   """Retrieve a machine by accession ID or name."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 
-  db_machine = await svc.read_machine(db, machine_id)
+  db_machine = await machine_service.get(db, machine_id)
   if db_machine is None:
     raise HTTPException(status_code=404, detail="Machine not found")
   return db_machine
@@ -107,7 +107,7 @@ async def list_machines(
   name_filter: str | None = None,
 ):
   """List all machines with optional filtering."""
-  return await svc.list_machines(
+  return await machine_service.get_multi(
     db,
     filters=filters,
     status=status,
@@ -134,13 +134,14 @@ async def update_machine(
 ):
   """Update an existing machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
+  db_obj = await machine_service.get(db, machine_id)
+  if not db_obj:
+      raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
 
   try:
-    updated_machine = await svc.update_machine(
-      db=db, machine_accession_id=machine_id, machine_update=machine_update,
+    updated_machine = await machine_service.update(
+      db=db, db_obj=db_obj, obj_in=machine_update,
     )
-    if not updated_machine:
-      raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
     return updated_machine
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -168,7 +169,7 @@ async def update_machine_status(
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 
   try:
-    updated_machine = await svc.update_machine_status(
+    updated_machine = await machine_service.update_machine_status(
       db=db,
       machine_accession_id=machine_id,
       new_status=new_status,
@@ -197,7 +198,7 @@ async def delete_machine(accession: str, db: AsyncSession = Depends(get_db)):
   """Delete a machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 
-  success = await svc.delete_machine(db, machine_id)
+  success = await machine_service.delete(db, id=machine_id)
   if not success:
     raise HTTPException(
       status_code=404,

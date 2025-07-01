@@ -259,7 +259,7 @@ class ProtocolDiscoveryService:
     """
     if not self.db_session_factory:
       logger.error(
-        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService." " Cannot upsert definitions.",
+        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService. Cannot upsert definitions.",
       )
       return []
 
@@ -273,7 +273,7 @@ class ProtocolDiscoveryService:
       return []
 
     logger.info(
-      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. " f"Upserting to DB...",
+      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. Upserting to DB...",
     )
     upserted_definitions_orm: list[Any] = []
 
