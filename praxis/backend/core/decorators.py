@@ -40,6 +40,8 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   UIHint,
 )
+from praxis.backend.models.asset_lock_manager_pydantic_models import CreateProtocolDefinitionData
+from praxis.backend.models.decorators_pydantic_models import DecoratedFunctionInfo, ProtocolFunctionData
 from praxis.backend.services.protocols import (
   log_function_call_end,
   log_function_call_start,
@@ -112,93 +114,129 @@ def get_callable_fqn(func: Callable) -> str:
 
 
 def _create_protocol_definition(
-  func: Callable,
-  name: str | None,
-  version: str,
-  description: str | None,
-  solo: bool,
-  is_top_level: bool,
-  preconfigure_deck: bool,
-  deck_param_name: str,
-  deck_construction: Callable | None,
-  state_param_name: str,
-  param_metadata: dict[str, dict[str, Any]],
-  category: str | None,
-  tags: list[str],
-  top_level_name_format: str | None,
+  data: CreateProtocolDefinitionData,
 ) -> tuple[FunctionProtocolDefinitionModel, dict[str, Any] | None]:
   """Parse a function signature and decorator args to create a protocol definition."""
-  resolved_name = name or func.__name__
+  resolved_name = data.name or data.func.__name__
   if not resolved_name:
     raise ValueError(
       "Protocol function name cannot be empty (either provide 'name' argument or use "
       "a named function).",
     )
   if (
-    is_top_level
-    and top_level_name_format
-    and not re.match(top_level_name_format, resolved_name)
+    data.is_top_level
+    and data.top_level_name_format
+    and not re.match(data.top_level_name_format, resolved_name)
   ):
     raise ValueError(
       f"Top-level protocol name '{resolved_name}' does not match format: "
-      f"{top_level_name_format}",
+      f"{data.top_level_name_format}",
     )
 
-  sig = inspect.signature(func)
+  sig = inspect.signature(data.func)
   parameters_list: list[ParameterMetadataModel] = []
   assets_list: list[AssetRequirementModel] = []
   found_deck_param = False
   found_state_param_details: dict[str, Any] | None = None
 
   for param_name_sig, param_obj in sig.parameters.items():
-    param_type_hint = param_obj.annotation
-    is_optional_param = (
-      get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)
-    ) or (param_obj.default is not inspect.Parameter.empty)
-    fqn = fqn_from_hint(param_type_hint)
-    param_meta_entry = param_metadata.get(param_name_sig, {})
-    p_description = param_meta_entry.get("description")
-    p_constraints = param_meta_entry.get("constraints_json", {})
-    p_ui_hints_dict = param_meta_entry.get("ui_hints")
-    p_ui_hints = (
-      UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
+    parameters_list, assets_list, found_deck_param, found_state_param_details =       self._process_parameter(
+        param_name_sig,
+        param_obj,
+        data,
+        parameters_list,
+        assets_list,
+        found_deck_param,
+        found_state_param_details,
+      )
+
+  if data.preconfigure_deck and not found_deck_param:
+    raise TypeError(
+      f"Protocol '{resolved_name}' (preconfigure_deck=True) missing "
+      f"'{data.deck_param_name}' param.",
+    )
+  if data.is_top_level and not found_state_param_details:
+    raise TypeError(
+      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' "
+      "parameter.",
     )
 
-    common_model_args = {
+  protocol_definition = FunctionProtocolDefinitionModel(
+    accession_id=uuid7(),
+    name=resolved_name,
+    version=data.version,
+    description=(data.description or inspect.getdoc(data.func) or "No description provided."),
+    source_file_path=inspect.getfile(data.func),
+    module_name=data.func.__module__,
+    function_name=data.func.__name__,
+    is_top_level=data.is_top_level,
+    solo_execution=data.solo,
+    preconfigure_deck=data.preconfigure_deck,
+    deck_param_name=data.deck_param_name if data.preconfigure_deck else None,
+    deck_construction_function_fqn=(
+      get_callable_fqn(data.deck_construction) if data.deck_construction else None
+    ),
+    state_param_name=data.state_param_name,
+    category=data.category,
+    tags=data.tags,
+    parameters=parameters_list,
+    assets=assets_list,
+  )
+  return protocol_definition, found_state_param_details
+
+
+def _process_parameter(
+  param_name_sig: str,
+  param_obj: inspect.Parameter,
+  data: CreateProtocolDefinitionData,
+  parameters_list: list[ParameterMetadataModel],
+  assets_list: list[AssetRequirementModel],
+  found_deck_param: bool,
+  found_state_param_details: dict[str, Any] | None,
+) -> tuple[list[ParameterMetadataModel], list[AssetRequirementModel], bool, dict[str, Any] | None]:
+  param_type_hint = param_obj.annotation
+  is_optional_param = (
+    get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)
+  ) or (param_obj.default is not inspect.Parameter.empty)
+  fqn = fqn_from_hint(param_type_hint)
+  param_meta_entry = data.param_metadata.get(param_name_sig, {})
+  p_description = param_meta_entry.get("description")
+  p_constraints = param_meta_entry.get("constraints_json", {})
+  p_ui_hints_dict = param_meta_entry.get("ui_hints")
+  p_ui_hints = (
+    UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
+  )
+
+  common_model_args = {
+    "name": param_name_sig,
+    "type_hint": serialize_type_hint(param_type_hint),
+    "fqn": fqn,
+    "optional": is_optional_param,
+    "default_value_repr": repr(param_obj.default)
+    if param_obj.default is not inspect.Parameter.empty
+    else None,
+    "description": p_description,
+    "constraints_json": p_constraints if isinstance(p_constraints, dict) else {},
+    "ui_hints": p_ui_hints,
+  }
+
+  if data.preconfigure_deck and param_name_sig == data.deck_param_name:
+    parameters_list.append(
+      ParameterMetadataModel(**common_model_args, is_deck_param=True),
+    )
+    found_deck_param = True
+  elif param_name_sig == data.state_param_name:
+    is_state_type_match = (
+      fqn in {"PraxisState", "praxis.backend.core.definitions.PraxisState"}
+    )
+    is_dict_type_match = fqn == "dict"
+    found_state_param_details = {
       "name": param_name_sig,
-      "type_hint": serialize_type_hint(param_type_hint),
-      "fqn": fqn,
-      "optional": is_optional_param,
-      "default_value_repr": repr(param_obj.default)
-      if param_obj.default is not inspect.Parameter.empty
-      else None,
-      "description": p_description,
-      "constraints_json": p_constraints if isinstance(p_constraints, dict) else {},
-      "ui_hints": p_ui_hints,
+      "expects_praxis_state": is_state_type_match,
+      "expects_dict": is_dict_type_match,
     }
-
-    if preconfigure_deck and param_name_sig == deck_param_name:
-      parameters_list.append(
-        ParameterMetadataModel(**common_model_args, is_deck_param=True),
-      )
-      found_deck_param = True
-      continue
-
-    if param_name_sig == state_param_name:
-      is_state_type_match = (
-        fqn == "PraxisState"
-        or fqn == "praxis.backend.core.definitions.PraxisState"
-        or fqn == "PraxisState"
-      )
-      is_dict_type_match = fqn == "dict"
-      found_state_param_details = {
-        "name": param_name_sig,
-        "expects_praxis_state": is_state_type_match,
-        "expects_dict": is_dict_type_match,
-      }
-      parameters_list.append(ParameterMetadataModel(**common_model_args))
-      continue
-
+    parameters_list.append(ParameterMetadataModel(**common_model_args))
+  else:
     type_for_plr_check = param_type_hint
     origin_check = get_origin(param_type_hint)
     args_check = get_args(param_type_hint)
@@ -211,40 +249,36 @@ def _create_protocol_definition(
       assets_list.append(AssetRequirementModel(**common_model_args))
     else:
       parameters_list.append(ParameterMetadataModel(**common_model_args))
+  return parameters_list, assets_list, found_deck_param, found_state_param_details
 
-  if preconfigure_deck and not found_deck_param:
-    raise TypeError(
-      f"Protocol '{resolved_name}' (preconfigure_deck=True) missing "
-      f"'{deck_param_name}' param.",
-    )
-  if is_top_level and not found_state_param_details:
-    raise TypeError(
-      f"Top-level protocol '{resolved_name}' must define a '{state_param_name}' "
-      "parameter.",
-    )
+async def _prepare_function_arguments(
+  func: Callable,
+  kwargs: dict,
+  context_for_this_call: PraxisRunContext,
+  found_state_param_details: dict[str, Any] | None,
+  state_param_name: str,
+) -> dict:
+  processed_kwargs_for_call = dict(kwargs)
+  sig_check = inspect.signature(func)
+  if "__praxis_run_context__" in sig_check.parameters:
+    processed_kwargs_for_call["__praxis_run_context__"] = context_for_this_call
+  elif (
+    found_state_param_details
+    and found_state_param_details["name"] == state_param_name
+    and sig_check.parameters[state_param_name].annotation == PraxisRunContext
+  ):
+    processed_kwargs_for_call[state_param_name] = context_for_this_call
 
-  protocol_definition = FunctionProtocolDefinitionModel(
-    accession_id=uuid7(),
-    name=resolved_name,
-    version=version,
-    description=(description or inspect.getdoc(func) or "No description provided."),
-    source_file_path=inspect.getfile(func),
-    module_name=func.__module__,
-    function_name=func.__name__,
-    is_top_level=is_top_level,
-    solo_execution=solo,
-    preconfigure_deck=preconfigure_deck,
-    deck_param_name=deck_param_name if preconfigure_deck else None,
-    deck_construction_function_fqn=(
-      get_callable_fqn(deck_construction) if deck_construction else None
-    ),
-    state_param_name=state_param_name,
-    category=category,
-    tags=tags,
-    parameters=parameters_list,
-    assets=assets_list,
-  )
-  return protocol_definition, found_state_param_details
+  if (
+    "__praxis_run_context__" in processed_kwargs_for_call
+    and "__praxis_run_context__" not in func.__code__.co_varnames
+    and not any(
+      p.kind == inspect.Parameter.VAR_KEYWORD
+      for p in sig_check.parameters.values()
+    )
+  ):
+    del processed_kwargs_for_call["__praxis_run_context__"]
+  return processed_kwargs_for_call
 
 
 async def _log_call_start(
@@ -275,19 +309,7 @@ async def _log_call_start(
 
 
 def protocol_function(
-  name: str | None = None,
-  version: str = "0.1.0",
-  description: str | None = None,
-  solo: bool = False,
-  is_top_level: bool = False,
-  preconfigure_deck: bool = False,
-  deck_param_name: str = DEFAULT_DECK_PARAM_NAME,
-  deck_construction: Callable | None = None,  # New argument
-  state_param_name: str = DEFAULT_STATE_PARAM_NAME,
-  param_metadata: dict[str, dict[str, Any]] | None = None,
-  category: str | None = None,
-  tags: list[str] | None = None,
-  top_level_name_format: str | None = TOP_LEVEL_NAME_REGEX,
+  data: DecoratedFunctionInfo,
 ):
   """Decorate a function for use as a Praxis protocol.
 
@@ -319,28 +341,27 @@ def protocol_function(
 
   def decorator(func: Callable):
     protocol_definition, found_state_param_details = _create_protocol_definition(
-      func=func,
-      name=name,
-      version=version,
-      description=description,
-      solo=solo,
-      is_top_level=is_top_level,
-      preconfigure_deck=preconfigure_deck,
-      deck_param_name=deck_param_name,
-      deck_construction=deck_construction,
-      state_param_name=state_param_name,
-      param_metadata=actual_param_metadata,
-      category=category,
-      tags=actual_tags,
-      top_level_name_format=top_level_name_format,
+      CreateProtocolDefinitionData(
+        func=func,
+        name=name,
+        version=version,
+        description=description,
+        solo=solo,
+        is_top_level=is_top_level,
+        preconfigure_deck=preconfigure_deck,
+        deck_param_name=deck_param_name,
+        deck_construction=deck_construction,
+        state_param_name=state_param_name,
+        param_metadata=actual_param_metadata,
+        category=category,
+        tags=actual_tags,
+        top_level_name_format=top_level_name_format,
+      )
     )
     func._protocol_definition = protocol_definition
 
-    protocol_runtime_info = ProtocolRuntimeInfo(
-      pydantic_definition=protocol_definition,
-      function_ref=func,
-      found_state_param_details=found_state_param_details,
-    )
+    _register_protocol(protocol_definition, func, found_state_param_details)
+
     protocol_unique_key = f"{protocol_definition.name}_v{protocol_definition.version}"
     PROTOCOL_REGISTRY[protocol_unique_key] = protocol_runtime_info
 
@@ -359,45 +380,16 @@ def protocol_function(
           "within a valid Praxis run context.",
         )
 
-      this_function_def_db_accession_id = current_meta.db_accession_id
-      state_details = current_meta.found_state_param_details
-
-      processed_args = list(args)
-      processed_kwargs = dict(kwargs)
-
-      if state_details:
-        state_arg_name_in_sig = state_details["name"]
-        if state_arg_name_in_sig in processed_kwargs:
-          del processed_kwargs[state_arg_name_in_sig]
-        if state_details["expects_praxis_state"]:
-          processed_kwargs[state_arg_name_in_sig] = parent_context.canonical_state
-        elif state_details["expects_dict"]:
-          if state_arg_name_in_sig not in processed_kwargs:
-            processed_kwargs[state_arg_name_in_sig] = (
-              parent_context.canonical_state.data.copy()
-              if parent_context.canonical_state
-              else {}
-            )
-
-      current_call_log_db_accession_id: uuid.UUID | None = None
-      parent_log_accession_id_for_this_call = (
-        parent_context.current_call_log_db_accession_id
-      )
-
-      current_call_log_db_accession_id = await _log_call_start(
-        context=parent_context,
-        function_def_db_id=this_function_def_db_accession_id,
-        parent_log_id=parent_log_accession_id_for_this_call,
-        args=tuple(processed_args),
-        kwargs=processed_kwargs,
-      )
-      if not current_call_log_db_accession_id:
-        raise RuntimeError("Failed to log function call start.")
-
-      context_for_this_call = parent_context.create_context_for_nested_call(
-        new_parent_call_log_db_accession_id=current_call_log_db_accession_id,
-      )
-      token = praxis_run_context_cv.set(context_for_this_call)
+      current_call_log_db_accession_id, context_for_this_call, token = \
+        await _process_wrapper_arguments(
+          parent_context,
+          current_meta,
+          list(args),
+          dict(kwargs),
+          state_param_name,
+          protocol_unique_key, # Pass protocol_unique_key
+          func # Pass func
+        )
 
       result = None
       error = None
@@ -405,33 +397,20 @@ def protocol_function(
       start_time_perf = time.perf_counter()
 
       try:
-        processed_kwargs_for_call = processed_kwargs.copy()
-        sig_check = inspect.signature(func)
-        if "__praxis_run_context__" in sig_check.parameters:
-          processed_kwargs_for_call["__praxis_run_context__"] = context_for_this_call
-        elif (
-          state_details
-          and state_details["name"] == state_param_name
-          and sig_check.parameters[state_param_name].annotation == PraxisRunContext
-        ):
-          processed_kwargs_for_call[state_param_name] = context_for_this_call
-
-        if (
-          "__praxis_run_context__" in processed_kwargs_for_call
-          and "__praxis_run_context__" not in func.__code__.co_varnames
-          and not any(
-            p.kind == inspect.Parameter.VAR_KEYWORD
-            for p in sig_check.parameters.values()
-          )
-        ):
-          del processed_kwargs_for_call["__praxis_run_context__"]
+        processed_kwargs_for_call = await _prepare_function_arguments(
+          func,
+          kwargs,
+          context_for_this_call,
+          current_meta.found_state_param_details,
+          state_param_name,
+        )
 
         if inspect.iscoroutinefunction(func):
-          result = await func(*processed_args, **processed_kwargs_for_call)
+          result = await func(*args, **processed_kwargs_for_call)
         else:
           loop = asyncio.get_running_loop()
           result = await loop.run_in_executor(
-            None, functools.partial(func, *processed_args, **processed_kwargs_for_call),
+            None, functools.partial(func, *args, **processed_kwargs_for_call),
           )
 
       except ProtocolCancelledError:
@@ -492,6 +471,56 @@ def protocol_function(
       return result
 
     return wrapper
+
+  return decorator
+
+
+async def _process_wrapper_arguments(
+  parent_context: PraxisRunContext,
+  current_meta: ProtocolRuntimeInfo,
+  processed_args: list,
+  processed_kwargs: dict,
+  state_param_name: str,
+  protocol_unique_key: str, # Added
+  func: Callable # Added
+) -> tuple[uuid.UUID, PraxisRunContext, contextvars.Token]:
+  this_function_def_db_accession_id = current_meta.db_accession_id
+  state_details = current_meta.found_state_param_details
+
+  if state_details:
+    state_arg_name_in_sig = state_details["name"]
+    if state_arg_name_in_sig in processed_kwargs:
+      del processed_kwargs[state_arg_name_in_sig]
+    if state_details["expects_praxis_state"]:
+      processed_kwargs[state_arg_name_in_sig] = parent_context.canonical_state
+    elif state_details["expects_dict"]:
+      if state_arg_name_in_sig not in processed_kwargs:
+        processed_kwargs[state_arg_name_in_sig] = (
+          parent_context.canonical_state.data.copy()
+          if parent_context.canonical_state
+          else {}
+        )
+
+  current_call_log_db_accession_id: uuid.UUID | None = None
+  parent_log_accession_id_for_this_call = (
+    parent_context.current_call_log_db_accession_id
+  )
+
+  current_call_log_db_accession_id = await _log_call_start(
+    context=parent_context,
+    function_def_db_id=this_function_def_db_accession_id,
+    parent_log_id=parent_log_accession_id_for_this_call,
+    args=tuple(processed_args),
+    kwargs=processed_kwargs,
+  )
+  if not current_call_log_db_accession_id:
+    raise RuntimeError("Failed to log function call start.")
+
+  context_for_this_call = parent_context.create_context_for_nested_call(
+    new_parent_call_log_db_accession_id=current_call_log_db_accession_id,
+  )
+  token = praxis_run_context_cv.set(context_for_this_call)
+  return current_call_log_db_accession_id, context_for_this_call, token
 
   return decorator
 

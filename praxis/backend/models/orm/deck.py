@@ -19,10 +19,10 @@ ORM models include:
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from functools import partial
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from sqlalchemy import (
-  JSON,
   UUID,
   Float,
   ForeignKey,
@@ -30,14 +30,20 @@ from sqlalchemy import (
   Text,
   UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from praxis.backend.models.resource_orm import ResourceOrm
-from praxis.backend.models.timestamp_mixin import TimestampMixin
+from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.utils.db import Base
+from praxis.backend.utils.uuid import generate_name, uuid7
 
 if TYPE_CHECKING:
-  from praxis.backend.models.machine_orm import MachineOrm
+  from praxis.backend.models.orm import MachineOrm
+
+generate_deck_name = partial(
+  generate_name,
+  prefix="deck",
+)
 
 
 class DeckOrm(ResourceOrm):
@@ -58,12 +64,15 @@ class DeckOrm(ResourceOrm):
   """
 
   __tablename__ = "decks"
-  __mapper_args__ = {"polymorphic_identity": "deck"}
+  __mapper_args__: ClassVar[dict] = {"polymorphic_identity": "deck"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("resources.accession_id"),
     primary_key=True,
+    index=True,
+    comment="Primary key, linked to the resource's accession_id.",
+    default_factory=uuid7,
   )
 
   machine_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -71,24 +80,31 @@ class DeckOrm(ResourceOrm):
     ForeignKey("machines.accession_id"),
     nullable=True,
     index=True,
+    comment="Foreign key to the machine this deck is part of.",
+    default=None,
   )
   machine: Mapped[Optional["MachineOrm"]] = relationship(
     "MachineOrm",
     back_populates="decks",
+    comment="Relationship to the parent machine.",
+    uselist=False,
+    default=None,
   )
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("deck_type_definitions.accession_id"),
-    index=True,  # type: ignore
+    ForeignKey("deck_definition_catalog.accession_id"),
+    index=True,
+    default=None,
   )
-  deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
+  deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
+    default=None,
   )
 
 
-class DeckTypeDefinitionOrm(TimestampMixin, Base):
+class DeckDefinitionOrm(Base):
   """Define a type of deck, its properties, and its positions.
 
   This ORM model stores definitions for different types of decks that can be
@@ -107,15 +123,15 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
       default_size_x_mm (Optional[float]): The default size in X dimension in mm.
       default_size_y_mm (Optional[float]): The default size in Y dimension in mm.
       default_size_z_mm (Optional[float]): The default size in Z dimension in mm.
-      serialized_constructor_args_json (Optional[dict[str, Any]]): JSON field to store
+      serialized_constructor_args_json (Optional[dict[str, Any]]): JSONB field to store
           serialized constructor arguments for the deck type.
-      serialized_assignment_methods_json (Optional[dict[str, Any]]): JSON field to store
+      serialized_assignment_methods_json (Optional[dict[str, Any]]): JSONB field to store
           serialized assignment methods for the deck type.
-      serialized_constructor_hints_json (Optional[dict[str, Any]]): JSON field to store
+      serialized_constructor_hints_json (Optional[dict[str, Any]]): JSONB field to store
           serialized constructor hints for the deck type.
-      additional_properties_json (Optional[dict[str, Any]]): JSON field to store
+      additional_properties_json (Optional[dict[str, Any]]): JSONB field to store
           additional properties for the deck type.
-      positioning_config_json (Optional[dict[str, Any]]): JSON field to store
+      positioning_config_json (Optional[dict[str, Any]]): JSONB field to store
           positioning configuration, such as the method and parameters for calculating
           coordinates from slot names.
       positions (list[DeckPositionDefinitionOrm]): A list of all defined
@@ -125,55 +141,97 @@ class DeckTypeDefinitionOrm(TimestampMixin, Base):
 
   """
 
-  __tablename__ = "deck_type_definitions"
+  __tablename__ = "deck_definition_catalog"
   __table_args__ = (UniqueConstraint("fqn", name="uq_deck_type_definitions_fqn"),)
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
-    primary_key=True,
+  name: Mapped[str] = mapped_column(
+    String,
+    unique=True,
     index=True,
-    default=uuid.uuid4,
+    nullable=False,
+    default=generate_name,
   )
-  name: Mapped[str] = mapped_column(String, unique=True, index=True)
-  fqn: Mapped[str] = mapped_column(String, nullable=False, index=True)
-  description: Mapped[str | None] = mapped_column(Text, nullable=True)
-  plr_category: Mapped[str | None] = mapped_column(String, nullable=True)
-  default_size_x_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
-  default_size_y_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
-  default_size_z_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
-  serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+  fqn: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    index=True,
+    unique=True,
+    comment="Fully qualified name of the PyLabRobot deck class.",
+    default="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
+  )
+  description: Mapped[str | None] = mapped_column(
+    Text,
     nullable=True,
+    default=None,
+    comment="Detailed description of the deck type.",
+  )
+  plr_category: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    default="Deck",
+    comment="Category of the deck type in PyLabRobot, e.g., 'Deck', 'LiquidHandler'.",
+  )
+  default_size_x_mm: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    default=None,
+    comment="Default size in X dimension in mm.",
+  )
+  default_size_y_mm: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    default=None,
+    comment="Default size in Y dimension in mm.",
+  )
+  default_size_z_mm: Mapped[float | None] = mapped_column(
+    Float,
+    nullable=True,
+    default=None,
+    comment="Default size in Z dimension in mm.",
+  )
+  serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
+    JSONB,
+    nullable=True,
+    default=None,
   )
   serialized_assignment_methods_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+    JSONB,
     nullable=True,
+    default=None,
   )
   serialized_constructor_hints_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+    JSONB,
     nullable=True,
+    default=None,
   )
   additional_properties_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+    JSONB,
     nullable=True,
+    default=None,
   )
   positioning_config_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+    JSONB,
     nullable=True,
+    default=None,
   )
 
   positions: Mapped[list["DeckPositionDefinitionOrm"]] = relationship(
     "DeckPositionDefinitionOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
+    comment="List of all defined positions (slots) available on this deck type.",
+    default_factory=list,
   )
   deck: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
     back_populates="deck_type",
+    cascade="all, delete-orphan",
+    comment="List of all physical deck instances of this type.",
+    default_factory=list,
   )
 
 
-class DeckPositionDefinitionOrm(TimestampMixin, Base):
+class DeckPositionDefinitionOrm(Base):
   """Define a position on a deck, such as a slot or location.
 
   This model represents a specific, addressable location on a deck type. For
@@ -189,7 +247,7 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
       x_coord (float): The x-coordinate of the position's center.
       y_coord (float): The y-coordinate of the position's center.
       z_coord (float): The z-coordinate of the position's center.
-      compatible_resource_fqns (Optional[dict[str, Any]]): A JSON field to store a
+      compatible_resource_fqns (Optional[dict[str, Any]]): A JSONB field to store a
           list or mapping of PyLabRobot resource FQNs that are compatible with
           this position.
       deck_type (DeckTypeDefinitionOrm): Relationship to the parent deck type.
@@ -197,33 +255,54 @@ class DeckPositionDefinitionOrm(TimestampMixin, Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),)
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_name", name="uq_deck_position"),)
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
-    primary_key=True,
-    index=True,
-    default=uuid.uuid4,
-  )
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("deck_type_definitions.accession_id"),
+    ForeignKey("deck_definition_catalog.accession_id"),
     index=True,
-  )  # type: ignore
-  position_accession_id: Mapped[str] = mapped_column(String, nullable=False)
+    nullable=False,
+    comment="Foreign key to the parent deck type definition.",
+    default=None,
+  )
+  position_name: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    index=True,
+    default=None,
+    comment="Human-readable identifier for the position (e.g., 'A1', 'trash_bin').",
+  )
 
-  x_coord: Mapped[float] = mapped_column(Float, nullable=False)
-  y_coord: Mapped[float] = mapped_column(Float, nullable=False)
-  z_coord: Mapped[float] = mapped_column(Float, nullable=False)
+  x_coord: Mapped[float] = mapped_column(
+    Float,
+    nullable=False,
+    comment="X-coordinate of the position's center.",
+    default=0.0,
+  )
+  y_coord: Mapped[float] = mapped_column(
+    Float,
+    nullable=False,
+    comment="Y-coordinate of the position's center.",
+    default=0.0,
+  )
+  z_coord: Mapped[float] = mapped_column(
+    Float,
+    nullable=False,
+    comment="Z-coordinate of the position's center.",
+    default=0.0,
+  )
 
   # Reverting to compatible_resource_fqns as per user request
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
-    JSON,
+    JSONB,
     nullable=True,
-    comment="JSON field to store additional, position-specific details.",
+    comment="JSONB field to store additional, position-specific details.",
+    default=None,
   )
 
-  deck_type: Mapped["DeckTypeDefinitionOrm"] = relationship(
+  deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="positions",
+    nullable=False,
+    default=None,
   )

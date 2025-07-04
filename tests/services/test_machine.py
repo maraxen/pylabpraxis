@@ -67,7 +67,7 @@ async def existing_resource(
   """Fixture for a pre-existing ResourceOrm to test linking."""
   resource = ResourceOrm(
     name="ExistingResourceForLinking",
-    name=resource_def.name,
+    resource_definition_name=resource_def.name,
   )
   db.add(resource)
   await db.commit()

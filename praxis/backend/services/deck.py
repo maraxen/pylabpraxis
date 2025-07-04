@@ -16,7 +16,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
 from praxis.backend.models.deck_pydantic_models import DeckCreate, DeckUpdate
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
@@ -32,8 +32,7 @@ UUID = uuid.UUID
 
 
 class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
-    """Service for deck-related operations.
-    """
+    """Service for deck-related operations."""
 
     async def create(self, db: AsyncSession, *, obj_in: DeckCreate) -> DeckOrm:
         """Create a new deck."""
@@ -75,27 +74,27 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
         return deck_orm
 
-    async def get(self, db: AsyncSession, id: UUID) -> DeckOrm | None:
+    async def get(self, db: AsyncSession, accession_id: UUID) -> DeckOrm | None:
         """Retrieve a specific deck by its ID."""
-        logger.info("Attempting to retrieve deck with ID: %s.", id)
+        logger.info("Attempting to retrieve deck with ID: %s.", accession_id)
         stmt = (
             select(self.model)
             .options(
                 joinedload(self.model.parent),
                 joinedload(self.model.deck_type),
             )
-            .filter(self.model.accession_id == id)
+            .filter(self.model.accession_id == accession_id)
         )
         result = await db.execute(stmt)
         deck = result.scalar_one_or_none()
         if deck:
             logger.info(
                 "Successfully retrieved deck ID %s: '%s'.",
-                id,
+                accession_id,
                 deck.name,
             )
         else:
-            logger.info("Deck with ID %s not found.", id)
+            logger.info("Deck with ID %s not found.", accession_id)
         return deck
 
     async def get_multi(
@@ -192,12 +191,12 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
             )
             raise e
 
-    async def remove(self, db: AsyncSession, *, id: UUID) -> bool:
+    async def remove(self, db: AsyncSession, *, accession_id: UUID) -> bool:
         """Delete a specific deck by its ID."""
-        logger.info("Attempting to delete deck with ID: %s.", id)
-        deck_orm = await self.get(db, id)
+        logger.info("Attempting to delete deck with ID: %s.", accession_id)
+        deck_orm = await self.get(db, accession_id)
         if not deck_orm:
-            logger.warning("Deck with ID %s not found for deletion.", id)
+            logger.warning("Deck with ID %s not found for deletion.", accession_id)
             return False
 
         try:
@@ -205,7 +204,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
             await db.commit()
             logger.info(
                 "Successfully deleted deck ID %s: '%s'.",
-                id,
+                accession_id,
                 deck_orm.name,
             )
             return True
@@ -221,7 +220,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
             await db.rollback()
             logger.exception(
                 "Unexpected error deleting deck ID %s. Rolling back.",
-                id,
+                accession_id,
             )
             raise e
 

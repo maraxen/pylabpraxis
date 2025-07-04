@@ -79,61 +79,61 @@ async def _create_or_link_resource_counterpart_for_machine(
   # Eager load the existing counterpart if the ID is present
   if machine_orm.resource_counterpart_accession_id:
     await db.refresh(machine_orm, attribute_names=["resource_counterpart"])
-  current_resource_instance = machine_orm.resource_counterpart
+  current_resource = machine_orm.resource_counterpart
 
   if is_resource:
     machine_orm.asset_type = AssetType.MACHINE_RESOURCE
     if resource_counterpart_accession_id:
-      if current_resource_instance and current_resource_instance.accession_id == resource_counterpart_accession_id:
+      if current_resource and current_resource.accession_id == resource_counterpart_accession_id:
         logger.debug(
           "%s Already linked to Resource ID %s.",
           log_prefix,
           resource_counterpart_accession_id,
         )
-        new_resource_instance = current_resource_instance
+        new_resource = current_resource
       else:
-        new_resource_instance = await db.get(
+        new_resource = await db.get(
           ResourceOrm,
           resource_counterpart_accession_id,
         )
-        if not new_resource_instance:
+        if not new_resource:
           raise ValueError(
             f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} not found for linking.",
           )
-        machine_orm.resource_counterpart = new_resource_instance
+        machine_orm.resource_counterpart = new_resource
         logger.info(
           "%s Linked to existing Resource ID %s.",
           log_prefix,
-          new_resource_instance.accession_id,
+          new_resource.accession_id,
         )
 
-      if not new_resource_instance.machine_counterpart:
-        new_resource_instance.machine_counterpart = machine_orm
-        new_resource_instance.name = machine_orm.name  # Sync name
-        db.add(new_resource_instance)
+      if not new_resource.machine_counterpart:
+        new_resource.machine_counterpart = machine_orm
+        new_resource.name = machine_orm.name  # Sync name
+        db.add(new_resource)
         logger.debug(
           "%s Ensured reciprocal link from Resource ID %s.",
           log_prefix,
-          new_resource_instance.accession_id,
+          new_resource.accession_id,
         )
 
-      if current_resource_instance and current_resource_instance.accession_id != new_resource_instance.accession_id:
-        current_resource_instance.machine_counterpart = None
-        db.add(current_resource_instance)
+      if current_resource and current_resource.accession_id != new_resource.accession_id:
+        current_resource.machine_counterpart = None
+        db.add(current_resource)
         logger.info(
           "%s Unlinked old Resource ID %s.",
           log_prefix,
-          current_resource_instance.accession_id,
+          current_resource.accession_id,
         )
 
-      return new_resource_instance
-    if current_resource_instance:
+      return new_resource
+    if current_resource:
       logger.debug(
         "%s Reusing existing linked Resource ID %s as no new ID provided.",
         log_prefix,
-        current_resource_instance.accession_id,
+        current_resource.accession_id,
       )
-      return current_resource_instance
+      return current_resource
 
     if not resource_def_name:
       raise ValueError(
@@ -143,7 +143,7 @@ async def _create_or_link_resource_counterpart_for_machine(
     logger.info("%s Creating new ResourceOrm as counterpart.", log_prefix)
     definition = await _read_resource_definition_for_linking(db, resource_def_name)
 
-    new_resource_instance = ResourceOrm(
+    new_resource = ResourceOrm(
       name=machine_orm.name,
       asset_type=AssetType.RESOURCE,
       resource_definition_accession_id=definition.accession_id,
@@ -151,24 +151,24 @@ async def _create_or_link_resource_counterpart_for_machine(
       properties_json=resource_properties_json,
       current_status=resource_initial_status or ResourceStatusEnum.AVAILABLE_IN_STORAGE,
     )
-    db.add(new_resource_instance)
+    db.add(new_resource)
     await db.flush()
-    machine_orm.resource_counterpart = new_resource_instance
+    machine_orm.resource_counterpart = new_resource
     logger.info(
       "%s Created and linked new ResourceOrm ID %s.",
       log_prefix,
-      new_resource_instance.accession_id,
+      new_resource.accession_id,
     )
-    return new_resource_instance
+    return new_resource
   machine_orm.asset_type = AssetType.MACHINE
-  if current_resource_instance:
+  if current_resource:
     logger.info(
       "%s Unlinking Resource ID %s (no longer a resource).",
       log_prefix,
-      current_resource_instance.accession_id,
+      current_resource.accession_id,
     )
-    current_resource_instance.machine_counterpart = None
-    db.add(current_resource_instance)
+    current_resource.machine_counterpart = None
+    db.add(current_resource)
     machine_orm.resource_counterpart = None
   return None
 
@@ -305,17 +305,17 @@ async def synchronize_machine_resource_names(
     return
 
   name_to_sync = new_machine_name or machine_orm.name
-  resource_instance = machine_orm.resource_counterpart
+  resource = machine_orm.resource_counterpart
 
-  if resource_instance.name != name_to_sync:
+  if resource.name != name_to_sync:
     logger.info(
       "Synchronizing resource name from '%s' to '%s' for Machine ID %s",
-      resource_instance.name,
+      resource.name,
       name_to_sync,
       machine_orm.accession_id,
     )
-    resource_instance.name = name_to_sync
-    db.add(resource_instance)
+    resource.name = name_to_sync
+    db.add(resource)
 
 
 # type: ignore
@@ -365,17 +365,17 @@ async def synchronize_deck_resource_names(
     return
 
   name_to_sync = new_deck_name or deck_orm.name
-  resource_instance = deck_orm.resource_counterpart
+  resource = deck_orm.resource_counterpart
 
-  if resource_instance.name != name_to_sync:
+  if resource.name != name_to_sync:
     logger.info(
       "Synchronizing resource name from '%s' to '%s' for Deck ID %s",
-      resource_instance.name,
+      resource.name,
       name_to_sync,
       deck_orm.accession_id,
     )
-    resource_instance.name = name_to_sync
-    db.add(resource_instance)
+    resource.name = name_to_sync
+    db.add(resource)
 
 
 # type: ignore

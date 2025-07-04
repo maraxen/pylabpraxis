@@ -410,7 +410,7 @@ def _get_keycloak_dsn_from_config() -> str | None:
       dsn = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
       logger.info("Successfully retrieved Keycloak DSN from config.")
       return dsn
-    except Exception as e:
+    except Exception as e: # noqa: BLE001
       logger.error("Error reading Keycloak DSN from praxis.ini: %s", e)
       return None
   logger.info("Keycloak database section not found in praxis.ini.")

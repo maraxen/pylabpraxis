@@ -683,9 +683,9 @@ class WorkcellRuntime:
             f"Cannot use as resource.",
           )
 
-    resource_instance: Resource
+    resource: Resource
     if shared_plr_instance:
-      resource_instance = cast(Resource, shared_plr_instance)
+      resource = cast(Resource, shared_plr_instance)
     else:
       logger.info(
         "Creating new PLR resource '%s' (ID: %s) using definition FQN '%s'.",
@@ -696,7 +696,7 @@ class WorkcellRuntime:
 
       try:
         ResourceClass = _get_class_from_fqn(resource_definition_fqn)
-        resource_instance = ResourceClass(name=resource_orm.name)
+        resource = ResourceClass(name=resource_orm.name)
       # Justification: This wraps the dynamic instantiation of a PyLabRobot resource,
       # which can fail for various reasons. A broad catch is necessary to handle any
       # failure, log it, update the resource's status to ERROR, and raise a specific runtime error.
@@ -709,9 +709,9 @@ class WorkcellRuntime:
         if hasattr(resource_orm, "id") and resource_orm.accession_id is not None:
           try:
             async with self.db_session_factory() as db_session:
-              await svc.update_resource_instance_location_and_status(
+              await svc.update_resource_location_and_status(
                 db_session,
-                resource_instance_accession_id=resource_orm.accession_id,
+                resource_accession_id=resource_orm.accession_id,
                 new_status=ResourceStatusEnum.ERROR,
                 status_details=error_message,
               )
@@ -727,8 +727,8 @@ class WorkcellRuntime:
             raise WorkcellRuntimeError(error_message) from db_error
         raise WorkcellRuntimeError(error_message) from e
 
-    self._active_resources[resource_orm.accession_id] = resource_instance
-    self._main_workcell.add_asset(resource_instance)
+    self._active_resources[resource_orm.accession_id] = resource
+    self._main_workcell.add_asset(resource)
     logger.info(
       "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main Workcell.",
       resource_orm.name,
@@ -742,10 +742,10 @@ class WorkcellRuntime:
       and resource_orm.machine_counterpart.resource_counterpart_accession_id == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
-      if isinstance(resource_instance, Machine):
+      if isinstance(resource, Machine):
         self._active_machines[machine_orm.accession_id] = cast(
           Machine,
-          resource_instance,
+          resource,
         )
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) also registered as Machine "
@@ -762,9 +762,9 @@ class WorkcellRuntime:
           "subclass. It will not be registered in _active_machines.",
           resource_orm.name,
           resource_orm.accession_id,
-          type(resource_instance).__name__,
+          type(resource).__name__,
         )
-    return resource_instance
+    return resource
 
   def get_active_machine(self, machine_orm_accession_id: uuid.UUID) -> Machine:
     """Retrieve an active PyLabRobot machine instance by its ORM ID.
@@ -1093,7 +1093,7 @@ class WorkcellRuntime:
           resource=resource,
           location=final_location_for_plr,
         )
-        await svc.update_resource_instance_location_and_status(
+        await svc.update_resource_location_and_status(
           db_session,
           resource_orm_accession_id,
           ResourceStatusEnum.AVAILABLE_ON_DECK,
@@ -1160,7 +1160,7 @@ class WorkcellRuntime:
 
     if resource_orm_accession_id:
       async with self.db_session_factory() as db_session:
-        await svc.update_resource_instance_location_and_status(
+        await svc.update_resource_location_and_status(
           db_session,
           resource_orm_accession_id,
           ResourceStatusEnum.AVAILABLE_IN_STORAGE,
@@ -1300,7 +1300,7 @@ class WorkcellRuntime:
           lw_active_coords = lw_active_instance.get_absolute_location()
 
           resource_info_data = {
-            "resource_instance_accession_id": lw_instance.accession_id,
+            "resource_accession_id": lw_instance.accession_id,
             "name": (lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"),
             "fqn": lw_def.fqn,
             "category": (str(lw_def.plr_category.value) if lw_def.plr_category else None),
@@ -1341,7 +1341,7 @@ class WorkcellRuntime:
         # Justification: This wraps a call to a PyLabRobot object's method, which
         # could raise unexpected errors. A broad catch allows us to log a warning
         # and continue, rather than crashing the state representation process.
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
           logger.warning(
             "Could not get size from live deck object for ID %s: %s",
             deck_orm_accession_id,
@@ -1369,7 +1369,7 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error clearing resource",
     suffix=" - Ensure the resource is valid and exists in active resources.",
   )
-  async def clear_resource_instance(self, resource_orm_accession_id: uuid.UUID):
+  async def clear_resource(self, resource_orm_accession_id: uuid.UUID):
     """Clear a resource from the workcell runtime.
 
     Args:
@@ -1383,9 +1383,9 @@ class WorkcellRuntime:
       del self._active_resources[resource_orm_accession_id]
 
     async with self.db_session_factory() as db_session:
-      await svc.update_resource_instance_location_and_status(
+      await svc.update_resource_location_and_status(
         db_session,
-        resource_instance_accession_id=resource_orm_accession_id,
+        resource_accession_id=resource_orm_accession_id,
         new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         status_details="Resource cleared from active resources.",
       )

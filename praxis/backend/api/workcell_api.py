@@ -4,7 +4,7 @@ This file contains the FastAPI router for workcell-related endpoints,
 including workcell CRUD operations and legacy orchestrator endpoints.
 """
 
-from functools import partial
+from typing import Annotated
 
 from fastapi import (
   APIRouter,
@@ -57,13 +57,17 @@ workcell_accession_resolver = partial(
   status_code=status.HTTP_201_CREATED,
   tags=["Workcells"],
 )
-async def create_workcell(workcell: WorkcellCreate, db: AsyncSession = Depends(get_db)):
+async def create_workcell(
+    workcell: WorkcellCreate, db: Annotated[AsyncSession, Depends(get_db)],
+):
   """Create a new workcell."""
   try:
     created_workcell = await workcell_service.create(db=db, obj_in=workcell)
     return created_workcell
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_workcell_api_errors(
@@ -77,7 +81,7 @@ async def create_workcell(workcell: WorkcellCreate, db: AsyncSession = Depends(g
   response_model=WorkcellResponse,
   tags=["Workcells"],
 )
-async def get_workcell(accession: str, db: AsyncSession = Depends(get_db)):
+async def get_workcell(accession: str, db: Annotated[AsyncSession, Depends(get_db)]):
   """Retrieve a workcell by accession ID or name."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
 
@@ -98,9 +102,9 @@ async def get_workcell(accession: str, db: AsyncSession = Depends(get_db)):
   response_model=list[WorkcellResponse],
   tags=["Workcells"],
 )
-async def list_workcells( # pylint: disable=too-many-arguments
-  db: AsyncSession = Depends(get_db), # pylint: disable=too-many-arguments
-  filters: SearchFilters = Depends(), # pylint: disable=too-many-arguments
+async def list_workcells(  # pylint: disable=too-many-arguments
+  db: Annotated[AsyncSession, Depends(get_db)],  # pylint: disable=too-many-arguments
+  filters: Annotated[SearchFilters, Depends()],  # pylint: disable=too-many-arguments
 ):
   """List all workcells."""
   return await workcell_service.get_multi(db, filters=filters)
@@ -120,7 +124,7 @@ async def list_workcells( # pylint: disable=too-many-arguments
 async def update_workcell(
   accession: str,
   workcell_update: WorkcellUpdate,
-  db: AsyncSession = Depends(get_db),
+  db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """Update an existing workcell."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
@@ -134,7 +138,9 @@ async def update_workcell(
     )
     return updated_workcell
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_workcell_api_errors(
@@ -148,7 +154,7 @@ async def update_workcell(
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Workcells"],
 )
-async def delete_workcell(accession: str, db: AsyncSession = Depends(get_db)):
+async def delete_workcell(accession: str, db: Annotated[AsyncSession, Depends(get_db)]):
   """Delete a workcell."""
   workcell_id = await workcell_accession_resolver(db=db, accession=accession)
 

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.resource_orm import ResourceOrm
 from praxis.backend.models.resource_pydantic_models import (
   ResourceCreate,

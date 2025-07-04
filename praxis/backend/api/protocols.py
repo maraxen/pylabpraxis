@@ -5,6 +5,7 @@ including protocol definitions, protocol runs, and protocol execution.
 """
 
 from functools import partial
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,6 +21,7 @@ from praxis.backend.models import (
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
   ProtocolStartRequest,
+  SearchFilters,
 )
 
 # Import the service layer, aliased as 'svc' for convenience
@@ -69,8 +71,8 @@ protocol_run_accession_resolver = partial(
   tags=["Protocol Definitions"],
 )
 async def list_protocol_definitions(
-  filters: ProtocolDefinitionFilters = Depends(),
-  db: AsyncSession = Depends(get_db),
+  filters: Annotated[ProtocolDefinitionFilters, Depends()],
+  db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """List all available protocol definitions."""
   return await protocol_definition_service.get_multi(
@@ -95,7 +97,9 @@ async def list_protocol_definitions(
   response_model=FunctionProtocolDefinitionOrm,
   tags=["Protocol Definitions"],
 )
-async def get_protocol_definition(accession: str, db: AsyncSession = Depends(get_db)):
+async def get_protocol_definition(
+    accession: str, db: Annotated[AsyncSession, Depends(get_db)],
+):
   """Retrieve a protocol definition by accession ID or name."""
   definition_id = await protocol_definition_accession_resolver(
     db=db, accession=accession,
@@ -122,7 +126,7 @@ async def get_protocol_definition(accession: str, db: AsyncSession = Depends(get
 )
 async def get_protocol_definition_details(
   name: str,
-  db: AsyncSession = Depends(get_db),
+  db: Annotated[AsyncSession, Depends(get_db)],
   version: str | None = None,
   source_name: str | None = None,
   commit_hash: str | None = None,
@@ -152,7 +156,8 @@ async def get_protocol_definition_details(
   tags=["Protocol Runs"],
 )
 async def create_protocol_run(
-  protocol_start: ProtocolStartRequest, db: AsyncSession = Depends(get_db),
+  protocol_start: ProtocolStartRequest,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """Create a new protocol run."""
   if not protocol_start.protocol_definition_accession_id:
@@ -169,7 +174,9 @@ async def create_protocol_run(
     )
     return created_run
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_protocol_api_errors(
@@ -184,8 +191,8 @@ async def create_protocol_run(
   tags=["Protocol Runs"],
 )
 async def list_protocol_runs(
-  db: AsyncSession = Depends(get_db),
-  filters: SearchFilters = Depends(),
+  db: Annotated[AsyncSession, Depends(get_db)],
+  filters: Annotated[SearchFilters, Depends()],
   protocol_definition_accession_id: UUID | None = None,
   protocol_name: str | None = None,
   status: ProtocolRunStatusEnum | None = None,
@@ -211,7 +218,7 @@ async def list_protocol_runs(
   response_model=ProtocolRunOrm,
   tags=["Protocol Runs"],
 )
-async def get_protocol_run(accession: str, db: AsyncSession = Depends(get_db)):
+async def get_protocol_run(accession: str, db: Annotated[AsyncSession, Depends(get_db)]):
   """Retrieve a protocol run by accession ID or name."""
   run_id = await protocol_run_accession_resolver(db=db, accession=accession)
 
@@ -235,9 +242,9 @@ async def get_protocol_run(accession: str, db: AsyncSession = Depends(get_db)):
 async def update_protocol_run_status(
   accession: str,
   new_status: ProtocolRunStatusEnum,
+  db: Annotated[AsyncSession, Depends(get_db)],
   output_data_json: str | None = None,
   final_state_json: str | None = None,
-  db: AsyncSession = Depends(get_db),
 ):
   """Update the status of a protocol run."""
   run_id = await protocol_run_accession_resolver(db=db, accession=accession)
@@ -256,4 +263,6 @@ async def update_protocol_run_status(
       )
     return updated_run
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e

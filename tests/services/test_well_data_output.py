@@ -51,7 +51,7 @@ def mock_plate_parsing_helpers(mocker):
 @pytest.fixture
 async def plate_resource(db: AsyncSession) -> ResourceOrm:
   """Fixture for a plate ResourceOrm."""
-  plate = ResourceOrm(name="TestPlateForWells", name="plate_def")
+  plate = ResourceOrm(name="TestPlateForWells", resource_definition_name="plate_def")
   db.add(plate)
   await db.commit()
   return plate
@@ -78,7 +78,7 @@ async def func_data_output(
     data_type=DataOutputTypeEnum.OPTICAL_DENSITY,
     data_key="od_600",
     spatial_context=SpatialContextEnum.WELL_SPECIFIC,
-    resource_instance_accession_id=plate_resource.accession_id,
+    resource_accession_id=plate_resource.accession_id,
   )
   db.add(fdo)
   await db.commit()
@@ -95,7 +95,7 @@ async def existing_well_data(
   """Fixture that creates a single WellDataOutputOrm for testing."""
   well_create = WellDataOutputCreate(
     function_data_output_accession_id=func_data_output.accession_id,
-    plate_resource_instance_accession_id=plate_resource.accession_id,
+    plate_resource_accession_id=plate_resource.accession_id,
     well_name="A1",
     well_row=0,
     well_column=0,
@@ -121,7 +121,7 @@ class TestWellDataOutputService:
     """Test creating a single well data record and reading it back."""
     well_create = WellDataOutputCreate(
       function_data_output_accession_id=func_data_output.accession_id,
-      plate_resource_instance_accession_id=plate_resource.accession_id,
+      plate_resource_accession_id=plate_resource.accession_id,
       well_name="B2",
       well_row=0,  # Mocked to return 0
       well_column=0,  # Mocked to return 0
@@ -139,9 +139,7 @@ class TestWellDataOutputService:
 
     read_well = await read_well_data_output(db, created_well.accession_id)
     assert read_well is not None
-    assert (
-      read_well.well_name == "B2"
-    )  # TODO: decide if we want an error if name is unaligned with position
+    assert read_well.well_name == "B2"  # TODO: decide if we want an error if name is unaligned with position
 
   async def test_create_well_data_outputs_batch(
     self,
@@ -188,9 +186,7 @@ class TestWellDataOutputService:
     assert len(created_wells) == 4
 
     # Check a specific well to ensure mapping is correct
-    well_c2 = next(
-      w for w in created_wells if w.well_index == 3
-    )  # Index 3 should be row 1, col 1 (B2)
+    well_c2 = next(w for w in created_wells if w.well_index == 3)  # Index 3 should be row 1, col 1 (B2)
     assert well_c2.well_name == "B2"
     assert well_c2.data_value == 0.4
 
@@ -247,7 +243,7 @@ class TestWellDataOutputService:
     # Filter by plate
     results = await read_well_data_outputs(
       db,
-      plate_resource_id=existing_well_data.plate_resource_instance_accession_id,
+      plate_resource_id=existing_well_data.plate_resource_accession_id,
     )
     assert len(results) == 1
     assert results[0].accession_id == existing_well_data.accession_id

@@ -40,7 +40,7 @@ async def setup_summary_data(db: AsyncSession):
   )
   resource = ResourceOrm(
     name="SummaryResource",
-    name="summary_resource_def",
+    resource_definition_name="summary_resource_def",
   )
 
   db.add_all([run, f_call, machine, resource])
@@ -66,7 +66,7 @@ async def setup_summary_data(db: AsyncSession):
       data_key="abs_1",
       spatial_context=SpatialContextEnum.MACHINE_LEVEL,
       machine_accession_id=machine.accession_id,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_numeric=0.5,
       measurement_timestamp=timestamp1,
     ),
@@ -91,7 +91,7 @@ async def setup_summary_data(db: AsyncSession):
       data_type=DataOutputTypeEnum.ERROR_LOG,
       data_key="error_1",
       spatial_context=SpatialContextEnum.GLOBAL,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_text="An error occurred",
       measurement_timestamp=timestamp2,
     ),
@@ -104,7 +104,7 @@ async def setup_summary_data(db: AsyncSession):
       data_key="abs_2",
       spatial_context=SpatialContextEnum.MACHINE_LEVEL,
       machine_accession_id=machine.accession_id,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_numeric=0.6,
       measurement_timestamp=timestamp2,
     ),

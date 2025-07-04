@@ -68,7 +68,7 @@ async def generate_mix_volumes(
   if mix_volumes is None and mix_proportion is None:
     raise ValueError("Either mix_proportion or mix_volumes must be provided.")
   if mix_volumes is not None and mix_proportion is not None:
-    warnings.warn("Mix proportion and mix volumes are both set, using mix volumes.")
+    warnings.warn("Mix proportion and mix volumes are both set, using mix volumes.", stacklevel=2)
   if mix_volumes is not None:
     return mix_volumes
   assert mix_proportion is not None, "Mix proportion must be provided."
@@ -205,8 +205,7 @@ async def transfer_with_mixing96(
   """
   if mix_proportion is not None and mix_volume is not None:
     warnings.warn(
-      "Mix proportion and volume are not currently supported for 96 head transfers. \
-      Ignoring.",
+      "Mix proportion and volume are not currently supported for 96 head transfers.       Ignoring.", stacklevel=2
     )
   # mix_proportion, mix_volume = await inspect_mix_parameters(mix_proportion, mix_volume)
   if any(isinstance(i, list) for i in [volume, transfer_tips, mix_cycles, mix_volume]):

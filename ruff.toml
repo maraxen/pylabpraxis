@@ -1,9 +1,10 @@
 # ruff.toml
 
-line-length = 120
+line-length = 100
 indent-width = 2
 fix = true
 target-version = "py310"
+exclude = ["praxis/backend/commons"]
 
 [lint]
 select = ["ALL"]
@@ -11,9 +12,6 @@ select = ["ALL"]
 
 [format]
 indent-style = "space"
-
-
-
 
 [lint.pydocstyle]
 # ignore = ["D415"]

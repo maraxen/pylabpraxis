@@ -8,6 +8,7 @@ scheduler core components and provides comprehensive scheduling capabilities.
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,8 +47,8 @@ router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def schedule_protocol(
     request: ScheduleProtocolRequest,
-    db: AsyncSession = Depends(get_db),
-    scheduler: ProtocolScheduler = Depends(get_scheduler),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    scheduler: Annotated[ProtocolScheduler, Depends(get_scheduler)],
 ) -> ScheduleEntryResponse:
     """Schedule a protocol run for execution.
 
@@ -106,7 +107,7 @@ async def schedule_protocol(
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_schedule_status(
     schedule_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ScheduleStatusResponse:
     """Get the current status of a scheduled protocol run."""
     schedule_entry = await scheduler_svc.read_schedule_entry(
@@ -156,8 +157,8 @@ async def get_schedule_status(
 async def cancel_schedule(
     schedule_id: uuid.UUID,
     request: CancelScheduleRequest,
-    db: AsyncSession = Depends(get_db),
-    scheduler: ProtocolScheduler = Depends(get_scheduler),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    scheduler: Annotated[ProtocolScheduler, Depends(get_scheduler)],
 ) -> ScheduleEntryResponse:
     """Cancel a scheduled protocol run."""
     schedule_entry = await scheduler_svc.read_schedule_entry(db, schedule_id)
@@ -209,8 +210,8 @@ async def cancel_schedule(
 @router.get("/schedules", response_model=ScheduleListResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def list_schedules(
-    filters: ScheduleListFilters = Depends(),
-    db: AsyncSession = Depends(get_db),
+    filters: Annotated[ScheduleListFilters, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ScheduleListResponse:
     """List scheduled protocol runs with optional filters."""
     # Convert status to ORM enum
@@ -252,7 +253,7 @@ async def list_schedules(
 async def update_schedule_priority(
     schedule_id: uuid.UUID,
     request: SchedulePriorityUpdateRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ScheduleEntryResponse:
     """Update the priority of a scheduled protocol run."""
     updated_entry = await scheduler_svc.update_schedule_entry_priority(
@@ -284,7 +285,7 @@ async def update_schedule_priority(
 async def check_asset_availability(
     asset_type: str,
     asset_name: str,
-    asset_manager: AssetLockManager = Depends(get_asset_manager),
+    asset_manager: Annotated[AssetLockManager, Depends(get_asset_manager)],
 ) -> AssetAvailabilityResponse:
     """Check if a specific asset is currently available."""
     availability_data = await asset_manager.check_asset_availability(
@@ -316,7 +317,7 @@ async def check_asset_availability(
 @router.get("/status", response_model=SchedulerSystemStatusResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_system_status(
-    asset_manager: AssetLockManager = Depends(get_asset_manager),
+    asset_manager: Annotated[AssetLockManager, Depends(get_asset_manager)],
 ) -> SchedulerSystemStatusResponse:
     """Get current scheduler system status and health metrics."""
     # Get Redis system status
@@ -357,8 +358,8 @@ async def get_system_status(
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_schedule_history(
     schedule_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(100, ge=1, le=1000),
-    db: AsyncSession = Depends(get_db),
 ) -> list[ScheduleHistoryResponse]:
     """Get the scheduling history for a specific schedule entry."""
     history_entries = await scheduler_svc.get_schedule_history(db, schedule_id, limit)
@@ -369,9 +370,9 @@ async def get_schedule_history(
 @router.get("/metrics", response_model=SchedulerMetricsResponse)
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def get_scheduler_metrics(
-    start_time: datetime | None = Query(None),
-    end_time: datetime | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    start_time: Annotated[datetime | None, Query()] = None,
+    end_time: Annotated[datetime | None, Query()] = None,
 ) -> SchedulerMetricsResponse:
     """Get scheduler performance metrics for a time period."""
     if not start_time:
@@ -412,8 +413,8 @@ async def get_scheduler_metrics(
 @router.post("/cleanup")
 @log_async_runtime_errors(logger, raises=True, raises_exception=PraxisAPIError)
 async def cleanup_expired_asset_locks(
-    db: AsyncSession = Depends(get_db),
-    asset_manager: AssetLockManager = Depends(get_asset_manager),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    asset_manager: Annotated[AssetLockManager, Depends(get_asset_manager)],
 ) -> dict[str, int]:
     """Clean up expired asset_locks and reservations."""
     # Clean up database reservations

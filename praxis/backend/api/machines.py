@@ -5,8 +5,7 @@ This file contains the FastAPI router for all machine-related endpoints,
 including machine creation, retrieval, updates, and deletion.
 """
 
-from functools import partial
-from uuid import UUID
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,13 +57,17 @@ machine_accession_resolver = partial(
   status_code=status.HTTP_201_CREATED,
   tags=["Machines"],
 )
-async def create_machine(machine: MachineCreate, db: AsyncSession = Depends(get_db)):
+async def create_machine(
+    machine: MachineCreate, db: Annotated[AsyncSession, Depends(get_db)],
+):
   """Create a new machine."""
   try:
     created_machine = await machine_service.create(db=db, obj_in=machine)
     return created_machine
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_machine_api_errors(
@@ -78,7 +81,7 @@ async def create_machine(machine: MachineCreate, db: AsyncSession = Depends(get_
   response_model=MachineResponse,
   tags=["Machines"],
 )
-async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
+async def get_machine(accession: str, db: Annotated[AsyncSession, Depends(get_db)]):
   """Retrieve a machine by accession ID or name."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 
@@ -100,8 +103,8 @@ async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
   tags=["Machines"],
 )
 async def list_machines(
-  db: AsyncSession = Depends(get_db),
-  filters: SearchFilters = Depends(),
+  db: Annotated[AsyncSession, Depends(get_db)],
+  filters: Annotated[SearchFilters, Depends()],
   status: MachineStatusEnum | None = None,
   pylabrobot_class_filter: str | None = None,
   name_filter: str | None = None,
@@ -130,7 +133,7 @@ async def list_machines(
 async def update_machine(
   accession: str,
   machine_update: MachineUpdate,
-  db: AsyncSession = Depends(get_db),
+  db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """Update an existing machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
@@ -144,7 +147,9 @@ async def update_machine(
     )
     return updated_machine
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_machine_api_errors(
@@ -161,9 +166,9 @@ async def update_machine(
 async def update_machine_status(
   accession: str,
   new_status: MachineStatusEnum,
+  db: Annotated[AsyncSession, Depends(get_db)],
   status_details: str | None = None,
   current_protocol_run_accession_id: UUID | None = None,
-  db: AsyncSession = Depends(get_db),
 ):
   """Update the status of a machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
@@ -180,7 +185,9 @@ async def update_machine_status(
       raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
     return updated_machine
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_machine_api_errors(
@@ -194,7 +201,7 @@ async def update_machine_status(
   status_code=status.HTTP_204_NO_CONTENT,
   tags=["Machines"],
 )
-async def delete_machine(accession: str, db: AsyncSession = Depends(get_db)):
+async def delete_machine(accession: str, db: Annotated[AsyncSession, Depends(get_db)]):
   """Delete a machine."""
   machine_id = await machine_accession_resolver(db=db, accession=accession)
 

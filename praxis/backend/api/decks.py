@@ -1,6 +1,7 @@
 """FastAPI router for all deck-related endpoints."""
 
 from functools import partial
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -50,7 +51,7 @@ deck_type_accession_resolver = partial(
   tags=["Deck Type Definitions"],
 )
 async def create_deck_type_definition_endpoint(
-  request: DeckTypeDefinitionCreate, db: AsyncSession = Depends(get_db),
+  request: DeckTypeDefinitionCreate, db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckTypeDefinitionResponse:
   db_session = db
   """Create a new deck type definition."""
@@ -73,7 +74,9 @@ async def create_deck_type_definition_endpoint(
   tags=["Deck Type Definitions"],
 )
 async def read_deck_type_definitions_endpoint(
-  limit: int = 100, offset: int = 0, db: AsyncSession = Depends(get_db),
+  db: Annotated[AsyncSession, Depends(get_db)],
+  limit: int = 100,
+  offset: int = 0,
 ) -> list[DeckTypeDefinitionResponse]:
   db_session = db
   db_session = db
@@ -95,7 +98,8 @@ async def read_deck_type_definitions_endpoint(
   tags=["Deck Type Definitions"],
 )
 async def read_deck_type_definition_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db),
+  accession: str | UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckTypeDefinitionResponse:
   db_session = db
   """Retrieve a deck type definition by its ID (UUID) or fully-qualified name."""
@@ -125,7 +129,7 @@ async def read_deck_type_definition_endpoint(
 async def update_deck_type_definition_endpoint(
   accession: str,
   request: DeckTypeDefinitionUpdate,
-  db: AsyncSession = Depends(get_db),
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckTypeDefinitionResponse:
   """Update an existing deck type definition."""
   deck_type_definition_accession_id = await deck_type_accession_resolver(
@@ -164,7 +168,8 @@ async def update_deck_type_definition_endpoint(
   tags=["Deck Type Definitions"],
 )
 async def delete_deck_type_definition_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db),
+  accession: str | UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
   """Delete a deck type definition."""
   deck_type_definition_accession_id = await deck_type_accession_resolver(
@@ -202,8 +207,16 @@ deck_accession_resolver = partial(
   tags=["Decks"],
 )
 async def create_deck_endpoint(
-  request: DeckCreate, db: AsyncSession = Depends(get_db),
+  request: DeckCreate,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckResponse:
+  """Create a new deck."""
+  try:
+    return await deck_service.create(db=db, obj_in=request)
+  except ValueError as e:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+    ) from e
 
 
 @log_deck_api_errors(
@@ -213,8 +226,8 @@ async def create_deck_endpoint(
 )
 @router.get("/", response_model=list[DeckResponse], tags=["Decks"])
 async def read_decks_endpoint(
-  db: AsyncSession = Depends(get_db),
-  filters: SearchFilters = Depends(),
+  db: Annotated[AsyncSession, Depends(get_db)],
+  filters: Annotated[SearchFilters, Depends()],
 ) -> list[DeckResponse]:
   """List all decks."""
   return await deck_service.get_multi(db, filters=filters)
@@ -231,7 +244,8 @@ async def read_decks_endpoint(
   tags=["Decks"],
 )
 async def read_deck_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db),
+  accession: str | UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckResponse:
   """Retrieve a deck by its ID (UUID) or name."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
@@ -253,7 +267,9 @@ async def read_deck_endpoint(
   tags=["Decks"],
 )
 async def update_deck_endpoint(
-  accession: str | UUID, request: DeckUpdate, db: AsyncSession = Depends(get_db),
+  accession: str | UUID,
+  request: DeckUpdate,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DeckResponse:
   """Update an existing deck."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
@@ -281,10 +297,12 @@ async def update_deck_endpoint(
   tags=["Decks"],
 )
 async def delete_deck_endpoint(
-  accession: str | UUID, db: AsyncSession = Depends(get_db),
+  accession: str | UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
   db_session = db
   """Delete a deck."""
   deck_accession_id = await deck_accession_resolver(accession=accession, db=db)
   if not await deck_service.remove(db, id=deck_accession_id):
     raise HTTPException(status_code=404, detail="Deck not found")
+

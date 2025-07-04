@@ -692,9 +692,9 @@ void main() {
   group('DeckLayoutOrm - CRUD (placeholders)', () {
     final slotItemJson = {
       'id': 1,
-      'deck_instance_accession_id': 1,
+      'deck_accession_id': 1,
       'slot_name': 'A1',
-      'resource_instance_accession_id': 1,
+      'resource_accession_id': 1,
     };
     final deckLayoutJson = {
       'id': 1, // Ensure ID is int

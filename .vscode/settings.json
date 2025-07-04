@@ -9,6 +9,7 @@
     "argspec",
     "aschild",
     "astext",
+    "autoflush",
     "backref",
     "boto",
     "cancelation",
@@ -20,6 +21,8 @@
     "cricketwireless",
     "cruwireless",
     "cspire",
+    "Cytometer",
+    "CYTOMETER",
     "Defaultable",
     "editability",
     "ehmw",
@@ -39,6 +42,7 @@
     "iswap",
     "jdbc",
     "joinedload",
+    "jsonable",
     "jsonify",
     "jsonmerge",
     "klass",
@@ -53,6 +57,7 @@
     "myboostmobile",
     "mymetropcs",
     "myultramobile",
+    "ondelete",
     "onselectoption",
     "onupdate",
     "Oxtm",
@@ -69,6 +74,7 @@
     "reqs",
     "resource",
     "selectinload",
+    "sessionmaker",
     "smtext",
     "sprintpcs",
     "starlette",
@@ -96,6 +102,7 @@
     "usascientific",
     "uscc",
     "uscellular",
+    "uselist",
     "userinfo",
     "usermodel",
     "varkw",
@@ -131,7 +138,7 @@
   "python.testing.pytestEnabled": true,
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
   "editor.rulers": [
-    88
+    100
   ],
   "editor.formatOnSave": true,
   "files.exclude": {
@@ -177,4 +184,7 @@
     "/Users/mar/Dropbox (MIT)/PLR_workspace/pylabpraxis/praxis/frontend/linux",
   "ruff.configuration": "/Users/mar/Dropbox (MIT)/PLR_workspace/pylabpraxis/ruff.toml",
   "files.autoSave": "afterDelay",
+  "editor.formatOnPaste": true,
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "editor.formatOnSaveMode": "modificationsIfAvailable",
 }

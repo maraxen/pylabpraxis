@@ -119,7 +119,7 @@ def execute_protocol_run_task(
       asyncio.run(_update_run_status_on_error(run_uuid, str(e)))
     # Justification: This is a last-resort error handler. If updating the DB
     # status fails, we must catch it to prevent the Celery worker from crashing.
-    except Exception as update_error:  # pylint: disable=broad-except
+    except Exception as update_error:  # pylint: disable=broad-except # noqa: BLE001
       task_logger.error(
         "Critical error: Failed to update protocol run status after task failure. Error: %s",
         update_error,
@@ -242,8 +242,7 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
     # Justification: This is a last-resort error handler for DB updates.
     # Catching broad Exception is necessary to prevent further unhandled exceptions
     # from crashing the Celery worker during its own error handling process.
-    except Exception as e:  # pylint: disable=broad-except
-      # If this fails, we log it, but there's little else we can do.
+    except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
       task_logger.critical(
         "Could not update run status for run_id=%s. DB may be unreachable. Error: %s",
         protocol_run_id,

@@ -59,7 +59,7 @@ async def resource1(
   """Fixture to create a basic ResourceOrm instance."""
   resource = ResourceOrm(
     name="TestResource1",
-    name=resource_def.name,
+    resource_definition_name=resource_def.name,
   )
   db.add(resource)
   await db.commit()

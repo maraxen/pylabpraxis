@@ -27,7 +27,7 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ProtocolRunUpdate,
 )
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,

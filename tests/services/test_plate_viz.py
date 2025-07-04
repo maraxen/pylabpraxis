@@ -26,7 +26,7 @@ async def setup_dependencies(db: AsyncSession):
   run = ProtocolRunOrm(name="Test Run for Viz")
   plate_resource = ResourceOrm(
     name="TestPlate1",
-    name="corning_96_wellplate_360ul_flat",
+    resource_definition_name="corning_96_wellplate_360ul_flat",
   )
 
   db.add_all([run, plate_resource])
@@ -63,7 +63,7 @@ async def setup_plate_data(db: AsyncSession, setup_dependencies):
     data_type=DataOutputTypeEnum.ABSORBANCE_READING,
     data_key="absorbance_540nm",
     spatial_context="well_specific",
-    resource_instance_accession_id=setup_dependencies["plate_id"],
+    resource_accession_id=setup_dependencies["plate_id"],
     measurement_timestamp=datetime.datetime.now(datetime.timezone.utc),
   )
   db.add(func_data_output)
@@ -74,7 +74,7 @@ async def setup_plate_data(db: AsyncSession, setup_dependencies):
     WellDataOutputOrm(
       accession_id=uuid.uuid4(),
       function_data_output_accession_id=func_data_output.accession_id,
-      plate_resource_instance_accession_id=setup_dependencies["plate_id"],
+      plate_resource_accession_id=setup_dependencies["plate_id"],
       well_name="A1",
       well_row=0,
       well_column=0,
@@ -83,7 +83,7 @@ async def setup_plate_data(db: AsyncSession, setup_dependencies):
     WellDataOutputOrm(
       accession_id=uuid.uuid4(),
       function_data_output_accession_id=func_data_output.accession_id,
-      plate_resource_instance_accession_id=setup_dependencies["plate_id"],
+      plate_resource_accession_id=setup_dependencies["plate_id"],
       well_name="A2",
       well_row=0,
       well_column=1,
@@ -92,7 +92,7 @@ async def setup_plate_data(db: AsyncSession, setup_dependencies):
     WellDataOutputOrm(
       accession_id=uuid.uuid4(),
       function_data_output_accession_id=func_data_output.accession_id,
-      plate_resource_instance_accession_id=setup_dependencies["plate_id"],
+      plate_resource_accession_id=setup_dependencies["plate_id"],
       well_name="B1",
       well_row=1,
       well_column=0,
@@ -126,12 +126,12 @@ class TestPlateVizService:
 
     viz_data = await read_plate_data_visualization(
       db,
-      plate_resource_instance_accession_id=plate_id,
+      plate_resource_accession_id=plate_id,
       data_type=data_type,
     )
 
     assert viz_data is not None
-    assert viz_data.plate_resource_instance_accession_id == plate_id
+    assert viz_data.plate_resource_accession_id == plate_id
     assert viz_data.data_type == data_type
 
     # Verify the calculated data range
@@ -139,10 +139,7 @@ class TestPlateVizService:
     assert viz_data.data_range["max"] == 1.25
 
     # Verify the timestamp comes from the most recent parent record
-    assert (
-      viz_data.measurement_timestamp
-      == setup_plate_data["func_data_output"].measurement_timestamp
-    )
+    assert viz_data.measurement_timestamp == setup_plate_data["func_data_output"].measurement_timestamp
 
     # Verify hardcoded plate layout
     assert viz_data.plate_layout["format"] == "96-well"
@@ -163,7 +160,7 @@ class TestPlateVizService:
     # Test with a data_type that has no data
     viz_data_wrong_type = await read_plate_data_visualization(
       db,
-      plate_resource_instance_accession_id=plate_id,
+      plate_resource_accession_id=plate_id,
       data_type=DataOutputTypeEnum.FLUORESCENCE_READING,  # No data for this type exists
     )
     assert viz_data_wrong_type is None
@@ -172,7 +169,7 @@ class TestPlateVizService:
     non_existent_plate_id = uuid.uuid4()
     viz_data_wrong_plate = await read_plate_data_visualization(
       db,
-      plate_resource_instance_accession_id=non_existent_plate_id,
+      plate_resource_accession_id=non_existent_plate_id,
       data_type=DataOutputTypeEnum.ABSORBANCE_READING,
     )
     assert viz_data_wrong_plate is None
@@ -209,7 +206,7 @@ class TestPlateVizService:
     other_well_data = WellDataOutputOrm(
       accession_id=uuid.uuid4(),
       function_data_output_accession_id=other_func_data.accession_id,
-      plate_resource_instance_accession_id=plate_id,
+      plate_resource_accession_id=plate_id,
       well_name="C1",
       well_row=2,
       well_column=0,
@@ -221,7 +218,7 @@ class TestPlateVizService:
     # Now query, filtering for the *original* run ID
     viz_data = await read_plate_data_visualization(
       db,
-      plate_resource_instance_accession_id=plate_id,
+      plate_resource_accession_id=plate_id,
       data_type=data_type,
       protocol_run_accession_id=run_id,
     )

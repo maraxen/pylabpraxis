@@ -242,7 +242,7 @@ async def tip_mapping(
   if targets is None and map_tips == "target":
     warnings.warn(
       "No target containers provided, mapping tips to source containers."
-      "Please set map_tips to 'source' to map to source containers.",
+      "Please set map_tips to 'source' to map to source containers.", stacklevel=2
     )
     targets = sources
   map_onto = sources if map_tips == "source" else targets

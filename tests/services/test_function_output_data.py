@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import all required ORM and Pydantic models from the top-level package
 from praxis.backend.models import (
   DataOutputTypeEnum,
-  SearchFilters,
   DeckOrm,
   FunctionCallLogOrm,
   FunctionDataOutputCreate,
@@ -16,6 +15,7 @@ from praxis.backend.models import (
   MachineOrm,
   ProtocolRunOrm,
   ResourceOrm,
+  SearchFilters,
   SpatialContextEnum,
 )
 
@@ -44,28 +44,28 @@ async def setup_dependencies(db: AsyncSession):
     function_name="test_function",
   )
   machine = MachineOrm(name="Test Machine", fqn="machine.fqn")
-  resource_instance = ResourceOrm(
+  resource = ResourceOrm(
     name="Test Resource",
-    name="test_resource_def",
+    resource_definition_name="test_resource_def",
   )
-  deck_instance = DeckOrm(
+  deck = DeckOrm(
     name="Test Deck",
     deck_accession_id=uuid.uuid4(),
     fqn="deck.fqn",
   )
 
-  db.add_all([function_call_log, machine, resource_instance, deck_instance])
+  db.add_all([function_call_log, machine, resource, deck])
   await db.commit()
 
-  for obj in [function_call_log, machine, resource_instance, deck_instance]:
+  for obj in [function_call_log, machine, resource, deck]:
     await db.refresh(obj)
 
   return {
     "protocol_run_id": protocol_run.accession_id,
     "function_call_log_id": function_call_log.accession_id,
     "machine_id": machine.accession_id,
-    "resource_instance_id": resource_instance.accession_id,
-    "deck_instance_id": deck_instance.accession_id,
+    "resource_id": resource.accession_id,
+    "deck_id": deck.accession_id,
   }
 
 
@@ -81,8 +81,8 @@ def base_data_output_create(setup_dependencies) -> FunctionDataOutputCreate:
     machine_accession_id=setup_dependencies["machine_id"],
     data_value_numeric=123.45,
     data_units="units",
-    resource_instance_accession_id=None,
-    deck_instance_accession_id=None,
+    resource_accession_id=None,
+    deck_accession_id=None,
     spatial_coordinates_json=None,
     data_value_json=None,
     data_value_text=None,
@@ -194,8 +194,8 @@ class TestFunctionDataOutputService:
       "function_call_log_accession_id": setup_dependencies["function_call_log_id"],
       "protocol_run_accession_id": setup_dependencies["protocol_run_id"],
       "machine_accession_id": None,
-      "resource_instance_accession_id": None,
-      "deck_instance_accession_id": None,
+      "resource_accession_id": None,
+      "deck_accession_id": None,
       "spatial_coordinates_json": None,
       "data_value_json": None,
       "data_value_text": None,
@@ -259,7 +259,7 @@ class TestFunctionDataOutputService:
       data_types=[DataOutputTypeEnum.PLATE_IMAGE],
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=None,
@@ -277,7 +277,7 @@ class TestFunctionDataOutputService:
       data_types=None,
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=True,
@@ -294,7 +294,7 @@ class TestFunctionDataOutputService:
       data_types=None,
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=None,

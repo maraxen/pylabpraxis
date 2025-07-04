@@ -20,7 +20,7 @@ def make_protocol_def_orm(
   version: str = "1.0.0",
   module_name: str = "dummy_module",
   function_name: str = "dummy_func",
-  accession_id: uuid.UUID = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d"),
+  accession_id: uuid.UUID | None = None,
   source_repository_accession_id=None,
   source_repository=None,
   commit_hash=None,
@@ -28,6 +28,8 @@ def make_protocol_def_orm(
   file_system_source=None,
 ):
   """Create a dummy ORM protocol definition for testing."""
+  if accession_id is None:
+    accession_id = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d")
   orm = mock.Mock()
   orm.name = name
   orm.version = version
@@ -43,7 +45,7 @@ def make_protocol_def_orm(
 
 
 def make_pydantic_def(
-  accession_id: uuid.UUID = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d"),
+  accession_id: uuid.UUID | None = None,
   name: str = "test",
   version: str = "1.0.0",
   source_file_path: str = "/tmp/file.py",
@@ -51,6 +53,8 @@ def make_pydantic_def(
   function_name: str = "dummy_func",
 ) -> FunctionProtocolDefinitionModel:
   """Create a dummy FunctionProtocolDefinitionModel with only required fields."""
+  if accession_id is None:
+    accession_id = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d")
   return FunctionProtocolDefinitionModel(
     accession_id=accession_id,
     name=name,

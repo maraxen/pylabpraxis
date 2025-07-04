@@ -11,13 +11,13 @@ from praxis.backend.models import (
   ResourceDefinitionOrm,
   ResourceOrm,
 )
-from praxis.backend.services.deck_instance import (
-  create_deck_instance,
-  delete_deck_instance,
+from praxis.backend.services.deck import (
+  create_deck,
+  delete_deck,
   list_deck,
   read_deck,
   read_deck_by_name,
-  update_deck_instance,
+  update_deck,
 )
 
 # Mark all tests in this file as asyncio
@@ -77,7 +77,7 @@ async def setup_test_data(db: AsyncSession):
 class TestDeckService:
   """Test suite for deck instance service functions."""
 
-  async def test_create_deck_instance_success(
+  async def test_create_deck_success(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -87,7 +87,7 @@ class TestDeckService:
     deck_name = "MyTestDeck"
     fqn = "pylabrobot.resources.hamilton.STARDeck"
 
-    created_deck = await create_deck_instance(
+    created_deck = await create_deck(
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
@@ -102,7 +102,7 @@ class TestDeckService:
     assert created_deck.description == "A test description."
     assert len(created_deck.position_items) == 0
 
-  async def test_create_deck_instance_with_positions(
+  async def test_create_deck_with_positions(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -115,7 +115,7 @@ class TestDeckService:
     position_data = [
       {
         "position_name": "A1",
-        "resource_instance_accession_id": plate_resource.accession_id,
+        "resource_accession_id": plate_resource.accession_id,
         "expected_resource_definition_name": plate_def.name,
       },
       {
@@ -124,7 +124,7 @@ class TestDeckService:
       },
     ]
 
-    created_deck = await create_deck_instance(
+    created_deck = await create_deck(
       db=db,
       name="DeckWithPositions",
       deck_accession_id=deck_resource.accession_id,
@@ -145,14 +145,14 @@ class TestDeckService:
     )
 
     assert pos_a1 is not None
-    assert pos_a1.resource_instance_accession_id == plate_resource.accession_id
+    assert pos_a1.resource_accession_id == plate_resource.accession_id
     assert pos_a1.expected_resource_definition_name == plate_def.name
 
     assert pos_b1 is not None
-    assert pos_b1.resource_instance_accession_id is None
+    assert pos_b1.resource_accession_id is None
     assert pos_b1.expected_resource_definition_name == plate_def.name
 
-  async def test_create_deck_instance_duplicate_name_fails(
+  async def test_create_deck_duplicate_name_fails(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -161,7 +161,7 @@ class TestDeckService:
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "DuplicateDeck"
 
-    await create_deck_instance(
+    await create_deck(
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
@@ -169,18 +169,18 @@ class TestDeckService:
     )
 
     with pytest.raises(ValueError, match="already exists"):
-      await create_deck_instance(
+      await create_deck(
         db=db,
         name=deck_name,
         deck_accession_id=deck_resource.accession_id,
         fqn="fqn.2",
       )
 
-  async def test_create_deck_instance_invalid_deck_id_fails(self, db: AsyncSession):
+  async def test_create_deck_invalid_deck_id_fails(self, db: AsyncSession):
     """Test that creating a deck instance with a non-existent deck ID fails."""
     non_existent_id = uuid.uuid4()
     with pytest.raises(ValueError, match="ResourceOrm.*not found"):
-      await create_deck_instance(
+      await create_deck(
         db=db,
         name="InvalidDeck",
         deck_accession_id=non_existent_id,
@@ -194,7 +194,7 @@ class TestDeckService:
   ):
     """Test reading a deck instance by its accession_id."""
     deck_resource = setup_test_data["deck_resource"]
-    deck = await create_deck_instance(
+    deck = await create_deck(
       db=db,
       name="ReadableDeck",
       deck_accession_id=deck_resource.accession_id,
@@ -220,7 +220,7 @@ class TestDeckService:
     """Test reading a deck instance by its unique name."""
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "NamedDeck"
-    await create_deck_instance(
+    await create_deck(
       db=db,
       name=deck_name,
       deck_accession_id=deck_resource.accession_id,
@@ -238,13 +238,13 @@ class TestDeckService:
   ):
     """Test listing deck instances."""
     deck_resource = setup_test_data["deck_resource"]
-    await create_deck_instance(
+    await create_deck(
       db,
       "DeckList1",
       deck_resource.accession_id,
       "fqn.list.1",
     )
-    await create_deck_instance(
+    await create_deck(
       db,
       "DeckList2",
       deck_resource.accession_id,
@@ -270,7 +270,7 @@ class TestDeckService:
     assert len(offset_decks) == 1
     assert offset_decks[0].name != limited_decks[0].name
 
-  async def test_update_deck_instance(
+  async def test_update_deck(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -279,7 +279,7 @@ class TestDeckService:
     deck_resource = setup_test_data["deck_resource"]
     plate_resource = setup_test_data["plate_resource"]
 
-    deck = await create_deck_instance(
+    deck = await create_deck(
       db=db,
       name="DeckToUpdate",
       deck_accession_id=deck_resource.accession_id,
@@ -289,7 +289,7 @@ class TestDeckService:
     updated_name = "DeckHasBeenUpdated"
     updated_description = "This is the new description."
 
-    updated_deck = await update_deck_instance(
+    updated_deck = await update_deck(
       db=db,
       deck_accession_id=deck.accession_id,
       name=updated_name,
@@ -305,11 +305,11 @@ class TestDeckService:
     new_position_data = [
       {
         "position_name": "C3",
-        "resource_instance_accession_id": plate_resource.accession_id,
+        "resource_accession_id": plate_resource.accession_id,
       },
     ]
 
-    final_deck = await update_deck_instance(
+    final_deck = await update_deck(
       db=db,
       deck_accession_id=deck.accession_id,
       position_items_data=new_position_data,
@@ -318,19 +318,19 @@ class TestDeckService:
     assert final_deck is not None
     assert len(final_deck.position_items) == 1
     assert final_deck.position_items[0].position_name == "C3"
-    assert final_deck.position_items[0].resource_instance_accession_id == plate_resource.accession_id
+    assert final_deck.position_items[0].resource_accession_id == plate_resource.accession_id
 
-  async def test_update_deck_instance_not_found(self, db: AsyncSession):
+  async def test_update_deck_not_found(self, db: AsyncSession):
     """Test that updating a non-existent deck instance returns None."""
     non_existent_id = uuid.uuid4()
-    result = await update_deck_instance(
+    result = await update_deck(
       db,
       deck_accession_id=non_existent_id,
       name="NewName",
     )
     assert result is None
 
-  async def test_delete_deck_instance(
+  async def test_delete_deck(
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
@@ -342,11 +342,11 @@ class TestDeckService:
     position_data = [
       {
         "position_name": "A1",
-        "resource_instance_accession_id": plate_resource.accession_id,
+        "resource_accession_id": plate_resource.accession_id,
       },
     ]
 
-    deck = await create_deck_instance(
+    deck = await create_deck(
       db=db,
       name="DeckToDelete",
       deck_accession_id=deck_resource.accession_id,
@@ -363,7 +363,7 @@ class TestDeckService:
     assert pos_item_result.scalar_one_or_none() is not None
 
     # Delete
-    result = await delete_deck_instance(db, deck_id)
+    result = await delete_deck(db, deck_id)
     assert result is True
 
     # Verify it's gone
@@ -375,8 +375,8 @@ class TestDeckService:
     )
     assert pos_item_result.scalar_one_or_none() is None
 
-  async def test_delete_deck_instance_not_found(self, db: AsyncSession):
+  async def test_delete_deck_not_found(self, db: AsyncSession):
     """Test that deleting a non-existent deck instance returns False."""
     non_existent_id = uuid.uuid4()
-    result = await delete_deck_instance(db, non_existent_id)
+    result = await delete_deck(db, non_existent_id)
     assert result is False

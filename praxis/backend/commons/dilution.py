@@ -461,7 +461,7 @@ async def handle_dilution(
   """Handles the dilution series for antigens."""
   if not isinstance(antigen_volumes, list) or not isinstance(dilution_factors, list):
     constant_dilution = True
-  for i, antigen_accession_id in enumerate(antigen_accession_ids):
+  for i, _antigen_accession_id in enumerate(antigen_accession_ids):
     if constant_dilution:
       buffer_transfer_volumes = [
         antigen_volumes[i] - antigen_volumes[i] / dilution_factors[i],
@@ -470,7 +470,6 @@ async def handle_dilution(
       raise NotImplementedError(
         "More complex dilution factors per variable not implemented",
       )
-    i
     column_index = i * dilution_plate.num_items_y
     dilution_wells = [j + (column_index) for j in range(n_dilutions)]
     await liquid_handler.pick_up_tips(

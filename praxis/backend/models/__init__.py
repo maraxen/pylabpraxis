@@ -10,9 +10,6 @@ the database schema is in sync with the ORM models.
 from __future__ import annotations
 
 from .asset_lock_manager_pydantic_models import AcquireAssetLock
-from .asset_orm import Asset
-from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
-from .deck_orm import DeckOrm, DeckPositionDefinitionOrm, DeckTypeDefinitionOrm
 from .deck_pydantic_models import (
   DeckBase,
   DeckCreate,
@@ -28,7 +25,6 @@ from .deck_pydantic_models import (
   DeckUpdate,
   PositioningConfig,
 )
-from .filters import SearchFilters
 from .function_data_output_orm import (
   DataOutputTypeEnum,
   FunctionDataOutputOrm,
@@ -57,6 +53,8 @@ from .machine_pydantic_models import (
   MachineResponse,
   MachineUpdate,
 )
+from .orm.asset import Asset
+from .orm.deck import DeckDefinitionOrm, DeckOrm, DeckPositionDefinitionOrm
 from .protocol_definitions_orm import (
   AssetRequirementOrm,
   FileSystemProtocolSourceOrm,
@@ -83,6 +81,8 @@ from .protocol_pydantic_models import (
   RuntimeAssetRequirement,
   UIHint,
 )
+from .pydantic.asset import AssetBase, AssetResponse, AssetUpdate
+from .pydantic.filters import SearchFilters
 from .resource_orm import (
   ResourceCategoryEnum,
   ResourceDefinitionOrm,
@@ -238,7 +238,7 @@ __all__ = [
   "Asset",
   "AssetUpdate",
   "DeckPositionDefinitionOrm",
-  "DeckTypeDefinitionOrm",
+  "DeckDefinitionOrm",
   "SearchFilters",
   "ResourceCategoryEnum",
   "ResourceDefinitionOrm",

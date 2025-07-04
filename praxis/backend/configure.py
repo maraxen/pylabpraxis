@@ -238,7 +238,7 @@ class PraxisConfiguration:
     for d in self.protocol_discovery_dirs:
       all_paths.add(os.path.abspath(d))
 
-    return sorted(list(all_paths))
+    return sorted(all_paths)
 
   @property
   def _keycloak_section(self) -> dict[str, str]:

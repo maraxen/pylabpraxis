@@ -17,13 +17,13 @@ from praxis.backend.models import (
 
 async def read_plate_dimensions(
   db: AsyncSession,
-  plate_resource_instance_accession_id: UUID,
+  plate_resource_accession_id: UUID,
 ) -> dict[str, int] | None:
   """Get plate dimensions from the resource definition.
 
   Args:
     db: Database session
-    plate_resource_instance_accession_id: Plate resource instance ID
+    plate_resource_accession_id: Plate resource instance ID
 
   Returns:
     Dictionary with 'rows' and 'columns' keys, or None if not found
@@ -33,9 +33,7 @@ async def read_plate_dimensions(
 
   # Get the resource instance and its definition
   result = await db.execute(
-    select(ResourceDefinitionOrm)
-    .join(ResourceOrm)
-    .filter(ResourceOrm.accession_id == plate_resource_instance_accession_id),
+    select(ResourceDefinitionOrm).join(ResourceOrm).filter(ResourceOrm.accession_id == plate_resource_accession_id),
   )
 
   resource_def = result.scalar_one_or_none()
@@ -118,8 +116,8 @@ def parse_well_name(well_name: str) -> tuple[int, int]:
   try:
     col_num = int(well_name[1:])
     col_idx = col_num - 1  # Convert to 0-based
-  except ValueError:
-    raise ValueError(f"Invalid column number in well name: {well_name}")
+  except ValueError as e:
+    raise ValueError(f"Invalid column number in well name: {well_name}") from e
 
   return row_idx, col_idx
 

@@ -36,7 +36,7 @@ log_data_output_errors = partial(
 
 async def read_plate_data_visualization(
   db: AsyncSession,
-  plate_resource_instance_accession_id: UUID,
+  plate_resource_accession_id: UUID,
   data_type: DataOutputTypeEnum,
   protocol_run_accession_id: UUID | None = None,
   function_call_log_accession_id: UUID | None = None,
@@ -45,7 +45,7 @@ async def read_plate_data_visualization(
 
   Args:
     db: Database session
-    plate_resource_instance_accession_id: Plate resource ID
+    plate_resource_accession_id: Plate resource ID
     data_type: Type of data to visualize
     protocol_run_accession_id: Optional protocol run filter
     function_call_log_accession_id: Optional function call filter
@@ -60,8 +60,7 @@ async def read_plate_data_visualization(
     .join(FunctionDataOutputOrm)
     .filter(
       and_(
-        WellDataOutputOrm.plate_resource_instance_accession_id
-        == plate_resource_instance_accession_id,
+        WellDataOutputOrm.plate_resource_accession_id == plate_resource_accession_id,
         FunctionDataOutputOrm.data_type == data_type,
       ),
     )
@@ -74,8 +73,7 @@ async def read_plate_data_visualization(
 
   if function_call_log_accession_id:
     query = query.filter(
-      FunctionDataOutputOrm.function_call_log_accession_id
-      == function_call_log_accession_id,
+      FunctionDataOutputOrm.function_call_log_accession_id == function_call_log_accession_id,
     )
 
   query = query.order_by(FunctionDataOutputOrm.measurement_timestamp.desc())
@@ -101,8 +99,8 @@ async def read_plate_data_visualization(
   measurement_timestamp = well_data_list[0].function_data_output.measurement_timestamp
 
   return PlateDataVisualization(
-    plate_resource_instance_accession_id=plate_resource_instance_accession_id,
-    plate_name=f"Plate_{plate_resource_instance_accession_id}",
+    plate_resource_accession_id=plate_resource_accession_id,
+    plate_name=f"Plate_{plate_resource_accession_id}",
     data_type=data_type,
     measurement_timestamp=measurement_timestamp,
     well_data=[],  # Convert to response models

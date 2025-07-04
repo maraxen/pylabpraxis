@@ -63,7 +63,7 @@ def get_module_classes(
       # Allow classes from submodules of the given module if module is a package root
       is_submodule_class = False
       if hasattr(module, "__path__"):  # Check if module is a package
-        for importer, modname, ispkg in pkgutil.iter_modules(
+        for _importer, modname, _ispkg in pkgutil.iter_modules(
           module.__path__, module.__name__ + ".",
         ):
           if obj.__module__.startswith(modname):
@@ -96,12 +96,12 @@ def get_constructor_params_with_defaults(
   try:
     signature = inspect.signature(klass.__init__)
     for name, param in signature.parameters.items():
-      if name == "self" or name == "args" or name == "kwargs":
+      if name in {"self", "args", "kwargs"}:
         continue
       if required_only and param.default is not inspect.Parameter.empty:
         continue
       params[name] = param.default
-  except Exception as e:
+  except Exception as e: # noqa: BLE001
     logger.error("Error inspecting constructor for %s: %s", get_class_fqn(klass), e)
   return params
 
@@ -162,7 +162,7 @@ def _discover_classes_in_module_recursive(
   try:
     module = importlib.import_module(module_name)
     classes_in_module = get_module_classes(module, parent_class, concrete_only)
-    for klass_name, klass in classes_in_module.items():
+    for _klass_name, klass in classes_in_module.items():
       if klass.__module__.startswith(
         module_name,
       ):  # Check it's defined in or under this module path
@@ -183,7 +183,7 @@ def _discover_classes_in_module_recursive(
           )
   except ImportError as e:
     logger.warning("Could not import module %s: %s", module_name, e)
-  except Exception as e:
+  except Exception as e: # noqa: BLE001
     logger.error("Error processing module %s: %s", module_name, e)
   return found_classes
 

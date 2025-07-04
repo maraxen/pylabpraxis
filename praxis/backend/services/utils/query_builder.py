@@ -8,8 +8,10 @@ reducing boilerplate code in the service layer.
 from sqlalchemy import Column, Select, and_
 from sqlalchemy.dialects.postgresql import JSONB
 
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.utils.db import Base
+
+# TODO: determine if these should be sync or async functions.
 
 
 def apply_pagination(query: Select, filters: SearchFilters) -> Select:
@@ -134,5 +136,69 @@ def apply_specific_id_filters(query: Select, filters: SearchFilters, orm_model: 
 
   if conditions:
     query = query.filter(and_(*conditions))
+
+  return query
+
+
+def apply_search_filters(
+  query: Select,
+  orm_model: Base,
+  filters: SearchFilters,
+  properties_field: str = "properties_json",
+  timestamp_field: str = "timestamp_field",
+) -> Select:
+  """Apply search filters to a SQLAlchemy query.
+
+  This function applies pagination, date range, property, and specific ID filters
+  to the provided SQLAlchemy Select statement based on the SearchFilters object.
+
+  Args:
+      query: The SQLAlchemy Select statement.
+      orm_model: The ORM model class to which the query applies.
+      filters: The SearchFilters object containing various filter parameters.
+      properties_field: The name of the JSONB properties field on the ORM model.
+      timestamp_field: The name of the timestamp field on the ORM model.
+
+  Returns:
+      The modified Select statement with all applicable filters applied.
+
+  """
+  properties_col = getattr(orm_model, properties_field, None)
+  timestamp_col = getattr(orm_model, timestamp_field, None)
+
+  q = apply_specific_id_filters(query, filters, orm_model)
+  if properties_col is not None:
+    q = apply_property_filters(q, filters, properties_col)
+  if timestamp_col is not None:
+    q = apply_date_range_filters(q, filters, timestamp_col)
+  q = apply_pagination(q, filters)
+  return q
+
+
+def apply_sorting(query: Select, orm_model: Base, sort_by: str | None) -> Select:
+  """Apply sorting to a SQLAlchemy query based on the sort_by parameter.
+
+  Args:
+      query: The SQLAlchemy Select statement.
+      orm_model: The ORM model class to which the query applies.
+      sort_by: The field name to sort by, prefixed with '-' for descending order.
+
+  Returns:
+      The modified Select statement with sorting applied.
+
+  """
+  if not sort_by:
+    return query
+
+  if sort_by.startswith("-"):
+    column = getattr(orm_model, sort_by[1:], None)
+    if column is None:
+      raise ValueError(f"Invalid sort field: {sort_by[1:]}")
+    query = query.order_by(column.desc())
+  else:
+    column = getattr(orm_model, sort_by, None)
+    if column is None:
+      raise ValueError(f"Invalid sort field: {sort_by}")
+    query = query.order_by(column)
 
   return query

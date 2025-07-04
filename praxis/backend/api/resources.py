@@ -4,8 +4,7 @@ This module defines endpoints for managing resource definitions and resources,
 including creation, retrieval, updating, and deletion. It uses the service layer
 to interact with the database and handle business logic.
 """
-from functools import partial
-from uuid import UUID
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +62,7 @@ resource_resolve_accession = partial(
 )
 async def create_resource_definition_endpoint(
     definition: ResourceDefinitionCreate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new resource definition in the catalog."""
     try:
@@ -73,7 +72,9 @@ async def create_resource_definition_endpoint(
         )
         return created_def
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+        ) from e
 
 
 @log_resource_api_errors(
@@ -89,7 +90,7 @@ async def create_resource_definition_endpoint(
 )
 async def read_resource_definition_endpoint(
     name: str,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Retrieve a resource definition by name."""
     db_def = await resource_definition_service.get_by_name(db, name)
@@ -110,7 +111,7 @@ async def read_resource_definition_endpoint(
     tags=["Resource Definitions"],
 )
 async def read_resource_definitions_endpoint(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 100,
     offset: int = 0,
 ):
@@ -135,7 +136,7 @@ async def read_resource_definitions_endpoint(
 async def update_resource_definition_endpoint(
     name: str,
     definition_update: ResourceDefinitionUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an existing resource definition."""
     db_obj = await resource_definition_service.get_by_name(db, name)
@@ -152,7 +153,9 @@ async def update_resource_definition_endpoint(
         )
         return updated_def
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e),
+        ) from e
 
 
 @log_resource_api_errors(
@@ -168,7 +171,7 @@ async def update_resource_definition_endpoint(
 )
 async def delete_resource_definition_endpoint(
     name: str,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a resource definition."""
     db_obj = await resource_definition_service.get_by_name(db, name)
@@ -202,7 +205,7 @@ async def delete_resource_definition_endpoint(
 )
 async def create_resource_endpoint(
     request: ResourceCreate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new resource."""
     try:
@@ -224,7 +227,9 @@ async def create_resource_endpoint(
         )
         return ResourceResponse.model_validate(resource_orm)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create resource: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create resource: {e!s}",
+        ) from e
 
 
 @log_resource_api_errors(
@@ -239,8 +244,8 @@ async def create_resource_endpoint(
     tags=["Resources"],
 )
 async def read_resources_endpoint(
-    db: AsyncSession = Depends(get_db),
-    filters: SearchFilters = Depends(),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    filters: Annotated[SearchFilters, Depends()],
 ):
     """List all resources."""
     resources = await resource_service.get_multi(db, filters=filters)
@@ -260,7 +265,7 @@ async def read_resources_endpoint(
 )
 async def read_resource_endpoint(
     accession: str | UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Retrieve a resource."""
     try:
@@ -270,7 +275,9 @@ async def read_resource_endpoint(
             raise HTTPException(status_code=404, detail="Resource not found")
         return ResourceResponse.model_validate(resource)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get resource: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get resource: {e!s}",
+        ) from e
 
 
 @log_resource_api_errors(
@@ -287,7 +294,7 @@ async def read_resource_endpoint(
 async def update_resource_endpoint(
     accession: str | UUID,
     request: ResourceUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an existing resource."""
     try:
@@ -303,7 +310,9 @@ async def update_resource_endpoint(
         return ResourceResponse.model_validate(updated_resource)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update resource: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update resource: {e!s}",
+        ) from e
 
 
 @log_resource_api_errors(
@@ -319,7 +328,7 @@ async def update_resource_endpoint(
 )
 async def delete_resource_endpoint(
     accession: str | UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a resource by name or ID."""
     try:
@@ -332,5 +341,7 @@ async def delete_resource_endpoint(
             raise HTTPException(status_code=404, detail="Resource not found")
         return
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete resource: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete resource: {e!s}",
+        ) from e
 

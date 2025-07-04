@@ -37,7 +37,7 @@ def mock_workcell_runtime() -> AsyncMock:
   runtime.shutdown_machine = AsyncMock()
   runtime.create_or_get_resource = AsyncMock()
   runtime.assign_resource_to_deck = AsyncMock()
-  runtime.clear_resource_instance = AsyncMock()
+  runtime.clear_resource = AsyncMock()
   runtime.clear_deck_position = AsyncMock()
   return runtime
 
@@ -92,7 +92,7 @@ def resource_definition_factory():
 
 
 @pytest.fixture
-def resource_instance_factory():
+def resource_factory():
   """Create ResourceOrm instances."""
 
   def _factory(**kwargs):
@@ -115,7 +115,7 @@ def resource_instance_factory():
 def mock_plr_deck_object() -> Deck:
   """Provide a mock PyLabRobot Deck object."""
   deck = MagicMock(spec=STARLetDeck)
-  deck.name = "mock_deck_resource_instance"
+  deck.name = "mock_deck_resource"
   deck.assign_child_resource = MagicMock()
   return deck
 
@@ -124,5 +124,5 @@ def mock_plr_deck_object() -> Deck:
 def mock_plr_resource_object() -> MagicMock:
   """Provide a generic mock PyLabRobot Resource object."""
   resource = MagicMock(spec=Deck)  # Use a real class for isinstance checks
-  resource.name = "mock_plate_resource_instance"
+  resource.name = "mock_plate_resource"
   return resource

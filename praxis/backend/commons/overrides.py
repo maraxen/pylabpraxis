@@ -77,7 +77,7 @@ def patch_subclasses() -> dict[str, type[Machine]]:
 
   """
   new_objs = {}
-  for name, obj in get_class_members(
+  for _name, obj in get_class_members(
     library_name="pylabrobot", subpackage="machines", base_class_name=Machine.__name__,
   ).items():
     if inspect.isclass(obj) and issubclass(obj, Machine):

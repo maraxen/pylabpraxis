@@ -19,7 +19,7 @@ from sqlalchemy.orm import joinedload
 
 from praxis.backend.models import MachineCreate, MachineUpdate
 from praxis.backend.models.enums import AssetType
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.machine_orm import MachineOrm, MachineStatusEnum
 from praxis.backend.services.entity_linking import (
   _create_or_link_resource_counterpart_for_machine,

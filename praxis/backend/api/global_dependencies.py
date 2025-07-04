@@ -25,9 +25,11 @@ class GlobalDependencies:
     async def initialize(
         self,
         db_session_factory,
-        config: PraxisConfiguration = PraxisConfiguration(),
+        config: PraxisConfiguration | None = None,
     ):
         """Initialize global scheduler components."""
+        if config is None:
+            config = PraxisConfiguration()
         self.asset_lock_manager = AssetLockManager(config=config)
         await self.asset_lock_manager.initialize()
         logger.info("AssetLockManager initialized.")

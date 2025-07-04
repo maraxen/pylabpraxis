@@ -67,7 +67,7 @@ class Notifier:
         server.login(self.smtp_username, self.smtp_password)
         server.send_message(message)
       print("Email sent!")
-    except Exception as e:
+    except Exception as e: # noqa: BLE001
       print(f"Error sending email: {e}")
 
   def send_text(

@@ -14,13 +14,13 @@ from praxis.backend.models import (
 
 # Import the service functions to be tested
 from praxis.backend.services import (
-  create_resource_instance,
-  delete_resource_instance,
+  create_resource,
+  delete_resource,
   read_resource,
   read_resource_by_name,
   read_resources,
-  update_resource_instance,
-  update_resource_instance_location_and_status,
+  update_resource,
+  update_resource_location_and_status,
 )
 
 # --- Pytest Fixtures ---
@@ -66,7 +66,7 @@ async def existing_resource(
   resource_def: ResourceDefinitionOrm,
 ) -> ResourceOrm:
   """Fixture that creates a standard resource instance for testing."""
-  return await create_resource_instance(
+  return await create_resource(
     db,
     name=f"TestPlate_{uuid.uuid4()}",
     fqn=resource_def.fqn,
@@ -87,7 +87,7 @@ class TestResourceService:
   ):
     """Test creating a simple resource and reading it back by ID and name."""
     name = f"MyPlate_{uuid.uuid4()}"
-    resource = await create_resource_instance(
+    resource = await create_resource(
       db,
       name=name,
       fqn=resource_def.fqn,
@@ -118,7 +118,7 @@ class TestResourceService:
   ):
     """Test creating a resource that is also a new machine counterpart."""
     name = f"MachineResource_{uuid.uuid4()}"
-    resource = await create_resource_instance(
+    resource = await create_resource(
       db,
       name=name,
       fqn="pylabrobot.liquid_handling.LiquidHandler",
@@ -134,20 +134,20 @@ class TestResourceService:
   async def test_create_resource_fails_with_bad_definition(self, db: AsyncSession):
     """Test that creating a resource fails if the definition FQN does not exist."""
     with pytest.raises(ValueError, match="not found in catalog"):
-      await create_resource_instance(
+      await create_resource(
         db,
         name="BadDefResource",
         fqn="non.existent.definition",
         resource_definition_accession_id=uuid.uuid4(),
       )
 
-  async def test_update_resource_instance(
+  async def test_update_resource(
     self,
     db: AsyncSession,
     existing_resource: ResourceOrm,
   ):
     """Test updating various fields of a resource instance."""
-    updated_resource = await update_resource_instance(
+    updated_resource = await update_resource(
       db,
       instance_accession_id=existing_resource.accession_id,
       lot_number="L456",
@@ -165,7 +165,7 @@ class TestResourceService:
   ):
     """Test filtering capabilities of the read_resources function."""
     # Create a diverse set of resources
-    await create_resource_instance(
+    await create_resource(
       db,
       f"PlateA_{uuid.uuid4()}",
       resource_def.fqn,
@@ -173,7 +173,7 @@ class TestResourceService:
       initial_status=ResourceStatusEnum.IN_USE,
       properties_json={"type": "assay"},
     )
-    await create_resource_instance(
+    await create_resource(
       db,
       f"PlateB_{uuid.uuid4()}",
       resource_def.fqn,
@@ -212,9 +212,9 @@ class TestResourceService:
     assert existing_resource.properties_json is None
 
     # Move to machine, set to IN_USE, and update properties
-    updated_resource = await update_resource_instance_location_and_status(
+    updated_resource = await update_resource_location_and_status(
       db,
-      resource_instance_accession_id=existing_resource.accession_id,
+      resource_accession_id=existing_resource.accession_id,
       new_status=ResourceStatusEnum.IN_USE,
       location_machine_accession_id=machine.accession_id,
       current_deck_position_name="A1",
@@ -231,9 +231,9 @@ class TestResourceService:
     assert updated_resource.current_protocol_run_accession_id == protocol_run.run_accession_id
 
     # Now, move it back to storage and merge properties
-    back_to_storage = await update_resource_instance_location_and_status(
+    back_to_storage = await update_resource_location_and_status(
       db,
-      resource_instance_accession_id=existing_resource.accession_id,
+      resource_accession_id=existing_resource.accession_id,
       new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       location_machine_accession_id=None,
       current_deck_position_name=None,
@@ -249,7 +249,7 @@ class TestResourceService:
     assert back_to_storage.properties_json["content"] == "reagent_X"
     assert back_to_storage.properties_json["concentration"] == "10mM"
 
-  async def test_delete_resource_instance(
+  async def test_delete_resource(
     self,
     db: AsyncSession,
     existing_resource: ResourceOrm,
@@ -257,6 +257,6 @@ class TestResourceService:
     """Test deleting a resource instance by ID and by name."""
     # Delete by ID
     resource_id = existing_resource.accession_id
-    result = await delete_resource_instance(db, resource_id)
+    result = await delete_resource(db, resource_id)
     assert result is True
     assert await read_resource(db, resource_id) is None

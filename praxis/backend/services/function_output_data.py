@@ -71,9 +71,9 @@ async def create_function_data_output(
     data_type=data_output.data_type,
     data_key=data_output.data_key,
     spatial_context=data_output.spatial_context,
-    resource_instance_accession_id=data_output.resource_instance_accession_id,
+    resource_accession_id=data_output.resource_accession_id,
     machine_accession_id=data_output.machine_accession_id,
-    deck_instance_accession_id=data_output.deck_instance_accession_id,
+    deck_accession_id=data_output.deck_accession_id,
     spatial_coordinates_json=data_output.spatial_coordinates_json,
     data_value_numeric=data_output.data_value_numeric,
     data_value_json=data_output.data_value_json,
@@ -131,9 +131,9 @@ async def read_function_data_output(
     .options(
       joinedload(FunctionDataOutputOrm.function_call_log),
       joinedload(FunctionDataOutputOrm.protocol_run),
-      joinedload(FunctionDataOutputOrm.resource_instance),
+      joinedload(FunctionDataOutputOrm.resource),
       joinedload(FunctionDataOutputOrm.machine),
-      joinedload(FunctionDataOutputOrm.deck_instance),
+      joinedload(FunctionDataOutputOrm.deck),
       selectinload(FunctionDataOutputOrm.well_data_outputs),
     )
     .filter(FunctionDataOutputOrm.accession_id == data_output_accession_id),
@@ -160,7 +160,7 @@ async def list_function_data_outputs(
   """
   query = select(FunctionDataOutputOrm).options(
     joinedload(FunctionDataOutputOrm.function_call_log),
-    joinedload(FunctionDataOutputOrm.resource_instance),
+    joinedload(FunctionDataOutputOrm.resource),
     joinedload(FunctionDataOutputOrm.machine),
   )
 

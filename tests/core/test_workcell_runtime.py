@@ -10,7 +10,7 @@ from pylabrobot.resources import Coordinate, Deck
 from praxis.backend.core.workcell import Workcell
 from praxis.backend.core.workcell_runtime import WorkcellRuntime, _get_class_from_fqn
 from praxis.backend.models import (
-  DeckTypeDefinitionOrm,
+  DeckDefinitionOrm,
   MachineOrm,
   MachineStatusEnum,
   PositioningConfig,
@@ -211,7 +211,7 @@ class TestAssetLifecycle:
       ANY,
     )
 
-  @patch("praxis.backend.services.update_resource_instance_location_and_status")
+  @patch("praxis.backend.services.update_resource_location_and_status")
   async def test_create_or_get_resource_success(
     self,
     mock_update_status,
@@ -294,7 +294,7 @@ class TestDeckOperations:
 
   @patch("praxis.backend.services.read_deck")
   @patch("praxis.backend.services.read_deck_type_definition")
-  @patch("praxis.backend.services.update_resource_instance_location_and_status")
+  @patch("praxis.backend.services.update_resource_location_and_status")
   async def test_assign_resource_to_deck_by_position(
     self,
     mock_update_status,
@@ -312,7 +312,7 @@ class TestDeckOperations:
       deck_type_id=uuid.uuid4(),
     )
     mock_deck_type_orm = MagicMock(
-      spec=DeckTypeDefinitionOrm,
+      spec=DeckDefinitionOrm,
       accession_id=uuid.uuid4(),
       positioning_config_json=PositioningConfig(
         method_name="get_item",
@@ -343,7 +343,7 @@ class TestDeckOperations:
       current_deck_position_name="A1",
     )
 
-  @patch("praxis.backend.services.update_resource_instance_location_and_status")
+  @patch("praxis.backend.services.update_resource_location_and_status")
   async def test_clear_deck_position(
     self,
     mock_update_status,

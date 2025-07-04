@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import UUID7, BaseModel, Field
 
-from .resource_pydantic_models import (
+from .resource import (
   ResourceBase,
   ResourceCreate,
   ResourceResponse,
@@ -19,8 +19,6 @@ from .resource_pydantic_models import (
 
 class DeckBase(ResourceBase):
   """Base model for a deck."""
-
-  # Do not override fqn, asset_type, or other fields from AssetBase unless necessary
 
 
 class DeckCreate(ResourceCreate, DeckBase):
@@ -39,13 +37,14 @@ class PositioningConfig(BaseModel):
   """Configuration for how positions are calculated/managed for this deck type.
 
   A general configuration for methods that follow the pattern:
-  `deck_instance.method_name(position_arg)` -> Coordinate
+  `deck.method_name(position_arg)` -> Coordinate
 
   """
 
   method_name: str = Field(
     ...,
-    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location','slot_to_location').",
+    description="Name of the PyLabRobot deck method to call (e.g., 'rail_to_location',"
+    "'slot_to_location').",
   )
   arg_name: str = Field(
     ...,

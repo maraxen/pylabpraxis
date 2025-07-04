@@ -278,7 +278,7 @@ class ProtocolExecutionService:
         )
         await db_session.commit()
         database_cancelled = True
-      except Exception as e:
+      except Exception as e: # noqa: BLE001
         logger.error(
           "Failed to update database status for cancelled run %s: %s",
           protocol_run_id,

@@ -5,20 +5,14 @@ from their generic definitions to specific physical instances and their
 inventory data.
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, ClassVar, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
-from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
-from .pydantic_base import TimestampedModel
-from .resource_orm import ResourceStatusEnum
+from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
 
-if TYPE_CHECKING:
-  from .machine_orm import MachineStatusEnum
-
-# =============================================================================
-# Resource  Models
-# =============================================================================
+from .asset import AssetBase, AssetResponse, AssetUpdate
+from .pydantic_base import PraxisBaseModel
 
 
 class ResourceBase(AssetBase):
@@ -32,6 +26,11 @@ class ResourceBase(AssetBase):
   plr_state: dict | None = None
   plr_definition: dict | None = None
   properties_json: dict | None = None
+  children: list["ResourceBase"] = Field(
+    default_factory=list,
+    description="List of child resources associated with this resource.",
+  )
+  parent: "ResourceBase | None" = None
 
   class Config:
     """Configuration for Pydantic model behavior."""
@@ -47,11 +46,11 @@ class ResourceCreate(ResourceBase):
     default=False,
     description="Indicates if this resource is also registered as a machine instance.",
   )
-  # Fields for creating a machine counterpart if is_machine is True
   machine_fqn: str | None = Field(
     default=None,
     description=(
-      "The FQN for the machine counterpart. Required if is_machine is True and no counterpart ID is provided."
+      "The FQN for the machine counterpart. Required if is_machine is True and no counterpart ID is"
+      " provided."
     ),
   )
   machine_properties_json: dict[str, Any] | None = Field(
@@ -61,6 +60,25 @@ class ResourceCreate(ResourceBase):
   machine_initial_status: Optional["MachineStatusEnum"] = Field(
     default=None,
     description="Initial status for the new machine counterpart.",
+  )
+  is_deck: bool = Field(
+    default=False,
+    description="Indicates if this resource is a deck instance.",
+  )
+  deck_fqn: str | None = Field(
+    default=None,
+    description=(
+      "The FQN for the deck counterpart. Required if is_deck is True and no counterpart ID is"
+      " provided."
+    ),
+  )
+  deck_properties_json: dict[str, Any] | None = Field(
+    default=None,
+    description="Properties for the new deck counterpart.",
+  )
+  deck_initial_status: ResourceStatusEnum | None = Field(
+    default=None,
+    description="Initial status for the new deck counterpart.",
   )
 
 
@@ -72,17 +90,24 @@ class ResourceUpdate(AssetUpdate):
   machine_counterpart_accession_id: UUID7 | None = None
   deck_counterpart_accession_id: UUID7 | None = None
   parent_accession_id: UUID7 | None = None
-  is_machine: bool | None = None
-  machine_fqn: str | None = None
-  machine_properties_json: dict[str, Any] | None = None
-  machine_initial_status: Optional["MachineStatusEnum"] = None
+  child_accession_ids: list[UUID7] = Field(
+    default_factory=list,
+    description="List of accession IDs for child resources to be associated with this resource.",
+  )
+  plr_state: dict | None = None
+  plr_definition: dict | None = None
+  properties_json: dict | None = None
+  children: list["ResourceBase"] = Field(
+    default_factory=list,
+    description="List of child resources associated with this resource.",
+  )
 
 
 class ResourceResponse(AssetResponse, ResourceBase):
   """Model for API responses for a resource instance."""
 
-  parent: Optional["ResourceResponse"] = None
-  children: list["ResourceResponse"] = []
+  parent_response: "ResourceResponse | None" = None
+  child_responses: ClassVar[list["ResourceResponse"]] = []
 
   class Config(AssetResponse.Config, ResourceBase.Config):
     """Pydantic configuration for ResourceResponse."""
@@ -142,10 +167,10 @@ class ResourceDefinitionUpdate(BaseModel):
   model: str | None = None
 
 
-class ResourceDefinitionResponse(ResourceDefinitionBase, TimestampedModel):
+class ResourceDefinitionResponse(ResourceDefinitionBase, PraxisBaseModel):
   """Represents a resource definition for API responses."""
 
-  class Config(ResourceDefinitionBase.Config, TimestampedModel.Config):
+  class Config(ResourceDefinitionBase.Config, PraxisBaseModel.Config):
     """Pydantic configuration for ResourceDefinitionResponse."""
 
 

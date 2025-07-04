@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models import (
+  DeckDefinitionOrm,
   DeckOrm,
-  DeckTypeDefinitionOrm,
   ResourceDefinitionOrm,
   ResourceOrm,
 )
@@ -52,26 +52,26 @@ async def setup_test_data_for_items(db: AsyncSession) -> dict[str, Any]:
   db.add_all([deck_resource, plate_resource])
   await db.flush()
 
-  deck_instance = DeckOrm(
+  deck = DeckOrm(
     name="DeckForPosTest",
     deck_accession_id=deck_resource.accession_id,
     fqn="some.deck.fqn",
     accession_id=uuid.uuid4(),
   )
-  db.add(deck_instance)
+  db.add(deck)
   await db.commit()
 
   return {
-    "deck_instance": deck_instance,
+    "deck": deck,
     "plate_resource": plate_resource,
     "plate_def": plate_def,
   }
 
 
 @pytest.fixture
-async def setup_test_data_for_definitions(db: AsyncSession) -> DeckTypeDefinitionOrm:
+async def setup_test_data_for_definitions(db: AsyncSession) -> DeckDefinitionOrm:
   """Set up data for testing DeckPositionDefinitionOrm operations."""
-  deck_type = DeckTypeDefinitionOrm(
+  deck_type = DeckDefinitionOrm(
     pylabrobot_deck_fqn="pylabrobot.deck.for_def_test",
     display_name="Test Deck Type for Definitions",
     accession_id=uuid.uuid4(),
@@ -90,22 +90,22 @@ class TestDeckPositionService:
     setup_test_data_for_items: dict[str, Any],
   ):
     """Test successfully creating a new position item on a deck instance."""
-    deck_instance = setup_test_data_for_items["deck_instance"]
+    deck = setup_test_data_for_items["deck"]
     plate_resource = setup_test_data_for_items["plate_resource"]
     plate_def = setup_test_data_for_items["plate_def"]
 
     pos_item = await create_deck_position_item(
       db=db,
-      deck_accession_id=deck_instance.accession_id,
+      deck_accession_id=deck.accession_id,
       name="A1",
-      resource_instance_accession_id=plate_resource.accession_id,
+      resource_accession_id=plate_resource.accession_id,
       expected_resource_definition_name=plate_def.name,
     )
 
     assert pos_item is not None
-    assert pos_item.deck_instance_accession_id == deck_instance.accession_id
+    assert pos_item.deck_accession_id == deck.accession_id
     assert pos_item.position_name == "A1"
-    assert pos_item.resource_instance_accession_id == plate_resource.accession_id
+    assert pos_item.resource_accession_id == plate_resource.accession_id
     assert pos_item.expected_resource_definition_name == plate_def.name
 
   async def test_create_deck_position_item_fails_for_bad_deck_id(
@@ -123,10 +123,10 @@ class TestDeckPositionService:
     setup_test_data_for_items: dict[str, Any],
   ):
     """Test reading a specific position item by its ID."""
-    deck_instance = setup_test_data_for_items["deck_instance"]
+    deck = setup_test_data_for_items["deck"]
     created_item = await create_deck_position_item(
       db,
-      deck_accession_id=deck_instance.accession_id,
+      deck_accession_id=deck.accession_id,
       name="B2",
     )
     assert created_item is not None
@@ -142,25 +142,25 @@ class TestDeckPositionService:
     setup_test_data_for_items: dict[str, Any],
   ):
     """Test updating an existing position item."""
-    deck_instance = setup_test_data_for_items["deck_instance"]
+    deck = setup_test_data_for_items["deck"]
     plate_resource = setup_test_data_for_items["plate_resource"]
     created_item = await create_deck_position_item(
       db,
-      deck_accession_id=deck_instance.accession_id,
+      deck_accession_id=deck.accession_id,
       name="C3",
     )
     assert created_item is not None
-    assert created_item.resource_instance_accession_id is None
+    assert created_item.resource_accession_id is None
 
     updated_item = await update_deck_position_item(
       db=db,
       position_item_accession_id=created_item.accession_id,
-      resource_instance_accession_id=plate_resource.accession_id,
+      resource_accession_id=plate_resource.accession_id,
     )
 
     assert updated_item is not None
     assert updated_item.accession_id == created_item.accession_id
-    assert updated_item.resource_instance_accession_id == plate_resource.accession_id
+    assert updated_item.resource_accession_id == plate_resource.accession_id
 
   async def test_delete_deck_position_item(
     self,
@@ -168,10 +168,10 @@ class TestDeckPositionService:
     setup_test_data_for_items: dict[str, Any],
   ):
     """Test deleting a position item."""
-    deck_instance = setup_test_data_for_items["deck_instance"]
+    deck = setup_test_data_for_items["deck"]
     created_item = await create_deck_position_item(
       db,
-      deck_accession_id=deck_instance.accession_id,
+      deck_accession_id=deck.accession_id,
       name="D4",
     )
     assert created_item is not None
@@ -199,7 +199,7 @@ class TestDeckPositionDefinitionService:
   async def test_create_deck_position_definitions_success(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test successfully creating multiple position definitions for a deck type."""
     deck_type = setup_test_data_for_definitions
@@ -237,7 +237,7 @@ class TestDeckPositionDefinitionService:
   async def test_read_position_definitions_for_deck_type(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test reading all position definitions for a specific deck type."""
     deck_type = setup_test_data_for_definitions
@@ -259,7 +259,7 @@ class TestDeckPositionDefinitionService:
   async def test_update_deck_position_definition(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test updating an existing position definition."""
     deck_type = setup_test_data_for_definitions
@@ -286,7 +286,7 @@ class TestDeckPositionDefinitionService:
   async def test_update_non_existent_position_definition_fails(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test that updating a non-existent position definition raises ValueError."""
     deck_type = setup_test_data_for_definitions
@@ -301,7 +301,7 @@ class TestDeckPositionDefinitionService:
   async def test_delete_deck_position_definition(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test deleting a specific position definition."""
     deck_type = setup_test_data_for_definitions
@@ -331,7 +331,7 @@ class TestDeckPositionDefinitionService:
   async def test_delete_non_existent_position_definition_fails(
     self,
     db: AsyncSession,
-    setup_test_data_for_definitions: DeckTypeDefinitionOrm,
+    setup_test_data_for_definitions: DeckDefinitionOrm,
   ):
     """Test that deleting a non-existent position definition raises ValueError."""
     deck_type = setup_test_data_for_definitions

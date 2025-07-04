@@ -32,3 +32,8 @@ def uuid4() -> uuid.UUID:
 
   """
   return uuid.uuid4()
+
+def generate_name(prefix: str) -> str:
+  """Generate a default name."""
+  uuid_ = uuid7().hex[:8]
+  return f"{prefix}-{uuid_}"

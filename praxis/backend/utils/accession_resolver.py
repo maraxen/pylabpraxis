@@ -29,9 +29,9 @@ async def get_accession_id_from_accession(
       accession: The UUID or user-assigned name of the entity to resolve.
       db: The async database session.
       get_func: The service function used to get the entity by its UUID.
-                      Example: `svc.get_resource_instance`
+                      Example: `svc.get_resource`
       get_by_name_func: The service function used to get the entity by its name.
-                        Example: `svc.get_resource_instance_by_name`
+                        Example: `svc.get_resource_by_name`
       entity_type_name: The user-friendly name of the entity type (e.g., "Resource
                         ") used for creating clear error messages.
 

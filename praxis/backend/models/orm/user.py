@@ -5,9 +5,8 @@ including authentication credentials, contact details, and account status.
 """
 
 import uuid
-from datetime import datetime
 
-from sqlalchemy import UUID, Boolean, DateTime, String, func
+from sqlalchemy import UUID, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from praxis.backend.utils.db import Base
@@ -23,10 +22,34 @@ class UserOrm(Base):
   __tablename__ = "users"
 
   accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
-  username: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-  email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-  hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-  full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+  username: Mapped[str] = mapped_column(
+    String,
+    unique=True,
+    index=True,
+    nullable=False,
+    comment="Unique username for user login",
+    init=False,
+  )
+  email: Mapped[str] = mapped_column(
+    String,
+    unique=True,
+    index=True,
+    nullable=False,
+    comment="User's email address for notifications and account recovery",
+    init=False,
+  )
+  hashed_password: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    comment="Hashed password for user authentication",
+    init=False,
+  )
+  full_name: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="User's full name for display purposes",
+    default=None,
+  )
   is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
   phone_number: Mapped[str | None] = mapped_column(
@@ -34,21 +57,16 @@ class UserOrm(Base):
     nullable=True,
     index=True,
     comment="User's phone number for SMS notifications",
+    default=None,
   )
   phone_carrier: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     comment="User's phone carrier for SMS gateway emails, e.g., 'verizon', 'att'",
+    default=None,
   )
 
-  created_at: Mapped[datetime | None] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(),
-  )
-  updated_at: Mapped[datetime | None] = mapped_column(
-    DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
-  )
-
-  def __repr__(self):
+  def __repr__(self) -> str:
     """Return a string representation of the UserOrm object."""
     return (
       f"<UserOrm(id={self.accession_id}, username='{self.username}',"

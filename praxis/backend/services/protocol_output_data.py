@@ -31,7 +31,8 @@ log_data_output_errors = partial(
 
 
 async def read_protocol_run_data_summary(
-  db: AsyncSession, protocol_run_accession_id: UUID,
+  db: AsyncSession,
+  protocol_run_accession_id: UUID,
 ) -> ProtocolRunDataSummary:
   """Get a summary of all data outputs for a protocol run.
 
@@ -72,10 +73,10 @@ async def read_protocol_run_data_summary(
 
   # Get unique resource
   resource_result = await db.execute(
-    select(FunctionDataOutputOrm.resource_instance_accession_id.distinct()).filter(
+    select(FunctionDataOutputOrm.resource_accession_id.distinct()).filter(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
-        FunctionDataOutputOrm.resource_instance_accession_id.is_not(None),
+        FunctionDataOutputOrm.resource_accession_id.is_not(None),
       ),
     ),
   )
@@ -92,15 +93,13 @@ async def read_protocol_run_data_summary(
       FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
     )
     .group_by(
-      FunctionDataOutputOrm.measurement_timestamp, FunctionDataOutputOrm.data_type,
+      FunctionDataOutputOrm.measurement_timestamp,
+      FunctionDataOutputOrm.data_type,
     )
     .order_by(FunctionDataOutputOrm.measurement_timestamp),
   )
 
-  data_timeline = [
-    {"timestamp": row[0], "data_type": row[1].value, "count": row[2]}
-    for row in timeline_result.all()
-  ]
+  data_timeline = [{"timestamp": row[0], "data_type": row[1].value, "count": row[2]} for row in timeline_result.all()]
 
   # Get file attachments
   files_result = await db.execute(
@@ -117,8 +116,7 @@ async def read_protocol_run_data_summary(
   )
 
   file_attachments = [
-    {"file_path": row[0], "file_size_bytes": row[1], "data_type": row[2].value}
-    for row in files_result.all()
+    {"file_path": row[0], "file_size_bytes": row[1], "data_type": row[2].value} for row in files_result.all()
   ]
 
   machines_used = [m for m in machines_used if m is not None]

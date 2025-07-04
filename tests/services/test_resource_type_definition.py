@@ -11,7 +11,7 @@ from praxis.backend.models import (
 # Import the service functions to be tested
 from praxis.backend.services import (
   create_resource_definition,
-  create_resource_instance,  # Also needed for a deletion test
+  create_resource,  # Also needed for a deletion test
   delete_resource_definition,
   read_resource_definition,
   read_resource_definition_by_fqn,
@@ -171,7 +171,7 @@ class TestResourceDefinitionService:
   ):
     """Test that deleting a definition fails if it's used by a resource instance."""
     # Create a resource instance that uses the definition
-    await create_resource_instance(
+    await create_resource(
       db,
       name=f"instance_using_{existing_def.name}",
       fqn=existing_def.fqn,

@@ -22,8 +22,8 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
+  DeckDefinitionOrm,
   DeckPositionDefinitionOrm,
-  DeckTypeDefinitionOrm,
   PositioningConfig,
 )
 from praxis.backend.utils.logging import get_logger
@@ -35,7 +35,7 @@ UUID = uuid.UUID
 
 async def _process_position_definitions(
   db: AsyncSession,
-  deck_type_orm: DeckTypeDefinitionOrm,
+  deck_type_orm: DeckDefinitionOrm,
   position_definitions: list[dict[str, Any]] | None,
   log_prefix: str,
 ):
@@ -143,7 +143,7 @@ async def create_deck_type_definition(
   serialized_constructor_args_json: dict[str, Any] | None = None,
   positioning_config: PositioningConfig | None = None,
   position_definitions: list[dict[str, Any]] | None = None,
-) -> DeckTypeDefinitionOrm:
+) -> DeckDefinitionOrm:
   """Add a new deck type definition to the catalog.
 
   This function creates a new `DeckTypeDefinitionOrm` along with its associated
@@ -183,7 +183,7 @@ async def create_deck_type_definition(
 
   # Check if a deck type with this FQN already exists
   result = await db.execute(
-    select(DeckTypeDefinitionOrm).filter(DeckTypeDefinitionOrm.fqn == fqn),
+    select(DeckDefinitionOrm).filter(DeckDefinitionOrm.fqn == fqn),
   )
   if result.scalar_one_or_none():
     error_message = (
@@ -194,7 +194,7 @@ async def create_deck_type_definition(
     logger.error(error_message)
     raise ValueError(error_message)
 
-  deck_type_orm = DeckTypeDefinitionOrm(
+  deck_type_orm = DeckDefinitionOrm(
     fqn=fqn,
     name=name,
     description=description,
@@ -258,16 +258,16 @@ async def update_deck_type_definition(
   serialized_constructor_hints_json: dict[str, Any] | None = None,
   additional_properties_input_json: dict[str, Any] | None = None,
   position_definitions: list[dict[str, Any]] | None = None,
-) -> DeckTypeDefinitionOrm:
+) -> DeckDefinitionOrm:
   """Update an existing deck type definition."""
   log_prefix = f"Deck Type Definition (ID: {deck_type_accession_id}, updating):"
   logger.info("%s Attempting to update.", log_prefix)
 
   # Fetch the existing deck type definition
   result = await db.execute(
-    select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id),
+    select(DeckDefinitionOrm)
+    .options(selectinload(DeckDefinitionOrm.positions))
+    .filter(DeckDefinitionOrm.accession_id == deck_type_accession_id),
   )
   deck_type_orm = result.scalar_one_or_none()
   if not deck_type_orm:
@@ -279,10 +279,10 @@ async def update_deck_type_definition(
   # Check for FQN conflict if it's being changed
   if deck_type_orm.fqn != fqn:
     existing_fqn_check = await db.execute(
-      select(DeckTypeDefinitionOrm)
-      .filter(DeckTypeDefinitionOrm.fqn == fqn)
+      select(DeckDefinitionOrm)
+      .filter(DeckDefinitionOrm.fqn == fqn)
       .filter(
-        DeckTypeDefinitionOrm.accession_id != deck_type_accession_id,
+        DeckDefinitionOrm.accession_id != deck_type_accession_id,
       ),  # Exclude the current record
     )
     if existing_fqn_check.scalar_one_or_none():
@@ -354,9 +354,9 @@ async def update_deck_type_definition(
 
     # Reload with position definitions
     refreshed_deck_type_result = await db.execute(
-      select(DeckTypeDefinitionOrm)
-      .options(selectinload(DeckTypeDefinitionOrm.positions))
-      .filter(DeckTypeDefinitionOrm.accession_id == deck_type_orm.accession_id),
+      select(DeckDefinitionOrm)
+      .options(selectinload(DeckDefinitionOrm.positions))
+      .filter(DeckDefinitionOrm.accession_id == deck_type_orm.accession_id),
     )
     deck_type_orm = refreshed_deck_type_result.scalar_one()
     logger.debug(
@@ -389,16 +389,16 @@ async def update_deck_type_definition(
 async def read_deck_type_definition(
   db: AsyncSession,
   deck_type_accession_id: uuid.UUID,
-) -> DeckTypeDefinitionOrm | None:
+) -> DeckDefinitionOrm | None:
   """Retrieve a specific deck type definition by its ID."""
   logger.info(
     "Attempting to retrieve deck type definition with ID: %s.",
     deck_type_accession_id,
   )
   stmt = (
-    select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .filter(DeckTypeDefinitionOrm.accession_id == deck_type_accession_id)
+    select(DeckDefinitionOrm)
+    .options(selectinload(DeckDefinitionOrm.positions))
+    .filter(DeckDefinitionOrm.accession_id == deck_type_accession_id)
   )
   result = await db.execute(stmt)
   deck_type_def = result.scalar_one_or_none()
@@ -416,7 +416,7 @@ async def read_deck_type_definition(
 async def read_deck_type_definition_by_name(
   db: AsyncSession,
   name: str,
-) -> DeckTypeDefinitionOrm | None:
+) -> DeckDefinitionOrm | None:
   """Retrieve a specific deck type definition by its name.
 
   Args:
@@ -430,9 +430,9 @@ async def read_deck_type_definition_by_name(
   """
   logger.info("Attempting to retrieve deck type definition with name: '%s'.", name)
   stmt = (
-    select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .filter(DeckTypeDefinitionOrm.name == name)
+    select(DeckDefinitionOrm)
+    .options(selectinload(DeckDefinitionOrm.positions))
+    .filter(DeckDefinitionOrm.name == name)
   )
   result = await db.execute(stmt)
   deck_type_def = result.scalar_one_or_none()
@@ -451,7 +451,7 @@ async def read_deck_type_definitions(
   db: AsyncSession,
   limit: int = 100,
   offset: int = 0,
-) -> list[DeckTypeDefinitionOrm]:
+) -> list[DeckDefinitionOrm]:
   """List all deck type definitions with pagination."""
   logger.info(
     "Listing deck type definitions with limit: %s, offset: %s.",
@@ -459,9 +459,9 @@ async def read_deck_type_definitions(
     offset,
   )
   stmt = (
-    select(DeckTypeDefinitionOrm)
-    .options(selectinload(DeckTypeDefinitionOrm.positions))
-    .order_by(DeckTypeDefinitionOrm.name)
+    select(DeckDefinitionOrm)
+    .options(selectinload(DeckDefinitionOrm.positions))
+    .order_by(DeckDefinitionOrm.name)
     .limit(limit)
     .offset(offset)
   )

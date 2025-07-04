@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import (
+  DeckDefinitionOrm,
   DeckOrm,
   DeckPositionDefinitionOrm,
   DeckPositionResourceOrm,
-  DeckTypeDefinitionOrm,
   ResourceOrm,
 )
 from praxis.backend.utils.logging import get_logger
@@ -26,7 +26,7 @@ async def create_deck_position_item(
   db: AsyncSession,
   deck_accession_id: UUID,
   name: str,
-  resource_instance_accession_id: UUID | None = None,
+  resource_accession_id: UUID | None = None,
   expected_resource_definition_name: str | None = None,
 ) -> DeckPositionResourceOrm | None:
   """Add a new position item to a deck instance.
@@ -36,7 +36,7 @@ async def create_deck_position_item(
     deck_accession_id (int): The ID of the deck instance to which
       to create the position item.
     name (str): The name of the position for this item.
-    resource_instance_accession_id (Optional[int], optional): The ID of the resource instance
+    resource_accession_id (Optional[int], optional): The ID of the resource instance
       associated with this position item. Defaults to None.
     expected_resource_definition_name (Optional[str], optional): The name of the
       expected resource definition for this position item. Defaults to None.
@@ -68,14 +68,16 @@ async def create_deck_position_item(
     raise ValueError(error_message)
 
   # Validate resource instance if provided
-  if resource_instance_accession_id is not None:
-    resource_instance_result = await db.execute(
+  if resource_accession_id is not None:
+    resource_result = await db.execute(
       select(ResourceOrm).filter(
-        ResourceOrm.accession_id == resource_instance_accession_id,
+        ResourceOrm.accession_id == resource_accession_id,
       ),
     )
-    if not resource_instance_result.scalar_one_or_none():
-      error_message = f"ResourceOrm with id {resource_instance_accession_id} not found. " "Cannot create position item."
+    if not resource_result.scalar_one_or_none():
+      error_message = (
+        f"ResourceOrm with id {resource_accession_id} not found. " "Cannot create position item."
+      )
       logger.error(error_message)
       raise ValueError(error_message)
 
@@ -92,7 +94,7 @@ async def create_deck_position_item(
   position_item = DeckPositionResourceOrm(
     deck_accession_id=deck_accession_id,
     name=name,
-    resource_instance_accession_id=resource_instance_accession_id,
+    resource_accession_id=resource_accession_id,
     expected_resource_definition_name=expected_resource_definition_name,
   )
   db.add(position_item)
@@ -156,7 +158,7 @@ async def update_deck_position_item(
   db: AsyncSession,
   position_item_accession_id: UUID,
   position_accession_id: str | None = None,
-  resource_instance_accession_id: UUID | None = None,
+  resource_accession_id: UUID | None = None,
   expected_resource_definition_name: str | None = None,
 ) -> DeckPositionResourceOrm | None:
   """Update an existing position item in a deck instance.
@@ -166,7 +168,7 @@ async def update_deck_position_item(
     position_item_accession_id (UUID): The ID of the position item to update.
     position_accession_id (Optional[str], optional): The new position ID for the position item.
       Defaults to None.
-    resource_instance_accession_id (Optional[UUID], optional): The new resource instance ID
+    resource_accession_id (Optional[UUID], optional): The new resource instance ID
       associated with this position item. Defaults to None.
     expected_resource_definition_name (Optional[str], optional): The new expected
       resource definition name for this position item. Defaults to None.
@@ -206,25 +208,27 @@ async def update_deck_position_item(
     )
     position_item.position_accession_id = position_accession_id
 
-  if resource_instance_accession_id is not None and (
-    not position_item.resource_instance_accession_id
-    or position_item.resource_instance_accession_id != resource_instance_accession_id
+  if resource_accession_id is not None and (
+    not position_item.resource_accession_id
+    or position_item.resource_accession_id != resource_accession_id
   ):
-    resource_instance_result = await db.execute(
+    resource_result = await db.execute(
       select(ResourceOrm).filter(
-        ResourceOrm.accession_id == resource_instance_accession_id,
+        ResourceOrm.accession_id == resource_accession_id,
       ),
     )
-    if not resource_instance_result.scalar_one_or_none():
-      error_message = f"ResourceOrm with id {resource_instance_accession_id} not found. " "Cannot update position item."
+    if not resource_result.scalar_one_or_none():
+      error_message = (
+        f"ResourceOrm with id {resource_accession_id} not found. " "Cannot update position item."
+      )
       logger.error(error_message)
       raise ValueError(error_message)
     logger.debug(
       "Updating resource instance ID from %s to %s.",
-      position_item.resource_instance_accession_id,
-      resource_instance_accession_id,
+      position_item.resource_accession_id,
+      resource_accession_id,
     )
-    position_item.resource_instance_accession_id = resource_instance_accession_id
+    position_item.resource_accession_id = resource_accession_id
   if expected_resource_definition_name is not None and (
     not position_item.expected_resource_definition_name
     or position_item.expected_resource_definition_name != expected_resource_definition_name
@@ -309,7 +313,7 @@ async def delete_deck_position_item(
 
 async def _process_position_definitions(
   db: AsyncSession,
-  deck_type_orm: DeckTypeDefinitionOrm,
+  deck_type_orm: DeckDefinitionOrm,
   position_definitions_data: list[dict[str, Any]] | None,
   log_prefix: str,
 ):
@@ -423,8 +427,8 @@ async def create_deck_position_definitions(
 
   # First, check if the parent DeckTypeDefinitionOrm exists
   deck_type_result = await db.execute(
-    select(DeckTypeDefinitionOrm).filter(
-      DeckTypeDefinitionOrm.accession_id == deck_type_id,
+    select(DeckDefinitionOrm).filter(
+      DeckDefinitionOrm.accession_id == deck_type_id,
     ),
   )
   deck_type_orm = deck_type_result.scalar_one_or_none()
@@ -709,8 +713,8 @@ async def read_position_definitions_for_deck_type(
     deck_type_id,
   )
   deck_type_exists_result = await db.execute(
-    select(DeckTypeDefinitionOrm.accession_id).filter(
-      DeckTypeDefinitionOrm.accession_id == deck_type_id,
+    select(DeckDefinitionOrm.accession_id).filter(
+      DeckDefinitionOrm.accession_id == deck_type_id,
     ),
   )
   if not deck_type_exists_result.scalar_one_or_none():

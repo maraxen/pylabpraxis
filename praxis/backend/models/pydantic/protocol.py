@@ -20,12 +20,12 @@ Models included:
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 
 if TYPE_CHECKING:
   from .protocol_definitions_orm import AssetRequirementOrm
@@ -43,7 +43,7 @@ class ProtocolStartRequest(BaseModel):
   description: str | None = None
   parameters: dict[str, Any] | None = None
   assets: dict[str, str] | None = None
-  deck_instance: str | None = None
+  deck: str | None = None
   workcell_accession_id: UUID7 | None = None
   protocol_definition_accession_id: UUID7 | None = None
   config_data: dict[str, Any]
@@ -229,9 +229,7 @@ class RuntimeAssetRequirement:
       "priority": self.priority,
       "reservation_id": str(self.reservation_id) if self.reservation_id else None,
       "constraints": self.constraints.model_dump() if self.constraints else None,
-      "location_constraints": (
-        self.location_constraints.model_dump() if self.location_constraints else None
-      ),
+      "location_constraints": (self.location_constraints.model_dump() if self.location_constraints else None),
     }
 
   @classmethod
@@ -290,9 +288,7 @@ class FunctionProtocolDefinitionModel(BaseModel):
   solo_execution: bool = False
   preconfigure_deck: bool = False
   deck_param_name: str | None = None
-  deck_construction_function_fqn: str | None = (
-    None  # New field for deck construction callable
-  )
+  deck_construction_function_fqn: str | None = None  # New field for deck construction callable
   state_param_name: str | None = "state"
 
   category: str | None = None
@@ -336,3 +332,22 @@ class ProtocolDefinitionFilters(BaseModel):
   category: str | None = None
   tags: list[str] | None = None
   include_deprecated: bool = False
+
+
+class FunctionInfo(BaseModel):
+  """Model for data required to create a protocol definition."""
+
+  func: Callable | None = None
+  name: str | None = None
+  version: str = "0.1.0"
+  description: str | None = None
+  solo: bool = False
+  is_top_level: bool = False
+  preconfigure_deck: bool = False
+  deck_param_name: str = "deck"
+  deck_construction: Callable | None = None
+  state_param_name: str = "state"
+  param_metadata: dict[str, dict[str, Any]] | None = None
+  category: str | None = None
+  tags: list[str] | None = None
+  top_level_name_format: str | None = None

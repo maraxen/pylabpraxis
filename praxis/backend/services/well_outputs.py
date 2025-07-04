@@ -53,10 +53,7 @@ async def create_well_data_output(
     ValueError: If validation fails or required data is missing
 
   """
-  log_prefix = (
-    f"Well Data (Plate: {well_data.plate_resource_instance_accession_id}, "
-    f"Well: {well_data.well_name}):"
-  )
+  log_prefix = f"Well Data (Plate: {well_data.plate_resource_accession_id}, " f"Well: {well_data.well_name}):"
   logger.info("%s Creating well data output.", log_prefix)
 
   # Parse well name to get row/column indices
@@ -69,14 +66,15 @@ async def create_well_data_output(
 
   # Get plate dimensions for well index calculation
   plate_dimensions = await read_plate_dimensions(
-    db, well_data.plate_resource_instance_accession_id,
+    db,
+    well_data.plate_resource_accession_id,
   )
   num_cols = plate_dimensions["columns"] if plate_dimensions else 12  # Default fallback
 
   # Create the ORM instance
   well_output = WellDataOutputOrm(
     function_data_output_accession_id=well_data.function_data_output_accession_id,
-    plate_resource_instance_accession_id=well_data.plate_resource_instance_accession_id,
+    plate_resource_accession_id=well_data.plate_resource_accession_id,
     well_name=well_data.well_name,
     well_row=row_idx,
     well_column=col_idx,
@@ -109,7 +107,7 @@ async def create_well_data_output(
 async def create_well_data_outputs(
   db: AsyncSession,
   function_data_output_accession_id: UUID,
-  plate_resource_instance_accession_id: UUID,
+  plate_resource_accession_id: UUID,
   well_data: dict[str, float],
 ) -> list[WellDataOutputOrm]:
   """Create well-specific data outputs for a plate.
@@ -117,24 +115,26 @@ async def create_well_data_outputs(
   Args:
     db: Database session
     function_data_output_accession_id: Parent function data output ID
-    plate_resource_instance_accession_id: Plate resource ID
+    plate_resource_accession_id: Plate resource ID
     well_data: Dictionary mapping well names to values
 
   Returns:
     List of created well data output ORM instances
 
   """
-  log_prefix = f"Well Data Outputs (Plate: {plate_resource_instance_accession_id}):"
+  log_prefix = f"Well Data Outputs (Plate: {plate_resource_accession_id}):"
   logger.info("%s Creating %d well data outputs.", log_prefix, len(well_data))
 
   # Get plate dimensions for validation
   plate_dimensions = await read_plate_dimensions(
-    db, plate_resource_instance_accession_id,
+    db,
+    plate_resource_accession_id,
   )
 
   if not plate_dimensions:
     logger.warning(
-      "%s Could not determine plate dimensions, using defaults", log_prefix,
+      "%s Could not determine plate dimensions, using defaults",
+      log_prefix,
     )
     num_cols = 12  # Default fallback
   else:
@@ -148,7 +148,7 @@ async def create_well_data_outputs(
 
     well_output = WellDataOutputOrm(
       function_data_output_accession_id=function_data_output_accession_id,
-      plate_resource_instance_accession_id=plate_resource_instance_accession_id,
+      plate_resource_accession_id=plate_resource_accession_id,
       well_name=well_name,
       well_row=row_idx,
       well_column=col_idx,
@@ -167,7 +167,9 @@ async def create_well_data_outputs(
       await db.refresh(well_output)
 
     logger.info(
-      "%s Successfully created %d well data outputs.", log_prefix, len(well_outputs),
+      "%s Successfully created %d well data outputs.",
+      log_prefix,
+      len(well_outputs),
     )
     return well_outputs
 
@@ -180,7 +182,7 @@ async def create_well_data_outputs(
 async def create_well_data_outputs_from_flat_array(
   db: AsyncSession,
   function_data_output_accession_id: UUID,
-  plate_resource_instance_accession_id: UUID,
+  plate_resource_accession_id: UUID,
   data_array: list[float],
 ) -> list[WellDataOutputOrm]:
   """Create well-specific data outputs from a flat array of data.
@@ -188,14 +190,14 @@ async def create_well_data_outputs_from_flat_array(
   Args:
     db: Database session
     function_data_output_accession_id: Parent function data output ID
-    plate_resource_instance_accession_id: Plate resource ID
+    plate_resource_accession_id: Plate resource ID
     data_array: Flat array of values (e.g., from plate reader)
 
   Returns:
     List of created well data output ORM instances
 
   """
-  log_prefix = f"Well Data Outputs (Plate: {plate_resource_instance_accession_id}):"
+  log_prefix = f"Well Data Outputs (Plate: {plate_resource_accession_id}):"
   logger.info(
     "%s Creating well data outputs from flat array of %d values.",
     log_prefix,
@@ -204,14 +206,12 @@ async def create_well_data_outputs_from_flat_array(
 
   # Get plate dimensions from resource definition
   plate_dimensions = await read_plate_dimensions(
-    db, plate_resource_instance_accession_id,
+    db,
+    plate_resource_accession_id,
   )
 
   if not plate_dimensions:
-    error_msg = (
-      f"Could not determine plate dimensions for resource "
-      f"{plate_resource_instance_accession_id}"
-    )
+    error_msg = f"Could not determine plate dimensions for resource " f"{plate_resource_accession_id}"
     raise ValueError(error_msg)
 
   num_rows, num_cols = plate_dimensions["rows"], plate_dimensions["columns"]
@@ -237,7 +237,7 @@ async def create_well_data_outputs_from_flat_array(
 
     well_output = WellDataOutputOrm(
       function_data_output_accession_id=function_data_output_accession_id,
-      plate_resource_instance_accession_id=plate_resource_instance_accession_id,
+      plate_resource_accession_id=plate_resource_accession_id,
       well_name=well_name,
       well_row=row_idx,
       well_column=col_idx,
@@ -256,7 +256,9 @@ async def create_well_data_outputs_from_flat_array(
       await db.refresh(well_output)
 
     logger.info(
-      "%s Successfully created %d well data outputs.", log_prefix, len(well_outputs),
+      "%s Successfully created %d well data outputs.",
+      log_prefix,
+      len(well_outputs),
     )
     return well_outputs
 
@@ -267,7 +269,8 @@ async def create_well_data_outputs_from_flat_array(
 
 
 async def read_well_data_output(
-  db: AsyncSession, well_output_id: UUID,
+  db: AsyncSession,
+  well_output_id: UUID,
 ) -> WellDataOutputOrm | None:
   """Read a well data output by ID.
 
@@ -286,7 +289,7 @@ async def read_well_data_output(
     select(WellDataOutputOrm)
     .options(
       joinedload(WellDataOutputOrm.function_data_output),
-      joinedload(WellDataOutputOrm.plate_resource_instance),
+      joinedload(WellDataOutputOrm.plate_resource),
     )
     .filter(WellDataOutputOrm.accession_id == well_output_id)
   )
@@ -328,7 +331,7 @@ async def read_well_data_outputs(
 
   query = select(WellDataOutputOrm).options(
     joinedload(WellDataOutputOrm.function_data_output),
-    joinedload(WellDataOutputOrm.plate_resource_instance),
+    joinedload(WellDataOutputOrm.plate_resource),
   )
 
   # Build filters
@@ -336,7 +339,7 @@ async def read_well_data_outputs(
 
   if plate_resource_id:
     conditions.append(
-      WellDataOutputOrm.plate_resource_instance_accession_id == plate_resource_id,
+      WellDataOutputOrm.plate_resource_accession_id == plate_resource_id,
     )
 
   if function_call_id or protocol_run_id or data_type:
@@ -367,7 +370,7 @@ async def read_well_data_outputs(
   # Apply sorting and pagination
   query = (
     query.order_by(
-      WellDataOutputOrm.plate_resource_instance_accession_id,
+      WellDataOutputOrm.plate_resource_accession_id,
       WellDataOutputOrm.well_row,
       WellDataOutputOrm.well_column,
     )
@@ -437,7 +440,8 @@ async def update_well_data_output(
   suffix="Please ensure the well data output exists and can be deleted.",
 )
 async def delete_well_data_output(
-  db: AsyncSession, well_output_accession_id: UUID,
+  db: AsyncSession,
+  well_output_accession_id: UUID,
 ) -> bool:
   """Delete a well data output by ID.
 

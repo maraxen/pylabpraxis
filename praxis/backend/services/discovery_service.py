@@ -148,7 +148,7 @@ class ProtocolDiscoveryService:
                 module = importlib.import_module(module_import_name)
               loaded_module_names.add(module_import_name)
 
-              for name, func_obj in inspect.getmembers(module, inspect.isfunction):
+              for _name, func_obj in inspect.getmembers(module, inspect.isfunction):
                 if func_obj.__module__ != module_import_name:
                   continue
                 if id(func_obj) in processed_func_accession_ids:
@@ -215,7 +215,7 @@ class ProtocolDiscoveryService:
                     is_top_level=False,
                   )
                   extracted_definitions.append((inferred_model, func_obj))
-            except Exception as e:
+            except (ImportError, AttributeError, TypeError, ValueError) as e:
               logger.error(
                 f"DiscoveryService: Could not import/process module "
                 f"'{module_import_name}' from '{module_file_path}': {e}",
@@ -325,7 +325,7 @@ class ProtocolDiscoveryService:
                 f" no 'id'. Cannot update PROTOCOL_REGISTRY.",
               )
 
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
           logger.error(
             f"ERROR: Failed to process or upsert protocol '{protocol_name_for_error} "
             f"v{protocol_version_for_error}': {e}",

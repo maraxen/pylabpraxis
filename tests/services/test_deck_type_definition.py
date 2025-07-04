@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import DeckTypeDefinitionOrm, PositioningConfig
+from praxis.backend.models import DeckDefinitionOrm, PositioningConfig
 from praxis.backend.services.deck_type_definition import (
   create_deck_type_definition,
   delete_deck_type_definition,
@@ -38,7 +38,7 @@ def base_deck_type_data() -> dict[str, Any]:
 async def existing_deck_type(
   db: AsyncSession,
   base_deck_type_data: dict[str, Any],
-) -> DeckTypeDefinitionOrm:
+) -> DeckDefinitionOrm:
   """Creates a DeckTypeDefinitionOrm in the DB for tests that need a pre-existing record."""
   deck_type = await create_deck_type_definition(db=db, **base_deck_type_data)
   return deck_type
@@ -102,7 +102,7 @@ class TestDeckTypeDefinitionService:
   async def test_create_deck_type_fails_on_duplicate_fqn(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test that creating a deck type with a duplicate FQN raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
@@ -115,7 +115,7 @@ class TestDeckTypeDefinitionService:
   async def test_read_deck_type_definition(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test reading a deck type definition by its ID."""
     read_deck = await read_deck_type_definition(db, existing_deck_type.accession_id)
@@ -126,7 +126,7 @@ class TestDeckTypeDefinitionService:
   async def test_read_deck_type_definition_by_fqn(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test reading a deck type definition by its FQN."""
     read_deck = await read_deck_type_definition_by_fqn(
@@ -145,7 +145,7 @@ class TestDeckTypeDefinitionService:
   async def test_update_deck_type_definition(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test updating attributes of an existing deck type."""
     updated_data = {
@@ -171,7 +171,7 @@ class TestDeckTypeDefinitionService:
   async def test_update_deck_type_replaces_positions(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test that updating with new position data replaces the old positions."""
     # Add initial positions
@@ -261,7 +261,7 @@ class TestDeckTypeDefinitionService:
   async def test_delete_deck_type_definition(
     self,
     db: AsyncSession,
-    existing_deck_type: DeckTypeDefinitionOrm,
+    existing_deck_type: DeckDefinitionOrm,
   ):
     """Test deleting a deck type definition."""
     deck_type_id = existing_deck_type.accession_id

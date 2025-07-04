@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic import UUID7, BaseModel, Field, field_validator
 
-from praxis.backend.models.filters import SearchFilters
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.function_data_output_orm import (
   DataOutputSpatialContextEnum,
   DataOutputTypeEnum,
@@ -84,7 +84,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
 
   protocol_run_accession_id: UUID7 = Field(..., description="ID of the protocol run")
 
-  resource_instance_accession_id: UUID7 | None = Field(
+  resource_accession_id: UUID7 | None = Field(
     None,
     description="ID of associated resource",
   )
@@ -94,7 +94,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     description="ID of associated machine/device",
   )
 
-  deck_instance_accession_id: UUID7 | None = Field(
+  deck_accession_id: UUID7 | None = Field(
     None,
     description="ID of associated deck position",
   )
@@ -181,7 +181,7 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
 
   protocol_run_accession_id: UUID7 = Field(..., description="ID of the protocol run")
 
-  resource_instance_accession_id: UUID7 | None = Field(
+  resource_accession_id: UUID7 | None = Field(
     None,
     description="ID of associated resource",
   )
@@ -191,7 +191,7 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
     description="ID of associated machine",
   )
 
-  deck_instance_accession_id: UUID7 | None = Field(
+  deck_accession_id: UUID7 | None = Field(
     None,
     description="ID of associated deck position",
   )
@@ -251,7 +251,7 @@ class WellDataOutputCreate(WellDataOutputBase):
     description="ID of the parent function data output",
   )
 
-  plate_resource_instance_accession_id: UUID7 = Field(
+  plate_resource_accession_id: UUID7 = Field(
     ...,
     description="ID of the plate resource",
   )
@@ -267,7 +267,7 @@ class WellDataOutputResponse(WellDataOutputBase):
     description="ID of the parent function data output",
   )
 
-  plate_resource_instance_accession_id: UUID7 = Field(
+  plate_resource_accession_id: UUID7 = Field(
     ...,
     description="ID of the plate resource",
   )
@@ -289,7 +289,7 @@ class WellDataOutputUpdate(BaseModel):
 class PlateDataVisualization(BaseModel):
   """Model for plate-based data visualization."""
 
-  plate_resource_instance_accession_id: UUID7 = Field(
+  plate_resource_accession_id: UUID7 = Field(
     ...,
     description="ID of the plate resource",
   )
@@ -381,24 +381,26 @@ class DataExportRequest(BaseModel):
     description="Whether to flatten hierarchical data",
   )
 
-class FunctionDataOutputFilters(BaseModel):
-    """Model for filtering function data outputs."""
 
-    search_filters: SearchFilters = Field(..., description="Search filters for data selection")
-    data_types: list[DataOutputTypeEnum] | None = Field(None, description="Filter by data types.")
-    spatial_contexts: list[DataOutputSpatialContextEnum] | None = Field(None, description="Filter by spatial context.")
-    has_numeric_data: bool | None = Field(None, description="Filter for entries with numeric data.")
-    has_file_data: bool | None = Field(None, description="Filter for entries with file attachments.")
-    min_quality_score: float | None = Field(None, ge=0.0, le=1.0, description="Minimum quality score.")
+class FunctionDataOutputFilters(BaseModel):
+  """Model for filtering function data outputs."""
+
+  search_filters: SearchFilters = Field(..., description="Search filters for data selection")
+  data_types: list[DataOutputTypeEnum] | None = Field(None, description="Filter by data types.")
+  spatial_contexts: list[DataOutputSpatialContextEnum] | None = Field(None, description="Filter by spatial context.")
+  has_numeric_data: bool | None = Field(None, description="Filter for entries with numeric data.")
+  has_file_data: bool | None = Field(None, description="Filter for entries with file attachments.")
+  min_quality_score: float | None = Field(None, ge=0.0, le=1.0, description="Minimum quality score.")
+
 
 class WellDataOutputFilters(BaseModel):
-    """Model for filtering well data outputs."""
+  """Model for filtering well data outputs."""
 
-    plate_resource_id: UUID | None = Field(None)
-    function_call_id: UUID | None = Field(None)
-    protocol_run_id: UUID | None = Field(None)
-    data_type: DataOutputTypeEnum | None = Field(None)
-    well_row: int | None = Field(None, ge=0)
-    well_column: int | None = Field(None, ge=0)
-    skip: int = Field(0, ge=0)
-    limit: int = Field(100, ge=1, le=1000)
+  plate_resource_id: UUID | None = Field(None)
+  function_call_id: UUID | None = Field(None)
+  protocol_run_id: UUID | None = Field(None)
+  data_type: DataOutputTypeEnum | None = Field(None)
+  well_row: int | None = Field(None, ge=0)
+  well_column: int | None = Field(None, ge=0)
+  skip: int = Field(0, ge=0)
+  limit: int = Field(100, ge=1, le=1000)

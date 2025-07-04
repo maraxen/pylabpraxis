@@ -14,6 +14,7 @@ from typing import Any
 
 import redis.asyncio as redis
 
+from praxis.backend.models.asset_lock_manager_pydantic_models import AcquireAssetLock
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -27,13 +28,19 @@ class AssetLockManager:
   asset (machine, resource, or deck) simultaneously.
   """
 
+  _ASSET_LOCK_KEY_PREFIX = "praxis:asset_lock"
+  _PROTOCOL_LOCKS_KEY_PREFIX = "praxis:protocol_locks"
+  _RESERVATION_DATA_KEY_PREFIX = "praxis:reservation"
+  _REDIS_CLIENT_NOT_INITIALIZED_ERROR = "Redis client not initialized"
+  _ASSET_KEY_PARTS_LENGTH = 4
+
   def __init__(
     self,
     redis_url: str = "redis://localhost:6379/0",
     lock_timeout_seconds: int = 3600,  # 1 hour default
     lock_retry_delay_ms: int = 100,
     max_lock_retries: int = 10,
-  ):
+  ) -> None:
     """Initialize the Asset Lock Manager.
 
     Args:
@@ -85,62 +92,52 @@ class AssetLockManager:
 
   def _get_asset_lock_key(self, asset_type: str, asset_name: str) -> str:
     """Generate Redis key for asset lock."""
-    return f"praxis:asset_lock:{asset_type}:{asset_name}"
+    return f"{self._ASSET_LOCK_KEY_PREFIX}:{asset_type}:{asset_name}"
 
   def _get_protocol_locks_key(self, protocol_run_id: uuid.UUID) -> str:
     """Generate Redis key for tracking locks held by a protocol run."""
-    return f"praxis:protocol_locks:{protocol_run_id}"
+    return f"{self._PROTOCOL_LOCKS_KEY_PREFIX}:{protocol_run_id}"
 
   def _get_reservation_data_key(self, reservation_id: uuid.UUID) -> str:
     """Generate Redis key for reservation metadata."""
-    return f"praxis:reservation:{reservation_id}"
+    return f"{self._RESERVATION_DATA_KEY_PREFIX}:{reservation_id}"
 
   async def acquire_asset_lock(
     self,
-    asset_type: str,
-    asset_name: str,
-    protocol_run_id: uuid.UUID,
-    reservation_id: uuid.UUID,
-    timeout_seconds: int | None = None,
-    required_capabilities: dict[str, Any] | None = None,
+    lock_data: AcquireAssetLock,
   ) -> bool:
     """Acquire a distributed lock for an asset.
 
     Args:
-        asset_type: Type of asset (machine, resource, deck)
-        asset_name: Name/identifier of the asset
-        protocol_run_id: ID of the protocol run requesting the asset
-        reservation_id: Unique reservation ID
-        timeout_seconds: Lock timeout (uses default if None)
-        required_capabilities: Required asset capabilities
+        lock_data: Pydantic model containing asset lock data.
 
     Returns:
         True if lock was acquired, False otherwise
 
     """
     if not self._redis_client:
-      raise RuntimeError("Redis client not initialized")
+      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
 
-    timeout = timeout_seconds or self.lock_timeout_seconds
-    lock_key = self._get_asset_lock_key(asset_type, asset_name)
-    lock_value = str(reservation_id)
+    timeout = lock_data.timeout_seconds or self.lock_timeout_seconds
+    lock_key = self._get_asset_lock_key(lock_data.asset_type, lock_data.asset_name)
+    lock_value = str(lock_data.reservation_id)
 
     # Prepare reservation metadata
     reservation_data = {
-      "reservation_id": str(reservation_id),
-      "protocol_run_id": str(protocol_run_id),
-      "asset_type": asset_type,
-      "asset_name": asset_name,
+      "reservation_id": str(lock_data.reservation_id),
+      "protocol_run_id": str(lock_data.protocol_run_id),
+      "asset_type": lock_data.asset_type,
+      "asset_name": lock_data.asset_name,
       "locked_at": datetime.now(timezone.utc).isoformat(),
       "expires_at": (
         datetime.now(timezone.utc) + timedelta(seconds=timeout)
       ).isoformat(),
-      "required_capabilities": required_capabilities or {},
+      "required_capabilities": lock_data.required_capabilities or {},
     }
 
     try:
       # Attempt to acquire lock with retries
-      for attempt in range(self.max_lock_retries):
+      for _attempt in range(self.max_lock_retries):
         # Use SET with NX (only if not exists) and EX (expiration)
         lock_acquired = await self._redis_client.set(
           lock_key,
@@ -151,7 +148,7 @@ class AssetLockManager:
 
         if lock_acquired:
           # Store reservation metadata
-          reservation_key = self._get_reservation_data_key(reservation_id)
+          reservation_key = self._get_reservation_data_key(lock_data.reservation_id)
           await self._redis_client.setex(
             reservation_key,
             timeout,
@@ -159,24 +156,23 @@ class AssetLockManager:
           )
 
           # Track locks held by this protocol run
-          protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
+          protocol_locks_key = self._get_protocol_locks_key(lock_data.protocol_run_id)
           await self._redis_client.sadd(protocol_locks_key, lock_key)
           await self._redis_client.expire(protocol_locks_key, timeout)
 
           logger.info(
             "Asset lock acquired: %s for protocol %s (reservation %s)",
             lock_key,
-            protocol_run_id,
-            reservation_id,
+            lock_data.protocol_run_id,
+            lock_data.reservation_id,
           )
           return True
-
         # Lock acquisition failed, wait and retry
-        if attempt < self.max_lock_retries - 1:
+        if _attempt < self.max_lock_retries - 1:
           await asyncio.sleep(self.lock_retry_delay_ms / 1000.0)
           logger.debug(
             "Lock acquisition attempt %d failed for %s, retrying...",
-            attempt + 1,
+            _attempt + 1,
             lock_key,
           )
 
@@ -211,7 +207,7 @@ class AssetLockManager:
 
     """
     if not self._redis_client:
-      raise RuntimeError("Redis client not initialized")
+      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
 
     lock_key = self._get_asset_lock_key(asset_type, asset_name)
     lock_value = str(reservation_id)
@@ -251,9 +247,8 @@ class AssetLockManager:
       )
       return False
 
-    except Exception:
+    except redis.exceptions.RedisError:
       logger.exception("Error releasing asset lock %s", lock_key)
-      return False
 
   async def release_all_protocol_locks(self, protocol_run_id: uuid.UUID) -> int:
     """Release all locks held by a protocol run.
@@ -266,7 +261,7 @@ class AssetLockManager:
 
     """
     if not self._redis_client:
-      raise RuntimeError("Redis client not initialized")
+      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
 
     protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
     released_count = 0
@@ -276,34 +271,9 @@ class AssetLockManager:
       lock_keys = await self._redis_client.smembers(protocol_locks_key)
 
       for lock_key in lock_keys:
-        try:
-          # Get current lock value to check ownership
-          current_value = await self._redis_client.get(lock_key)
-          if current_value:
-            # Parse asset info from key
-            key_parts = lock_key.split(":")
-            if len(key_parts) >= 4:
-              asset_type = key_parts[2]
-              asset_name = key_parts[3]
-
-              # Try to parse reservation ID from lock value
-              try:
-                reservation_id = uuid.UUID(current_value)
-                if await self.release_asset_lock(
-                  asset_type, asset_name, reservation_id,
-                ):
-                  released_count += 1
-              except ValueError:
-                # Invalid UUID in lock value, force delete
-                await self._redis_client.delete(lock_key)
-                released_count += 1
-
-        except Exception as e:
-          logger.error(
-            "Error releasing individual lock %s: %s",
-            lock_key,
-            e,
-          )
+        released = await self._release_single_protocol_lock(lock_key)
+        if released:
+          released_count += 1
 
       # Clean up protocol locks tracking
       await self._redis_client.delete(protocol_locks_key)
@@ -318,6 +288,34 @@ class AssetLockManager:
     except Exception:
       logger.exception("Error releasing all locks for protocol %s", protocol_run_id)
       return released_count
+
+  async def _release_single_protocol_lock(self, lock_key: str) -> bool:
+    """Release a single protocol lock."""
+    try:
+      current_value = await self._redis_client.get(lock_key)
+      if not current_value:
+        return False
+
+      key_parts = lock_key.split(":")
+      if len(key_parts) >= self._ASSET_KEY_PARTS_LENGTH:
+        asset_type = key_parts[2]
+        asset_name = key_parts[3]
+
+        try:
+          reservation_id = uuid.UUID(current_value)
+          if await self.release_asset_lock(
+            asset_type, asset_name, reservation_id,
+          ):
+            return True
+        except ValueError:
+          await self._redis_client.delete(lock_key)
+          return True
+    except redis.exceptions.RedisError:
+      logger.exception(
+            "Error releasing individual lock %s",
+            lock_key,
+          )
+    return False
 
   async def check_asset_availability(
     self,
@@ -335,7 +333,7 @@ class AssetLockManager:
 
     """
     if not self._redis_client:
-      raise RuntimeError("Redis client not initialized")
+      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
 
     lock_key = self._get_asset_lock_key(asset_type, asset_name)
 
@@ -392,75 +390,21 @@ class AssetLockManager:
 
     """
     if not self._redis_client:
-      raise RuntimeError("Redis client not initialized")
+      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
 
     cleaned_count = 0
 
     try:
       # Find all asset lock keys
       lock_pattern = "praxis:asset_lock:*"
-      lock_keys = []
-
-      async for key in self._redis_client.scan_iter(match=lock_pattern):
-        lock_keys.append(key)
+      lock_keys = [key async for key in self._redis_client.scan_iter(match=lock_pattern)]
 
       logger.info("Found %d asset locks to check for expiration", len(lock_keys))
 
       for lock_key in lock_keys:
-        try:
-          # Check if key exists (Redis should auto-expire, but check anyway)
-          if not await self._redis_client.exists(lock_key):
-            continue
-
-          lock_value = await self._redis_client.get(lock_key)
-          if not lock_value:
-            continue
-
-          # Get reservation metadata to check expiration
-          try:
-            reservation_id = uuid.UUID(lock_value)
-            reservation_key = self._get_reservation_data_key(reservation_id)
-            reservation_data_str = await self._redis_client.get(reservation_key)
-
-            if reservation_data_str:
-              reservation_data = json.loads(reservation_data_str)
-              expires_at_str = reservation_data.get("expires_at")
-
-              if expires_at_str:
-                expires_at = datetime.fromisoformat(
-                  expires_at_str.replace("Z", "+00:00"),
-                )
-                if datetime.now(timezone.utc) > expires_at:
-                  # Lock has expired, clean it up
-                  await self._redis_client.delete(lock_key)
-                  await self._redis_client.delete(reservation_key)
-                  cleaned_count += 1
-
-                  logger.debug(
-                    "Cleaned up expired lock: %s (expired at %s)",
-                    lock_key,
-                    expires_at,
-                  )
-            else:
-              # No metadata, check TTL
-              ttl = await self._redis_client.ttl(lock_key)
-              if ttl == -1:  # No TTL set, consider it orphaned
-                await self._redis_client.delete(lock_key)
-                cleaned_count += 1
-                logger.debug("Cleaned up orphaned lock: %s", lock_key)
-
-          except (ValueError, json.JSONDecodeError):
-            # Invalid lock data, clean it up
-            await self._redis_client.delete(lock_key)
-            cleaned_count += 1
-            logger.debug("Cleaned up invalid lock: %s", lock_key)
-
-        except Exception as e:
-          logger.error(
-            "Error checking lock %s during cleanup: %s",
-            lock_key,
-            e,
-          )
+        cleaned = await self._cleanup_single_lock(lock_key)
+        if cleaned:
+          cleaned_count += 1
 
       if cleaned_count > 0:
         logger.info("Cleaned up %d expired/orphaned asset locks", cleaned_count)
@@ -470,6 +414,57 @@ class AssetLockManager:
     except Exception:
       logger.exception("Error during lock cleanup")
       return cleaned_count
+
+  async def _cleanup_single_lock(self, lock_key: str) -> bool:
+    """Clean up a single expired or orphaned lock."""
+    try:
+      if not await self._redis_client.exists(lock_key):
+        return False
+
+      lock_value = await self._redis_client.get(lock_key)
+      if not lock_value:
+        return False
+
+      try:
+        reservation_id = uuid.UUID(lock_value)
+        reservation_key = self._get_reservation_data_key(reservation_id)
+        reservation_data_str = await self._redis_client.get(reservation_key)
+
+        if reservation_data_str:
+          reservation_data = json.loads(reservation_data_str)
+          expires_at_str = reservation_data.get("expires_at")
+
+          if expires_at_str:
+            expires_at = datetime.fromisoformat(
+              expires_at_str.replace("Z", "+00:00"),
+            )
+            if datetime.now(timezone.utc) > expires_at:
+              await self._redis_client.delete(lock_key)
+              await self._redis_client.delete(reservation_key)
+              logger.debug(
+                "Cleaned up expired lock: %s (expired at %s)",
+                lock_key,
+                expires_at,
+              )
+              return True
+        else:
+          ttl = await self._redis_client.ttl(lock_key)
+          if ttl == -1:
+            await self._redis_client.delete(lock_key)
+            logger.debug("Cleaned up orphaned lock: %s", lock_key)
+            return True
+
+      except (ValueError, json.JSONDecodeError):
+        await self._redis_client.delete(lock_key)
+        logger.debug("Cleaned up invalid lock: %s", lock_key)
+        return True
+
+    except redis.exceptions.RedisError:
+      logger.exception(
+        "Error checking lock %s during cleanup",
+        lock_key,
+      )
+    return False
 
   async def get_system_status(self) -> dict[str, Any]:
     """Get current system status for monitoring.
@@ -484,21 +479,15 @@ class AssetLockManager:
     try:
       # Count active locks
       lock_pattern = "praxis:asset_lock:*"
-      active_locks = 0
-      async for _ in self._redis_client.scan_iter(match=lock_pattern):
-        active_locks += 1
+      active_locks = [key async for key in self._redis_client.scan_iter(match=lock_pattern)]
 
       # Count reservations
       reservation_pattern = "praxis:reservation:*"
-      active_reservations = 0
-      async for _ in self._redis_client.scan_iter(match=reservation_pattern):
-        active_reservations += 1
+      active_reservations = [key async for key in self._redis_client.scan_iter(match=reservation_pattern)]
 
       # Count protocol lock tracking
       protocol_locks_pattern = "praxis:protocol_locks:*"
-      tracked_protocols = 0
-      async for _ in self._redis_client.scan_iter(match=protocol_locks_pattern):
-        tracked_protocols += 1
+      tracked_protocols = [key async for key in self._redis_client.scan_iter(match=protocol_locks_pattern)]
 
       # Redis info
       redis_info = await self._redis_client.info()

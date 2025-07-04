@@ -9,9 +9,9 @@ from typing import Any
 
 from pydantic import UUID7, Field
 
-from .asset_pydantic_models import AssetBase, AssetResponse, AssetUpdate
-from .machine_orm import MachineStatusEnum
-from .resource_orm import ResourceStatusEnum
+from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
+
+from .asset import AssetBase, AssetResponse, AssetUpdate
 
 
 class MachineBase(AssetBase):
@@ -22,6 +22,14 @@ class MachineBase(AssetBase):
   workcell_id: UUID7 | None = None
   is_resource: bool = Field(default=False)
   resource_counterpart_accession_id: UUID7 | None = None
+  has_deck_child: bool = Field(
+    default=False,
+    description="Indicates if this machine has a deck resource as a child.",
+  )
+  has_resource_child: bool = Field(
+    default=False,
+    description="Indicates if this machine has a resource child.",
+  )
 
   class Config:
     """Configuration for Pydantic model behavior."""
@@ -78,4 +86,3 @@ class MachineResponse(AssetResponse, MachineBase):
 
   class Config(AssetResponse.Config, MachineBase.Config):
     """Pydantic configuration for MachineResponse."""
-

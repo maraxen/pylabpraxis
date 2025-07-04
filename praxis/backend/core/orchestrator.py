@@ -26,7 +26,7 @@ from praxis.backend.models import (
   ProtocolRunStatusEnum,
   ResourceStatusEnum,
 )
-from praxis.backend.services.state import PraxisState as PraxisState
+from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import (
   AssetAcquisitionError,
   ProtocolCancelledError,
@@ -54,7 +54,7 @@ class Orchestrator:
     asset_manager: AssetManager,
     workcell_runtime: WorkcellRuntime,
     protocol_code_manager: ProtocolCodeManager | None = None,
-  ):
+  ) -> None:
     """Initialize the Orchestrator.
 
     Args:
@@ -206,9 +206,8 @@ class Orchestrator:
             output_data_json=json.dumps({"status": "Cancelled by user during pause."}),
           )
           await db_session.commit()
-          raise ProtocolCancelledError(
-            f"Run {run_accession_id} cancelled by user during pause.",
-          )
+          cancel_msg = f"Run {run_accession_id} cancelled by user during pause."
+          raise ProtocolCancelledError(cancel_msg)
     elif command == "CANCEL":
       logger.info("ORCH: Run %s CANCELLED before execution.", run_accession_id)
       await clear_control_command(run_accession_id)
@@ -219,9 +218,8 @@ class Orchestrator:
         output_data_json=json.dumps({"status": "Cancelled by user before execution."}),
       )
       await db_session.commit()
-      raise ProtocolCancelledError(
-        f"Run {run_accession_id} cancelled by user before execution.",
-      )
+      cancel_msg = f"Run {run_accession_id} cancelled by user before execution."
+      raise ProtocolCancelledError(cancel_msg)
 
   async def _execute_protocol_main_logic(
     self,
@@ -241,7 +239,8 @@ class Orchestrator:
 
     main_workcell_container = self.workcell_runtime.get_main_workcell()
     if not main_workcell_container:
-      raise RuntimeError("Main Workcell container not available from WorkcellRuntime.")
+      error_msg = "Main Workcell container not available from WorkcellRuntime."
+      raise RuntimeError(error_msg)
 
     (
       prepared_args,
@@ -274,9 +273,7 @@ class Orchestrator:
       )
       # Filter prepared_args to only include assets expected by deck_construction_func
       deck_construction_params = inspect.signature(deck_construction_func).parameters
-      args_for_deck_construction = {
-        k: v for k, v in prepared_args.items() if k in deck_construction_params
-      }
+      args_for_deck_construction = {k: v for k, v in prepared_args.items() if k in deck_construction_params}
       await deck_construction_func(**args_for_deck_construction)
       logger.info(
         "ORCH: Deck construction function completed for run %s.",
@@ -300,20 +297,13 @@ class Orchestrator:
     )
     return result, acquired_assets_info  # Return acquired_assets_info
 
-  async def _prepare_arguments(
+  def _process_input_parameters(
     self,
-    db_session: AsyncSession,
     protocol_pydantic_def: FunctionProtocolDefinitionModel,
     input_parameters: dict[str, Any],
-    praxis_state: PraxisState,
-    protocol_run_accession_id: uuid.UUID,
-  ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[uuid.UUID, Any]]:
-    """Prepare arguments for protocol execution, including acquiring assets."""
-    logger.info("Preparing arguments for protocol: %s", protocol_pydantic_def.name)
-    final_args: dict[str, Any] = {}
-    state_dict_to_pass: dict[str, Any] | None = None
-    acquired_assets_details: dict[uuid.UUID, Any] = {}
-
+    final_args: dict[str, Any],
+  ) -> None:
+    """Process input parameters and populate final_args."""
     for param_meta in protocol_pydantic_def.parameters:
       if param_meta.is_deck_param:
         continue
@@ -324,21 +314,22 @@ class Orchestrator:
         final_args[param_meta.name] = input_parameters[param_meta.name]
         logger.debug("Using user input for param '%s'.", param_meta.name)
       elif not param_meta.optional:
-        raise ValueError(
-          "Mandatory parameter '%s' missing for protocol '%s'.",
-          param_meta.name,
-          protocol_pydantic_def.name,
-        )
+        error_msg = f"Mandatory parameter '{param_meta.name}' missing for protocol " f"'{protocol_pydantic_def.name}'."
+        raise ValueError(error_msg)
       else:
         logger.debug("Optional param '%s' not provided by user.", param_meta.name)
 
+  def _inject_praxis_state(
+    self,
+    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    praxis_state: PraxisState,
+    final_args: dict[str, Any],
+  ) -> dict[str, Any] | None:
+    """Inject PraxisState object or its dictionary representation into final_args."""
+    state_dict_to_pass: dict[str, Any] | None = None
     if protocol_pydantic_def.state_param_name:
       state_param_meta = next(
-        (
-          p
-          for p in protocol_pydantic_def.parameters
-          if p.name == protocol_pydantic_def.state_param_name
-        ),
+        (p for p in protocol_pydantic_def.parameters if p.name == protocol_pydantic_def.state_param_name),
         None,
       )
       if state_param_meta:
@@ -361,7 +352,16 @@ class Orchestrator:
             "Defaulting to injecting PraxisState object for param '%s'.",
             protocol_pydantic_def.state_param_name,
           )
+    return state_dict_to_pass
 
+  async def _acquire_assets(
+    self,
+    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_run_accession_id: uuid.UUID,
+    final_args: dict[str, Any],
+    acquired_assets_details: dict[uuid.UUID, Any],
+  ) -> None:
+    """Acquire assets required by the protocol."""
     for asset_req_model in protocol_pydantic_def.assets:
       try:
         logger.info(
@@ -395,58 +395,53 @@ class Orchestrator:
       except AssetAcquisitionError as e:
         if asset_req_model.optional:
           logger.warning(
-            "ORCH-ACQUIRE: Optional asset '%s' could not be acquired: %s."
-            " Proceeding as it's optional.",
+            "ORCH-ACQUIRE: Optional asset '%s' could not be acquired: %s." " Proceeding as it's optional.",
             asset_req_model.name,
             e,
           )
           final_args[asset_req_model.name] = None
         else:
           error_msg = (
-            "Failed to acquire mandatory asset '%s' for protocol '%s': %s"
-          ) % (
-            asset_req_model.name,
-            protocol_pydantic_def.name,
-            e,
+            f"Failed to acquire mandatory asset '{asset_req_model.name}' for "
+            f"protocol '{protocol_pydantic_def.name}': {e}"
           )
-          logger.error(error_msg)
+          logger.exception(error_msg)
           raise ValueError(error_msg) from e
       except Exception as e_general:
-        error_msg = ("Unexpected error acquiring asset '%s' for protocol '%s': %s") % (
-          asset_req_model.name,
-          protocol_pydantic_def.name,
-          e_general,
+        error_msg = (
+          f"Unexpected error acquiring asset '{asset_req_model.name}' for "
+          f"protocol '{protocol_pydantic_def.name}': {e_general}"
         )
         logger.exception(error_msg)
         raise ValueError(error_msg) from e_general
 
-    if (
-      protocol_pydantic_def.preconfigure_deck and protocol_pydantic_def.deck_param_name
-    ):
+  async def _handle_deck_preconfiguration(
+    self,
+    db_session: AsyncSession,
+    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    input_parameters: dict[str, Any],
+    protocol_run_accession_id: uuid.UUID,
+    final_args: dict[str, Any],
+  ) -> None:
+    """Handle deck preconfiguration if specified in the protocol definition."""
+    if protocol_pydantic_def.preconfigure_deck and protocol_pydantic_def.deck_param_name:
       deck_param_name = protocol_pydantic_def.deck_param_name
       deck_accession_identifier_from_user = input_parameters.get(deck_param_name)
 
       if deck_accession_identifier_from_user is None and not next(
-        (
-          p
-          for p in protocol_pydantic_def.parameters
-          if p.name == deck_param_name and p.optional
-        ),
+        (p for p in protocol_pydantic_def.parameters if p.name == deck_param_name and p.optional),
         False,
       ):
-        raise ValueError(
-          "Mandatory deck parameter '%s' for preconfiguration not provided.",
-          deck_param_name,
-        )
+        error_msg = f"Mandatory deck parameter '{deck_param_name}' for preconfiguration " "not provided."
+        raise ValueError(error_msg)
 
       if deck_accession_identifier_from_user is not None:
-        if not isinstance(deck_accession_identifier_from_user, (str, uuid.UUID)):
-          raise ValueError(
-            "Deck identifier for preconfiguration ('%s') must be a string "
-            "(name) or UUID (ID), got %s.",
-            deck_param_name,
-            type(deck_accession_identifier_from_user),
+        if not isinstance(deck_accession_identifier_from_user, str | uuid.UUID):
+          error_msg = (
+            f"Deck identifier for preconfiguration ('{deck_param_name}') must be "
+            f"a string (name) or UUID (ID), got {type(deck_accession_identifier_from_user)}."
           )
+          raise ValueError(error_msg)
 
         logger.info(
           "ORCH-DECK: Applying deck instantiation '%s' for run '%s'.",
@@ -454,22 +449,23 @@ class Orchestrator:
           protocol_run_accession_id,
         )
 
-        deck_config_orm_accession_id_to_apply: uuid.UUID
+        deck_config_orm_accession_id_to_apply: uuid.UUID | None = None
         if isinstance(deck_accession_identifier_from_user, str):
           deck_config_orm = await svc.read_deck_by_name(
             db_session,
             deck_accession_identifier_from_user,
           )
           if not deck_config_orm:
-            raise ValueError(
-              "Deck configuration named '%s' not found.",
-              deck_accession_identifier_from_user,
-            )
+            error_msg = f"Deck configuration named '{deck_accession_identifier_from_user}' " "not found."
+            raise ValueError(error_msg)
           deck_config_orm_accession_id_to_apply = deck_config_orm.accession_id
-        else:
+        elif isinstance(deck_accession_identifier_from_user, uuid.UUID):
           deck_config_orm_accession_id_to_apply = deck_accession_identifier_from_user
 
-        live_deck_object = await self.asset_manager.apply_deck_instance(
+        if deck_config_orm_accession_id_to_apply is None:
+          raise RuntimeError("Internal error: Deck accession ID not resolved.")
+
+        live_deck_object = await self.asset_manager.apply_deck(
           deck_orm_accession_id=deck_config_orm_accession_id_to_apply,
           protocol_run_accession_id=protocol_run_accession_id,
         )
@@ -481,10 +477,48 @@ class Orchestrator:
         )
       elif deck_param_name in final_args:
         logger.warning(
-          "Deck parameter '%s' was already processed (e.g., as an asset)."
-          " Review protocol definition.",
+          "Deck parameter '%s' was already processed (e.g., as an asset)." " Review protocol definition.",
           deck_param_name,
         )
+
+  async def _prepare_arguments(
+    self,
+    db_session: AsyncSession,
+    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    input_parameters: dict[str, Any],
+    praxis_state: PraxisState,
+    protocol_run_accession_id: uuid.UUID,
+  ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[uuid.UUID, Any]]:
+    """Prepare arguments for protocol execution, including acquiring assets."""
+    logger.info("Preparing arguments for protocol: %s", protocol_pydantic_def.name)
+    final_args: dict[str, Any] = {}
+    state_dict_to_pass: dict[str, Any] | None = None
+    acquired_assets_details: dict[uuid.UUID, Any] = {}
+
+    self._process_input_parameters(
+      protocol_pydantic_def,
+      input_parameters,
+      final_args,
+    )
+    state_dict_to_pass = self._inject_praxis_state(
+      protocol_pydantic_def,
+      praxis_state,
+      final_args,
+    )
+    await self._acquire_assets(
+      db_session,
+      protocol_pydantic_def,
+      protocol_run_accession_id,
+      final_args,
+      acquired_assets_details,
+    )
+    await self._handle_deck_preconfiguration(
+      db_session,
+      protocol_pydantic_def,
+      input_parameters,
+      protocol_run_accession_id,
+      final_args,
+    )
 
     return final_args, state_dict_to_pass, acquired_assets_details
 
@@ -511,12 +545,7 @@ class Orchestrator:
     }
 
     try:
-      # Attempt to rollback workcell state
-      assert isinstance(
-        praxis_state,
-        PraxisState,
-      ), "praxis_state must be an instance of PraxisState."
-      assert praxis_state is not None, "praxis_state must not be None."
+      self._validate_praxis_state(praxis_state)
       last_good_snapshot = praxis_state.get("workcell_last_successful_snapshot")
       if last_good_snapshot:
         self.workcell_runtime.apply_state_snapshot(last_good_snapshot)
@@ -529,7 +558,7 @@ class Orchestrator:
           "ORCH: No prior workcell state snapshot found for run %s to rollback.",
           run_accession_id,
         )
-    except Exception as rollback_error:  # pylint: disable=broad-except
+    except Exception as rollback_error:  # pylint: disable=broad-except # noqa: BLE001
       logger.critical(
         "ORCH: CRITICAL - Failed to rollback workcell state for run %s: %s",
         run_accession_id,
@@ -542,8 +571,7 @@ class Orchestrator:
 
     if isinstance(e, PyLabRobotVolumeError):
       logger.info(
-        "Specific PyLabRobot error 'VolumeError' detected for run %s."
-        " Setting status to REQUIRES_INTERVENTION.",
+        "Specific PyLabRobot error 'VolumeError' detected for run %s." " Setting status to REQUIRES_INTERVENTION.",
         run_accession_id,
       )
       final_run_status = ProtocolRunStatusEnum.REQUIRES_INTERVENTION
@@ -551,9 +579,7 @@ class Orchestrator:
         {
           "error_type": "VolumeError",
           "error_message": str(e),
-          "action_required": (
-            "User intervention needed to verify liquid levels and proceed."
-          ),
+          "action_required": ("User intervention needed to verify liquid levels and proceed."),
           "traceback": traceback.format_exc(),
         },
       )
@@ -594,11 +620,7 @@ class Orchestrator:
 
     if not protocol_run_orm.end_time:
       protocol_run_orm.end_time = datetime.datetime.now(datetime.timezone.utc)
-    if (
-      protocol_run_orm.start_time
-      and protocol_run_orm.end_time
-      and protocol_run_orm.duration_ms is None
-    ):
+    if protocol_run_orm.start_time and protocol_run_orm.end_time and protocol_run_orm.duration_ms is None:
       duration = protocol_run_orm.end_time - protocol_run_orm.start_time
       protocol_run_orm.duration_ms = int(duration.total_seconds() * 1000)
 
@@ -674,8 +696,7 @@ class Orchestrator:
     run_accession_id = uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
-      "ORCH: Initiating protocol run %s for '%s' at %s. "
-      "User params: %s, Initial state: %s",
+      "ORCH: Initiating protocol run %s for '%s' at %s. " "User params: %s, Initial state: %s",
       run_accession_id,
       protocol_name,
       start_iso_timestamp,
@@ -694,8 +715,9 @@ class Orchestrator:
 
       if not protocol_def_orm or not protocol_def_orm.accession_id:
         error_msg = (
-          "Protocol '%s' (v:%s, commit:%s, src:%s) not found or invalid DB ID."
-        ) % (protocol_name, protocol_version, commit_hash, source_name)
+          f"Protocol '{protocol_name}' (v:{protocol_version}, commit:{commit_hash}, "
+          f"src:{source_name}) not found or invalid DB ID."
+        )
         logger.error(error_msg)
         raise ValueError(error_msg)
 
@@ -752,7 +774,7 @@ class Orchestrator:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except
+      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,
@@ -799,8 +821,7 @@ class Orchestrator:
       else "Unknown"
     )
     logger.info(
-      "ORCH: Executing existing protocol run %s for '%s'. User params: %s, "
-      "Initial state: %s",
+      "ORCH: Executing existing protocol run %s for '%s'. User params: %s, " "Initial state: %s",
       run_accession_id,
       protocol_name,
       user_input_params,
@@ -874,7 +895,7 @@ class Orchestrator:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except
+      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,
