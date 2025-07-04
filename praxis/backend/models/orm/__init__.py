@@ -50,7 +50,7 @@ schedules, workcells, and users in the Praxis application. It includes models fo
 
 """
 
-from praxis.backend.models.orm.asset import Asset
+from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm, DeckPositionDefinitionOrm
 from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
@@ -74,7 +74,7 @@ from praxis.backend.models.orm.user import UserOrm
 from praxis.backend.models.orm.workcell import WorkcellOrm
 
 __all__ = [
-  "Asset",
+  "AssetOrm",
   "DeckDefinitionOrm",
   "DeckOrm",
   "DeckPositionDefinitionOrm",

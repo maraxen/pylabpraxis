@@ -19,6 +19,8 @@ class ResourceBase(AssetBase):
   """Base model for a resource instance."""
 
   status: ResourceStatusEnum = Field(default=ResourceStatusEnum.UNKNOWN)
+  status_details: str | None = None
+  workcell_accession_id: UUID7 | None = None
   resource_definition_accession_id: UUID7 | None = None
   machine_counterpart_accession_id: UUID7 | None = None
   deck_counterpart_accession_id: UUID7 | None = None
@@ -139,6 +141,8 @@ class ResourceDefinitionBase(BaseModel):
   size_y_mm: float | None = None
   size_z_mm: float | None = None
   model: str | None = None
+  plr_category: str | None = None
+  rotation_json: dict[str, Any] | None = None
 
   class Config:
     """Pydantic configuration for ResourceDefinitionBase."""

@@ -11,11 +11,11 @@ from uuid import UUID
 
 from pydantic import UUID7, BaseModel, Field, field_validator
 
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.function_data_output_orm import (
-  DataOutputSpatialContextEnum,
+from praxis.backend.models.enums import (
   DataOutputTypeEnum,
+  SpatialContextEnum,
 )
+from praxis.backend.models.pydantic.filters import SearchFilters
 
 
 class FunctionDataOutputBase(BaseModel):
@@ -29,7 +29,7 @@ class FunctionDataOutputBase(BaseModel):
     description="Unique key within the function call",
   )
 
-  spatial_context: DataOutputSpatialContextEnum = Field(
+  spatial_context: SpatialContextEnum = Field(
     ...,
     description="Spatial context of the data",
   )
@@ -387,7 +387,9 @@ class FunctionDataOutputFilters(BaseModel):
 
   search_filters: SearchFilters = Field(..., description="Search filters for data selection")
   data_types: list[DataOutputTypeEnum] | None = Field(None, description="Filter by data types.")
-  spatial_contexts: list[DataOutputSpatialContextEnum] | None = Field(None, description="Filter by spatial context.")
+  spatial_contexts: list[SpatialContextEnum] | None = Field(
+    None, description="Filter by spatial context."
+  )
   has_numeric_data: bool | None = Field(None, description="Filter for entries with numeric data.")
   has_file_data: bool | None = Field(None, description="Filter for entries with file attachments.")
   min_quality_score: float | None = Field(None, ge=0.0, le=1.0, description="Minimum quality score.")

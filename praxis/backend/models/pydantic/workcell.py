@@ -10,13 +10,16 @@ Models included:
 - WorkcellResponse
 """
 
+from datetime import datetime
+from typing import Any
 
 from pydantic import UUID7, BaseModel, Field
 
-from praxis.backend.models.deck_pydantic_models import DeckStateResponse
-from praxis.backend.models.machine_pydantic_models import MachineResponse
-from praxis.backend.models.pydantic_base import TimestampedModel
-from praxis.backend.models.resource_pydantic_models import ResourceResponse
+from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.pydantic.deck import DeckResponse
+from praxis.backend.models.pydantic.machine import MachineResponse
+from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
+from praxis.backend.models.pydantic.resource import ResourceResponse
 
 
 class WorkcellBase(BaseModel):
@@ -27,6 +30,15 @@ class WorkcellBase(BaseModel):
   physical_location: str | None = Field(
     None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
   )
+  status: WorkcellStatusEnum = Field(
+    default=WorkcellStatusEnum.AVAILABLE, description="The current status of the workcell."
+  )
+  latest_state_json: dict[str, Any] | None = Field(
+    None, description="The latest state of the workcell as a JSON object."
+  )
+  last_state_update_time: datetime | None = Field(
+    None, description="The timestamp of the last state update."
+  )
 
 
 class WorkcellCreate(WorkcellBase):
@@ -35,7 +47,6 @@ class WorkcellCreate(WorkcellBase):
   This model inherits all properties from `WorkcellBase` and is used
   specifically when creating new workcell entries.
   """
-
 
 
 class WorkcellUpdate(BaseModel):
@@ -52,9 +63,15 @@ class WorkcellUpdate(BaseModel):
   physical_location: str | None = Field(
     None, description="The new physical location of the workcell.",
   )
+  status: WorkcellStatusEnum | None = Field(
+    None, description="The new status of the workcell."
+  )
+  latest_state_json: dict[str, Any] | None = Field(
+    None, description="The new state of the workcell as a JSON object."
+  )
 
 
-class WorkcellResponse(WorkcellBase, TimestampedModel):
+class WorkcellResponse(WorkcellBase, PraxisBaseModel):
   """Represents a workcell for API responses.
 
   This model extends `WorkcellBase` by adding system-generated identifiers
@@ -71,11 +88,11 @@ class WorkcellResponse(WorkcellBase, TimestampedModel):
     default_factory=list, description="List of resources associated with this workcell.",
   )
 
-  decks: list[DeckStateResponse] | None = Field(
+  decks: list[DeckResponse] | None = Field(
     default_factory=list,
     description="List of deck configurations associated with this workcell.",
   )
 
-  class Config(TimestampedModel.Config):
+  class Config(PraxisBaseModel.Config):
     """Pydantic configuration for WorkcellResponse."""
 

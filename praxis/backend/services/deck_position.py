@@ -6,11 +6,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models import (
+from praxis.backend.models.orm import (
   DeckDefinitionOrm,
   DeckOrm,
   DeckPositionDefinitionOrm,
-  DeckPositionResourceOrm,
   ResourceOrm,
 )
 from praxis.backend.utils.logging import get_logger

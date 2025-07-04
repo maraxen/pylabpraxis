@@ -13,7 +13,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
-  from . import DeckDefinitionOrm, DeckOrm, ResourceDefinitionOrm, ResourceOrm, WorkcellOrm
+  from . import (
+    AssetRequirementOrm,
+    DeckDefinitionOrm,
+    DeckOrm,
+    FunctionDataOutputOrm,
+    ResourceDefinitionOrm,
+    ResourceOrm,
+    WorkcellOrm,
+  )
 
 import uuid
 
@@ -39,7 +47,7 @@ from praxis.backend.models.enums import (
 )
 from praxis.backend.utils.db import Base
 
-from .asset import Asset
+from .asset import AssetOrm
 
 
 class MachineDefinitionOrm(Base):
@@ -169,7 +177,7 @@ class MachineDefinitionOrm(Base):
   )
   resource_definition: Mapped["ResourceDefinitionOrm | None"] = relationship(
     "ResourceDefinitionOrm",
-    back_populates="resource_definition",
+    back_populates="machine_definition",
     default=None,
   )
 
@@ -199,13 +207,19 @@ class MachineDefinitionOrm(Base):
     comment="JSONB representation of setup method for this machine definition.",
     default=None,
   )
+  asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
+    "AssetRequirementOrm",
+    back_populates="machine_definitions",
+    uselist=False,
+    default=None,
+  )
 
   def __repr__(self) -> str:
     """Return a string representation of the MachineDefinitionOrm object."""
     return f"<MachineDefinitionOrm(accession_id={self.accession_id}, name={self.name})>"
 
 
-class MachineOrm(Asset):
+class MachineOrm(AssetOrm):
   """SQLAlchemy ORM model representing a physical machine or machine.
 
   This model tracks individual physical items of lab machines,
@@ -267,6 +281,12 @@ class MachineOrm(Asset):
     nullable=False,
     index=True,
   )
+  status_details: Mapped[str | None] = mapped_column(
+    Text,
+    nullable=True,
+    comment="Additional details about the current status, e.g., error message",
+    default=None,
+  )
   connection_info: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
@@ -319,7 +339,7 @@ class MachineOrm(Asset):
   # If this machine has a deck (e.g., a liquid handler)
   deck: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
-    back_populates="deck_machine",
+    back_populates="machine",
     uselist=False,
     default=None,
     comment="Deck associated with this machine, if applicable.",
@@ -348,6 +368,18 @@ class MachineOrm(Asset):
     index=True,
     comment="Foreign key to the current protocol run this machine is executing, if applicable.",
     default=None,
+  )
+  data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="machine",
+    cascade="all, delete-orphan",
+    default_factory=list,
+  )
+  decks: Mapped[list["DeckOrm"]] = relationship(
+    "DeckOrm",
+    back_populates="machine",
+    cascade="all, delete-orphan",
+    default_factory=list,
   )
 
   def __repr__(self) -> str:

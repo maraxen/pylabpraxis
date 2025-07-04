@@ -20,7 +20,8 @@ Models included:
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
@@ -28,7 +29,7 @@ from pydantic.fields import Field
 from praxis.backend.models.pydantic.filters import SearchFilters
 
 if TYPE_CHECKING:
-  from .protocol_definitions_orm import AssetRequirementOrm
+  from praxis.backend.models.orm import AssetRequirementOrm
 
 
 class ProtocolStartRequest(BaseModel):
@@ -195,7 +196,7 @@ class RuntimeAssetRequirement:
     asset_type: str,  # e.g., "asset", "deck"
     estimated_duration_ms: int | None = None,
     priority: int = 1,
-  ):
+  ) -> None:
     """Initialize a RuntimeAssetRequirement."""
     self.asset_definition = asset_definition
     self.asset_type = asset_type
@@ -229,7 +230,8 @@ class RuntimeAssetRequirement:
       "priority": self.priority,
       "reservation_id": str(self.reservation_id) if self.reservation_id else None,
       "constraints": self.constraints.model_dump() if self.constraints else None,
-      "location_constraints": (self.location_constraints.model_dump() if self.location_constraints else None),
+      "location_constraints": (self.location_constraints.model_dump() \
+        if self.location_constraints else None),
     }
 
   @classmethod

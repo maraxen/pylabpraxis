@@ -98,7 +98,7 @@ class FunctionDataOutputOrm(Base):
 
   resource_accession_id: Mapped[UUID | None] = mapped_column(
     UUID,
-    ForeignKey("resource.accession_id"),
+    ForeignKey("resources.accession_id"),
     nullable=True,
     index=True,
     comment="Foreign key to the resource this data output is associated with (e.g., plate, well)",
@@ -116,7 +116,7 @@ class FunctionDataOutputOrm(Base):
 
   deck_accession_id: Mapped[UUID | None] = mapped_column(
     UUID,
-    ForeignKey("deck.accession_id"),
+    ForeignKey("decks.accession_id"),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this data output is associated with",
@@ -273,7 +273,7 @@ class FunctionDataOutputOrm(Base):
     default_factory=list,
   )
 
-  well_data_outputs: Mapped["WellDataOutputOrm"] = relationship(
+  well_data_outputs: Mapped[list["WellDataOutputOrm"]] = relationship(
     "WellDataOutputOrm",
     back_populates="function_data_output",
     cascade="all, delete-orphan",
@@ -311,7 +311,7 @@ class WellDataOutputOrm(Base):
 
   plate_resource_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("resource.accession_id"),
+    ForeignKey("resources.accession_id"),
     nullable=False,
     index=True,
     comment="Foreign key to the plate resource this well data output belongs to",
@@ -366,6 +366,20 @@ class WellDataOutputOrm(Base):
     foreign_keys=[plate_resource_accession_id],
     back_populates="well_data_outputs",
     comment="Link to the plate resource this well data output belongs to",
+    default=None,
+  )
+  resource: Mapped["ResourceOrm"] = relationship(
+    "ResourceOrm",
+    foreign_keys=[plate_resource_accession_id],
+    back_populates="well_data_outputs",
+    uselist=False,
+    default=None,
+  )
+  machine: Mapped["MachineOrm"] = relationship(
+    "MachineOrm",
+    foreign_keys="FunctionDataOutputOrm.machine_accession_id",
+    back_populates="well_data_outputs",
+    uselist=False,
     default=None,
   )
 

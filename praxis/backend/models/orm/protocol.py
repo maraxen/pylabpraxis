@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     FunctionDataOutputOrm,
     MachineDefinitionOrm,
     ResourceDefinitionOrm,
+    ScheduleEntryOrm,
   )
 
 
@@ -563,7 +564,6 @@ class ProtocolRunOrm(Base):
   completed_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
     Computed(
-      # Stored duration, only calculated if end_time exists.
       "(EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)",
       persisted=True,
     ),
@@ -678,6 +678,11 @@ class ProtocolRunOrm(Base):
     foreign_keys="ProtocolRunOrm.continuing_from_accession_id",
     default_factory=list,
     comment="List of protocol runs that continue from this run, forming a chain of execution.",
+  )
+  schedule_entries: Mapped[list["ScheduleEntryOrm"]] = relationship(
+    "ScheduleEntryOrm",
+    back_populates="protocol_run",
+    default_factory=list,
   )
 
   def __repr__(self) -> str:

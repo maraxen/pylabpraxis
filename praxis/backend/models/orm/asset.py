@@ -7,17 +7,20 @@ including:
 - Asset (Abstract base for all physical assets)
 """
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from sqlalchemy import Enum, String
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums import AssetType
 from praxis.backend.utils.db import Base
 
+if TYPE_CHECKING:
+  from praxis.backend.models.orm.schedule import AssetReservationOrm
 
-class Asset(Base):
+
+class AssetOrm(Base):
   """Abstract base class representing any physical asset in the lab.
 
   This serves as an umbrella for both machines and resource instances.
@@ -64,6 +67,13 @@ class Asset(Base):
     nullable=True,
     comment="PLR definition of the asset, if applicable.",
     default=None,
+  )
+
+  asset_reservations: Mapped[list["AssetReservationOrm"]] = relationship(
+    "AssetReservationOrm",
+    back_populates="asset",
+    cascade="all, delete-orphan",
+    default_factory=list,
   )
 
   __mapper_args__: ClassVar[dict] = {"polymorphic_on": asset_type, "polymorphic_identity": "asset"}  # type: ignore[override]

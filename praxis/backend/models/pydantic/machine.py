@@ -30,6 +30,16 @@ class MachineBase(AssetBase):
     default=False,
     description="Indicates if this machine has a resource child.",
   )
+  description: str | None = None
+  manufacturer: str | None = None
+  model: str | None = None
+  serial_number: str | None = None
+  installation_date: Any | None = None
+  connection_info: dict[str, Any] | None = None
+  is_simulation_override: bool | None = None
+  last_seen_online: Any | None = None
+  current_protocol_run_accession_id: UUID7 | None = None
+
 
   class Config:
     """Configuration for Pydantic model behavior."""

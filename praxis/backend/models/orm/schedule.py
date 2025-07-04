@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-  from . import Asset, ProtocolRunOrm
+  from . import AssetOrm, ProtocolRunOrm
 from sqlalchemy import (
   UUID,
   Column,
@@ -171,7 +171,7 @@ class ScheduleEntryOrm(Base):
   # Relationships
   protocol_run: Mapped["ProtocolRunOrm"] = relationship(
     "ProtocolRunOrm",
-    back_populates="schedule_entry",
+    back_populates="schedule_entries",
     uselist=False,
     init=False,
   )
@@ -218,13 +218,13 @@ class AssetReservationOrm(Base):
 
   asset_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
-    ForeignKey("asset.accession_id"),
+    ForeignKey("assets.accession_id"),
     nullable=True,
     index=True,
     comment="Foreign key to the specific asset instance being reserved, if applicable.",
     init=False,
   )
-  asset_instance: Mapped["Asset"] = relationship(
+  asset_instance: Mapped["AssetOrm"] = relationship(
     "Asset",
     back_populates="asset_reservations",
     foreign_keys="AssetReservationOrm.asset_instance_accession_id",
@@ -238,7 +238,6 @@ class AssetReservationOrm(Base):
     comment="Name of the asset being reserved.",
     init=False,
   )
-  # Reservation details
   status: Mapped[AssetReservationStatusEnum] = mapped_column(
     SAEnum(AssetReservationStatusEnum, name="asset_reservation_status_enum"),
     default=AssetReservationStatusEnum.PENDING,
@@ -406,8 +405,8 @@ class ScheduleHistoryOrm(Base):
         """,
       persisted=False,  # This column is VIRTUAL
     ),
-    comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the \
-      current time.",
+    comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the"
+        "current time.",
     nullable=True,
     init=False,
   )

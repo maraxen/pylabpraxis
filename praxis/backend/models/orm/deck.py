@@ -20,7 +20,7 @@ ORM models include:
 
 import uuid
 from functools import partial
-from typing import TYPE_CHECKING, Any, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import (
   UUID,
@@ -38,7 +38,12 @@ from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import generate_name, uuid7
 
 if TYPE_CHECKING:
-  from praxis.backend.models.orm import MachineOrm
+  from praxis.backend.models.orm import (
+    AssetRequirementOrm,
+    FunctionDataOutputOrm,
+    ResourceDefinitionOrm,
+    MachineOrm,
+  )
 
 generate_deck_name = partial(
   generate_name,
@@ -54,9 +59,9 @@ class DeckOrm(ResourceOrm):
 
   Attributes:
       accession_id (uuid.UUID): Primary key, linked to the resource's accession_id.
-      machine_id (Optional[uuid.UUID]): Foreign key to the machine this deck
+      machine_id (uuid.UUID | None): Foreign key to the machine this deck
           is part of.
-      machine (Optional[MachineOrm]): Relationship to the parent machine.
+      machine (MachineOrm | None): Relationship to the parent machine.
       deck_type_id (uuid.UUID): Foreign key to the deck type definition.
       deck_type (DeckTypeDefinitionOrm): Relationship to the deck's type
           definition.
@@ -83,9 +88,9 @@ class DeckOrm(ResourceOrm):
     comment="Foreign key to the machine this deck is part of.",
     default=None,
   )
-  machine: Mapped[Optional["MachineOrm"]] = relationship(
+  machine: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
-    back_populates="decks",
+    back_populates="deck",
     comment="Relationship to the parent machine.",
     uselist=False,
     default=None,
@@ -102,6 +107,26 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     default=None,
   )
+  data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="deck",
+    cascade="all, delete-orphan",
+    default_factory=list,
+  )
+  resource_counterpart: Mapped["ResourceOrm"] = relationship(
+    "ResourceOrm",
+    back_populates="deck_counterpart",
+    uselist=False,
+    default=None,
+  )
+  resources: Mapped[list["ResourceOrm"]] = relationship(
+    "ResourceOrm",
+    back_populates="deck",
+    cascade="all, delete-orphan",
+    default_factory=list,
+    comment="List of resources that are currently on this deck.",
+  )
+
 
 
 class DeckDefinitionOrm(Base):
@@ -118,20 +143,20 @@ class DeckDefinitionOrm(Base):
       name (str): A human-readable name for the deck type (e.g., "Hamilton STAR Deck").
       fqn (str): The fully qualified name of the PyLabRobot deck class
           (e.g., "pylabrobot.liquid_handling.backends.hamilton.STARDeck").
-      description (Optional[str]): A detailed description of the deck type.
-      plr_category (Optional[str]): The category of the deck type in PyLabRobot.
-      default_size_x_mm (Optional[float]): The default size in X dimension in mm.
-      default_size_y_mm (Optional[float]): The default size in Y dimension in mm.
-      default_size_z_mm (Optional[float]): The default size in Z dimension in mm.
-      serialized_constructor_args_json (Optional[dict[str, Any]]): JSONB field to store
+      description (str): A detailed description of the deck type.
+      plr_category (str | None): The category of the deck type in PyLabRobot.
+      default_size_x_mm (float | None): The default size in X dimension in mm.
+      default_size_y_mm (float | None): The default size in Y dimension in mm.
+      default_size_z_mm (float | None): The default size in Z dimension in mm.
+      serialized_constructor_args_json (dict[str, Any] | None): JSONB field to store
           serialized constructor arguments for the deck type.
-      serialized_assignment_methods_json (Optional[dict[str, Any]]): JSONB field to store
+      serialized_assignment_methods_json (dict[str, Any] | None): JSONB field to store
           serialized assignment methods for the deck type.
-      serialized_constructor_hints_json (Optional[dict[str, Any]]): JSONB field to store
+      serialized_constructor_hints_json (dict[str, Any] | None): JSONB field to store
           serialized constructor hints for the deck type.
-      additional_properties_json (Optional[dict[str, Any]]): JSONB field to store
+      additional_properties_json (dict[str, Any] | None): JSONB field to store
           additional properties for the deck type.
-      positioning_config_json (Optional[dict[str, Any]]): JSONB field to store
+      positioning_config_json (dict[str, Any] | None): JSONB field to store
           positioning configuration, such as the method and parameters for calculating
           coordinates from slot names.
       positions (list[DeckPositionDefinitionOrm]): A list of all defined
@@ -229,6 +254,18 @@ class DeckDefinitionOrm(Base):
     comment="List of all physical deck instances of this type.",
     default_factory=list,
   )
+  machine_definition: Mapped["ResourceDefinitionOrm"] = relationship(
+    "ResourceDefinitionOrm",
+    back_populates="deck_definition",
+    uselist=False,
+    default=None,
+  )
+  asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
+    "AssetRequirementOrm",
+    back_populates="deck_definitions",
+    uselist=False,
+    default=None,
+  )
 
 
 class DeckPositionDefinitionOrm(Base):
@@ -247,7 +284,7 @@ class DeckPositionDefinitionOrm(Base):
       x_coord (float): The x-coordinate of the position's center.
       y_coord (float): The y-coordinate of the position's center.
       z_coord (float): The z-coordinate of the position's center.
-      compatible_resource_fqns (Optional[dict[str, Any]]): A JSONB field to store a
+      compatible_resource_fqns (dict[str, Any] | None): A JSONB field to store a
           list or mapping of PyLabRobot resource FQNs that are compatible with
           this position.
       deck_type (DeckTypeDefinitionOrm): Relationship to the parent deck type.
@@ -292,7 +329,6 @@ class DeckPositionDefinitionOrm(Base):
     default=0.0,
   )
 
-  # Reverting to compatible_resource_fqns as per user request
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
     nullable=True,

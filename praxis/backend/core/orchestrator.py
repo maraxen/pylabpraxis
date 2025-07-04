@@ -147,7 +147,17 @@ class Orchestrator:
     if initial_state_data:
       praxis_state.update(initial_state_data)
 
-    # Capture snapshot of workcell state
+    logger.debug(
+      "Initializing PraxisState for run %s with initial data: %s",
+      protocol_run_orm.run_accession_id,
+      initial_state_data,
+    )
+
+    if praxis_state is None:
+      error_msg = "Failed to initialize PraxisState for the protocol run."
+      logger.error(error_msg)
+      raise RuntimeError(error_msg)
+
     current_workcell_snapshot = self.workcell_runtime.get_state_snapshot()
     await praxis_state.set(
       "workcell_last_successful_snapshot",
@@ -314,7 +324,8 @@ class Orchestrator:
         final_args[param_meta.name] = input_parameters[param_meta.name]
         logger.debug("Using user input for param '%s'.", param_meta.name)
       elif not param_meta.optional:
-        error_msg = f"Mandatory parameter '{param_meta.name}' missing for protocol " f"'{protocol_pydantic_def.name}'."
+        error_msg = f"Mandatory parameter '{param_meta.name}' missing for protocol "
+        f"'{protocol_pydantic_def.name}'."
         raise ValueError(error_msg)
       else:
         logger.debug("Optional param '%s' not provided by user.", param_meta.name)
@@ -395,7 +406,7 @@ class Orchestrator:
       except AssetAcquisitionError as e:
         if asset_req_model.optional:
           logger.warning(
-            "ORCH-ACQUIRE: Optional asset '%s' could not be acquired: %s." " Proceeding as it's optional.",
+            "ORCH-ACQUIRE: Optional asset '%s' could not be acquired: %s. Proceeding as it's optional.",
             asset_req_model.name,
             e,
           )
@@ -477,7 +488,7 @@ class Orchestrator:
         )
       elif deck_param_name in final_args:
         logger.warning(
-          "Deck parameter '%s' was already processed (e.g., as an asset)." " Review protocol definition.",
+          "Deck parameter '%s' was already processed (e.g., as an asset). Review protocol definition.",
           deck_param_name,
         )
 
@@ -571,7 +582,7 @@ class Orchestrator:
 
     if isinstance(e, PyLabRobotVolumeError):
       logger.info(
-        "Specific PyLabRobot error 'VolumeError' detected for run %s." " Setting status to REQUIRES_INTERVENTION.",
+        "Specific PyLabRobot error 'VolumeError' detected for run %s. Setting status to REQUIRES_INTERVENTION.",
         run_accession_id,
       )
       final_run_status = ProtocolRunStatusEnum.REQUIRES_INTERVENTION
@@ -696,7 +707,7 @@ class Orchestrator:
     run_accession_id = uuid7()
     start_iso_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     logger.info(
-      "ORCH: Initiating protocol run %s for '%s' at %s. " "User params: %s, Initial state: %s",
+      "ORCH: Initiating protocol run %s for '%s' at %s. User params: %s, Initial state: %s",
       run_accession_id,
       protocol_name,
       start_iso_timestamp,
@@ -821,7 +832,7 @@ class Orchestrator:
       else "Unknown"
     )
     logger.info(
-      "ORCH: Executing existing protocol run %s for '%s'. User params: %s, " "Initial state: %s",
+      "ORCH: Executing existing protocol run %s for '%s'. User params: %s, Initial state: %s",
       run_accession_id,
       protocol_name,
       user_input_params,

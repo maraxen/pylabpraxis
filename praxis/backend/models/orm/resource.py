@@ -31,11 +31,20 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.resource import ResourceStatusEnum
-from praxis.backend.models.orm.asset import Asset
+from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.utils.db import Base
 
 if TYPE_CHECKING:
-  from . import DeckOrm, MachineDefinitionOrm, MachineOrm, WorkcellOrm
+  from . import (
+    AssetRequirementOrm,
+    DeckOrm,
+    FunctionDataOutputOrm,
+    MachineDefinitionOrm,
+    MachineOrm,
+    WellDataOutputOrm,
+    DeckDefinitionOrm,
+    WorkcellOrm,
+  )
 
 
 class ResourceDefinitionOrm(Base):
@@ -163,9 +172,31 @@ class ResourceDefinitionOrm(Base):
     comment="Foreign key to the machine definition catalog, if this resource is also a machine.",
     default=None,
   )
+  deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("deck_definition_catalog.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the deck definition catalog, if this resource is also a deck.",
+    default=None,
+  )
   machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
-    "MachineOrm",
+    "MachineDefinitionOrm",
     back_populates="resource_definition",
+    default=None,
+  )
+  asset_requirement: Mapped["AssetRequirementOrm | None"] = relationship(
+    "AssetRequirementOrm",
+    back_populates="resource_definitions",
+    uselist=False,
+    default=None,
+  )
+  deck_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
+    "DeckDefinitionOrm",
+    back_populates="resource_definition",
+    uselist=False,
+    foreign_keys=[deck_definition_accession_id],
+    comment="Deck definition associated with this resource, if applicable.",
     default=None,
   )
 
@@ -174,7 +205,7 @@ class ResourceDefinitionOrm(Base):
     return f"<ResourceDefinitionOrm(name='{self.name}', category='{self.plr_category}')>"
 
 
-class ResourceOrm(Asset):
+class ResourceOrm(AssetOrm):
   """SQLAlchemy ORM model representing a physical instance of a resource.
 
   This model tracks individual physical items of lab resources,
@@ -258,20 +289,35 @@ class ResourceOrm(Asset):
     back_populates="resource_counterpart",
     default=None,
   )
-
-  workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("workcells.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the workcell this resource is located in, if applicable.",
+  data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="resource",
+    cascade="all, delete-orphan",
+    default_factory=list,
+  )
+  well_data_outputs: Mapped[list["WellDataOutputOrm"]] = relationship(
+    "WellDataOutputOrm",
+    back_populates="plate_resource",
+    cascade="all, delete-orphan",
+    default_factory=list,
+  )
+  location_machine: Mapped["MachineOrm | None"] = relationship(
+    "MachineOrm",
+    back_populates="located_resource",
+    uselist=False,
     default=None,
   )
-  workcell: Mapped["WorkcellOrm | None"] = relationship(
+  location_workcell: Mapped["WorkcellOrm | None"] = relationship(
     "WorkcellOrm",
     back_populates="resources",
+    uselist=False,
     default=None,
-    foreign_keys=[workcell_accession_id],
+  )
+  location_deck: Mapped["DeckOrm | None"] = relationship(
+    "DeckOrm",
+    back_populates="resources",
+    uselist=False,
+    default=None,
   )
 
   def __repr__(self) -> str:
