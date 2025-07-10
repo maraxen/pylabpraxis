@@ -13,12 +13,12 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.pydantic.outputs import PlateDataVisualization
 from praxis.backend.models.orm.outputs import (
   DataOutputTypeEnum,
   FunctionDataOutputOrm,
   WellDataOutputOrm,
 )
+from praxis.backend.models.pydantic.outputs import PlateDataVisualization
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)

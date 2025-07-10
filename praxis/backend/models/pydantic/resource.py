@@ -35,7 +35,6 @@ class ResourceBase(AssetBase):
   )
   parent: "ResourceBase | None" = None
 
-
   class Config:
     """Configuration for Pydantic model behavior."""
 

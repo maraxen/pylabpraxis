@@ -28,24 +28,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import (
-    PROTOCOL_REGISTRY,
-    PraxisRunContext,
-    serialize_arguments,
-)
-from praxis.backend.models.pydantic.protocol import (
-    AssetRequirementModel,
-    FunctionCallStatusEnum,
-    FunctionProtocolDefinitionCreate,
-    ParameterMetadataModel,
-    ProtocolRunStatusEnum,
-    UIHint,
-    DecoratedFunctionInfo,
+  PROTOCOL_REGISTRY,
+  PraxisRunContext,
+  serialize_arguments,
 )
 from praxis.backend.models.pydantic.asset import CreateProtocolDefinitionData
+from praxis.backend.models.pydantic.protocol import (
+  AssetRequirementModel,
+  DecoratedFunctionInfo,
+  FunctionCallStatusEnum,
+  FunctionProtocolDefinitionCreate,
+  ParameterMetadataModel,
+  ProtocolRunStatusEnum,
+  UIHint,
+)
 from praxis.backend.services.protocols import (
-    log_function_call_end,
-    log_function_call_start,
-    update_protocol_run_status,
+  log_function_call_end,
+  log_function_call_start,
+  update_protocol_run_status,
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import (
@@ -159,7 +159,7 @@ def _create_protocol_definition(
     )
   if data.is_top_level and not found_state_param_details:
     raise TypeError(
-      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' " "parameter.",
+      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' parameter.",
     )
 
   protocol_definition = FunctionProtocolDefinitionCreate(
@@ -490,8 +490,7 @@ async def _process_wrapper_arguments(
 
   if state_details:
     state_arg_name_in_sig = state_details["name"]
-    if state_arg_name_in_sig in processed_kwargs:
-      del processed_kwargs[state_arg_name_in_sig]
+    processed_kwargs.pop(state_arg_name_in_sig, None)
     if state_details["expects_praxis_state"]:
       processed_kwargs[state_arg_name_in_sig] = parent_context.canonical_state
     elif state_details["expects_dict"]:

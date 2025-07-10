@@ -12,14 +12,12 @@ management.
 import uuid
 from datetime import datetime, timezone
 from functools import partial
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import cast
 
-from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.orm.schedule import (
   AssetReservationOrm,
   AssetReservationStatusEnum,
@@ -27,6 +25,7 @@ from praxis.backend.models.orm.schedule import (
   ScheduleHistoryOrm,
   ScheduleStatusEnum,
 )
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
@@ -91,9 +90,7 @@ async def create_schedule_entry(
       Exception: For any other unexpected errors during the process.
 
   """
-  log_prefix = (
-    f"Schedule Entry (Protocol Run: '{protocol_run_accession_id}', creating new):"
-  )
+  log_prefix = f"Schedule Entry (Protocol Run: '{protocol_run_accession_id}', creating new):"
   logger.info("%s Attempting to create new schedule entry.", log_prefix)
 
   # Check if a schedule entry for this protocol run already exists
@@ -217,12 +214,12 @@ async def read_schedule_entry_by_protocol_run(
 async def list_schedule_entries(
   db: AsyncSession,
   filters: SearchFilters,
-  status_filter: list[ScheduleStatusEnum] | None = None, # Specific filter
-  protocol_run_ids: list[uuid.UUID] | None = None, # Specific filter
-  priority_min: int | None = None, # Specific filter
-  priority_max: int | None = None, # Specific filter
-  include_completed: bool = False, # Specific filter
-  include_cancelled: bool = False, # Specific filter
+  status_filter: list[ScheduleStatusEnum] | None = None,  # Specific filter
+  protocol_run_ids: list[uuid.UUID] | None = None,  # Specific filter
+  priority_min: int | None = None,  # Specific filter
+  priority_max: int | None = None,  # Specific filter
+  include_completed: bool = False,  # Specific filter
+  include_cancelled: bool = False,  # Specific filter
 ) -> list[ScheduleEntryOrm]:
   """List schedule entries with optional filters.
 
@@ -279,7 +276,7 @@ async def list_schedule_entries(
     stmt = stmt.filter(ScheduleEntryOrm.priority <= filters.priority_max)
 
   # Apply generic filters from query_builder
-  stmt = apply_date_range_filters(stmt, filters, cast(Base, ScheduleEntryOrm).created_at)
+  stmt = apply_date_range_filters(stmt, filters, cast("Base", ScheduleEntryOrm).created_at)
   stmt = apply_pagination(stmt, filters)
 
   # Apply ordering
@@ -575,11 +572,11 @@ async def read_asset_reservation(
 async def list_asset_reservations(
   db: AsyncSession,
   filters: SearchFilters,
-  schedule_entry_accession_id: uuid.UUID | None = None, # Specific filter
-  asset_type: str | None = None, # Specific filter
-  asset_name: str | None = None, # Specific filter
-  status_filter: list[AssetReservationStatusEnum] | None = None, # Specific filter
-  active_only: bool = False, # Specific filter
+  schedule_entry_accession_id: uuid.UUID | None = None,  # Specific filter
+  asset_type: str | None = None,  # Specific filter
+  asset_name: str | None = None,  # Specific filter
+  status_filter: list[AssetReservationStatusEnum] | None = None,  # Specific filter
+  active_only: bool = False,  # Specific filter
 ) -> list[AssetReservationOrm]:
   """List asset reservations with optional filters.
 
@@ -1151,11 +1148,11 @@ async def read_asset_reservation(
 async def list_asset_reservations(
   db: AsyncSession,
   filters: SearchFilters,
-  schedule_entry_accession_id: uuid.UUID | None = None, # Specific filter
-  asset_type: str | None = None, # Specific filter
-  asset_name: str | None = None, # Specific filter
-  status_filter: list[AssetReservationStatusEnum] | None = None, # Specific filter
-  active_only: bool = False, # Specific filter
+  schedule_entry_accession_id: uuid.UUID | None = None,  # Specific filter
+  asset_type: str | None = None,  # Specific filter
+  asset_name: str | None = None,  # Specific filter
+  status_filter: list[AssetReservationStatusEnum] | None = None,  # Specific filter
+  active_only: bool = False,  # Specific filter
 ) -> list[AssetReservationOrm]:
   """List asset reservations with optional filters.
 

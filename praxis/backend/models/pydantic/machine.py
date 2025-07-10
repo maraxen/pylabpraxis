@@ -41,7 +41,6 @@ class MachineBase(AssetBase):
   last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
 
-
   class Config:
     """Configuration for Pydantic model behavior."""
 
@@ -101,9 +100,7 @@ class MachineResponse(AssetResponse, MachineBase):
 
 class MachineTypeDefinitionCreate(PLRTypeDefinitionCreate):
   """Model for creating a new machine type definition."""
-  pass
 
 
 class MachineTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
   """Model for updating a machine type definition."""
-  pass

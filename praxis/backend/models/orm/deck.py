@@ -133,7 +133,6 @@ class DeckOrm(ResourceOrm):
   )
 
 
-
 class DeckDefinitionOrm(PLRTypeDefinitionOrm):
   """Define a type of deck, its properties, and its positions.
 

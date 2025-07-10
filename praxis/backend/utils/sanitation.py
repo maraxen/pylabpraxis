@@ -95,10 +95,13 @@ async def fill_in_default(val: list[T] | None, default: list[T]) -> list[T]:
 
 
 async def fill_in_defaults(
-  items: list[list[T] | None], defaults: list[list[T]],
+  items: list[list[T] | None],
+  defaults: list[list[T]],
 ) -> list[list[T]]:
   """Util for converting an argument to the appropriate format for low level methods."""
-  return [await fill_in_default(val, default) for val, default in zip(items, defaults, strict=False)]
+  return [
+    await fill_in_default(val, default) for val, default in zip(items, defaults, strict=False)
+  ]
 
 
 async def type_check(items: list, types: list, in_list: bool = False) -> None:
@@ -158,9 +161,7 @@ async def check_list_length(
       raise ValueError(f"Expected list but got {type(item)}")
     if len(item) != target_length:
       if len(item) == 1 and coerce_length:
-        assert target_length is not None, (
-          "Expected target length to be provided"
-        )  # mypy assert
+        assert target_length is not None, "Expected target length to be provided"  # mypy assert
         new_items.append(item * target_length)
       else:
         raise ValueError(
@@ -242,7 +243,8 @@ async def tip_mapping(
   if targets is None and map_tips == "target":
     warnings.warn(
       "No target containers provided, mapping tips to source containers."
-      "Please set map_tips to 'source' to map to source containers.", stacklevel=2,
+      "Please set map_tips to 'source' to map to source containers.",
+      stacklevel=2,
     )
     targets = sources
   map_onto = sources if map_tips == "source" else targets

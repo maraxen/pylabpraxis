@@ -21,7 +21,6 @@ class AssetBase(BaseModel):
   location: str | None = Field(None, description="The location of the asset.")
 
 
-
 class AssetResponse(AssetBase, PraxisBaseModel):
   """Represent an asset for API responses."""
 

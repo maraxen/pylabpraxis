@@ -27,7 +27,9 @@ def _get_command_key(run_accession_id: uuid.UUID) -> str:
 
 
 async def send_control_command(
-  run_accession_id: uuid.UUID, command: str, ttl_seconds: int = 3600,
+  run_accession_id: uuid.UUID,
+  command: str,
+  ttl_seconds: int = 3600,
 ) -> bool:
   """Send a control command to the orchestrator for a specific run.
 

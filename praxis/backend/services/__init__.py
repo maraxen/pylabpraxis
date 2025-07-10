@@ -14,14 +14,14 @@ to provide a single point of access for all data services.
 from praxis.backend.services.deck import deck_service
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.discovery_service import DiscoveryService
-from praxis.backend.services.outputs import (
-    FunctionDataOutputCRUDService,
-)
 from praxis.backend.services.machine import machine_service
+from praxis.backend.services.outputs import (
+  FunctionDataOutputCRUDService,
+)
 from praxis.backend.services.plate_viz import read_plate_data_visualization
 from praxis.backend.services.praxis_orm_service import PraxisDBService
 from praxis.backend.services.protocol_output_data import (
-    read_protocol_run_data_summary,
+  read_protocol_run_data_summary,
 )
 from praxis.backend.services.protocols import protocol_run_service
 from praxis.backend.services.resource import resource_service

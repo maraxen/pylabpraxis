@@ -13,7 +13,7 @@ Models included:
 from datetime import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.models.pydantic.deck import DeckResponse
@@ -28,16 +28,20 @@ class WorkcellBase(BaseModel):
   name: str = Field(description="The unique name of the workcell.")
   description: str | None = Field(None, description="A description of the workcell.")
   physical_location: str | None = Field(
-    None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
+    None,
+    description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
   )
   status: WorkcellStatusEnum = Field(
-    default=WorkcellStatusEnum.AVAILABLE, description="The current status of the workcell.",
+    default=WorkcellStatusEnum.AVAILABLE,
+    description="The current status of the workcell.",
   )
   latest_state_json: dict[str, Any] | None = Field(
-    None, description="The latest state of the workcell as a JSON object.",
+    None,
+    description="The latest state of the workcell as a JSON object.",
   )
   last_state_update_time: datetime | None = Field(
-    None, description="The timestamp of the last state update.",
+    None,
+    description="The timestamp of the last state update.",
   )
 
 
@@ -58,16 +62,20 @@ class WorkcellUpdate(BaseModel):
 
   name: str | None = Field(None, description="The new unique name of the workcell.")
   description: str | None = Field(
-    None, description="The new description of the workcell.",
+    None,
+    description="The new description of the workcell.",
   )
   physical_location: str | None = Field(
-    None, description="The new physical location of the workcell.",
+    None,
+    description="The new physical location of the workcell.",
   )
   status: WorkcellStatusEnum | None = Field(
-    None, description="The new status of the workcell.",
+    None,
+    description="The new status of the workcell.",
   )
   latest_state_json: dict[str, Any] | None = Field(
-    None, description="The new state of the workcell as a JSON object.",
+    None,
+    description="The new state of the workcell as a JSON object.",
   )
 
 
@@ -80,11 +88,13 @@ class WorkcellResponse(WorkcellBase, PraxisBaseModel):
   """
 
   machines: list[MachineResponse] = Field(
-    default_factory=list, description="List of machines associated with this workcell.",
+    default_factory=list,
+    description="List of machines associated with this workcell.",
   )
 
   resources: list[ResourceResponse] | None = Field(
-    default_factory=list, description="List of resources associated with this workcell.",
+    default_factory=list,
+    description="List of resources associated with this workcell.",
   )
 
   decks: list[DeckResponse] | None = Field(
@@ -94,4 +104,3 @@ class WorkcellResponse(WorkcellBase, PraxisBaseModel):
 
   class Config(PraxisBaseModel.Config):
     """Pydantic configuration for WorkcellResponse."""
-

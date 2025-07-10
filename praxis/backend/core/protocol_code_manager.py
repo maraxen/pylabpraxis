@@ -143,9 +143,7 @@ class ProtocolCodeManager:
       return process.stdout.strip()
     except subprocess.TimeoutExpired as e:
       error_message = (
-        "CODE-GIT: Command '%s' timed out after %d seconds in %s.\n"
-        "Stderr: %s\n"
-        "Stdout: %s"
+        "CODE-GIT: Command '%s' timed out after %d seconds in %s.\nStderr: %s\nStdout: %s"
       ) % (
         " ".join(e.cmd),
         e.timeout,
@@ -182,9 +180,9 @@ class ProtocolCodeManager:
       logger.error(error_message)
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
-      error_message = (
-        "CODE-GIT: Git command not found. Ensure git is installed. Command: %s"
-      ) % (" ".join(command))
+      error_message = ("CODE-GIT: Git command not found. Ensure git is installed. Command: %s") % (
+        " ".join(command)
+      )
       logger.error(error_message)
       raise RuntimeError(error_message) from None
 
@@ -253,7 +251,8 @@ class ProtocolCodeManager:
         repo_name_for_logging,
       )
       await self._run_git_command(
-        ["git", "fetch", "origin", "--prune"], cwd=checkout_path,
+        ["git", "fetch", "origin", "--prune"],
+        cwd=checkout_path,
       )
     else:
       if os.path.exists(checkout_path):
@@ -312,7 +311,8 @@ class ProtocolCodeManager:
 
     # Verify the checkout was successful
     current_commit = await self._run_git_command(
-      ["git", "rev-parse", "HEAD"], cwd=checkout_path,
+      ["git", "rev-parse", "HEAD"],
+      cwd=checkout_path,
       suppress_output=True,
     )
     resolved_target_commit = await self._run_git_command(
@@ -406,7 +406,6 @@ class ProtocolCodeManager:
     module = importlib.import_module(module_name)
     return getattr(module, callable_name)
 
-
   async def prepare_protocol_code(
     self,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
@@ -438,10 +437,7 @@ class ProtocolCodeManager:
     module_path_to_add_for_sys_path: str | None = None
 
     # Handle Git repository sources
-    if (
-      protocol_def_orm.source_repository_accession_id
-      and protocol_def_orm.source_repository
-    ):
+    if protocol_def_orm.source_repository_accession_id and protocol_def_orm.source_repository:
       repo = protocol_def_orm.source_repository
       checkout_path = repo.local_checkout_path
       commit_hash_to_checkout = protocol_def_orm.commit_hash
@@ -453,15 +449,14 @@ class ProtocolCodeManager:
 
       await self._ensure_git_repo_and_fetch(repo.git_url, checkout_path, repo.name)
       await self._checkout_specific_commit(
-        checkout_path, commit_hash_to_checkout, repo.name,
+        checkout_path,
+        commit_hash_to_checkout,
+        repo.name,
       )
       module_path_to_add_for_sys_path = checkout_path
 
     # Handle file system sources
-    elif (
-      protocol_def_orm.file_system_source_accession_id
-      and protocol_def_orm.file_system_source
-    ):
+    elif protocol_def_orm.file_system_source_accession_id and protocol_def_orm.file_system_source:
       fs_source = protocol_def_orm.file_system_source
       if not os.path.isdir(fs_source.base_path):
         raise ValueError(
@@ -485,8 +480,7 @@ class ProtocolCodeManager:
       )
 
       if protocol_def_orm.accession_id and (
-        not pydantic_def.accession_id
-        or pydantic_def.accession_id != protocol_def_orm.accession_id
+        not pydantic_def.accession_id or pydantic_def.accession_id != protocol_def_orm.accession_id
       ):
         pydantic_def.accession_id = protocol_def_orm.accession_id
         logger.debug(

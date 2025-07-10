@@ -20,7 +20,6 @@ Models included:
 """
 
 import uuid
-from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -284,9 +283,6 @@ class ProtocolDefinitionFilters(BaseModel):
   category: str | None = None
   tags: list[str] | None = None
   include_deprecated: bool = False
-
-
-
 
 
 class ProtocolRunBase(BaseModel):

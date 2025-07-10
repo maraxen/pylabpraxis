@@ -27,16 +27,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY
 from praxis.backend.models.pydantic.protocol import (
-    AssetRequirementModel,
-    FunctionProtocolDefinitionCreate,
-    FunctionProtocolDefinitionUpdate,
-    ParameterMetadataModel,
+  AssetRequirementModel,
+  FunctionProtocolDefinitionCreate,
+  FunctionProtocolDefinitionUpdate,
+  ParameterMetadataModel,
 )
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.resource_type_definition import (
-    ResourceTypeDefinitionService,
+  ResourceTypeDefinitionService,
 )
 from praxis.backend.utils.type_inspection import (
   fqn_from_hint,
@@ -219,9 +219,10 @@ class DiscoveryService:
                     param_obj_sig,
                   ) in sig.parameters.items():
                     param_type_hint = param_obj_sig.annotation
-                    is_opt = (get_origin(param_type_hint) is Union and type(None) in get_args(param_type_hint)) or (
-                      param_obj_sig.default is not inspect.Parameter.empty
-                    )
+                    is_opt = (
+                      get_origin(param_type_hint) is Union
+                      and type(None) in get_args(param_type_hint)
+                    ) or (param_obj_sig.default is not inspect.Parameter.empty)
                     fqn = fqn_from_hint(param_type_hint)
 
                     type_for_plr_check = param_type_hint
@@ -331,18 +332,22 @@ class DiscoveryService:
         protocol_version_for_error = protocol_pydantic_model.version
         try:
           existing_def = await self.protocol_definition_service.get_by_fqn(
-              db=session, fqn=f"{protocol_pydantic_model.module_name}.{protocol_pydantic_model.function_name}"
+            db=session,
+            fqn=f"{protocol_pydantic_model.module_name}.{protocol_pydantic_model.function_name}",
           )
 
           if existing_def:
-              update_data = FunctionProtocolDefinitionUpdate(**protocol_pydantic_model.model_dump())
-              def_orm = await self.protocol_definition_service.update(
-                  db=session, db_obj=existing_def, obj_in=update_data
-              )
+            update_data = FunctionProtocolDefinitionUpdate(**protocol_pydantic_model.model_dump())
+            def_orm = await self.protocol_definition_service.update(
+              db=session,
+              db_obj=existing_def,
+              obj_in=update_data,
+            )
           else:
-              def_orm = await self.protocol_definition_service.create(
-                  db=session, obj_in=protocol_pydantic_model
-              )
+            def_orm = await self.protocol_definition_service.create(
+              db=session,
+              obj_in=protocol_pydantic_model,
+            )
 
           upserted_definitions_orm.append(def_orm)
 

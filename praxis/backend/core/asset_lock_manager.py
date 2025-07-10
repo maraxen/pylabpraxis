@@ -129,9 +129,7 @@ class AssetLockManager:
       "asset_type": lock_data.asset_type,
       "asset_name": lock_data.asset_name,
       "locked_at": datetime.now(timezone.utc).isoformat(),
-      "expires_at": (
-        datetime.now(timezone.utc) + timedelta(seconds=timeout)
-      ).isoformat(),
+      "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=timeout)).isoformat(),
       "required_capabilities": lock_data.required_capabilities or {},
     }
 
@@ -304,7 +302,9 @@ class AssetLockManager:
         try:
           reservation_id = uuid.UUID(current_value)
           if await self.release_asset_lock(
-            asset_type, asset_name, reservation_id,
+            asset_type,
+            asset_name,
+            reservation_id,
           ):
             return True
         except ValueError:
@@ -312,9 +312,9 @@ class AssetLockManager:
           return True
     except redis.exceptions.RedisError:
       logger.exception(
-            "Error releasing individual lock %s",
-            lock_key,
-          )
+        "Error releasing individual lock %s",
+        lock_key,
+      )
     return False
 
   async def check_asset_availability(
@@ -483,11 +483,15 @@ class AssetLockManager:
 
       # Count reservations
       reservation_pattern = "praxis:reservation:*"
-      active_reservations = [key async for key in self._redis_client.scan_iter(match=reservation_pattern)]
+      active_reservations = [
+        key async for key in self._redis_client.scan_iter(match=reservation_pattern)
+      ]
 
       # Count protocol lock tracking
       protocol_locks_pattern = "praxis:protocol_locks:*"
-      tracked_protocols = [key async for key in self._redis_client.scan_iter(match=protocol_locks_pattern)]
+      tracked_protocols = [
+        key async for key in self._redis_client.scan_iter(match=protocol_locks_pattern)
+      ]
 
       # Redis info
       redis_info = await self._redis_client.info()

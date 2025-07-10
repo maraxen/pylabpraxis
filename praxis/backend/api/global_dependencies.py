@@ -16,44 +16,44 @@ logger = get_logger(__name__)
 
 
 class GlobalDependencies:
-    """A class to hold global dependencies."""
+  """A class to hold global dependencies."""
 
-    def __init__(self):
-        self.scheduler: ProtocolScheduler | None = None
-        self.asset_lock_manager: AssetLockManager | None = None
+  def __init__(self):
+    self.scheduler: ProtocolScheduler | None = None
+    self.asset_lock_manager: AssetLockManager | None = None
 
-    async def initialize(
-        self,
-        db_session_factory,
-        config: PraxisConfiguration | None = None,
-    ):
-        """Initialize global scheduler components."""
-        if config is None:
-            config = PraxisConfiguration()
-        self.asset_lock_manager = AssetLockManager(config.redis_url)
-        await self.asset_lock_manager.initialize()
-        logger.info("AssetLockManager initialized.")
+  async def initialize(
+    self,
+    db_session_factory,
+    config: PraxisConfiguration | None = None,
+  ):
+    """Initialize global scheduler components."""
+    if config is None:
+      config = PraxisConfiguration()
+    self.asset_lock_manager = AssetLockManager(config.redis_url)
+    await self.asset_lock_manager.initialize()
+    logger.info("AssetLockManager initialized.")
 
-        self.scheduler = ProtocolScheduler(
-            db_session_factory,
-            config.redis_url,
-            None,
-        )
-        logger.info("Scheduler components initialized")
+    self.scheduler = ProtocolScheduler(
+      db_session_factory,
+      config.redis_url,
+      None,
+    )
+    logger.info("Scheduler components initialized")
 
 
 dependencies = GlobalDependencies()
 
 
 def get_scheduler() -> ProtocolScheduler:
-    """Get the global scheduler instance."""
-    if dependencies.scheduler is None:
-        raise RuntimeError("Scheduler not initialized")
-    return dependencies.scheduler
+  """Get the global scheduler instance."""
+  if dependencies.scheduler is None:
+    raise RuntimeError("Scheduler not initialized")
+  return dependencies.scheduler
 
 
 def get_asset_manager() -> AssetLockManager:
-    """Get the global asset manager instance."""
-    if dependencies.asset_lock_manager is None:
-        raise RuntimeError("Asset manager not initialized")
-    return dependencies.asset_lock_manager
+  """Get the global asset manager instance."""
+  if dependencies.asset_lock_manager is None:
+    raise RuntimeError("Asset manager not initialized")
+  return dependencies.asset_lock_manager

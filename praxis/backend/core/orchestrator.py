@@ -283,7 +283,9 @@ class Orchestrator:
       )
       # Filter prepared_args to only include assets expected by deck_construction_func
       deck_construction_params = inspect.signature(deck_construction_func).parameters
-      args_for_deck_construction = {k: v for k, v in prepared_args.items() if k in deck_construction_params}
+      args_for_deck_construction = {
+        k: v for k, v in prepared_args.items() if k in deck_construction_params
+      }
       await deck_construction_func(**args_for_deck_construction)
       logger.info(
         "ORCH: Deck construction function completed for run %s.",
@@ -340,7 +342,11 @@ class Orchestrator:
     state_dict_to_pass: dict[str, Any] | None = None
     if protocol_pydantic_def.state_param_name:
       state_param_meta = next(
-        (p for p in protocol_pydantic_def.parameters if p.name == protocol_pydantic_def.state_param_name),
+        (
+          p
+          for p in protocol_pydantic_def.parameters
+          if p.name == protocol_pydantic_def.state_param_name
+        ),
         None,
       )
       if state_param_meta:
@@ -443,7 +449,9 @@ class Orchestrator:
         (p for p in protocol_pydantic_def.parameters if p.name == deck_param_name and p.optional),
         False,
       ):
-        error_msg = f"Mandatory deck parameter '{deck_param_name}' for preconfiguration " "not provided."
+        error_msg = (
+          f"Mandatory deck parameter '{deck_param_name}' for preconfiguration not provided."
+        )
         raise ValueError(error_msg)
 
       if deck_accession_identifier_from_user is not None:
@@ -467,7 +475,9 @@ class Orchestrator:
             deck_accession_identifier_from_user,
           )
           if not deck_config_orm:
-            error_msg = f"Deck configuration named '{deck_accession_identifier_from_user}' " "not found."
+            error_msg = (
+              f"Deck configuration named '{deck_accession_identifier_from_user}' not found."
+            )
             raise ValueError(error_msg)
           deck_config_orm_accession_id_to_apply = deck_config_orm.accession_id
         elif isinstance(deck_accession_identifier_from_user, uuid.UUID):
@@ -631,7 +641,11 @@ class Orchestrator:
 
     if not protocol_run_orm.end_time:
       protocol_run_orm.end_time = datetime.datetime.now(datetime.timezone.utc)
-    if protocol_run_orm.start_time and protocol_run_orm.end_time and protocol_run_orm.duration_ms is None:
+    if (
+      protocol_run_orm.start_time
+      and protocol_run_orm.end_time
+      and protocol_run_orm.duration_ms is None
+    ):
       duration = protocol_run_orm.end_time - protocol_run_orm.start_time
       protocol_run_orm.duration_ms = int(duration.total_seconds() * 1000)
 

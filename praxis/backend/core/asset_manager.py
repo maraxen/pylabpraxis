@@ -21,19 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
-from praxis.backend.models.pydantic.protocol import AssetRequirementModel
 from praxis.backend.models.orm.resource import (
-    ResourceDefinitionOrm,
-    ResourceOrm,
-    ResourceStatusEnum,
+  ResourceDefinitionOrm,
+  ResourceOrm,
+  ResourceStatusEnum,
 )
+from praxis.backend.models.pydantic.protocol import AssetRequirementModel
 from praxis.backend.services.base import PraxisORMService
 from praxis.backend.utils.errors import (
-    AssetAcquisitionError,
-    AssetReleaseError,
+  AssetAcquisitionError,
+  AssetReleaseError,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors, log_runtime_errors
-from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -78,10 +77,6 @@ class AssetManager:
     self.workcell_runtime = workcell_runtime
     self.svc = PraxisORMService()
 
-
-
-
-
   async def _get_and_validate_deck_orms(self, deck_orm_accession_id: uuid.UUID) -> tuple[Any, Any]:
     deck_orm = await self.svc.read_deck(self.db, deck_orm_accession_id)
     if not deck_orm:
@@ -95,7 +90,9 @@ class AssetManager:
 
     deck_def_orm = await self.svc.read_resource_definition(self.db, deck_resource_orm.name)
     if not deck_def_orm or not deck_def_orm.fqn:
-      raise AssetAcquisitionError(f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing.")
+      raise AssetAcquisitionError(
+        f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing."
+      )
     return deck_orm, deck_resource_orm, deck_def_orm
 
   async def apply_deck(
@@ -124,7 +121,9 @@ class AssetManager:
       protocol_run_accession_id,
     )
 
-    deck_orm, deck_resource_orm, deck_def_orm = await self._get_and_validate_deck_orms(deck_orm_accession_id)
+    deck_orm, deck_resource_orm, deck_def_orm = await self._get_and_validate_deck_orms(
+      deck_orm_accession_id
+    )
 
     if (
       deck_resource_orm.status == ResourceStatusEnum.IN_USE
@@ -221,7 +220,8 @@ class AssetManager:
     if (
       item_to_place_orm.status == ResourceStatusEnum.IN_USE
       and item_to_place_orm.current_protocol_run_accession_id == protocol_run_accession_id
-      and item_to_place_orm.location_machine_accession_id == deck_resource_orm.accession_id  # Located on this deck
+      and item_to_place_orm.location_machine_accession_id
+      == deck_resource_orm.accession_id  # Located on this deck
       and item_to_place_orm.current_deck_position_name == position_item_orm.position_accession_id
     ):
       logger.info(
@@ -380,7 +380,8 @@ class AssetManager:
 
     if (
       selected_machine_orm.status != MachineStatusEnum.IN_USE
-      or selected_machine_orm.current_protocol_run_accession_id != uuid.UUID(str(protocol_run_accession_id))
+      or selected_machine_orm.current_protocol_run_accession_id
+      != uuid.UUID(str(protocol_run_accession_id))
     ):
       updated_machine_orm = await self.svc.update_machine_status(
         self.db,
@@ -630,9 +631,7 @@ class AssetManager:
           target=target_deck_resource_accession_id,
           position_accession_id=target_position_name,
         )
-        final_status_details = (
-          f"On deck '{deck_user_name}' pos '{target_position_name}' for run {protocol_run_accession_id}"
-        )
+        final_status_details = f"On deck '{deck_user_name}' pos '{target_position_name}' for run {protocol_run_accession_id}"
       elif deck_user_name or position_on_deck:
         raise AssetAcquisitionError(
           "Partial location constraint: 'deck_name' and 'position_name' required.",
@@ -861,7 +860,10 @@ class AssetManager:
     )
     is_releasing_a_deck_resource = self._is_deck_resource(resource_def_orm)
 
-    clear_from_accession_id, clear_from_position_name = await self._handle_resource_release_location(
+    (
+      clear_from_accession_id,
+      clear_from_position_name,
+    ) = await self._handle_resource_release_location(
       is_releasing_a_deck_resource,
       resource_to_release,
       resource_orm_accession_id,

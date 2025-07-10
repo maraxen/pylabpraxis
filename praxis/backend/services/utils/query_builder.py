@@ -50,7 +50,7 @@ def apply_date_range_filters(
       The modified Select statement with date range filters applied.
 
   """
-  conditions = [] 
+  conditions = []
   if filters.date_range_start:
     conditions.append(orm_model_timestamp_field >= filters.date_range_start)
   if filters.date_range_end:

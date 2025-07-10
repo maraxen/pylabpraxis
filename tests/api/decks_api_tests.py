@@ -159,7 +159,9 @@ def test_list_available_decks_empty(client: TestClient, db_session: Session):
   assert response.json() == []
 
 
-def test_list_available_decks_with_data(client: TestClient, db_session: Session, setup_basic_machines: None):
+def test_list_available_decks_with_data(
+  client: TestClient, db_session: Session, setup_basic_machines: None
+):
   """Test GET /api/workcell/decks with a DECK and a NON-DECK machine."""
   response = client.get("/api/workcell/decks")
   assert response.status_code == 200
@@ -181,7 +183,9 @@ def test_get_specific_deck_state_not_found(client: TestClient, db_session: Sessi
   assert "not found" in response.json()["detail"].lower()
 
 
-def test_get_specific_deck_state_not_a_deck(client: TestClient, db_session: Session, setup_basic_machines: None):
+def test_get_specific_deck_state_not_a_deck(
+  client: TestClient, db_session: Session, setup_basic_machines: None
+):
   """Test GET /api/workcell/decks/{deck_accession_id}/state for a machine that is not a DECK."""
   response = client.get(f"/api/workcell/decks/{VALID_NON_DECK_ID}/state")
   assert response.status_code == 404  # As per current error handling
@@ -242,7 +246,9 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
   db_session.commit()
 
 
-def test_get_specific_deck_state_with_resource(client: TestClient, db_session: Session, setup_deck_with_resource: None):
+def test_get_specific_deck_state_with_resource(
+  client: TestClient, db_session: Session, setup_deck_with_resource: None
+):
   """Test GET /api/workcell/decks/{deck_accession_id}/state for a deck with resource."""
   response = client.get(f"/api/workcell/decks/{VALID_DECK_ID}/state")
   assert response.status_code == 200
@@ -296,7 +302,9 @@ def test_websocket_deck_updates_connection_and_broadcast(
       "position_name": "C3",
       "resource_name": "NewTipBox",
     }
-    response = client.post(f"/ws/test_broadcast/{VALID_DECK_ID}", json=test_message_payload)  # Send JSON payload
+    response = client.post(
+      f"/ws/test_broadcast/{VALID_DECK_ID}", json=test_message_payload
+    )  # Send JSON payload
     assert response.status_code == 200  # Assuming POST request for test broadcast
 
     # Receive the message from WebSocket
@@ -318,7 +326,9 @@ def test_websocket_deck_updates_connection_and_broadcast(
 
 def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, db_session: Session):
   """Test WebSocket connection attempt to an invalid deck_accession_id."""
-  with pytest.raises(Exception) as exc_info:  # Catching generic Exception as TestClient might wrap WebSocketDisconnect
+  with pytest.raises(
+    Exception
+  ) as exc_info:  # Catching generic Exception as TestClient might wrap WebSocketDisconnect
     with client.websocket_connect(f"/ws/decks/{INVALID_DEVICE_ID}/updates") as websocket:
       # We expect this connection to fail and be closed by the server.
       # Depending on how TestClient handles server-side close, this might raise.
@@ -338,7 +348,9 @@ def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, d
   # assert exc_info.value.code == 1008 # For WebSocketDisconnect exception if it holds the code
 
 
-def test_websocket_connection_to_non_deck_machine(client: TestClient, db_session: Session, setup_basic_machines: None):
+def test_websocket_connection_to_non_deck_machine(
+  client: TestClient, db_session: Session, setup_basic_machines: None
+):
   """Test WebSocket connection attempt to a machine that is not a DECK."""
   with pytest.raises(Exception) as exc_info:
     with client.websocket_connect(f"/ws/decks/{VALID_NON_DECK_ID}/updates"):

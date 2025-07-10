@@ -273,8 +273,7 @@ class PraxisState:
     if name in self.__dict__:
       return self.__dict__[name]
     msg = (
-      f"'{type(self).__name__}' object has no attribute '{name}' and no key "
-      f"'{name}' in state data"
+      f"'{type(self).__name__}' object has no attribute '{name}' and no key '{name}' in state data"
     )
     raise AttributeError(msg)
 

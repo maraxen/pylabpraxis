@@ -45,7 +45,11 @@ class MockResource:
     self.__class__.__module__ = "pylabrobot.resources.mocked"
 
   def serialize(self) -> dict[str, Any]:
-    return {"name": self.name, "model": self.model, "category": self.category_str or "mock_resource_category"}
+    return {
+      "name": self.name,
+      "model": self.model,
+      "category": self.category_str or "mock_resource_category",
+    }
 
   def get_size_x(self) -> float | None:
     return self.size_x
@@ -63,7 +67,9 @@ class MockResource:
   def get_well(self, index: int) -> Any:
     if not self._wells_data or index >= len(self._wells_data):
       mock_well = MagicMock(spec=MockPlrWell)
-      mock_well.max_volume = (self.capacity / len(self._wells_data)) if self._wells_data and self.capacity else 0
+      mock_well.max_volume = (
+        (self.capacity / len(self._wells_data)) if self._wells_data and self.capacity else 0
+      )
       return mock_well
     return self._wells_data[index]
 
@@ -258,7 +264,7 @@ class MockResourceItemized(MockBaseItemizedResource):
   def __init__(self, name: str, num_items_init: int = 5, **kwargs: Any):
     super().__init__(name, **kwargs)
     self.num_items = num_items_init  # Direct attribute for num_items extraction
-    self.wells = [MagicMock(name=f"W{i+1}") for i in range(num_items_init)]
+    self.wells = [MagicMock(name=f"W{i + 1}") for i in range(num_items_init)]
     self.__class__.__module__ = "pylabrobot.resources.mock_itemized"
     self.__class__.__name__ = "MockResourceItemized"
 
@@ -279,7 +285,9 @@ class MockResourceComplexConstructor(MockBaseResource):
   class_volume = 50.0  # Class attribute for testing fallback
   __name__ = "MockResourceComplexConstructor"
 
-  def __init__(self, name: str, required_object: SomeNonSimpleType, optional_int: int = 0, **kwargs: Any):
+  def __init__(
+    self, name: str, required_object: SomeNonSimpleType, optional_int: int = 0, **kwargs: Any
+  ):
     super().__init__(name, **kwargs)
     self.required_object = required_object
     self.optional_int = optional_int
@@ -333,7 +341,9 @@ def setup_mock_modules(
     # Ensure the class is also in the list of members for getmembers
     # and re-set it on the module object in case the module was already created
     current_module_obj, members_list = discovered_modules_info[module_name]
-    if not hasattr(current_module_obj, class_name):  # Avoid duplicate setattr if module processed multiple times
+    if not hasattr(
+      current_module_obj, class_name
+    ):  # Avoid duplicate setattr if module processed multiple times
       setattr(current_module_obj, class_name, r_class)
 
     # Avoid adding duplicate (name, class) tuples to members_list
@@ -361,7 +371,11 @@ def setup_mock_modules(
       #       f"{discovered_modules_info[module_name_lookup][1]}")
       # Filter by predicate if provided, as inspect.getmembers does
       if predicate:
-        return [(name, member) for name, member in discovered_modules_info[module_name_lookup][1] if predicate(member)]
+        return [
+          (name, member)
+          for name, member in discovered_modules_info[module_name_lookup][1]
+          if predicate(member)
+        ]
       return discovered_modules_info[module_name_lookup][1]
     # print(f"DEBUG_GETMEMBERS_HELPER: No members for {module_name_lookup}")
     return []
@@ -392,13 +406,17 @@ def mock_ads_service():
     mock_ads.read_resources.return_value = []
     mock_ads.get_resource.return_value = None
     mock_ads.get_resource_definition.return_value = None
-    mock_ads.add_or_update_resource_definition.return_value = MagicMock(spec=ResourceDefinitionOrmMock)
+    mock_ads.add_or_update_resource_definition.return_value = MagicMock(
+      spec=ResourceDefinitionOrmMock
+    )
     mock_ads.update_resource_location_and_status.return_value = MagicMock(spec=ResourceOrmMock)
     yield mock_ads
 
 
 @pytest.fixture
-def asset_manager(mock_db_session: MagicMock, mock_workcell_runtime: MagicMock, mock_ads_service: MagicMock):
+def asset_manager(
+  mock_db_session: MagicMock, mock_workcell_runtime: MagicMock, mock_ads_service: MagicMock
+):
   return AssetManager(db_session=mock_db_session, workcell_runtime=mock_workcell_runtime)
 
 
@@ -441,7 +459,9 @@ class TestAssetManagerAcquireDevice:
     assert orm_accession_id == 1
     assert dev_type == "machine"
 
-  def test_acquire_machine_no_machine_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
+  def test_acquire_machine_no_machine_found(
+    self, asset_manager: AssetManager, mock_ads_service: MagicMock
+  ):
     mock_ads_service.list_managed_machines.return_value = []
     with pytest.raises(
       AssetAcquisitionError,
@@ -460,7 +480,9 @@ class TestAssetManagerAcquireDevice:
     mock_ads_service.list_managed_machines.return_value = [mock_machine_orm]
     mock_workcell_runtime.initialize_machine_backend.return_value = None
 
-    with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for machine 'Device1'"):
+    with pytest.raises(
+      AssetAcquisitionError, match="Failed to initialize backend for machine 'Device1'"
+    ):
       asset_manager.acquire_machine("run123", "dev", "SomeDeviceClass")
 
   def test_acquire_machine_db_status_update_fails_after_init(
@@ -494,7 +516,9 @@ class TestAssetManagerAcquireResource:
     mock_workcell_runtime: MagicMock,
     mock_resource_def: MagicMock,
   ):
-    mock_lw_orm = ResourceOrmMock(id=1, name="Plate1", resource_definition_name="some_plate_def_name")
+    mock_lw_orm = ResourceOrmMock(
+      id=1, name="Plate1", resource_definition_name="some_plate_def_name"
+    )
     mock_ads_service.read_resources.side_effect = [
       [],
       [mock_lw_orm],
@@ -509,7 +533,9 @@ class TestAssetManagerAcquireResource:
       name_constraint="some_plate_def_name",
     )
 
-    mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, "some_plate_def_name")
+    mock_ads_service.get_resource_definition.assert_called_once_with(
+      asset_manager.db, "some_plate_def_name"
+    )
     mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
       resource_orm=mock_lw_orm,
       resource_definition_fqn="pylabrobot.resources.plate.Plate",
@@ -532,7 +558,9 @@ class TestAssetManagerAcquireResource:
     mock_workcell_runtime: MagicMock,
     mock_resource_def: MagicMock,
   ):
-    mock_lw_orm = ResourceOrmMock(id=1, name="Plate1", resource_definition_name="some_plate_def_name")
+    mock_lw_orm = ResourceOrmMock(
+      id=1, name="Plate1", resource_definition_name="some_plate_def_name"
+    )
     mock_deck_orm = ManagedDeviceOrmMock(id=10, name="MainDeck")
 
     mock_ads_service.read_resources.return_value = [mock_lw_orm]
@@ -567,7 +595,9 @@ class TestAssetManagerAcquireResource:
       status_details="In use by run run123",
     )
 
-  def test_acquire_resource_fqn_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock):
+  def test_acquire_resource_fqn_not_found(
+    self, asset_manager: AssetManager, mock_ads_service: MagicMock
+  ):
     mock_lw_orm = ResourceOrmMock(id=1, name="unknown_def_name")
     mock_ads_service.read_resources.return_value = [mock_lw_orm]
     mock_ads_service.get_resource_definition.return_value = None
@@ -597,7 +627,9 @@ class TestAssetManagerAcquireResource:
     mock_ads_service.get_resource_definition.return_value = mock_resource_def
     mock_workcell_runtime.create_or_get_resource_plr_object.return_value = None
 
-    with pytest.raises(AssetAcquisitionError, match="Failed to create PLR object for resource 'Plate1'"):
+    with pytest.raises(
+      AssetAcquisitionError, match="Failed to create PLR object for resource 'Plate1'"
+    ):
       asset_manager.acquire_resource("run123", "lw", "def")
 
 
@@ -611,7 +643,9 @@ class TestAssetManagerRelease:
     mock_machine_after_shutdown = ManagedDeviceOrmMock(id=1, status=ManagedDeviceStatusEnum.OFFLINE)
     mock_ads_service.get_managed_machine.return_value = mock_machine_after_shutdown
 
-    asset_manager.release_machine(machine_orm_accession_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE)
+    asset_manager.release_machine(
+      machine_orm_accession_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE
+    )
 
     mock_workcell_runtime.shutdown_machine_backend.assert_called_once_with(1)
     mock_ads_service.get_managed_machine.assert_called_once_with(asset_manager.db, 1)
@@ -694,16 +728,26 @@ class TestAssetManagerSyncPylabrobotDefinitions:
     self.mock_import_module_target = MagicMock(name="import_module_target_in_fixture")
     self.mock_getmembers_target = MagicMock(name="getmembers_target_in_fixture")
 
-    monkeypatch.setattr("praxis.backend.core.asset_manager.pkgutil.walk_packages", self.mock_walk_packages_target)
-    monkeypatch.setattr("praxis.backend.core.asset_manager.importlib.import_module", self.mock_import_module_target)
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.pkgutil.walk_packages", self.mock_walk_packages_target
+    )
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.importlib.import_module", self.mock_import_module_target
+    )
     monkeypatch.setattr(
       "praxis.backend.core.asset_manager.inspect.getmembers",
       self.mock_getmembers_target,
     )  # Patched here
 
-    monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.isabstract", self.mock_isabstract_inspect)
-    monkeypatch.setattr("praxis.backend.core.asset_manager.inspect.isclass", self.mock_isclass_inspect)
-    monkeypatch.setattr("praxis.backend.core.asset_manager.issubclass", self.mock_issubclass_inspect)
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.inspect.isabstract", self.mock_isabstract_inspect
+    )
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.inspect.isclass", self.mock_isclass_inspect
+    )
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.issubclass", self.mock_issubclass_inspect
+    )
     # Patch for the constructor param utility
     monkeypatch.setattr(
       "praxis.backend.core.asset_manager.get_resource_constructor_params",
@@ -712,8 +756,12 @@ class TestAssetManagerSyncPylabrobotDefinitions:
 
     # Keep existing PLR base class mocks as they might be used by other tests
     # The new simple mocks are additive for the new tests.
-    monkeypatch.setattr("praxis.backend.core.asset_manager.Resource", MockResource)  # Original detailed mock
-    monkeypatch.setattr("praxis.backend.core.asset_manager.Container", MockPlrContainer)  # Original detailed mock
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.Resource", MockResource
+    )  # Original detailed mock
+    monkeypatch.setattr(
+      "praxis.backend.core.asset_manager.Container", MockPlrContainer
+    )  # Original detailed mock
     monkeypatch.setattr("praxis.backend.core.asset_manager.PlrPlate", MockPlrPlate)
     monkeypatch.setattr("praxis.backend.core.asset_manager.PlrTipRack", MockPlrTipRack)
     monkeypatch.setattr("praxis.backend.core.asset_manager.Well", MockPlrWell)
@@ -761,7 +809,12 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         self.__class__.__module__ = "mock_pylabrobot_module.plates"
 
       def serialize(self) -> dict[str, Any]:
-        return {"custom_field": "value", "name": self.name, "model": self.model, "category_str": "plate"}
+        return {
+          "custom_field": "value",
+          "name": self.name,
+          "model": self.model,
+          "category_str": "plate",
+        }
 
     mock_module = MagicMock()
     mock_module.MockSimplePlateToSync = MockSimplePlateDef
@@ -803,7 +856,9 @@ class TestAssetManagerSyncPylabrobotDefinitions:
     assert call_args["is_consumable"] is True
     assert "MockSimplePlateToSync" in call_args["description"]
 
-  def test_sync_complex_constructor_fallback_to_class_data(self, asset_manager: AssetManager, caplog):
+  def test_sync_complex_constructor_fallback_to_class_data(
+    self, asset_manager: AssetManager, caplog
+  ):
     class MockComplexResource(MockResource):
       """Description for complex resource"""
 
@@ -852,7 +907,9 @@ class TestAssetManagerSyncPylabrobotDefinitions:
       "'backend'"
     ) in caplog.text
 
-  def test_sync_instantiation_failure_fallback_to_class_data(self, asset_manager: AssetManager, caplog):
+  def test_sync_instantiation_failure_fallback_to_class_data(
+    self, asset_manager: AssetManager, caplog
+  ):
     class MockFailingResource(MockResource):
       """Description for failing resource"""
 
@@ -923,7 +980,9 @@ class TestAssetManagerSyncPylabrobotDefinitions:
         super().__init__(name, model=model)
 
     original_excluded_names = asset_manager.EXCLUDED_CLASS_NAMES.copy()
-    monkeypatch.setattr(asset_manager, "EXCLUDED_CLASS_NAMES", original_excluded_names | {"MockExcludedByName"})
+    monkeypatch.setattr(
+      asset_manager, "EXCLUDED_CLASS_NAMES", original_excluded_names | {"MockExcludedByName"}
+    )
 
     mock_module_excluded = MagicMock()
     mock_module_excluded.MockExcludedByName = MockExcludedByName
@@ -1065,7 +1124,11 @@ class TestAssetManagerSyncPylabrobotDefinitions:
 
     self.mock_get_constructor_params.return_value = {
       "name": {"type": "str", "required": True, "default": inspect.Parameter.empty},
-      "required_object": {"type": "SomeNonSimpleType", "required": True, "default": inspect.Parameter.empty},
+      "required_object": {
+        "type": "SomeNonSimpleType",
+        "required": True,
+        "default": inspect.Parameter.empty,
+      },
       "optional_int": {"type": "int", "required": False, "default": 0},
     }
     self.mock_ads_service.get_resource_definition.return_value = None
@@ -1187,11 +1250,14 @@ class TestAssetManagerDeckLoading:
     with pytest.raises(AssetAcquisitionError, match="Deck layout 'NonExistentLayout' not found"):
       asset_manager.apply_deck("NonExistentLayout", "run123")
 
-  def test_deck_machine_not_found(self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm):
+  def test_deck_machine_not_found(
+    self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_deck_layout_orm
+  ):
     mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
     mock_ads_service.list_managed_machines.return_value = []  # No deck found
     with pytest.raises(
-      AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK",
+      AssetAcquisitionError,
+      match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK",
     ):
       asset_manager.apply_deck("TestDeckLayout", "run123")
     mock_ads_service.list_managed_machines.assert_called_once_with(
@@ -1212,7 +1278,9 @@ class TestAssetManagerDeckLoading:
     mock_ads_service.list_managed_machines.return_value = [mock_deck_machine_orm]
     mock_workcell_runtime.initialize_machine_backend.return_value = None  # Deck init fails
 
-    with pytest.raises(AssetAcquisitionError, match="Failed to initialize backend for deck 'TestDeckLayout'"):
+    with pytest.raises(
+      AssetAcquisitionError, match="Failed to initialize backend for deck 'TestDeckLayout'"
+    ):
       asset_manager.apply_deck("TestDeckLayout", "run123")
     mock_workcell_runtime.initialize_machine_backend.assert_called_once_with(mock_deck_machine_orm)
 
@@ -1266,8 +1334,12 @@ class TestAssetManagerDeckLoading:
 
     asset_manager.apply_deck(ProtocolDeck(name="TestDeckLayout"), "run123")  # Test with Deck input
 
-    mock_ads_service.get_resource.assert_called_once_with(asset_manager.db, mock_resource_orm.accession_id)
-    mock_ads_service.get_resource_definition.assert_called_once_with(asset_manager.db, mock_resource_orm.name)
+    mock_ads_service.get_resource.assert_called_once_with(
+      asset_manager.db, mock_resource_orm.accession_id
+    )
+    mock_ads_service.get_resource_definition.assert_called_once_with(
+      asset_manager.db, mock_resource_orm.name
+    )
     mock_workcell_runtime.create_or_get_resource_plr_object.assert_called_once_with(
       resource_orm=mock_resource_orm,
       resource_definition_fqn=mock_resource_def_catalog_orm.fqn,
@@ -1338,17 +1410,25 @@ class TestAssetManagerDeckLoading:
 # --- Tests for AssetManager Logging (New Class) ---
 class TestAssetManagerLogging:
   def test_acquire_resource_logs_property_constraints(
-    self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock, caplog,
+    self,
+    asset_manager: AssetManager,
+    mock_ads_service: MagicMock,
+    mock_workcell_runtime: MagicMock,
+    caplog,
   ):
     # Setup for a successful resource acquisition to reach the logging point
-    mock_lw_orm = ResourceOrmMock(id=1, name="PlateLogTest", resource_definition_name="log_plate_def")
+    mock_lw_orm = ResourceOrmMock(
+      id=1, name="PlateLogTest", resource_definition_name="log_plate_def"
+    )
     mock_resource_def = ResourceDefinitionOrmMock()
     mock_resource_def.fqn = "pylabrobot.resources.plate.Plate"  # Valid FQN
 
     mock_ads_service.read_resources.return_value = [mock_lw_orm]
     mock_ads_service.get_resource_definition.return_value = mock_resource_def
     mock_ads_service.update_resource_location_and_status.return_value = mock_lw_orm
-    mock_workcell_runtime.create_or_get_resource_plr_object.return_value = MagicMock(name="live_logging_plate")
+    mock_workcell_runtime.create_or_get_resource_plr_object.return_value = MagicMock(
+      name="live_logging_plate"
+    )
 
     property_constraints_payload = {"min_volume_ul": 10, "is_sterile": True}
 
@@ -1373,7 +1453,10 @@ class TestAssetManagerLogging:
     )
 
   def test_release_resource_logs_properties_update(
-    self, asset_manager: AssetManager, mock_ads_service: MagicMock, caplog,
+    self,
+    asset_manager: AssetManager,
+    mock_ads_service: MagicMock,
+    caplog,
   ):
     # Setup for release_resource
     final_props_update = {"content_state": "empty", "cleaned": True}

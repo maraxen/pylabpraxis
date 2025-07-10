@@ -6,7 +6,6 @@ This module provides the scheduling layer between the API and the Orchestrator,
 handling asset analysis, reservation, and asynchronous task queueing.
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -14,21 +13,21 @@ from typing import Any
 from celery import Celery
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
-from praxis.backend.services.protocols import ProtocolRunService
-from praxis.backend.models.pydantic.protocol import ProtocolRunUpdate
 from praxis.backend.core.celery_tasks import execute_protocol_run_task
 from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolRunStatusEnum,
+  FunctionProtocolDefinitionOrm,
+  ProtocolRunOrm,
+  ProtocolRunStatusEnum,
+)
+from praxis.backend.models.pydantic.protocol import (
+  AssetConstraintsModel,
+  AssetRequirementModel,
+  LocationConstraintsModel,
+  ProtocolRunUpdate,
 )
 from praxis.backend.models.pydantic.runtime import RuntimeAssetRequirement
-from praxis.backend.models.pydantic.protocol import (
-    AssetConstraintsModel,
-    AssetRequirementModel,
-    LocationConstraintsModel,
-)
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
 
@@ -178,7 +177,9 @@ class ProtocolScheduler:
     return requirements
 
   async def reserve_assets(
-    self, requirements: list[RuntimeAssetRequirement], protocol_run_id: uuid.UUID,
+    self,
+    requirements: list[RuntimeAssetRequirement],
+    protocol_run_id: uuid.UUID,
   ) -> bool:
     """Reserve assets for a protocol run.
 
@@ -251,7 +252,9 @@ class ProtocolScheduler:
       return False
 
   async def _release_reservations(
-    self, asset_keys: list[str], protocol_run_id: uuid.UUID,
+    self,
+    asset_keys: list[str],
+    protocol_run_id: uuid.UUID,
   ) -> None:
     """Release asset reservations for a protocol run."""
     for asset_key in asset_keys:
@@ -292,7 +295,9 @@ class ProtocolScheduler:
         protocol_def = protocol_run_orm.top_level_protocol_definition
         if not protocol_def:
           # Fetch from database if not loaded
-          protocol_definition_crud_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm)
+          protocol_definition_crud_service = ProtocolDefinitionCRUDService(
+            FunctionProtocolDefinitionOrm
+          )
           protocol_def = await protocol_definition_crud_service.get(
             db=db_session,
             accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
@@ -307,7 +312,8 @@ class ProtocolScheduler:
 
         # Analyze asset requirements
         requirements = await self.analyze_protocol_requirements(
-          protocol_def, user_params,
+          protocol_def,
+          user_params,
         )
 
         # Reserve assets
@@ -411,7 +417,9 @@ class ProtocolScheduler:
       try:
         # Try to use Celery task
         task_result = execute_protocol_run_task.delay(  # type: ignore
-          str(protocol_run_id), user_params, initial_state,
+          str(protocol_run_id),
+          user_params,
+          initial_state,
         )
         celery_task_id = getattr(task_result, "id", None)
       except AttributeError as e:
@@ -486,7 +494,8 @@ class ProtocolScheduler:
       return False
 
   async def get_schedule_status(
-    self, protocol_run_id: uuid.UUID,
+    self,
+    protocol_run_id: uuid.UUID,
   ) -> dict[str, Any] | None:
     """Get the current schedule status for a protocol run.
 

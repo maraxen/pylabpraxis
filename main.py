@@ -22,7 +22,6 @@ from praxis.backend.services.resource_type_definition import ResourceTypeDefinit
 from praxis.backend.utils.db import (
   KEYCLOAK_DSN_FROM_CONFIG,
   AsyncSessionLocal,
-  get_async_db_session,
   init_praxis_db_schema,
 )
 from praxis.backend.utils.db import (
@@ -91,9 +90,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       config=praxis_config,
     )
     logger.info("WorkcellRuntime initialized successfully.")
-    async with AsyncSessionLocal() as db_session: # Use async with for session
+    async with AsyncSessionLocal() as db_session:  # Use async with for session
       asset_manager = AssetManager(
-        db_session=db_session, workcell_runtime=workcell_runtime,
+        db_session=db_session,
+        workcell_runtime=workcell_runtime,
       )
 
       # Initialize the new type definition services
@@ -186,7 +186,9 @@ app.add_middleware(
 
 # --- API Router Inclusion ---
 app.include_router(
-  function_data_outputs.router, prefix="/api/v1/data-outputs", tags=["Data Outputs"],
+  function_data_outputs.router,
+  prefix="/api/v1/data-outputs",
+  tags=["Data Outputs"],
 )
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["Workcell"])

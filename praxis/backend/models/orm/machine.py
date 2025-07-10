@@ -183,8 +183,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=None,
   )
 
-  
-
 
 class MachineOrm(AssetOrm):
   """SQLAlchemy ORM model representing a physical machine or machine.
