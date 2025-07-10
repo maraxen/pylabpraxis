@@ -28,24 +28,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import (
-  PROTOCOL_REGISTRY,
-  PraxisRunContext,
-  serialize_arguments,
+    PROTOCOL_REGISTRY,
+    PraxisRunContext,
+    serialize_arguments,
 )
-from praxis.backend.models import (
-  AssetRequirementModel,
-  FunctionCallStatusEnum,
-  FunctionProtocolDefinitionModel,
-  ParameterMetadataModel,
-  ProtocolRunStatusEnum,
-  UIHint,
+from praxis.backend.models.pydantic.protocol import (
+    AssetRequirementModel,
+    FunctionCallStatusEnum,
+    FunctionProtocolDefinitionCreate,
+    ParameterMetadataModel,
+    ProtocolRunStatusEnum,
+    UIHint,
+    DecoratedFunctionInfo,
 )
-from praxis.backend.models.asset_lock_manager_pydantic_models import CreateProtocolDefinitionData
-from praxis.backend.models.decorators_pydantic_models import DecoratedFunctionInfo, ProtocolFunctionData
+from praxis.backend.models.pydantic.asset import CreateProtocolDefinitionData
 from praxis.backend.services.protocols import (
-  log_function_call_end,
-  log_function_call_start,
-  update_protocol_run_status,
+    log_function_call_end,
+    log_function_call_start,
+    update_protocol_run_status,
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.run_control import (
@@ -60,8 +60,8 @@ from praxis.backend.utils.type_inspection import (
 )
 from praxis.backend.utils.uuid import uuid7
 
-praxis_run_context_cv: contextvars.ContextVar[PraxisRunContext] = (
-  contextvars.ContextVar("praxis_run_context")
+praxis_run_context_cv: contextvars.ContextVar[PraxisRunContext] = contextvars.ContextVar(
+  "praxis_run_context",
 )
 
 DEFAULT_DECK_PARAM_NAME = "deck"
@@ -76,21 +76,21 @@ class ProtocolRuntimeInfo:
 
   def __init__(
     self,
-    pydantic_definition: FunctionProtocolDefinitionModel,
+    pydantic_definition: FunctionProtocolDefinitionCreate,
     function_ref: Callable,
     found_state_param_details: dict[str, Any] | None,
   ):
     """Initialize the ProtocolRuntimeInfo.
 
     Args:
-      pydantic_definition (FunctionProtocolDefinitionModel): The Pydantic model
+      pydantic_definition (FunctionProtocolDefinitionCreate): The Pydantic model
         definition of the protocol function.
       function_ref (Callable): The actual function reference.
       found_state_param_details (Optional[dict[str, Any]]): Details about the
         state parameter if it exists.
 
     """
-    self.pydantic_definition: FunctionProtocolDefinitionModel = pydantic_definition
+    self.pydantic_definition: FunctionProtocolDefinitionCreate = pydantic_definition
     self.function_ref: Callable = function_ref
     self.callable_wrapper: Callable | None = None
     self.db_accession_id: uuid.UUID | None = None
@@ -115,7 +115,7 @@ def get_callable_fqn(func: Callable) -> str:
 
 def _create_protocol_definition(
   data: CreateProtocolDefinitionData,
-) -> tuple[FunctionProtocolDefinitionModel, dict[str, Any] | None]:
+) -> tuple[FunctionProtocolDefinitionCreate, dict[str, Any] | None]:
   """Parse a function signature and decorator args to create a protocol definition."""
   resolved_name = data.name or data.func.__name__
   if not resolved_name:
@@ -140,7 +140,8 @@ def _create_protocol_definition(
   found_state_param_details: dict[str, Any] | None = None
 
   for param_name_sig, param_obj in sig.parameters.items():
-    parameters_list, assets_list, found_deck_param, found_state_param_details =       self._process_parameter(
+    parameters_list, assets_list, found_deck_param, found_state_param_details = (
+      self._process_parameter(
         param_name_sig,
         param_obj,
         data,
@@ -149,6 +150,7 @@ def _create_protocol_definition(
         found_deck_param,
         found_state_param_details,
       )
+    )
 
   if data.preconfigure_deck and not found_deck_param:
     raise TypeError(
@@ -157,11 +159,10 @@ def _create_protocol_definition(
     )
   if data.is_top_level and not found_state_param_details:
     raise TypeError(
-      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' "
-      "parameter.",
+      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' " "parameter.",
     )
 
-  protocol_definition = FunctionProtocolDefinitionModel(
+  protocol_definition = FunctionProtocolDefinitionCreate(
     accession_id=uuid7(),
     name=resolved_name,
     version=data.version,
@@ -203,9 +204,7 @@ def _process_parameter(
   p_description = param_meta_entry.get("description")
   p_constraints = param_meta_entry.get("constraints_json", {})
   p_ui_hints_dict = param_meta_entry.get("ui_hints")
-  p_ui_hints = (
-    UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
-  )
+  p_ui_hints = UIHint(**p_ui_hints_dict) if isinstance(p_ui_hints_dict, dict) else None
 
   common_model_args = {
     "name": param_name_sig,
@@ -226,9 +225,7 @@ def _process_parameter(
     )
     found_deck_param = True
   elif param_name_sig == data.state_param_name:
-    is_state_type_match = (
-      fqn in {"PraxisState", "praxis.backend.core.definitions.PraxisState"}
-    )
+    is_state_type_match = fqn in {"PraxisState", "praxis.backend.core.definitions.PraxisState"}
     is_dict_type_match = fqn == "dict"
     found_state_param_details = {
       "name": param_name_sig,
@@ -251,6 +248,7 @@ def _process_parameter(
       parameters_list.append(ParameterMetadataModel(**common_model_args))
   return parameters_list, assets_list, found_deck_param, found_state_param_details
 
+
 async def _prepare_function_arguments(
   func: Callable,
   kwargs: dict,
@@ -272,10 +270,7 @@ async def _prepare_function_arguments(
   if (
     "__praxis_run_context__" in processed_kwargs_for_call
     and "__praxis_run_context__" not in func.__code__.co_varnames
-    and not any(
-      p.kind == inspect.Parameter.VAR_KEYWORD
-      for p in sig_check.parameters.values()
-    )
+    and not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_check.parameters.values())
   ):
     del processed_kwargs_for_call["__praxis_run_context__"]
   return processed_kwargs_for_call
@@ -303,7 +298,8 @@ async def _log_call_start(
     return call_log_entry_orm.accession_id
   except Exception:  # pylint: disable=broad-except
     logger.exception(
-      "Failed to log function call start for run %s", context.run_accession_id,
+      "Failed to log function call start for run %s",
+      context.run_accession_id,
     )
     return None
 
@@ -341,7 +337,7 @@ def protocol_function(
 
   def decorator(func: Callable):
     protocol_definition, found_state_param_details = _create_protocol_definition(
-      CreateProtocolDefinitionData(
+      FunctionProtocolDefinitionCreate(
         func=func,
         name=name,
         version=version,
@@ -356,7 +352,7 @@ def protocol_function(
         category=category,
         tags=actual_tags,
         top_level_name_format=top_level_name_format,
-      )
+      ),
     )
     func._protocol_definition = protocol_definition
 
@@ -380,16 +376,19 @@ def protocol_function(
           "within a valid Praxis run context.",
         )
 
-      current_call_log_db_accession_id, context_for_this_call, token = \
-        await _process_wrapper_arguments(
-          parent_context,
-          current_meta,
-          list(args),
-          dict(kwargs),
-          state_param_name,
-          protocol_unique_key, # Pass protocol_unique_key
-          func # Pass func
-        )
+      (
+        current_call_log_db_accession_id,
+        context_for_this_call,
+        token,
+      ) = await _process_wrapper_arguments(
+        parent_context,
+        current_meta,
+        list(args),
+        dict(kwargs),
+        state_param_name,
+        protocol_unique_key,  # Pass protocol_unique_key
+        func,  # Pass func
+      )
 
       result = None
       error = None
@@ -410,7 +409,8 @@ def protocol_function(
         else:
           loop = asyncio.get_running_loop()
           result = await loop.run_in_executor(
-            None, functools.partial(func, *args, **processed_kwargs_for_call),
+            None,
+            functools.partial(func, *args, **processed_kwargs_for_call),
           )
 
       except ProtocolCancelledError:
@@ -461,7 +461,8 @@ def protocol_function(
           # Broad except is justified here as we must not let a logging failure
           # interrupt the protocol's exception propagation.
           logger.exception(
-            "Failed to log function call end for '%s'", protocol_definition.name,
+            "Failed to log function call end for '%s'",
+            protocol_definition.name,
           )
 
       if error:
@@ -481,8 +482,8 @@ async def _process_wrapper_arguments(
   processed_args: list,
   processed_kwargs: dict,
   state_param_name: str,
-  protocol_unique_key: str, # Added
-  func: Callable # Added
+  protocol_unique_key: str,  # Added
+  func: Callable,  # Added
 ) -> tuple[uuid.UUID, PraxisRunContext, contextvars.Token]:
   this_function_def_db_accession_id = current_meta.db_accession_id
   state_details = current_meta.found_state_param_details
@@ -496,15 +497,11 @@ async def _process_wrapper_arguments(
     elif state_details["expects_dict"]:
       if state_arg_name_in_sig not in processed_kwargs:
         processed_kwargs[state_arg_name_in_sig] = (
-          parent_context.canonical_state.data.copy()
-          if parent_context.canonical_state
-          else {}
+          parent_context.canonical_state.data.copy() if parent_context.canonical_state else {}
         )
 
   current_call_log_db_accession_id: uuid.UUID | None = None
-  parent_log_accession_id_for_this_call = (
-    parent_context.current_call_log_db_accession_id
-  )
+  parent_log_accession_id_for_this_call = parent_context.current_call_log_db_accession_id
 
   current_call_log_db_accession_id = await _log_call_start(
     context=parent_context,
@@ -526,7 +523,8 @@ async def _process_wrapper_arguments(
 
 
 async def _handle_pause_state(
-  run_accession_id: uuid.UUID, db_session: AsyncSession,
+  run_accession_id: uuid.UUID,
+  db_session: AsyncSession,
 ) -> str:
   """Handle the logic when a protocol is in a PAUSED state, waiting for a command."""
   while True:
@@ -535,7 +533,9 @@ async def _handle_pause_state(
 
     if command in ["RESUME", "CANCEL"]:
       logger.info(
-        "Received command '%s' while PAUSED for run %s.", command, run_accession_id,
+        "Received command '%s' while PAUSED for run %s.",
+        command,
+        run_accession_id,
       )
       return command
 
@@ -543,7 +543,9 @@ async def _handle_pause_state(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING during pause.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING,
+        db_session,
+        run_accession_id,
+        ProtocolRunStatusEnum.INTERVENING,
       )
       await db_session.commit()
       # TODO: Dispatch to intervention handler
@@ -565,7 +567,8 @@ async def _handle_pause_state(
 
 
 async def _handle_control_commands(
-  run_accession_id: uuid.UUID, db_session: AsyncSession,
+  run_accession_id: uuid.UUID,
+  db_session: AsyncSession,
 ) -> None:
   """Check for and handle control commands like PAUSE and CANCEL before execution."""
   while True:
@@ -586,11 +589,15 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s PAUSING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSING,
+        db_session,
+        run_accession_id,
+        ProtocolRunStatusEnum.PAUSING,
       )
       await db_session.commit()
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.PAUSED,
+        db_session,
+        run_accession_id,
+        ProtocolRunStatusEnum.PAUSED,
       )
       await db_session.commit()
 
@@ -600,11 +607,15 @@ async def _handle_control_commands(
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s RESUMING.", run_accession_id)
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.RESUMING,
+          db_session,
+          run_accession_id,
+          ProtocolRunStatusEnum.RESUMING,
         )
         await db_session.commit()
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.RUNNING,
+          db_session,
+          run_accession_id,
+          ProtocolRunStatusEnum.RUNNING,
         )
         await db_session.commit()
         continue  # Re-check for commands immediately after resuming
@@ -613,7 +624,9 @@ async def _handle_control_commands(
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s CANCELLING after pause.", run_accession_id)
         await update_protocol_run_status(
-          db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING,
+          db_session,
+          run_accession_id,
+          ProtocolRunStatusEnum.CANCELING,
         )
         await db_session.commit()
         await update_protocol_run_status(
@@ -629,7 +642,9 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s CANCELLING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.CANCELING,
+        db_session,
+        run_accession_id,
+        ProtocolRunStatusEnum.CANCELING,
       )
       await db_session.commit()
       await update_protocol_run_status(
@@ -645,7 +660,9 @@ async def _handle_control_commands(
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING.", run_accession_id)
       await update_protocol_run_status(
-        db_session, run_accession_id, ProtocolRunStatusEnum.INTERVENING,
+        db_session,
+        run_accession_id,
+        ProtocolRunStatusEnum.INTERVENING,
       )
       await db_session.commit()
       # TODO: dispatch to intervention handler

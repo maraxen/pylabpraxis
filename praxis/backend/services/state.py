@@ -158,10 +158,10 @@ class PraxisState:
       self.redis_client.set(self.redis_key, serialized_state.encode("utf-8"))
     except TypeError:
       logger.exception(
-        "TypeError during JSON serialization for run %s. State data may not be fully JSON serializable.",
+        "TypeError during JSON serialization for run %s. State data may not be "
+        "fully JSON serializable.",
         self.run_accession_id,
       )
-      raise
     except redis.RedisError:
       logger.exception(
         "Failed to save state for run %s to Redis",
@@ -272,7 +272,10 @@ class PraxisState:
       return self._data[name]
     if name in self.__dict__:
       return self.__dict__[name]
-    msg = f"'{type(self).__name__}' object has no attribute '{name}' and no key '{name}' in" " state data"
+    msg = (
+      f"'{type(self).__name__}' object has no attribute '{name}' and no key "
+      f"'{name}' in state data"
+    )
     raise AttributeError(msg)
 
   def __setattr__(self, name: str, value: Any) -> None:

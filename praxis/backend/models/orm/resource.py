@@ -32,22 +32,21 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
-from praxis.backend.utils.db import Base
+from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 
 if TYPE_CHECKING:
   from . import (
-    AssetRequirementOrm,
+    DeckDefinitionOrm,
     DeckOrm,
     FunctionDataOutputOrm,
     MachineDefinitionOrm,
     MachineOrm,
     WellDataOutputOrm,
-    DeckDefinitionOrm,
     WorkcellOrm,
   )
 
 
-class ResourceDefinitionOrm(Base):
+class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
   """SQLAlchemy ORM model for cataloging PyLabRobot resource definitions.
 
   This model stores comprehensive metadata about various types of lab resources,
@@ -56,32 +55,11 @@ class ResourceDefinitionOrm(Base):
 
   __tablename__ = "resource_definition_catalog"
 
-  name: Mapped[str] = mapped_column(
-    String,
-    unique=True,
-    index=True,
-    nullable=False,
-    comment="Name of the resource definition, e.g., '96 Well Plate', 'Tip Rack 200µL'",
-    init=False,
-  )
-  fqn: Mapped[str] = mapped_column(
-    String,
-    nullable=False,
-    index=True,
-    comment="Fully qualified name of the resource definition.",
-    default="pylabrobot.resources.Resource",
-  )
   resource_type: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     comment="Human-readable type of the resource.",
     default=None,
-  )
-  description: Mapped[str | None] = mapped_column(
-    Text,
-    nullable=True,
-    default=None,
-    comment="Description of the resource type.",
   )
   is_consumable: Mapped[bool] = mapped_column(Boolean, default=False)
   nominal_volume_ul: Mapped[float | None] = mapped_column(
@@ -126,17 +104,6 @@ class ResourceDefinitionOrm(Base):
     nullable=True,
     default=None,
     comment="Size in Z dimension (mm).",
-  )
-  plr_category: Mapped[str | None] = mapped_column(
-    String,
-    nullable=True,
-    index=True,
-    default=None,
-    comment=(
-      "Specific PyLabRobot resource class name (e.g., 'Plate', 'TipRack',"
-      " 'Carrier', 'Trough') from the PLR ontology. Corresponds to PLR"
-      " Resource.category or the direct subclass name."
-    ),
   )
   model: Mapped[str | None] = mapped_column(
     String,
@@ -183,12 +150,10 @@ class ResourceDefinitionOrm(Base):
   machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
     "MachineDefinitionOrm",
     back_populates="resource_definition",
-    default=None,
-  )
-  asset_requirement: Mapped["AssetRequirementOrm | None"] = relationship(
-    "AssetRequirementOrm",
-    back_populates="resource_definitions",
+    nullable=True,
     uselist=False,
+    foreign_keys=[machine_definition_accession_id],
+    comment="Machine definition associated with this resource, if applicable.",
     default=None,
   )
   deck_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
@@ -197,12 +162,9 @@ class ResourceDefinitionOrm(Base):
     uselist=False,
     foreign_keys=[deck_definition_accession_id],
     comment="Deck definition associated with this resource, if applicable.",
+    nullable=True,
     default=None,
   )
-
-  def __repr__(self) -> str:
-    """Return a string representation of the ResourceDefinitionOrm object."""
-    return f"<ResourceDefinitionOrm(name='{self.name}', category='{self.plr_category}')>"
 
 
 class ResourceOrm(AssetOrm):
@@ -265,7 +227,7 @@ class ResourceOrm(AssetOrm):
   )
 
   # State
-  current_status: Mapped[ResourceStatusEnum] = mapped_column(
+  status: Mapped[ResourceStatusEnum] = mapped_column(
     SAEnum(ResourceStatusEnum, name="resource_status_enum"),
     default=ResourceStatusEnum.UNKNOWN,
     nullable=False,
@@ -307,7 +269,15 @@ class ResourceOrm(AssetOrm):
     uselist=False,
     default=None,
   )
-  location_workcell: Mapped["WorkcellOrm | None"] = relationship(
+  workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("workcells.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the workcell this resource belongs to, if applicable.",
+    default=None,
+  )
+  workcell: Mapped["WorkcellOrm | None"] = relationship(
     "WorkcellOrm",
     back_populates="resources",
     uselist=False,
@@ -329,5 +299,5 @@ class ResourceOrm(AssetOrm):
     )
     return (
       f"<ResourceOrm(accession_id={self.accession_id}, name='{self.name}',"
-      f" type='{fqn}')> status={self.current_status.value}, "
+      f" type='{fqn}')> status={self.status.value}, "
     )

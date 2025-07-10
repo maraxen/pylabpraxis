@@ -11,10 +11,8 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import (
-  ProtocolRunDataSummary,
-)
-from praxis.backend.models.function_data_output_orm import (
+from praxis.backend.models.pydantic.outputs import ProtocolRunDataSummary
+from praxis.backend.models.orm.outputs import (
   FunctionDataOutputOrm,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -99,7 +97,10 @@ async def read_protocol_run_data_summary(
     .order_by(FunctionDataOutputOrm.measurement_timestamp),
   )
 
-  data_timeline = [{"timestamp": row[0], "data_type": row[1].value, "count": row[2]} for row in timeline_result.all()]
+  data_timeline = [
+    {"timestamp": row[0], "data_type": row[1].value, "count": row[2]}
+    for row in timeline_result.all()
+  ]
 
   # Get file attachments
   files_result = await db.execute(
@@ -116,7 +117,8 @@ async def read_protocol_run_data_summary(
   )
 
   file_attachments = [
-    {"file_path": row[0], "file_size_bytes": row[1], "data_type": row[2].value} for row in files_result.all()
+    {"file_path": row[0], "file_size_bytes": row[1], "data_type": row[2].value}
+    for row in files_result.all()
   ]
 
   machines_used = [m for m in machines_used if m is not None]

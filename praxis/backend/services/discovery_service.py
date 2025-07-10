@@ -23,19 +23,20 @@ from typing import (
   get_origin,
 )
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # MODIFIED
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-# Global in-memory registry (populated by decorators, updated by this service)
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY
-from praxis.backend.models.protocol_pydantic_models import (
-  AssetRequirementModel,
-  FunctionProtocolDefinitionModel,
-  ParameterMetadataModel,
+from praxis.backend.models.pydantic.protocol import (
+    AssetRequirementModel,
+    FunctionProtocolDefinitionCreate,
+    FunctionProtocolDefinitionUpdate,
+    ParameterMetadataModel,
 )
-
-# MODIFIED: Import async version of upsert
-from praxis.backend.services.protocols import (
-  upsert_function_protocol_definition,
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.resource_type_definition import (
+    ResourceTypeDefinitionService,
 )
 from praxis.backend.utils.type_inspection import (
   fqn_from_hint,
@@ -47,36 +48,83 @@ from praxis.backend.utils.uuid import uuid7
 logger = logging.getLogger(__name__)
 
 
-# --- End Helper Functions ---
-
-
-class ProtocolDiscoveryService:
-  """Service for discovering and managing protocol functions.
-
-  Discovers protocol functions, prepares their definitions, upserts them to the DB,
-  and updates the in-memory PROTOCOL_REGISTRY with their database IDs.
-  """
+class DiscoveryService:
+  """Service for discovering and managing protocol functions and PLR type definitions."""
 
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession] | None = None,
+    resource_type_definition_service: ResourceTypeDefinitionService | None = None,
+    machine_type_definition_service: MachineTypeDefinitionService | None = None,
+    deck_type_definition_service: DeckTypeDefinitionService | None = None,
+    protocol_definition_service: ProtocolDefinitionCRUDService | None = None,
   ) -> None:
-    """Initialize the ProtocolDiscoveryService.
+    """Initialize the DiscoveryService.
 
     Args:
       db_session_factory: An async session factory for database operations.
         If not provided, the service will not be able to upsert definitions.
+      resource_type_definition_service: Service for resource type definitions.
+      machine_type_definition_service: Service for machine type definitions.
+      deck_type_definition_service: Service for deck type definitions.
+      protocol_definition_service: Service for protocol definitions.
 
     Returns:
       None
 
     """
     self.db_session_factory = db_session_factory
+    self.resource_type_definition_service = resource_type_definition_service
+    self.machine_type_definition_service = machine_type_definition_service
+    self.deck_type_definition_service = deck_type_definition_service
+    self.protocol_definition_service = protocol_definition_service
+
+  async def discover_and_sync_all_definitions(
+    self,
+    protocol_search_paths: str | list[str],
+    source_repository_accession_id: uuid.UUID | None = None,
+    commit_hash: str | None = None,
+    file_system_source_accession_id: uuid.UUID | None = None,
+  ) -> None:
+    """Discovers and synchronizes all PLR type definitions and protocols.
+
+    Args:
+      protocol_search_paths: Paths to search for protocol definitions.
+      source_repository_accession_id: Optional ID of the source repository.
+      commit_hash: Optional commit hash.
+      file_system_source_accession_id: Optional ID of the file system source.
+
+    """
+    logger.info("Starting discovery and synchronization of all definitions...")
+
+    if self.resource_type_definition_service:
+      logger.info("Synchronizing resource type definitions...")
+      await self.resource_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Resource type definitions synchronized.")
+
+    if self.machine_type_definition_service:
+      logger.info("Synchronizing machine type definitions...")
+      await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Machine type definitions synchronized.")
+
+    if self.deck_type_definition_service:
+      logger.info("Synchronizing deck type definitions...")
+      await self.deck_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Deck type definitions synchronized.")
+
+    logger.info("Discovering and upserting protocols...")
+    await self.discover_and_upsert_protocols(
+      search_paths=protocol_search_paths,
+      source_repository_accession_id=source_repository_accession_id,
+      commit_hash=commit_hash,
+      file_system_source_accession_id=file_system_source_accession_id,
+    )
+    logger.info("All definitions synchronized.")
 
   def _extract_protocol_definitions_from_paths(
     self,
     search_paths: str | list[str],
-  ) -> list[tuple[FunctionProtocolDefinitionModel, Callable | None]]:
+  ) -> list[tuple[FunctionProtocolDefinitionCreate, Callable | None]]:
     """Extract protocol function definitions from Python files in the given paths.
 
     Scans the specified directories for Python files, inspects their functions,
@@ -85,7 +133,7 @@ class ProtocolDiscoveryService:
     it infers the protocol definition from the function signature and docstring.
     This method supports both single path strings and lists of paths.
     It also handles reloading of modules to ensure the latest definitions are used.
-    It returns a list of tuples, each containing a FunctionProtocolDefinitionModel
+    It returns a list of tuples, each containing a FunctionProtocolDefinitionCreate
     and the corresponding function reference. If a function cannot be found or
     processed, it logs an error and continues with the next function.
     This method is synchronous and should be called before any async operations
@@ -95,7 +143,7 @@ class ProtocolDiscoveryService:
     missing attributes, or unexpected function signatures.
     It also ensures that the search paths are valid directories and handles
     cases where the provided paths do not exist or are not directories.
-    It returns a list of tuples containing the FunctionProtocolDefinitionModel
+    It returns a list of tuples containing the FunctionProtocolDefinitionCreate
     and the corresponding function reference, or None if the function could not
     be found or processed.
 
@@ -103,14 +151,14 @@ class ProtocolDiscoveryService:
       search_paths: A single path or a list of paths to search for Python files.
 
     Returns:
-      A list of tuples containing the FunctionProtocolDefinitionModel and the
+      A list of tuples containing the FunctionProtocolDefinitionCreate and the
       corresponding function reference, or None if the function could not be found.
 
     """
     if isinstance(search_paths, str):
       search_paths = [search_paths]
 
-    extracted_definitions: list[tuple[FunctionProtocolDefinitionModel, Callable | None]] = []  # type: ignore
+    extracted_definitions: list[tuple[FunctionProtocolDefinitionCreate, Callable | None]] = []  # type: ignore
     processed_func_accession_ids: set[int] = set()
     loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
@@ -158,7 +206,7 @@ class ProtocolDiscoveryService:
                 protocol_def_attr = getattr(func_obj, "_protocol_definition", None)
                 if protocol_def_attr and isinstance(
                   protocol_def_attr,
-                  FunctionProtocolDefinitionModel,
+                  FunctionProtocolDefinitionCreate,
                 ):
                   extracted_definitions.append((protocol_def_attr, func_obj))
                 else:
@@ -202,7 +250,7 @@ class ProtocolDiscoveryService:
                         ParameterMetadataModel(**common_args, is_deck_param=False),
                       )
 
-                  inferred_model = FunctionProtocolDefinitionModel(
+                  inferred_model = FunctionProtocolDefinitionCreate(
                     accession_id=uuid7(),  # TODO: ensure that if a reinspection happens it is assigned the already existing
                     name=func_obj.__name__,
                     version="0.0.0-inferred",
@@ -228,7 +276,7 @@ class ProtocolDiscoveryService:
 
   async def discover_and_upsert_protocols(
     self,
-    search_paths: str | list[str],  # Re-added search_paths argument
+    search_paths: str | list[str],
     source_repository_accession_id: uuid.UUID | None = None,
     commit_hash: str | None = None,
     file_system_source_accession_id: uuid.UUID | None = None,
@@ -257,9 +305,9 @@ class ProtocolDiscoveryService:
       found.
 
     """
-    if not self.db_session_factory:
+    if not self.protocol_definition_service:
       logger.error(
-        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService. Cannot upsert definitions.",
+        "DiscoveryService: Protocol definition service not provided. Cannot upsert definitions.",
       )
       return []
 
@@ -281,44 +329,28 @@ class ProtocolDiscoveryService:
       for protocol_pydantic_model, func_ref in extracted_definitions:
         protocol_name_for_error = protocol_pydantic_model.name
         protocol_version_for_error = protocol_pydantic_model.version
-        try:  # TODO: have these pull from the protocol database  ORM
-          if source_repository_accession_id and commit_hash:
-            protocol_pydantic_model.source_repository_name = str(
-              source_repository_accession_id,
-            )
-            protocol_pydantic_model.commit_hash = commit_hash
-          elif file_system_source_accession_id:
-            protocol_pydantic_model.file_system_source_name = str(
-              file_system_source_accession_id,
-            )
-
-          def_orm = await upsert_function_protocol_definition(
-            db=session,
-            protocol_pydantic=protocol_pydantic_model,
-            source_repository_accession_id=source_repository_accession_id,
-            commit_hash=commit_hash,
-            file_system_source_accession_id=file_system_source_accession_id,
+        try:
+          existing_def = await self.protocol_definition_service.get_by_fqn(
+              db=session, fqn=f"{protocol_pydantic_model.module_name}.{protocol_pydantic_model.function_name}"
           )
+
+          if existing_def:
+              update_data = FunctionProtocolDefinitionUpdate(**protocol_pydantic_model.model_dump())
+              def_orm = await self.protocol_definition_service.update(
+                  db=session, db_obj=existing_def, obj_in=update_data
+              )
+          else:
+              def_orm = await self.protocol_definition_service.create(
+                  db=session, obj_in=protocol_pydantic_model
+              )
+
           upserted_definitions_orm.append(def_orm)
 
           protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
 
-          func_ref_protocol_def = getattr(func_ref, "_protocol_definition", None)
-          if func_ref and func_ref_protocol_def is protocol_pydantic_model:
-            if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              func_ref_protocol_def.db_accession_id = def_orm.accession_id
-
           if protocol_unique_key in PROTOCOL_REGISTRY:
             if hasattr(def_orm, "id") and def_orm.accession_id is not None:
               PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = def_orm.accession_id
-              pydantic_def_in_registry = PROTOCOL_REGISTRY[protocol_unique_key].get(
-                "pydantic_definition",
-              )  # type: ignore
-              if pydantic_def_in_registry and isinstance(
-                pydantic_def_in_registry,
-                FunctionProtocolDefinitionModel,
-              ):
-                pydantic_def_in_registry.db_accession_id = def_orm.accession_id
             else:
               logger.warning(
                 f"DiscoveryService: Upserted ORM object for '{protocol_unique_key}' has"

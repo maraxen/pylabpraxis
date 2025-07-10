@@ -20,6 +20,9 @@ from .resource import (
 class DeckBase(ResourceBase):
   """Base model for a deck."""
 
+  machine_id: UUID7 | None = None
+  deck_type_id: UUID7 | None = None
+
 
 class DeckCreate(ResourceCreate, DeckBase):
   """Model for creating a new deck."""
@@ -127,6 +130,9 @@ class DeckPositionDefinitionUpdate(BaseModel):
   """Model for updating a deck position definition."""
 
 
+from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
+
+
 class DeckTypeDefinitionBase(BaseModel):
   """Base model for a deck type definition."""
 
@@ -135,9 +141,17 @@ class DeckTypeDefinitionBase(BaseModel):
   description: str | None = None
   positioning_config: PositioningConfig
   position_definitions: list[DeckPositionDefinitionCreate] | None = None
+  plr_category: str | None = None
+  default_size_x_mm: float | None = None
+  default_size_y_mm: float | None = None
+  default_size_z_mm: float | None = None
+  serialized_constructor_args_json: dict[str, Any] | None = None
+  serialized_assignment_methods_json: dict[str, Any] | None = None
+  serialized_constructor_hints_json: dict[str, Any] | None = None
+  additional_properties_json: dict[str, Any] | None = None
 
 
-class DeckTypeDefinitionCreate(DeckTypeDefinitionBase):
+class DeckTypeDefinitionCreate(DeckTypeDefinitionBase, PLRTypeDefinitionCreate):
   """Model for creating a new deck type definition."""
 
 
@@ -153,7 +167,7 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
     from_attributes = True
 
 
-class DeckTypeDefinitionUpdate(BaseModel):
+class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
   """Model for updating a deck type definition."""
 
   name: str | None = None
@@ -161,6 +175,14 @@ class DeckTypeDefinitionUpdate(BaseModel):
   description: str | None = None
   positioning_config: PositioningConfig | None = None
   position_definitions: list[DeckPositionDefinitionCreate] | None = None
+  plr_category: str | None = None
+  default_size_x_mm: float | None = None
+  default_size_y_mm: float | None = None
+  default_size_z_mm: float | None = None
+  serialized_constructor_args_json: dict[str, Any] | None = None
+  serialized_assignment_methods_json: dict[str, Any] | None = None
+  serialized_constructor_hints_json: dict[str, Any] | None = None
+  additional_properties_json: dict[str, Any] | None = None
 
   class Config:
     """Pydantic configuration."""

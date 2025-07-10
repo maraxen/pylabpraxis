@@ -10,8 +10,8 @@ from praxis.backend.models import (
 
 # Import the service functions to be tested
 from praxis.backend.services import (
-  create_resource_definition,
   create_resource,  # Also needed for a deletion test
+  create_resource_definition,
   delete_resource_definition,
   read_resource_definition,
   read_resource_definition_by_fqn,

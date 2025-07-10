@@ -2,13 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:praxis_lab_management/src/core/error/exceptions.dart';
+import 'package:praxis_lab_management/src/core/network/dio_client.dart';
 import 'package:praxis_lab_management/src/data/models/deck_layout_orm.dart';
+import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_definition_catalog_orm.dart';
 import 'package:praxis_lab_management/src/data/models/resource_orm.dart';
-import 'package:praxis_lab_management/src/data/models/managed_machine_orm.dart';
 import 'package:praxis_lab_management/src/data/services/asset_api_service.dart';
-import 'package:praxis_lab_management/src/core/network/dio_client.dart';
-import 'package:praxis_lab_management/src/core/error/exceptions.dart';
 
 // Generate mocks for DioClient and Dio
 @GenerateMocks([DioClient, Dio])
@@ -492,7 +492,7 @@ void main() {
       'name': 'test_plate_def',
       'properties_json':
           inventoryDataJson, // This contains the inventory details
-      'current_status': 'AVAILABLE_IN_STORAGE',
+      'status': 'AVAILABLE_IN_STORAGE',
       'workspaceId':
           'ws1', // Assuming workspaceId is part of your frontend model
     };

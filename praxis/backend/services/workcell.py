@@ -12,14 +12,15 @@ This module provides functions to create, read, update, and delete workcell entr
 import datetime
 import logging
 import uuid
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, Column, DateTime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models import WorkcellCreate, WorkcellOrm, WorkcellUpdate
+from praxis.backend.models.orm.workcell import WorkcellOrm
+from praxis.backend.models.pydantic.workcell import WorkcellCreate, WorkcellUpdate
 from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
@@ -39,15 +40,7 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
         """Create a new workcell."""
         logger.info("Attempting to create workcell '%s'.", obj_in.name)
 
-        workcell_orm = self.model(
-            id=uuid7(),
-            name=obj_in.name,
-            description=obj_in.description,
-            physical_location=obj_in.physical_location,
-            latest_state_json=obj_in.initial_state,
-            last_state_update_time=datetime.datetime.now(datetime.timezone.utc),
-        )
-        db.add(workcell_orm)
+        workcell_orm = await super().create(db=db, obj_in=obj_in)
 
         try:
             await db.commit()
@@ -70,41 +63,27 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
             await db.rollback()
             raise e
 
-    async def get(self, db: AsyncSession, id: uuid.UUID) -> WorkcellOrm | None:
+    async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> WorkcellOrm | None:
         """Retrieve a specific workcell by its ID."""
-        logger.info("Attempting to retrieve workcell with ID: %s.", id)
+        logger.info("Attempting to retrieve workcell with ID: %s.", accession_id)
         stmt = (
             select(self.model)
             .options(selectinload(self.model.machines))
-            .filter(self.model.accession_id == id)
+            .filter(self.model.accession_id == accession_id)
         )
         result = await db.execute(stmt)
         workcell = result.scalar_one_or_none()
         if workcell:
             logger.info(
                 "Successfully retrieved workcell ID %s: '%s'.",
-                id,
+                accession_id,
                 workcell.name,
             )
         else:
-            logger.info("Workcell with ID %s not found.", id)
+            logger.info("Workcell with ID %s not found.", accession_id)
         return workcell
 
-    async def get_by_name(self, db: AsyncSession, name: str) -> WorkcellOrm | None:
-        """Retrieve a specific workcell by its name."""
-        logger.info("Attempting to retrieve workcell with name: '%s'.", name)
-        stmt = (
-            select(self.model)
-            .options(selectinload(self.model.machines))
-            .filter(self.model.name == name)
-        )
-        result = await db.execute(stmt)
-        workcell = result.scalar_one_or_none()
-        if workcell:
-            logger.info("Successfully retrieved workcell by name '%s'.", name)
-        else:
-            logger.info("Workcell with name '%s' not found.", name)
-        return workcell
+    
 
     async def get_multi(
         self, db: AsyncSession, *, filters: SearchFilters,
@@ -116,7 +95,7 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
             .options(selectinload(self.model.machines))
             .order_by(self.model.name)
         )
-        stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
+        stmt = apply_date_range_filters(stmt, filters, cast(Column, self.model.created_at))
         stmt = apply_pagination(stmt, filters)
         stmt = stmt.order_by(self.model.name)
         result = await db.execute(stmt)
@@ -125,80 +104,75 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
         return workcells
 
     async def update(
-        self, db: AsyncSession, *, db_obj: WorkcellOrm, obj_in: WorkcellUpdate,
-    ) -> WorkcellOrm | None:
+        self, db: AsyncSession, *, db_obj: WorkcellOrm, obj_in: WorkcellUpdate | dict[str, Any],
+    ) -> WorkcellOrm:
         """Update an existing workcell."""
         logger.info("Attempting to update workcell with ID: %s.", db_obj.accession_id)
 
-        original_name = db_obj.name
-        update_data = obj_in.model_dump(exclude_unset=True)
-        updates_made = False
+        # Ensure obj_in is a WorkcellUpdate Pydantic model
+        if isinstance(obj_in, dict):
+            update_data = obj_in
+            obj_in_model = WorkcellUpdate(**obj_in)
+        else:
+            update_data = obj_in.model_dump(exclude_unset=True)
+            obj_in_model = obj_in
 
-        for key, value in update_data.items():
-            if hasattr(db_obj, key) and getattr(db_obj, key) != value:
-                setattr(db_obj, key, value)
-                updates_made = True
+        name = update_data.get("name", db_obj.name) # Safely get name for logging
 
-        if not updates_made:
-            logger.info(
-                "No changes detected for workcell ID %s. No update performed.",
-                db_obj.accession_id,
-            )
-            return db_obj
+        updated_workcell = await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
 
         try:
             await db.commit()
-            await db.refresh(db_obj)
+            await db.refresh(updated_workcell)
             logger.info(
                 "Successfully updated workcell ID %s: '%s'.",
-                db_obj.accession_id,
-                db_obj.name,
+                updated_workcell.accession_id,
+                updated_workcell.name,
             )
-            return db_obj
+            return updated_workcell
         except IntegrityError as e:
             await db.rollback()
-            error_message = f"Workcell with name '{obj_in.name}' already exists. Details: {e}"
+            error_message = f"Workcell with name '{name}' already exists. Details: {e}"
             logger.error(error_message, exc_info=True)
             raise ValueError(error_message) from e
         except Exception as e:
             await db.rollback()
             logger.exception(
                 "Unexpected error updating workcell '%s' (ID: %s). Rolling back.",
-                original_name,
+                db_obj.name,
                 db_obj.accession_id,
             )
             raise e
 
-    async def remove(self, db: AsyncSession, *, id: uuid.UUID) -> bool:
+    async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> WorkcellOrm | None:
         """Delete a specific workcell by its ID."""
-        logger.info("Attempting to delete workcell with ID: %s.", id)
-        workcell_orm = await self.get(db, id)
+        logger.info("Attempting to delete workcell with ID: %s.", accession_id)
+        workcell_orm = await super().remove(db, accession_id=accession_id)
         if not workcell_orm:
-            logger.warning("Workcell with ID %s not found for deletion.", id)
-            return False
+            logger.warning("Workcell with ID %s not found for deletion.", accession_id)
+            return None
 
         try:
-            await db.delete(workcell_orm)
             await db.commit()
             logger.info(
                 "Successfully deleted workcell ID %s: '%s'.",
-                id,
+                accession_id,
                 workcell_orm.name,
             )
-            return True
+            return workcell_orm
         except IntegrityError as e:
             await db.rollback()
             error_message = (
-                f"Integrity error deleting workcell ID {id}. This might be due to"
+                f"Integrity error deleting workcell ID {accession_id}. This might be due to"
                 f" foreign key constraints, e.g., associated machines. Details: {e}"
             )
             logger.error(error_message, exc_info=True)
-            return False
+            return None
         except Exception as e:
             await db.rollback()
             logger.exception(
                 "Unexpected error deleting workcell ID %s. Rolling back.",
-                id,
+                accession_id,
             )
             raise e
 
@@ -254,19 +228,6 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
                 exc_info=True,
             )
             raise
-
-    async def get_all_workcells(self, db: AsyncSession) -> list[WorkcellOrm]:
-        """Retrieve all workcells from the database."""
-        logger.info("Retrieving all workcells.")
-        stmt = (
-            select(self.model)
-            .options(selectinload(self.model.machines))
-            .order_by(self.model.name)
-        )
-        result = await db.execute(stmt)
-        workcells = list(result.scalars().all())
-        logger.info("Found %d workcells.", len(workcells))
-        return workcells
 
 
 workcell_service = WorkcellService(WorkcellOrm)

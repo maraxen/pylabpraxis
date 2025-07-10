@@ -64,9 +64,10 @@ async def _create_or_link_resource_counterpart_for_machine(
   machine_orm: "MachineOrm",
   is_resource: bool,
   resource_counterpart_accession_id: uuid.UUID | None,
-  resource_def_name: str | None = None,  # Needed if creating a new resource
+  resource_definition_name: str | None = None,  # Needed if creating a new resource
   resource_properties_json: dict[str, Any] | None = None,  # Needed if creating a new resource
-  resource_initial_status: Optional["ResourceStatusEnum"] = None,  # Needed if creating a new resource
+  resource_status: Optional["ResourceStatusEnum"] = None,  # Needed if
+  # creating a new resource
 ) -> Optional["ResourceOrm"]:
   """Create or link ResourceOrm counterpart for a MachineOrm."""
   from praxis.backend.models import (
@@ -98,7 +99,8 @@ async def _create_or_link_resource_counterpart_for_machine(
         )
         if not new_resource:
           raise ValueError(
-            f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} not found for linking.",
+            f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} "
+            "not found for linking.",
           )
         machine_orm.resource_counterpart = new_resource
         logger.info(
@@ -135,13 +137,16 @@ async def _create_or_link_resource_counterpart_for_machine(
       )
       return current_resource
 
-    if not resource_def_name:
-      raise ValueError(
-        f"{log_prefix} Cannot create new ResourceOrm: 'resource_def_name' is required when 'is_resource' is True and no 'resource_counterpart_accession_id' is provided.",
+    if not resource_definition_name:
+      msg = (
+        f"{log_prefix} Cannot create new ResourceOrm: 'resource_definition_name' is "
+        "required when 'is_resource' is True and no "
+        "'resource_counterpart_accession_id' is provided."
       )
+      raise ValueError(msg)
 
     logger.info("%s Creating new ResourceOrm as counterpart.", log_prefix)
-    definition = await _read_resource_definition_for_linking(db, resource_def_name)
+    definition = await _read_resource_definition_for_linking(db, resource_definition_name)
 
     new_resource = ResourceOrm(
       name=machine_orm.name,
@@ -149,7 +154,7 @@ async def _create_or_link_resource_counterpart_for_machine(
       resource_definition_accession_id=definition.accession_id,
       machine_counterpart=machine_orm,
       properties_json=resource_properties_json,
-      current_status=resource_initial_status or ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+      status=resource_status or ResourceStatusEnum.AVAILABLE_IN_STORAGE,
     )
     db.add(new_resource)
     await db.flush()
@@ -174,7 +179,8 @@ async def _create_or_link_resource_counterpart_for_machine(
 
 
 @log_entity_linking_errors(
-  prefix="Entity Linking Error: Error while creating or linking machine counterpart for resource instance.",
+  prefix="Entity Linking Error: Error while creating or linking machine "
+  "counterpart for resource instance.",
   suffix=" Please ensure the parameters are correct and the resource instance exists.",
 )
 async def _create_or_link_machine_counterpart_for_resource(
@@ -185,7 +191,7 @@ async def _create_or_link_machine_counterpart_for_resource(
   machine_name: str | None = None,
   machine_fqn: str | None = None,
   machine_properties_json: dict[str, Any] | None = None,
-  machine_current_status: Optional["MachineStatusEnum"] = None,
+  machine_status: Optional["MachineStatusEnum"] = None,
 ) -> Optional["MachineOrm"]:
   """Create or link a MachineOrm counterpart for a ResourceOrm."""
   from praxis.backend.models import MachineOrm, MachineStatusEnum
@@ -199,7 +205,10 @@ async def _create_or_link_machine_counterpart_for_resource(
   if is_machine:
     resource_orm.asset_type = AssetType.MACHINE_RESOURCE
     if machine_counterpart_accession_id:
-      if current_machine_counterpart and current_machine_counterpart.accession_id == machine_counterpart_accession_id:
+      if (
+        current_machine_counterpart
+        and current_machine_counterpart.accession_id == machine_counterpart_accession_id
+      ):
         logger.debug(
           "%s Already linked to Machine ID %s.",
           log_prefix,
@@ -213,7 +222,8 @@ async def _create_or_link_machine_counterpart_for_resource(
         )
         if not new_machine_counterpart:
           raise ValueError(
-            f"{log_prefix} MachineOrm with ID {machine_counterpart_accession_id} not found for linking.",
+            f"{log_prefix} MachineOrm with ID {machine_counterpart_accession_id} "
+            "not found for linking.",
           )
         resource_orm.machine_counterpart = new_machine_counterpart
         logger.info(
@@ -234,7 +244,8 @@ async def _create_or_link_machine_counterpart_for_resource(
         )
 
       if (
-        current_machine_counterpart and current_machine_counterpart.accession_id != new_machine_counterpart.accession_id
+        current_machine_counterpart
+        and current_machine_counterpart.accession_id != new_machine_counterpart.accession_id
       ):
         current_machine_counterpart.asset_type = AssetType.MACHINE
         current_machine_counterpart.resource_counterpart = None
@@ -256,7 +267,9 @@ async def _create_or_link_machine_counterpart_for_resource(
 
     if not machine_name or not machine_fqn:
       raise ValueError(
-        f"{log_prefix} Cannot create new MachineOrm: 'machine_name' and 'machine_fqn' are required when 'is_machine' is True and no 'machine_counterpart_accession_id' is provided.",
+        f"{log_prefix} Cannot create new MachineOrm: 'machine_name' and "
+        "'machine_fqn' are required when 'is_machine' is True and no "
+        "'machine_counterpart_accession_id' is provided.",
       )
 
     logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
@@ -266,7 +279,7 @@ async def _create_or_link_machine_counterpart_for_resource(
       asset_type=AssetType.MACHINE_RESOURCE,
       resource_counterpart=resource_orm,
       properties_json=machine_properties_json,
-      status=machine_current_status or MachineStatusEnum.OFFLINE,
+      status=machine_status or MachineStatusEnum.OFFLINE,
     )
     db.add(new_machine_counterpart)
     await db.flush()

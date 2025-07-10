@@ -30,14 +30,14 @@ class GlobalDependencies:
         """Initialize global scheduler components."""
         if config is None:
             config = PraxisConfiguration()
-        self.asset_lock_manager = AssetLockManager(config=config)
+        self.asset_lock_manager = AssetLockManager(config.redis_url)
         await self.asset_lock_manager.initialize()
         logger.info("AssetLockManager initialized.")
 
         self.scheduler = ProtocolScheduler(
-            db_session_factory=db_session_factory,
-            asset_lock_manager=self.asset_lock_manager,
-            config=config,
+            db_session_factory,
+            config.redis_url,
+            None,
         )
         logger.info("Scheduler components initialized")
 

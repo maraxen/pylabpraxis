@@ -10,6 +10,7 @@ from typing import Any, ClassVar, Optional
 from pydantic import UUID7, BaseModel, Field
 
 from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 from .pydantic_base import PraxisBaseModel
@@ -33,6 +34,7 @@ class ResourceBase(AssetBase):
     description="List of child resources associated with this resource.",
   )
   parent: "ResourceBase | None" = None
+
 
   class Config:
     """Configuration for Pydantic model behavior."""
@@ -143,6 +145,8 @@ class ResourceDefinitionBase(BaseModel):
   model: str | None = None
   plr_category: str | None = None
   rotation_json: dict[str, Any] | None = None
+  plr_category: str | None = None
+  rotation_json: dict[str, Any] | None = None
 
   class Config:
     """Pydantic configuration for ResourceDefinitionBase."""
@@ -151,24 +155,12 @@ class ResourceDefinitionBase(BaseModel):
     use_enum_values = True
 
 
-class ResourceDefinitionCreate(ResourceDefinitionBase):
+class ResourceDefinitionCreate(ResourceDefinitionBase, PLRTypeDefinitionCreate):
   """Represents a resource definition for creation requests."""
 
 
-class ResourceDefinitionUpdate(BaseModel):
+class ResourceDefinitionUpdate(BaseModel, PLRTypeDefinitionUpdate):
   """Specifies the fields that can be updated for an existing resource definition."""
-
-  fqn: str | None = None
-  resource_type: str | None = None
-  description: str | None = None
-  nominal_volume_ul: float | None = None
-  material: str | None = None
-  manufacturer: str | None = None
-  plr_definition_details_json: dict[str, Any] | None = None
-  size_x_mm: float | None = None
-  size_y_mm: float | None = None
-  size_z_mm: float | None = None
-  model: str | None = None
 
 
 class ResourceDefinitionResponse(ResourceDefinitionBase, PraxisBaseModel):

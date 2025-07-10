@@ -65,10 +65,10 @@ class PLRTypeCRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     if filters.search_filters:
       statement = apply_search_filters(statement, cast(Base, self.model), filters)
       statement = apply_date_range_filters(
-        statement, filters, cast(Column[DateTime], self.model.created_at)
+        statement, filters, cast(Column[DateTime], self.model.created_at),
       )
       statement = apply_property_filters(
-        statement, filters, cast(Column[JSONB], self.model.properties_json)
+        statement, filters, cast(Column[JSONB], self.model.properties_json),
       )
     if filters.sort_by:
       statement = apply_sorting(statement, cast(Base, self.model), filters.sort_by)

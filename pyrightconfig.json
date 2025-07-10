@@ -1,0 +1,9 @@
+{
+  "include": ["praxis"],
+  "exclude": ["**/__pycache__", "**/node_modules", "praxis/backend/commons"],
+  "stubPath": "typings",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Linux"
+}

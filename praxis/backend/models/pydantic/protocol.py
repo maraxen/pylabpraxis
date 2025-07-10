@@ -15,21 +15,21 @@ Models included:
 - ParameterMetadataModel
 - AssetConstraintsModel
 - AssetRequirementModel
-- FunctionProtocolDefinitionModel
+- FunctionProtocolDefinitionCreate
 - ProtocolParameters
 """
 
 import uuid
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
 from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
+from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
 from praxis.backend.models.pydantic.filters import SearchFilters
-
-if TYPE_CHECKING:
-  from praxis.backend.models.orm import AssetRequirementOrm
+from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
 
 
 class ProtocolStartRequest(BaseModel):
@@ -174,6 +174,7 @@ class AssetRequirementModel(BaseModel):
   accession_id: UUID7
   name: str
   fqn: str
+  type_hint_str: str
   optional: bool = False
   default_value_repr: str | None = None
   description: str | None = None
@@ -183,90 +184,7 @@ class AssetRequirementModel(BaseModel):
   )
 
 
-class RuntimeAssetRequirement:
-  """Represents a specific asset requirement for a *protocol run*.
-
-  This wraps the static AssetRequirementModel definition with runtime details
-  like its specific 'type' for the run (e.g., 'asset', 'deck') and a reservation ID.
-  """
-
-  def __init__(
-    self,
-    asset_definition: AssetRequirementModel,  # The static asset definition
-    asset_type: str,  # e.g., "asset", "deck"
-    estimated_duration_ms: int | None = None,
-    priority: int = 1,
-  ) -> None:
-    """Initialize a RuntimeAssetRequirement."""
-    self.asset_definition = asset_definition
-    self.asset_type = asset_type
-    self.asset_fqn = asset_definition.fqn
-    self.estimated_duration_ms = estimated_duration_ms
-    self.priority = priority
-    self.reservation_id: uuid.UUID | None = None
-
-  @property
-  def asset_name(self) -> str:
-    """Get the asset name from the underlying definition."""
-    return self.asset_definition.name
-
-  @property
-  def constraints(self) -> AssetConstraintsModel | None:
-    """Get the asset constraints from the underlying definition."""
-    return self.asset_definition.constraints
-
-  @property
-  def location_constraints(self) -> LocationConstraintsModel | None:
-    """Get the location constraints from the underlying definition."""
-    return self.asset_definition.location_constraints
-
-  def to_dict(self) -> dict[str, Any]:
-    """Convert to dictionary for serialization."""
-    return {
-      "asset_name": self.asset_name,
-      "asset_type": self.asset_type,
-      "asset_fqn": self.asset_fqn,
-      "estimated_duration_ms": self.estimated_duration_ms,
-      "priority": self.priority,
-      "reservation_id": str(self.reservation_id) if self.reservation_id else None,
-      "constraints": self.constraints.model_dump() if self.constraints else None,
-      "location_constraints": (self.location_constraints.model_dump() \
-        if self.location_constraints else None),
-    }
-
-  @classmethod
-  def from_asset_definition_orm(
-    cls,
-    asset_def_orm: "AssetRequirementOrm",  # Type hint for ORM model
-    asset_type: str = "asset",
-    estimated_duration_ms: int | None = None,
-    priority: int = 1,
-  ) -> "RuntimeAssetRequirement":
-    """Create a RuntimeAssetRequirement from AssetDefinitionOrm.
-
-    This provides a bridge between the ORM model and the runtime requirement.
-    """
-    # Convert ORM to AssetRequirementModel
-    asset_requirement = AssetRequirementModel(
-      accession_id=asset_def_orm.accession_id,
-      name=asset_def_orm.name,
-      fqn=asset_def_orm.fqn,
-      optional=asset_def_orm.optional,
-      default_value_repr=asset_def_orm.default_value_repr,
-      description=asset_def_orm.description,
-      constraints=AssetConstraintsModel(**(asset_def_orm.constraints_json or {})),
-      location_constraints=LocationConstraintsModel(),
-    )
-
-    return cls(
-      asset_definition=asset_requirement,
-      asset_type=asset_type,
-      estimated_duration_ms=estimated_duration_ms,
-      priority=priority,
-    )
-
-
-class FunctionProtocolDefinitionModel(BaseModel):
+class FunctionProtocolDefinitionCreate(BaseModel):
   """Represents a detailed definition of a function-based protocol.
 
   This model encapsulates core definition details, source information,
@@ -301,10 +219,42 @@ class FunctionProtocolDefinitionModel(BaseModel):
   assets: list[AssetRequirementModel] = Field(default_factory=list)
 
   class Config:
-    """Pydantic configuration for FunctionProtocolDefinitionModel."""
+    """Pydantic configuration for FunctionProtocolDefinitionCreate."""
 
     from_attributes = True
     validate_assignment = True
+
+
+class FunctionProtocolDefinitionUpdate(BaseModel):
+  """Model for updating a function protocol definition."""
+
+  name: str | None = None
+  version: str | None = None
+  description: str | None = None
+  source_file_path: str | None = None
+  module_name: str | None = None
+  function_name: str | None = None
+  source_repository_name: str | None = None
+  commit_hash: str | None = None
+  file_system_source_name: str | None = None
+  is_top_level: bool | None = None
+  solo_execution: bool | None = None
+  preconfigure_deck: bool | None = None
+  deck_param_name: str | None = None
+  deck_construction_function_fqn: str | None = None
+  state_param_name: str | None = None
+  category: str | None = None
+  tags: list[str] | None = None
+  deprecated: bool | None = None
+  parameters: list[ParameterMetadataModel] | None = None
+  assets: list[AssetRequirementModel] | None = None
+
+
+class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate, PraxisBaseModel):
+  """Model for API responses for a function protocol definition."""
+
+  class Config(PraxisBaseModel.Config):
+    """Pydantic configuration for FunctionProtocolDefinitionResponse."""
 
 
 class ProtocolParameters(BaseModel):
@@ -336,20 +286,83 @@ class ProtocolDefinitionFilters(BaseModel):
   include_deprecated: bool = False
 
 
-class FunctionInfo(BaseModel):
-  """Model for data required to create a protocol definition."""
 
-  func: Callable | None = None
-  name: str | None = None
-  version: str = "0.1.0"
-  description: str | None = None
-  solo: bool = False
-  is_top_level: bool = False
-  preconfigure_deck: bool = False
-  deck_param_name: str = "deck"
-  deck_construction: Callable | None = None
-  state_param_name: str = "state"
-  param_metadata: dict[str, dict[str, Any]] | None = None
-  category: str | None = None
-  tags: list[str] | None = None
-  top_level_name_format: str | None = None
+
+
+class ProtocolRunBase(BaseModel):
+  """Base model for a protocol run."""
+
+  top_level_protocol_definition_accession_id: UUID7
+  status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING
+  start_time: datetime | None = None
+  end_time: datetime | None = None
+  input_parameters_json: dict[str, Any] | None = None
+  resolved_assets_json: dict[str, Any] | None = None
+  output_data_json: dict[str, Any] | None = None
+  initial_state_json: dict[str, Any] | None = None
+  final_state_json: dict[str, Any] | None = None
+  data_directory_path: str | None = None
+  created_by_user: dict[str, Any] | None = None
+  previous_accession_id: UUID7 | None = None
+
+
+class ProtocolRunCreate(ProtocolRunBase):
+  """Model for creating a new protocol run."""
+
+
+class ProtocolRunUpdate(BaseModel):
+  """Model for updating a protocol run."""
+
+  status: ProtocolRunStatusEnum | None = None
+  start_time: datetime | None = None
+  end_time: datetime | None = None
+  input_parameters_json: dict[str, Any] | None = None
+  resolved_assets_json: dict[str, Any] | None = None
+  output_data_json: dict[str, Any] | None = None
+  initial_state_json: dict[str, Any] | None = None
+  final_state_json: dict[str, Any] | None = None
+  data_directory_path: str | None = None
+
+
+class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
+  """Model for API responses for a protocol run."""
+
+  class Config(PraxisBaseModel.Config):
+    """Pydantic configuration for ProtocolRunResponse."""
+
+
+class FunctionCallLogBase(BaseModel):
+  """Base model for a function call log."""
+
+  protocol_run_accession_id: UUID7
+  sequence_in_run: int
+  function_protocol_definition_accession_id: UUID7
+  parent_function_call_log_accession_id: UUID7 | None = None
+  start_time: datetime
+  end_time: datetime | None = None
+  input_args_json: dict[str, Any] | None = None
+  return_value_json: dict[str, Any] | None = None
+  status: FunctionCallStatusEnum = FunctionCallStatusEnum.UNKNOWN
+  error_message_text: str | None = None
+  error_traceback_text: str | None = None
+
+
+class FunctionCallLogCreate(FunctionCallLogBase):
+  """Model for creating a new function call log."""
+
+
+class FunctionCallLogUpdate(BaseModel):
+  """Model for updating a function call log."""
+
+  end_time: datetime | None = None
+  return_value_json: dict[str, Any] | None = None
+  status: FunctionCallStatusEnum | None = None
+  error_message_text: str | None = None
+  error_traceback_text: str | None = None
+
+
+class FunctionCallLogResponse(FunctionCallLogBase, PraxisBaseModel):
+  """Model for API responses for a function call log."""
+
+  class Config(PraxisBaseModel.Config):
+    """Pydantic configuration for FunctionCallLogResponse."""

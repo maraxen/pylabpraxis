@@ -20,7 +20,7 @@ import sys
 from collections.abc import Callable
 
 from praxis.backend.models import (
-  FunctionProtocolDefinitionModel,
+  FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionOrm,
 )
 from praxis.backend.utils.logging import get_logger
@@ -189,7 +189,10 @@ class ProtocolCodeManager:
       raise RuntimeError(error_message) from None
 
   async def _ensure_git_repo_and_fetch(
-    self, git_url: str, checkout_path: str, repo_name_for_logging: str,
+    self,
+    git_url: str,
+    checkout_path: str,
+    repo_name_for_logging: str,
   ) -> None:
     """Ensure a git repo exists at checkout_path, clones if not, and fetches updates.
 
@@ -284,7 +287,10 @@ class ProtocolCodeManager:
       await self._run_git_command(["git", "clone", git_url, "."], cwd=checkout_path)
 
   async def _checkout_specific_commit(
-    self, checkout_path: str, commit_hash: str, repo_name_for_logging: str,
+    self,
+    checkout_path: str,
+    commit_hash: str,
+    repo_name_for_logging: str,
   ) -> None:
     """Checkout a specific commit and verify it's correct.
 
@@ -306,7 +312,8 @@ class ProtocolCodeManager:
 
     # Verify the checkout was successful
     current_commit = await self._run_git_command(
-      ["git", "rev-parse", "HEAD"], cwd=checkout_path, suppress_output=True,
+      ["git", "rev-parse", "HEAD"], cwd=checkout_path,
+      suppress_output=True,
     )
     resolved_target_commit = await self._run_git_command(
       ["git", "rev-parse", commit_hash + "^{commit}"],
@@ -325,8 +332,11 @@ class ProtocolCodeManager:
     )
 
   def _load_protocol_function(
-    self, module_name: str, function_name: str, module_path: str | None = None,
-  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
+    self,
+    module_name: str,
+    function_name: str,
+    module_path: str | None = None,
+  ) -> tuple[Callable, FunctionProtocolDefinitionCreate]:
     """Load a protocol function from its module.
 
     Args:
@@ -357,12 +367,15 @@ class ProtocolCodeManager:
       )
 
     func_wrapper = getattr(module, function_name)
-    pydantic_def: FunctionProtocolDefinitionModel | None = getattr(
-      func_wrapper, "_protocol_definition", None,
+    pydantic_def: FunctionProtocolDefinitionCreate | None = getattr(
+      func_wrapper,
+      "_protocol_definition",
+      None,
     )
 
     if not pydantic_def or not isinstance(
-      pydantic_def, FunctionProtocolDefinitionModel,
+      pydantic_def,
+      FunctionProtocolDefinitionCreate,
     ):
       raise AttributeError(
         f"Function '{function_name}' in '{module_name}' is not a valid @protocol_function "
@@ -395,8 +408,9 @@ class ProtocolCodeManager:
 
 
   async def prepare_protocol_code(
-    self, protocol_def_orm: FunctionProtocolDefinitionOrm,
-  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
+    self,
+    protocol_def_orm: FunctionProtocolDefinitionOrm,
+  ) -> tuple[Callable, FunctionProtocolDefinitionCreate]:
     """Prepare protocol code for execution from its ORM definition.
 
     This method handles all the complexities of loading protocol code from various sources:

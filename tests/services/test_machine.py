@@ -216,13 +216,13 @@ class TestMachineService:
       db,
       name1,
       "pylabrobot.liquid_handling.hamilton.STAR",
-      current_status=MachineStatusEnum.AVAILABLE,
+      status=MachineStatusEnum.AVAILABLE,
     )
     await create_machine(
       db,
       name2,
       "pylabrobot.plate_readers.BioTek",
-      current_status=MachineStatusEnum.OFFLINE,
+      status=MachineStatusEnum.OFFLINE,
     )
 
     # Filter by status
@@ -250,7 +250,7 @@ class TestMachineService:
     db.add(protocol_run)
     await db.commit()
 
-    assert existing_machine.current_status == MachineStatusEnum.OFFLINE
+    assert existing_machine.status == MachineStatusEnum.OFFLINE
 
     # Update to IN_USE
     updated_machine = await update_machine_status(
@@ -261,7 +261,7 @@ class TestMachineService:
       current_protocol_run_accession_id=protocol_run.run_accession_id,
     )
     assert updated_machine is not None
-    assert updated_machine.current_status == MachineStatusEnum.IN_USE
+    assert updated_machine.status == MachineStatusEnum.IN_USE
     assert updated_machine.current_protocol_run_accession_id == protocol_run.run_accession_id
     assert updated_machine.last_seen_online is not None
 

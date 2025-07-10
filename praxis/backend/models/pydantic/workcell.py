@@ -31,13 +31,13 @@ class WorkcellBase(BaseModel):
     None, description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
   )
   status: WorkcellStatusEnum = Field(
-    default=WorkcellStatusEnum.AVAILABLE, description="The current status of the workcell."
+    default=WorkcellStatusEnum.AVAILABLE, description="The current status of the workcell.",
   )
   latest_state_json: dict[str, Any] | None = Field(
-    None, description="The latest state of the workcell as a JSON object."
+    None, description="The latest state of the workcell as a JSON object.",
   )
   last_state_update_time: datetime | None = Field(
-    None, description="The timestamp of the last state update."
+    None, description="The timestamp of the last state update.",
   )
 
 
@@ -64,10 +64,10 @@ class WorkcellUpdate(BaseModel):
     None, description="The new physical location of the workcell.",
   )
   status: WorkcellStatusEnum | None = Field(
-    None, description="The new status of the workcell."
+    None, description="The new status of the workcell.",
   )
   latest_state_json: dict[str, Any] | None = Field(
-    None, description="The new state of the workcell as a JSON object."
+    None, description="The new state of the workcell as a JSON object.",
   )
 
 
@@ -79,7 +79,6 @@ class WorkcellResponse(WorkcellBase, PraxisBaseModel):
   responses.
   """
 
-  accession_id: UUID7 = Field(description="The unique database ID of the workcell.")
   machines: list[MachineResponse] = Field(
     default_factory=list, description="List of machines associated with this workcell.",
   )

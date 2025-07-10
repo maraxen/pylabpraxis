@@ -34,12 +34,12 @@ def test_deck_info_model():
     "id": 1,
     "name": "Main Deck",
     "fqn": "pylabrobot.resources.Deck",
-    "current_status": "ONLINE",
+    "status": "ONLINE",
   }
   deck_info = DeckInfo.model_validate(data)
   assert deck_info.accession_id == data["id"]
   assert deck_info.name == data["name"]
-  assert deck_info.model_dump()["current_status"] == "ONLINE"
+  assert deck_info.model_dump()["status"] == "ONLINE"
 
 
 def test_resource_info_model():
@@ -136,14 +136,14 @@ def setup_basic_machines(db_session: Session) -> None:
     name="Test Deck 1",
     fqn="pylabrobot.resources.Deck",
     praxis_machine_category=PraxisDeviceCategoryEnum.DECK,
-    current_status=ManagedDeviceStatusEnum.ONLINE,
+    status=ManagedDeviceStatusEnum.ONLINE,
   )
   non_deck_machine = ManagedDeviceOrm(
     id=VALID_NON_DECK_ID,
     name="Test Heater 1",
     fqn="pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
     praxis_machine_category=PraxisDeviceCategoryEnum.GENERIC_DEVICE,  # Or another non-DECK category
-    current_status=ManagedDeviceStatusEnum.ONLINE,
+    status=ManagedDeviceStatusEnum.ONLINE,
   )
   db_session.add_all([deck_machine, non_deck_machine])
   db_session.commit()
@@ -171,7 +171,7 @@ def test_list_available_decks_with_data(client: TestClient, db_session: Session,
   assert deck_info["id"] == VALID_DECK_ID
   assert deck_info["name"] == "Test Deck 1"
   assert deck_info["fqn"] == "pylabrobot.resources.Deck"
-  assert deck_info["current_status"] == "ONLINE"  # Enum .name or .value
+  assert deck_info["status"] == "ONLINE"  # Enum .name or .value
 
 
 def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session):
@@ -218,7 +218,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     resource_definition_accession_id=plate_def.accession_id,
     location_machine_accession_id=VALID_DECK_ID,  # Place on Test Deck 1
     current_deck_position_name="A1",
-    current_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
+    status=ResourceStatusEnum.AVAILABLE_ON_DECK,
     properties_json={"sample_type": "plasma"},
   )
   tip_rack_instance = ResourceOrm(
@@ -227,7 +227,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     resource_definition_accession_id=tip_rack_def.accession_id,
     location_machine_accession_id=VALID_DECK_ID,  # Place on Test Deck 1
     current_deck_position_name="B2",
-    current_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
+    status=ResourceStatusEnum.AVAILABLE_ON_DECK,
   )
   # Resource not on this deck
   other_plate_instance = ResourceOrm(
@@ -235,7 +235,7 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
     name="PlateInStorage",
     resource_definition_accession_id=plate_def.accession_id,
     location_machine_accession_id=None,  # Not on any deck
-    current_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+    status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
   )
 
   db_session.add_all([plate_instance, tip_rack_instance, other_plate_instance])

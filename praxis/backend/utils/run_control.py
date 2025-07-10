@@ -5,18 +5,20 @@ import uuid
 import redis
 from redis.exceptions import RedisError
 
-from praxis.backend.configure import get_settings  # To access Redis config
+from praxis.backend.configure import PraxisConfiguration
+
+SETTINGS = PraxisConfiguration()
 
 ALLOWED_COMMANDS: list[str] = ["PAUSE", "RESUME", "CANCEL"]
 COMMAND_KEY_PREFIX = "orchestrator:control"
 
 
 def _get_redis_client() -> redis.Redis:
-  settings = get_settings()
+  settings = SETTINGS
   # Assuming settings.redis_host and settings.redis_port are available
   # If settings.redis_url is directly available, that would be preferred:
   # redis_url = settings.redis_url
-  redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/0"
+  redis_url = f"redis://{SETTINGS.redis_host}:{SETTINGS.redis_port}/0"
   return redis.Redis.from_url(redis_url, decode_responses=True)
 
 

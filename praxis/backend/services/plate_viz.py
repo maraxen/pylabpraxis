@@ -13,10 +13,8 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import (
-  PlateDataVisualization,
-)
-from praxis.backend.models.function_data_output_orm import (
+from praxis.backend.models.pydantic.outputs import PlateDataVisualization
+from praxis.backend.models.orm.outputs import (
   DataOutputTypeEnum,
   FunctionDataOutputOrm,
   WellDataOutputOrm,
@@ -91,8 +89,8 @@ async def read_plate_data_visualization(
   # Calculate data range for visualization scaling
   values = [wd.data_value for wd in well_data_list if wd.data_value is not None]
   data_range = {
-    "min": min(values) if values else 0,
-    "max": max(values) if values else 1,
+    "min": float(min(values)) if values else 0.0,
+    "max": float(max(values)) if values else 1.0,
   }
 
   # Get measurement timestamp (from most recent)

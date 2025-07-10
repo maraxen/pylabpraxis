@@ -270,8 +270,8 @@
       Tuple size mismatch; expected 3 but received 2 (reportAssignmentType)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:643:32 - error: "name" is not a known attribute of "None" (reportOptionalMemberAccess)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:644:32 - error: "accession_id" is not a known attribute of "None" (reportOptionalMemberAccess)
-  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:671:28 - error: Cannot access attribute "current_status" for class "MachineOrm"
-    Attribute "current_status" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:671:28 - error: Cannot access attribute "status" for class "MachineOrm"
+    Attribute "status" is unknown (reportAttributeAccessIssue)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:689:28 - error: "name" is not a known attribute of "None" (reportOptionalMemberAccess)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:692:51 - error: "accession_id" is not a known attribute of "None" (reportOptionalMemberAccess)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:763:20 - error: "AcquireResource" is not defined (reportUndefinedVariable)
@@ -1107,8 +1107,8 @@
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:22:3 - error: "read_machine_by_name" is unknown import symbol (reportAttributeAccessIssue)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:23:3 - error: "update_machine" is unknown import symbol (reportAttributeAccessIssue)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:24:3 - error: "update_machine_status" is unknown import symbol (reportAttributeAccessIssue)
-  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:253:29 - error: Cannot access attribute "current_status" for class "MachineOrm"
-    Attribute "current_status" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:253:29 - error: Cannot access attribute "status" for class "MachineOrm"
+    Attribute "status" is unknown (reportAttributeAccessIssue)
 /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:22:3 - error: "create_file_system_protocol_source" is unknown import symbol (reportAttributeAccessIssue)
   /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:23:3 - error: "create_protocol_run" is unknown import symbol (reportAttributeAccessIssue)

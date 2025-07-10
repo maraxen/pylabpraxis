@@ -13,17 +13,19 @@ import datetime
 import json
 import logging
 import uuid
+from typing import cast
 
 from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from praxis.backend.models import (
+from praxis.backend.models.orm.protocol import (
   FunctionCallLogOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunCreate,
   ProtocolRunOrm,
+)
+from praxis.backend.models.pydantic.protocol import (
+  ProtocolRunCreate,
   ProtocolRunStatusEnum,
   ProtocolRunUpdate,
 )
@@ -33,6 +35,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
 )
+from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
@@ -58,12 +61,12 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
             ),
             status=obj_in.status,
             input_parameters_json=(
-                json.loads(obj_in.input_parameters_json)
+                obj_in.input_parameters_json
                 if obj_in.input_parameters_json
                 else {}
             ),
             initial_state_json=(
-                json.loads(obj_in.initial_state_json)
+                obj_in.initial_state_json
                 if obj_in.initial_state_json
                 else {}
             ),
@@ -135,7 +138,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
             stmt = stmt.filter(self.model.status == status)
             logger.debug("Filtering by status: '%s'.", status.name)
 
-        stmt = apply_date_range_filters(stmt, filters, self.model.start_time)
+        stmt = apply_date_range_filters(stmt, filters, cast(Base, self.model).start_time)
         stmt = apply_pagination(stmt, filters)
 
         stmt = stmt.order_by(
@@ -225,12 +228,12 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
                     new_status.name,
                 )
                 if db_protocol_run.start_time and db_protocol_run.end_time:
-                    duration = db_protocol_run.end_time - db_protocol_run.start_time  # type: ignore
-                    db_protocol_run.duration_ms = int(duration.total_seconds() * 1000)
+                    duration = db_protocol_run.end_time - db_protocol_run.start_time
+                    db_protocol_run.completed_duration_ms = int(duration.total_seconds() * 1000)
                     logger.debug(
                         "Protocol run ID %s duration: %d ms.",
                         protocol_run_accession_id,
-                        db_protocol_run.duration_ms,
+                        db_protocol_run.completed_duration_ms,
                     )
                 if output_data_json is not None:
                     db_protocol_run.output_data_json = json.loads(output_data_json)

@@ -7,6 +7,7 @@ reducing boilerplate code in the service layer.
 
 from sqlalchemy import Column, Select, and_
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.utils.db import Base
@@ -35,7 +36,7 @@ def apply_pagination(query: Select, filters: SearchFilters) -> Select:
 def apply_date_range_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_timestamp_field: Column,
+  orm_model_timestamp_field: InstrumentedAttribute,
 ) -> Select:
   """Apply date range filters to a SQLAlchemy query.
 
@@ -49,7 +50,7 @@ def apply_date_range_filters(
       The modified Select statement with date range filters applied.
 
   """
-  conditions = []
+  conditions = [] 
   if filters.date_range_start:
     conditions.append(orm_model_timestamp_field >= filters.date_range_start)
   if filters.date_range_end:

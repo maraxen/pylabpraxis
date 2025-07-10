@@ -38,7 +38,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """
     self.model = model
 
-  async def get(self, db: AsyncSession, accession_id: str | UUID) -> ModelType | None:
+  async def get(self, db: AsyncSession, accession_id: UUID) -> ModelType | None:
     """Get a single object by its primary key.
 
     Args:
@@ -63,8 +63,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     statement = select(self.model)
     if filters.search_filters:
       statement = apply_search_filters(statement, cast(Base, self.model), filters)
-      statement = apply_date_range_filters(statement, filters, cast(Column[DateTime], self.model.created_at))
-      statement = apply_property_filters(statement, filters, cast(Column[JSONB], self.model.properties_json))
+      statement = apply_date_range_filters(
+        statement, filters, cast(Column[DateTime], self.model.created_at)
+      )
+      statement = apply_property_filters(
+        statement, filters, cast(Column[JSONB], self.model.properties_json)
+      )
     if filters.sort_by:
       statement = apply_sorting(statement, cast(Base, self.model), filters.sort_by)
     statement = apply_specific_id_filters(statement, filters, cast(Base, self.model))
@@ -86,11 +90,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     db: AsyncSession,
     *,
     db_obj: ModelType,
-    obj_in: UpdateSchemaType | dict[str, Any],
+    obj_in: UpdateSchemaType,
   ) -> ModelType:
     """Update an existing object."""
     obj_data = jsonable_encoder(db_obj)
-    update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
+    update_data = obj_in.model_dump(exclude_unset=True)
     for field in obj_data:
       if field in update_data:
         setattr(db_obj, field, update_data[field])
@@ -99,7 +103,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     await db.refresh(db_obj)
     return db_obj
 
-  async def remove(self, db: AsyncSession, *, accession_id: str | UUID) -> ModelType | None:
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> ModelType | None:
     """Delete an object by its primary key."""
     statement = select(self.model).where(self.model.accession_id == accession_id)
     result = await db.execute(statement)
@@ -108,3 +112,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
       await db.delete(obj)
       await db.commit()
     return obj
+
+  async def get_by_name(self, db: AsyncSession, name: str) -> ModelType | None:
+    """Retrieve a specific object by its name."""
+    statement = select(self.model).filter(self.model.name == name)
+    result = await db.execute(statement)
+    return result.scalars().first()

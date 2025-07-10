@@ -14,18 +14,20 @@ from typing import Any
 from celery import Celery
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import praxis.backend.services as svc
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.models.pydantic.protocol import ProtocolRunUpdate
 from praxis.backend.core.celery_tasks import execute_protocol_run_task
-from praxis.backend.models import (
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  RuntimeAssetRequirement,
+from praxis.backend.models.orm.protocol import (
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolRunStatusEnum,
 )
-from praxis.backend.models.protocol_pydantic_models import (
-  AssetConstraintsModel,
-  AssetRequirementModel,
-  LocationConstraintsModel,
+from praxis.backend.models.pydantic.runtime import RuntimeAssetRequirement
+from praxis.backend.models.pydantic.protocol import (
+    AssetConstraintsModel,
+    AssetRequirementModel,
+    LocationConstraintsModel,
 )
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
@@ -148,6 +150,7 @@ class ProtocolScheduler:
         accession_id=uuid7(),
         name=protocol_def_orm.deck_param_name,
         fqn="pylabrobot.resources.Deck",
+        type_hint_str="pylabrobot.resources.Deck",
         optional=False,
         constraints=AssetConstraintsModel(),
         location_constraints=LocationConstraintsModel(),
@@ -197,7 +200,7 @@ class ProtocolScheduler:
 
     try:
       for requirement in requirements:
-        asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
+        asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
 
         # Simple asset locking (will be enhanced with Redis locks)
         if asset_key not in self._asset_reservations:
@@ -289,9 +292,10 @@ class ProtocolScheduler:
         protocol_def = protocol_run_orm.top_level_protocol_definition
         if not protocol_def:
           # Fetch from database if not loaded
-          protocol_def = await svc.read_protocol_definition(
-            db_session,
-            definition_accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
+          protocol_definition_crud_service = ProtocolDefinitionCRUDService(FunctionProtocolDefinitionOrm)
+          protocol_def = await protocol_definition_crud_service.get(
+            db=db_session,
+            accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
           )
 
         if not protocol_def:
@@ -313,12 +317,13 @@ class ProtocolScheduler:
             protocol_run_orm.accession_id,
           )
           # Update run status to indicate asset conflict
-          await svc.update_protocol_run_status(
-            db_session,
-            protocol_run_orm.accession_id,
-            ProtocolRunStatusEnum.FAILED,
-            output_data_json=json.dumps(
-              {
+          protocol_run_crud_service = ProtocolRunService(ProtocolRunOrm)
+          await protocol_run_crud_service.update(
+            db=db_session,
+            db_obj=protocol_run_orm,
+            obj_in=ProtocolRunUpdate(
+              status=ProtocolRunStatusEnum.FAILED,
+              output_data_json={
                 "error": "Asset reservation failed",
                 "details": "Required assets are not available",
               },
@@ -339,12 +344,13 @@ class ProtocolScheduler:
         self._active_schedules[protocol_run_orm.accession_id] = schedule_entry
 
         # Update run status to QUEUED
-        await svc.update_protocol_run_status(
-          db_session,
-          protocol_run_orm.accession_id,
-          ProtocolRunStatusEnum.QUEUED,
-          output_data_json=json.dumps(
-            {
+        protocol_run_crud_service = ProtocolRunService(ProtocolRunOrm)
+        await protocol_run_crud_service.update(
+          db=db_session,
+          db_obj=protocol_run_orm,
+          obj_in=ProtocolRunUpdate(
+            status=ProtocolRunStatusEnum.QUEUED,
+            output_data_json={
               "scheduled_at": schedule_entry.scheduled_at.isoformat(),
               "asset_count": len(requirements),
             },
@@ -456,7 +462,7 @@ class ProtocolScheduler:
 
         # Release asset reservations
         for requirement in schedule_entry.required_assets:
-          asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
+          asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
           if asset_key in self._asset_reservations:
             self._asset_reservations[asset_key].discard(protocol_run_id)
             if not self._asset_reservations[asset_key]:

@@ -188,7 +188,7 @@ class TestResourceService:
       status=ResourceStatusEnum.IN_USE,
     )
     assert len(in_use_resources) == 1
-    assert in_use_resources[0].current_status == ResourceStatusEnum.IN_USE
+    assert in_use_resources[0].status == ResourceStatusEnum.IN_USE
 
     # Filter by FQN
     by_fqn = await read_resources(db, fqn=resource_def.fqn)
@@ -208,7 +208,7 @@ class TestResourceService:
     protocol_run: ProtocolRunOrm,
   ):
     """Test the dedicated function for updating location, status, and properties."""
-    assert existing_resource.current_status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
+    assert existing_resource.status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
     assert existing_resource.properties_json is None
 
     # Move to machine, set to IN_USE, and update properties
@@ -223,7 +223,7 @@ class TestResourceService:
     )
 
     assert updated_resource is not None
-    assert updated_resource.current_status == ResourceStatusEnum.IN_USE
+    assert updated_resource.status == ResourceStatusEnum.IN_USE
     assert updated_resource.location_machine_accession_id == machine.accession_id
     assert updated_resource.current_deck_position_name == "A1"
     assert updated_resource.properties_json is not None
@@ -242,7 +242,7 @@ class TestResourceService:
     )
 
     assert back_to_storage is not None
-    assert back_to_storage.current_status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
+    assert back_to_storage.status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
     assert back_to_storage.location_machine_accession_id is None
     assert back_to_storage.current_protocol_run_accession_id is None
     assert back_to_storage.properties_json is not None

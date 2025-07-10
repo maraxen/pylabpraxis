@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import UUID7, Field
 
 from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 
@@ -96,3 +97,13 @@ class MachineResponse(AssetResponse, MachineBase):
 
   class Config(AssetResponse.Config, MachineBase.Config):
     """Pydantic configuration for MachineResponse."""
+
+
+class MachineTypeDefinitionCreate(PLRTypeDefinitionCreate):
+  """Model for creating a new machine type definition."""
+  pass
+
+
+class MachineTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
+  """Model for updating a machine type definition."""
+  pass

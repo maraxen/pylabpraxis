@@ -8,13 +8,17 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from praxis.backend.api import function_data_outputs, protocols, resources, workcell_api
+from praxis.backend.api import discovery, function_data_outputs, protocols, resources, workcell_api
 from praxis.backend.api.scheduler_api import initialize_scheduler_components
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.services.discovery_service import DiscoveryService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 from praxis.backend.services.praxis_orm_service import PraxisDBService
+from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
 from praxis.backend.utils.db import (
   KEYCLOAK_DSN_FROM_CONFIG,
   AsyncSessionLocal,
@@ -65,6 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
   orchestrator: Orchestrator | None = None
   asset_manager: AssetManager | None = None
   workcell_runtime: WorkcellRuntime | None = None
+  discovery_service: DiscoveryService | None = None
   try:
     logger.info("Application startup sequence initiated...")
 
@@ -79,40 +84,62 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     logger.info("PraxisDBService initialized successfully.")
 
-    # 3. Initialize AssetManager and WorkcellRuntime
+    # Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
-    # Pass praxis_config to WorkcellRuntime
     workcell_runtime = WorkcellRuntime(
       db_session_factory=AsyncSessionLocal,
       config=praxis_config,
     )
     logger.info("WorkcellRuntime initialized successfully.")
-    db_session = await anext(get_async_db_session())
-    # AssetManager still needs a direct db_session for now
-    asset_manager = AssetManager(
-      db_session=db_session, workcell_runtime=workcell_runtime,
-    )
+    async with AsyncSessionLocal() as db_session: # Use async with for session
+      asset_manager = AssetManager(
+        db_session=db_session, workcell_runtime=workcell_runtime,
+      )
 
-    # 3. Instantiate and initialize the Orchestrator with its dependencies
-    logger.info("Initializing orchestrator...")
-    orchestrator = Orchestrator(
-      db_session_factory=AsyncSessionLocal,
-      asset_manager=asset_manager,
-      workcell_runtime=workcell_runtime,
-    )
-    logger.info("Orchestrator dependencies initialized.")
+      # Initialize the new type definition services
+      logger.info("Initializing type definition services...")
+      resource_type_definition_service = ResourceTypeDefinitionService(db_session)
+      machine_type_definition_service = MachineTypeDefinitionService(db_session)
+      deck_type_definition_service = DeckTypeDefinitionService(db_session)
+      logger.info("Type definition services initialized.")
 
-    # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
-    logger.info("Initializing scheduler components...")
-    await initialize_scheduler_components(AsyncSessionLocal, praxis_config)
+      # Initialize DiscoveryService
+      logger.info("Initializing DiscoveryService...")
+      discovery_service = DiscoveryService(
+        db_session_factory=AsyncSessionLocal,
+        resource_type_definition_service=resource_type_definition_service,
+        machine_type_definition_service=machine_type_definition_service,
+        deck_type_definition_service=deck_type_definition_service,
+      )
+      logger.info("DiscoveryService initialized.")
 
-    # 4. Store the fully initialized orchestrator in the app state
-    # This makes it accessible to all API routes via the `request` object.
-    app.state.orchestrator = orchestrator
-    logger.info("Orchestrator attached to application state.")
-    logger.info("Application startup complete.")
+      # Run initial discovery and synchronization
+      logger.info("Running initial discovery and synchronization...")
+      await discovery_service.discover_and_sync_all_definitions(
+        protocol_search_paths=praxis_config.all_protocol_source_paths,
+      )
+      logger.info("Initial discovery and synchronization complete.")
 
-    yield  # The application is now running
+      # Instantiate and initialize the Orchestrator with its dependencies
+      logger.info("Initializing orchestrator...")
+      orchestrator = Orchestrator(
+        db_session_factory=AsyncSessionLocal,
+        asset_manager=asset_manager,
+        workcell_runtime=workcell_runtime,
+      )
+      logger.info("Orchestrator dependencies initialized.")
+
+      # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
+      logger.info("Initializing scheduler components...")
+      await initialize_scheduler_components(AsyncSessionLocal, praxis_config)
+
+      # Store the fully initialized orchestrator and discovery service in the app state
+      app.state.orchestrator = orchestrator
+      app.state.discovery_service = discovery_service
+      logger.info("Orchestrator and DiscoveryService attached to application state.")
+      logger.info("Application startup complete.")
+
+      yield  # The application is now running
 
   except Exception as e:
     logger.exception("Error during application startup: %s", str(e))
@@ -164,6 +191,7 @@ app.include_router(
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["Workcell"])
 app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 
 
 # --- Middleware and Root Endpoint ---

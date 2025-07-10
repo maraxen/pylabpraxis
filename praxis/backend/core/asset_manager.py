@@ -13,44 +13,26 @@ Decks are treated as ResourceOrm entities, potentially parented by a MachineOrm.
 """
 
 import importlib
-import inspect
-import pkgutil
 import uuid
 from functools import partial
 from typing import Any
 
-import pylabrobot.resources
-from pylabrobot.resources import (
-  Carrier,
-  Container,
-  Deck,
-  ItemizedResource,
-  Lid,
-  PlateAdapter,
-  PlateHolder,
-  Resource,
-  ResourceHolder,
-  ResourceStack,
-  TipSpot,
-  Well,
-)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.models.machine_orm import MachineOrm, MachineStatusEnum
-from praxis.backend.models.protocol_models import AssetRequirementModel
-from praxis.backend.models.resource_definition_orm import (
-  ResourceDefinitionOrm,
-  ResourceStatusEnum,
+from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
+from praxis.backend.models.pydantic.protocol import AssetRequirementModel
+from praxis.backend.models.orm.resource import (
+    ResourceDefinitionOrm,
+    ResourceOrm,
+    ResourceStatusEnum,
 )
-from praxis.backend.models.resource_orm import ResourceOrm
-from praxis.backend.services.praxis_orm_service import PraxisORMService
+from praxis.backend.services.base import PraxisORMService
 from praxis.backend.utils.errors import (
-  AssetAcquisitionError,
-  AssetReleaseError,
-  log_async_runtime_errors,
-  log_runtime_errors,
+    AssetAcquisitionError,
+    AssetReleaseError,
 )
+from praxis.backend.utils.logging import get_logger, log_async_runtime_errors, log_runtime_errors
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -96,277 +78,9 @@ class AssetManager:
     self.workcell_runtime = workcell_runtime
     self.svc = PraxisORMService()
 
-    self.EXCLUDED_BASE_CLASSES: list[type[Resource]] = [  # TODO: maybe just inspect if it's abstract?
-      Carrier,
-      Container,
-      Deck,
-      ItemizedResource,
-      Lid,
-      PlateAdapter,
-      PlateHolder,
-      Resource,
-      ResourceHolder,
-      ResourceStack,
-      TipSpot,
-      Well,
-    ]
 
-  @asset_manager_errors(
-    prefix="AM_EXTRACT_NUM: ",
-    suffix=" - Error extracting num_items",
-  )
-  def _extract_num_items(
-    self,
-    resource_class: type[Resource],
-    details: dict[str, Any] | None,
-  ) -> int | None:
-    """Extract the number of items (e.g., tips, wells, tubes) from serialized details.
 
-    Relevant for ItemizedResource types.
-    It checks for 'num_items', 'items', 'capacity', or 'wells' in serialized details.
 
-    Args:
-        resource_class: The class of the resource being processed, for logging context.
-        details: The serialized details of the resource instance.
-
-    Returns:
-        An integer representing the number of items, or None.
-
-    """
-    num_items_value: int | None = None
-    if not details:
-      logger.debug("AM_EXTRACT_NUM: No details provided for extraction.")
-      return None
-    if "num_items" in details and isinstance(details["num_items"], int):
-      logger.debug(
-        "AM_EXTRACT_NUM: Extracted from details['num_items'] for %s",
-        resource_class.__name__,
-      )
-      num_items_value = int(details["num_items"])
-    elif "items" in details and isinstance(details["items"], list):
-      logger.debug(
-        "AM_EXTRACT_NUM: Extracted from len(details['items']) for %s",
-        resource_class.__name__,
-      )
-      num_items_value = len(details["items"])
-    elif "wells" in details and isinstance(details["wells"], list):
-      logger.debug(
-        "AM_EXTRACT_NUM: Extracted from len(details['wells']) for %s",
-        resource_class.__name__,
-      )
-      num_items_value = len(details["wells"])
-    elif "capacity " in details and isinstance(details["capacity"], int):
-      logger.debug(
-        "AM_EXTRACT_NUM: Extracted from details['capacity'] for %s",
-        resource_class.__name__,
-      )
-      num_items_value = int(details["capacity"])
-
-    if num_items_value is None:
-      logger.debug(
-        "AM_EXTRACT_NUM: Number of items not found in details for %s.",
-        resource_class.__name__,
-      )
-    return num_items_value
-
-  @asset_manager_errors(
-    prefix="AM_EXTRACT_ORDER: ",
-    suffix=" - Error extracting ordering",
-  )
-  def _extract_ordering(
-    self,
-    resource_class: type[Resource],
-    details: dict[str, Any] | None,
-  ) -> str | None:
-    """Extract item names if ordered (e.g., wells in a plate) from serialized details.
-
-    Args:
-        resource_class: The class of the resource being processed, for logging context.
-        details: The serialized details of the resource instance.
-
-    Returns:
-        A comma-separated string of item names if ordered, or an empty string if
-        not found.
-
-    """
-    ordering_value = None
-    if not details:
-      logger.debug("AM_EXTRACT_ORDER: No details provided for extraction.")
-      return None
-    try:
-      if "ordering" in details and isinstance(details["ordering"], str):
-        logger.debug(
-          "AM_EXTRACT_ORDER: Extracted from details['ordering'] for %s",
-          resource_class.__name__,
-        )
-        ordering_value = details["ordering"]
-      elif "wells" in details and isinstance(details["wells"], list):
-        if all(isinstance(w, dict) and "name" in w for w in details["wells"]):
-          logger.debug(
-            "AM_EXTRACT_ORDER: Extracted from names in details['wells'] for %s",
-            resource_class.__name__,
-          )
-          ordering_value = ",".join([w["name"] for w in details["wells"]])
-      elif "items" in details and isinstance(details["items"], list):
-        if all(isinstance(i, dict) and "name" in i for i in details["items"]):
-          logger.debug(
-            "AM_EXTRACT_ORDER: Extracted from names in details['items'] for %s",
-            resource_class.__name__,
-          )
-          ordering_value = ",".join([i["name"] for i in details["items"]])
-      if ordering_value is None:
-        logger.debug(
-          "AM_EXTRACT_ORDER: Ordering not found in details for %s.",
-          resource_class.__name__,
-        )
-    except (
-      TypeError,
-      KeyError,
-      ValueError,
-      IndexError,
-    ) as e:  # More specific exceptions
-      logger.exception(
-        "AM_EXTRACT_ORDER: Error extracting ordering for %s: %s",
-        resource_class.__name__,
-        e,
-      )
-    return ordering_value
-
-  @asset_manager_errors(
-    prefix="AM_GET_CATEGORY: ",
-    suffix=" - Error getting category from PLR object",
-  )
-  def _can_catalog_resource(self, plr_class: type[Any]) -> bool:
-    """Determine if a PyLabRobot class represents a resource definition to catalog.
-
-    Args:
-        plr_class: The class to check.
-
-    Returns:
-        True if the class should be cataloged, False otherwise.
-
-    """
-    if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
-      return False
-    if inspect.isabstract(plr_class):
-      return False
-    if plr_class in self.EXCLUDED_BASE_CLASSES:
-      return False  # Generic base classes listed are explicitly excluded.
-    if not plr_class.__module__.startswith("pylabrobot.resources"):
-      return False
-    return True
-
-  @async_asset_manager_errors(
-    prefix="AM_SYNC: ",
-    suffix=" - Error syncing PyLabRobot definitions",
-  )
-  async def sync_pylabrobot_definitions(
-    self,
-    plr_resources_package=pylabrobot.resources,
-  ) -> tuple[int, int]:
-    """Scan and sync PyLabRobot resource definitions.
-
-    Scan PyLabRobot's resources by introspecting modules and classes,
-    then populate/update the ResourceDefinitionOrm.
-    This method focuses on PLR Resources (resource). Machine discovery is separate.
-
-    Args:
-        plr_resources_package: The base PyLabRobot package to scan
-        (default: pylabrobot.resources).
-
-    Returns:
-        A tuple (added_count, updated_count) of resource definitions.
-
-    """
-    logger.info(
-      "AM_SYNC: Starting PyLabRobot resource definition sync from package: %s",
-      plr_resources_package.__name__,
-    )
-    added_count = 0
-    updated_count = 0
-    processed_fqns: set[str] = set()
-
-    for _, modname, _ in pkgutil.walk_packages(
-      path=plr_resources_package.__path__,
-      prefix=plr_resources_package.__name__ + ".",
-      onerror=lambda x: logger.error("AM_SYNC: Error walking package %s", x),
-    ):
-      added, updated = await self._process_module(modname, processed_fqns)
-      added_count += added
-      updated_count += updated
-
-    return added_count, updated_count
-
-  async def _process_module(self, modname: str, processed_fqns: set[str]) -> tuple[int, int]:
-    added_count = 0
-    updated_count = 0
-    try:
-      module = importlib.import_module(modname)
-    except ImportError as e:
-      logger.warning(
-        "AM_SYNC: Could not import module %s during sync: %s",
-        modname,
-        e,
-      )
-      return added_count, updated_count
-
-    for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
-      fqn = f"{modname}.{class_name}"
-      if fqn in processed_fqns:
-        continue
-
-      processed_fqns.add(fqn)
-
-      if not self._can_catalog_resource(plr_class_obj):
-        continue
-
-      # Extract metadata
-      category = self._get_category_from_plr_class(plr_class_obj)
-      ordering = self._extract_ordering_from_plr_class(plr_class_obj)
-      short_name = self._get_short_name_from_plr_class(plr_class_obj)
-      description = self._get_description_from_plr_class(plr_class_obj)
-      size_x_mm = self._get_size_x_mm_from_plr_class(plr_class_obj)
-      size_y_mm = self._get_size_y_mm_from_plr_class(plr_class_obj)
-      size_z_mm = self._get_size_z_mm_from_plr_class(plr_class_obj)
-      nominal_volume_ul = self._get_nominal_volume_ul_from_plr_class(plr_class_obj)
-
-      # Check if resource definition already exists
-      existing_resource_def = await self.praxis_orm_service.get_resource_definition_by_fqn(
-        fqn,
-      )
-
-      if existing_resource_def:
-        # Update existing
-        existing_resource_def.name = short_name
-        existing_resource_def.description = description
-        existing_resource_def.plr_category = category
-        existing_resource_def.ordering = ordering
-        existing_resource_def.size_x_mm = size_x_mm
-        existing_resource_def.size_y_mm = size_y_mm
-        existing_resource_def.size_z_mm = size_z_mm
-        existing_resource_def.nominal_volume_ul = nominal_volume_ul
-        await self.praxis_orm_service.update_resource_definition(
-          existing_resource_def,
-        )
-        updated_count += 1
-        logger.debug("AM_SYNC: Updated resource definition: %s", fqn)
-      else:
-        # Create new
-        new_resource_def = ResourceDefinitionOrm(
-          name=short_name,
-          fqn=fqn,
-          description=description,
-          plr_category=category,
-          ordering=ordering,
-          size_x_mm=size_x_mm,
-          size_y_mm=size_y_mm,
-          size_z_mm=size_z_mm,
-          nominal_volume_ul=nominal_volume_ul,
-        )
-        await self.praxis_orm_service.create_resource_definition(new_resource_def)
-        added_count += 1
-        logger.debug("AM_SYNC: Added new resource definition: %s", fqn)
-    return added_count, updated_count
 
   async def _get_and_validate_deck_orms(self, deck_orm_accession_id: uuid.UUID) -> tuple[Any, Any]:
     deck_orm = await self.svc.read_deck(self.db, deck_orm_accession_id)
@@ -376,7 +90,7 @@ class AssetManager:
     deck_resource_orm = await self.svc.read_resource(self.db, deck_orm.accession_id)
     if not deck_resource_orm:
       raise AssetAcquisitionError(
-        f"Deck Resource ID '{deck_orm.accession_id}' (from Deck '{deck_orm.name}') not found."
+        f"Deck Resource ID '{deck_orm.accession_id}' (from Deck '{deck_orm.name}') not found.",
       )
 
     deck_def_orm = await self.svc.read_resource_definition(self.db, deck_resource_orm.name)
@@ -413,7 +127,7 @@ class AssetManager:
     deck_orm, deck_resource_orm, deck_def_orm = await self._get_and_validate_deck_orms(deck_orm_accession_id)
 
     if (
-      deck_resource_orm.current_status == ResourceStatusEnum.IN_USE
+      deck_resource_orm.status == ResourceStatusEnum.IN_USE
       and deck_resource_orm.current_protocol_run_accession_id != protocol_run_accession_id
     ):
       raise AssetAcquisitionError(
@@ -505,7 +219,7 @@ class AssetManager:
 
     # Idempotency check
     if (
-      item_to_place_orm.current_status == ResourceStatusEnum.IN_USE
+      item_to_place_orm.status == ResourceStatusEnum.IN_USE
       and item_to_place_orm.current_protocol_run_accession_id == protocol_run_accession_id
       and item_to_place_orm.location_machine_accession_id == deck_resource_orm.accession_id  # Located on this deck
       and item_to_place_orm.current_deck_position_name == position_item_orm.position_accession_id
@@ -517,14 +231,14 @@ class AssetManager:
       )
       return
 
-    if item_to_place_orm.current_status not in [
+    if item_to_place_orm.status not in [
       ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       ResourceStatusEnum.AVAILABLE_ON_DECK,
     ]:
       raise AssetAcquisitionError(
         f"Resource {item_to_place_accession_id} for position "
         f"'{position_item_orm.position_accession_id}' unavailable (status: "
-        f"{item_to_place_orm.current_status}).",
+        f"{item_to_place_orm.status}).",
       )
 
     item_def_orm = await self.svc.read_resource_definition(
@@ -665,7 +379,7 @@ class AssetManager:
       )
 
     if (
-      selected_machine_orm.current_status != MachineStatusEnum.IN_USE
+      selected_machine_orm.status != MachineStatusEnum.IN_USE
       or selected_machine_orm.current_protocol_run_accession_id != uuid.UUID(str(protocol_run_accession_id))
     ):
       updated_machine_orm = await self.svc.update_machine_status(
@@ -709,50 +423,47 @@ class AssetManager:
           f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.fqn}) "
           f"mismatches constraint {fqn}.",
         )
-      if instance_orm.current_status == ResourceStatusEnum.IN_USE:
+      if instance_orm.status == ResourceStatusEnum.IN_USE:
         if instance_orm.current_protocol_run_accession_id != uuid.UUID(
           str(protocol_run_accession_id),
         ):
           raise AssetAcquisitionError(
             f" {user_choice_instance_accession_id} IN_USE by another run.",
           )
-      elif instance_orm.current_status not in [
+      elif instance_orm.status not in [
         ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         ResourceStatusEnum.AVAILABLE_ON_DECK,
       ]:
         raise AssetAcquisitionError(
           f"Chosen instance {user_choice_instance_accession_id} not available (Status: "
-          f"{instance_orm.current_status.name}).",
+          f"{instance_orm.status.name}).",
         )
       return instance_orm
-    else:
-      in_use_list = await self.svc.read_resources(
-        self.db,
-        fqn=fqn,
-        status=ResourceStatusEnum.IN_USE,
-        current_protocol_run_accession_id_filter=str(protocol_run_accession_id),
-        property_filters=property_constraints,
-      )
-      if in_use_list:
-        return in_use_list[0]
-      else:
-        on_deck_list = await self.svc.read_resources(
-          self.db,
-          fqn=fqn,
-          status=ResourceStatusEnum.AVAILABLE_ON_DECK,
-          property_filters=property_constraints,
-        )
-        if on_deck_list:
-          return on_deck_list[0]
-        else:
-          in_storage_list = await self.svc.read_resources(
-            self.db,
-            fqn=fqn,
-            status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
-            property_filters=property_constraints,
-          )
-          if in_storage_list:
-            return in_storage_list[0]
+    in_use_list = await self.svc.read_resources(
+      self.db,
+      fqn=fqn,
+      status=ResourceStatusEnum.IN_USE,
+      current_protocol_run_accession_id_filter=str(protocol_run_accession_id),
+      property_filters=property_constraints,
+    )
+    if in_use_list:
+      return in_use_list[0]
+    on_deck_list = await self.svc.read_resources(
+      self.db,
+      fqn=fqn,
+      status=ResourceStatusEnum.AVAILABLE_ON_DECK,
+      property_filters=property_constraints,
+    )
+    if on_deck_list:
+      return on_deck_list[0]
+    in_storage_list = await self.svc.read_resources(
+      self.db,
+      fqn=fqn,
+      status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+      property_filters=property_constraints,
+    )
+    if in_storage_list:
+      return in_storage_list[0]
     return None
 
   async def acquire_resource(
@@ -847,7 +558,7 @@ class AssetManager:
 
     # Idempotency check for DB update
     needs_db_update = not (
-      resource_to_acquire.current_status == ResourceStatusEnum.IN_USE
+      resource_to_acquire.status == ResourceStatusEnum.IN_USE
       and resource_to_acquire.current_protocol_run_accession_id
       == uuid.UUID(str(resource_data.protocol_run_accession_id))
       and (
@@ -963,7 +674,7 @@ class AssetManager:
         resource_orm_accession_id,
       )
       return None, None  # Not applicable for the deck itself
-    elif clear_from_accession_id and clear_from_position_name:
+    if clear_from_accession_id and clear_from_position_name:
       logger.info(
         "AM_RELEASE_RESOURCE: Clearing '%s' from deck ID %s, pos '%s'.",
         resource_to_release.name,
@@ -976,11 +687,11 @@ class AssetManager:
         resource_orm_accession_id=resource_orm_accession_id,
       )
       return clear_from_accession_id, clear_from_position_name
-    else:  # Generic resource not on a specific deck or deck not specified
-      await self.workcell_runtime.clear_resource(
-        resource_orm_accession_id,
-      )
-      return None, None
+    # Generic resource not on a specific deck or deck not specified
+    await self.workcell_runtime.clear_resource(
+      resource_orm_accession_id,
+    )
+    return None, None
 
   async def _handle_resource_release_location(
     self,
@@ -999,7 +710,7 @@ class AssetManager:
         resource_orm_accession_id,
       )
       return None, None  # Not applicable for the deck itself
-    elif clear_from_accession_id and clear_from_position_name:
+    if clear_from_accession_id and clear_from_position_name:
       logger.info(
         "AM_RELEASE_RESOURCE: Clearing '%s' from deck ID %s, pos '%s'.",
         resource_to_release.name,
@@ -1012,11 +723,11 @@ class AssetManager:
         resource_orm_accession_id=resource_orm_accession_id,
       )
       return clear_from_accession_id, clear_from_position_name
-    else:  # Generic resource not on a specific deck or deck not specified
-      await self.workcell_runtime.clear_resource(
-        resource_orm_accession_id,
-      )
-      return None, None
+    # Generic resource not on a specific deck or deck not specified
+    await self.workcell_runtime.clear_resource(
+      resource_orm_accession_id,
+    )
+    return None, None
 
   async def _handle_resource_release_location(
     self,
@@ -1035,7 +746,7 @@ class AssetManager:
         resource_orm_accession_id,
       )
       return None, None  # Not applicable for the deck itself
-    elif clear_from_accession_id and clear_from_position_name:
+    if clear_from_accession_id and clear_from_position_name:
       logger.info(
         "AM_RELEASE_RESOURCE: Clearing '%s' from deck ID %s, pos '%s'.",
         resource_to_release.name,
@@ -1048,11 +759,11 @@ class AssetManager:
         resource_orm_accession_id=resource_orm_accession_id,
       )
       return clear_from_accession_id, clear_from_position_name
-    else:  # Generic resource not on a specific deck or deck not specified
-      await self.workcell_runtime.clear_resource(
-        resource_orm_accession_id,
-      )
-      return None, None
+    # Generic resource not on a specific deck or deck not specified
+    await self.workcell_runtime.clear_resource(
+      resource_orm_accession_id,
+    )
+    return None, None
 
   async def release_machine(
     self,
@@ -1230,7 +941,7 @@ class AssetManager:
             "user_choice_instance_accession_id",
             None,
           ),
-        )
+        ),
       )
     # Assume it's a Machine FQN
     logger.debug(

@@ -60,7 +60,7 @@ def machine_orm_factory():
       "accession_id": TEST_MACHINE_ID,
       "name": "Test OT-2",
       "fqn": "pylabrobot.liquid_handling.ot_2.OT_2",
-      "current_status": MachineStatusEnum.AVAILABLE,
+      "status": MachineStatusEnum.AVAILABLE,
       "current_protocol_run_accession_id": None,
     }
     defaults.update(kwargs)
@@ -100,7 +100,7 @@ def resource_factory():
       "accession_id": TEST_RESOURCE_ID,
       "name": "Test Plate 1",
       "fqn": "cos_96_wellplate_100ul",
-      "current_status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+      "status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       "current_protocol_run_accession_id": None,
       "location_machine_accession_id": None,
       "current_deck_position_name": None,

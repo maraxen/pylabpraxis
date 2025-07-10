@@ -17,8 +17,9 @@ from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.global_dependencies import get_asset_manager, get_scheduler
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
-from praxis.backend.models.scheduler_orm import ScheduleStatusEnum
-from praxis.backend.models.scheduler_pydantic import (
+from praxis.backend.models.orm.protocol import ProtocolRunOrm
+from praxis.backend.models.orm.schedule import ScheduleStatusEnum
+from praxis.backend.models.pydantic.scheduler import (
     AssetAvailabilityResponse,
     CancelScheduleRequest,
     ScheduleEntryResponse,
@@ -31,8 +32,10 @@ from praxis.backend.models.scheduler_pydantic import (
     SchedulerSystemStatusResponse,
     ScheduleStatusResponse,
 )
-from praxis.backend.services import protocols as protocol_svc
+from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.services import scheduler as scheduler_svc
+
+protocol_run_service = ProtocolRunService(ProtocolRunOrm)
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -56,7 +59,7 @@ async def schedule_protocol(
     and queues the protocol for execution using Celery workers.
     """
     # Get the protocol run
-    protocol_run = await protocol_svc.read_protocol_run(db, request.protocol_run_id)
+    protocol_run = await protocol_run_service.get(db, accession_id=request.protocol_run_id)
     if not protocol_run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -122,10 +125,7 @@ async def get_schedule_status(
         )
 
     # Get protocol information
-    protocol_run = await protocol_svc.read_protocol_run(
-        db,
-        schedule_entry.protocol_run_accession_id,
-    )
+    protocol_run = await protocol_run_service.get(db, accession_id=schedule_entry.protocol_run_accession_id)
 
     protocol_name = None
     protocol_version = None

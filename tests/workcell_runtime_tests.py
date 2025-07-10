@@ -10,7 +10,10 @@ ManagedDeviceOrmMock = MagicMock
 ResourceOrmMock = MagicMock
 
 # Enums
-from praxis.backend.database_models.asset_management_orm import ManagedDeviceStatusEnum, ResourceStatusEnum
+from praxis.backend.database_models.asset_management_orm import (
+  ManagedDeviceStatusEnum,
+  ResourceStatusEnum,
+)
 
 
 # Mock PLR classes
@@ -98,7 +101,7 @@ class TestWorkcellRuntimeDeviceHandling:
     # This depends on how _get_class_from_fqn and constructor inspection work.
     # For now, assume it's called. A more specific check would be on mock_plr_machine_backend_class.
     mock_plr_machine_backend_class.assert_called_with(
-      name="Device1", param="value"
+      name="Device1", param="value",
     )  # Assuming name is passed, and param from config
 
     assert backend_instance is not None
@@ -138,7 +141,7 @@ class TestWorkcellRuntimeDeviceHandling:
       mock_plr_deck_class.return_value.__class__ = ActualDeckClassMocked  # Make the instance's class the mocked Deck
 
       machine_orm = ManagedDeviceOrmMock(
-        id=2, name="MainDeck", fqn="pylabrobot.resources.deck.Deck", properties_json={}
+        id=2, name="MainDeck", fqn="pylabrobot.resources.deck.Deck", properties_json={},
       )
 
       backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
@@ -195,7 +198,7 @@ class TestWorkcellRuntimeResourceHandling:
   ):
     mock_get_class.return_value = mock_plr_resource_class
     resource_orm = ResourceOrmMock(
-      id=1, name="Plate1", resource_definition_name="some.ResourceFQN"
+      id=1, name="Plate1", resource_definition_name="some.ResourceFQN",
     )  # Name used for instance
 
     plr_object = workcell_runtime.create_or_get_resource_plr_object(resource_orm, "some.ResourceFQN")  # Pass FQN

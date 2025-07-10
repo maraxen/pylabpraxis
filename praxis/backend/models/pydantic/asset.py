@@ -19,7 +19,7 @@ class AssetBase(BaseModel):
     description="Fully qualified name of the asset's class, if applicable.",
   )
   location: str | None = Field(None, description="The location of the asset.")
-  
+
 
 
 class AssetResponse(AssetBase, PraxisBaseModel):

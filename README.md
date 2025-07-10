@@ -12,20 +12,45 @@ Developed for the Ovchinnikov group in MIT Biology.
 
 PyLabPraxis employs a modular, service-oriented architecture designed for scalability and maintainability. The key architectural pillars are:
 
-1. **FastAPI Backend**: Provides a RESTful API for all interactions, including protocol management, execution control, and asset monitoring.
-2. **PyLabRobot Integration**: Core to its functionality, PyLabPraxis uses PyLabRobot for abstracting hardware interactions, allowing for control of various lab instruments like liquid handlers, plate readers, etc.
-3. **PostgreSQL Database**: Serves as the primary persistent data store for:
-    * Protocol definitions and versions.
-    * Protocol run history, status, and results.
-    * Asset definitions (e.g., machine types, resource types) and instances (specific physical assets).
-    * Workcell configurations and deck layouts.
-    * User management data (via Keycloak integration).
-4. **Redis**: Utilized for:
-    * **Runtime State Management**: Storing `PraxisState` for individual protocol runs.
-    * **Distributed Locking**: `AssetLockManager` uses Redis to ensure exclusive access to assets during operations.
-    * **Celery Broker & Backend**: Managing asynchronous task queues for protocol execution.
-5. **Celery**: Enables asynchronous execution of long-running laboratory protocols, improving responsiveness and scalability of the system.
-6. **Docker & Docker Compose**: The entire backend ecosystem is designed for deployment using Docker, facilitating isolated, reproducible, and scalable environments for the application and its services (PostgreSQL, Redis, Keycloak, SMTP).
+1.  **FastAPI Backend**: Provides a RESTful API for all interactions, including protocol management, execution control, and asset monitoring.
+2.  **PyLabRobot Integration**: Core to its functionality, PyLabPraxis uses PyLabRobot for abstracting hardware interactions, allowing for control of various lab instruments like liquid handlers, plate readers, etc.
+3.  **PostgreSQL Database**: Serves as the primary persistent data store for:
+    *   Protocol definitions and versions.
+    *   Protocol run history, status, and results.
+    *   Asset definitions (e.g., machine types, resource types) and instances (specific physical assets).
+    *   Workcell configurations and deck layouts.
+    *   User management data (via Keycloak integration).
+4.  **Redis**: Utilized for:
+    *   **Runtime State Management**: Storing `PraxisState` for individual protocol runs.
+    *   **Distributed Locking**: `AssetLockManager` uses Redis to ensure exclusive access to assets during operations.
+    *   **Celery Broker & Backend**: Managing asynchronous task queues for protocol execution.
+5.  **Celery**: Enables asynchronous execution of long-running laboratory protocols, improving responsiveness and scalability of the system.
+6.  **Docker & Docker Compose**: The entire backend ecosystem is designed for deployment using Docker, facilitating isolated, reproducible, and scalable environments for the application and its services (PostgreSQL, Redis, Keycloak, SMTP).
+
+## Service Layer Architectural Patterns
+
+The backend service layer (`praxis/backend/services/`) is built on a consistent, generic, repository-style pattern. This design promotes code reuse, type safety, and a clear separation of concerns between the API layer and the database persistence layer.
+
+### 1. Standard CRUD Services (`CRUDBase`)
+
+This is the primary pattern for managing the lifecycle of standard database entities (e.g., `Workcell`, `Resource`, `ProtocolRun`).
+
+- **Purpose**: To provide a standard, type-safe interface for Create, Read, Update, and Delete (CRUD) operations.
+- **Implementation**: A service inherits from `CRUDBase[ModelType, CreateSchemaType, UpdateSchemaType]`.
+- **Key Principle**: This pattern strictly separates the internal database representation from the external API contract.
+  - `ModelType`: The **SQLAlchemy ORM class** (e.g., `DeckOrm`). This is the internal, stateful object used for all database interactions.
+  - `CreateSchemaType`: The **Pydantic model** used to validate data when **creating** an entity (e.g., `DeckCreate`). This defines the API contract for creation.
+  - `UpdateSchemaType`: The **Pydantic model** used to validate data when **updating** an entity (e.g., `DeckUpdate`). Its fields are typically optional to allow for partial updates.
+
+### 2. Discovery & Synchronization Services (`DiscoverableTypeServiceBase`)
+
+This is a specialized pattern for entities that are not created by users directly but are "discovered" from the `pylabrobot` library (e.g., `DeckTypeDefinition`, `ResourceTypeDefinition`).
+
+- **Purpose**: To introspect the `pylabrobot` library, find all available hardware/resource definitions, and synchronize them with the database.
+- **Implementation**: A service inherits from `DiscoverableTypeServiceBase`, which follows the same core principles as `CRUDBase`.
+- **Key Method**: The service must implement the `discover_and_synchronize_type_definitions` method, which contains the logic to find, create, and update the type definitions in the database.
+
+This clear architectural pattern ensures that the service layer is predictable, maintainable, and robust.
 
 ## Key Components
 
@@ -132,6 +157,20 @@ The `praxis.backend.services/` package contains a suite of modules that abstract
 * **`praxis_orm_service.py`**: Provides a general interface for common database operations.
 * **`state.py`**: Contains the `PraxisState` implementation for run-specific Redis-backed state.
 * **`scheduler.py`**: (Note: Core scheduling logic is in `praxis.backend.core.scheduler.py`, this might be a helper or a different aspect of scheduling if present here).
+
+## Type Definition Management
+
+A key feature of PyLabPraxis is its ability to understand the capabilities of the laboratory hardware. This is achieved through a "discover and sync" process that introspects the `pylabrobot` library to identify available resources, machines, and decks. This information is then stored in the database as "type definitions."
+
+This process is managed by a set of specialized services that inherit from a common `TypeDefinitionServiceBase`. Each service is responsible for a specific type of asset:
+
+*   **`ResourceTypeDefinitionService`**: Discovers all available `pylabrobot.resources` and syncs them with the database.
+*   **`MachineTypeDefinitionService`**: Discovers all available `pylabrobot.machines` and syncs them with the database.
+*   **`DeckTypeDefinitionService`**: Discovers all available `pylabrobot.resources.Deck` subclasses and syncs them with the database.
+
+The `DiscoveryService` is responsible for orchestrating this process, triggering the `sync_with_source()` method on each of the type definition services.
+
+This architecture ensures that the system always has an up-to-date understanding of the available hardware, which is then used by the `AssetManager` to create and manage live asset instances.
 
 ## API Overview (`praxis.backend.api/`)
 

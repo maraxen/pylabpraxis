@@ -245,7 +245,7 @@ class MockResourceSimple(MockBaseResource):
         "size_y": self.size_y,
         "size_z": self.size_z,
         "capacity": self.capacity,
-      }
+      },
     )
     return data
 
@@ -268,7 +268,7 @@ class MockResourceItemized(MockBaseItemizedResource):
       {
         "num_items": self.num_items,
         "wells_data": [{"name": w.name} for w in self.wells],  # Simulate serialized well data
-      }
+      },
     )
     return data
 
@@ -414,7 +414,7 @@ class TestAssetManagerAcquireDevice:
     updated_mock_machine_orm = ManagedDeviceOrmMock(
       id=1,
       name="Device1",
-      current_status=ManagedDeviceStatusEnum.IN_USE,
+      status=ManagedDeviceStatusEnum.IN_USE,
     )
     mock_ads_service.update_managed_machine_status.return_value = updated_mock_machine_orm
 
@@ -500,7 +500,7 @@ class TestAssetManagerAcquireResource:
       [mock_lw_orm],
     ]
     mock_ads_service.get_resource_definition.return_value = mock_resource_def
-    updated_mock_lw_orm = ResourceOrmMock(id=1, name="Plate1", current_status=ResourceStatusEnum.IN_USE)
+    updated_mock_lw_orm = ResourceOrmMock(id=1, name="Plate1", status=ResourceStatusEnum.IN_USE)
     mock_ads_service.update_resource_location_and_status.return_value = updated_mock_lw_orm
 
     live_resource, orm_accession_id, lw_type = asset_manager.acquire_resource(
@@ -608,7 +608,7 @@ class TestAssetManagerRelease:
     mock_ads_service: MagicMock,
     mock_workcell_runtime: MagicMock,
   ):
-    mock_machine_after_shutdown = ManagedDeviceOrmMock(id=1, current_status=ManagedDeviceStatusEnum.OFFLINE)
+    mock_machine_after_shutdown = ManagedDeviceOrmMock(id=1, status=ManagedDeviceStatusEnum.OFFLINE)
     mock_ads_service.get_managed_machine.return_value = mock_machine_after_shutdown
 
     asset_manager.release_machine(machine_orm_accession_id=1, final_status=ManagedDeviceStatusEnum.AVAILABLE)
@@ -1150,7 +1150,7 @@ class TestAssetManagerDeckLoading:
     deck_machine.accession_id = 50
     deck_machine.name = "TestDeckLayout"  # Matching layout name
     deck_machine.praxis_machine_category = PraxisDeviceCategoryEnum.DECK
-    deck_machine.current_status = ManagedDeviceStatusEnum.AVAILABLE
+    deck_machine.status = ManagedDeviceStatusEnum.AVAILABLE
     deck_machine.current_protocol_run_accession_id = None
     return deck_machine
 
@@ -1169,7 +1169,7 @@ class TestAssetManagerDeckLoading:
     lw_instance.accession_id = 201
     lw_instance.name = "TestPlateOnDeck"
     lw_instance.name = "test_plate_def_name"
-    lw_instance.current_status = ResourceStatusEnum.AVAILABLE_IN_STORAGE
+    lw_instance.status = ResourceStatusEnum.AVAILABLE_IN_STORAGE
     lw_instance.current_protocol_run_accession_id = None
     lw_instance.location_machine_accession_id = None
     lw_instance.current_deck_slot_name = None
@@ -1191,7 +1191,7 @@ class TestAssetManagerDeckLoading:
     mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
     mock_ads_service.list_managed_machines.return_value = []  # No deck found
     with pytest.raises(
-      AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK"
+      AssetAcquisitionError, match="No ManagedDevice found for deck 'TestDeckLayout' with category DECK",
     ):
       asset_manager.apply_deck("TestDeckLayout", "run123")
     mock_ads_service.list_managed_machines.assert_called_once_with(
@@ -1299,7 +1299,7 @@ class TestAssetManagerDeckLoading:
     mock_resource_orm,
     mock_workcell_runtime: MagicMock,
   ):
-    mock_resource_orm.current_status = ResourceStatusEnum.IN_USE  # Not available
+    mock_resource_orm.status = ResourceStatusEnum.IN_USE  # Not available
     mock_resource_orm.current_protocol_run_accession_id = "another_run"
 
     mock_ads_service.get_deck_layout_by_name.return_value = mock_deck_layout_orm
@@ -1338,7 +1338,7 @@ class TestAssetManagerDeckLoading:
 # --- Tests for AssetManager Logging (New Class) ---
 class TestAssetManagerLogging:
   def test_acquire_resource_logs_property_constraints(
-    self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock, caplog
+    self, asset_manager: AssetManager, mock_ads_service: MagicMock, mock_workcell_runtime: MagicMock, caplog,
   ):
     # Setup for a successful resource acquisition to reach the logging point
     mock_lw_orm = ResourceOrmMock(id=1, name="PlateLogTest", resource_definition_name="log_plate_def")
@@ -1373,7 +1373,7 @@ class TestAssetManagerLogging:
     )
 
   def test_release_resource_logs_properties_update(
-    self, asset_manager: AssetManager, mock_ads_service: MagicMock, caplog
+    self, asset_manager: AssetManager, mock_ads_service: MagicMock, caplog,
   ):
     # Setup for release_resource
     final_props_update = {"content_state": "empty", "cleaned": True}

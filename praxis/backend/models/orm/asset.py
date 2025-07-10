@@ -40,7 +40,7 @@ class AssetOrm(Base):
     nullable=False,
     index=True,
     comment="Name of the asset.",
-    init=False,
+    default="UNNAMED ASSET",
   )
   fqn: Mapped[str | None] = mapped_column(
     String,

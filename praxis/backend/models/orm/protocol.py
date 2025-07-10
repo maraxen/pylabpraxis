@@ -242,6 +242,12 @@ class FunctionProtocolDefinitionOrm(Base):
     comment="Name of the deck parameter in the function signature.",
     default=None,
   )
+  deck_construction_function_fqn: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="FQN of the function to construct the deck.",
+    default=None,
+  )
   state_param_name: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
@@ -394,6 +400,13 @@ class ParameterDefinitionOrm(Base):
       ranges.",
     default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
   )
+  ui_hint_json: Mapped[dict | None] = mapped_column(
+    "ui_hint",
+    JSONB,
+    nullable=True,
+    comment="JSONB representation of UI hints for the parameter.",
+    default=None,
+  )
   protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     back_populates="parameters",
@@ -484,11 +497,19 @@ class AssetRequirementOrm(Base):
       values or ranges.",
     default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
   )
-  protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
+  location_constraints_json: Mapped[dict | None] = mapped_column(
+    "location_constraints",
+    JSONB,
+    nullable=True,
+    comment="JSONB representation of location constraints for the asset requirement.",
+    default=None,
+  )
+  function_protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
-    back_populates="asset_requirements",
-    init=False,
+    back_populates="assets",
     comment="The protocol definition this asset requirement belongs to.",
+    nullable=False,
+    init=False,
   )
   resource_definitions: Mapped[list["ResourceDefinitionOrm"]] = relationship(
     "ResourceDefinitionOrm",

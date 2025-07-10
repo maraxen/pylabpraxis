@@ -45,12 +45,12 @@ from praxis.backend.models.enums import (
   MachineCategoryEnum,
   MachineStatusEnum,
 )
-from praxis.backend.utils.db import Base
+from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 
 from .asset import AssetOrm
 
 
-class MachineDefinitionOrm(Base):
+class MachineDefinitionOrm(PLRTypeDefinitionOrm):
   """SQLAlchemy ORM model for cataloging machine definitions.
 
   This model stores comprehensive metadata about various types of lab machines,
@@ -59,32 +59,12 @@ class MachineDefinitionOrm(Base):
 
   __tablename__ = "machine_definition_catalog"
 
-  name: Mapped[str] = mapped_column(
-    String,
-    unique=True,
-    index=True,
-    comment="Name of the machine definition.",
-    init=False,
-  )
-  fqn: Mapped[str] = mapped_column(
-    String,
-    nullable=False,
-    index=True,
-    comment="Fully qualified name of the machine's class, if applicable.",
-    default="pylabrobot.machines.Machine",
-  )
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(
     SAEnum(MachineCategoryEnum, name="machine_category_enum"),
     nullable=False,
     index=True,
     default=MachineCategoryEnum.UNKNOWN,
     comment="Category of the machine, e.g., liquid handler, centrifuge, etc.",
-  )
-  description: Mapped[str | None] = mapped_column(
-    Text,
-    nullable=True,
-    default=None,
-    comment="Description of the resource type.",
   )
   is_consumable: Mapped[bool] = mapped_column(Boolean, default=False)
   nominal_volume_ul: Mapped[float | None] = mapped_column(
@@ -129,17 +109,6 @@ class MachineDefinitionOrm(Base):
     nullable=True,
     default=None,
     comment="Size in Z dimension (mm).",
-  )
-  plr_category: Mapped[str | None] = mapped_column(
-    String,
-    nullable=True,
-    index=True,
-    default=None,
-    comment=(
-      "Specific PyLabRobot resource class name (e.g., 'Plate', 'TipRack',"
-      " 'Carrier', 'Trough') from the PLR ontology. Corresponds to PLR"
-      " Resource.category or the direct subclass name."
-    ),
   )
   model: Mapped[str | None] = mapped_column(
     String,
@@ -214,9 +183,7 @@ class MachineDefinitionOrm(Base):
     default=None,
   )
 
-  def __repr__(self) -> str:
-    """Return a string representation of the MachineDefinitionOrm object."""
-    return f"<MachineDefinitionOrm(accession_id={self.accession_id}, name={self.name})>"
+  
 
 
 class MachineOrm(AssetOrm):
@@ -298,6 +265,17 @@ class MachineOrm(AssetOrm):
     nullable=True,
     default=None,
     comment="If True, this machine is a simulation override for testing purposes.",
+  )
+
+  has_deck_child: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    comment="Indicates if this machine has a deck resource as a child.",
+  )
+  has_resource_child: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    comment="Indicates if this machine has a resource child.",
   )
 
   workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(

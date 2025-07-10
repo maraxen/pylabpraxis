@@ -19,7 +19,7 @@ from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
 from praxis.backend.core.run_context import PraxisRunContext
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models import (
-  FunctionProtocolDefinitionModel,
+  FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionOrm,
   MachineStatusEnum,
   ProtocolRunOrm,
@@ -119,7 +119,7 @@ class Orchestrator:
   async def _prepare_protocol_code(
     self,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
-  ) -> tuple[Callable, FunctionProtocolDefinitionModel]:
+  ) -> tuple[Callable, FunctionProtocolDefinitionCreate]:
     """Load the protocol code from its source using the ProtocolCodeManager.
 
     Args:
@@ -309,7 +309,7 @@ class Orchestrator:
 
   def _process_input_parameters(
     self,
-    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_pydantic_def: FunctionProtocolDefinitionCreate,
     input_parameters: dict[str, Any],
     final_args: dict[str, Any],
   ) -> None:
@@ -332,7 +332,7 @@ class Orchestrator:
 
   def _inject_praxis_state(
     self,
-    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_pydantic_def: FunctionProtocolDefinitionCreate,
     praxis_state: PraxisState,
     final_args: dict[str, Any],
   ) -> dict[str, Any] | None:
@@ -367,7 +367,7 @@ class Orchestrator:
 
   async def _acquire_assets(
     self,
-    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_pydantic_def: FunctionProtocolDefinitionCreate,
     protocol_run_accession_id: uuid.UUID,
     final_args: dict[str, Any],
     acquired_assets_details: dict[uuid.UUID, Any],
@@ -429,7 +429,7 @@ class Orchestrator:
   async def _handle_deck_preconfiguration(
     self,
     db_session: AsyncSession,
-    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_pydantic_def: FunctionProtocolDefinitionCreate,
     input_parameters: dict[str, Any],
     protocol_run_accession_id: uuid.UUID,
     final_args: dict[str, Any],
@@ -495,7 +495,7 @@ class Orchestrator:
   async def _prepare_arguments(
     self,
     db_session: AsyncSession,
-    protocol_pydantic_def: FunctionProtocolDefinitionModel,
+    protocol_pydantic_def: FunctionProtocolDefinitionCreate,
     input_parameters: dict[str, Any],
     praxis_state: PraxisState,
     protocol_run_accession_id: uuid.UUID,

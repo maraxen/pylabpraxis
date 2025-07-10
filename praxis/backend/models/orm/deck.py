@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import (
   UUID,
+  Boolean,
   Float,
   ForeignKey,
   String,
@@ -33,6 +34,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import generate_name, uuid7
@@ -41,8 +43,8 @@ if TYPE_CHECKING:
   from praxis.backend.models.orm import (
     AssetRequirementOrm,
     FunctionDataOutputOrm,
-    ResourceDefinitionOrm,
     MachineOrm,
+    ResourceDefinitionOrm,
   )
 
 generate_deck_name = partial(
@@ -100,12 +102,15 @@ class DeckOrm(ResourceOrm):
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
     index=True,
-    default=None,
+    init=False,
+    comment="Foreign key to the deck type definition.",
   )
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
-    default=None,
+    comment="Relationship to the deck's type definition.",
+    uselist=False,
+    init=False,
   )
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
@@ -129,7 +134,7 @@ class DeckOrm(ResourceOrm):
 
 
 
-class DeckDefinitionOrm(Base):
+class DeckDefinitionOrm(PLRTypeDefinitionOrm):
   """Define a type of deck, its properties, and its positions.
 
   This ORM model stores definitions for different types of decks that can be
@@ -169,33 +174,6 @@ class DeckDefinitionOrm(Base):
   __tablename__ = "deck_definition_catalog"
   __table_args__ = (UniqueConstraint("fqn", name="uq_deck_type_definitions_fqn"),)
 
-  name: Mapped[str] = mapped_column(
-    String,
-    unique=True,
-    index=True,
-    nullable=False,
-    default=generate_name,
-  )
-  fqn: Mapped[str] = mapped_column(
-    String,
-    nullable=False,
-    index=True,
-    unique=True,
-    comment="Fully qualified name of the PyLabRobot deck class.",
-    default="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
-  )
-  description: Mapped[str | None] = mapped_column(
-    Text,
-    nullable=True,
-    default=None,
-    comment="Detailed description of the deck type.",
-  )
-  plr_category: Mapped[str | None] = mapped_column(
-    String,
-    nullable=True,
-    default="Deck",
-    comment="Category of the deck type in PyLabRobot, e.g., 'Deck', 'LiquidHandler'.",
-  )
   default_size_x_mm: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
@@ -300,14 +278,14 @@ class DeckPositionDefinitionOrm(Base):
     index=True,
     nullable=False,
     comment="Foreign key to the parent deck type definition.",
-    default=None,
+    init=False,
   )
   position_name: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
-    default=None,
     comment="Human-readable identifier for the position (e.g., 'A1', 'trash_bin').",
+    init=False,
   )
 
   x_coord: Mapped[float] = mapped_column(
@@ -328,7 +306,44 @@ class DeckPositionDefinitionOrm(Base):
     comment="Z-coordinate of the position's center.",
     default=0.0,
   )
+  pylabrobot_position_type_name: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="PyLabRobot specific position type name.",
+    default=None,
+  )
+  allowed_resource_definition_names: Mapped[list[str] | None] = mapped_column(
+    JSONB,
+    nullable=True,
+    comment="List of specific resource definition names allowed at this position.",
+    default=None,
+  )
+  accepts_tips: Mapped[bool | None] = mapped_column(
+    Boolean,
+    nullable=True,
+    comment="Indicates if the position accepts tips.",
+    default=None,
+  )
+  accepts_plates: Mapped[bool | None] = mapped_column(
+    Boolean,
+    nullable=True,
+    comment="Indicates if the position accepts plates.",
+    default=None,
+  )
+  accepts_tubes: Mapped[bool | None] = mapped_column(
+    Boolean,
+    nullable=True,
+    comment="Indicates if the position accepts tubes.",
+    default=None,
+  )
+  notes: Mapped[str | None] = mapped_column(
+    Text,
+    nullable=True,
+    comment="Additional notes for the position.",
+    default=None,
+  )
 
+  # Reverting to compatible_resource_fqns as per user request
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
     nullable=True,
@@ -340,5 +355,7 @@ class DeckPositionDefinitionOrm(Base):
     "DeckTypeDefinitionOrm",
     back_populates="positions",
     nullable=False,
-    default=None,
+    comment="Relationship to the parent deck type definition.",
+    uselist=False,
+    init=False,
   )
