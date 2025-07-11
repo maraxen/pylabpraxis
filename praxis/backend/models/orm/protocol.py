@@ -68,7 +68,7 @@ class ProtocolSourceRepositoryOrm(Base):
     unique=True,
     index=True,
     comment="The name of the protocol source",
-    init=False,
+    kw_only=True,
   )
   git_url: Mapped[str] = mapped_column(
     String,
@@ -129,7 +129,7 @@ class FileSystemProtocolSourceOrm(Base):
     unique=True,
     index=True,
     comment="The name of the protocol source",
-    init=False,
+    kw_only=True,
   )
   base_path: Mapped[str] = mapped_column(
     String,
@@ -174,7 +174,7 @@ class FunctionProtocolDefinitionOrm(Base):
     nullable=False,
     index=True,
     comment="The name of the protocol function.",
-    init=False,
+    kw_only=True,
   )
   version: Mapped[str] = mapped_column(
     String,
@@ -290,14 +290,14 @@ class FunctionProtocolDefinitionOrm(Base):
     back_populates="function_protocol_definitions",
     foreign_keys=[source_repository_accession_id],
     comment="The protocol source repository where this function is defined, if applicable.",
-    init=False,
+    kw_only=True,
   )
   file_system_source: Mapped["FileSystemProtocolSourceOrm"] = relationship(
     "FileSystemProtocolSourceOrm",
     back_populates="function_protocol_definitions",
     foreign_keys=[file_system_source_accession_id],
     comment="The file system protocol source where this function is defined, if applicable.",
-    init=False,
+    kw_only=True,
   )
   protocol_runs: Mapped[list["ProtocolRunOrm"]] = relationship(
     "ProtocolRunOrm",
@@ -350,7 +350,7 @@ class ParameterDefinitionOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the protocol definition this parameter belongs to.",
-    init=False,
+    kw_only=True,
   )
   name: Mapped[str] = mapped_column(
     String,
@@ -410,7 +410,7 @@ class ParameterDefinitionOrm(Base):
   protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     back_populates="parameters",
-    init=False,
+    kw_only=True,
     comment="The protocol definition this parameter belongs to.",
   )
   __table_args__ = (
@@ -441,7 +441,7 @@ class AssetRequirementOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the protocol definition this asset requirement belongs to.",
-    init=False,
+    kw_only=True,
   )
   name: Mapped[str] = mapped_column(
     String,
@@ -509,7 +509,7 @@ class AssetRequirementOrm(Base):
     back_populates="assets",
     comment="The protocol definition this asset requirement belongs to.",
     nullable=False,
-    init=False,
+    kw_only=True,
   )
   resource_definitions: Mapped[list["ResourceDefinitionOrm"]] = relationship(
     "ResourceDefinitionOrm",
@@ -562,7 +562,7 @@ class ProtocolRunOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the top-level protocol definition that this run executes.",
-    init=False,
+    kw_only=True,
   )
   status: Mapped[ProtocolRunStatusEnum] = mapped_column(
     SAEnum(ProtocolRunStatusEnum, name="protocol_run_status_enum_v3"),
@@ -590,7 +590,7 @@ class ProtocolRunOrm(Base):
     ),
     comment="Stored duration in milliseconds, computed by the DB when a run completes.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
 
   current_duration_ms: Mapped[int | None] = mapped_column(
@@ -607,7 +607,7 @@ class ProtocolRunOrm(Base):
     comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the \
       current time.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   input_parameters_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -656,7 +656,7 @@ class ProtocolRunOrm(Base):
     back_populates="protocol_runs",
     foreign_keys=[top_level_protocol_definition_accession_id],
     comment="The top-level protocol definition that this run executes.",
-    init=False,
+    kw_only=True,
   )
   function_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(
     "FunctionCallLogOrm",
@@ -726,14 +726,14 @@ class FunctionCallLogOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the protocol run this function call belongs to.",
-    init=False,
+    kw_only=True,
   )
   sequence_in_run: Mapped[int] = mapped_column(
     Integer,
     nullable=False,
     index=True,
     comment="Sequence number of this function call within the protocol run, starting from 0.",
-    init=False,
+    kw_only=True,
   )
   function_protocol_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
@@ -741,7 +741,7 @@ class FunctionCallLogOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the function protocol definition that this call executes.",
-    init=False,
+    kw_only=True,
   )
   parent_function_call_log_accession_id: Mapped[UUID | None] = mapped_column(
     UUID,
@@ -755,7 +755,7 @@ class FunctionCallLogOrm(Base):
     DateTime(timezone=True),
     nullable=False,
     server_default=func.now(),
-    init=False,
+    kw_only=True,
     comment="The start time of the function call, automatically set when the call is created.",
   )
   end_time: Mapped[datetime | None] = mapped_column(
@@ -763,7 +763,7 @@ class FunctionCallLogOrm(Base):
     nullable=True,
     comment="The end time of the function call, automatically set when the call is completed.",
     default=None,
-    init=False,
+    kw_only=True,
   )
   completed_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
@@ -773,7 +773,7 @@ class FunctionCallLogOrm(Base):
     ),
     comment="Stored duration in milliseconds, computed by the DB when a call completes.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   current_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
@@ -789,7 +789,7 @@ class FunctionCallLogOrm(Base):
     comment="Virtual duration in ms. For ongoing calls, it's calculated on-the-fly against the \
       current time.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   input_args_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -825,20 +825,20 @@ class FunctionCallLogOrm(Base):
     back_populates="function_calls",
     foreign_keys=[protocol_run_accession_id],
     comment="The protocol run that this function call belongs to.",
-    init=False,
+    kw_only=True,
   )
   executed_function_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     foreign_keys=[function_protocol_definition_accession_id],
     back_populates="function_call_logs",
     comment="The function protocol definition that this call executes.",
-    init=False,
+    kw_only=True,
   )
   parent_call: Mapped["FunctionCallLogOrm"] = relationship(
     "FunctionCallLogOrm",
     remote_side=[accession_id],
     backref="child_calls",
-    init=False,
+    kw_only=True,
   )
 
   # Relationship to data outputs

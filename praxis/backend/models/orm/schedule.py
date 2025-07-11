@@ -42,6 +42,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
 from praxis.backend.models.enums.schedule import ScheduleHistoryEventEnum, ScheduleStatusEnum
 from praxis.backend.utils.db import Base, CreateMaterializedView, DropMaterializedView
+from praxis.backend.utils.uuid import uuid7
 
 
 class ScheduleEntryOrm(Base):
@@ -59,8 +60,10 @@ class ScheduleEntryOrm(Base):
     nullable=False,
     unique=True,
     index=True,
-    init=False,
+    comment="Foreign key to the protocol run this schedule entry belongs to.",
+    default_factory=uuid7,
   )
+
   status: Mapped[ScheduleStatusEnum] = mapped_column(
     SAEnum(ScheduleStatusEnum, name="schedule_status_enum"),
     default=ScheduleStatusEnum.QUEUED,
@@ -74,30 +77,30 @@ class ScheduleEntryOrm(Base):
     DateTime(timezone=True),
     server_default=func.now(),
     nullable=False,
-    init=False,
+    kw_only=True,
   )
   asset_analysis_completed_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when asset analysis was completed for this schedule entry.",
-    init=False,
+    kw_only=True,
   )
   assets_reserved_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   execution_started_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the protocol run execution started.",
-    init=False,
+    kw_only=True,
   )
   execution_completed_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the protocol run execution completed.",
-    init=False,
+    kw_only=True,
   )
 
   # Asset requirements and analysis
@@ -155,25 +158,12 @@ class ScheduleEntryOrm(Base):
     default=None,
   )
 
-  # Timestamps
-  created_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True),
-    server_default=func.now(),
-    nullable=False,
-  )
-  updated_at: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True),
-    server_default=func.now(),
-    onupdate=func.now(),
-    nullable=False,
-  )
-
   # Relationships
   protocol_run: Mapped["ProtocolRunOrm"] = relationship(
     "ProtocolRunOrm",
     back_populates="schedule_entries",
     uselist=False,
-    init=False,
+    kw_only=True,
   )
   asset_reservations: Mapped[list["AssetReservationOrm"]] = relationship(
     "AssetReservationOrm",
@@ -198,13 +188,23 @@ class AssetReservationOrm(Base):
 
   __tablename__ = "asset_reservations"
 
+  protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    ForeignKey("protocol_runs.accession_id"),
+    nullable=False,
+    unique=True,
+    index=True,
+    comment="Foreign key to the protocol run this asset reservation belongs to.",
+    kw_only=True,
+  )
+
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("schedule_entries.accession_id"),
     nullable=False,
     index=True,
     comment="Foreign key to the schedule entry this reservation belongs to.",
-    init=False,
+    kw_only=True,
   )
 
   # Asset identification
@@ -216,27 +216,29 @@ class AssetReservationOrm(Base):
     default=AssetType.ASSET,
   )
 
-  asset_instance_accession_id: Mapped[uuid.UUID] = mapped_column(
+  asset_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("assets.accession_id"),
     nullable=True,
     index=True,
     comment="Foreign key to the specific asset instance being reserved, if applicable.",
-    init=False,
+    kw_only=True,
   )
-  asset_instance: Mapped["AssetOrm"] = relationship(
+  asset: Mapped["AssetOrm"] = relationship(
     "Asset",
     back_populates="asset_reservations",
-    foreign_keys="AssetReservationOrm.asset_instance_accession_id",
+    foreign_keys="AssetReservationOrm.asset_accession_id",
     uselist=False,
-    init=False,
+    kw_only=True,
+    comment="Back-reference to the specific asset instance being reserved.",
   )
   asset_name: Mapped[str] = mapped_column(
     String,
+    ForeignKey("assets.name"),
     nullable=False,
     index=True,
     comment="Name of the asset being reserved.",
-    init=False,
+    kw_only=True,
   )
   status: Mapped[AssetReservationStatusEnum] = mapped_column(
     SAEnum(AssetReservationStatusEnum, name="asset_reservation_status_enum"),
@@ -251,21 +253,20 @@ class AssetReservationOrm(Base):
     nullable=False,
     index=True,
     comment="Redis lock key for the asset reservation.",
-    init=False,
+    kw_only=True,
   )
   redis_lock_value: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     default=None,
     comment="Value of the Redis lock, if applicable.",
-    init=False,
   )
   lock_timeout_seconds: Mapped[int] = mapped_column(
     Integer,
     default=3600,
     nullable=False,
     comment="Timeout for the Redis lock in seconds.",
-    init=False,
+    kw_only=True,
   )
 
   # Timing
@@ -273,19 +274,20 @@ class AssetReservationOrm(Base):
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the asset was reserved.",
-    init=False,
+    server_default=func.now(),
+    kw_only=True,
   )
   released_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the asset reservation was released.",
-    init=False,
+    kw_only=True,
   )
   expires_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
     comment="Timestamp when the asset reservation expires.",
-    init=False,
+    default=None,
   )
 
   # Reservation metadata
@@ -307,7 +309,7 @@ class AssetReservationOrm(Base):
     "ScheduleEntryOrm",
     back_populates="asset_reservations",
     uselist=False,
-    init=False,
+    kw_only=True,
   )
 
 
@@ -326,7 +328,7 @@ class ScheduleHistoryOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the schedule entry this history record belongs to.",
-    init=False,
+    kw_only=True,
   )
 
   # Event details
@@ -376,7 +378,7 @@ class ScheduleHistoryOrm(Base):
     nullable=True,
     comment="Timestamp when the event started.",
     server_default=func.now(),
-    init=False,
+    kw_only=True,
   )
   event_end: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
@@ -392,7 +394,7 @@ class ScheduleHistoryOrm(Base):
     ),
     comment="Stored duration in milliseconds, computed by the DB when a run completes.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   current_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
@@ -406,9 +408,9 @@ class ScheduleHistoryOrm(Base):
       persisted=False,  # This column is VIRTUAL
     ),
     comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the"
-        "current time.",
+    "current time.",
     nullable=True,
-    init=False,
+    kw_only=True,
   )
   asset_count: Mapped[int | None] = mapped_column(
     Integer,
@@ -422,7 +424,7 @@ class ScheduleHistoryOrm(Base):
     "ScheduleEntryOrm",
     back_populates="schedule_history",
     uselist=False,
-    init=False,
+    kw_only=True,
     foreign_keys=[schedule_entry_accession_id],
     comment="Back-reference to the schedule entry this history record belongs to.",
   )

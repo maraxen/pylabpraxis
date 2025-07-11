@@ -199,7 +199,7 @@ class MachineOrm(AssetOrm):
     ForeignKey("assets.accession_id"),
     primary_key=True,
     comment="Unique identifier for the machine, derived from the Asset base class.",
-    init=False,
+    kw_only=True,
   )
 
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(

@@ -264,10 +264,11 @@ class DiscoveryService:
                     is_top_level=False,
                   )
                   extracted_definitions.append((inferred_model, func_obj))
-            except (ImportError, AttributeError, TypeError, ValueError) as e:
-              logger.error(
-                f"DiscoveryService: Could not import/process module "
-                f"'{module_import_name}' from '{module_file_path}': {e}",
+            except (ImportError, AttributeError, TypeError, ValueError):
+              logger.exception(
+                "DiscoveryService: Could not import/process module '%s' from '%s'",
+                module_import_name,
+                module_file_path,
               )
               traceback.print_exc()
       if path_added_to_sys and potential_package_parent in sys.path:
@@ -322,10 +323,16 @@ class DiscoveryService:
       return []
 
     logger.info(
-      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. Upserting to DB...",
+      "DiscoveryService: Found %d protocol functions. Upserting to DB...",
+      len(extracted_definitions),
     )
     upserted_definitions_orm: list[Any] = []
 
+    if self.db_session_factory is None:
+      logger.error(
+        "DiscoveryService: No DB session factory provided. Cannot upsert protocol definitions.",
+      )
+      return []
     async with self.db_session_factory() as session:
       for protocol_pydantic_model, func_ref in extracted_definitions:
         protocol_name_for_error = protocol_pydantic_model.name

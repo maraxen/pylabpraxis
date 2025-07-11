@@ -42,6 +42,7 @@ from sqlalchemy.sql import func
 
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
 from praxis.backend.utils.db import Base
+from praxis.backend.utils.uuid import uuid7
 
 if TYPE_CHECKING:
   from . import DeckOrm, FunctionCallLogOrm, MachineOrm, ProtocolRunOrm, ResourceOrm
@@ -62,7 +63,7 @@ class FunctionDataOutputOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the protocol run this data output belongs to",
-    init=False,
+    kw_only=True,
   )
 
   function_call_log_accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -70,7 +71,7 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("function_call_logs.accession_id"),
     nullable=False,
     index=True,
-    init=False,
+    kw_only=True,
     comment="Foreign key to the function call log this data output belongs to",
   )
 
@@ -306,7 +307,7 @@ class WellDataOutputOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the function data output this well data output belongs to",
-    init=False,
+    default_factory=uuid7,
   )
 
   plate_resource_accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -315,7 +316,7 @@ class WellDataOutputOrm(Base):
     nullable=False,
     index=True,
     comment="Foreign key to the plate resource this well data output belongs to",
-    init=False,
+    default_factory=uuid7,
   )
 
   well_name: Mapped[str] = mapped_column(

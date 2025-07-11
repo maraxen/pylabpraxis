@@ -4,9 +4,10 @@ This module provides a set of reusable functions to build SQLAlchemy queries
 based on a standardized SearchFilters model, promoting consistency and
 reducing boilerplate code in the service layer.
 """
+from datetime import datetime
+from typing import Any
 
-from sqlalchemy import Column, Select, and_
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Select, and_
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from praxis.backend.models.pydantic.filters import SearchFilters
@@ -36,7 +37,7 @@ def apply_pagination(query: Select, filters: SearchFilters) -> Select:
 def apply_date_range_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_timestamp_field: InstrumentedAttribute,
+  orm_model_timestamp_field: InstrumentedAttribute[datetime],
 ) -> Select:
   """Apply date range filters to a SQLAlchemy query.
 
@@ -65,7 +66,7 @@ def apply_date_range_filters(
 def apply_property_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_properties_field: Column[JSONB],
+  orm_model_properties_field: InstrumentedAttribute[dict[str, Any] | None],
 ) -> Select:
   """Apply key-value property filters to a JSONB column in a SQLAlchemy query.
 
@@ -172,8 +173,7 @@ def apply_search_filters(
     q = apply_property_filters(q, filters, properties_col)
   if timestamp_col is not None:
     q = apply_date_range_filters(q, filters, timestamp_col)
-  q = apply_pagination(q, filters)
-  return q
+  return apply_pagination(q, filters)
 
 
 def apply_sorting(query: Select, orm_model: Base, sort_by: str | None) -> Select:
@@ -194,12 +194,14 @@ def apply_sorting(query: Select, orm_model: Base, sort_by: str | None) -> Select
   if sort_by.startswith("-"):
     column = getattr(orm_model, sort_by[1:], None)
     if column is None:
-      raise ValueError(f"Invalid sort field: {sort_by[1:]}")
+      msg = f"Invalid sort field: {sort_by[1:]}"
+      raise ValueError(msg)
     query = query.order_by(column.desc())
   else:
     column = getattr(orm_model, sort_by, None)
     if column is None:
-      raise ValueError(f"Invalid sort field: {sort_by}")
+      msg = f"Invalid sort field: {sort_by}"
+      raise ValueError(msg)
     query = query.order_by(column)
 
   return query

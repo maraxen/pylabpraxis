@@ -331,3 +331,38 @@ class ScheduleListFilters(BaseModel):
     priority_max: int | None = None
     include_completed: bool = False
     include_cancelled: bool = False
+
+
+class ScheduleEntryCreate(BaseModel):
+    """Request model for creating a schedule entry."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    protocol_run_accession_id: uuid.UUID = Field(
+        ..., description="ID of the protocol run to schedule",
+    )
+    priority: int = Field(default=1, description="Schedule priority (1-10)")
+    estimated_duration_ms: int | None = Field(
+        default=None, description="Estimated execution duration",
+    )
+    required_asset_count: int | None = Field(
+        default=None, description="Estimated number of assets required",
+    )
+    asset_requirements_json: dict[str, Any] | None = Field(
+        default=None, description="Asset requirements analysis results",
+    )
+    user_params_json: dict[str, Any] | None = Field(
+        default=None, description="User-provided scheduling parameters",
+    )
+
+
+class ScheduleEntryUpdate(BaseModel):
+    """Request model for updating a schedule entry."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    status: ScheduleEntryStatus | None = None
+    priority: int | None = None
+    last_error_message: str | None = None
+    execution_started_at: datetime | None = None
+    execution_completed_at: datetime | None = None

@@ -40,14 +40,14 @@ class AssetOrm(Base):
     nullable=False,
     index=True,
     comment="Name of the asset.",
-    default="UNNAMED ASSET",
+    kw_only=True,
   )
-  fqn: Mapped[str | None] = mapped_column(
+  fqn: Mapped[str] = mapped_column(
     String,
-    nullable=True,
+    nullable=False,
     index=True,
     comment="Fully qualified name of the asset's class, if applicable.",
-    default=None,
+    kw_only=True,
   )
   location: Mapped[str | None] = mapped_column(
     String,

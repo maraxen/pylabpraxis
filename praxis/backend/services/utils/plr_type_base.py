@@ -5,8 +5,6 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -66,12 +64,12 @@ class PLRTypeCRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
       statement = apply_date_range_filters(
         statement,
         filters,
-        cast("Column[DateTime]", self.model.created_at),
+        self.model.created_at,
       )
       statement = apply_property_filters(
         statement,
         filters,
-        cast("Column[JSONB]", self.model.properties_json),
+        self.model.properties_json,
       )
     if filters.sort_by:
       statement = apply_sorting(statement, cast("Base", self.model), filters.sort_by)

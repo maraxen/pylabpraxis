@@ -144,13 +144,14 @@ class Base(MappedAsDataclass, DeclarativeBase):
     UUID,
     primary_key=True,
     index=True,
-    default=uuid7,
+    default_factory=uuid7,
     init=False,
   )
 
   created_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True),
     server_default=func.now(),
+    comment="Timestamp when the record was created.",
     init=False,
   )
   updated_at: Mapped[datetime] = mapped_column(

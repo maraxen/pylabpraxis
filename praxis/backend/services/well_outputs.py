@@ -63,7 +63,7 @@ class WellDataOutputCRUDService(
       row_idx, col_idx = parse_well_name(obj_in.well_name)
     except ValueError as e:
       error_msg = f"Invalid well name format: {e}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
 
     # Get plate dimensions for well index calculation

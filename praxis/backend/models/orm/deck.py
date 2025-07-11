@@ -37,7 +37,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.utils.db import Base
-from praxis.backend.utils.uuid import generate_name, uuid7
+from praxis.backend.utils.uuid import generate_name
 
 if TYPE_CHECKING:
   from praxis.backend.models.orm import (
@@ -79,7 +79,7 @@ class DeckOrm(ResourceOrm):
     primary_key=True,
     index=True,
     comment="Primary key, linked to the resource's accession_id.",
-    default_factory=uuid7,
+    kw_only=True,
   )
 
   machine_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -102,15 +102,15 @@ class DeckOrm(ResourceOrm):
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
     index=True,
-    init=False,
     comment="Foreign key to the deck type definition.",
+    kw_only=True,
   )
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
     comment="Relationship to the deck's type definition.",
     uselist=False,
-    init=False,
+    kw_only=True,
   )
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
@@ -277,14 +277,14 @@ class DeckPositionDefinitionOrm(Base):
     index=True,
     nullable=False,
     comment="Foreign key to the parent deck type definition.",
-    init=False,
+    kw_only=True,
   )
   position_name: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
     comment="Human-readable identifier for the position (e.g., 'A1', 'trash_bin').",
-    init=False,
+    kw_only=True,
   )
 
   x_coord: Mapped[float] = mapped_column(
@@ -342,7 +342,6 @@ class DeckPositionDefinitionOrm(Base):
     default=None,
   )
 
-  # Reverting to compatible_resource_fqns as per user request
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
     nullable=True,
@@ -356,5 +355,5 @@ class DeckPositionDefinitionOrm(Base):
     nullable=False,
     comment="Relationship to the parent deck type definition.",
     uselist=False,
-    init=False,
+    kw_only=True,
   )

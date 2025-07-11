@@ -184,7 +184,7 @@ class ResourceOrm(AssetOrm):
     primary_key=True,
     index=True,
     comment="Unique identifier for the resource, derived from the Asset base class.",
-    init=False,
+    kw_only=True,
   )
 
   parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(

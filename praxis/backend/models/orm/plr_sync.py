@@ -21,7 +21,7 @@ class PLRTypeDefinitionOrm(Base):
     index=True,
     unique=True,
     comment="Fully qualified name of the PyLabRobot class.",
-    init=False,
+    kw_only=True,
   )
   name: Mapped[str] = mapped_column(
     String,
@@ -29,19 +29,19 @@ class PLRTypeDefinitionOrm(Base):
     index=True,
     nullable=False,
     comment="Unique, human-readable name for the type definition.",
-    init=False,
+    kw_only=True,
   )
   description: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
     comment="Detailed description of the type.",
-    init=False,
+    default=None,
   )
   plr_category: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     comment="Category of the type in PyLabRobot (e.g., 'Deck', 'LiquidHandler').",
-    init=False,
+    default=None,
   )
 
   def __repr__(self) -> str:

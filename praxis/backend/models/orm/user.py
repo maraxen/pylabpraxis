@@ -28,7 +28,7 @@ class UserOrm(Base):
     index=True,
     nullable=False,
     comment="Unique username for user login",
-    init=False,
+    kw_only=True,
   )
   email: Mapped[str] = mapped_column(
     String,
@@ -36,13 +36,13 @@ class UserOrm(Base):
     index=True,
     nullable=False,
     comment="User's email address for notifications and account recovery",
-    init=False,
+    kw_only=True,
   )
   hashed_password: Mapped[str] = mapped_column(
     String,
     nullable=False,
     comment="Hashed password for user authentication",
-    init=False,
+    kw_only=True,
   )
   full_name: Mapped[str | None] = mapped_column(
     String,
