@@ -34,7 +34,7 @@ class ProtocolExecutionContext:
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
     orchestrator: Any | None = None,  # Avoid circular import with type hint
-  ):
+  ) -> None:
     """Initialize the protocol execution context.
 
     Args:
@@ -53,7 +53,7 @@ _execution_context: ProtocolExecutionContext | None = None
 def initialize_celery_context(
   db_session_factory: async_sessionmaker[AsyncSession],
   orchestrator: Any,
-):
+) -> None:
   """Initialize the global context for Celery tasks with necessary dependencies.
 
   This function should be called when the main application starts to ensure
@@ -119,8 +119,8 @@ def execute_protocol_run_task(
       asyncio.run(_update_run_status_on_error(run_uuid, str(e)))
     # Justification: This is a last-resort error handler. If updating the DB
     # status fails, we must catch it to prevent the Celery worker from crashing.
-    except Exception as update_error:  # pylint: disable=broad-except # noqa: BLE001
-      task_logger.error(
+    except Exception as update_error:  # pylint: disable=broad-except
+      task_logger.exception(
         "Critical error: Failed to update protocol run status after task failure. Error: %s",
         update_error,
       )
@@ -150,7 +150,8 @@ async def _execute_protocol_async(
 
   """
   if not _execution_context or not _execution_context.orchestrator:
-    raise RuntimeError("Execution context or orchestrator is not available.")
+    msg = "Execution context or orchestrator is not available."
+    raise RuntimeError(msg)
 
   async with _execution_context.db_session_factory() as db_session:
     try:
@@ -158,7 +159,8 @@ async def _execute_protocol_async(
         db_session, run_accession_id=protocol_run_id,
       )
       if not protocol_run_orm:
-        raise ValueError(f"Protocol run {protocol_run_id} not found.")
+        msg = f"Protocol run {protocol_run_id} not found."
+        raise ValueError(msg)
 
       # Update status to RUNNING and log the Celery task ID.
       await svc.update_protocol_run_status(
@@ -214,7 +216,7 @@ async def _execute_protocol_async(
       raise  # Re-raise the exception to be caught by the main task handler.
 
 
-async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message: str):
+async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message: str) -> None:
   """A final-resort function to update a protocol run's status to FAILED."""
   if not _execution_context:
     task_logger.error(

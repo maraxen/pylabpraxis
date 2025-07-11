@@ -79,7 +79,7 @@ class ProtocolRuntimeInfo:
     pydantic_definition: FunctionProtocolDefinitionCreate,
     function_ref: Callable,
     found_state_param_details: dict[str, Any] | None,
-  ):
+  ) -> None:
     """Initialize the ProtocolRuntimeInfo.
 
     Args:
@@ -119,18 +119,24 @@ def _create_protocol_definition(
   """Parse a function signature and decorator args to create a protocol definition."""
   resolved_name = data.name or data.func.__name__
   if not resolved_name:
-    raise ValueError(
+    msg = (
       "Protocol function name cannot be empty (either provide 'name' argument or use "
-      "a named function).",
+      "a named function)."
+    )
+    raise ValueError(
+      msg,
     )
   if (
     data.is_top_level
     and data.top_level_name_format
     and not re.match(data.top_level_name_format, resolved_name)
   ):
-    raise ValueError(
+    msg = (
       f"Top-level protocol name '{resolved_name}' does not match format: "
-      f"{data.top_level_name_format}",
+      f"{data.top_level_name_format}"
+    )
+    raise ValueError(
+      msg,
     )
 
   sig = inspect.signature(data.func)
@@ -153,13 +159,17 @@ def _create_protocol_definition(
     )
 
   if data.preconfigure_deck and not found_deck_param:
-    raise TypeError(
+    msg = (
       f"Protocol '{resolved_name}' (preconfigure_deck=True) missing "
-      f"'{data.deck_param_name}' param.",
+      f"'{data.deck_param_name}' param."
+    )
+    raise TypeError(
+      msg,
     )
   if data.is_top_level and not found_state_param_details:
+    msg = f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' parameter."
     raise TypeError(
-      f"Top-level protocol '{resolved_name}' must define a '{data.state_param_name}' parameter.",
+      msg,
     )
 
   protocol_definition = FunctionProtocolDefinitionCreate(
@@ -365,15 +375,19 @@ def protocol_function(
     async def wrapper(*args, **kwargs):
       current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
       if not current_meta or not current_meta.db_accession_id:
+        msg = f"Protocol '{protocol_unique_key}' not registered or missing DB ID."
         raise RuntimeError(
-          f"Protocol '{protocol_unique_key}' not registered or missing DB ID.",
+          msg,
         )
 
       parent_context = praxis_run_context_cv.get()
       if parent_context is None:
-        raise RuntimeError(
+        msg = (
           "No PraxisRunContext found in contextvars. Ensure this function is called "
-          "within a valid Praxis run context.",
+          "within a valid Praxis run context."
+        )
+        raise RuntimeError(
+          msg,
         )
 
       (
@@ -439,7 +453,7 @@ def protocol_function(
                 serialized_result = result.model_dump_json(exclude_none=True)
               except AttributeError:
                 serialized_result = json.dumps(result, default=str)
-            elif isinstance(result, (Resource, Deck)):
+            elif isinstance(result, Resource | Deck):
               serialized_result = json.dumps(repr(result))
             else:
               try:
@@ -493,11 +507,10 @@ async def _process_wrapper_arguments(
     processed_kwargs.pop(state_arg_name_in_sig, None)
     if state_details["expects_praxis_state"]:
       processed_kwargs[state_arg_name_in_sig] = parent_context.canonical_state
-    elif state_details["expects_dict"]:
-      if state_arg_name_in_sig not in processed_kwargs:
-        processed_kwargs[state_arg_name_in_sig] = (
-          parent_context.canonical_state.data.copy() if parent_context.canonical_state else {}
-        )
+    elif state_details["expects_dict"] and state_arg_name_in_sig not in processed_kwargs:
+      processed_kwargs[state_arg_name_in_sig] = (
+        parent_context.canonical_state.data.copy() if parent_context.canonical_state else {}
+      )
 
   current_call_log_db_accession_id: uuid.UUID | None = None
   parent_log_accession_id_for_this_call = parent_context.current_call_log_db_accession_id
@@ -510,7 +523,8 @@ async def _process_wrapper_arguments(
     kwargs=processed_kwargs,
   )
   if not current_call_log_db_accession_id:
-    raise RuntimeError("Failed to log function call start.")
+    msg = "Failed to log function call start."
+    raise RuntimeError(msg)
 
   context_for_this_call = parent_context.create_context_for_nested_call(
     new_parent_call_log_db_accession_id=current_call_log_db_accession_id,
@@ -635,7 +649,8 @@ async def _handle_control_commands(
           output_data_json=json.dumps({"status": "Cancelled by user."}),
         )
         await db_session.commit()
-        raise ProtocolCancelledError(f"Run {run_accession_id} cancelled by user.")
+        msg = f"Run {run_accession_id} cancelled by user."
+        raise ProtocolCancelledError(msg)
 
     elif command == "CANCEL":
       await clear_control_command(run_accession_id)
@@ -653,7 +668,8 @@ async def _handle_control_commands(
         output_data_json=json.dumps({"status": "Cancelled by user."}),
       )
       await db_session.commit()
-      raise ProtocolCancelledError(f"Run {run_accession_id} cancelled by user.")
+      msg = f"Run {run_accession_id} cancelled by user."
+      raise ProtocolCancelledError(msg)
 
     elif command == "INTERVENE":
       await clear_control_command(run_accession_id)

@@ -65,7 +65,7 @@ asset_manager_errors = partial(
 class AssetManager:
   """Manages the lifecycle and allocation of assets."""
 
-  def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime):
+  def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime) -> None:
     """Initialize the AssetManager.
 
     Args:
@@ -80,18 +80,21 @@ class AssetManager:
   async def _get_and_validate_deck_orms(self, deck_orm_accession_id: uuid.UUID) -> tuple[Any, Any]:
     deck_orm = await self.svc.read_deck(self.db, deck_orm_accession_id)
     if not deck_orm:
-      raise AssetAcquisitionError(f"Deck ID '{deck_orm_accession_id}' not found.")
+      msg = f"Deck ID '{deck_orm_accession_id}' not found."
+      raise AssetAcquisitionError(msg)
 
     deck_resource_orm = await self.svc.read_resource(self.db, deck_orm.accession_id)
     if not deck_resource_orm:
+      msg = f"Deck Resource ID '{deck_orm.accession_id}' (from Deck '{deck_orm.name}') not found."
       raise AssetAcquisitionError(
-        f"Deck Resource ID '{deck_orm.accession_id}' (from Deck '{deck_orm.name}') not found.",
+        msg,
       )
 
     deck_def_orm = await self.svc.read_resource_definition(self.db, deck_resource_orm.name)
     if not deck_def_orm or not deck_def_orm.fqn:
+      msg = f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing."
       raise AssetAcquisitionError(
-        f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing."
+        msg,
       )
     return deck_orm, deck_resource_orm, deck_def_orm
 
@@ -122,15 +125,16 @@ class AssetManager:
     )
 
     deck_orm, deck_resource_orm, deck_def_orm = await self._get_and_validate_deck_orms(
-      deck_orm_accession_id
+      deck_orm_accession_id,
     )
 
     if (
       deck_resource_orm.status == ResourceStatusEnum.IN_USE
       and deck_resource_orm.current_protocol_run_accession_id != protocol_run_accession_id
     ):
+      msg = f"Deck resource '{deck_resource_orm.name}' is IN_USE by another run."
       raise AssetAcquisitionError(
-        f"Deck resource '{deck_resource_orm.name}' is IN_USE by another run.",
+        msg,
       )
 
     live_plr_deck_object = await self.workcell_runtime.create_or_get_resource(
@@ -138,8 +142,9 @@ class AssetManager:
       resource_definition_fqn=deck_def_orm.fqn,
     )
     if not isinstance(live_plr_deck_object, Deck):
+      msg = f"Failed to initialize PLR Deck for '{deck_resource_orm.name}'."
       raise AssetAcquisitionError(
-        f"Failed to initialize PLR Deck for '{deck_resource_orm.name}'.",
+        msg,
       )
 
     # Determine parent machine for location of the deck resource itself
@@ -235,10 +240,13 @@ class AssetManager:
       ResourceStatusEnum.AVAILABLE_IN_STORAGE,
       ResourceStatusEnum.AVAILABLE_ON_DECK,
     ]:
-      raise AssetAcquisitionError(
+      msg = (
         f"Resource {item_to_place_accession_id} for position "
         f"'{position_item_orm.position_accession_id}' unavailable (status: "
-        f"{item_to_place_orm.status}).",
+        f"{item_to_place_orm.status})."
+      )
+      raise AssetAcquisitionError(
+        msg,
       )
 
     item_def_orm = await self.svc.read_resource_definition(
@@ -246,8 +254,9 @@ class AssetManager:
       item_to_place_orm.fqn,
     )
     if not item_def_orm or not item_def_orm.fqn:
+      msg = f"FQN not found for resource definition '{item_to_place_orm.fqn}'."
       raise AssetAcquisitionError(
-        f"FQN not found for resource definition '{item_to_place_orm.fqn}'.",
+        msg,
       )
 
     await self.workcell_runtime.create_or_get_resource(
@@ -312,8 +321,9 @@ class AssetManager:
       module = importlib.import_module(module_path)
       cls_obj = getattr(module, class_name)
       if issubclass(cls_obj, Deck):  # Direct check against Deck
+        msg = f"Attempted to acquire Deck FQN '{fqn_constraint}' via acquire_machine. Use acquire_resource."
         raise AssetAcquisitionError(
-          f"Attempted to acquire Deck FQN '{fqn_constraint}' via acquire_machine. Use acquire_resource.",
+          msg,
         )
     except (ImportError, AttributeError, ValueError) as e:
       logger.warning(
@@ -328,8 +338,9 @@ class AssetManager:
       (potential_deck_def.plr_category and "Deck" in potential_deck_def.plr_category)
       or (potential_deck_def.fqn and "deck" in potential_deck_def.fqn.lower())
     ):
+      msg = f"FQN '{fqn_constraint}' matches a cataloged Deck resource. Use acquire_resource."
       raise AssetAcquisitionError(
-        f"FQN '{fqn_constraint}' matches a cataloged Deck resource. Use acquire_resource.",
+        msg,
       )
 
     selected_machine_orm: MachineOrm | None = None
@@ -355,13 +366,15 @@ class AssetManager:
           selected_machine_orm.accession_id,
         )
       else:
+        msg = f"No machine found for FQN '{fqn_constraint}' (Status: AVAILABLE or IN_USE by this run)."
         raise AssetAcquisitionError(
-          f"No machine found for FQN '{fqn_constraint}' (Status: AVAILABLE or IN_USE by this run).",
+          msg,
         )
 
     if not selected_machine_orm:
+      msg = f"Machine selection failed for '{requested_asset_name_in_protocol}'."
       raise AssetAcquisitionError(
-        f"Machine selection failed for '{requested_asset_name_in_protocol}'.",
+        msg,
       )
 
     live_plr_machine = await self.workcell_runtime.initialize_machine(
@@ -374,8 +387,9 @@ class AssetManager:
         MachineStatusEnum.ERROR,
         status_details=f"Backend init failed for run {protocol_run_accession_id}.",
       )
+      msg = f"Failed to initialize backend for machine '{selected_machine_orm.name}'."
       raise AssetAcquisitionError(
-        f"Failed to initialize backend for machine '{selected_machine_orm.name}'.",
+        msg,
       )
 
     if (
@@ -391,8 +405,9 @@ class AssetManager:
         status_details=f"In use by run {protocol_run_accession_id}",
       )
       if not updated_machine_orm:
+        msg = f"CRITICAL: Failed to update DB status for machine '{selected_machine_orm.name}'."
         raise AssetAcquisitionError(
-          f"CRITICAL: Failed to update DB status for machine '{selected_machine_orm.name}'.",
+          msg,
         )
       selected_machine_orm = updated_machine_orm  # Use the updated ORM
 
@@ -416,28 +431,36 @@ class AssetManager:
         user_choice_instance_accession_id,
       )
       if not instance_orm:
+        msg = f"Specified resource ID {user_choice_instance_accession_id} not found."
         raise AssetAcquisitionError(
-          f"Specified resource ID {user_choice_instance_accession_id} not found.",
+          msg,
         )
       if instance_orm.fqn != fqn:
-        raise AssetAcquisitionError(
+        msg = (
           f"Chosen instance {user_choice_instance_accession_id} (Def: {instance_orm.fqn}) "
-          f"mismatches constraint {fqn}.",
+          f"mismatches constraint {fqn}."
+        )
+        raise AssetAcquisitionError(
+          msg,
         )
       if instance_orm.status == ResourceStatusEnum.IN_USE:
         if instance_orm.current_protocol_run_accession_id != uuid.UUID(
           str(protocol_run_accession_id),
         ):
+          msg = f" {user_choice_instance_accession_id} IN_USE by another run."
           raise AssetAcquisitionError(
-            f" {user_choice_instance_accession_id} IN_USE by another run.",
+            msg,
           )
       elif instance_orm.status not in [
         ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         ResourceStatusEnum.AVAILABLE_ON_DECK,
       ]:
-        raise AssetAcquisitionError(
+        msg = (
           f"Chosen instance {user_choice_instance_accession_id} not available (Status: "
-          f"{instance_orm.status.name}).",
+          f"{instance_orm.status.name})."
+        )
+        raise AssetAcquisitionError(
+          msg,
         )
       return instance_orm
     in_use_list = await self.svc.read_resources(
@@ -507,8 +530,9 @@ class AssetManager:
     )
 
     if not resource_to_acquire:
+      msg = f"No instance found for definition '{resource_data.fqn}' matching criteria for run '{resource_data.protocol_run_accession_id}'."
       raise AssetAcquisitionError(
-        f"No instance found for definition '{resource_data.fqn}' matching criteria for run '{resource_data.protocol_run_accession_id}'.",
+        msg,
       )
 
     resource_def_orm = await self.svc.read_resource_definition(
@@ -522,8 +546,9 @@ class AssetManager:
         new_status=ResourceStatusEnum.ERROR,
         status_details=f"FQN missing for def {resource_to_acquire.fqn}",
       )
+      msg = f"FQN not found for resource definition '{resource_to_acquire.fqn}'."
       raise AssetAcquisitionError(
-        f"FQN not found for resource definition '{resource_to_acquire.fqn}'.",
+        msg,
       )
 
     live_plr_resource = await self.workcell_runtime.create_or_get_resource(
@@ -537,8 +562,9 @@ class AssetManager:
         new_status=ResourceStatusEnum.ERROR,
         status_details="PLR object creation failed.",
       )
+      msg = f"Failed to create/get PLR object for '{resource_to_acquire.name}'."
       raise AssetAcquisitionError(
-        f"Failed to create/get PLR object for '{resource_to_acquire.name}'.",
+        msg,
       )
 
     target_deck_resource_accession_id: uuid.UUID | None = None
@@ -607,8 +633,9 @@ class AssetManager:
           deck_user_name,
         )
         if not target_deck:
+          msg = f"Target deck resource '{deck_user_name}' not found."
           raise AssetAcquisitionError(
-            f"Target deck resource '{deck_user_name}' not found.",
+            msg,
           )
         target_deck_def = await self.svc.read_resource_definition(
           self.db,
@@ -623,7 +650,8 @@ class AssetManager:
             Deck,
           )
         ):
-          raise AssetAcquisitionError(f"Target '{deck_user_name}' is not a deck type.")
+          msg = f"Target '{deck_user_name}' is not a deck type."
+          raise AssetAcquisitionError(msg)
         target_deck_resource_accession_id = target_deck.accession_id
         target_position_name = position_on_deck
         await self.workcell_runtime.assign_resource_to_deck(
@@ -633,8 +661,9 @@ class AssetManager:
         )
         final_status_details = f"On deck '{deck_user_name}' pos '{target_position_name}' for run {protocol_run_accession_id}"
       elif deck_user_name or position_on_deck:
+        msg = "Partial location constraint: 'deck_name' and 'position_name' required."
         raise AssetAcquisitionError(
-          "Partial location constraint: 'deck_name' and 'position_name' required.",
+          msg,
         )
     elif is_acquiring_a_deck_resource and location_constraints:
       logger.warning(
@@ -769,7 +798,7 @@ class AssetManager:
     machine_orm_accession_id: uuid.UUID,
     final_status: MachineStatusEnum = MachineStatusEnum.AVAILABLE,
     status_details: str | None = "Released from run",
-  ):
+  ) -> None:
     """Release a Machine (not a Deck)."""
     machine_to_release = await self.svc.read_machine(self.db, machine_orm_accession_id)
     if not machine_to_release:
@@ -801,8 +830,9 @@ class AssetManager:
       current_protocol_run_accession_id=None,
     )
     if not updated_machine:
+      msg = f"Failed to update DB status for machine ID {machine_orm_accession_id} after shutdown."
       raise AssetReleaseError(
-        f"Failed to update DB status for machine ID {machine_orm_accession_id} after shutdown.",
+        msg,
       )
     logger.info(
       "AM_RELEASE_MACHINE: Machine '%s' released, status %s.",
@@ -818,7 +848,7 @@ class AssetManager:
     clear_from_accession_id: uuid.UUID | None = None,
     clear_from_position_name: str | None = None,
     status_details: str | None = "Released from run",
-  ):
+  ) -> None:
     """Release a resource instance.
 
     Release resource, updating its status and properties,
@@ -888,8 +918,9 @@ class AssetManager:
       status_details=status_details,
     )
     if not updated_resource:
+      msg = f"Failed to update DB for resource ID {resource_orm_accession_id} on release."
       raise AssetReleaseError(
-        f"Failed to update DB for resource ID {resource_orm_accession_id} on release.",
+        msg,
       )
     logger.info(
       "AM_RELEASE_RESOURCE: Resource '%s' released, status %s.",
@@ -956,8 +987,9 @@ class AssetManager:
         module_path, class_name = asset_fqn.rsplit(".", 1)
         cls_obj = getattr(importlib.import_module(module_path), class_name)
         if issubclass(cls_obj, Deck):
+          msg = f"Asset type '{asset_fqn}' appears to be a Deck but not found in ResourceCatalog. Ensure it's synced."
           raise AssetAcquisitionError(
-            f"Asset type '{asset_fqn}' appears to be a Deck but not found in ResourceCatalog. Ensure it's synced.",
+            msg,
           )
       except (ImportError, AttributeError):
         pass

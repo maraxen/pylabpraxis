@@ -31,7 +31,7 @@ from praxis.backend.services import (
 
 
 @pytest.fixture
-def mock_plate_parsing_helpers(mocker):
+def mock_plate_parsing_helpers(mocker) -> None:
   """Mock the helper functions for plate parsing and dimension reading."""
   mocker.patch(
     "praxis.backend.services.function_output_data.parse_well_name",
@@ -117,7 +117,7 @@ class TestWellDataOutputService:
     func_data_output: FunctionDataOutputOrm,
     plate_resource: ResourceOrm,
     mock_plate_parsing_helpers,
-  ):
+  ) -> None:
     """Test creating a single well data record and reading it back."""
     well_create = WellDataOutputCreate(
       function_data_output_accession_id=func_data_output.accession_id,
@@ -147,7 +147,7 @@ class TestWellDataOutputService:
     func_data_output: FunctionDataOutputOrm,
     plate_resource: ResourceOrm,
     mock_plate_parsing_helpers,
-  ):
+  ) -> None:
     """Test creating a batch of well data outputs from a dictionary."""
     well_data_dict = {"A1": 0.1, "A2": 0.2, "H12": 1.2}
     created_wells = await create_well_data_outputs(
@@ -167,7 +167,7 @@ class TestWellDataOutputService:
     func_data_output: FunctionDataOutputOrm,
     plate_resource: ResourceOrm,
     mocker,
-  ):
+  ) -> None:
     """Test creating well data from a flat array, relying on plate dimensions."""
     # Mock only the dimension reader for this test
     mocker.patch(
@@ -196,7 +196,7 @@ class TestWellDataOutputService:
     func_data_output: FunctionDataOutputOrm,
     plate_resource: ResourceOrm,
     mocker,
-  ):
+  ) -> None:
     """Test that creating from a flat array fails if plate dimensions are not found."""
     mocker.patch(
       "praxis.backend.services.function_output_data.read_plate_dimensions",
@@ -216,7 +216,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     existing_well_data: WellDataOutputOrm,
-  ):
+  ) -> None:
     """Test updating an existing well data record."""
     update_model = WellDataOutputUpdate(
       data_value=0.66,
@@ -236,7 +236,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     existing_well_data: WellDataOutputOrm,
-  ):
+  ) -> None:
     """Test the filtering capabilities of the read_well_data_outputs function."""
     # existing_well_data is in row 0, col 0
 
@@ -260,7 +260,7 @@ class TestWellDataOutputService:
     self,
     db: AsyncSession,
     existing_well_data: WellDataOutputOrm,
-  ):
+  ) -> None:
     """Test deleting a well data output record."""
     well_id = existing_well_data.accession_id
     result = await delete_well_data_output(db, well_id)

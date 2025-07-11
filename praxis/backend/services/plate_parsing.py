@@ -101,12 +101,14 @@ def parse_well_name(well_name: str) -> tuple[int, int]:
 
   """
   if not well_name or len(well_name) < 2:
-    raise ValueError(f"Invalid well name: {well_name}")
+    msg = f"Invalid well name: {well_name}"
+    raise ValueError(msg)
 
   # Parse row (letter)
   row_letter = well_name[0].upper()
   if not row_letter.isalpha():
-    raise ValueError(f"Invalid row letter in well name: {well_name}")
+    msg = f"Invalid row letter in well name: {well_name}"
+    raise ValueError(msg)
 
   row_idx = ord(row_letter) - ord("A")
 
@@ -115,7 +117,8 @@ def parse_well_name(well_name: str) -> tuple[int, int]:
     col_num = int(well_name[1:])
     col_idx = col_num - 1  # Convert to 0-based
   except ValueError as e:
-    raise ValueError(f"Invalid column number in well name: {well_name}") from e
+    msg = f"Invalid column number in well name: {well_name}"
+    raise ValueError(msg) from e
 
   return row_idx, col_idx
 

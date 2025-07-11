@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.services.state import PraxisState as PraxisState
+from praxis.backend.services.state import PraxisState
 
 PROTOCOL_REGISTRY: dict[str, Any] = {}
 DeckInputType = Union[str, os.PathLike, io.IOBase, Deck]
@@ -110,9 +110,9 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
         except AttributeError:
           pass  # Not a Pydantic model, proceed to other checks
 
-      if isinstance(item, (PraxisRunContext, PraxisState)):
+      if isinstance(item, PraxisRunContext | PraxisState):
         return f"<{type(item).__name__} object>"
-      if isinstance(item, (Resource, Deck)):  # PLR objects
+      if isinstance(item, Resource | Deck):  # PLR objects
         return repr(item)  # repr() often includes name and key details
 
       # Add other custom non-serializable types here if needed in the future

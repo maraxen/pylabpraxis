@@ -88,7 +88,7 @@ class TestDeckPositionService:
     self,
     db: AsyncSession,
     setup_test_data_for_items: dict[str, Any],
-  ):
+  ) -> None:
     """Test successfully creating a new position item on a deck instance."""
     deck = setup_test_data_for_items["deck"]
     plate_resource = setup_test_data_for_items["plate_resource"]
@@ -111,7 +111,7 @@ class TestDeckPositionService:
   async def test_create_deck_position_item_fails_for_bad_deck_id(
     self,
     db: AsyncSession,
-  ):
+  ) -> None:
     """Test that creating a position item fails if the deck instance ID is invalid."""
     bad_deck_id = uuid.uuid4()
     with pytest.raises(ValueError, match="DeckOrm with id .* not found"):
@@ -121,7 +121,7 @@ class TestDeckPositionService:
     self,
     db: AsyncSession,
     setup_test_data_for_items: dict[str, Any],
-  ):
+  ) -> None:
     """Test reading a specific position item by its ID."""
     deck = setup_test_data_for_items["deck"]
     created_item = await create_deck_position_item(
@@ -140,7 +140,7 @@ class TestDeckPositionService:
     self,
     db: AsyncSession,
     setup_test_data_for_items: dict[str, Any],
-  ):
+  ) -> None:
     """Test updating an existing position item."""
     deck = setup_test_data_for_items["deck"]
     plate_resource = setup_test_data_for_items["plate_resource"]
@@ -166,7 +166,7 @@ class TestDeckPositionService:
     self,
     db: AsyncSession,
     setup_test_data_for_items: dict[str, Any],
-  ):
+  ) -> None:
     """Test deleting a position item."""
     deck = setup_test_data_for_items["deck"]
     created_item = await create_deck_position_item(
@@ -186,7 +186,7 @@ class TestDeckPositionService:
     # Confirm it's gone
     assert await read_deck_position_item(db, created_item.accession_id) is None
 
-  async def test_delete_non_existent_position_item(self, db: AsyncSession):
+  async def test_delete_non_existent_position_item(self, db: AsyncSession) -> None:
     """Test that deleting a non-existent position item returns False."""
     bad_id = uuid.uuid4()
     result = await delete_deck_position_item(db, bad_id)
@@ -200,7 +200,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test successfully creating multiple position definitions for a deck type."""
     deck_type = setup_test_data_for_definitions
     new_positions_data = [
@@ -228,7 +228,7 @@ class TestDeckPositionDefinitionService:
   async def test_create_deck_position_definitions_fails_for_bad_deck_type(
     self,
     db: AsyncSession,
-  ):
+  ) -> None:
     """Test failure when creating definitions for a non-existent deck type."""
     bad_deck_type_id = uuid.uuid4()
     with pytest.raises(ValueError, match="DeckTypeDefinitionOrm with id .* not found"):
@@ -238,7 +238,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test reading all position definitions for a specific deck type."""
     deck_type = setup_test_data_for_definitions
     new_positions_data = [{"name": "PosA"}, {"name": "PosB"}]
@@ -260,7 +260,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test updating an existing position definition."""
     deck_type = setup_test_data_for_definitions
     await create_deck_position_definitions(
@@ -287,7 +287,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test that updating a non-existent position definition raises ValueError."""
     deck_type = setup_test_data_for_definitions
     with pytest.raises(ValueError, match="Position definition not found for update"):
@@ -302,7 +302,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test deleting a specific position definition."""
     deck_type = setup_test_data_for_definitions
     await create_deck_position_definitions(
@@ -332,7 +332,7 @@ class TestDeckPositionDefinitionService:
     self,
     db: AsyncSession,
     setup_test_data_for_definitions: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test that deleting a non-existent position definition raises ValueError."""
     deck_type = setup_test_data_for_definitions
     with pytest.raises(ValueError, match="Position definition not found for deletion"):

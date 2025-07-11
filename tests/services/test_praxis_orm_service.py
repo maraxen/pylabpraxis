@@ -33,24 +33,24 @@ def cleanup_singleton():
 class TestPraxisDBService:
   """Test suite for the PraxisDBService class."""
 
-  def test_singleton_pattern(self):
+  def test_singleton_pattern(self) -> None:
     """Test that the singleton pattern is correctly implemented."""
     instance1 = PraxisDBService()
     instance2 = PraxisDBService()
     assert instance1 is instance2
 
-  async def test_initialize_no_keycloak(self):
+  async def test_initialize_no_keycloak(self) -> None:
     """Test initialization without a Keycloak DSN."""
     service = await PraxisDBService.initialize()
     assert service._keycloak_pool is None
 
-  async def test_initialize_invalid_dsn_raises_value_error(self):
+  async def test_initialize_invalid_dsn_raises_value_error(self) -> None:
     """Test that initialization with an invalid DSN format raises ValueError."""
     with pytest.raises(ValueError, match="must start with postgresql://"):
       await PraxisDBService.initialize(keycloak_dsn="http://invalid-dsn")
 
   @patch("asyncpg.create_pool", new_callable=AsyncMock)
-  async def test_initialize_keycloak_success(self, mock_create_pool):
+  async def test_initialize_keycloak_success(self, mock_create_pool) -> None:
     """Test successful initialization with a mocked Keycloak connection pool."""
     mock_pool = AsyncMock()
     mock_create_pool.return_value = mock_pool
@@ -70,17 +70,16 @@ class TestPraxisDBService:
     new_callable=AsyncMock,
     side_effect=ConnectionRefusedError("Test refuse"),
   )
-  async def test_initialize_keycloak_connection_fails(self, mock_create_pool):
+  async def test_initialize_keycloak_connection_fails(self, mock_create_pool) -> None:
     """Test that initialization raises ConnectionError after retries."""
     # Patch sleep to speed up the test
-    with patch("asyncio.sleep", new_callable=AsyncMock):
-      with pytest.raises(
-        ConnectionError, match="Could not establish Keycloak database connection",
-      ):
-        await PraxisDBService.initialize(keycloak_dsn="postgresql://user:pass@host/db")
+    with patch("asyncio.sleep", new_callable=AsyncMock), pytest.raises(
+      ConnectionError, match="Could not establish Keycloak database connection",
+    ):
+      await PraxisDBService.initialize(keycloak_dsn="postgresql://user:pass@host/db")
     assert mock_create_pool.call_count == 3  # _max_retries = 3
 
-  async def test_get_praxis_session_commit_and_rollback(self, db_session_factory):
+  async def test_get_praxis_session_commit_and_rollback(self, db_session_factory) -> None:
     """Test the get_praxis_session context manager for commit and rollback."""
     service = PraxisDBService()
 
@@ -111,7 +110,8 @@ class TestPraxisDBService:
             email="rollback@test.com",
           )
           session.add(user_rollback)
-          raise ValueError("Test Rollback")
+          msg = "Test Rollback"
+          raise ValueError(msg)
       except ValueError:
         pass  # Expected
 
@@ -123,7 +123,7 @@ class TestPraxisDBService:
         assert result.scalar_one_or_none() is None
 
   @patch("asyncpg.create_pool", new_callable=AsyncMock)
-  async def test_get_all_users_success(self, mock_create_pool):
+  async def test_get_all_users_success(self, mock_create_pool) -> None:
     """Test fetching all users from a mocked Keycloak DB."""
     # Mock the connection and its fetch method
     mock_conn = AsyncMock()
@@ -159,13 +159,13 @@ class TestPraxisDBService:
     assert users["user2"]["email"] == "u2@test.com"
     assert users["user1"]["is_active"] is True
 
-  async def test_get_all_users_no_pool(self):
+  async def test_get_all_users_no_pool(self) -> None:
     """Test that get_all_users returns an empty dict if pool is not initialized."""
     service = PraxisDBService()
     users = await service.get_all_users()
     assert users == {}
 
-  async def test_raw_sql_methods(self, db_session_factory):
+  async def test_raw_sql_methods(self, db_session_factory) -> None:
     """Test execute, fetch_all, fetch_one, and fetch_val SQL methods."""
     service = PraxisDBService()
 
@@ -202,7 +202,7 @@ class TestPraxisDBService:
       assert new_name == "gamma"
 
   @patch("asyncpg.create_pool", new_callable=AsyncMock)
-  async def test_close(self, mock_create_pool):
+  async def test_close(self, mock_create_pool) -> None:
     """Test that the close method closes the Keycloak pool."""
     mock_pool = AsyncMock()
     mock_pool._closed = False  # Simulate it's open
@@ -214,7 +214,7 @@ class TestPraxisDBService:
     mock_pool.close.assert_called_once()
 
 
-def test_get_keycloak_dsn_from_config(mocker):
+def test_get_keycloak_dsn_from_config(mocker) -> None:
   """Test the helper function for reading Keycloak DSN from praxis.ini."""
   # Mock file system and config parser
   mocker.patch("pathlib.Path.exists", return_value=True)

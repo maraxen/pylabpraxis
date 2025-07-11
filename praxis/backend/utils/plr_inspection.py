@@ -14,12 +14,8 @@ from pylabrobot.machines.machine import Machine
 
 # PyLabRobot Imports
 from pylabrobot.resources import (
-  Deck as Deck,
-)
-from pylabrobot.resources import (
-  Resource as Resource,
-)
-from pylabrobot.resources import (
+  Deck,
+  Resource,
   ResourceHolder,
 )
 from pylabrobot.resources.carrier import (
@@ -101,8 +97,8 @@ def get_constructor_params_with_defaults(
       if required_only and param.default is not inspect.Parameter.empty:
         continue
       params[name] = param.default
-  except Exception as e: # noqa: BLE001
-    logger.error("Error inspecting constructor for %s: %s", get_class_fqn(klass), e)
+  except Exception as e:
+    logger.exception("Error inspecting constructor for %s: %s", get_class_fqn(klass), e)
   return params
 
 
@@ -162,7 +158,7 @@ def _discover_classes_in_module_recursive(
   try:
     module = importlib.import_module(module_name)
     classes_in_module = get_module_classes(module, parent_class, concrete_only)
-    for _klass_name, klass in classes_in_module.items():
+    for klass in classes_in_module.values():
       if klass.__module__.startswith(
         module_name,
       ):  # Check it's defined in or under this module path
@@ -183,8 +179,8 @@ def _discover_classes_in_module_recursive(
           )
   except ImportError as e:
     logger.warning("Could not import module %s: %s", module_name, e)
-  except Exception as e: # noqa: BLE001
-    logger.error("Error processing module %s: %s", module_name, e)
+  except Exception as e:
+    logger.exception("Error processing module %s: %s", module_name, e)
   return found_classes
 
 
@@ -282,7 +278,7 @@ def discover_deck_classes(
     except ImportError:
       logger.warning("Package %s not found during deck discovery.", package_name)
     except Exception as e:
-      logger.error("Error discovering deck classes in package %s: %s", package_name, e)
+      logger.exception("Error discovering deck classes in package %s: %s", package_name, e)
   return discovered_deck_classes
 
 

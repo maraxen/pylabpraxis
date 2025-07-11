@@ -9,6 +9,8 @@ from typing import Any, Literal
 
 from pydantic import UUID7, BaseModel, Field
 
+from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
+
 from .resource import (
   ResourceBase,
   ResourceCreate,
@@ -130,9 +132,6 @@ class DeckPositionDefinitionUpdate(BaseModel):
   """Model for updating a deck position definition."""
 
 
-from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
-
-
 class DeckTypeDefinitionBase(BaseModel):
   """Base model for a deck type definition."""
 
@@ -170,8 +169,6 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
   """Model for updating a deck type definition."""
 
-  name: str | None = None
-  fqn: str | None = None
   description: str | None = None
   positioning_config: PositioningConfig | None = None
   position_definitions: list[DeckPositionDefinitionCreate] | None = None

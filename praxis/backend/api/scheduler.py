@@ -126,7 +126,7 @@ async def get_schedule_status(
 
   # Get protocol information
   protocol_run = await protocol_run_service.get(
-    db, accession_id=schedule_entry.protocol_run_accession_id
+    db, accession_id=schedule_entry.protocol_run_accession_id,
   )
 
   protocol_name = None

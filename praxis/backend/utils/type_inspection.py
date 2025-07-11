@@ -55,9 +55,7 @@ def fqn_from_hint(type_hint: Any) -> str:
   if hasattr(actual_type, "__name__"):
     module = getattr(actual_type, "__module__", "")
     if isinstance(module, str) and (
-      module.startswith("praxis.")
-      or module.startswith("pylabrobot.")
-      or module == "builtins"
+      module.startswith(("praxis.", "pylabrobot.")) or module == "builtins"
     ):
       return (
         f"{module}.{actual_type.__name__}"

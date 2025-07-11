@@ -27,7 +27,9 @@ class ScheduleStatusEnum(enum.Enum):
 class ScheduleHistoryEventEnum(enum.Enum):
   """Enumeration for the types of events in schedule history."""
 
+  SCHEDULE_CREATED = "schedule_created"  # Initial creation of the schedule
   SCHEDULED = "scheduled"  # Scheduled for execution
+  STATUS_CHANGED = "status_changed"  # Status changed
   EXECUTED = "executed"  # Execution started
   COMPLETED = "completed"  # Execution completed successfully
   FAILED = "failed"  # Execution failed
@@ -37,4 +39,15 @@ class ScheduleHistoryEventEnum(enum.Enum):
   TIMEOUT = "timeout"  # Execution timed out
   PARTIAL_COMPLETION = "partial_completion"  # Partially completed execution
   INTERVENTION_REQUIRED = "intervention_required"  # Requires user intervention
+  PRIORITY_CHANGED = "priority_changed"  # Priority of the schedule changed
   UNKNOWN = "unknown"  # Unknown event type
+
+class ScheduleHistoryEventTriggerEnum(enum.Enum):
+  """Enumeration for the types of events in schedule history."""
+
+  USER = "user"  # Triggered by a user action
+  API = "api"  # Triggered by an API call
+  PYLABROBOT = "pylabrobot"  # Triggered by PylabRobot
+  CELERY = "celery"  # Triggered by a Celery task
+  SYSTEM = "system"  # Triggered by the system
+

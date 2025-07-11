@@ -44,7 +44,7 @@ class ScheduleEntry:
     required_assets: list[RuntimeAssetRequirement],
     estimated_duration_ms: int | None = None,
     priority: int = 1,
-  ):
+  ) -> None:
     """Initialize a ScheduleEntry.
 
     Args:
@@ -78,7 +78,7 @@ class ProtocolScheduler:
     db_session_factory: async_sessionmaker[AsyncSession],
     redis_url: str = "redis://localhost:6379/0",
     celery_app_instance: Celery | None = None,
-  ):
+  ) -> None:
     """Initialize the Protocol Scheduler.
 
     Args:
@@ -296,7 +296,7 @@ class ProtocolScheduler:
         if not protocol_def:
           # Fetch from database if not loaded
           protocol_definition_crud_service = ProtocolDefinitionCRUDService(
-            FunctionProtocolDefinitionOrm
+            FunctionProtocolDefinitionOrm,
           )
           protocol_def = await protocol_definition_crud_service.get(
             db=db_session,
@@ -424,8 +424,9 @@ class ProtocolScheduler:
         celery_task_id = getattr(task_result, "id", None)
       except AttributeError as e:
         # Fallback: direct call to Celery task is not supported
+        msg = "Direct call to execute_protocol_run_task is not supported. Celery worker must be running."
         raise RuntimeError(
-          "Direct call to execute_protocol_run_task is not supported. Celery worker must be running.",
+          msg,
         ) from e
 
       logger.info(

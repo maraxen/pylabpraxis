@@ -14,7 +14,6 @@ COMMAND_KEY_PREFIX = "orchestrator:control"
 
 
 def _get_redis_client() -> redis.Redis:
-  settings = SETTINGS
   # Assuming settings.redis_host and settings.redis_port are available
   # If settings.redis_url is directly available, that would be preferred:
   # redis_url = settings.redis_url
@@ -41,17 +40,17 @@ async def send_control_command(
 
   """
   if command not in ALLOWED_COMMANDS:
+    msg = f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}"
     raise ValueError(
-      f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}",
+      msg,
     )
   try:
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
     await r.set(key, command, ex=ttl_seconds)
     return True
-  except RedisError as e:
+  except RedisError:
     # In a real application, use a proper logger
-    print(f"RedisError sending control command for run {run_accession_id}: {e}")
     return False
 
 
@@ -68,10 +67,8 @@ async def get_control_command(run_accession_id: uuid.UUID) -> str | None:
   try:
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
-    command = await r.get(key)
-    return command  # Returns None if key doesn't exist
-  except RedisError as e:
-    print(f"RedisError getting control command for run {run_accession_id}: {e}")
+    return await r.get(key)
+  except RedisError:
     return None
 
 
@@ -90,6 +87,5 @@ async def clear_control_command(run_accession_id: uuid.UUID) -> bool:
     key = _get_command_key(run_accession_id)
     deleted_count = await r.delete(key)
     return deleted_count > 0
-  except RedisError as e:
-    print(f"RedisError clearing control command for run {run_accession_id}: {e}")
+  except RedisError:
     return False

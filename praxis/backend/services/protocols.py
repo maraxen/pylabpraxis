@@ -13,7 +13,7 @@ import datetime
 import json
 import logging
 import uuid
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError
@@ -35,8 +35,10 @@ from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
 )
-from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import uuid7
+
+if TYPE_CHECKING:
+  from praxis.backend.utils.db import Base
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +82,13 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       )
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception(
         "Unexpected error creating protocol run '%s'. Rolling back.",
         run_accession_id,
       )
-      raise e
+      raise
     return db_protocol_run
 
   async def get_multi(
@@ -249,13 +251,13 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
           protocol_run_accession_id,
           new_status.name,
         )
-      except Exception as e:
+      except Exception:
         await db.rollback()
         logger.exception(
           "Unexpected error updating protocol run ID %s status. Rolling back.",
           protocol_run_accession_id,
         )
-        raise e
+        raise
       return db_protocol_run
     logger.warning(
       "Protocol run ID %s not found for status update.",

@@ -9,12 +9,12 @@ from praxis.backend.utils.db import SessionLocal, create_tables_if_not_exist, en
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_database_session():
+def setup_test_database_session() -> None:
     """Create test tables once per session."""
     create_tables_if_not_exist()
     # Base.metadata.drop_all(bind=engine) # Uncomment if you want to drop tables after all tests
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     """Provides a test database session, rolling back changes after each test."""
     connection = engine.connect()
@@ -27,10 +27,9 @@ def db_session() -> Generator[Session, None, None]:
         transaction.rollback()
         connection.close()
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def client(db_session: Session) -> Generator[TestClient, None, None]:
-    """Provides a TestClient instance for FastAPI, with DB session override.
-    """
+    """Provides a TestClient instance for FastAPI, with DB session override."""
     from praxis.backend.api.dependencies import get_db
 
     def override_get_db() -> Generator[Session, None, None]:

@@ -10,10 +10,10 @@ This includes Machine Definitions, Machine Instances, and Machine configurations
 import datetime
 import uuid
 from functools import partial
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
-from sqlalchemy import Column, DateTime, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -31,8 +31,10 @@ from praxis.backend.services.utils.query_builder import (
   apply_pagination,
   apply_specific_id_filters,
 )
-from praxis.backend.utils.db import Base
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+
+if TYPE_CHECKING:
+  from praxis.backend.utils.db import Base
 
 logger = get_logger(__name__)
 
@@ -40,7 +42,8 @@ logger = get_logger(__name__)
 class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
   """Service for machine-related operations."""
 
-  def __init__(self, model: type[MachineOrm]):
+  def __init__(self, model: type[MachineOrm]) -> None:
+    """Initialize the MachineService with the given MachineOrm model."""
     super().__init__(model)
     self.machine_data_service_log = partial(
       log_async_runtime_errors,
@@ -57,12 +60,31 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     *,
     obj_in: MachineCreate,
   ) -> MachineOrm:
+    """Create a new machine in the database.
+
+    Args:
+      db : AsyncSession
+          The database session to use for the operation.
+      obj_in : MachineCreate
+          The data required to create a new machine.
+
+    Returns:
+      MachineOrm
+        The newly created machine ORM object.
+
+    Raises:
+    ValueError
+        If a machine with the same name already exists or if there is a database integrity error.
+    Exception
+        For any unexpected errors during creation.
+
+    """
     @self.machine_data_service_log(
       prefix="Machine Data Service: Creating machine - ",
       suffix=" - Ensure the machine data is valid and unique.",
     )
-    async def _create_machine_internal():
-      """Internal helper for machine creation with logging."""
+    async def _create_machine_internal() -> MachineOrm:
+      """Help machine creation with logging."""
       log_prefix = f"Machine (Name: '{obj_in.name}', creating new):"
       logger.info("%s Attempting to create new machine.", log_prefix)
 
@@ -84,7 +106,6 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
         await _create_or_link_resource_counterpart_for_machine(
           db=db,
           machine_orm=machine_orm,
-          is_resource=obj_in.is_resource,
           resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
           resource_definition_name=obj_in.resource_def_name,
           resource_properties_json=obj_in.resource_properties_json,
@@ -109,10 +130,10 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
         error_message = f"{log_prefix} Database integrity error during creation. Details: {e}"
         logger.exception(error_message)
         raise ValueError(error_message) from e
-      except Exception as e:
+      except Exception:
         await db.rollback()
         logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
-        raise e
+        raise
 
       logger.info("%s Creation operation completed.", log_prefix)
       return machine_orm
@@ -124,14 +145,15 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     db: AsyncSession,
     *,
     db_obj: MachineOrm,
-    obj_in: MachineUpdate | dict[str, Any],
+    obj_in: MachineUpdate,
   ) -> MachineOrm:
+    """Update an existing machine with the provided data."""
     @self.machine_data_service_log(
       prefix="Machine Data Service: Updating machine - ",
       suffix=" - Ensure the machine data is valid and unique.",
     )
-    async def _update_machine_internal():
-      """Internal helper for machine update with logging."""
+    async def _update_machine_internal() -> MachineOrm:
+      """Help machine update with logging."""
       update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
       log_prefix = f"Machine (ID: {db_obj.accession_id}, updating):"
       logger.info("%s Attempting to update machine.", log_prefix)
@@ -158,45 +180,39 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       # Update attributes using the base CRUD method
       updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
 
-      # Handle `is_resource` update and potential resource counterpart linking
-      effective_is_resource = (
-        update_data["is_resource"]
-        if "is_resource" in update_data
-        else (db_obj.resource_counterpart_accession_id is not None)
-      )
+      logger.info("%s Initialized machine for update.", log_prefix)
+      if updated_machine.resource_counterpart is not None:
+        try:
+          await _create_or_link_resource_counterpart_for_machine(
+            db=db,
+            machine_orm=updated_machine,
+            resource_counterpart_accession_id=update_data.get(
+              "resource_counterpart_accession_id",
+            ),
+            resource_definition_name=update_data.get("resource_def_name"),
+            resource_properties_json=update_data.get("resource_properties_json"),
+            resource_status=update_data.get("resource_initial_status"),
+          )
 
-      try:
-        await _create_or_link_resource_counterpart_for_machine(
-          db=db,
-          machine_orm=updated_machine,
-          is_resource=effective_is_resource,
-          resource_counterpart_accession_id=update_data.get(
-            "resource_counterpart_accession_id",
-          ),
-          resource_definition_name=update_data.get("resource_def_name"),
-          resource_properties_json=update_data.get("resource_properties_json"),
-          resource_status=update_data.get("resource_initial_status"),
-        )
+          await db.commit()
+          await db.refresh(updated_machine)
+          if updated_machine.resource_counterpart:
+            await db.refresh(updated_machine.resource_counterpart)
+          logger.info("%s Successfully committed updated machine.", log_prefix)
+        except IntegrityError as e:
+          await db.rollback()
+          error_message = (
+            f"{log_prefix} Database integrity error during update. "
+            f"This might occur if a unique constraint is violated. Details: {e}"
+          )
+          logger.exception(error_message)
+          raise ValueError(error_message) from e
+        except Exception:
+          await db.rollback()
+          logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
+          raise
 
-        await db.commit()
-        await db.refresh(updated_machine)
-        if updated_machine.resource_counterpart:
-          await db.refresh(updated_machine.resource_counterpart)
-        logger.info("%s Successfully committed updated machine.", log_prefix)
-      except IntegrityError as e:
-        await db.rollback()
-        error_message = (
-          f"{log_prefix} Database integrity error during update. "
-          f"This might occur if a unique constraint is violated. Details: {e}"
-        )
-        logger.exception(error_message)
-        raise ValueError(error_message) from e
-      except Exception as e:
-        await db.rollback()
-        logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
-        raise e
-
-      logger.info("%s Update operation completed.", log_prefix)
+        logger.info("%s Update operation completed.", log_prefix)
       return updated_machine
 
     return await _update_machine_internal()
@@ -226,7 +242,7 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
 
     # Apply generic filters from query_builder
     stmt = apply_specific_id_filters(stmt, filters, cast("Base", self.model))
-    stmt = apply_date_range_filters(stmt, filters, cast("Column[DateTime]", self.model.created_at))
+    stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
     # MachineOrm does not have a generic properties_json for apply_property_filters
 
     stmt = apply_pagination(stmt, filters)
@@ -302,16 +318,16 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
         machine_accession_id,
         new_status.value,
       )
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception(
         "Unexpected error updating status for machine ID %s. Rolling back.",
         machine_accession_id,
       )
-      raise e
+      raise
     return machine_orm
 
-  async def remove(self, db: AsyncSession, *, accession_id: str | UUID) -> MachineOrm | None:
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> MachineOrm | None:
     """Delete a specific machine by its ID."""
     logger.info("Attempting to delete machine with ID: %s.", accession_id)
     machine_orm = await super().remove(db, accession_id=accession_id)
@@ -325,7 +341,6 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
         accession_id,
         machine_orm.name,
       )
-      return machine_orm
     except IntegrityError as e:
       await db.rollback()
       error_message = (
@@ -333,13 +348,15 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       )
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception(
         "Unexpected error deleting machine ID %s. Rolling back.",
         accession_id,
       )
-      raise e
+      raise
+    else:
+      return machine_orm
 
 
 machine_service = MachineService(MachineOrm)

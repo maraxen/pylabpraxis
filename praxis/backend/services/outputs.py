@@ -7,10 +7,10 @@ attribution, spatial context, and data visualization.
 
 import datetime
 from functools import partial
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
-from sqlalchemy import Column, DateTime, and_, select
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -27,8 +27,10 @@ from praxis.backend.services.utils.query_builder import (
   apply_pagination,
   apply_specific_id_filters,
 )
-from praxis.backend.utils.db import Base
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+
+if TYPE_CHECKING:
+  from praxis.backend.utils.db import Base
 
 logger = get_logger(__name__)
 
@@ -67,7 +69,8 @@ class FunctionDataOutputCRUDService(
     # Create the ORM instance
     data_output_orm = FunctionDataOutputOrm(
       **obj_in.model_dump(),
-      measurement_timestamp=obj_in.measurement_timestamp or datetime.datetime.utcnow(),
+      measurement_timestamp=obj_in.measurement_timestamp
+      or datetime.datetime.now(datetime.timezone.utc),
     )
 
     db.add(data_output_orm)
@@ -80,17 +83,17 @@ class FunctionDataOutputCRUDService(
         log_prefix,
         data_output_orm.accession_id,
       )
-      return data_output_orm
-
     except IntegrityError as e:
       await db.rollback()
       error_message = f"{log_prefix} Database integrity error: {e}"
-      logger.error(error_message, exc_info=True)
+      logger.exception(error_message)
       raise ValueError(error_message) from e
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception("%s Unexpected error during creation.", log_prefix)
-      raise e
+      raise
+    else:
+      return data_output_orm
 
   async def get(
     self,
@@ -136,7 +139,7 @@ class FunctionDataOutputCRUDService(
     query = apply_date_range_filters(
       query,
       filters,
-      cast("Column[DateTime]", self.model.measurement_timestamp),
+      self.model.measurement_timestamp,
     )
     query = apply_pagination(query, filters)
 
@@ -171,12 +174,13 @@ class FunctionDataOutputCRUDService(
       await db.commit()
       await db.refresh(db_obj)
       logger.info("%s Successfully updated data output.", log_prefix)
-      return db_obj
     except Exception as e:
       await db.rollback()
       error_msg = f"Failed to update data output: {e!s}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
+    else:
+      return db_obj
 
   async def remove(self, db: AsyncSession, *, accession_id: UUID) -> FunctionDataOutputOrm | None:
     """Delete a function data output record by ID."""
@@ -194,5 +198,5 @@ class FunctionDataOutputCRUDService(
     except Exception as e:
       await db.rollback()
       error_msg = f"Failed to delete data output: {e!s}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e

@@ -88,13 +88,13 @@ class TestEntityLinking:
     self,
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test successfully reading an existing resource definition."""
     result = await _read_resource_definition_for_linking(db, resource_def.name)
     assert result is not None
     assert result.name == resource_def.name
 
-  async def test_read_resource_definition_not_found(self, db: AsyncSession):
+  async def test_read_resource_definition_not_found(self, db: AsyncSession) -> None:
     """Test that reading a non-existent resource definition raises ValueError."""
     with pytest.raises(ValueError, match="not found"):
       await _read_resource_definition_for_linking(db, "non_existent_def")
@@ -106,7 +106,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test creating a new resource counterpart for a machine."""
     resource = await _create_or_link_resource_counterpart_for_machine(
       db=db,
@@ -131,7 +131,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test linking an existing resource to a machine."""
     linked_resource = await _create_or_link_resource_counterpart_for_machine(
       db=db,
@@ -156,7 +156,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test unlinking a resource from a machine by setting is_resource=False."""
     # First, link them
     machine1.resource_counterpart = resource1
@@ -187,7 +187,7 @@ class TestEntityLinking:
     self,
     db: AsyncSession,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test creating a new machine counterpart for a resource."""
     machine = await _create_or_link_machine_counterpart_for_resource(
       db=db,
@@ -213,7 +213,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test linking an existing machine to a resource."""
     linked_machine = await _create_or_link_machine_counterpart_for_resource(
       db=db,
@@ -240,7 +240,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test that updating a machine's name synchronizes to its resource counterpart."""
     # Link them
     machine1.resource_counterpart = resource1
@@ -260,7 +260,7 @@ class TestEntityLinking:
     db: AsyncSession,
     machine1: MachineOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test that updating a resource's name synchronizes to its machine counterpart."""
     # Link them
     resource1.machine_counterpart = machine1
@@ -281,7 +281,7 @@ class TestEntityLinking:
     db: AsyncSession,
     deck1: DeckOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test that updating a deck's name synchronizes to its resource counterpart."""
     # Link them
     deck1.resource_counterpart = resource1
@@ -301,7 +301,7 @@ class TestEntityLinking:
     db: AsyncSession,
     deck1: DeckOrm,
     resource1: ResourceOrm,
-  ):
+  ) -> None:
     """Test that updating a resource's name synchronizes to its deck counterpart."""
     # Link them
     resource1.deck_counterpart = deck1

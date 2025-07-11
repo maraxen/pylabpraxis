@@ -28,7 +28,7 @@ class DeckTypeDefinitionService(
 ):
   """Service for discovering and syncing deck type definitions."""
 
-  def __init__(self, db: AsyncSession):
+  def __init__(self, db: AsyncSession) -> None:
     """Initialize the DeckTypeDefinitionService."""
     super().__init__(db)
 
@@ -40,10 +40,10 @@ class DeckTypeDefinitionService(
   async def discover_and_synchronize_type_definitions(
     self,
   ) -> list[DeckDefinitionOrm]:
-    """Discovers all deck type definitions from pylabrobot and synchronizes them with the database."""
+    """Discover all deck type definitions from pylabrobot and synchronize them with the database."""
     logger.info("Discovering deck types...")
     discovered_decks = get_deck_classes()
-    logger.info(f"Discovered {len(discovered_decks)} deck types.")
+    logger.info("Discovered %d deck types.", len(discovered_decks))
 
     synced_definitions = []
     for fqn, plr_class_obj in discovered_decks.items():
@@ -55,6 +55,8 @@ class DeckTypeDefinitionService(
       if existing_deck_def:
         update_data = DeckTypeDefinitionUpdate(
           name=plr_class_obj.__name__,
+          fqn=fqn,
+          plr_category=plr_class_obj.__module__,
           description=inspect.getdoc(plr_class_obj),
         )
         for key, value in update_data.model_dump(exclude_unset=True).items():
@@ -80,7 +82,7 @@ class DeckTypeDefinitionService(
         synced_definitions.append(new_deck_def)
 
     await self.db.commit()
-    logger.info(f"Synchronized {len(synced_definitions)} deck definitions.")
+    logger.info("Synchronized %d deck definitions.", len(synced_definitions))
     return synced_definitions
 
 

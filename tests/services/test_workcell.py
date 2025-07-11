@@ -58,7 +58,7 @@ pytestmark = pytest.mark.asyncio
 class TestWorkcellService:
   """Test suite for the Workcell service layer."""
 
-  async def test_create_and_read_workcell(self, db: AsyncSession):
+  async def test_create_and_read_workcell(self, db: AsyncSession) -> None:
     """Test creating a workcell and reading it back by ID and name."""
     name = f"MyWorkcell_{uuid.uuid4()}"
     description = "Primary liquid handling workcell."
@@ -89,7 +89,7 @@ class TestWorkcellService:
     self,
     db: AsyncSession,
     existing_workcell: WorkcellOrm,
-  ):
+  ) -> None:
     """Test that creating a workcell with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_workcell(db, name=existing_workcell.name)
@@ -98,7 +98,7 @@ class TestWorkcellService:
     self,
     db: AsyncSession,
     existing_workcell: WorkcellOrm,
-  ):
+  ) -> None:
     """Test updating various fields of a workcell."""
     new_desc = "An updated description."
     new_loc = "Lab 2, Bench B"
@@ -115,7 +115,7 @@ class TestWorkcellService:
     assert updated_wc.description == new_desc
     assert updated_wc.physical_location == new_loc
 
-  async def test_list_workcells(self, db: AsyncSession, existing_workcell: WorkcellOrm):
+  async def test_list_workcells(self, db: AsyncSession, existing_workcell: WorkcellOrm) -> None:
     """Test listing workcells with pagination."""
     # Create a second workcell
     await create_workcell(db, name=f"AnotherWorkcell_{uuid.uuid4()}")
@@ -131,7 +131,7 @@ class TestWorkcellService:
     assert len(next_page_wcs) == 1
     assert paginated_wcs[0].accession_id != next_page_wcs[0].accession_id
 
-  async def test_delete_workcell_success(self, db: AsyncSession):
+  async def test_delete_workcell_success(self, db: AsyncSession) -> None:
     """Test successfully deleting an empty workcell."""
     wc_to_delete = await create_workcell(db, name=f"ToDelete_{uuid.uuid4()}")
     wc_id = wc_to_delete.accession_id
@@ -147,7 +147,7 @@ class TestWorkcellService:
     db: AsyncSession,
     existing_workcell: WorkcellOrm,
     machine_in_workcell: MachineOrm,
-  ):
+  ) -> None:
     """Test that deleting a workcell with linked machines fails gracefully."""
     # The machine_in_workcell fixture links a machine to existing_workcell.
     # Attempting to delete the workcell should fail due to the FK constraint.
@@ -159,7 +159,7 @@ class TestWorkcellService:
     self,
     db: AsyncSession,
     existing_workcell: WorkcellOrm,
-  ):
+  ) -> None:
     """Test reading and updating the JSON state of a workcell."""
     # Test reading the initial state
     initial_state = await read_workcell_state(db, existing_workcell.accession_id)
@@ -182,7 +182,7 @@ class TestWorkcellService:
     read_new_state = await read_workcell_state(db, existing_workcell.accession_id)
     assert read_new_state == new_state
 
-  async def test_update_state_fails_for_non_existent_workcell(self, db: AsyncSession):
+  async def test_update_state_fails_for_non_existent_workcell(self, db: AsyncSession) -> None:
     """Test that updating state for a non-existent workcell raises ValueError."""
     non_existent_id = uuid.uuid4()
     with pytest.raises(ValueError, match="not found for state update"):

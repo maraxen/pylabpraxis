@@ -22,7 +22,7 @@ TEST_RUN_GUID = "test-run-accession_id-123"
 
 class TestProtocolCommandsAPI:
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_pause_command_success(self, mock_send_control_command_redis):
+  def test_send_pause_command_success(self, mock_send_control_command_redis) -> None:
     mock_send_control_command_redis.return_value = True
     response = client.post(
       f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "PAUSE"},
@@ -34,7 +34,7 @@ class TestProtocolCommandsAPI:
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "PAUSE")
 
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_resume_command_success(self, mock_send_control_command_redis):
+  def test_send_resume_command_success(self, mock_send_control_command_redis) -> None:
     mock_send_control_command_redis.return_value = True
     response = client.post(
       f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "RESUME"},
@@ -46,7 +46,7 @@ class TestProtocolCommandsAPI:
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "RESUME")
 
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_cancel_command_success(self, mock_send_control_command_redis):
+  def test_send_cancel_command_success(self, mock_send_control_command_redis) -> None:
     mock_send_control_command_redis.return_value = True
     response = client.post(
       f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": "CANCEL"},
@@ -58,7 +58,7 @@ class TestProtocolCommandsAPI:
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "CANCEL")
 
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_invalid_command(self, mock_send_control_command_redis):
+  def test_send_invalid_command(self, mock_send_control_command_redis) -> None:
     invalid_command = "INVALID_COMMAND"
     response = client.post(
       f"/api/protocols/{TEST_RUN_GUID}/command", params={"command": invalid_command},
@@ -70,7 +70,7 @@ class TestProtocolCommandsAPI:
     mock_send_control_command_redis.assert_not_called()
 
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_command_redis_error(self, mock_send_control_command_redis):
+  def test_send_command_redis_error(self, mock_send_control_command_redis) -> None:
     mock_send_control_command_redis.side_effect = redis.exceptions.RedisError(
       "Test Redis Error",
     )
@@ -85,7 +85,7 @@ class TestProtocolCommandsAPI:
     mock_send_control_command_redis.assert_called_once_with(TEST_RUN_GUID, "PAUSE")
 
   @patch("praxis.backend.api.protocols.send_control_command_to_redis")
-  def test_send_command_failure_from_redis_false(self, mock_send_control_command_redis):
+  def test_send_command_failure_from_redis_false(self, mock_send_control_command_redis) -> None:
     mock_send_control_command_redis.return_value = (
       False  # Simulate Redis command sending failure
     )

@@ -12,14 +12,13 @@ from .pydantic_base import PraxisBaseModel
 class AssetBase(BaseModel):
   """Define the base properties for an asset."""
 
-  name: str = Field(description="The unique name of the asset.")
-  asset_type: AssetType = Field(description="The type of the asset.")
+  name: str | None = Field(description="The unique name of the asset.")
+  asset_type: AssetType | None = Field(description="The type of the asset.")
   fqn: str | None = Field(
     None,
     description="Fully qualified name of the asset's class, if applicable.",
   )
   location: str | None = Field(None, description="The location of the asset.")
-
 
 class AssetResponse(AssetBase, PraxisBaseModel):
   """Represent an asset for API responses."""

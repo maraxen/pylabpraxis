@@ -72,7 +72,7 @@ class TestProtocolDecoratorSetup:
   Functions are decorated inside each test to ensure isolation.
   """
 
-  async def test_registry_population_and_full_parsing(self):
+  async def test_registry_population_and_full_parsing(self) -> None:
     """Test that a decorated function is correctly parsed and added to the registry."""
 
     # Arrange
@@ -83,7 +83,7 @@ class TestProtocolDecoratorSetup:
       volume: float = 100.0,
       enabled: bool = True,
       target: Plate | None = None,
-    ):
+    ) -> None:
       """A sample protocol."""
 
     # Act
@@ -141,10 +141,10 @@ class TestProtocolDecoratorSetup:
       in assets["target"].type_hint_str
     )
 
-  async def test_raises_error_for_missing_state_param_for_top_level(self):
+  async def test_raises_error_for_missing_state_param_for_top_level(self) -> None:
     """Test a TypeError is raised for a top-level protocol without a state parameter."""
 
-    async def invalid_top_level(plate: Plate):
+    async def invalid_top_level(plate: Plate) -> None:
       pass
 
     decorator = await protocol_function(is_top_level=True)
@@ -153,20 +153,20 @@ class TestProtocolDecoratorSetup:
     ):
       decorator(invalid_top_level)
 
-  async def test_raises_error_for_missing_deck_param_with_preconfigure(self):
+  async def test_raises_error_for_missing_deck_param_with_preconfigure(self) -> None:
     """Test a TypeError is raised if preconfigure_deck is True but the deck is missing."""
 
-    async def invalid_deck_protocol(state: dict):
+    async def invalid_deck_protocol(state: dict) -> None:
       pass
 
     decorator = await protocol_function(preconfigure_deck=True)
     with pytest.raises(TypeError, match=f"missing '{DEFAULT_DECK_PARAM_NAME}' param"):
       decorator(invalid_deck_protocol)
 
-  async def test_raises_error_for_invalid_top_level_name(self):
+  async def test_raises_error_for_invalid_top_level_name(self) -> None:
     """Test a ValueError is raised for an invalid top-level protocol name."""
 
-    async def protocol_with_bad_name(state: dict):
+    async def protocol_with_bad_name(state: dict) -> None:
       pass
 
     decorator = await protocol_function(name="invalid-name!", is_top_level=True)
@@ -186,7 +186,8 @@ class TestProtocolDecoratorRuntime:
 
     async def my_runtime_protocol(state: dict, volume: float, resource: Resource):
       if volume < 0:
-        raise ValueError("Volume cannot be negative")
+        msg = "Volume cannot be negative"
+        raise ValueError(msg)
       return {"status": "ok", "volume_processed": volume}
 
     decorator = await protocol_function(
@@ -200,7 +201,7 @@ class TestProtocolDecoratorRuntime:
   async def decorated_sync_protocol(self) -> Callable:
     """Provides a decorated and registered synchronous function."""
 
-    def my_sync_protocol(state: dict):
+    def my_sync_protocol(state: dict) -> str:
       return "sync complete"
 
     decorator = await protocol_function(
@@ -226,7 +227,7 @@ class TestProtocolDecoratorRuntime:
     mock_get_control,
     decorated_protocol,
     mock_run_context,
-  ):
+  ) -> None:
     """Test a successful run of a decorated async function."""
     praxis_run_context_cv.set(mock_run_context)
     mock_call_log_orm = MagicMock(accession_id=TEST_CALL_LOG_ID)
@@ -259,7 +260,7 @@ class TestProtocolDecoratorRuntime:
     mock_get_control,
     decorated_sync_protocol,
     mock_run_context,
-  ):
+  ) -> None:
     """Test that a synchronous decorated function is run in an executor."""
     praxis_run_context_cv.set(mock_run_context)
     mock_call_log_orm = MagicMock(accession_id=TEST_CALL_LOG_ID)
@@ -289,7 +290,7 @@ class TestProtocolDecoratorRuntime:
     mock_get_control,
     decorated_protocol,
     mock_run_context,
-  ):
+  ) -> None:
     """Test that exceptions are caught, logged with ERROR status, and re-raised."""
     praxis_run_context_cv.set(mock_run_context)
     mock_call_log_orm = MagicMock(accession_id=TEST_CALL_LOG_ID)
@@ -306,7 +307,7 @@ class TestProtocolDecoratorRuntime:
 
   async def test_wrapper_fails_without_valid_context(
     self, decorated_protocol, monkeypatch,
-  ):
+  ) -> None:
     """Test that calling a decorated function without a proper context raises a RuntimeError."""
     monkeypatch.setattr(praxis_run_context_cv, "get", lambda: None)
     with pytest.raises(RuntimeError, match="No PraxisRunContext found"):
@@ -329,7 +330,7 @@ class TestProtocolDecoratorRuntime:
     mock_clear_control,
     decorated_protocol,
     mock_run_context,
-  ):
+  ) -> None:
     """Test the CANCEL control flow, ensuring it raises ProtocolCancelledError."""
     praxis_run_context_cv.set(mock_run_context)
     mock_start.return_value = MagicMock(accession_id=TEST_CALL_LOG_ID)
@@ -363,7 +364,7 @@ class TestProtocolDecoratorRuntime:
     mock_sleep,
     decorated_protocol,
     mock_run_context,
-  ):
+  ) -> None:
     """Test the PAUSE/RESUME control flow."""
     praxis_run_context_cv.set(mock_run_context)
     mock_start.return_value = MagicMock(accession_id=TEST_CALL_LOG_ID)

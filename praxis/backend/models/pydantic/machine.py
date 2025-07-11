@@ -9,8 +9,14 @@ from typing import Any
 
 from pydantic import UUID7, Field
 
-from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
-from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
+from praxis.backend.models.enums import MachineCategoryEnum, MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.pydantic.plr_sync import (
+  PLRTypeDefinitionBase,
+  PLRTypeDefinitionCreate,
+  PLRTypeDefinitionResponse,
+  PLRTypeDefinitionUpdate,
+)
+from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 
@@ -18,10 +24,9 @@ from .asset import AssetBase, AssetResponse, AssetUpdate
 class MachineBase(AssetBase):
   """Defines the base properties for a machine."""
 
-  status: MachineStatusEnum = Field(default=MachineStatusEnum.OFFLINE)
+  status: MachineStatusEnum | None = Field(default=MachineStatusEnum.OFFLINE)
   status_details: str | None = None
   workcell_id: UUID7 | None = None
-  is_resource: bool = Field(default=False)
   resource_counterpart_accession_id: UUID7 | None = None
   has_deck_child: bool = Field(
     default=False,
@@ -41,21 +46,14 @@ class MachineBase(AssetBase):
   last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
 
-  class Config:
-    """Configuration for Pydantic model behavior."""
 
-    from_attributes = True
-    use_enum_values = True
-
-
-class MachineCreate(MachineBase):
+class MachineCreate(MachineBase, PraxisBaseModel):
   """Represents a machine for creation requests.
 
   Extends `MachineBase` with fields required for creating a new machine,
   including details for an optional resource counterpart.
   """
 
-  # Fields for creating a resource counterpart if is_resource is True
   resource_def_name: str | None = Field(
     default=None,
     description=(
@@ -73,15 +71,13 @@ class MachineCreate(MachineBase):
   )
 
 
-class MachineUpdate(AssetUpdate):
+class MachineUpdate(MachineBase, AssetUpdate):
   """Represents a machine for update requests."""
 
   status: MachineStatusEnum | None = None
   status_details: str | None = None
   workcell_id: UUID7 | None = None
-  is_resource: bool | None = None
   resource_counterpart_accession_id: UUID7 | None = None
-  # You can also update resource counterpart details if needed
   resource_def_name: str | None = None
   resource_properties_json: dict[str, Any] | None = None
   resource_initial_status: ResourceStatusEnum | None = None
@@ -94,13 +90,62 @@ class MachineResponse(AssetResponse, MachineBase):
   view of the machine, including system-generated fields.
   """
 
-  class Config(AssetResponse.Config, MachineBase.Config):
-    """Pydantic configuration for MachineResponse."""
+
+class MachineDefinitionBase(PLRTypeDefinitionBase):
+  """Defines the base properties for a machine definition."""
+
+  machine_category: MachineCategoryEnum | None = Field(
+    default=None,
+    description="The category of the machine.",
+  )
+  nominal_volume_ul: float | None = Field(
+    default=None,
+    description="The nominal volume in microliters.",
+  )
+  material: str | None = Field(default=None, description="The material of the machine.")
+  manufacturer: str | None = Field(default=None, description="The manufacturer of the machine.")
+  plr_definition_details_json: dict[str, Any] | None = Field(
+    default=None,
+    description="PyLabRobot specific definition details.",
+  )
+  size_x_mm: float | None = Field(
+    default=None,
+    description="The size in the x-dimension in millimeters.",
+  )
+  size_y_mm: float | None = Field(
+    default=None,
+    description="The size in the y-dimension in millimeters.",
+  )
+  size_z_mm: float | None = Field(
+    default=None,
+    description="The size in the z-dimension in millimeters.",
+  )
+  model: str | None = Field(default=None, description="The model of the machine.")
+  rotation_json: dict[str, Any] | None = Field(
+    default=None,
+    description="The rotation of the machine.",
+  )
+  resource_definition_accession_id: UUID7 | None = Field(
+    default=None,
+    description="The accession ID of the resource definition.",
+  )
+  has_deck: bool | None = Field(default=None, description="Whether the machine has a deck.")
+  deck_definition_accession_id: UUID7 | None = Field(
+    default=None,
+    description="The accession ID of the deck definition.",
+  )
+  setup_method_json: dict[str, Any] | None = Field(
+    default=None,
+    description="The setup method for the machine.",
+  )
 
 
-class MachineTypeDefinitionCreate(PLRTypeDefinitionCreate):
-  """Model for creating a new machine type definition."""
+class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
+  """Represents a machine definition for creation requests."""
 
 
-class MachineTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
-  """Model for updating a machine type definition."""
+class MachineDefinitionUpdate(MachineDefinitionBase, PLRTypeDefinitionUpdate):
+  """Specifies the fields that can be updated for an existing machine definition."""
+
+class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):
+  """Represents a machine definition for API responses."""

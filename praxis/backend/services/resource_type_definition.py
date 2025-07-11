@@ -21,12 +21,12 @@ from pylabrobot.resources import (
   Well,
 )
 from sqlalchemy import select
-from sqlalchemy.orm import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic.resource import (
-  ResourceTypeDefinitionCreate,
-  ResourceTypeDefinitionUpdate,
+  ResourceDefinitionCreate,
+  ResourceDefinitionUpdate,
 )
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
 from praxis.backend.services.utils.crud_base import CRUDBase
@@ -38,13 +38,13 @@ logger = get_logger(__name__)
 class ResourceTypeDefinitionService(
   DiscoverableTypeServiceBase[
     ResourceDefinitionOrm,
-    ResourceTypeDefinitionCreate,
-    ResourceTypeDefinitionUpdate,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
   ],
 ):
   """Service for discovering and syncing resource type definitions."""
 
-  EXCLUDED_BASE_CLASSES: list[type[Resource]] = [
+  EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
     Carrier,
     Container,
     Deck,
@@ -57,9 +57,9 @@ class ResourceTypeDefinitionService(
     ResourceStack,
     TipSpot,
     Well,
-  ]
+  )
 
-  def __init__(self, db: AsyncSession):
+  def __init__(self, db: AsyncSession) -> None:
     """Initialize the ResourceTypeDefinitionService."""
     super().__init__(db)
 
@@ -76,9 +76,7 @@ class ResourceTypeDefinitionService(
       return False
     if plr_class in self.EXCLUDED_BASE_CLASSES:
       return False
-    if not plr_class.__module__.startswith("pylabrobot.resources"):
-      return False
-    return True
+    return plr_class.__module__.startswith("pylabrobot.resources")
 
   def _get_category_from_plr_class(self, plr_class: type[Any]) -> str | None:
     """Extract the category from a PyLabRobot class."""
@@ -126,9 +124,9 @@ class ResourceTypeDefinitionService(
 
   async def discover_and_synchronize_type_definitions(
     self,
-    plr_resources_package=pylabrobot.resources,
+    plr_resources_package: type[Any] = pylabrobot,
   ) -> list[ResourceDefinitionOrm]:
-    """Discovers all resource type definitions from pylabrobot and synchronizes them with the database."""
+    """Discover all pylabrobot resource type definitions and synchronize them with the database."""
     logger.info(
       "Starting PyLabRobot resource definition sync from package: %s",
       plr_resources_package.__name__,
@@ -172,8 +170,9 @@ class ResourceTypeDefinitionService(
         existing_resource_def = existing_resource_def_result.scalar_one_or_none()
 
         if existing_resource_def:
-          update_data = ResourceTypeDefinitionUpdate(
+          update_data = ResourceDefinitionUpdate(
             name=short_name,
+            fqn=fqn,
             description=description,
             plr_category=category,
             ordering=ordering,
@@ -204,15 +203,15 @@ class ResourceTypeDefinitionService(
           synced_definitions.append(new_resource_def)
 
     await self.db.commit()
-    logger.info(f"Synchronized {len(synced_definitions)} resource definitions.")
+    logger.info("Synchronized %d resource definitions.", len(synced_definitions))
     return synced_definitions
 
 
 class ResourceTypeDefinitionCRUDService(
   CRUDBase[
     ResourceDefinitionOrm,
-    ResourceTypeDefinitionCreate,
-    ResourceTypeDefinitionUpdate,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
   ],
 ):
   """CRUD service for resource type definitions."""

@@ -40,14 +40,14 @@ MOCK_LIVE_LABWARE.name = "MockLivePLRResource_Global"
 
 # Dummy PLR resource for type hinting in test protocols
 class IntegrationPipette(Resource):
-    def __init__(self, name: str, **kwargs):
+    def __init__(self, name: str, **kwargs) -> None:
         super().__init__(name=name, size_x=1, size_y=1, size_z=1, **kwargs)
-    def pick_up_tip(self):
-        print(f"{self.name} picking up tip.")
-    def aspirate(self, vol: int):
-        print(f"{self.name} aspirating {vol}ul.")
-    def dispense(self, vol: int):
-        print(f"{self.name} dispensing {vol}ul.")
+    def pick_up_tip(self) -> None:
+        pass
+    def aspirate(self, vol: int) -> None:
+        pass
+    def dispense(self, vol: int) -> None:
+        pass
 
 @pytest.fixture
 def temp_integration_protocols():
@@ -179,7 +179,7 @@ class TestIntegrationDiscoveryExecution:
         mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock,
-    ):
+    ) -> None:
         # --- 1. Discovery Phase ---
         discovery_service = ProtocolDiscoveryService(db_session=mock_db_session)
 
@@ -258,9 +258,9 @@ class TestIntegrationDiscoveryExecution:
         assert any(call.kwargs["new_status"] == ProtocolRunStatusEnum.COMPLETED for call in update_calls)
 
         final_state_json_in_db = json.loads(update_calls[-1].kwargs["final_state_json"])
-        assert final_state_json_in_db["main_protocol_started"] == True
-        assert final_state_json_in_db["nested_step_ran"] == True
-        assert final_state_json_in_db["main_protocol_completed"] == True
+        assert final_state_json_in_db["main_protocol_started"] is True
+        assert final_state_json_in_db["nested_step_ran"] is True
+        assert final_state_json_in_db["main_protocol_completed"] is True
 
         mock_redis_for_state.get.assert_any_call(f"praxis_state:{test_run_accession_id}")
         assert any(
@@ -303,7 +303,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
         mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock,
-    ):
+    ) -> None:
         # --- Setup: Discovery (to get Pydantic model into PROTOCOL_REGISTRY) ---
         discovery_service = ProtocolDiscoveryService(db_session=mock_db_session)
         discovered_defs_orm_mocks = discovery_service.discover_and_upsert_protocols(
@@ -316,8 +316,6 @@ class TestIntegrationParameterValidation: # New class for validation tests
         if module_parent_dir not in sys.path:
             sys.path.insert(0, module_parent_dir)
 
-        import integration_test_protocols.protocol_module as mod
-        main_protocol_pydantic_def_from_module = mod.main_protocol._protocol_definition
 
         # Configure get_protocol_definition_details from the new fixture
         mock_data_services["get_protocol_definition_details"].return_value = main_proto_discovered_mock_orm
@@ -349,7 +347,7 @@ class TestIntegrationParameterValidation: # New class for validation tests
         mock_data_services: dict[str, MagicMock], # MODIFIED: Use new fixture name
         mock_redis_for_state: MagicMock,
         mock_asset_manager_instance: MagicMock,
-    ):
+    ) -> None:
         # This test is complex to set up perfectly without modifying the actual protocol definition
         # or having a very flexible mock for get_protocol_definition_details.
         # For now, mark as pass.

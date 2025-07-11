@@ -2,10 +2,10 @@
 """Unit tests for Celery tasks."""
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from celery.result import EagerResult
 
 from praxis.backend.core.celery_tasks import (
   ProtocolExecutionContext,
@@ -14,6 +14,9 @@ from praxis.backend.core.celery_tasks import (
   initialize_celery_context,
 )
 from praxis.backend.models import ProtocolRunOrm, ProtocolRunStatusEnum
+
+if TYPE_CHECKING:
+  from celery.result import EagerResult
 
 # --- Test Constants ---
 TEST_RUN_ID = uuid.uuid4()
@@ -57,7 +60,7 @@ def execution_context(mock_orchestrator, mock_db_session_factory):
 class TestExecuteProtocolRunTask:
   """Test suite for the main protocol execution Celery task."""
 
-  def test_initialize_celery_context(self, mock_orchestrator, mock_db_session_factory):
+  def test_initialize_celery_context(self, mock_orchestrator, mock_db_session_factory) -> None:
     """Test that the context initialization function works correctly."""
     # Arrange
     with patch("praxis.backend.core.celery_tasks._execution_context", None):
@@ -69,7 +72,7 @@ class TestExecuteProtocolRunTask:
       assert _execution_context is not None
       assert _execution_context.orchestrator is mock_orchestrator
 
-  def test_task_happy_path(self, execution_context):
+  def test_task_happy_path(self, execution_context) -> None:
     """Test the successful execution path of the Celery task."""
     # Arrange
     mock_task = MagicMock()
@@ -95,7 +98,7 @@ class TestExecuteProtocolRunTask:
       mock_asyncio_run.assert_called_once()
       assert result == expected_result
 
-  def test_task_no_context(self):
+  def test_task_no_context(self) -> None:
     """Test that the task fails gracefully if the context is not initialized."""
     # Arrange: Ensure context is None
     with patch("praxis.backend.core.celery_tasks._execution_context", None):
@@ -110,7 +113,7 @@ class TestExecuteProtocolRunTask:
       assert not result["success"]
       assert "context is not initialized" in result["error"]
 
-  def test_task_catches_general_exception(self, execution_context):
+  def test_task_catches_general_exception(self, execution_context) -> None:
     """Test that the main task function catches exceptions from the async runner."""
     # Arrange
     error_message = "Orchestrator exploded"
@@ -137,7 +140,7 @@ class TestExecuteProtocolRunTask:
       # Check that the fallback error handler was called
       assert mock_asyncio_run.call_count == 2
 
-  async def test_async_helper_happy_path(self, execution_context):
+  async def test_async_helper_happy_path(self, execution_context) -> None:
     """Test the internal async execution logic for a successful run."""
     # Arrange
     mock_run_orm = ProtocolRunOrm(id=TEST_RUN_ID, accession_id=TEST_RUN_ID)
@@ -173,7 +176,7 @@ class TestExecuteProtocolRunTask:
       assert result["success"]
       assert result["final_status"] == ProtocolRunStatusEnum.COMPLETED.value
 
-  async def test_async_helper_orchestrator_fails(self, execution_context):
+  async def test_async_helper_orchestrator_fails(self, execution_context) -> None:
     """Test that a failure in the orchestrator is caught and handled."""
     # Arrange
     mock_run_orm = ProtocolRunOrm(id=TEST_RUN_ID, accession_id=TEST_RUN_ID)
@@ -193,16 +196,15 @@ class TestExecuteProtocolRunTask:
 
       with patch(
         "praxis.backend.core.celery_tasks._execution_context", execution_context,
-      ):
-        with pytest.raises(RuntimeError, match="Test Fail"):
-          await _execute_protocol_async(TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID)
+      ), pytest.raises(RuntimeError, match="Test Fail"):
+        await _execute_protocol_async(TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID)
 
       # Assert the final status update was to FAILED
       final_call = mock_update.call_args_list[-1]
       assert final_call.kwargs["new_status"] == ProtocolRunStatusEnum.FAILED
 
 
-def test_health_check_task():
+def test_health_check_task() -> None:
   """Test the simple health check task."""
   # Act
   result: EagerResult = health_check.s().apply()  # type: ignore

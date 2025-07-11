@@ -107,7 +107,7 @@ def not_a_protocol():
 class TestProtocolDiscoveryService:
   """Test suite for the ProtocolDiscoveryService."""
 
-  def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files):
+  def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files) -> None:
     """Test that _extract_protocol_definitions_from_paths finds all valid protocols."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
       str(protocol_files),
@@ -119,7 +119,7 @@ class TestProtocolDiscoveryService:
 
   def test_decorated_protocol_is_parsed_correctly(
     self, discovery_service, protocol_files,
-  ):
+  ) -> None:
     """Verify the content of a protocol definition from a decorator."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
       str(protocol_files),
@@ -137,7 +137,7 @@ class TestProtocolDiscoveryService:
 
   def test_inferred_protocol_is_parsed_correctly(
     self, discovery_service, protocol_files,
-  ):
+  ) -> None:
     """Verify the content of an inferred protocol definition."""
     definitions = discovery_service._extract_protocol_definitions_from_paths(
       str(protocol_files),
@@ -156,7 +156,7 @@ class TestProtocolDiscoveryService:
 
   async def test_discover_and_upsert_happy_path(
     self, discovery_service, protocol_files,
-  ):
+  ) -> None:
     """Test the full discover and upsert flow, including registry updates."""
     # Manually populate the registry as the decorator would
     decorated_def = FunctionProtocolDefinitionModel(

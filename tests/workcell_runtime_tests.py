@@ -94,10 +94,10 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_plr_machine_backend_class: MagicMock,
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,
-  ):
+  ) -> None:
     mock_get_class.return_value = mock_plr_machine_backend_class
     machine_orm = ManagedDeviceOrmMock(
-      id=1, name="Device1", fqn="some.DeviceClass", properties_json={"param": "value"}
+      id=1, name="Device1", fqn="some.DeviceClass", properties_json={"param": "value"},
     )
 
     backend_instance = workcell_runtime.initialize_machine_backend(machine_orm)
@@ -128,7 +128,7 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_plr_deck_class: MagicMock,  # Use deck-specific mock
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,
-  ):
+  ) -> None:
     # For this test, we need _get_class_from_fqn to return a class that, when instantiated,
     # IS a Deck. We mock Deck itself for the isinstance check.
     with patch("praxis.backend.core.workcell_runtime.Deck", spec=True) as ActualDeckClassMocked:
@@ -169,7 +169,7 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_get_class: MagicMock,
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,
-  ):
+  ) -> None:
     mock_get_class.side_effect = ImportError("Module not found")
     machine_orm = ManagedDeviceOrmMock(id=3, name="ErrorDevice", fqn="bad.fqn.Device")
 
@@ -185,8 +185,8 @@ class TestWorkcellRuntimeDeviceHandling:
     )
 
   def test_shutdown_machine_backend(
-    self, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock
-  ):
+    self, workcell_runtime: WorkcellRuntime, mock_ads_service_wcr: MagicMock,
+  ) -> None:
     mock_backend_instance = MagicMock()
     mock_backend_instance.stop = MagicMock()
     workcell_runtime._active_machine_backends[1] = mock_backend_instance
@@ -211,7 +211,7 @@ class TestWorkcellRuntimeResourceHandling:
     mock_plr_resource_class: MagicMock,
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,  # Added ads mock
-  ):
+  ) -> None:
     mock_get_class.return_value = mock_plr_resource_class
     resource_orm = ResourceOrmMock(
       id=1,
@@ -220,7 +220,7 @@ class TestWorkcellRuntimeResourceHandling:
     )  # Name used for instance
 
     plr_object = workcell_runtime.create_or_get_resource_plr_object(
-      resource_orm, "some.ResourceFQN"
+      resource_orm, "some.ResourceFQN",
     )  # Pass FQN
 
     mock_get_class.assert_called_once_with("some.ResourceFQN")
@@ -234,14 +234,14 @@ class TestWorkcellRuntimeResourceHandling:
     mock_get_class: MagicMock,
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,
-  ):
+  ) -> None:
     mock_get_class.side_effect = ImportError("Cannot import resource class")
     resource_orm = ResourceOrmMock(
-      id=2, name="BadPlate", resource_definition_name="bad.fqn.Resource"
+      id=2, name="BadPlate", resource_definition_name="bad.fqn.Resource",
     )
 
     plr_object = workcell_runtime.create_or_get_resource_plr_object(
-      resource_orm, "bad.fqn.Resource"
+      resource_orm, "bad.fqn.Resource",
     )
 
     assert plr_object is None
@@ -255,14 +255,14 @@ class TestWorkcellRuntimeResourceHandling:
     )
 
   @patch(
-    "praxis.backend.core.workcell_runtime.Deck", spec=True
+    "praxis.backend.core.workcell_runtime.Deck", spec=True,
   )  # Mock the Deck class itself for isinstance checks
   def test_assign_resource_to_deck_slot(
     self,
     MockActualDeck: MagicMock,  # This is the mocked Deck class from the patch
     workcell_runtime: WorkcellRuntime,
     mock_ads_service_wcr: MagicMock,
-  ):
+  ) -> None:
     # Setup a mock deck object that is an instance of the (mocked) Deck
     mock_deck = MagicMock(spec=MockActualDeck)  #  that passes isinstance checks
     mock_deck.name = "TestDeck"
@@ -271,16 +271,16 @@ class TestWorkcellRuntimeResourceHandling:
     workcell_runtime._active_machine_backends[10] = mock_deck  # Assume deck ID 10 is active
 
     mock_resource_plr_obj = MagicMock(
-      spec=workcell_runtime.Resource
+      spec=workcell_runtime.Resource,
     )  # from praxis.backend.core.workcell_runtime
     resource_accession_id = 1
 
     workcell_runtime.assign_resource_to_deck_slot(
-      10, "A1", mock_resource_plr_obj, resource_accession_id
+      10, "A1", mock_resource_plr_obj, resource_accession_id,
     )
 
     mock_deck.assign_child_resource.assert_called_once_with(
-      resource=mock_resource_plr_obj, slot="A1"
+      resource=mock_resource_plr_obj, slot="A1",
     )
     mock_ads_service_wcr.update_resource_location_and_status.assert_called_once_with(
       workcell_runtime.db_session,

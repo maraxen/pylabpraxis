@@ -103,8 +103,7 @@ async def existing_data_output(
   base_data_output_create: FunctionDataOutputCreate,
 ) -> FunctionDataOutputOrm:
   """Fixture to create a data output record in the DB for read/update/delete tests."""
-  data_output = await create_function_data_output(db, base_data_output_create)
-  return data_output
+  return await create_function_data_output(db, base_data_output_create)
 
 
 pytestmark = pytest.mark.asyncio
@@ -117,7 +116,7 @@ class TestFunctionDataOutputService:
     self,
     db: AsyncSession,
     base_data_output_create: FunctionDataOutputCreate,
-  ):
+  ) -> None:
     """Test successful creation of a function data output."""
     created_output = await create_function_data_output(db, base_data_output_create)
     assert created_output is not None
@@ -130,7 +129,7 @@ class TestFunctionDataOutputService:
     self,
     db: AsyncSession,
     existing_data_output: FunctionDataOutputOrm,
-  ):
+  ) -> None:
     """Test reading a function data output by its ID."""
     read_output = await read_function_data_output(db, existing_data_output.accession_id)
     assert read_output is not None
@@ -138,7 +137,7 @@ class TestFunctionDataOutputService:
     assert read_output.data_key == existing_data_output.data_key
     assert read_output.protocol_run is not None
 
-  async def test_read_non_existent_output(self, db: AsyncSession):
+  async def test_read_non_existent_output(self, db: AsyncSession) -> None:
     """Test that reading a non-existent output returns None."""
     non_existent_id = uuid.uuid4()
     assert await read_function_data_output(db, non_existent_id) is None
@@ -147,7 +146,7 @@ class TestFunctionDataOutputService:
     self,
     db: AsyncSession,
     existing_data_output: FunctionDataOutputOrm,
-  ):
+  ) -> None:
     """Test updating a function data output record."""
     update_model = FunctionDataOutputUpdate(
       data_quality_score=0.95,
@@ -169,7 +168,7 @@ class TestFunctionDataOutputService:
     self,
     db: AsyncSession,
     existing_data_output: FunctionDataOutputOrm,
-  ):
+  ) -> None:
     """Test deleting a function data output record."""
     output_id = existing_data_output.accession_id
 
@@ -178,7 +177,7 @@ class TestFunctionDataOutputService:
 
     assert await read_function_data_output(db, output_id) is None
 
-  async def test_delete_non_existent_output(self, db: AsyncSession):
+  async def test_delete_non_existent_output(self, db: AsyncSession) -> None:
     """Test that deleting a non-existent output returns False."""
     non_existent_id = uuid.uuid4()
     result = await delete_function_data_output(db, non_existent_id)
@@ -188,7 +187,7 @@ class TestFunctionDataOutputService:
     self,
     db: AsyncSession,
     setup_dependencies,
-  ):
+  ) -> None:
     """Test the extensive filtering capabilities of the list function."""
     common_args = {
       "function_call_log_accession_id": setup_dependencies["function_call_log_id"],

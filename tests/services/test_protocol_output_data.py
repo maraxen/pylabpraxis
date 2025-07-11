@@ -130,7 +130,7 @@ class TestProtocolOutputDataService:
     self,
     db: AsyncSession,
     setup_summary_data,
-  ):
+  ) -> None:
     """Test retrieving a data summary for a protocol run with diverse data outputs."""
     run_id = setup_summary_data["run_id"]
 
@@ -169,7 +169,7 @@ class TestProtocolOutputDataService:
       == 2
     )
 
-  async def test_read_protocol_run_data_summary_for_empty_run(self, db: AsyncSession):
+  async def test_read_protocol_run_data_summary_for_empty_run(self, db: AsyncSession) -> None:
     """Test retrieving a data summary for a protocol run with no data outputs."""
     # Create a run with no associated data
     empty_run = ProtocolRunOrm(name="Empty Run")

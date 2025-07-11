@@ -58,13 +58,13 @@ def workcell_runtime(mock_workcell_cls, mock_db_session_factory) -> WorkcellRunt
 # --- Tests for Helper Functions ---
 
 
-def test_get_class_from_fqn_success():
+def test_get_class_from_fqn_success() -> None:
   """Test that _get_class_from_fqn successfully imports and returns a class."""
   cls = _get_class_from_fqn("unittest.mock.MagicMock")
   assert cls is MagicMock
 
 
-def test_get_class_from_fqn_failure():
+def test_get_class_from_fqn_failure() -> None:
   """Test that _get_class_from_fqn raises ValueError for an invalid FQN."""
   with pytest.raises(ValueError):
     _get_class_from_fqn("invalid_fqn")
@@ -88,7 +88,7 @@ class TestWorkcellRuntimeLifecycle:
     mock_read_state,
     mock_create_workcell,
     workcell_runtime,
-  ):
+  ) -> None:
     """Test that a new workcell is created in the DB if one doesn't exist."""
     mock_read_state.return_value = None  # No prior state
     mock_created_orm = MagicMock(accession_id=uuid.uuid4())
@@ -107,7 +107,7 @@ class TestWorkcellRuntimeLifecycle:
     mock_read_state,
     mock_create_workcell,
     workcell_runtime,
-  ):
+  ) -> None:
     """Test that existing state is loaded from the DB."""
     existing_state = {"some_state": "value"}
     mock_read_state.return_value = existing_state
@@ -122,7 +122,7 @@ class TestWorkcellRuntimeLifecycle:
     )
 
   @patch("asyncio.create_task")
-  async def test_start_and_stop_state_sync(self, mock_create_task, workcell_runtime):
+  async def test_start_and_stop_state_sync(self, mock_create_task, workcell_runtime) -> None:
     """Test the starting and stopping of the state sync task."""
     workcell_runtime._link_workcell_to_db = AsyncMock()
     mock_task = MagicMock()
@@ -150,7 +150,7 @@ class TestAssetLifecycle:
     mock_get_fqn,
     workcell_runtime,
     mock_main_workcell,
-  ):
+  ) -> None:
     """Test the successful initialization of a machine that is also a resource."""
     machine_id = uuid.uuid4()
     mock_machine_orm = MagicMock(
@@ -185,7 +185,7 @@ class TestAssetLifecycle:
     mock_update_status,
     mock_get_fqn,
     workcell_runtime,
-  ):
+  ) -> None:
     """Test that initialization fails if the machine's setup method fails."""
     machine_id = uuid.uuid4()
     mock_machine_orm = MagicMock(
@@ -218,7 +218,7 @@ class TestAssetLifecycle:
     mock_get_fqn,
     workcell_runtime,
     mock_main_workcell,
-  ):
+  ) -> None:
     """Test successful creation of a new pure resource."""
     resource_id = uuid.uuid4()
     mock_resource_orm = MagicMock(
@@ -240,7 +240,7 @@ class TestAssetLifecycle:
     mock_main_workcell.add_asset.assert_called_once_with(initialized_resource)
     mock_update_status.assert_not_called()
 
-  async def test_get_active_machine_failure(self, workcell_runtime):
+  async def test_get_active_machine_failure(self, workcell_runtime) -> None:
     """Test that getting a non-existent active machine raises an error."""
     with pytest.raises(WorkcellRuntimeError, match="not found in active machines"):
       workcell_runtime.get_active_machine(uuid.uuid4())
@@ -251,7 +251,7 @@ class TestAssetLifecycle:
     mock_update_status,
     mock_get_fqn,
     workcell_runtime,
-  ):
+  ) -> None:
     """Test successfully shutting down a machine."""
     machine_id = uuid.uuid4()
     mock_plr_machine = MockMachineResource(name="TestBot", backend=MockBackend())
@@ -302,7 +302,7 @@ class TestDeckOperations:
     mock_read_deck,
     workcell_runtime,
     setup_assets,
-  ):
+  ) -> None:
     """Test assigning a resource to a deck using a position identifier."""
     deck_id, resource_id, mock_deck = setup_assets
     position_id = "A1"
@@ -349,7 +349,7 @@ class TestDeckOperations:
     mock_update_status,
     workcell_runtime,
     setup_assets,
-  ):
+  ) -> None:
     """Test clearing a resource from a deck position."""
     deck_id, resource_id, mock_deck = setup_assets
     position_name = "A1"

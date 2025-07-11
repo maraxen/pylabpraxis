@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import UUID, DateTime
+from sqlalchemy import UUID, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -160,11 +160,19 @@ class Base(MappedAsDataclass, DeclarativeBase):
     onupdate=func.now(),
     init=False,
   )
-  properties_json: Mapped[dict | None] = mapped_column(
+  properties_json: Mapped[dict[str, Any]] = mapped_column(
     JSONB,
     nullable=True,
     comment="Arbitrary metadata.",
-    default=None,
+    default={},
+  )
+
+  name: Mapped[str] = mapped_column(
+    String,
+    nullable=False,
+    index=True,
+    comment="Unique, human-readable name for the object.",
+    kw_only=True,
   )
 
 

@@ -41,14 +41,12 @@ def acquire_lock(
       time.sleep(0.1)  # Wait for a short time before retrying
     # Timeout
     yield False
-  except Exception as e:
-    print(f"Error acquiring or releasing lock: {e}")
+  except Exception:
     raise
   finally:
     # Only release the lock if it was acquired and the identifier matches
     if acquired and redis_client.get(lock_name).decode("utf-8") == identifier:
       try:
         redis_client.delete(lock_name)
-      except Exception as e:
-        print(f"Error releasing lock: {e}")
+      except Exception:
         raise

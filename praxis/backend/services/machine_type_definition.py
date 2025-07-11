@@ -3,12 +3,12 @@
 import inspect
 
 from sqlalchemy import select
-from sqlalchemy.orm import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
 from praxis.backend.models.pydantic.machine import (
-  MachineTypeDefinitionCreate,
-  MachineTypeDefinitionUpdate,
+  MachineDefinitionCreate,
+  MachineDefinitionUpdate,
 )
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
 from praxis.backend.utils.logging import get_logger
@@ -19,13 +19,15 @@ logger = get_logger(__name__)
 
 class MachineTypeDefinitionService(
   DiscoverableTypeServiceBase[
-    MachineDefinitionOrm, MachineTypeDefinitionCreate, MachineTypeDefinitionUpdate
+    MachineDefinitionOrm,
+    MachineDefinitionCreate,
+    MachineDefinitionUpdate,
   ],
 ):
   """Service for discovering and syncing machine type definitions."""
 
-  def __init__(self, db: AsyncSession):
-    """Initialize the MachineTypeDefinitionService."""
+  def __init__(self, db: AsyncSession) -> None:
+    """Initialize the MachineDefinitionService."""
     super().__init__(db)
 
   @property
@@ -34,10 +36,10 @@ class MachineTypeDefinitionService(
     return MachineDefinitionOrm
 
   async def discover_and_synchronize_type_definitions(self) -> list[MachineDefinitionOrm]:
-    """Discovers all machine type definitions from pylabrobot and synchronizes them with the database."""
+    """Discover all machine type definitions from pylabrobot and synchronizes with the database."""
     logger.info("Discovering machine types...")
     discovered_machines = get_machine_classes()
-    logger.info(f"Discovered {len(discovered_machines)} machine types.")
+    logger.info("Discovered %d machine types.", len(discovered_machines))
 
     synced_definitions = []
     for fqn, plr_class_obj in discovered_machines.items():
@@ -47,7 +49,8 @@ class MachineTypeDefinitionService(
       existing_machine_def = existing_machine_def_result.scalar_one_or_none()
 
       if existing_machine_def:
-        update_data = MachineTypeDefinitionUpdate(
+        update_data = MachineDefinitionUpdate(  # TODO: Update to use correct category
+          fqn=fqn,
           name=plr_class_obj.__name__,
           description=inspect.getdoc(plr_class_obj),
         )
@@ -57,7 +60,7 @@ class MachineTypeDefinitionService(
         logger.debug("Updated machine definition: %s", fqn)
         synced_definitions.append(existing_machine_def)
       else:
-        create_data = MachineTypeDefinitionCreate(
+        create_data = MachineDefinitionCreate(
           name=plr_class_obj.__name__,
           fqn=fqn,
           description=inspect.getdoc(plr_class_obj),
@@ -68,5 +71,5 @@ class MachineTypeDefinitionService(
         synced_definitions.append(new_machine_def)
 
     await self.db.commit()
-    logger.info(f"Synchronized {len(synced_definitions)} machine definitions.")
+    logger.info("Synchronized %d machine definitions.", len(synced_definitions))
     return synced_definitions

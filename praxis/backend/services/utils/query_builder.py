@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, and_
-from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute
 
 from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.utils.db import Base
@@ -37,7 +37,7 @@ def apply_pagination(query: Select, filters: SearchFilters) -> Select:
 def apply_date_range_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_timestamp_field: InstrumentedAttribute[datetime],
+  orm_model_timestamp_field: InstrumentedAttribute[datetime] | datetime,
 ) -> Select:
   """Apply date range filters to a SQLAlchemy query.
 
@@ -66,7 +66,7 @@ def apply_date_range_filters(
 def apply_property_filters(
   query: Select,
   filters: SearchFilters,
-  orm_model_properties_field: InstrumentedAttribute[dict[str, Any] | None],
+  orm_model_properties_field: InstrumentedAttribute[dict[str, Any]] | dict[str, Any] | None,
 ) -> Select:
   """Apply key-value property filters to a JSONB column in a SQLAlchemy query.
 
@@ -91,17 +91,15 @@ def apply_property_filters(
       The modified Select statement with property filters applied.
 
   """
-  if not filters.property_filters:
+  if not filters.property_filters or not orm_model_properties_field:
     return query
 
   conditions = []
   for key, value in filters.property_filters.items():
     if isinstance(value, dict):
-      # Use JSONB containment operator `@>` for nested objects
-      conditions.append(orm_model_properties_field.contains({key: value}))
+      conditions.append((key, value) in orm_model_properties_field.items())
     else:
-      # For primitive types, check for equality within the JSON structure.
-      # The `->>` operator casts the value to text for comparison.
+
       conditions.append(orm_model_properties_field[key].astext == str(value))
 
   if conditions:

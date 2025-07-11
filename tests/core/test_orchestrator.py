@@ -108,7 +108,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test a successful protocol execution from start to finish."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -162,7 +162,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that protocol failures are handled and the status is set to FAILED."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -208,7 +208,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that ProtocolCancelledError is handled gracefully."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -245,7 +245,7 @@ class TestOrchestratorScenarios:
   )
   async def test_execute_raises_error_if_protocol_not_found(
     self, mock_get_protocol_def: AsyncMock, orchestrator: Orchestrator,
-  ):
+  ) -> None:
     """Test that an error is raised if a protocol definition cannot be found."""
     # Arrange
     mock_get_protocol_def.return_value = None
@@ -268,7 +268,7 @@ class TestOrchestratorScenarios:
     mock_asset_manager_cls: MagicMock,
     orchestrator: Orchestrator,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that a ValueError is raised if a required asset is not available."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -301,7 +301,7 @@ class TestOrchestratorScenarios:
     mock_pcm_cls: MagicMock,
     orchestrator: Orchestrator,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that execute_protocol dynamically loads code if protocol not registered."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -313,7 +313,7 @@ class TestOrchestratorScenarios:
       found_state_param_details=None,
     )
 
-    def loader_side_effect(*args, **kwargs):
+    def loader_side_effect(*args, **kwargs) -> None:
       PROTOCOL_REGISTRY[f"{TEST_PROTOCOL_NAME}_v{TEST_PROTOCOL_VERSION}"] = runtime_info
 
     mock_pcm.load_protocol_code.side_effect = loader_side_effect

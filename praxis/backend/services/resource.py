@@ -2,12 +2,8 @@
 """Service layer for Resource  Management."""
 
 import uuid
-from functools import partial
-from typing import Any, cast
 
-from sqlalchemy import Column, and_, select
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
@@ -26,29 +22,19 @@ from praxis.backend.services.utils.query_builder import (
   apply_specific_id_filters,
 )
 from praxis.backend.utils.db import Base
-from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+from praxis.backend.utils.db_decorator import handle_db_transaction
+from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 UUID = uuid.UUID
 
 
-log_resource_data_service_errors = partial(
-  log_async_runtime_errors,
-  logger_instance=logger,
-  exception_type=ValueError,
-  raises=True,
-  raises_exception=ValueError,
-  return_=None,
-)
-
-
 class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
-  @log_resource_data_service_errors(
-    prefix="Resource Data Service: Creating resource - ",
-    suffix=(" Please ensure the parameters are correct and the resource definition exists."),
-  )
-  async def create(
+  """Service for resource-related operations."""
+
+  @handle_db_transaction
+  async def create(  # type: ignore[override]
     self,
     db: AsyncSession,
     *,
@@ -67,27 +53,13 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       resource_orm.plr_state = obj_in.plr_state
       flag_modified(resource_orm, "plr_state")
 
-    try:
-      await db.commit()
-      await db.refresh(resource_orm)
-      logger.info(
-        "Successfully created resource '%s' with ID %s.",
-        resource_orm.name,
-        resource_orm.accession_id,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = f"Resource with name '{obj_in.name}' already exists. Details: {e}"
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
-      logger.exception(
-        "Error creating resource '%s'. Rolling back.",
-        obj_in.name,
-      )
-      await db.rollback()
-      raise e
-
+    await db.flush()
+    await db.refresh(resource_orm)
+    logger.info(
+      "Successfully created resource '%s' with ID %s.",
+      resource_orm.name,
+      resource_orm.accession_id,
+    )
     return resource_orm
 
   async def get(
@@ -152,12 +124,17 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       stmt = stmt.filter(and_(*conditions))
 
     # Apply generic filters from query_builder
-    stmt = apply_specific_id_filters(stmt, filters, cast("Base", self.model))
-    stmt = apply_date_range_filters(stmt, filters, cast("Column", self.model.created_at))
+    if not isinstance(self.model, Base):
+      msg = f"Model {self.model.__name__} must inherit from Base to use generic filters."
+      raise TypeError(
+        msg,
+      )
+    stmt = apply_specific_id_filters(stmt, filters, self.model)
+    stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
     stmt = apply_property_filters(
       stmt,
       filters,
-      cast("Column[JSONB]", self.model.properties_json),
+      self.model.properties_json,
     )
 
     stmt = apply_pagination(stmt, filters)
@@ -168,12 +145,13 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     logger.info("Found %s resources.", len(resources))
     return resources
 
-  async def update(
+  @handle_db_transaction
+  async def update(  # type: ignore[override]
     self,
     db: AsyncSession,
     *,
     db_obj: ResourceOrm,
-    obj_in: ResourceUpdate | dict[str, Any],
+    obj_in: ResourceUpdate,
   ) -> ResourceOrm:
     """Update an existing resource."""
     logger.info("Attempting to update resource with ID: %s.", db_obj.accession_id)
@@ -185,30 +163,17 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     ):
       flag_modified(updated_resource, "plr_state")
 
-    try:
-      await db.commit()
-      await db.refresh(updated_resource)
-      logger.info(
-        "Successfully updated resource ID %s: '%s'.",
-        updated_resource.accession_id,
-        updated_resource.name,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = f"Integrity error updating resource ID {db_obj.accession_id}. Details: {e}"
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
-      await db.rollback()
-      logger.exception(
-        "Unexpected error updating resource ID %s. Rolling back.",
-        db_obj.accession_id,
-      )
-      raise e
-
+    await db.flush()
+    await db.refresh(updated_resource)
+    logger.info(
+      "Successfully updated resource ID %s: '%s'.",
+      updated_resource.accession_id,
+      updated_resource.name,
+    )
     return updated_resource
 
-  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> ResourceOrm | None:
+  @handle_db_transaction
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> ResourceOrm | None:  # type: ignore[override]
     """Delete a specific resource by its ID."""
     logger.info("Attempting to delete resource with ID: %s.", accession_id)
     resource_orm = await super().remove(db, accession_id=accession_id)
@@ -216,29 +181,12 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       logger.warning("Resource with ID %s not found for deletion.", accession_id)
       return None
 
-    try:
-      await db.commit()
-      logger.info(
-        "Successfully deleted resource ID %s: '%s'.",
-        accession_id,
-        resource_orm.name,
-      )
-      return resource_orm
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = (
-        f"Integrity error deleting resource ID {accession_id}. "
-        f"This might be due to foreign key constraints. Details: {e}"
-      )
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
-      await db.rollback()
-      logger.exception(
-        "Unexpected error deleting resource ID %s. Rolling back.",
-        accession_id,
-      )
-      raise e
+    logger.info(
+      "Successfully deleted resource ID %s: '%s'.",
+      accession_id,
+      resource_orm.name,
+    )
+    return resource_orm
 
 
 resource_service = ResourceService(ResourceOrm)

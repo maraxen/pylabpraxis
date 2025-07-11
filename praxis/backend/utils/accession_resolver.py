@@ -60,7 +60,9 @@ async def get_accession_id_from_accession(
   else:
     # This case should not be hit if using FastAPI's type hints correctly,
     # but it's good practice to handle it.
-    raise TypeError(f"Invalid accession type provided: {type(accession)}")
+    msg = f"Invalid accession type provided: {type(accession)}"
+    raise TypeError(msg)
 
   # If we reach this point, 'obj' is None, meaning no entity was found.
-  raise ValueError(f"{entity_type_name} with accession '{accession}' not found.")
+  msg = f"{entity_type_name} with accession '{accession}' not found."
+  raise ValueError(msg)

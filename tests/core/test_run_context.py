@@ -14,7 +14,7 @@ from praxis.backend.services.state import PraxisState
 class DummyResource:
     """Dummy Resource for testing."""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a string representation."""
         return "<DummyResource name=resource1>"
 
@@ -22,7 +22,7 @@ class DummyResource:
 class DummyDeck:
     """Dummy Deck for testing."""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a string representation."""
         return "<DummyDeck name=deck1>"
 
@@ -34,7 +34,7 @@ class DummyModel(BaseModel):
     bar: str
 
 
-def test_praxis_run_context_init():
+def test_praxis_run_context_init() -> None:
     """Test PraxisRunContext initialization."""
     run_id = uuid.uuid4()
     state = MagicMock(spec=PraxisState)
@@ -51,7 +51,7 @@ def test_praxis_run_context_init():
     assert ctx._call_sequence_next_val == 1
 
 
-def test_get_and_increment_sequence_val():
+def test_get_and_increment_sequence_val() -> None:
     """Test get_and_increment_sequence_val increments and returns correctly."""
     ctx = PraxisRunContext(
         run_accession_id=uuid.uuid4(),
@@ -64,7 +64,7 @@ def test_get_and_increment_sequence_val():
     assert ctx._call_sequence_next_val == 3
 
 
-def test_create_context_for_nested_call():
+def test_create_context_for_nested_call() -> None:
     """Test create_context_for_nested_call returns a new context with new parent ID."""
     parent_id = uuid.uuid4()
     ctx = PraxisRunContext(
@@ -84,25 +84,31 @@ def test_create_context_for_nested_call():
     assert ctx._call_sequence_next_val == 42
 
 
-def test_serialize_arguments_basic_types():
+def test_serialize_arguments_basic_types() -> None:
     """Test serialize_arguments with basic types."""
     args = (1, "foo", 3.14)
     kwargs = {"a": 2, "b": "bar"}
     result = serialize_arguments(args, kwargs)
-    assert "1" in result and "foo" in result and "3.14" in result
-    assert "a" in result and "bar" in result
+    assert "1" in result
+    assert "foo" in result
+    assert "3.14" in result
+    assert "a" in result
+    assert "bar" in result
 
 
-def test_serialize_arguments_pydantic_model():
+def test_serialize_arguments_pydantic_model() -> None:
     """Test serialize_arguments with a Pydantic model."""
     model = DummyModel(foo=123, bar="baz")
     args = (model,)
     kwargs = {"x": model}
     result = serialize_arguments(args, kwargs)
-    assert "foo" in result and "bar" in result and "123" in result and "baz" in result
+    assert "foo" in result
+    assert "bar" in result
+    assert "123" in result
+    assert "baz" in result
 
 
-def test_serialize_arguments_custom_types():
+def test_serialize_arguments_custom_types() -> None:
     """Test serialize_arguments with custom types.
 
     This covers PraxisRunContext, PraxisState, Resource, and Deck objects.
@@ -124,7 +130,7 @@ def test_serialize_arguments_custom_types():
     assert "<DummyDeck name=deck1>" in result
 
 
-def test_serialize_arguments_excludes_praxis_run_context_kwarg():
+def test_serialize_arguments_excludes_praxis_run_context_kwarg() -> None:
     """Test that __praxis_run_context__ is excluded from kwargs in serialization."""
     args = (1,)
     kwargs = {"foo": 2, "__praxis_run_context__": "should be excluded"}
@@ -133,7 +139,7 @@ def test_serialize_arguments_excludes_praxis_run_context_kwarg():
     assert "foo" in result
 
 
-def test_serialize_arguments_typeerror_fallback():
+def test_serialize_arguments_typeerror_fallback() -> None:
     """Test serialize_arguments fallback when TypeError is raised."""
     class Unserializable:
         """A class that is not serializable by default."""
@@ -146,7 +152,8 @@ def test_serialize_arguments_typeerror_fallback():
     def fake_json_dumps(*a, **kw):
         if call_count["n"] == 0:
             call_count["n"] += 1
-            raise TypeError("fail")
+            msg = "fail"
+            raise TypeError(msg)
         return orig_json_dumps(*a, **kw)
     with patch("json.dumps", side_effect=fake_json_dumps):
         result = serialize_arguments(args, kwargs)

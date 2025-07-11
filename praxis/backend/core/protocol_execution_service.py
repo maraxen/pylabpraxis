@@ -42,7 +42,7 @@ class ProtocolExecutionService:
     workcell_runtime: WorkcellRuntime,
     scheduler: ProtocolScheduler | None = None,
     orchestrator: Orchestrator | None = None,
-  ):
+  ) -> None:
     """Initialize the Protocol Execution Service.
 
     Args:
@@ -184,7 +184,8 @@ class ProtocolExecutionService:
 
       if not success:
         logger.error("Failed to schedule protocol run %s", run_accession_id)
-        raise RuntimeError(f"Failed to schedule protocol run {run_accession_id}")
+        msg = f"Failed to schedule protocol run {run_accession_id}"
+        raise RuntimeError(msg)
 
       logger.info(
         "Successfully scheduled protocol run %s for execution", run_accession_id,
@@ -278,8 +279,8 @@ class ProtocolExecutionService:
         )
         await db_session.commit()
         database_cancelled = True
-      except Exception as e: # noqa: BLE001
-        logger.error(
+      except Exception as e:
+        logger.exception(
           "Failed to update database status for cancelled run %s: %s",
           protocol_run_id,
           e,

@@ -32,7 +32,7 @@ class TestResourceInventoryAPI:
   MOCK_USER_ID = "test_user_api"
 
   @pytest.fixture(autouse=True)
-  def patch_dependencies(self, monkeypatch):
+  def patch_dependencies(self, monkeypatch) -> None:
     # Mock the get_db dependency to avoid actual DB calls
     self.mock_db_session = MagicMock()
     mock_get_db = MagicMock(return_value=self.mock_db_session)
@@ -51,7 +51,7 @@ class TestResourceInventoryAPI:
       self.mock_update_lw_status,
     )
 
-  def test_get_resource_inventory_success(self):
+  def test_get_resource_inventory_success(self) -> None:
     mock_orm = MagicMock(spec=ResourceOrm)
     inventory_dict = {
       "praxis_inventory_schema_version": "1.0",
@@ -86,7 +86,7 @@ class TestResourceInventoryAPI:
     # For Pydantic v1: expected_data = ResourceInventoryDataOut(**inventory_dict).dict()
     assert response.json() == expected_data
 
-  def test_get_resource_inventory_not_found(self):
+  def test_get_resource_inventory_not_found(self) -> None:
     self.mock_get_resource.return_value = None
     response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
     assert response.status_code == 404
@@ -95,7 +95,7 @@ class TestResourceInventoryAPI:
       self.MOCK_INSTANCE_ID,
     )
 
-  def test_get_resource_inventory_empty(self):
+  def test_get_resource_inventory_empty(self) -> None:
     mock_orm = MagicMock(spec=ResourceOrm)
     mock_orm.properties_json = None  # Or {}
     self.mock_get_resource.return_value = mock_orm
@@ -111,7 +111,7 @@ class TestResourceInventoryAPI:
       self.MOCK_INSTANCE_ID,
     )
 
-  def test_update_resource_inventory_success(self):
+  def test_update_resource_inventory_success(self) -> None:
     mock_orm_initial = MagicMock(spec=ResourceOrm)
     mock_orm_initial.accession_id = self.MOCK_INSTANCE_ID
     mock_orm_initial.properties_json = {
@@ -180,7 +180,7 @@ class TestResourceInventoryAPI:
     # For Pydantic v1: expected_response_data = ResourceInventoryDataOut(**final_properties_from_service).dict()
     assert response.json() == expected_response_data
 
-  def test_update_resource_inventory_not_found(self):
+  def test_update_resource_inventory_not_found(self) -> None:
     self.mock_get_resource.return_value = None
     request_payload_dict = {
       "consumable_state": "used",

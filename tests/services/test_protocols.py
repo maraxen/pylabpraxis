@@ -117,7 +117,7 @@ pytestmark = pytest.mark.asyncio
 class TestProtocolSourceRepositoryService:
   """Tests for Git-based protocol source repositories."""
 
-  async def test_create_and_read_git_repo(self, db: AsyncSession):
+  async def test_create_and_read_git_repo(self, db: AsyncSession) -> None:
     name = f"MyGitRepo_{uuid.uuid4()}"
     repo = await create_protocol_source_repository(
       db, name=name, git_url="http://git.test/repo",
@@ -130,7 +130,7 @@ class TestProtocolSourceRepositoryService:
 
   async def test_update_git_repo(
     self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm,
-  ):
+  ) -> None:
     new_ref = "develop"
     updated_repo = await update_protocol_source_repository(
       db, source_accession_id=git_source.accession_id, default_ref=new_ref,
@@ -139,7 +139,7 @@ class TestProtocolSourceRepositoryService:
 
   async def test_list_git_repos_by_sync_status(
     self, db: AsyncSession, git_source: ProtocolSourceRepositoryOrm,
-  ):
+  ) -> None:
     """Test filtering repositories by their auto_sync_enabled status."""
     # Create a second repo to have a distinct set
     await create_protocol_source_repository(
@@ -170,7 +170,7 @@ class TestProtocolDefinitionService:
     db: AsyncSession,
     git_source: ProtocolSourceRepositoryOrm,
     pydantic_protocol: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test creating a new protocol definition via upsert."""
     created_def = await upsert_function_protocol_definition(
       db,
@@ -190,7 +190,7 @@ class TestProtocolDefinitionService:
     db: AsyncSession,
     protocol_def: FunctionProtocolDefinitionOrm,
     pydantic_protocol: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test updating an existing protocol, syncing params and assets."""
     pydantic_protocol.parameters[0].description = "Updated description"
     pydantic_protocol.parameters.append(
@@ -223,7 +223,7 @@ class TestProtocolRunService:
 
   async def test_create_and_read_protocol_run(
     self, db: AsyncSession, protocol_def: FunctionProtocolDefinitionOrm,
-  ):
+  ) -> None:
     """Test creating a new protocol run and reading it back."""
     run = await create_protocol_run(db, protocol_def.accession_id)
     assert run is not None
@@ -235,7 +235,7 @@ class TestProtocolRunService:
 
   async def test_update_protocol_run_status(
     self, db: AsyncSession, protocol_run: ProtocolRunOrm,
-  ):
+  ) -> None:
     """Test updating the status of a protocol run through its lifecycle."""
     assert protocol_run.start_time is None
 
@@ -254,11 +254,12 @@ class TestProtocolRunService:
     await db.refresh(protocol_run)
     assert protocol_run.status == ProtocolRunStatusEnum.COMPLETED
     assert protocol_run.end_time is not None
-    assert protocol_run.duration_ms is not None and protocol_run.duration_ms > 0
+    assert protocol_run.duration_ms is not None
+    assert protocol_run.duration_ms > 0
 
   async def test_list_protocol_runs(
     self, db: AsyncSession, protocol_run: ProtocolRunOrm,
-  ):
+  ) -> None:
     """Test listing protocol runs with filters."""
     pending_runs = await list_protocol_runs(db, status=ProtocolRunStatusEnum.PENDING)
     assert len(pending_runs) >= 1
@@ -280,7 +281,7 @@ class TestFunctionCallLogService:
     db: AsyncSession,
     protocol_run: ProtocolRunOrm,
     protocol_def: FunctionProtocolDefinitionOrm,
-  ):
+  ) -> None:
     """Test logging the start and end of a function call."""
     start_log = await log_function_call_start(
       db,
@@ -310,7 +311,7 @@ class TestFunctionCallLogService:
     db: AsyncSession,
     protocol_run: ProtocolRunOrm,
     protocol_def: FunctionProtocolDefinitionOrm,
-  ):
+  ) -> None:
     """Test retrieving all function call logs for a specific run."""
     await log_function_call_start(
       db, protocol_run.accession_id, protocol_def.accession_id, 1, "{}",

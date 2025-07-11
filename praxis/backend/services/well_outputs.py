@@ -98,7 +98,7 @@ class WellDataOutputCRUDService(
     except Exception as e:
       await db.rollback()
       error_msg = f"Failed to create well data output: {e!s}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
 
   async def get(
@@ -227,7 +227,7 @@ class WellDataOutputCRUDService(
     except Exception as e:
       await db.rollback()
       error_msg = f"Failed to update well data output: {e!s}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
 
   @log_well_data_errors(
@@ -263,7 +263,7 @@ class WellDataOutputCRUDService(
     except Exception as e:
       await db.rollback()
       error_msg = f"Failed to delete well data output: {e!s}"
-      logger.error("%s %s", log_prefix, error_msg)
+      logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
 
 
@@ -329,10 +329,10 @@ async def create_well_data_outputs(
     )
     return well_outputs
 
-  except Exception as e:
+  except Exception:
     await db.rollback()
     logger.exception("%s Error creating well data outputs.", log_prefix)
-    raise e
+    raise
 
 
 async def create_well_data_outputs_from_flat_array(
@@ -407,7 +407,7 @@ async def create_well_data_outputs_from_flat_array(
     )
     return well_outputs
 
-  except Exception as e:
+  except Exception:
     await db.rollback()
     logger.exception("%s Error creating well data outputs.", log_prefix)
-    raise e
+    raise

@@ -35,7 +35,7 @@ def run_id() -> uuid.UUID:
 class TestPraxisState:
   """Test suite for the PraxisState class."""
 
-  def test_initialization_success(self, mock_redis_client, run_id):
+  def test_initialization_success(self, mock_redis_client, run_id) -> None:
     """Test successful initialization of the PraxisState object."""
     state = PraxisState(run_accession_id=run_id)
 
@@ -44,7 +44,7 @@ class TestPraxisState:
     assert state.redis_client is mock_redis_client
     assert state.to_dict() == {}
 
-  def test_initialization_with_existing_redis_data(self, mock_redis_client, run_id):
+  def test_initialization_with_existing_redis_data(self, mock_redis_client, run_id) -> None:
     """Test that state is loaded from Redis on initialization."""
     redis_key = f"praxis_state:{run_id}"
     existing_data = {"key1": "value1", "count": 10}
@@ -55,7 +55,7 @@ class TestPraxisState:
     assert state.to_dict() == existing_data
     assert state["key1"] == "value1"
 
-  def test_initialization_with_invalid_json_in_redis(self, mock_redis_client, run_id):
+  def test_initialization_with_invalid_json_in_redis(self, mock_redis_client, run_id) -> None:
     """Test graceful handling of malformed JSON data in Redis."""
     redis_key = f"praxis_state:{run_id}"
     mock_redis_client.set(redis_key, '{"key": "value"')  # Malformed JSON
@@ -65,12 +65,12 @@ class TestPraxisState:
     # Should log an error and return an empty state, not crash
     assert state.to_dict() == {}
 
-  def test_initialization_fails_with_invalid_uuid(self):
+  def test_initialization_fails_with_invalid_uuid(self) -> None:
     """Test that initialization raises ValueError for a non-UUID run_accession_id."""
     with pytest.raises(ValueError, match="run_accession_id must be a valid UUID"):
       PraxisState(run_accession_id="not-a-uuid")  # type: ignore[arg-type]
 
-  def test_initialization_connection_error(self, mocker):
+  def test_initialization_connection_error(self, mocker) -> None:
     """Test that a ConnectionError is raised if Redis connection fails."""
     # Patch redis.Redis to raise a ConnectionError on ping
     mocker.patch(
@@ -82,7 +82,7 @@ class TestPraxisState:
     with pytest.raises(ConnectionError, match="Failed to connect to Redis"):
       PraxisState()
 
-  def test_dict_interface_set_get_del(self, mock_redis_client, run_id):
+  def test_dict_interface_set_get_del(self, mock_redis_client, run_id) -> None:
     """Test the dictionary-style __setitem__, __getitem__, and __delitem__ methods."""
     state = PraxisState(run_accession_id=run_id)
 
@@ -108,7 +108,7 @@ class TestPraxisState:
     redis_data_after_del = json.loads(mock_redis_client.get(state.redis_key))
     assert redis_data_after_del == {"number": 123}
 
-  def test_get_method(self, run_id):
+  def test_get_method(self, run_id) -> None:
     """Test the get() method for retrieving keys with a default value."""
     state = PraxisState(run_accession_id=run_id)
     state["existing_key"] = "exists"
@@ -117,7 +117,7 @@ class TestPraxisState:
     assert state.get("non_existent_key") is None
     assert state.get("non_existent_key", "default_val") == "default_val"
 
-  def test_update_method(self, run_id):
+  def test_update_method(self, run_id) -> None:
     """Test updating the state with a dictionary."""
     state = PraxisState(run_accession_id=run_id)
     state["a"] = 1
@@ -127,7 +127,7 @@ class TestPraxisState:
 
     assert state.to_dict() == {"a": 1, "b": 3, "c": 4}
 
-  def test_attribute_access(self, mock_redis_client, run_id):
+  def test_attribute_access(self, mock_redis_client, run_id) -> None:
     """Test getting and setting state via attribute access."""
     state = PraxisState(run_accession_id=run_id)
 
@@ -149,7 +149,7 @@ class TestPraxisState:
     with pytest.raises(AttributeError):
       _ = state.non_existent_attr
 
-  def test_clear_method(self, mock_redis_client, run_id):
+  def test_clear_method(self, mock_redis_client, run_id) -> None:
     """Test that clear() removes all data from the object and Redis."""
     state = PraxisState(run_accession_id=run_id)
     state["a"] = 1
@@ -164,7 +164,7 @@ class TestPraxisState:
     assert state.to_dict() == {}
     assert not mock_redis_client.exists(state.redis_key)
 
-  def test_setitem_type_validation(self, run_id):
+  def test_setitem_type_validation(self, run_id) -> None:
     """Test that __setitem__ raises TypeError for non-serializable values."""
     state = PraxisState(run_accession_id=run_id)
 

@@ -130,7 +130,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     "data_value_text",
     "file_path",
   )
-  def validate_data_content(cls, v, values):
+  def validate_data_content(self, v, values):
     """Ensure at least one data field is provided."""
     data_fields = [
       values.get("data_value_numeric"),
@@ -143,7 +143,8 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     non_none_count = sum(1 for field in data_fields if field is not None)
 
     if non_none_count == 0:
-      raise ValueError("At least one data field must be provided")
+      msg = "At least one data field must be provided"
+      raise ValueError(msg)
 
     return v
 

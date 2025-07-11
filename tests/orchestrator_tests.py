@@ -20,7 +20,7 @@ from praxis.backend.protocol_core.protocol_definition_models import (
   AssetRequirementModel,
   FunctionProtocolDefinitionModel,
 )
-from praxis.backend.services.state import PraxisState as PraxisState
+from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError
 
 # Mock for services that Orchestrator uses internally
@@ -184,7 +184,7 @@ class TestOrchestratorExecutionControl:
     mock_protocol_def_orm,
     mock_protocol_run_orm,
     mock_protocol_wrapper_func,
-  ):
+  ) -> None:
     orchestrator, mock_sleep = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -250,7 +250,7 @@ class TestOrchestratorExecutionControl:
     mock_protocol_def_orm,
     mock_protocol_run_orm,
     mock_protocol_wrapper_func,
-  ):
+  ) -> None:
     orchestrator, mock_sleep = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
     mock_protocol_wrapper_func.protocol_metadata = decorator_meta
@@ -364,7 +364,7 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
     checkout_path = protocol_def.source_repository.local_checkout_path
@@ -410,7 +410,7 @@ class TestOrchestratorGitOps:
     mock_os.path.exists.assert_any_call(checkout_path)
     mock_os.makedirs.assert_called_once_with(checkout_path, exist_ok=True)
 
-    expected_subprocess_calls = [
+    [
       call(
         ["git", "clone", git_url, checkout_path],
         cwd=".",
@@ -454,11 +454,10 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
     checkout_path = protocol_def.source_repository.local_checkout_path
-    git_url = protocol_def.source_repository.git_url
     commit_hash = protocol_def.commit_hash
 
     mock_os.path.exists.return_value = True  # Checkout path exists
@@ -519,7 +518,7 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
     checkout_path = protocol_def.source_repository.local_checkout_path
@@ -576,7 +575,7 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
     checkout_path = protocol_def.source_repository.local_checkout_path
@@ -620,10 +619,9 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
-    checkout_path = protocol_def.source_repository.local_checkout_path
     commit_hash = protocol_def.commit_hash
     wrong_commit_hash = "wronghash789"
 
@@ -662,10 +660,9 @@ class TestOrchestratorGitOps:
     mock_os,
     orchestrator_instance,
     mock_git_protocol_def_orm,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, _ = mock_git_protocol_def_orm
-    checkout_path = protocol_def.source_repository.local_checkout_path
 
     mock_os.path.exists.return_value = True  # Is a git repo
 
@@ -691,7 +688,7 @@ class TestOrchestratorGitOps:
     self,
     orchestrator_instance,
     mock_protocol_def_orm,  # Uses standard fixture, not git one
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm  # This one has FileSystemSource
 
@@ -721,10 +718,10 @@ class TestOrchestratorGitOps:
       # For this test, we only care that no git ops are attempted.
       try:
         orchestrator._prepare_protocol_code(protocol_def)
-      except ValueError as e:  # Catching potential errors from non-git path if files dont exist
-        print(f"Caught ValueError, likely from file system path: {e}")
-      except ImportError as e:
-        print(f"Caught ImportError, likely from file system path: {e}")
+      except ValueError:  # Catching potential errors from non-git path if files dont exist
+        pass
+      except ImportError:
+        pass
 
       mock_subproc_run.assert_not_called()  # Key assertion: no git commands run
 
@@ -748,7 +745,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -787,7 +784,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -829,7 +826,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -865,7 +862,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -898,7 +895,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -934,7 +931,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_db_session,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -995,12 +992,12 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_protocol_wrapper_func_for_args,
     mock_db_session,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
     # Define a dummy protocol function with a resource type hint
-    def original_protocol(plate_param: MockPlrPlate):
+    def original_protocol(plate_param: MockPlrPlate) -> None:
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
@@ -1045,11 +1042,11 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_protocol_wrapper_func_for_args,
     mock_db_session,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
-    def original_protocol(pipette_param: MockPlrPipette):
+    def original_protocol(pipette_param: MockPlrPipette) -> None:
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
@@ -1091,13 +1088,13 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_protocol_wrapper_func_for_args,
     mock_db_session,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
     # Need to import Optional from typing for the signature
 
-    def original_protocol(optional_rack: MockPlrTipRack | None):
+    def original_protocol(optional_rack: MockPlrTipRack | None) -> None:
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
@@ -1129,11 +1126,11 @@ class TestOrchestratorArgumentPreparation:
     orchestrator_instance,
     mock_protocol_def_orm,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
-    def original_protocol(name: str, count: int):
+    def original_protocol(name: str, count: int) -> None:
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
@@ -1160,7 +1157,7 @@ class TestOrchestratorArgumentPreparation:
     orchestrator_instance,
     mock_protocol_def_orm,
     mock_protocol_wrapper_func_for_args,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -1180,7 +1177,7 @@ class TestOrchestratorArgumentPreparation:
     }
 
     # Protocol function also has a type hint for "my_plate"
-    def original_protocol(my_plate: MockPlrPlate, another_param: int):
+    def original_protocol(my_plate: MockPlrPlate, another_param: int) -> None:
       pass
 
     mock_protocol_wrapper_func_for_args.__wrapped__ = original_protocol
@@ -1232,7 +1229,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_def_orm,
     mock_protocol_run_orm,
     mock_db_session,  # For context
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance  # Orchestrator's sleep mock not used here
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -1268,7 +1265,7 @@ class TestOrchestratorArgumentPreparation:
       )  # Fallback for safety
 
       # Simulate 1st command check in decorator (before user code)
-      cmd1 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
+      mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
       # No command, so it would proceed to call user_protocol_function_mock,
       # but we embed further command checks as if they are part of user_protocol_function_mock's execution flow
       # for this test's purpose, to simulate commands during the step.
@@ -1306,14 +1303,14 @@ class TestOrchestratorArgumentPreparation:
             )
             paused = False
           elif cmd_in_pause == "CANCEL":  # Should not happen in this test's side_effect
-            raise ProtocolCancelledError("Cancelled during pause")
+            msg = "Cancelled during pause"
+            raise ProtocolCancelledError(msg)
 
       # If resumed, the actual user function is called
-      result = user_protocol_function_mock(
+      return user_protocol_function_mock(
         *args,
         **{k: v for k, v in kwargs.items() if k != "__praxis_run_context__"},
       )
-      return result
 
     mock_wrapper_func_instance = MagicMock(
       side_effect=mock_protocol_wrapper_side_effect,
@@ -1408,7 +1405,7 @@ class TestOrchestratorArgumentPreparation:
     mock_protocol_run_orm,
     mock_db_session,
     mock_asset_manager,
-  ):
+  ) -> None:
     orchestrator, _ = orchestrator_instance
     protocol_def, decorator_meta = mock_protocol_def_orm
 
@@ -1432,7 +1429,7 @@ class TestOrchestratorArgumentPreparation:
     def mock_protocol_wrapper_side_effect(*args, **kwargs):
       ctx = kwargs.get("__praxis_run_context__", mock_praxis_run_context)
 
-      cmd1 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
+      mock_decorator_get_cmd(ctx.run_accession_id)  # Sees None
 
       # Simulate decorator checking for command *during* the step
       cmd2 = mock_decorator_get_cmd(ctx.run_accession_id)  # Sees CANCEL
@@ -1449,8 +1446,9 @@ class TestOrchestratorArgumentPreparation:
           ProtocolRunStatusEnum.CANCELLED,
           output_data_json=ANY,
         )
+        msg = f"Cancelled by user during step {ctx.run_accession_id}"
         raise ProtocolCancelledError(
-          f"Cancelled by user during step {ctx.run_accession_id}",
+          msg,
         )
 
       user_protocol_function_mock(

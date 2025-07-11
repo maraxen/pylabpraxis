@@ -40,7 +40,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
-from praxis.backend.models.enums.schedule import ScheduleHistoryEventEnum, ScheduleStatusEnum
+from praxis.backend.models.enums.schedule import ScheduleHistoryEventEnum, ScheduleStatusEnum, ScheduleHistoryEventTriggerEnum
 from praxis.backend.utils.db import Base, CreateMaterializedView, DropMaterializedView
 from praxis.backend.utils.uuid import uuid7
 
@@ -198,6 +198,15 @@ class AssetReservationOrm(Base):
     kw_only=True,
   )
 
+  protocol_run: Mapped["ProtocolRunOrm"] = relationship(
+    "ProtocolRunOrm",
+    back_populates="asset_reservations",
+    uselist=False,
+    init=False,
+    foreign_keys=[protocol_run_accession_id],
+    comment="Back-reference to the protocol run this asset reservation belongs to.",
+  )
+
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("schedule_entries.accession_id"),
@@ -227,9 +236,9 @@ class AssetReservationOrm(Base):
   asset: Mapped["AssetOrm"] = relationship(
     "Asset",
     back_populates="asset_reservations",
-    foreign_keys="AssetReservationOrm.asset_accession_id",
+    foreign_keys=[asset_accession_id],
     uselist=False,
-    kw_only=True,
+    init=False,
     comment="Back-reference to the specific asset instance being reserved.",
   )
   asset_name: Mapped[str] = mapped_column(
@@ -275,7 +284,7 @@ class AssetReservationOrm(Base):
     nullable=True,
     comment="Timestamp when the asset was reserved.",
     server_default=func.now(),
-    kw_only=True,
+    init=False,
   )
   released_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
@@ -309,7 +318,9 @@ class AssetReservationOrm(Base):
     "ScheduleEntryOrm",
     back_populates="asset_reservations",
     uselist=False,
-    kw_only=True,
+    init=False,
+    foreign_keys=[schedule_entry_accession_id],
+    comment="Back-reference to the schedule entry this asset reservation belongs to.",
   )
 
 
@@ -331,13 +342,22 @@ class ScheduleHistoryOrm(Base):
     kw_only=True,
   )
 
+  schedule_entry: Mapped["ScheduleEntryOrm"] = relationship(
+    "ScheduleEntryOrm",
+    back_populates="schedule_history",
+    uselist=False,
+    init=False,
+    foreign_keys=[schedule_entry_accession_id],
+    comment="Back-reference to the schedule entry this history record belongs to.",
+  )
+
   # Event details
   event_type: Mapped[ScheduleHistoryEventEnum] = mapped_column(
     SAEnum(ScheduleHistoryEventEnum, name="schedule_history_event_enum"),
     nullable=False,
     index=True,
     comment="Type of event being recorded in the schedule history.",
-    default=ScheduleHistoryEventEnum.UNKNOWN,
+    kw_only=True,
   )
   from_status: Mapped[ScheduleStatusEnum | None] = mapped_column(
     SAEnum(ScheduleStatusEnum, name="schedule_status_enum"),
@@ -378,7 +398,7 @@ class ScheduleHistoryOrm(Base):
     nullable=True,
     comment="Timestamp when the event started.",
     server_default=func.now(),
-    kw_only=True,
+    init=False,
   )
   event_end: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
@@ -394,7 +414,7 @@ class ScheduleHistoryOrm(Base):
     ),
     comment="Stored duration in milliseconds, computed by the DB when a run completes.",
     nullable=True,
-    kw_only=True,
+    init=False,
   )
   current_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
@@ -410,6 +430,14 @@ class ScheduleHistoryOrm(Base):
     comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the"
     "current time.",
     nullable=True,
+    init=False,
+  )
+  override_duration_ms: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    default=None,
+    comment=("Override duration in milliseconds, if specified. This is used to manually set the "
+              "duration for events that do not have a natural end time."),
     kw_only=True,
   )
   asset_count: Mapped[int | None] = mapped_column(
@@ -424,9 +452,17 @@ class ScheduleHistoryOrm(Base):
     "ScheduleEntryOrm",
     back_populates="schedule_history",
     uselist=False,
-    kw_only=True,
+    init=False,
     foreign_keys=[schedule_entry_accession_id],
     comment="Back-reference to the schedule entry this history record belongs to.",
+  )
+
+  triggered_by: Mapped[ScheduleHistoryEventTriggerEnum] = mapped_column(
+    String,
+    nullable=False,
+    default=ScheduleHistoryEventTriggerEnum.SYSTEM,
+    comment="Identifier for the entity that triggered this event, e.g., 'user', 'system', 'celery'.",
+    kw_only=True,
   )
 
 

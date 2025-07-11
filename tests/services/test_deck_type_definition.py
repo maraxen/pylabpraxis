@@ -40,8 +40,7 @@ async def existing_deck_type(
   base_deck_type_data: dict[str, Any],
 ) -> DeckDefinitionOrm:
   """Creates a DeckTypeDefinitionOrm in the DB for tests that need a pre-existing record."""
-  deck_type = await create_deck_type_definition(db=db, **base_deck_type_data)
-  return deck_type
+  return await create_deck_type_definition(db=db, **base_deck_type_data)
 
 
 class TestDeckTypeDefinitionService:
@@ -51,7 +50,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     base_deck_type_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test successful creation of a deck type definition with minimal data."""
     created_deck_type = await create_deck_type_definition(
       db=db,
@@ -68,7 +67,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     base_deck_type_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test creating a deck type with all optional arguments, including positions."""
     position_data = [
       {"position_name": "Slot1", "location_x_mm": 10.0},
@@ -103,7 +102,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test that creating a deck type with a duplicate FQN raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_deck_type_definition(
@@ -116,7 +115,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test reading a deck type definition by its ID."""
     read_deck = await read_deck_type_definition(db, existing_deck_type.accession_id)
     assert read_deck is not None
@@ -127,7 +126,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test reading a deck type definition by its FQN."""
     read_deck = await read_deck_type_definition_by_fqn(
       db,
@@ -136,7 +135,7 @@ class TestDeckTypeDefinitionService:
     assert read_deck is not None
     assert read_deck.pylabrobot_deck_fqn == existing_deck_type.pylabrobot_deck_fqn
 
-  async def test_read_non_existent_deck_type(self, db: AsyncSession):
+  async def test_read_non_existent_deck_type(self, db: AsyncSession) -> None:
     """Test that reading a non-existent deck type returns None."""
     bad_id = uuid.uuid4()
     assert await read_deck_type_definition(db, bad_id) is None
@@ -146,7 +145,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test updating attributes of an existing deck type."""
     updated_data = {
       "deck_type_accession_id": existing_deck_type.accession_id,
@@ -172,7 +171,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test that updating with new position data replaces the old positions."""
     # Add initial positions
     await update_deck_type_definition(
@@ -220,7 +219,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     base_deck_type_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test that updating an FQN to one that already exists fails."""
     deck1_data = base_deck_type_data.copy()
     deck2_data = base_deck_type_data.copy()
@@ -241,7 +240,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     base_deck_type_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test listing deck type definitions with pagination."""
     # Ensure at least 2 exist
     await create_deck_type_definition(db, **base_deck_type_data)
@@ -262,7 +261,7 @@ class TestDeckTypeDefinitionService:
     self,
     db: AsyncSession,
     existing_deck_type: DeckDefinitionOrm,
-  ):
+  ) -> None:
     """Test deleting a deck type definition."""
     deck_type_id = existing_deck_type.accession_id
 
@@ -275,7 +274,7 @@ class TestDeckTypeDefinitionService:
     # Confirm it's gone
     assert await read_deck_type_definition(db, deck_type_id) is None
 
-  async def test_delete_non_existent_deck_type_fails(self, db: AsyncSession):
+  async def test_delete_non_existent_deck_type_fails(self, db: AsyncSession) -> None:
     """Test that deleting a non-existent deck type raises ValueError."""
     bad_id = uuid.uuid4()
     with pytest.raises(ValueError, match="not found"):

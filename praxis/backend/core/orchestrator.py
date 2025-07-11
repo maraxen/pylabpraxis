@@ -484,7 +484,8 @@ class Orchestrator:
           deck_config_orm_accession_id_to_apply = deck_accession_identifier_from_user
 
         if deck_config_orm_accession_id_to_apply is None:
-          raise RuntimeError("Internal error: Deck accession ID not resolved.")
+          msg = "Internal error: Deck accession ID not resolved."
+          raise RuntimeError(msg)
 
         live_deck_object = await self.asset_manager.apply_deck(
           deck_orm_accession_id=deck_config_orm_accession_id_to_apply,

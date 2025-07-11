@@ -77,12 +77,11 @@ async def existing_resource(
 @pytest.fixture
 async def existing_machine(db: AsyncSession) -> MachineOrm:
   """Fixture that creates a standard machine for update/read/delete tests."""
-  machine = await create_machine(
+  return await create_machine(
     db,
     name=f"TestMachine_{uuid.uuid4()}",
     fqn="pylabrobot.liquid_handling.hamilton.STAR",
   )
-  return machine
 
 
 pytestmark = pytest.mark.asyncio
@@ -91,7 +90,7 @@ pytestmark = pytest.mark.asyncio
 class TestMachineService:
   """Test suite for the machine data service layer."""
 
-  async def test_create_machine_simple(self, db: AsyncSession):
+  async def test_create_machine_simple(self, db: AsyncSession) -> None:
     """Test creating a machine with only required fields."""
     name = f"SimpleMachine_{uuid.uuid4()}"
     fqn = "pylabrobot.pumps.Pump"
@@ -106,7 +105,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test creating a machine that is also a new resource counterpart."""
     name = f"MachineAsResource_{uuid.uuid4()}"
     machine = await create_machine(
@@ -125,7 +124,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-  ):
+  ) -> None:
     """Test that creating a machine with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_machine(
@@ -138,7 +137,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-  ):
+  ) -> None:
     """Test reading a machine by its ID and by its name."""
     from_id = await read_machine(db, existing_machine.accession_id)
     assert from_id is not None
@@ -152,7 +151,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-  ):
+  ) -> None:
     """Test updating simple properties of a machine."""
     updated_machine = await update_machine(
       db,
@@ -168,7 +167,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test that updating a machine's name also syncs to its resource counterpart."""
     name = f"SyncMachine_{uuid.uuid4()}"
     machine = await create_machine(
@@ -196,7 +195,7 @@ class TestMachineService:
     db: AsyncSession,
     existing_machine: MachineOrm,
     existing_resource: ResourceOrm,
-  ):
+  ) -> None:
     """Test updating a machine to link it to an existing resource."""
     assert existing_machine.is_resource is False
     updated_machine = await update_machine(
@@ -208,7 +207,7 @@ class TestMachineService:
     assert updated_machine.is_resource is True
     assert updated_machine.resource_counterpart_accession_id == existing_resource.accession_id
 
-  async def test_list_machines_with_filters(self, db: AsyncSession):
+  async def test_list_machines_with_filters(self, db: AsyncSession) -> None:
     """Test the filtering capabilities of the list_machines function."""
     name1 = f"FilterMachineA_{uuid.uuid4()}"
     name2 = f"FilterMachineB_{uuid.uuid4()}"
@@ -244,7 +243,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-  ):
+  ) -> None:
     """Test the dedicated function for updating machine status."""
     protocol_run = ProtocolRunOrm()
     db.add(protocol_run)
@@ -265,7 +264,7 @@ class TestMachineService:
     assert updated_machine.current_protocol_run_accession_id == protocol_run.run_accession_id
     assert updated_machine.last_seen_online is not None
 
-  async def test_delete_machine(self, db: AsyncSession, existing_machine: MachineOrm):
+  async def test_delete_machine(self, db: AsyncSession, existing_machine: MachineOrm) -> None:
     """Test deleting a machine."""
     machine_id = existing_machine.accession_id
     result = await delete_machine(db, machine_id)
@@ -278,7 +277,7 @@ class TestMachineService:
     self,
     db: AsyncSession,
     existing_machine: MachineOrm,
-  ):
+  ) -> None:
     """Test that deleting a machine with a foreign key dependency fails gracefully."""
     # Create a deck instance that depends on the machine
     deck = DeckOrm(

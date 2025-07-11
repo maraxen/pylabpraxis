@@ -81,7 +81,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test successful creation of a deck instance without position items."""
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "MyTestDeck"
@@ -106,7 +106,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test successful creation of a deck instance with position items."""
     deck_resource = setup_test_data["deck_resource"]
     plate_resource = setup_test_data["plate_resource"]
@@ -156,7 +156,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test that creating a deck instance with a duplicate name raises ValueError."""
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "DuplicateDeck"
@@ -176,7 +176,7 @@ class TestDeckService:
         fqn="fqn.2",
       )
 
-  async def test_create_deck_invalid_deck_id_fails(self, db: AsyncSession):
+  async def test_create_deck_invalid_deck_id_fails(self, db: AsyncSession) -> None:
     """Test that creating a deck instance with a non-existent deck ID fails."""
     non_existent_id = uuid.uuid4()
     with pytest.raises(ValueError, match="ResourceOrm.*not found"):
@@ -191,7 +191,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test reading a deck instance by its accession_id."""
     deck_resource = setup_test_data["deck_resource"]
     deck = await create_deck(
@@ -206,7 +206,7 @@ class TestDeckService:
     assert fetched_deck.accession_id == deck.accession_id
     assert fetched_deck.name == "ReadableDeck"
 
-  async def test_read_deck_not_found(self, db: AsyncSession):
+  async def test_read_deck_not_found(self, db: AsyncSession) -> None:
     """Test that reading a non-existent deck instance returns None."""
     non_existent_id = uuid.uuid4()
     fetched_deck = await read_deck(db, non_existent_id)
@@ -216,7 +216,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test reading a deck instance by its unique name."""
     deck_resource = setup_test_data["deck_resource"]
     deck_name = "NamedDeck"
@@ -235,7 +235,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test listing deck instances."""
     deck_resource = setup_test_data["deck_resource"]
     await create_deck(
@@ -274,7 +274,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test updating various attributes of a deck instance."""
     deck_resource = setup_test_data["deck_resource"]
     plate_resource = setup_test_data["plate_resource"]
@@ -320,7 +320,7 @@ class TestDeckService:
     assert final_deck.position_items[0].position_name == "C3"
     assert final_deck.position_items[0].resource_accession_id == plate_resource.accession_id
 
-  async def test_update_deck_not_found(self, db: AsyncSession):
+  async def test_update_deck_not_found(self, db: AsyncSession) -> None:
     """Test that updating a non-existent deck instance returns None."""
     non_existent_id = uuid.uuid4()
     result = await update_deck(
@@ -334,7 +334,7 @@ class TestDeckService:
     self,
     db: AsyncSession,
     setup_test_data: dict[str, Any],
-  ):
+  ) -> None:
     """Test deleting a deck instance."""
     deck_resource = setup_test_data["deck_resource"]
     plate_resource = setup_test_data["plate_resource"]
@@ -375,7 +375,7 @@ class TestDeckService:
     )
     assert pos_item_result.scalar_one_or_none() is None
 
-  async def test_delete_deck_not_found(self, db: AsyncSession):
+  async def test_delete_deck_not_found(self, db: AsyncSession) -> None:
     """Test that deleting a non-existent deck instance returns False."""
     non_existent_id = uuid.uuid4()
     result = await delete_deck(db, non_existent_id)

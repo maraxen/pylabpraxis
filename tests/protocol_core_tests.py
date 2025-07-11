@@ -12,14 +12,14 @@ from praxis.backend.protocol_core.protocol_definition_models import (
 class DummyPipette(
   Resource,
 ):  # Assuming Resource can be instantiated like this for test
-  def __init__(self, name: str, **kwargs):
+  def __init__(self, name: str, **kwargs) -> None:
     super().__init__(
       name=name, size_x=1, size_y=1, size_z=1, category="dummy_pipette", **kwargs,
     )  # Provide dummy sizes
 
 
 class DummyPlate(Resource):
-  def __init__(self, name: str, **kwargs):
+  def __init__(self, name: str, **kwargs) -> None:
     super().__init__(
       name=name, size_x=1, size_y=1, size_z=1, category="dummy_plate", **kwargs,
     )
@@ -28,7 +28,7 @@ class DummyPlate(Resource):
 @pytest.fixture
 def minimal_protocol_function_def():
   @protocol_function(name="TestMinimal", version="1.0")
-  def _minimal_func(state: PraxisState):
+  def _minimal_func(state: PraxisState) -> str:
     return "done"
 
   return _minimal_func
@@ -57,7 +57,7 @@ def complex_protocol_function_def():
     count: int = 5,
     name: str | None = None,
     target_plate: DummyPlate | None = None,
-  ):
+  ) -> str:
     """Docstring for complex func."""
     return f"ran {count} times for {name or 'default'} with {pipette.name} and {target_plate.name if target_plate else 'no plate'}"
 
@@ -65,14 +65,14 @@ def complex_protocol_function_def():
 
 
 class TestProtocolFunctionDecoratorMetadata:
-  def test_decorator_attaches_pydantic_model(self, minimal_protocol_function_def):
+  def test_decorator_attaches_pydantic_model(self, minimal_protocol_function_def) -> None:
     assert hasattr(minimal_protocol_function_def, "_protocol_definition")
     assert isinstance(
       minimal_protocol_function_def._protocol_definition,
       FunctionProtocolDefinitionModel,
     )
 
-  def test_minimal_definition_attributes(self, minimal_protocol_function_def):
+  def test_minimal_definition_attributes(self, minimal_protocol_function_def) -> None:
     model = minimal_protocol_function_def._protocol_definition
     assert model.name == "TestMinimal"
     assert model.version == "1.0"
@@ -90,7 +90,7 @@ class TestProtocolFunctionDecoratorMetadata:
 
     assert len(model.assets) == 0
 
-  def test_complex_definition_attributes(self, complex_protocol_function_def):
+  def test_complex_definition_attributes(self, complex_protocol_function_def) -> None:
     model = complex_protocol_function_def._protocol_definition
     assert model.name == "TestComplex"
     assert model.version == "1.1"
@@ -130,17 +130,17 @@ class TestProtocolFunctionDecoratorMetadata:
     assert "DummyPlate" in plate_asset.actual_type_str
     assert plate_asset.optional
 
-  def test_default_name_from_function(self):
+  def test_default_name_from_function(self) -> None:
     @protocol_function(version="0.1")  # Name not provided
-    def _my_actual_func_name(state: PraxisState):
+    def _my_actual_func_name(state: PraxisState) -> None:
       pass
 
     model = _my_actual_func_name._protocol_definition
     assert model.name == "_my_actual_func_name"
 
-  def test_docstring_as_description(self):
+  def test_docstring_as_description(self) -> None:
     @protocol_function()
-    def _func_with_docstring(state: PraxisState):
+    def _func_with_docstring(state: PraxisState) -> None:
       """This is the docstring."""
 
     model = _func_with_docstring._protocol_definition
@@ -148,7 +148,7 @@ class TestProtocolFunctionDecoratorMetadata:
 
 
 class TestProtocolFunctionWrapperInvocation:
-  def test_wrapper_calls_original_function(self, minimal_protocol_function_def):
+  def test_wrapper_calls_original_function(self, minimal_protocol_function_def) -> None:
     # For unit testing the wrapper's basic call, mock the PraxisRunContext and db logging.
     # This test focuses on the metadata part being mostly done.
     # The existing wrapper in decorators.py is complex and handles logging.
@@ -165,7 +165,7 @@ class TestProtocolFunctionWrapperInvocation:
 
 
 class TestPraxisRunContext:
-  def test_praxis_run_context_creation_and_attributes(self):
+  def test_praxis_run_context_creation_and_attributes(self) -> None:
     # Assuming PraxisState can be instantiated (even if it's the Redis-backed one, for type hint)
     # For unit test, we assume PraxisState from definitions is usable without full Redis.
     # If PraxisState from definitions is an alias to utils.state.State, it requires run_accession_id.
@@ -186,7 +186,7 @@ class TestPraxisRunContext:
     assert context.current_call_log_db_accession_id is None
     assert context._call_sequence_next_val == 1
 
-  def test_get_and_increment_sequence_val(self):
+  def test_get_and_increment_sequence_val(self) -> None:
     context = PraxisRunContext(
       1,
       "accession_id-seq",
@@ -198,7 +198,7 @@ class TestPraxisRunContext:
     assert context.get_and_increment_sequence_val() == 2
     assert context._call_sequence_next_val == 3
 
-  def test_create_context_for_nested_call(self):
+  def test_create_context_for_nested_call(self) -> None:
     mock_state = PraxisState(run_accession_id="test-run-accession_id-parent")
     mock_db_session = object()
 

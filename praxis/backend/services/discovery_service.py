@@ -43,7 +43,6 @@ from praxis.backend.utils.type_inspection import (
   is_pylabrobot_resource,
   serialize_type_hint,
 )
-from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +157,7 @@ class DiscoveryService:
     if isinstance(search_paths, str):
       search_paths = [search_paths]
 
-    extracted_definitions: list[tuple[FunctionProtocolDefinitionCreate, Callable | None]] = []  # type: ignore
+    extracted_definitions: list[tuple[FunctionProtocolDefinitionCreate, Callable | None]] = []
     processed_func_accession_ids: set[int] = set()
     loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
@@ -166,7 +165,6 @@ class DiscoveryService:
     for path_item in search_paths:
       abs_path_item = os.path.abspath(path_item)
       if not os.path.isdir(abs_path_item):
-        print(f"Warning: Search path '{abs_path_item}' is not a directory. Skipping.")
         continue
 
       potential_package_parent = os.path.dirname(abs_path_item)
@@ -251,8 +249,7 @@ class DiscoveryService:
                         ParameterMetadataModel(**common_args, is_deck_param=False),
                       )
 
-                  inferred_model = FunctionProtocolDefinitionCreate(
-                    accession_id=uuid7(),  # TODO: ensure that if a reinspection happens it is assigned the already existing
+                  inferred_model = FunctionProtocolDefinitionCreate(  # TODO: ensure that if a reinspection happens it is assigned the already existing
                     name=func_obj.__name__,
                     version="0.0.0-inferred",
                     description=inspect.getdoc(func_obj) or "Inferred from code.",
@@ -314,7 +311,8 @@ class DiscoveryService:
       return []
 
     logger.info(
-      f"DiscoveryService: Starting protocol discovery in paths: {search_paths}...",
+      "DiscoveryService: Starting protocol discovery in paths: %s...",
+      search_paths,
     )
     extracted_definitions = self._extract_protocol_definitions_from_paths(search_paths)
 
@@ -334,7 +332,7 @@ class DiscoveryService:
       )
       return []
     async with self.db_session_factory() as session:
-      for protocol_pydantic_model, func_ref in extracted_definitions:
+      for protocol_pydantic_model, _func_ref in extracted_definitions:
         protocol_name_for_error = protocol_pydantic_model.name
         protocol_version_for_error = protocol_pydantic_model.version
         try:
@@ -365,14 +363,16 @@ class DiscoveryService:
               PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = def_orm.accession_id
             else:
               logger.warning(
-                f"DiscoveryService: Upserted ORM object for '{protocol_unique_key}' has"
-                f" no 'id'. Cannot update PROTOCOL_REGISTRY.",
+                "DiscoveryService: Upserted ORM object for '%s' has no 'id'. "
+                "Cannot update PROTOCOL_REGISTRY.",
+                protocol_unique_key,
               )
 
-        except (ValueError, RuntimeError) as e:
-          logger.error(
-            f"ERROR: Failed to process or upsert protocol '{protocol_name_for_error} "
-            f"v{protocol_version_for_error}': {e}",
+        except (ValueError, RuntimeError):
+          logger.exception(
+            "ERROR: Failed to process or upsert protocol '%s v%s'.",
+            protocol_name_for_error,
+            protocol_version_for_error,
           )
           traceback.print_exc()
       # Commit happens when the session context manager exits if no exceptions
@@ -381,6 +381,7 @@ class DiscoveryService:
       [d for d in upserted_definitions_orm if hasattr(d, "id") and d.accession_id is not None],
     )
     logger.info(
-      f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB.",
+      "Successfully upserted %d protocol definition(s) to DB.",
+      num_successful_upserts,
     )
     return upserted_definitions_orm

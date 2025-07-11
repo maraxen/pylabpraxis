@@ -84,7 +84,7 @@ class TestResourceService:
     self,
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test creating a simple resource and reading it back by ID and name."""
     name = f"MyPlate_{uuid.uuid4()}"
     resource = await create_resource(
@@ -115,7 +115,7 @@ class TestResourceService:
     self,
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test creating a resource that is also a new machine counterpart."""
     name = f"MachineResource_{uuid.uuid4()}"
     resource = await create_resource(
@@ -131,7 +131,7 @@ class TestResourceService:
     assert resource.machine_counterpart is not None
     assert resource.machine_counterpart.name == name
 
-  async def test_create_resource_fails_with_bad_definition(self, db: AsyncSession):
+  async def test_create_resource_fails_with_bad_definition(self, db: AsyncSession) -> None:
     """Test that creating a resource fails if the definition FQN does not exist."""
     with pytest.raises(ValueError, match="not found in catalog"):
       await create_resource(
@@ -145,7 +145,7 @@ class TestResourceService:
     self,
     db: AsyncSession,
     existing_resource: ResourceOrm,
-  ):
+  ) -> None:
     """Test updating various fields of a resource instance."""
     updated_resource = await update_resource(
       db,
@@ -162,7 +162,7 @@ class TestResourceService:
     db: AsyncSession,
     resource_def: ResourceDefinitionOrm,
     machine: MachineOrm,
-  ):
+  ) -> None:
     """Test filtering capabilities of the read_resources function."""
     # Create a diverse set of resources
     await create_resource(
@@ -206,7 +206,7 @@ class TestResourceService:
     existing_resource: ResourceOrm,
     machine: MachineOrm,
     protocol_run: ProtocolRunOrm,
-  ):
+  ) -> None:
     """Test the dedicated function for updating location, status, and properties."""
     assert existing_resource.status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
     assert existing_resource.properties_json is None
@@ -253,7 +253,7 @@ class TestResourceService:
     self,
     db: AsyncSession,
     existing_resource: ResourceOrm,
-  ):
+  ) -> None:
     """Test deleting a resource instance by ID and by name."""
     # Delete by ID
     resource_id = existing_resource.accession_id

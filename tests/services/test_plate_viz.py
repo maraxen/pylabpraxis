@@ -119,7 +119,7 @@ class TestPlateVizService:
     self,
     db: AsyncSession,
     setup_plate_data,
-  ):
+  ) -> None:
     """Test successfully retrieving and formatting plate data for visualization."""
     plate_id = setup_plate_data["plate_id"]
     data_type = DataOutputTypeEnum.ABSORBANCE_READING
@@ -153,7 +153,7 @@ class TestPlateVizService:
     self,
     db: AsyncSession,
     setup_plate_data,
-  ):
+  ) -> None:
     """Test that None is returned when no data matches the criteria."""
     plate_id = setup_plate_data["plate_id"]
 
@@ -174,7 +174,7 @@ class TestPlateVizService:
     )
     assert viz_data_wrong_plate is None
 
-  async def test_read_plate_data_with_filters(self, db: AsyncSession, setup_plate_data):
+  async def test_read_plate_data_with_filters(self, db: AsyncSession, setup_plate_data) -> None:
     """Test filtering the plate data by protocol run ID."""
     plate_id = setup_plate_data["plate_id"]
     run_id = setup_plate_data["run_id"]

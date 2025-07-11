@@ -31,13 +31,12 @@ def liquid_handler_setup_check(func):
   @wraps(func)
   async def wrapper(*args, **kwargs):
     if len(args) == 0 and "liquid_handler" not in kwargs:
-      raise ValueError("No liquid handler provided")
-    if args:
-      liquid_handler = args[0]
-    else:
-      liquid_handler = kwargs["liquid_handler"]
+      msg = "No liquid handler provided"
+      raise ValueError(msg)
+    liquid_handler = args[0] if args else kwargs["liquid_handler"]
     if not liquid_handler.setup_finished:
-      raise RuntimeError("Liquid handler not set up")
+      msg = "Liquid handler not set up"
+      raise RuntimeError(msg)
     return await func(*args, **kwargs)
 
   return wrapper
@@ -59,16 +58,19 @@ async def coerce_to_list(items: list | tuple, target_length: int | None) -> list
   for item in items:
     if item is None:
       new_items.append(None)
-    elif not isinstance(item, (list, tuple)):
+    elif not isinstance(item, list | tuple):
       new_items.append([item] * target_length)
     elif len(item) == 1:
       new_items.append(item * target_length)
     elif len(item) == target_length:
       new_items.append(item)
     else:
-      raise ValueError(
+      msg = (
         f"Expected list of length {target_length} but got list of length \
-          {len(item)}",
+          {len(item)}"
+      )
+      raise ValueError(
+        msg,
       )
   return new_items
 
@@ -84,12 +86,14 @@ async def fill_in_default(val: list[T] | None, default: list[T]) -> list[T]:
     return [val] * len(default)
   # if the val is a list, it must be of the correct length.
   if len(val) != len(default):
+    msg = f"Value length must equal num operations ({len(default)}), but is {val}"
     raise ValueError(
-      f"Value length must equal num operations ({len(default)}), but is {val}",
+      msg,
     )
   # if the val is a list of the correct length, the values must be of the right type.
   if not all(isinstance(v, t) for v in val):
-    raise ValueError(f"Value must be a list of {t}, but is {val}")
+    msg = f"Value must be a list of {t}, but is {val}"
+    raise ValueError(msg)
   # the value is ready to be used.
   return val
 
@@ -119,11 +123,12 @@ async def type_check(items: list, types: list, in_list: bool = False) -> None:
 
   """
   for item, item_type in zip(items, types, strict=False):
-    if in_list:
-      if not all(isinstance(i, item_type) for i in item):
-        raise ValueError(f"Expected {item_type} but got {type(item)}")
+    if in_list and not all(isinstance(i, item_type) for i in item):
+      msg = f"Expected {item_type} but got {type(item)}"
+      raise ValueError(msg)
     if not isinstance(item, item_type):
-      raise ValueError(f"Expected {item_type} but got {type(item)}")
+      msg = f"Expected {item_type} but got {type(item)}"
+      raise ValueError(msg)
 
 
 async def check_list_length(
@@ -147,25 +152,27 @@ async def check_list_length(
   """
   if target_length is None:
     length = len(items[0])
-  if not isinstance(items[0], list):
-    if len(items) != target_length:
-      if len(items) == 1 and coerce_length:
-        assert target_length is not None, "Expected target length to be provided"
-        return items * target_length
-      raise ValueError(
-        f"Expected list of length {length} but got list of length {len(items)}",
-      )
+  if not isinstance(items[0], list) and len(items) != target_length:
+    if len(items) == 1 and coerce_length:
+      assert target_length is not None, "Expected target length to be provided"
+      return items * target_length
+    msg = f"Expected list of length {length} but got list of length {len(items)}"
+    raise ValueError(
+      msg,
+    )
   new_items = []
   for item in items:
     if not isinstance(item, list):
-      raise ValueError(f"Expected list but got {type(item)}")
+      msg = f"Expected list but got {type(item)}"
+      raise ValueError(msg)
     if len(item) != target_length:
       if len(item) == 1 and coerce_length:
         assert target_length is not None, "Expected target length to be provided"  # mypy assert
         new_items.append(item * target_length)
       else:
+        msg = f"Expected list of length {length} but got list of length {len(item)}"
         raise ValueError(
-          f"Expected list of length {length} but got list of length {len(item)}",
+          msg,
         )
   if all(len(item) == target_length for item in items):
     return items
@@ -233,13 +240,15 @@ async def tip_mapping(
   if isinstance(tips, list):
     if all(isinstance(tip, TipSpot) for tip in tips):
       return [tip for tip in tips if isinstance(tip, TipSpot)]  # mypy compatible return
+    msg = "Invalid type for tip. Must be a list of TipSpot objects or TipRack."
     raise ValueError(
-      "Invalid type for tip. Must be a list of TipSpot objects or TipRack.",
+      msg,
     )
   if map_tips is None:
     map_tips = "source"
   if map_tips not in ["source", "target"]:
-    raise ValueError("Invalid value for map_tips. Must be either 'source' or 'target'.")
+    msg = "Invalid value for map_tips. Must be either 'source' or 'target'."
+    raise ValueError(msg)
   if targets is None and map_tips == "target":
     warnings.warn(
       "No target containers provided, mapping tips to source containers."
@@ -252,25 +261,31 @@ async def tip_mapping(
   if isinstance(tips, TipRack):
     tip_number = tips.num_items
   else:
+    msg = "Invalid type for tip. Must be a list of TipSpot objects or single TipRack."
     raise ValueError(
-      "Invalid type for tip. Must be a list of TipSpot objects or single TipRack.",
+      msg,
     )
   if tip_number < len(map_onto):
+    msg = "Insufficient number of tips for the number of sources or targets."
     raise ValueError(
-      "Insufficient number of tips for the number of sources or targets.",
+      msg,
     )
   if isinstance(tips, TipRack):
     output_tips = []
     if not all(isinstance(item, Well) for item in map_onto):
-      raise ValueError(
+      msg = (
         "Cannot map between source or target containers and tip rack. Specify \
-        tips as list[TipSpot].",
+        tips as list[TipSpot]."
+      )
+      raise ValueError(
+        msg,
       )
     for well in map_onto:
       assert isinstance(well, Well), "Expected Well object"  # mypy compatible assert
       well_number = await well_to_int(well, source_plate)
       if not tips[well_number][0].has_tip():
-        raise ValueError("Tip rack does not have tip at specified location.")
+        msg = "Tip rack does not have tip at specified location."
+        raise ValueError(msg)
       output_tips.append(tips[well_number][0])
   return output_tips
 

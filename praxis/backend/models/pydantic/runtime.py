@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel
 
+from praxis.backend.models.orm.machine import MachineDefinitionOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic.protocol import AssetRequirementModel
 
 
@@ -23,17 +25,18 @@ class RuntimeAssetRequirement(BaseModel):
 
   @property
   def asset_name(self) -> str:
+    """Get the name of the asset from the asset definition."""
     return self.asset_definition.name
 
   @classmethod
   def from_asset_definition_orm(
     cls,
-    asset_def_orm: Any,  # Using Any to avoid circular imports with ORM models
+    asset_def_orm: ResourceDefinitionOrm | MachineDefinitionOrm,
     asset_type: str,
     estimated_duration_ms: int | None = None,
     priority: int = 1,
   ) -> "RuntimeAssetRequirement":
-    # Convert ORM object to Pydantic model
+    """Create a RuntimeAssetRequirement from an ORM object."""
     asset_definition = AssetRequirementModel.model_validate(asset_def_orm)
     return cls(
       asset_definition=asset_definition,

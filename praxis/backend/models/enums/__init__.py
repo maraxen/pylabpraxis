@@ -5,7 +5,7 @@ from .machine import MachineCategoryEnum, MachineStatusEnum
 from .outputs import DataOutputTypeEnum, SpatialContextEnum
 from .protocol import FunctionCallStatusEnum, ProtocolRunStatusEnum, ProtocolSourceStatusEnum
 from .resource import ResourceCategoryEnum, ResourceStatusEnum
-from .schedule import ScheduleStatusEnum
+from .schedule import ScheduleStatusEnum, ScheduleHistoryEventEnum, ScheduleHistoryEventTriggerEnum
 from .workcell import WorkcellStatusEnum
 
 __all__ = [
@@ -21,5 +21,7 @@ __all__ = [
   "ResourceStatusEnum",
   "ResourceCategoryEnum",
   "ScheduleStatusEnum",
+  "ScheduleHistoryEventEnum",
   "WorkcellStatusEnum",
+  "ScheduleHistoryEventTriggerEnum",
 ]

@@ -136,20 +136,22 @@ class PraxisDBService:
             await asyncio.sleep(current_retry_delay)
             current_retry_delay *= 2
           else:
-            logger.error(
+            logger.exception(
               "Failed to connect to Keycloak database after %d attempts.",
               cls._max_retries,
             )
+            msg = f"Could not establish Keycloak database connection: {last_error}"
             raise ConnectionError(
-              f"Could not establish Keycloak database connection: {last_error}",
+              msg,
             ) from last_error
         except Exception:
           logger.exception("Unexpected error during Keycloak database initialization.")
           raise
 
       if not cls._keycloak_pool and keycloak_dsn:
+        msg = f"Failed to initialize Keycloak pool. Last error: {last_error}"
         raise ConnectionError(
-          f"Failed to initialize Keycloak pool. Last error: {last_error}",
+          msg,
         )
     else:
       logger.info(
@@ -268,7 +270,7 @@ class PraxisDBService:
       logger.info("Found %d active users from Keycloak.", len(users_dict))
       return users_dict
 
-  async def execute_sql(self, sql_statement: str, params: dict | None = None):
+  async def execute_sql(self, sql_statement: str, params: dict | None = None) -> None:
     """Execute a raw SQL statement on the Praxis database.
 
     Args:
@@ -357,7 +359,7 @@ class PraxisDBService:
       logger.debug("Fetched scalar value: %s.", value)
       return value
 
-  async def close(self):
+  async def close(self) -> None:
     """Close the Keycloak database connection pool.
 
     This method should be called during application shutdown to ensure
@@ -410,8 +412,8 @@ def _get_keycloak_dsn_from_config() -> str | None:
       dsn = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
       logger.info("Successfully retrieved Keycloak DSN from config.")
       return dsn
-    except Exception as e: # noqa: BLE001
-      logger.error("Error reading Keycloak DSN from praxis.ini: %s", e)
+    except Exception as e:
+      logger.exception("Error reading Keycloak DSN from praxis.ini: %s", e)
       return None
   logger.info("Keycloak database section not found in praxis.ini.")
   return None

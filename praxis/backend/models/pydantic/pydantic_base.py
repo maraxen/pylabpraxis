@@ -39,4 +39,5 @@ class PraxisBaseModel(BaseModel):
     """Pydantic configuration."""
 
     from_attributes = True
+    use_enum_values = True
     validate_assignment = True

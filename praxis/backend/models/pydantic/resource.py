@@ -10,7 +10,11 @@ from typing import Any, ClassVar, Optional
 from pydantic import UUID7, BaseModel, Field
 
 from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
-from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
+from praxis.backend.models.pydantic.plr_sync import (
+  PLRTypeDefinitionCreate,
+  PLRTypeDefinitionResponse,
+  PLRTypeDefinitionUpdate,
+)
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 from .pydantic_base import PraxisBaseModel
@@ -19,12 +23,10 @@ from .pydantic_base import PraxisBaseModel
 class ResourceBase(AssetBase):
   """Base model for a resource instance."""
 
-  status: ResourceStatusEnum = Field(default=ResourceStatusEnum.UNKNOWN)
+  status: ResourceStatusEnum | None = Field(default=ResourceStatusEnum.UNKNOWN)
   status_details: str | None = None
   workcell_accession_id: UUID7 | None = None
   resource_definition_accession_id: UUID7 | None = None
-  machine_counterpart_accession_id: UUID7 | None = None
-  deck_counterpart_accession_id: UUID7 | None = None
   parent_accession_id: UUID7 | None = None
   plr_state: dict | None = None
   plr_definition: dict | None = None
@@ -34,106 +36,49 @@ class ResourceBase(AssetBase):
     description="List of child resources associated with this resource.",
   )
   parent: "ResourceBase | None" = None
-
-  class Config:
-    """Configuration for Pydantic model behavior."""
-
-    from_attributes = True
-    use_enum_values = True
+  child_accession_ids: list[UUID7] = Field(
+    default_factory=list,
+    description="List of accession IDs for child resources to be associated with this resource.",
+  )
 
 
-class ResourceCreate(ResourceBase):
+class ResourceCreate(ResourceBase, PraxisBaseModel):
   """Model for creating a new resource instance."""
 
-  is_machine: bool = Field(
-    default=False,
-    description="Indicates if this resource is also registered as a machine instance.",
-  )
-  machine_fqn: str | None = Field(
-    default=None,
-    description=(
-      "The FQN for the machine counterpart. Required if is_machine is True and no counterpart ID is"
-      " provided."
-    ),
-  )
-  machine_properties_json: dict[str, Any] | None = Field(
-    default=None,
-    description="Properties for the new machine counterpart.",
-  )
   machine_initial_status: Optional["MachineStatusEnum"] = Field(
     default=None,
     description="Initial status for the new machine counterpart.",
   )
-  is_deck: bool = Field(
-    default=False,
-    description="Indicates if this resource is a deck instance.",
-  )
-  deck_fqn: str | None = Field(
-    default=None,
-    description=(
-      "The FQN for the deck counterpart. Required if is_deck is True and no counterpart ID is"
-      " provided."
-    ),
-  )
-  deck_properties_json: dict[str, Any] | None = Field(
-    default=None,
-    description="Properties for the new deck counterpart.",
-  )
+
   deck_initial_status: ResourceStatusEnum | None = Field(
     default=None,
     description="Initial status for the new deck counterpart.",
   )
 
 
-class ResourceUpdate(AssetUpdate):
+class ResourceUpdate(ResourceBase, AssetUpdate):
   """Model for updating a resource instance."""
 
-  status: ResourceStatusEnum | None = None
-  resource_definition_accession_id: UUID7 | None = None
-  machine_counterpart_accession_id: UUID7 | None = None
-  deck_counterpart_accession_id: UUID7 | None = None
-  parent_accession_id: UUID7 | None = None
-  child_accession_ids: list[UUID7] = Field(
-    default_factory=list,
-    description="List of accession IDs for child resources to be associated with this resource.",
-  )
-  plr_state: dict | None = None
-  plr_definition: dict | None = None
-  properties_json: dict | None = None
-  children: list["ResourceBase"] = Field(
-    default_factory=list,
-    description="List of child resources associated with this resource.",
-  )
 
-
-class ResourceResponse(AssetResponse, ResourceBase):
+class ResourceResponse(AssetResponse, ResourceBase, PraxisBaseModel):
   """Model for API responses for a resource instance."""
 
   parent_response: "ResourceResponse | None" = None
   child_responses: ClassVar[list["ResourceResponse"]] = []
 
-  class Config(AssetResponse.Config, ResourceBase.Config):
+  class Config(AssetResponse.Config):
     """Pydantic configuration for ResourceResponse."""
 
 
 ResourceResponse.model_rebuild()
 
 
-# =============================================================================
-# Resource Definition Models (Existing)
-# =============================================================================
-
-
 class ResourceDefinitionBase(BaseModel):
   """Defines the base properties for a resource definition."""
 
-  accession_id: UUID7
-  name: str
-  fqn: str
   resource_type: str | None = None
   description: str | None = None
   is_consumable: bool = True
-  is_machine: bool = False
   nominal_volume_ul: float | None = None
   material: str | None = None
   manufacturer: str | None = None
@@ -144,29 +89,19 @@ class ResourceDefinitionBase(BaseModel):
   model: str | None = None
   plr_category: str | None = None
   rotation_json: dict[str, Any] | None = None
-  plr_category: str | None = None
-  rotation_json: dict[str, Any] | None = None
-
-  class Config:
-    """Pydantic configuration for ResourceDefinitionBase."""
-
-    from_attributes = True
-    use_enum_values = True
+  ordering: str | None = None
 
 
 class ResourceDefinitionCreate(ResourceDefinitionBase, PLRTypeDefinitionCreate):
   """Represents a resource definition for creation requests."""
 
 
-class ResourceDefinitionUpdate(BaseModel, PLRTypeDefinitionUpdate):
+class ResourceDefinitionUpdate(ResourceDefinitionBase, PLRTypeDefinitionUpdate):
   """Specifies the fields that can be updated for an existing resource definition."""
 
 
-class ResourceDefinitionResponse(ResourceDefinitionBase, PraxisBaseModel):
+class ResourceDefinitionResponse(ResourceDefinitionBase, PLRTypeDefinitionResponse):
   """Represents a resource definition for API responses."""
-
-  class Config(ResourceDefinitionBase.Config, PraxisBaseModel.Config):
-    """Pydantic configuration for ResourceDefinitionResponse."""
 
 
 class ResourceInventoryReagentItem(BaseModel):

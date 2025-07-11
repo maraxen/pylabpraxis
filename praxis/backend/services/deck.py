@@ -6,7 +6,7 @@ functions to create, read, update, and delete decks.
 """
 
 import uuid
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -25,8 +25,10 @@ from praxis.backend.services.utils.query_builder import (
   apply_property_filters,
   apply_specific_id_filters,
 )
-from praxis.backend.utils.db import Base
 from praxis.backend.utils.logging import get_logger
+
+if TYPE_CHECKING:
+  from praxis.backend.utils.db import Base
 
 logger = get_logger(__name__)
 
@@ -65,13 +67,13 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       error_message = f"Deck with name '{obj_in.name}' already exists. Details: {e}"
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
+    except Exception:  # Catch all for truly unexpected errors
       logger.exception(
         "Error creating deck '%s'. Rolling back.",
         obj_in.name,
       )
       await db.rollback()
-      raise e
+      raise
 
     return deck_orm
 
@@ -151,10 +153,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     """Update an existing deck."""
     logger.info("Attempting to update deck with ID: %s.", db_obj.accession_id)
 
-    if isinstance(obj_in, dict):
-      update_data = obj_in
-    else:
-      update_data = obj_in.model_dump(exclude_unset=True)
+    update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
 
     for key, value in update_data.items():
       if hasattr(db_obj, key):
@@ -176,13 +175,13 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       error_message = f"Integrity error while updating deck ID {db_obj.accession_id}. Details: {e}"
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
+    except Exception:  # Catch all for truly unexpected errors
       await db.rollback()
       logger.exception(
         "Unexpected error updating deck ID %s. Rolling back.",
         db_obj.accession_id,
       )
-      raise e
+      raise
 
     return db_obj
 
@@ -202,7 +201,6 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
         accession_id,
         deck_orm.name,
       )
-      return deck_orm
     except IntegrityError as e:
       await db.rollback()
       error_message = (
@@ -211,13 +209,15 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       )
       logger.exception(error_message)
       raise ValueError(error_message) from e
-    except Exception as e:  # Catch all for truly unexpected errors
+    except Exception:  # Catch all for truly unexpected errors
       await db.rollback()
       logger.exception(
         "Unexpected error deleting deck ID %s. Rolling back.",
         accession_id,
       )
-      raise e
+      raise
+    else:
+      return deck_orm
 
   async def get_all_decks(self, db: AsyncSession) -> list[DeckOrm]:
     """Retrieve all decks from the database."""

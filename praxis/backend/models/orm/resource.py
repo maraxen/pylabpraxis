@@ -86,6 +86,12 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Additional PyLabRobot specific definition details as JSONB.",
     default=None,
   )
+  ordering: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    default=None,
+    comment="Ordering information for the resource, if applicable.",
+  )
 
   size_x_mm: Mapped[float | None] = mapped_column(
     Float,
@@ -184,7 +190,6 @@ class ResourceOrm(AssetOrm):
     primary_key=True,
     index=True,
     comment="Unique identifier for the resource, derived from the Asset base class.",
-    kw_only=True,
   )
 
   parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -20,7 +20,7 @@ class DiscoverableTypeServiceBase(
 ):
   """An abstract base class for services that handle discoverable pylabrobot type definitions."""
 
-  def __init__(self, db: AsyncSession):
+  def __init__(self, db: AsyncSession) -> None:
     self.db = db
 
   @property

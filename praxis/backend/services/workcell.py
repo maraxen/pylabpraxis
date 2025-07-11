@@ -54,10 +54,10 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       error_message = f"Workcell with name '{obj_in.name}' already exists. Details: {e}"
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e
-    except Exception as e:
+    except Exception:
       logger.exception("Error creating workcell '%s'. Rolling back.", obj_in.name)
       await db.rollback()
-      raise e
+      raise
 
   async def get(self, db: AsyncSession, accession_id: uuid.UUID) -> WorkcellOrm | None:
     """Retrieve a specific workcell by its ID."""
@@ -132,14 +132,14 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       error_message = f"Workcell with name '{name}' already exists. Details: {e}"
       logger.error(error_message, exc_info=True)
       raise ValueError(error_message) from e
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception(
         "Unexpected error updating workcell '%s' (ID: %s). Rolling back.",
         db_obj.name,
         db_obj.accession_id,
       )
-      raise e
+      raise
 
   async def remove(self, db: AsyncSession, *, accession_id: uuid.UUID) -> WorkcellOrm | None:
     """Delete a specific workcell by its ID."""
@@ -165,13 +165,13 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       )
       logger.error(error_message, exc_info=True)
       return None
-    except Exception as e:
+    except Exception:
       await db.rollback()
       logger.exception(
         "Unexpected error deleting workcell ID %s. Rolling back.",
         accession_id,
       )
-      raise e
+      raise
 
   async def read_workcell_state(
     self,
@@ -207,8 +207,9 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     try:
       workcell_orm = await db_session.get(self.model, workcell_accession_id)
       if not workcell_orm:
+        msg = f"WorkcellOrm with ID {workcell_accession_id} not found for state update."
         raise ValueError(
-          f"WorkcellOrm with ID {workcell_accession_id} not found for state update.",
+          msg,
         )
 
       workcell_orm.latest_state_json = state_json

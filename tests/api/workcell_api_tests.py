@@ -9,7 +9,7 @@ INVALID_WORKCELL_ID = "invalid_workcell_id"
 
 # --- CRUD Endpoint Tests ---
 
-def test_create_workcell(client: TestClient, db_session: Session):
+def test_create_workcell(client: TestClient, db_session: Session) -> None:
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
     response = client.post("/api/workcell/", json=workcell_data)
     assert response.status_code == 201
@@ -21,7 +21,7 @@ def test_create_workcell(client: TestClient, db_session: Session):
     response = client.post("/api/workcell/", json=workcell_data)
     assert response.status_code == 400
 
-def test_get_workcell_by_id(client: TestClient, db_session: Session):
+def test_get_workcell_by_id(client: TestClient, db_session: Session) -> None:
     # Create a workcell first
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
     create_response = client.post("/api/workcell/", json=workcell_data)
@@ -33,7 +33,7 @@ def test_get_workcell_by_id(client: TestClient, db_session: Session):
     assert data["name"] == VALID_WORKCELL_NAME
     assert data["accession_id"] == created_workcell_id
 
-def test_get_workcell_by_name(client: TestClient, db_session: Session):
+def test_get_workcell_by_name(client: TestClient, db_session: Session) -> None:
     # Create a workcell first
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
     client.post("/api/workcell/", json=workcell_data)
@@ -43,11 +43,11 @@ def test_get_workcell_by_name(client: TestClient, db_session: Session):
     data = response.json()
     assert data["name"] == VALID_WORKCELL_NAME
 
-def test_get_non_existent_workcell(client: TestClient, db_session: Session):
+def test_get_non_existent_workcell(client: TestClient, db_session: Session) -> None:
     response = client.get(f"/api/workcell/{INVALID_WORKCELL_ID}")
     assert response.status_code == 404
 
-def test_list_workcells(client: TestClient, db_session: Session):
+def test_list_workcells(client: TestClient, db_session: Session) -> None:
     # Create a few workcells
     client.post("/api/workcell/", json={"name": "Workcell 1"})
     client.post("/api/workcell/", json={"name": "Workcell 2"})
@@ -58,7 +58,7 @@ def test_list_workcells(client: TestClient, db_session: Session):
     assert isinstance(data, list)
     assert len(data) >= 2 # May have other workcells from other tests if not properly isolated
 
-def test_update_workcell(client: TestClient, db_session: Session):
+def test_update_workcell(client: TestClient, db_session: Session) -> None:
     # Create a workcell first
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
     create_response = client.post("/api/workcell/", json=workcell_data)
@@ -71,12 +71,12 @@ def test_update_workcell(client: TestClient, db_session: Session):
     assert data["name"] == UPDATED_WORKCELL_NAME
     assert data["description"] == "Updated description"
 
-def test_update_non_existent_workcell(client: TestClient, db_session: Session):
+def test_update_non_existent_workcell(client: TestClient, db_session: Session) -> None:
     update_data = {"name": UPDATED_WORKCELL_NAME}
     response = client.put(f"/api/workcell/{INVALID_WORKCELL_ID}", json=update_data)
     assert response.status_code == 404
 
-def test_delete_workcell(client: TestClient, db_session: Session):
+def test_delete_workcell(client: TestClient, db_session: Session) -> None:
     # Create a workcell first
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
     create_response = client.post("/api/workcell/", json=workcell_data)
@@ -89,6 +89,6 @@ def test_delete_workcell(client: TestClient, db_session: Session):
     response = client.get(f"/api/workcell/{created_workcell_id}")
     assert response.status_code == 404
 
-def test_delete_non_existent_workcell(client: TestClient, db_session: Session):
+def test_delete_non_existent_workcell(client: TestClient, db_session: Session) -> None:
     response = client.delete(f"/api/workcell/{INVALID_WORKCELL_ID}")
     assert response.status_code == 404

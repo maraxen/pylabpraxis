@@ -29,7 +29,7 @@ INVALID_DEVICE_ID = 999
 # --- Pydantic Model Unit Tests ---
 
 
-def test_deck_info_model():
+def test_deck_info_model() -> None:
   data = {
     "id": 1,
     "name": "Main Deck",
@@ -42,7 +42,7 @@ def test_deck_info_model():
   assert deck_info.model_dump()["status"] == "ONLINE"
 
 
-def test_resource_info_model():
+def test_resource_info_model() -> None:
   data = {
     "resource_accession_id": 10,
     "name": "Reagent Plate 1",
@@ -61,7 +61,7 @@ def test_resource_info_model():
   assert resource_info.model_dump()["category"] == "PLATE"
 
 
-def test_position_info_model():
+def test_position_info_model() -> None:
   resource_data = {
     "resource_accession_id": 10,
     "name": "Reagent Plate 1",
@@ -82,7 +82,7 @@ def test_position_info_model():
   assert position_info.model_dump()["resource"]["name"] == "Reagent Plate 1"
 
 
-def test_deck_state_response_model():
+def test_deck_state_response_model() -> None:
   position_data = {"name": "A1", "resource": None}
   data = {
     "deck_accession_id": 1,
@@ -100,7 +100,7 @@ def test_deck_state_response_model():
   assert deck_state.model_dump()["positions"][0]["resource"] is None
 
 
-def test_deck_update_message_model():
+def test_deck_update_message_model() -> None:
   resource_data = {
     "resource_accession_id": 10,
     "name": "Tip Box",
@@ -128,7 +128,7 @@ def test_deck_update_message_model():
   assert deck_update_ts.timestamp == ts
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def setup_basic_machines(db_session: Session) -> None:
   """Sets up a basic DECK machine and a NON-DECK machine."""
   deck_machine = ManagedDeviceOrm(
@@ -152,7 +152,7 @@ def setup_basic_machines(db_session: Session) -> None:
 # --- HTTP Endpoint Tests ---
 
 
-def test_list_available_decks_empty(client: TestClient, db_session: Session):
+def test_list_available_decks_empty(client: TestClient, db_session: Session) -> None:
   """Test GET /api/workcell/decks when no decks are present."""
   response = client.get("/api/workcell/decks")
   assert response.status_code == 200
@@ -160,8 +160,8 @@ def test_list_available_decks_empty(client: TestClient, db_session: Session):
 
 
 def test_list_available_decks_with_data(
-  client: TestClient, db_session: Session, setup_basic_machines: None
-):
+  client: TestClient, db_session: Session, setup_basic_machines: None,
+) -> None:
   """Test GET /api/workcell/decks with a DECK and a NON-DECK machine."""
   response = client.get("/api/workcell/decks")
   assert response.status_code == 200
@@ -176,7 +176,7 @@ def test_list_available_decks_with_data(
   assert deck_info["status"] == "ONLINE"  # Enum .name or .value
 
 
-def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session):
+def test_get_specific_deck_state_not_found(client: TestClient, db_session: Session) -> None:
   """Test GET /api/workcell/decks/{deck_accession_id}/state for a non-existent deck."""
   response = client.get(f"/api/workcell/decks/{INVALID_DEVICE_ID}/state")
   assert response.status_code == 404  # Assuming WorkcellRuntimeError leads to 404 for not found
@@ -184,15 +184,15 @@ def test_get_specific_deck_state_not_found(client: TestClient, db_session: Sessi
 
 
 def test_get_specific_deck_state_not_a_deck(
-  client: TestClient, db_session: Session, setup_basic_machines: None
-):
+  client: TestClient, db_session: Session, setup_basic_machines: None,
+) -> None:
   """Test GET /api/workcell/decks/{deck_accession_id}/state for a machine that is not a DECK."""
   response = client.get(f"/api/workcell/decks/{VALID_NON_DECK_ID}/state")
   assert response.status_code == 404  # As per current error handling
   assert "not categorized as a deck" in response.json()["detail"].lower()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) -> None:
   """Fixture to set up a deck with some resource on it."""
   # Resource Definition
@@ -247,8 +247,8 @@ def setup_deck_with_resource(db_session: Session, setup_basic_machines: None) ->
 
 
 def test_get_specific_deck_state_with_resource(
-  client: TestClient, db_session: Session, setup_deck_with_resource: None
-):
+  client: TestClient, db_session: Session, setup_deck_with_resource: None,
+) -> None:
   """Test GET /api/workcell/decks/{deck_accession_id}/state for a deck with resource."""
   response = client.get(f"/api/workcell/decks/{VALID_DECK_ID}/state")
   assert response.status_code == 200
@@ -293,7 +293,7 @@ def test_websocket_deck_updates_connection_and_broadcast(
   client: TestClient,
   db_session: Session,
   setup_basic_machines: None,
-):
+) -> None:
   """Test WebSocket connection and message broadcast."""
   with client.websocket_connect(f"/ws/decks/{VALID_DECK_ID}/updates") as websocket:
     # Test broadcast
@@ -303,7 +303,7 @@ def test_websocket_deck_updates_connection_and_broadcast(
       "resource_name": "NewTipBox",
     }
     response = client.post(
-      f"/ws/test_broadcast/{VALID_DECK_ID}", json=test_message_payload
+      f"/ws/test_broadcast/{VALID_DECK_ID}", json=test_message_payload,
     )  # Send JSON payload
     assert response.status_code == 200  # Assuming POST request for test broadcast
 
@@ -324,10 +324,10 @@ def test_websocket_deck_updates_connection_and_broadcast(
     websocket.close()
 
 
-def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, db_session: Session):
+def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, db_session: Session) -> None:
   """Test WebSocket connection attempt to an invalid deck_accession_id."""
   with pytest.raises(
-    Exception
+    Exception,
   ) as exc_info:  # Catching generic Exception as TestClient might wrap WebSocketDisconnect
     with client.websocket_connect(f"/ws/decks/{INVALID_DEVICE_ID}/updates") as websocket:
       # We expect this connection to fail and be closed by the server.
@@ -349,8 +349,8 @@ def test_websocket_deck_updates_connection_to_invalid_deck(client: TestClient, d
 
 
 def test_websocket_connection_to_non_deck_machine(
-  client: TestClient, db_session: Session, setup_basic_machines: None
-):
+  client: TestClient, db_session: Session, setup_basic_machines: None,
+) -> None:
   """Test WebSocket connection attempt to a machine that is not a DECK."""
   with pytest.raises(Exception) as exc_info:
     with client.websocket_connect(f"/ws/decks/{VALID_NON_DECK_ID}/updates"):

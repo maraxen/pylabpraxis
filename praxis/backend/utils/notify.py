@@ -4,7 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from ..configure import PraxisConfiguration
+from backend.configure import PraxisConfiguration
 
 CELLPHONE_CARRIER_GATEWAYS = {
   "att": "@txt.att.net",
@@ -37,7 +37,7 @@ CELLPHONE_CARRIER_GATEWAYS = {
 class Notifier:
   """A utility class for sending email and SMS notifications."""
 
-  def __init__(self, smtp_server, smtp_port, smtp_username, smtp_password):
+  def __init__(self, smtp_server, smtp_port, smtp_username, smtp_password) -> None:
     """Initialize the Notifier with SMTP server details."""
     self.smtp_server = smtp_server
     self.smtp_port = smtp_port
@@ -46,7 +46,7 @@ class Notifier:
 
   def send_email(
     self, sender_email: str, recipient_email: str, subject: str, body: str,
-  ):
+  ) -> None:
     """Send an email using the configured SMTP server.
 
     Args:
@@ -66,9 +66,8 @@ class Notifier:
       with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
         server.login(self.smtp_username, self.smtp_password)
         server.send_message(message)
-      print("Email sent!")
-    except Exception as e: # noqa: BLE001
-      print(f"Error sending email: {e}")
+    except Exception: # noqa: BLE001
+      pass
 
   def send_text(
     self,
@@ -77,7 +76,7 @@ class Notifier:
     carrier: str,
     subject: str,
     body: str,
-  ):
+  ) -> None:
     """Send a text message via email-to-SMS gateway.
 
     Args:

@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class GlobalDependencies:
   """A class to hold global dependencies."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.scheduler: ProtocolScheduler | None = None
     self.asset_lock_manager: AssetLockManager | None = None
 
@@ -26,7 +26,7 @@ class GlobalDependencies:
     self,
     db_session_factory,
     config: PraxisConfiguration | None = None,
-  ):
+  ) -> None:
     """Initialize global scheduler components."""
     if config is None:
       config = PraxisConfiguration()
@@ -48,12 +48,14 @@ dependencies = GlobalDependencies()
 def get_scheduler() -> ProtocolScheduler:
   """Get the global scheduler instance."""
   if dependencies.scheduler is None:
-    raise RuntimeError("Scheduler not initialized")
+    msg = "Scheduler not initialized"
+    raise RuntimeError(msg)
   return dependencies.scheduler
 
 
 def get_asset_manager() -> AssetLockManager:
   """Get the global asset manager instance."""
   if dependencies.asset_lock_manager is None:
-    raise RuntimeError("Asset manager not initialized")
+    msg = "Asset manager not initialized"
+    raise RuntimeError(msg)
   return dependencies.asset_lock_manager

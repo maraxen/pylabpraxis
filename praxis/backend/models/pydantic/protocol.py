@@ -19,7 +19,6 @@ Models included:
 - ProtocolParameters
 """
 
-import uuid
 from datetime import datetime
 from typing import Any
 
@@ -31,7 +30,7 @@ from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
 
 
-class ProtocolStartRequest(BaseModel):
+class ProtocolStartRequest(PraxisBaseModel):
   """Represents a request to start a protocol run.
 
   This includes details about the protocol to be run, its parameters,
@@ -183,14 +182,13 @@ class AssetRequirementModel(BaseModel):
   )
 
 
-class FunctionProtocolDefinitionCreate(BaseModel):
+class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   """Represents a detailed definition of a function-based protocol.
 
   This model encapsulates core definition details, source information,
   execution behavior, categorization, and inferred parameters and assets.
   """
 
-  accession_id: uuid.UUID
   name: str
   version: str = "0.1.0"
   description: str | None = None
@@ -216,12 +214,6 @@ class FunctionProtocolDefinitionCreate(BaseModel):
 
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
-
-  class Config:
-    """Pydantic configuration for FunctionProtocolDefinitionCreate."""
-
-    from_attributes = True
-    validate_assignment = True
 
 
 class FunctionProtocolDefinitionUpdate(BaseModel):
@@ -251,9 +243,6 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
 
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate, PraxisBaseModel):
   """Model for API responses for a function protocol definition."""
-
-  class Config(PraxisBaseModel.Config):
-    """Pydantic configuration for FunctionProtocolDefinitionResponse."""
 
 
 class ProtocolParameters(BaseModel):
@@ -288,8 +277,7 @@ class ProtocolDefinitionFilters(BaseModel):
 class ProtocolRunBase(BaseModel):
   """Base model for a protocol run."""
 
-  top_level_protocol_definition_accession_id: UUID7
-  status: ProtocolRunStatusEnum = ProtocolRunStatusEnum.PENDING
+  status: ProtocolRunStatusEnum | None = None
   start_time: datetime | None = None
   end_time: datetime | None = None
   input_parameters_json: dict[str, Any] | None = None
@@ -302,22 +290,14 @@ class ProtocolRunBase(BaseModel):
   previous_accession_id: UUID7 | None = None
 
 
-class ProtocolRunCreate(ProtocolRunBase):
+class ProtocolRunCreate(ProtocolRunBase, PraxisBaseModel):
   """Model for creating a new protocol run."""
 
+  top_level_protocol_definition_accession_id: UUID7
 
-class ProtocolRunUpdate(BaseModel):
+
+class ProtocolRunUpdate(ProtocolRunBase):
   """Model for updating a protocol run."""
-
-  status: ProtocolRunStatusEnum | None = None
-  start_time: datetime | None = None
-  end_time: datetime | None = None
-  input_parameters_json: dict[str, Any] | None = None
-  resolved_assets_json: dict[str, Any] | None = None
-  output_data_json: dict[str, Any] | None = None
-  initial_state_json: dict[str, Any] | None = None
-  final_state_json: dict[str, Any] | None = None
-  data_directory_path: str | None = None
 
 
 class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
@@ -330,11 +310,6 @@ class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
 class FunctionCallLogBase(BaseModel):
   """Base model for a function call log."""
 
-  protocol_run_accession_id: UUID7
-  sequence_in_run: int
-  function_protocol_definition_accession_id: UUID7
-  parent_function_call_log_accession_id: UUID7 | None = None
-  start_time: datetime
   end_time: datetime | None = None
   input_args_json: dict[str, Any] | None = None
   return_value_json: dict[str, Any] | None = None
@@ -343,21 +318,21 @@ class FunctionCallLogBase(BaseModel):
   error_traceback_text: str | None = None
 
 
-class FunctionCallLogCreate(FunctionCallLogBase):
+class FunctionCallLogCreate(FunctionCallLogBase, PraxisBaseModel):
   """Model for creating a new function call log."""
 
+  parent_function_call_log_accession_id: UUID7 | None = None
+  start_time: datetime
+  protocol_run_accession_id: UUID7
+  sequence_in_run: int
+  function_protocol_definition_accession_id: UUID7
 
-class FunctionCallLogUpdate(BaseModel):
+
+class FunctionCallLogUpdate(FunctionCallLogBase):
   """Model for updating a function call log."""
 
-  end_time: datetime | None = None
-  return_value_json: dict[str, Any] | None = None
-  status: FunctionCallStatusEnum | None = None
-  error_message_text: str | None = None
-  error_traceback_text: str | None = None
 
-
-class FunctionCallLogResponse(FunctionCallLogBase, PraxisBaseModel):
+class FunctionCallLogResponse(FunctionCallLogCreate):
   """Model for API responses for a function call log."""
 
   class Config(PraxisBaseModel.Config):

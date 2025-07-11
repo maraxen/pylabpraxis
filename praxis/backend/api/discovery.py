@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.services.discovery_service import DiscoveryService
 from praxis.backend.utils.db import get_async_db_session
+
+if TYPE_CHECKING:
+  from praxis.backend.services.discovery_service import DiscoveryService
 
 router = APIRouter()
 

@@ -1,5 +1,4 @@
-"""Placeholder test file for praxis/backend/models/filters.py
-"""
+"""Placeholder test file for praxis/backend/models/filters.py."""
 
-def test_placeholder():
+def test_placeholder() -> None:
     assert True

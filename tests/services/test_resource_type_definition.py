@@ -41,7 +41,7 @@ pytestmark = pytest.mark.asyncio
 class TestResourceDefinitionService:
   """Test suite for the Resource Definition service layer."""
 
-  async def test_create_and_read_resource_definition(self, db: AsyncSession):
+  async def test_create_and_read_resource_definition(self, db: AsyncSession) -> None:
     """Test creating a resource definition and reading it back by name and FQN."""
     name = f"plate_96_deep_well_{uuid.uuid4()}"
     fqn = f"pylabrobot.resources.Plate.{name}"
@@ -74,7 +74,7 @@ class TestResourceDefinitionService:
     self,
     db: AsyncSession,
     existing_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test that creating a definition with a duplicate name raises ValueError."""
     with pytest.raises(ValueError, match="already exists"):
       await create_resource_definition(
@@ -87,7 +87,7 @@ class TestResourceDefinitionService:
     self,
     db: AsyncSession,
     existing_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test updating various fields of a resource definition."""
     new_description = "An updated description for this tip rack."
     new_details = {"tip_length": 95.5}
@@ -107,7 +107,7 @@ class TestResourceDefinitionService:
     assert updated_def.plr_definition_details_json is not None
     assert updated_def.plr_definition_details_json.get("tip_length") == 95.5
 
-  async def test_update_non_existent_definition_fails(self, db: AsyncSession):
+  async def test_update_non_existent_definition_fails(self, db: AsyncSession) -> None:
     """Test that updating a non-existent definition raises ValueError."""
     with pytest.raises(ValueError, match="not found for update"):
       await update_resource_definition(
@@ -120,7 +120,7 @@ class TestResourceDefinitionService:
     self,
     db: AsyncSession,
     existing_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test the filtering capabilities of the read_resources_definitions function."""
     # Create another definition for robust filtering
     await create_resource_definition(
@@ -150,7 +150,7 @@ class TestResourceDefinitionService:
     all_defs = await read_resources_definitions(db, limit=1)
     assert len(all_defs) == 1
 
-  async def test_delete_resource_definition_success(self, db: AsyncSession):
+  async def test_delete_resource_definition_success(self, db: AsyncSession) -> None:
     """Test successfully deleting an unused resource definition."""
     def_to_delete = await create_resource_definition(
       db,
@@ -168,7 +168,7 @@ class TestResourceDefinitionService:
     self,
     db: AsyncSession,
     existing_def: ResourceDefinitionOrm,
-  ):
+  ) -> None:
     """Test that deleting a definition fails if it's used by a resource instance."""
     # Create a resource instance that uses the definition
     await create_resource(

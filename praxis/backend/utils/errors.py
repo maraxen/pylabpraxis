@@ -9,7 +9,7 @@ class PraxisError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the PraxisError.
 
     Args:
@@ -32,7 +32,7 @@ class OrchestratorError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the OrchestratorError.
 
     Args:
@@ -55,7 +55,7 @@ class DataError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the DataError.
 
     Args:
@@ -78,7 +78,7 @@ class ModelError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the ModelError.
 
     Args:
@@ -101,7 +101,7 @@ class AssetAcquisitionError(RuntimeError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the AssetAcquisitionError.
 
     Args:
@@ -124,7 +124,7 @@ class AssetReleaseError(RuntimeError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the AssetReleaseError.
 
     Args:
@@ -147,7 +147,7 @@ class ProtocolCancelledError(Exception):
 
   """
 
-  def __init__(self, message: str = "Protocol run was cancelled."):
+  def __init__(self, message: str = "Protocol run was cancelled.") -> None:
     """Initialize a new instance of the ProtocolCancelledError.
 
     Args:
@@ -171,7 +171,7 @@ class WorkcellRuntimeError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the WorkcellRuntimeError.
 
     Args:
@@ -189,7 +189,7 @@ class WorkcellRuntimeError(Exception):
 class PylabRobotError(PraxisError):
   """Base exception for PyLabRobot-related errors within Praxis."""
 
-  def __init__(self, message: str, original_plr_exception: Exception | None = None):
+  def __init__(self, message: str, original_plr_exception: Exception | None = None) -> None:
     """Initialize a new instance of the PylabRobotError.
 
     Args:
@@ -210,7 +210,7 @@ class PyLabRobotVolumeError(PylabRobotError):
     message="Too little liquid for transfer.",
     details=None,
     original_plr_exception: Exception | None = None,
-  ):
+  ) -> None:
     """Initialize a new instance of the PyLabRobotVolumeRelatedError.
 
     Args:
@@ -231,7 +231,7 @@ class PyLabRobotGenericError(PylabRobotError):
     self,
     message="A PyLabRobot operation failed.",
     original_plr_exception: Exception | None = None,
-  ):
+  ) -> None:
     """Initialize a new instance of the PyLabRobotGenericError."""
     super().__init__(message, original_plr_exception)
 
@@ -244,7 +244,7 @@ class PraxisAPIError(PraxisError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the PraxisAPIError.
 
     Args:
