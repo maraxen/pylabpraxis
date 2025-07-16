@@ -30,7 +30,6 @@ class ResourceBase(AssetBase):
   parent_accession_id: UUID7 | None = None
   plr_state: dict | None = None
   plr_definition: dict | None = None
-  properties_json: dict | None = None
   children: list["ResourceBase"] = Field(
     default_factory=list,
     description="List of child resources associated with this resource.",

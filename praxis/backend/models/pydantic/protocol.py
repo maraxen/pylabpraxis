@@ -38,7 +38,6 @@ class ProtocolStartRequest(PraxisBaseModel):
   """
 
   protocol_class: str
-  name: str
   description: str | None = None
   parameters: dict[str, Any] | None = None
   assets: dict[str, str] | None = None
@@ -189,7 +188,6 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   execution behavior, categorization, and inferred parameters and assets.
   """
 
-  name: str
   version: str = "0.1.0"
   description: str | None = None
 

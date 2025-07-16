@@ -29,6 +29,17 @@ from praxis.backend.utils.db import (
 
 logger = logging.getLogger(__name__)
 
+def raise_connection_error(
+  msg: str,
+  last_error: Exception | None = None,
+) -> ConnectionError:
+  """Raise a connection error with a message and optional last error."""
+  if last_error:
+    logger.error("%s Last error: %s", msg, last_error)
+  else:
+    logger.error(msg)
+  return ConnectionError(msg)
+
 
 class PraxisDBService:
   """Provides a singleton service for Praxis database interactions.
@@ -44,7 +55,7 @@ class PraxisDBService:
   _max_retries = 3
   _retry_delay = 1  # seconds
 
-  def __new__(cls, *args, **kwargs):  # type: ignore
+  def __new__(cls, *_args: Any, **_kwargs: Any) -> "PraxisDBService":  # noqa: ANN401
     """Implement the singleton pattern for PraxisDBService."""
     if cls._instance is None:
       cls._instance = super().__new__(cls)
@@ -56,7 +67,7 @@ class PraxisDBService:
     keycloak_dsn: str | None = None,
     min_kc_pool_size: int = 5,
     max_kc_pool_size: int = 10,
-  ):
+  ) -> "PraxisDBService":
     """Initialize the PraxisDBService, including Keycloak database connection.
 
     This method sets up the singleton instance and, if a `keycloak_dsn` is
@@ -101,7 +112,7 @@ class PraxisDBService:
 
       while retries < cls._max_retries:
         try:
-          if not cls._keycloak_pool or cls._keycloak_pool._closed:
+          if not cls._keycloak_pool or cls._keycloak_pool._closed:  # noqa: SLF001
             logger.info(
               "Attempting to connect to Keycloak database: %s",
               keycloak_dsn.split("@")[-1],
@@ -113,11 +124,15 @@ class PraxisDBService:
               command_timeout=60,
               timeout=10.0,
             )
-            assert (
-              cls._keycloak_pool is not None
-            ), "Failed to create Keycloak database pool"
-            async with cls._keycloak_pool.acquire() as conn:  # type: ignore
-              await conn.execute("SELECT 1")  # type: ignore
+            if cls._keycloak_pool is None:
+              error_message = "Failed to create Keycloak database pool."
+              raise_connection_error(
+                error_message,
+                last_error,
+              )
+
+            async with cls._keycloak_pool.acquire() as conn:  # type: ignore[optional]
+              await conn.execute("SELECT 1")
             logger.info("Successfully connected to Keycloak database.")
             break
         except (ConnectionRefusedError, asyncpg.PostgresError, OSError) as e:
@@ -411,9 +426,10 @@ def _get_keycloak_dsn_from_config() -> str | None:
       dbname = os.getenv("KEYCLOAK_DB_NAME", config.get("keycloak_database", "dbname"))
       dsn = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
       logger.info("Successfully retrieved Keycloak DSN from config.")
-      return dsn
     except Exception as e:
       logger.exception("Error reading Keycloak DSN from praxis.ini: %s", e)
       return None
+    else:
+      return dsn
   logger.info("Keycloak database section not found in praxis.ini.")
   return None

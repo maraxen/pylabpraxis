@@ -1,6 +1,6 @@
 """Base model for CRUD operations specifically as they relate to PyLabRobot type definitions."""
 
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
@@ -60,7 +60,7 @@ class PLRTypeCRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Get multiple objects with filtering, sorting, and pagination."""
     statement = select(self.model)
     if filters.search_filters:
-      statement = apply_search_filters(statement, cast("Base", self.model), filters)
+      statement = apply_search_filters(statement, self.model, filters)
       statement = apply_date_range_filters(
         statement,
         filters,
@@ -72,8 +72,8 @@ class PLRTypeCRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model.properties_json,
       )
     if filters.sort_by:
-      statement = apply_sorting(statement, cast("Base", self.model), filters.sort_by)
-    statement = apply_specific_id_filters(statement, filters, cast("Base", self.model))
+      statement = apply_sorting(statement, self.model, filters.sort_by)
+    statement = apply_specific_id_filters(statement, filters, self.model)
     statement = apply_pagination(statement, filters)
     result = await db.execute(statement)
     return list(result.scalars().all())

@@ -82,7 +82,7 @@ class DeckOrm(ResourceOrm):
     kw_only=True,
   )
 
-  machine_id: Mapped[uuid.UUID | None] = mapped_column(
+  parent_machine_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("machines.accession_id"),
     nullable=True,
@@ -90,11 +90,12 @@ class DeckOrm(ResourceOrm):
     comment="Foreign key to the machine this deck is part of.",
     default=None,
   )
-  machine: Mapped["MachineOrm | None"] = relationship(
+  parent_machine: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="deck",
     comment="Relationship to the parent machine.",
     uselist=False,
+    foreign_keys=[parent_machine_accession_id],
     default=None,
   )
 
@@ -105,13 +106,16 @@ class DeckOrm(ResourceOrm):
     comment="Foreign key to the deck type definition.",
     kw_only=True,
   )
+
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
     comment="Relationship to the deck's type definition.",
     uselist=False,
-    kw_only=True,
-  )
+    foreign_keys=[deck_type_id],
+    init=False,
+    )
+
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
     back_populates="deck",
@@ -122,8 +126,9 @@ class DeckOrm(ResourceOrm):
     "ResourceOrm",
     back_populates="deck_counterpart",
     uselist=False,
-    default=None,
-  )
+    foreign_keys=[accession_id],
+    init=False,
+    )
   resources: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="deck",

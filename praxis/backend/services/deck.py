@@ -6,11 +6,9 @@ functions to create, read, update, and delete decks.
 """
 
 import uuid
-from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
@@ -25,10 +23,8 @@ from praxis.backend.services.utils.query_builder import (
   apply_property_filters,
   apply_specific_id_filters,
 )
+from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger
-
-if TYPE_CHECKING:
-  from praxis.backend.utils.db import Base
 
 logger = get_logger(__name__)
 
@@ -38,6 +34,7 @@ UUID = uuid.UUID
 class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
   """Service for deck-related operations."""
 
+  @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: DeckCreate) -> DeckOrm:
     """Create a new deck."""
     logger.info(
@@ -53,28 +50,13 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       deck_orm.plr_state = obj_in.plr_state
 
     db.add(deck_orm)
-
-    try:
-      await db.commit()
-      await db.refresh(deck_orm)
-      logger.info(
-        "Successfully created deck '%s' with ID %s.",
-        deck_orm.name,
-        deck_orm.accession_id,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = f"Deck with name '{obj_in.name}' already exists. Details: {e}"
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception:  # Catch all for truly unexpected errors
-      logger.exception(
-        "Error creating deck '%s'. Rolling back.",
-        obj_in.name,
-      )
-      await db.rollback()
-      raise
-
+    await db.flush()
+    await db.refresh(deck_orm)
+    logger.info(
+      "Successfully created deck '%s' with ID %s.",
+      deck_orm.name,
+      deck_orm.accession_id,
+    )
     return deck_orm
 
   async def get(self, db: AsyncSession, accession_id: str | UUID) -> DeckOrm | None:
@@ -126,8 +108,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     if conditions:
       stmt = stmt.filter(and_(*conditions))
 
-    # Apply generic filters from query_builder
-    stmt = apply_specific_id_filters(stmt, filters, cast("Base", self.model))
+    stmt = apply_specific_id_filters(stmt, filters, self.model)
     stmt = apply_date_range_filters(stmt, filters, DeckOrm.created_at)
     stmt = apply_property_filters(
       stmt,
@@ -143,6 +124,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     logger.info("Found %s decks.", len(decks))
     return decks
 
+  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
@@ -162,29 +144,16 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     if "plr_state" in update_data:
       flag_modified(db_obj, "plr_state")
 
-    try:
-      await db.commit()
-      await db.refresh(db_obj)
-      logger.info(
-        "Successfully updated deck ID %s: '%s'.",
-        db_obj.accession_id,
-        db_obj.name,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = f"Integrity error while updating deck ID {db_obj.accession_id}. Details: {e}"
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception:  # Catch all for truly unexpected errors
-      await db.rollback()
-      logger.exception(
-        "Unexpected error updating deck ID %s. Rolling back.",
-        db_obj.accession_id,
-      )
-      raise
-
+    await db.flush()
+    await db.refresh(db_obj)
+    logger.info(
+      "Successfully updated deck ID %s: '%s'.",
+      db_obj.accession_id,
+      db_obj.name,
+    )
     return db_obj
 
+  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: str | UUID) -> DeckOrm | None:
     """Delete a specific deck by its ID."""
     logger.info("Attempting to delete deck with ID: %s.", accession_id)
@@ -193,31 +162,13 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       logger.warning("Deck with ID %s not found for deletion.", accession_id)
       return None
 
-    try:
-      await db.delete(deck_orm)
-      await db.commit()
-      logger.info(
-        "Successfully deleted deck ID %s: '%s'.",
-        accession_id,
-        deck_orm.name,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = (
-        f"Integrity error deleting deck ID {accession_id}. "
-        f"This might be due to foreign key constraints. Details: {e}"
-      )
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception:  # Catch all for truly unexpected errors
-      await db.rollback()
-      logger.exception(
-        "Unexpected error deleting deck ID %s. Rolling back.",
-        accession_id,
-      )
-      raise
-    else:
-      return deck_orm
+    await db.delete(deck_orm)
+    logger.info(
+      "Successfully deleted deck ID %s: '%s'.",
+      accession_id,
+      deck_orm.name,
+    )
+    return deck_orm
 
   async def get_all_decks(self, db: AsyncSession) -> list[DeckOrm]:
     """Retrieve all decks from the database."""

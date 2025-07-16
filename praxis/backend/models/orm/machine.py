@@ -66,13 +66,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=MachineCategoryEnum.UNKNOWN,
     comment="Category of the machine, e.g., liquid handler, centrifuge, etc.",
   )
-  is_consumable: Mapped[bool] = mapped_column(Boolean, default=False)
-  nominal_volume_ul: Mapped[float | None] = mapped_column(
-    Float,
-    nullable=True,
-    default=None,
-    comment="Nominal volume in microliters, if applicable.",
-  )
   material: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
@@ -126,15 +119,13 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=None,
   )
 
-  resource_list: Mapped[list["ResourceOrm"]] = relationship(
+  resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="resource_definition",
     cascade="all, delete-orphan",
     comment="List of all physical resources defined by this definition.",
     default_factory=list,
   )
-
-  is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
 
   resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -147,14 +138,12 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
   resource_definition: Mapped["ResourceDefinitionOrm | None"] = relationship(
     "ResourceDefinitionOrm",
     back_populates="machine_definition",
+    foreign_keys=[resource_definition_accession_id],
     default=None,
-  )
+    comment="Resource definition associated with this machine, if applicable.",
+    init=False,
+    )
 
-  has_deck: Mapped[bool] = mapped_column(
-    Boolean,
-    default=False,
-    comment="If True, this machine definition includes a deck.",
-  )
 
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -169,6 +158,9 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     back_populates="machine_definition",
     default=None,
     comment="Deck definition associated with this machine, if applicable.",
+    foreign_keys=[deck_definition_accession_id],
+    uselist=False,
+    init=False,
   )
   setup_method_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -199,7 +191,6 @@ class MachineOrm(AssetOrm):
     ForeignKey("assets.accession_id"),
     primary_key=True,
     comment="Unique identifier for the machine, derived from the Asset base class.",
-    kw_only=True,
   )
 
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(
@@ -265,17 +256,6 @@ class MachineOrm(AssetOrm):
     comment="If True, this machine is a simulation override for testing purposes.",
   )
 
-  has_deck_child: Mapped[bool] = mapped_column(
-    Boolean,
-    default=False,
-    comment="Indicates if this machine has a deck resource as a child.",
-  )
-  has_resource_child: Mapped[bool] = mapped_column(
-    Boolean,
-    default=False,
-    comment="Indicates if this machine has a resource child.",
-  )
-
   workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("workcells.accession_id"),
@@ -288,13 +268,6 @@ class MachineOrm(AssetOrm):
     "WorkcellOrm",
     back_populates="machines",
     default=None,
-  )
-
-  # If this machine is also a resource (e.g., a shaker that can hold a plate)
-  is_resource: Mapped[bool] = mapped_column(
-    Boolean,
-    default=False,
-    comment="If True, this machine is also a resource that can be used in protocols.",
   )
   resource_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -310,15 +283,35 @@ class MachineOrm(AssetOrm):
     foreign_keys=[resource_counterpart_accession_id],
     default=None,
     comment="Resource counterpart of this machine, if applicable.",
+    init=False,
+  )
+
+  deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("deck_catalog.accession_id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the deck this machine has, if applicable.",
+    default=None,
+  )
+
+  deck_child_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("deck_definition_catalog.accession_id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the deck definition this machine uses, if applicable.",
+    default=None,
   )
 
   # If this machine has a deck (e.g., a liquid handler)
-  deck: Mapped["DeckOrm | None"] = relationship(
-    "DeckOrm",
+  deck_child_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
+    "DeckDefinitionOrm",
     back_populates="machine",
     uselist=False,
     default=None,
     comment="Deck associated with this machine, if applicable.",
+    foreign_keys=[deck_child_definition_accession_id],
   )
 
   # Resources located on/in this machine
@@ -345,12 +338,14 @@ class MachineOrm(AssetOrm):
     comment="Foreign key to the current protocol run this machine is executing, if applicable.",
     default=None,
   )
+
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
     back_populates="machine",
     cascade="all, delete-orphan",
     default_factory=list,
   )
+
   decks: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
     back_populates="machine",

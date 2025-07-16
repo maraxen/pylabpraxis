@@ -15,7 +15,7 @@ class UserBase(BaseModel):
   username: str = Field(description="The unique name of the user.")
   email: str = Field(description="The user's email address.")
   full_name: str | None = Field(None, description="The user's full name.")
-  is_active: bool = Field(True, description="Whether the user is active.")
+  is_active: bool = Field(default=True, description="Whether the user is active.")
 
 
 class UserCreate(UserBase):

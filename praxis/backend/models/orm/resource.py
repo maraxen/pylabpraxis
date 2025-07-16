@@ -135,7 +135,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     default_factory=list,
   )
 
-  is_machine: Mapped[bool] = mapped_column(Boolean, default=False)
 
   machine_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -161,6 +160,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     foreign_keys=[machine_definition_accession_id],
     comment="Machine definition associated with this resource, if applicable.",
     default=None,
+    init=False,
   )
   deck_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
     "DeckDefinitionOrm",
@@ -170,6 +170,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Deck definition associated with this resource, if applicable.",
     nullable=True,
     default=None,
+    init=False,
   )
 
 
@@ -208,12 +209,26 @@ class ResourceOrm(AssetOrm):
     uselist=False,
     comment="Parent resource in a hierarchical structure, if applicable.",
     default=None,
+    init=False,
   )
+
+  child_accession_ids: Mapped[list[uuid.UUID]] = mapped_column(
+    UUID,
+    ForeignKey("resources.accession_id"),
+    nullable=True,
+    index=True,
+    comment="List of child resource accession IDs, if this resource has children.",
+    default_factory=list,
+  )
+
   children: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="parent",
     cascade="all, delete-orphan",
     default_factory=list,
+    comment="List of child resources under this resource, if applicable.",
+    uselist=True,
+    init=False,
   )
 
   # Definition
@@ -225,10 +240,14 @@ class ResourceOrm(AssetOrm):
     comment="Foreign key to the resource definition catalog.",
     default=None,
   )
+
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
     "ResourceDefinitionOrm",
     back_populates="resource_list",
     default=None,
+    uselist=False,
+    foreign_keys=[resource_definition_accession_id],
+    init=False,
   )
 
   # State
@@ -250,11 +269,19 @@ class ResourceOrm(AssetOrm):
     "MachineOrm",
     back_populates="resource_counterpart",
     default=None,
+    uselist=False,
+    comment="Machine counterpart of this resource, if applicable.",
+    foreign_keys=[accession_id],
+    init=False,
   )
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
     back_populates="resource_counterpart",
     default=None,
+    uselist=False,
+    comment="Deck counterpart of this resource, if applicable.",
+    foreign_keys=[accession_id],
+    init=False,
   )
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
@@ -268,12 +295,38 @@ class ResourceOrm(AssetOrm):
     cascade="all, delete-orphan",
     default_factory=list,
   )
+
+  machine_location_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the machine where this resource is currently located, if applicable.",
+    default=None,
+  )
+
   location_machine: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="located_resource",
     uselist=False,
     default=None,
+    foreign_keys=[machine_location_accession_id],
+    init=False,
+    comment="Machine where this resource is currently located, if applicable.",
   )
+
+  deck_location_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("decks.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the deck this resource is located on, if applicable.",
+    default=None,
+  )
+
+
+
+
   workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("workcells.accession_id"),
@@ -282,16 +335,24 @@ class ResourceOrm(AssetOrm):
     comment="Foreign key to the workcell this resource belongs to, if applicable.",
     default=None,
   )
+
   workcell: Mapped["WorkcellOrm | None"] = relationship(
     "WorkcellOrm",
     back_populates="resources",
     uselist=False,
+    foreign_keys=[workcell_accession_id],
+    comment="Workcell this resource belongs to, if applicable.",
+    init=False,
     default=None,
   )
+
   location_deck: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
     back_populates="resources",
     uselist=False,
+    foreign_keys=[deck_location_accession_id],
+    comment="Deck this resource belongs to, if applicable.",
+    init=False,
     default=None,
   )
 

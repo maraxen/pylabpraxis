@@ -7,11 +7,10 @@ attribution, spatial context, and data visualization.
 
 import datetime
 from functools import partial
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -27,10 +26,8 @@ from praxis.backend.services.utils.query_builder import (
   apply_pagination,
   apply_specific_id_filters,
 )
+from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
-
-if TYPE_CHECKING:
-  from praxis.backend.utils.db import Base
 
 logger = get_logger(__name__)
 
@@ -52,10 +49,7 @@ class FunctionDataOutputCRUDService(
 ):
   """CRUD service for function data outputs."""
 
-  @log_data_output_errors(
-    prefix="Data Output Service: Error creating function data output",
-    suffix="Please ensure all required parameters are provided and valid.",
-  )
+  @handle_db_transaction
   async def create(
     self,
     db: AsyncSession,
@@ -74,26 +68,14 @@ class FunctionDataOutputCRUDService(
     )
 
     db.add(data_output_orm)
-
-    try:
-      await db.commit()
-      await db.refresh(data_output_orm)
-      logger.info(
-        "%s Successfully created function data output (ID: %s).",
-        log_prefix,
-        data_output_orm.accession_id,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = f"{log_prefix} Database integrity error: {e}"
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception:
-      await db.rollback()
-      logger.exception("%s Unexpected error during creation.", log_prefix)
-      raise
-    else:
-      return data_output_orm
+    await db.flush()
+    await db.refresh(data_output_orm)
+    logger.info(
+      "%s Successfully created function data output (ID: %s).",
+      log_prefix,
+      data_output_orm.accession_id,
+    )
+    return data_output_orm
 
   async def get(
     self,
@@ -134,24 +116,19 @@ class FunctionDataOutputCRUDService(
     if conditions:
       query = query.filter(and_(*conditions))
 
-    # Apply generic filters from query_builder
-    query = apply_specific_id_filters(query, filters, cast("Base", self.model))
+    query = apply_specific_id_filters(query, filters, self.model)
     query = apply_date_range_filters(
       query,
       filters,
       self.model.measurement_timestamp,
     )
     query = apply_pagination(query, filters)
-
     query = query.order_by(self.model.measurement_timestamp.desc())
 
     result = await db.execute(query)
     return list(result.scalars().all())
 
-  @log_data_output_errors(
-    prefix="Data Output Service: Error updating function data output",
-    suffix="Please ensure the update parameters are valid.",
-  )
+  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
@@ -163,40 +140,26 @@ class FunctionDataOutputCRUDService(
     log_prefix = f"Data Output (ID: {db_obj.accession_id}):"
     logger.info("%s Updating function data output.", log_prefix)
 
-    # Update only the fields that are provided
     update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
       if hasattr(db_obj, field):
         setattr(db_obj, field, value)
         logger.debug("%s Updated field '%s' to: %s", log_prefix, field, value)
 
-    try:
-      await db.commit()
-      await db.refresh(db_obj)
-      logger.info("%s Successfully updated data output.", log_prefix)
-    except Exception as e:
-      await db.rollback()
-      error_msg = f"Failed to update data output: {e!s}"
-      logger.exception("%s %s", log_prefix, error_msg)
-      raise ValueError(error_msg) from e
-    else:
-      return db_obj
+    await db.flush()
+    await db.refresh(db_obj)
+    logger.info("%s Successfully updated data output.", log_prefix)
+    return db_obj
 
+  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: UUID) -> FunctionDataOutputOrm | None:
     """Delete a function data output record by ID."""
     log_prefix = f"Data Output (ID: {accession_id}):"
     logger.info("%s Deleting function data output.", log_prefix)
 
-    try:
-      data_output_orm = await super().remove(db, accession_id=accession_id)
-      if not data_output_orm:
-        logger.warning("%s Data output not found for deletion.", log_prefix)
-        return None
-      logger.info("%s Successfully deleted data output.", log_prefix)
-      return data_output_orm
-
-    except Exception as e:
-      await db.rollback()
-      error_msg = f"Failed to delete data output: {e!s}"
-      logger.exception("%s %s", log_prefix, error_msg)
-      raise ValueError(error_msg) from e
+    data_output_orm = await super().remove(db, accession_id=accession_id)
+    if not data_output_orm:
+      logger.warning("%s Data output not found for deletion.", log_prefix)
+      return None
+    logger.info("%s Successfully deleted data output.", log_prefix)
+    return data_output_orm

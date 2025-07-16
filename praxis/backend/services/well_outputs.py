@@ -8,20 +8,21 @@ attribution, spatial context, and data visualization.
 from functools import partial
 from uuid import UUID
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from praxis.backend.models.orm.outputs import (
-  DataOutputTypeEnum,
-  FunctionDataOutputOrm,
   WellDataOutputOrm,
 )
+from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.models.pydantic.outputs import (
   WellDataOutputCreate,
   WellDataOutputUpdate,
 )
 from praxis.backend.services.utils.crud_base import CRUDBase
+from praxis.backend.services.utils.query_builder import apply_search_filters
+from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 from .plate_parsing import (
@@ -46,6 +47,7 @@ class WellDataOutputCRUDService(
 ):
   """CRUD service for well data outputs."""
 
+  @handle_db_transaction
   async def create(
     self,
     db: AsyncSession,
@@ -58,7 +60,6 @@ class WellDataOutputCRUDService(
     )
     logger.info("%s Creating well data output.", log_prefix)
 
-    # Parse well name to get row/column indices
     try:
       row_idx, col_idx = parse_well_name(obj_in.well_name)
     except ValueError as e:
@@ -66,15 +67,14 @@ class WellDataOutputCRUDService(
       logger.exception("%s %s", log_prefix, error_msg)
       raise ValueError(error_msg) from e
 
-    # Get plate dimensions for well index calculation
     plate_dimensions = await read_plate_dimensions(
       db,
       obj_in.plate_resource_accession_id,
     )
-    num_cols = plate_dimensions["columns"] if plate_dimensions else 12  # Default fallback
+    num_cols = plate_dimensions["columns"] if plate_dimensions else 12
 
-    # Create the ORM instance
     well_output = WellDataOutputOrm(
+      name=obj_in.well_name + str(obj_in.function_data_output_accession_id),
       function_data_output_accession_id=obj_in.function_data_output_accession_id,
       plate_resource_accession_id=obj_in.plate_resource_accession_id,
       well_name=obj_in.well_name,
@@ -85,21 +85,14 @@ class WellDataOutputCRUDService(
     )
 
     db.add(well_output)
-
-    try:
-      await db.commit()
-      await db.refresh(well_output)
-      logger.info(
-        "%s Successfully created well data output (ID: %s).",
-        log_prefix,
-        well_output.accession_id,
-      )
-      return well_output
-    except Exception as e:
-      await db.rollback()
-      error_msg = f"Failed to create well data output: {e!s}"
-      logger.exception("%s %s", log_prefix, error_msg)
-      raise ValueError(error_msg) from e
+    await db.flush()
+    await db.refresh(well_output)
+    logger.info(
+      "%s Successfully created well data output (ID: %s).",
+      log_prefix,
+      well_output.accession_id,
+    )
+    return well_output
 
   async def get(
     self,
@@ -126,14 +119,7 @@ class WellDataOutputCRUDService(
     self,
     db: AsyncSession,
     *,
-    plate_resource_id: UUID | None = None,
-    function_call_id: UUID | None = None,
-    protocol_run_id: UUID | None = None,
-    data_type: DataOutputTypeEnum | None = None,
-    well_row: int | None = None,
-    well_column: int | None = None,
-    skip: int = 0,
-    limit: int = 100,
+    filters: SearchFilters,
   ) -> list[WellDataOutputOrm]:
     """List well data outputs with filtering."""
     log_prefix = "Well Data Outputs:"
@@ -144,48 +130,12 @@ class WellDataOutputCRUDService(
       joinedload(self.model.plate_resource),
     )
 
-    # Build filters
-    conditions = []
-
-    if plate_resource_id:
-      conditions.append(
-        self.model.plate_resource_accession_id == plate_resource_id,
-      )
-
-    if function_call_id or protocol_run_id or data_type:
-      query = query.join(self.model.function_data_output)
-
-      if function_call_id:
-        conditions.append(
-          FunctionDataOutputOrm.function_call_log_accession_id == function_call_id,
-        )
-
-      if protocol_run_id:
-        conditions.append(
-          FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_id,
-        )
-
-      if data_type:
-        conditions.append(FunctionDataOutputOrm.data_type == data_type)
-
-    if well_row is not None:
-      conditions.append(self.model.well_row == well_row)
-
-    if well_column is not None:
-      conditions.append(self.model.well_column == well_column)
-
-    if conditions:
-      query = query.filter(and_(*conditions))
-
-    # Apply sorting and pagination
-    query = (
-      query.order_by(
-        self.model.plate_resource_accession_id,
-        self.model.well_row,
-        self.model.well_column,
-      )
-      .offset(skip)
-      .limit(limit)
+    # Use query builder utilities for filtering and pagination
+    query = apply_search_filters(query, self.model, filters)
+    query = query.order_by(
+      self.model.plate_resource_accession_id,
+      self.model.well_row,
+      self.model.well_column,
     )
 
     result = await db.execute(query)
@@ -197,44 +147,31 @@ class WellDataOutputCRUDService(
     )
     return well_data_list
 
-  @log_well_data_errors(
-    prefix="Data Output Service: Error updating well data output",
-    suffix="Please ensure the update parameters are valid.",
-  )
+  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
     *,
     db_obj: WellDataOutputOrm,
     obj_in: WellDataOutputUpdate,
-  ) -> WellDataOutputOrm | None:
+  ) -> WellDataOutputOrm:
     """Update a well data output."""
     log_prefix = f"Well Data (ID: {db_obj.accession_id}):"
     logger.info("%s Updating well data output.", log_prefix)
 
-    # Update only the fields that are provided
     update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
       if hasattr(db_obj, field):
         setattr(db_obj, field, value)
         logger.debug("%s Updated field '%s' to: %s", log_prefix, field, value)
 
-    try:
-      await db.commit()
-      await db.refresh(db_obj)
-      logger.info("%s Successfully updated well data output.", log_prefix)
-      return db_obj
-    except Exception as e:
-      await db.rollback()
-      error_msg = f"Failed to update well data output: {e!s}"
-      logger.exception("%s %s", log_prefix, error_msg)
-      raise ValueError(error_msg) from e
+    await db.flush()
+    await db.refresh(db_obj)
+    logger.info("%s Successfully updated well data output.", log_prefix)
+    return db_obj
 
-  @log_well_data_errors(
-    prefix="Data Output Service: Error deleting well data output",
-    suffix="Please ensure the well data output exists and can be deleted.",
-  )
-  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> bool:
+  @handle_db_transaction
+  async def remove(self, db: AsyncSession, *, accession_id: UUID) -> WellDataOutputOrm | None:
     """Delete a well data output by ID."""
     log_prefix = f"Well Data (ID: {accession_id}):"
     logger.info("%s Deleting well data output.", log_prefix)
@@ -243,34 +180,23 @@ class WellDataOutputCRUDService(
     well_output = await self.get(db, accession_id=accession_id)
     if not well_output:
       logger.warning("%s Well data output not found for deletion.", log_prefix)
-      return False
+      return None
 
     # Delete the record
     delete_stmt = delete(self.model).where(
       self.model.accession_id == accession_id,
     )
     result = await db.execute(delete_stmt)
-
-    try:
-      await db.commit()
-      deleted_count = result.rowcount
-      logger.info(
-        "%s Successfully deleted well data output (affected rows: %d).",
-        log_prefix,
-        deleted_count,
-      )
-      return deleted_count > 0
-    except Exception as e:
-      await db.rollback()
-      error_msg = f"Failed to delete well data output: {e!s}"
-      logger.exception("%s %s", log_prefix, error_msg)
-      raise ValueError(error_msg) from e
+    deleted_count = result.rowcount
+    logger.info(
+      "%s Successfully deleted well data output (affected rows: %d).",
+      log_prefix,
+      deleted_count,
+    )
+    return well_output
 
 
-@log_well_data_errors(
-  prefix="Data Output Service: Error creating well data outputs",
-  suffix="Please ensure plate and well information is valid.",
-)
+@handle_db_transaction
 async def create_well_data_outputs(
   db: AsyncSession,
   function_data_output_accession_id: UUID,
@@ -281,7 +207,6 @@ async def create_well_data_outputs(
   log_prefix = f"Well Data Outputs (Plate: {plate_resource_accession_id}):"
   logger.info("%s Creating %d well data outputs.", log_prefix, len(well_data))
 
-  # Get plate dimensions for validation
   plate_dimensions = await read_plate_dimensions(
     db,
     plate_resource_accession_id,
@@ -292,7 +217,7 @@ async def create_well_data_outputs(
       "%s Could not determine plate dimensions, using defaults",
       log_prefix,
     )
-    num_cols = 12  # Default fallback
+    num_cols = 12
   else:
     num_cols = plate_dimensions["columns"]
 
@@ -303,6 +228,7 @@ async def create_well_data_outputs(
     row_idx, col_idx = parse_well_name(well_name)
 
     well_output = WellDataOutputOrm(
+      name=well_name + str(function_data_output_accession_id),
       function_data_output_accession_id=function_data_output_accession_id,
       plate_resource_accession_id=plate_resource_accession_id,
       well_name=well_name,
@@ -315,26 +241,20 @@ async def create_well_data_outputs(
     well_outputs.append(well_output)
     db.add(well_output)
 
-  try:
-    await db.commit()
+  await db.flush()
 
-    # Refresh all instances
-    for well_output in well_outputs:
-      await db.refresh(well_output)
+  for well_output in well_outputs:
+    await db.refresh(well_output)
 
-    logger.info(
-      "%s Successfully created %d well data outputs.",
-      log_prefix,
-      len(well_outputs),
-    )
-    return well_outputs
-
-  except Exception:
-    await db.rollback()
-    logger.exception("%s Error creating well data outputs.", log_prefix)
-    raise
+  logger.info(
+    "%s Successfully created %d well data outputs.",
+    log_prefix,
+    len(well_outputs),
+  )
+  return well_outputs
 
 
+@handle_db_transaction
 async def create_well_data_outputs_from_flat_array(
   db: AsyncSession,
   function_data_output_accession_id: UUID,
@@ -373,14 +293,13 @@ async def create_well_data_outputs_from_flat_array(
   well_outputs = []
 
   for idx, value in enumerate(data_array):
-    # Convert flat index to row/column (assuming row-major order)
     row_idx = idx // num_cols
     col_idx = idx % num_cols
 
-    # Generate well name (A1, A2, ..., H12, etc.)
     well_name = f"{chr(ord('A') + row_idx)}{col_idx + 1}"
 
     well_output = WellDataOutputOrm(
+      name=well_name + str(function_data_output_accession_id),
       function_data_output_accession_id=function_data_output_accession_id,
       plate_resource_accession_id=plate_resource_accession_id,
       well_name=well_name,
@@ -393,21 +312,16 @@ async def create_well_data_outputs_from_flat_array(
     well_outputs.append(well_output)
     db.add(well_output)
 
-  try:
-    await db.commit()
+  await db.flush()
 
-    # Refresh all instances
-    for well_output in well_outputs:
-      await db.refresh(well_output)
+  # Refresh all instances
+  for well_output in well_outputs:
+    await db.refresh(well_output)
 
-    logger.info(
-      "%s Successfully created %d well data outputs.",
-      log_prefix,
-      len(well_outputs),
-    )
-    return well_outputs
+  logger.info(
+    "%s Successfully created %d well data outputs.",
+    log_prefix,
+    len(well_outputs),
+  )
+  return well_outputs
 
-  except Exception:
-    await db.rollback()
-    logger.exception("%s Error creating well data outputs.", log_prefix)
-    raise

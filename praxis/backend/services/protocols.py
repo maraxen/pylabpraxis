@@ -16,12 +16,12 @@ import uuid
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import desc, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from praxis.backend.models.orm.protocol import (
   FunctionCallLogOrm,
+  FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
 )
 from praxis.backend.models.pydantic.filters import SearchFilters
@@ -35,6 +35,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
 )
+from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.uuid import uuid7
 
 if TYPE_CHECKING:
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRunUpdate]):
   """Service for protocol run operations."""
 
+  @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
     """Create a new protocol run instance."""
     run_accession_id = uuid7()
@@ -56,39 +58,22 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     )
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     db_protocol_run = self.model(
-      run_accession_id=run_accession_id,
+      name=obj_in.name,
       top_level_protocol_definition_accession_id=(
         obj_in.top_level_protocol_definition_accession_id
       ),
-      status=obj_in.status,
+      status=obj_in.status if obj_in.status else ProtocolRunStatusEnum.PENDING,
       input_parameters_json=(obj_in.input_parameters_json if obj_in.input_parameters_json else {}),
       initial_state_json=(obj_in.initial_state_json if obj_in.initial_state_json else {}),
       start_time=utc_now if obj_in.status != ProtocolRunStatusEnum.PENDING else None,
     )
     db.add(db_protocol_run)
-    try:
-      await db.commit()
-      await db.refresh(db_protocol_run)
-      logger.info(
-        "Successfully created protocol run (ID: %s, GUID: %s).",
-        db_protocol_run.accession_id,
-        db_protocol_run.run_accession_id,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = (
-        f"Integrity error creating protocol run '{run_accession_id}'. This might "
-        f"be due to a duplicate GUID. Details: {e}"
-      )
-      logger.error(error_message, exc_info=True)
-      raise ValueError(error_message) from e
-    except Exception:
-      await db.rollback()
-      logger.exception(
-        "Unexpected error creating protocol run '%s'. Rolling back.",
-        run_accession_id,
-      )
-      raise
+    await db.flush()
+    await db.refresh(db_protocol_run)
+    logger.info(
+      "Successfully created protocol run (ID: %s).",
+      db_protocol_run.accession_id,
+    )
     return db_protocol_run
 
   async def get_multi(
@@ -96,8 +81,8 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     db: AsyncSession,
     *,
     filters: SearchFilters,
-    protocol_definition_accession_id: uuid.UUID | None = None,  # Specific filter
-    protocol_name: str | None = None,  # Specific filter
+    protocol_definition_accession_id: uuid.UUID | None = None,
+    protocol_name: str | None = None,
     status: ProtocolRunStatusEnum | None = None,
   ) -> list[ProtocolRunOrm]:
     """List protocol runs with optional filtering and pagination."""
@@ -130,7 +115,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       stmt = stmt.filter(self.model.status == status)
       logger.debug("Filtering by status: '%s'.", status.name)
 
-    stmt = apply_date_range_filters(stmt, filters, cast("Base", self.model).start_time)
+    stmt = apply_date_range_filters(stmt, filters, cast("Base", self.model).created_at)
     stmt = apply_pagination(stmt, filters)
 
     stmt = stmt.order_by(
@@ -171,7 +156,8 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       logger.info("Protocol run with name '%s' not found.", name)
     return protocol_run
 
-  async def update_protocol_run_status(
+  @handle_db_transaction
+  async def update_protocol_run_status( 
     self,
     db: AsyncSession,
     protocol_run_accession_id: uuid.UUID,
@@ -216,8 +202,8 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
           utc_now,
           new_status.name,
         )
-        if db_protocol_run.start_time and db_protocol_run.end_time:
-          duration = db_protocol_run.end_time - db_protocol_run.start_time
+        if db_protocol_run.start_time is not None and db_protocol_run.end_time is not None:
+          duration = db_protocol_run.end_time - db_protocol_run.start_time  # type: ignore[optional]
           db_protocol_run.completed_duration_ms = int(duration.total_seconds() * 1000)
           logger.debug(
             "Protocol run ID %s duration: %d ms.",
@@ -237,27 +223,19 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
             protocol_run_accession_id,
           )
         if new_status == ProtocolRunStatusEnum.FAILED and error_info:
-          db_protocol_run.output_data_json = error_info  # type: ignore
+          db_protocol_run.output_data_json = error_info
           logger.error(
             "Protocol run ID %s failed with error info: %s",
             protocol_run_accession_id,
             error_info,
           )
-      try:
-        await db.commit()
-        await db.refresh(db_protocol_run)
-        logger.info(
-          "Successfully updated protocol run ID %s status to '%s'.",
-          protocol_run_accession_id,
-          new_status.name,
-        )
-      except Exception:
-        await db.rollback()
-        logger.exception(
-          "Unexpected error updating protocol run ID %s status. Rolling back.",
-          protocol_run_accession_id,
-        )
-        raise
+      await db.flush()
+      await db.refresh(db_protocol_run)
+      logger.info(
+        "Successfully updated protocol run ID %s status to '%s'.",
+        protocol_run_accession_id,
+        new_status.name,
+      )
       return db_protocol_run
     logger.warning(
       "Protocol run ID %s not found for status update.",

@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from collections.abc import ItemsView, KeysView, ValuesView
 from typing import Any, TypeVar
 
 import redis
@@ -79,19 +80,12 @@ class PraxisState:
     if config is None:
       config = PraxisConfiguration()
 
-    if not isinstance(config, PraxisConfiguration):
-      msg = f"config must be an instance of PraxisConfiguration, got {type(config).__name__}."
-      raise TypeError(msg)
     if run_accession_id is None:
       run_accession_id = uuid7()
-    if not isinstance(run_accession_id, uuid.UUID):
-      msg = "run_accession_id must be a valid UUID."
-      raise TypeError(msg)
 
     self.run_accession_id: uuid.UUID = run_accession_id
     self.redis_key: str = f"praxis_state:{self.run_accession_id}"
 
-    # Use provided values or fall back to configuration
     _redis_host = redis_host if redis_host is not None else config.redis_host
     _redis_port = redis_port if redis_port is not None else config.redis_port
     _redis_db = redis_db if redis_db is not None else config.redis_db
@@ -169,7 +163,7 @@ class PraxisState:
       )
       raise
 
-  def __getitem__(self, key: str) -> Any:
+  def __getitem__(self, key: str) -> Any:  # noqa: ANN401
     """Retrieve a value from the state data using the given key."""
     if key not in self._data:
       msg = f"Key '{key}' not found in state data for run {self.run_accession_id}."
@@ -181,11 +175,8 @@ class PraxisState:
     )
     return self._data[key]
 
-  def __setitem__(self, key: str, value: Any) -> None:
+  def __setitem__(self, key: str, value: Any) -> None:  # noqa: ANN401
     """Set a value in the state data using the given key."""
-    if not isinstance(key, str):
-      msg = f"Key must be a string, got {type(key).__name__}."
-      raise TypeError(msg)
     if not key:
       msg = "Key cannot be an empty string."
       raise ValueError(msg)
@@ -205,7 +196,7 @@ class PraxisState:
     del self._data[key]
     self._save_to_redis()
 
-  def set(self, key: str, value: Any) -> None:
+  def set(self, key: str, value: Any) -> None:  # noqa: ANN401
     """Set a value in the state data. Alias for state[key] = value."""
     self.__setitem__(key, value)
 
@@ -219,9 +210,6 @@ class PraxisState:
 
   def update(self, data_dict: dict[str, Any]) -> None:
     """Update the state data with the given dictionary."""
-    if not isinstance(data_dict, dict):
-      msg = f"data_dict must be a dictionary, got {type(data_dict).__name__}"
-      raise TypeError(msg)
     self._data.update(data_dict)
     self._save_to_redis()
 
@@ -249,19 +237,19 @@ class PraxisState:
     """Return the number of items in the state data."""
     return len(self._data)
 
-  def keys(self):
+  def keys(self) -> KeysView:
     """Return the keys of the state data."""
     return self._data.keys()
 
-  def values(self):
+  def values(self) -> ValuesView:
     """Return the values of the state data."""
     return self._data.values()
 
-  def items(self):
+  def items(self) -> ItemsView:
     """Return the items (key-value pairs) of the state data."""
     return self._data.items()
 
-  def __getattr__(self, name: str) -> Any:
+  def __getattr__(self, name: str) -> Any:  # noqa: ANN401
     """Access state data as attributes."""
     if name == "_data":
       if "_data" in self.__dict__:
@@ -277,7 +265,7 @@ class PraxisState:
     )
     raise AttributeError(msg)
 
-  def __setattr__(self, name: str, value: Any) -> None:
+  def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
     """Set state data as attributes."""
     if name in ["run_accession_id", "redis_key", "redis_client", "_data"]:
       super().__setattr__(name, value)

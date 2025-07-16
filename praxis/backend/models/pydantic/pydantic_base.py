@@ -30,6 +30,15 @@ class PraxisBaseModel(BaseModel):
     alias="last_updated",
     description="The time the record was last updated.",
   )
+  name: str = Field(
+    default_factory=lambda: uuid7().hex[:8],
+    description="An optional name for the record.",
+    frozen=True,
+  )
+  properties_json: dict[str, Any] = Field(
+    default_factory=dict,
+    description="Arbitrary metadata associated with the record.",
+  )
 
   def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
     """Set the updated_at field to the current time after model initialization."""

@@ -8,10 +8,14 @@ exclude = ["praxis/backend/commons"]
 
 [lint]
 select = ["ALL"]
+
 # ignore = ["E501"] # Example: ignore line too long for general code
 
 [format]
 indent-style = "space"
+
+[lint.pylint]
+max-args = 8
 
 [lint.pydocstyle]
 # ignore = ["D415"]

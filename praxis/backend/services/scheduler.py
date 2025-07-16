@@ -38,6 +38,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
   apply_pagination,
 )
+from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 from praxis.backend.utils.uuid import uuid7
 
@@ -58,10 +59,7 @@ class ScheduleEntryCRUDService(
 ):
   """CRUD service for schedule entries."""
 
-  @scheduler_service_log(
-    prefix="Schedule Entry Service: Creating schedule entry - ",
-    suffix=" - Ensure the protocol run ID is valid and unique.",
-  )
+  @handle_db_transaction
   async def create(
     self,
     db: AsyncSession,
@@ -97,34 +95,28 @@ class ScheduleEntryCRUDService(
     db.add(schedule_entry)
     logger.info("%s Initialized new schedule entry for creation.", log_prefix)
 
-    try:
-      await db.flush()
-      logger.debug("%s Flushed new schedule entry to get ID.", log_prefix)
+    await db.flush()
+    logger.debug("%s Flushed new schedule entry to get ID.", log_prefix)
 
-      # Log the scheduling event
-      await log_schedule_event(
-        db,
-        schedule_entry.accession_id,
-        ScheduleHistoryEventEnum.SCHEDULE_CREATED,
-        new_status=ScheduleStatusEnum.QUEUED,
-        event_details_json={"priority": schedule_entry.priority},
-      )
+    # Log the scheduling event
+    await log_schedule_event(
+      db,
+      schedule_entry.accession_id,
+      ScheduleHistoryEventEnum.SCHEDULE_CREATED,
+      new_status=ScheduleStatusEnum.QUEUED,
+      event_details_json={"priority": schedule_entry.priority},
+    )
 
-      await db.commit()
-      logger.info(
-        "%s Successfully created schedule entry %s for protocol run %s",
-        log_prefix,
-        schedule_entry.accession_id,
-        schedule_entry.protocol_run_accession_id,
-      )
+    await db.refresh(schedule_entry)
 
-      return schedule_entry
+    logger.info(
+      "%s Successfully created schedule entry %s for protocol run %s",
+      log_prefix,
+      schedule_entry.accession_id,
+      schedule_entry.protocol_run_accession_id,
+    )
 
-    except Exception as exc:
-      await db.rollback()
-      error_message = f"{log_prefix} Failed to create schedule entry: {exc}"
-      logger.error(error_message, exc_info=True)
-      raise Exception(error_message) from exc
+    return schedule_entry
 
   async def get_multi(
     self,
@@ -254,10 +246,7 @@ schedule_entry_service = ScheduleEntryCRUDService(ScheduleEntryOrm)
 # Asset Reservation Services
 
 
-@scheduler_service_log(
-  prefix="Asset Reservation Service: Creating asset reservation - ",
-  suffix=" - Ensure the schedule entry ID is valid.",
-)
+@handle_db_transaction
 async def create_asset_reservation(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,
@@ -292,26 +281,19 @@ async def create_asset_reservation(
   )
   logger.info("%s Initialized new asset reservation for creation.", log_prefix)
 
-  try:
-    db.add(reservation)
-    await db.flush()
-    await db.refresh(reservation)
+  db.add(reservation)
+  await db.flush()
+  await db.refresh(reservation)
 
-    logger.info(
-      "%s Successfully created asset reservation %s for %s:%s",
-      log_prefix,
-      reservation.accession_id,
-      asset_type,
-      asset_name,
-    )
+  logger.info(
+    "%s Successfully created asset reservation %s for %s:%s",
+    log_prefix,
+    reservation.accession_id,
+    asset_type,
+    asset_name,
+  )
 
-    return reservation
-
-  except Exception as exc:
-    await db.rollback()
-    error_message = f"{log_prefix} Failed to create asset reservation: {exc}"
-    logger.error(error_message, exc_info=True)
-    raise Exception(error_message) from exc
+  return reservation
 
 
 async def read_asset_reservation(
@@ -368,6 +350,7 @@ async def list_asset_reservations(
   return list(result.scalars().all())
 
 
+@handle_db_transaction
 async def update_asset_reservation_status(
   db: AsyncSession,
   reservation_accession_id: uuid.UUID,
@@ -400,6 +383,7 @@ async def update_asset_reservation_status(
   return reservation
 
 
+@handle_db_transaction
 async def cleanup_expired_reservations(
   db: AsyncSession,
   current_time: datetime | None = None,
@@ -440,6 +424,7 @@ async def cleanup_expired_reservations(
 # Schedule History Services
 
 
+@handle_db_transaction
 async def log_schedule_event(
   db: AsyncSession,
   schedule_entry_accession_id: uuid.UUID,

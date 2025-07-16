@@ -5,7 +5,7 @@ based on a standardized SearchFilters model, promoting consistency and
 reducing boilerplate code in the service layer.
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy import Select, and_
 from sqlalchemy.orm import InstrumentedAttribute
@@ -15,6 +15,7 @@ from praxis.backend.utils.db import Base
 
 # TODO: determine if these should be sync or async functions.
 
+BaseModel = TypeVar("BaseModel", bound=Base)
 
 def apply_pagination(query: Select, filters: SearchFilters) -> Select:
   """Apply limit and offset for pagination to a SQLAlchemy query.
@@ -108,7 +109,11 @@ def apply_property_filters(
   return query
 
 
-def apply_specific_id_filters(query: Select, filters: SearchFilters, orm_model: Base) -> Select:
+def apply_specific_id_filters(
+  query: Select,
+  filters: SearchFilters,
+  orm_model: type[BaseModel],
+) -> Select:
   """Apply filters for common relationship IDs to a SQLAlchemy query.
 
   This function checks for common ID fields on the SearchFilters object and applies
@@ -142,7 +147,7 @@ def apply_specific_id_filters(query: Select, filters: SearchFilters, orm_model: 
 
 def apply_search_filters(
   query: Select,
-  orm_model: Base,
+  orm_model: type[BaseModel],
   filters: SearchFilters,
   properties_field: str = "properties_json",
   timestamp_field: str = "timestamp_field",
@@ -174,7 +179,7 @@ def apply_search_filters(
   return apply_pagination(q, filters)
 
 
-def apply_sorting(query: Select, orm_model: Base, sort_by: str | None) -> Select:
+def apply_sorting(query: Select, orm_model: type[BaseModel], sort_by: str | None) -> Select:
   """Apply sorting to a SQLAlchemy query based on the sort_by parameter.
 
   Args:

@@ -1,7 +1,9 @@
+"""Base class for services that manage PLR type definitions."""
+
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from sqlalchemy.orm import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.pydantic.plr_sync import (
@@ -21,6 +23,7 @@ class DiscoverableTypeServiceBase(
   """An abstract base class for services that handle discoverable pylabrobot type definitions."""
 
   def __init__(self, db: AsyncSession) -> None:
+    """Initialize the service with a database session."""
     self.db = db
 
   @property

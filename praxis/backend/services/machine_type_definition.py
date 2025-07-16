@@ -49,7 +49,7 @@ class MachineTypeDefinitionService(
       existing_machine_def = existing_machine_def_result.scalar_one_or_none()
 
       if existing_machine_def:
-        update_data = MachineDefinitionUpdate(  # TODO: Update to use correct category
+        update_data = MachineDefinitionUpdate(
           fqn=fqn,
           name=plr_class_obj.__name__,
           description=inspect.getdoc(plr_class_obj),

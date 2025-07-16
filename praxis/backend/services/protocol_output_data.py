@@ -42,7 +42,6 @@ async def read_protocol_run_data_summary(
     Protocol run data summary
 
   """
-  # Count total data outputs
   total_count_result = await db.execute(
     select(func.count(FunctionDataOutputOrm.accession_id)).filter(
       FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
@@ -50,7 +49,6 @@ async def read_protocol_run_data_summary(
   )
   total_data_outputs = total_count_result.scalar()
 
-  # Get unique data types
   data_types_result = await db.execute(
     select(FunctionDataOutputOrm.data_type.distinct()).filter(
       FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
@@ -58,7 +56,6 @@ async def read_protocol_run_data_summary(
   )
   data_types = [dt.value for dt in data_types_result.scalars().all()]
 
-  # Get unique machines
   machines_result = await db.execute(
     select(FunctionDataOutputOrm.machine_accession_id.distinct()).filter(
       and_(
@@ -67,7 +64,7 @@ async def read_protocol_run_data_summary(
       ),
     ),
   )
-  machines_used = list(machines_result.scalars().all())
+  machines_used = list(machines_result.scalars().all())  # type: ignore[assignment]
 
   # Get unique resource
   resource_result = await db.execute(
@@ -78,7 +75,7 @@ async def read_protocol_run_data_summary(
       ),
     ),
   )
-  resource_with_data = list(resource_result.scalars().all())
+  resource_with_data = list(resource_result.scalars().all())  # type: ignore[assignment]
 
   # Get timeline of data capture (simplified)
   timeline_result = await db.execute(
@@ -121,15 +118,15 @@ async def read_protocol_run_data_summary(
     for row in files_result.all()
   ]
 
-  machines_used = [m for m in machines_used if m is not None]
-  resource_with_data = [r for r in resource_with_data if r is not None]
+  machines_used: list[UUID] = [m for m in machines_used if m is not None]
+  resource_with_data: list[UUID] = [r for r in resource_with_data if r is not None]
 
   return ProtocolRunDataSummary(
     protocol_run_accession_id=protocol_run_accession_id,
     total_data_outputs=total_data_outputs or 0,
     data_types=data_types,
-    machines_used=machines_used,  # type: ignore
-    resource_with_data=resource_with_data,  # type: ignore
+    machines_used=machines_used,
+    resource_with_data=resource_with_data,
     data_timeline=data_timeline,
     file_attachments=file_attachments,
   )

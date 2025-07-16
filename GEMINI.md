@@ -74,160 +74,57 @@ For backend components (core, services, api, models, utils - excluding `commons`
     *   Once critical issues are resolved, evaluate and address more stylistic or code sanitation principle-based issues.
 4.  **Pyright Type Checking**: Utilize `pyright` for comprehensive static type analysis to ensure type soundness and catch potential type-related bugs. When running `pyright`, we should be targeted until we are at a stage where the codebase as a whole has less than 40 `pyright` issues.
 
+## Service Layer Transaction Management
+
+To reduce boilerplate and ensure consistent transaction handling across the service layer, a `@handle_db_transaction` decorator has been introduced. This decorator, located in `praxis/backend/utils/db_decorator.py`, wraps database write operations to provide the following features:
+
+1.  **Automatic Commits**: On successful execution of the decorated method, the database transaction is automatically committed.
+2.  **Automatic Rollbacks**: If any exception occurs, the transaction is automatically rolled back.
+3.  **Consistent Exception Handling**:
+    -   `sqlalchemy.exc.IntegrityError` is caught and re-raised as a `ValueError` with a user-friendly message, indicating a potential duplicate resource.
+    -   Other `ValueError` exceptions are allowed to pass through, preserving custom validation messages from the service layer.
+    -   All other exceptions are caught and wrapped in a generic `ValueError` to prevent leaking implementation details.
+
+This approach ensures that the service layer remains decoupled from the web (HTTP) layer, as it does not raise `HTTPException` directly.
+
 ## WORK IN PROGRESS
 
-**Date:** July 9, 2025
+**Date:** July 10, 2025
 
 **Development Plan:**
 
-*   **Phase 1: Refactor and Enhance the Service Layer** (Completed)
-    1.  **Enhance `plr_type_base.py`**: Added a new `DiscoverableTypeServiceBase` abstract class to `praxis/backend/services/plr_type_base.py`.
-    2.  **Refactor `ResourceTypeDefinitionService`**: Refactored this service to inherit from `DiscoverableTypeServiceBase` and moved the resource discovery logic from `asset_manager.py` into this service's `discover_and_synchronize_type_definitions` method, ensuring comprehensive metadata extraction.
-    3.  **Implement `MachineTypeDefinitionService` and `DeckTypeDefinitionService`**: Created `machine_type_definition.py` and `deck_type_definition.py` to inherit from `DiscoverableTypeServiceBase` and implement the `discover_and_synchronize_type_definitions` methods.
-    4.  **Refactor `DiscoveryService`**: Updated `discovery_service.py` to orchestrate all discovery, including triggering the `discover_and_synchronize_type_definitions` method on the type definition services.
+*   **Phase 1: Refactor and Enhance the Service Layer** (In Progress)
+    1.  **Implement `@handle_db_transaction` Decorator**: Created a decorator to standardize database transaction management (`commit`, `rollback`, and exception handling) across the service layer.
+    2.  **Refactor Services to Use Decorator**:
+        -   [x] `praxis/backend/services/resource.py`
+        -   [x] `praxis/backend/services/deck.py`
+        -   [x] `praxis/backend/services/machine.py`
+        -   [ ] Refactor remaining services to use the new decorator.
+    3.  **Resolve Pyright and Ruff Errors**: Continue to resolve remaining type and linting errors throughout the codebase.
 
-*   **Phase 2: Implement the Discovery Trigger Mechanism** (Completed)
-    1.  **Create API Endpoint**: (To be implemented in the next step, but the service is ready).
-    2.  **Implement Startup Event**: Modified `main.py` to call `DiscoveryService.discover_and_sync_all_definitions` during the FastAPI startup event.
+*   **Phase 2: Pydantic Model Refactoring** (In Progress)
+    1.  Convert `RuntimeAssetRequirement` to a proper Pydantic model.
 
-*   **Phase 3: Update Documentation (`GEMINI.md`)** (In Progress)
-    1.  After the discovery framework is in place, write a comprehensive summary of the new, clarified architecture and add it to `GEMINI.md`.
-
-*   **Phase 4: Pydantic Model Refactoring** (In Progress)
-    1.  Refactor `FunctionInfo` to `FunctionProtocolDefinitionCreate` within `protocol.py`.
-    2.  Convert `RuntimeAssetRequirement` to a proper Pydantic model.
-
-*   **Phase 5: API Layer Refactoring** (In Progress)
+*   **Phase 3: API Layer Refactoring** (In Progress)
     1.  Implement `crud_router_factory` for generic CRUD operations.
     2.  Refactor existing API endpoints to use `crud_router_factory`.
 
-*   **Phase 6: Service Layer Refactoring** (In Progress)
-    1.  Refactor services to inherit from `CRUDBase`.
-
-*   **Phase 7: Pyright and Ruff Error Resolution** (In Progress)
-    1.  Resolve remaining `pyright` errors.
-    2.  Resolve remaining `ruff` errors.
-
 ## LAST SESSION
 
-**Date:** July 9, 2025
+**Date:** July 10, 2025
 
 **Accomplished Milestones:**
-*   Addressed all `B` flag errors from Ruff.
-*   Successfully configured Ruff to exclude the `praxis/backend/commons/` directory.
-*   Refactored `acquire_asset_lock` in `praxis/backend/core/asset_lock_manager.py` to use a Pydantic model (`AcquireAssetLock`) for arguments.
-*   Replaced magic values with constants in `asset_lock_manager.py`.
-*   Refactored `cleanup_expired_locks` in `asset_lock_manager.py` by extracting `_cleanup_single_lock`.
-*   Refactored `acquire_resource` in `praxis/backend/core/asset_manager.py` by extracting `_find_resource_to_acquire` and `_handle_location_constraints`.
-*   Created a new Pydantic model `DecoratedFunctionInfo` in `praxis/backend/models/decorators_pydantic_models.py`.
-*   Moved `CreateProtocolDefinitionData` from `asset_lock_manager_pydantic_models.py` to `decorators_pydantic_models.py`.
-*   Updated `praxis/backend/core/decorators.py` to use `DecoratedFunctionInfo` and refactored `_create_protocol_definition` to accept a Pydantic model.
-*   Refactored `protocol_function` in `praxis/backend/core/decorators.py` to use `_process_wrapper_arguments` helper function.
-*   Extracted `_update_resource_acquisition_status` from `acquire_resource` in `praxis/backend/core/asset_manager.py`.
-*   Extracted `_handle_resource_release_location` from `release_resource` in `praxis/backend/core/asset_manager.py`.
-*   Extracted `_is_deck_resource` from `release_resource` in `praxis/backend/core/asset_manager.py`.
-*   Extracted `_prepare_function_arguments` from `protocol_function` and `wrapper` in `praxis/backend/core/decorators.py`.
-*   Refactored `_prepare_arguments` in `praxis/backend/core/orchestrator.py` by extracting `_process_input_parameters`, `_inject_praxis_state`, `_acquire_assets`, and `_handle_deck_preconfiguration`.
-*   Fixed critical `F821` and `PLE1142` errors in `praxis/backend/core/orchestrator.py` by correcting variable scoping and code placement within `_handle_protocol_execution_error`.
-*   Fixed Pyright errors in `praxis/backend/services/deck.py` by aligning method signatures with `CRUDBase` and correcting argument types.
-*   Fixed Pyright errors in `praxis/backend/services/entity_linking.py` by aligning parameter names.
-*   Fixed Pyright errors in `praxis/backend/services/function_output_data.py` by adjusting `SearchFilters` attribute access.
-*   Fixed Pyright errors in `praxis/backend/services/machine.py` by correcting `machine_data_service_log` usage, aligning method signatures with `CRUDBase`, and correcting argument types.
-*   Fixed Pyright errors in `praxis/backend/services/plate_viz.py` by ensuring `data_range` dictionary values are floats.
-*   Fixed Pyright errors in `praxis/backend/services/protocols.py` by removing `json.loads` for dictionary inputs, correcting `ProtocolRunOrm` attribute access, and adjusting `apply_date_range_filters` argument types.
-*   Fixed Pyright errors in `praxis/backend/services/resource.py` by aligning method signatures with `CRUDBase` and correcting argument types.
-*   Fixed Pyright errors in `praxis/backend/services/scheduler.py` by modifying `list_schedule_entries` signature and updating sorting logic.
-*   Fixed Pyright errors in `praxis/backend/services/workcell.py` by aligning method signatures with `CRUDBase`, addressing `initial_state` attribute access, and correcting argument types.
-*   Created `pyrightconfig.json` to configure Pyright.
-*   **Pydantic Model Refactoring:**
-    *   Introduced `PLRTypeDefinition` in `praxis/backend/models/pydantic/plr_sync.py` as a base for PyLabRobot type definitions.
-    *   Added/modified `FunctionProtocolDefinitionCreate`, `FunctionProtocolDefinitionUpdate`, and `FunctionProtocolDefinitionResponse` in `praxis/backend/models/pydantic/protocol.py`.
-    *   Updated `DeckTypeDefinitionCreate`, `DeckTypeDefinitionUpdate`, `DeckTypeDefinitionResponse` in `praxis/backend/models/pydantic/deck.py` to inherit from `PLRTypeDefinition` models.
-    *   Updated `ResourceTypeDefinitionCreate`, `ResourceTypeDefinitionUpdate`, `ResourceTypeDefinitionResponse` in `praxis/backend/models/pydantic/resource.py` to inherit from `PLRTypeDefinition` models.
-    *   Refactored `DeckTypeDefinitionUpdate` in `praxis/backend/models/pydantic/deck.py` to make all fields optional, aligning with best practices for update models.
-*   **API Layer Refactoring (using `crud_router_factory`):**
-    *   Created `praxis/backend/api/utils/crud_router_factory.py` for generic CRUD operations.
-    *   Refactored `praxis/backend/api/decks.py`, `praxis/backend/api/machines.py`, `praxis/backend/api/outputs.py`, `praxis/backend/api/protocols.py`, `praxis/backend/api/resources.py`, `praxis/backend/api/scheduler.py`, and `praxis/backend/api/workcell_api.py` to use `crud_router_factory`.
-    *   Renamed `praxis/backend/api/function_data_outputs.py` to `praxis/backend/api/outputs.py`.
-    *   Renamed `praxis/backend/api/scheduler_api.py` to `praxis/backend/api/scheduler.py`.
-*   **Service Layer Refactoring (inheriting from `CRUDBase`):**
-    *   Refactored `FunctionDataOutputService` (now `FunctionDataOutputCRUDService`), `WellDataOutputService` (now `WellDataOutputCRUDService`), `MachineService`, `ResourceService`, `ProtocolRunService`, and `WorkcellService` to inherit from `CRUDBase`.
-    *   Created `ProtocolDefinitionCRUDService` and `ResourceTypeDefinitionCRUDService`.
-    *   Refactored `DeckTypeDefinitionService` to `DeckTypeDefinitionCRUDService` and fixed a bug in its discovery logic.
-*   **Pyright and Ruff Error Resolution:**
-    *   Addressed `reportMissingImports` errors.
-    *   Fixed many type mismatches and incorrect service calls related to `CRUDBase` and `DiscoverableTypeServiceBase` overrides.
-    *   Corrected the type hint for `apply_date_range_filters` in `praxis/backend/services/utils/query_builder.py` to correctly use `InstrumentedAttribute`.
-
-**Remaining Work (Pyright and Ruff errors):**
-*   **Phase 1: Resolve Remaining Pyright Errors**
-    *   Address `reportMissingImports` by installing project dependencies and ensuring `PYTHONPATH` is correctly configured.
-    *   Address other Pyright errors in `praxis/backend/api`, `praxis/backend/commons`, `praxis/backend/core`, `praxis/backend/models`, `praxis/backend/services`, and `praxis/backend/utils`.
-*   **Phase 4: Pydantic Model Refactoring**
-    *   Convert `RuntimeAssetRequirement` to a proper Pydantic model.
-
-**Remaining Work (PLR and C errors):**
-*   `praxis/backend/core/asset_manager.py`:
-    *   `acquire_resource`: Still has C901 (complexity), PLR0912 (too many branches), PLR0915 (too many statements).
-    *   `release_resource`: No longer has PLR0913 (too many arguments).
-*   `praxis/backend/core/decorators.py`:
-    *   `protocol_function`: No longer has C901 (complexity), PLR0913 (too many arguments), PLR0915 (too many statements).
-    *   `decorator`: Still has C901 (complexity), PLR0915 (too many statements).
-    *   `wrapper`: No longer has C901 (complexity), PLR0912 (too many branches), PLR0915 (too many statements).
-*   `praxis/backend/core/orchestrator.py`:
-    *   `_execute_protocol_main_logic`: PLR0913 (too many arguments).
-    *   `_load_callable_from_fqn`: SLF001 (Private member accessed).
-    *   `_acquire_assets`: PERF203 (`try`-`except` within a loop).
-    *   `_prepare_arguments`: TRY003, EM101 (exception messages).
-    *   `_handle_deck_preconfiguration`: TRY003, EM101 (exception messages).
-    *   `_handle_protocol_execution_error`: PERF203 (`try`-`except` within a loop), G201 (logging.exception).
-    *   `execute_protocol`: PLR0913 (too many arguments).
-    *   `execute_existing_protocol_run`: G201 (logging.exception).
-*   `praxis/backend/core/protocol_execution_service.py`:
-    *   `execute_protocol_immediately`: PLR0913 (too many arguments).
-    *   `schedule_protocol_execution`: PLR0913 (too many arguments).
-*   `praxis/backend/core/workcell_runtime.py`:
-    *   `_get_calculated_location`: C901 (complexity), PLR0912 (too many branches).
-    *   `initialize_machine`: C901 (complexity), PLR0912 (too many branches), PLR0915 (too many statements).
-    *   `create_or_get_resource`: C901 (complexity), PLR0912 (too many branches).
-    *   `assign_resource_to_deck`: C901 (complexity), PLR0912 (too many branches).
-    *   `PLR2004` magic value in `_get_calculated_location`.
-*   `praxis/backend/services/deck_position.py`:
-    *   `_process_position_definitions`: C901 (complexity).
-    *   `create_deck_position_definitions`: C901 (complexity).
-    *   `update_deck_position_definition`: C901 (complexity), PLR0913 (too many arguments), PLR0912 (too many branches), PLR0915 (too many statements).
-*   `praxis/backend/services/deck_type_definition.py`:
-    *   `_process_position_definitions`: C901 (complexity).
-    *   `create_deck_type_definition`: PLR0913 (too many arguments).
-    *   `update_deck_type_definition`: C901 (complexity), PLR0913 (too many arguments), PLR0912 (too many branches), PLR0915 (too many statements).
-*   `praxis/backend/services/discovery_service.py`:
-    *   `_extract_protocol_definitions_from_paths`: C901 (complexity), PLR0912 (too many branches), PLR0915 (too many statements).
-    *   `discover_and_upsert_protocols`: C901 (complexity).
-*   `praxis/backend/services/entity_linking.py`:
-    *   `_create_or_link_resource_counterpart_for_machine`: C901 (complexity), PLR0913 (too many arguments).
-    *   `_create_or_link_machine_counterpart_for_resource`: PLR0913 (too many arguments).
-*   `praxis/backend/services/plate_parsing.py`:
-    *   `read_plate_dimensions`: C901 (complexity), PLR0911 (too many return statements), PLR0912 (too many branches).
-    *   `PLR2004` magic value.
-*   `praxis/backend/services/protocols.py`:
-    *   `update_protocol_run_status`: PLR0913 (too many arguments).
-*   `praxis/backend/services/resource_type_definition.py`:
-    *   `create_resource_definition`: PLR0913 (too many arguments).
-    *   `update_resource_definition`: C901 (complexity), PLR0913 (too many arguments).
-*   `praxis/backend/services/scheduler.py`:
-    *   `create_schedule_entry`: PLR0913 (too many arguments).
-    *   `list_schedule_entries`: C901 (complexity), PLR0913 (too many arguments), PLR0912 (too many branches).
-    *   `update_schedule_entry_status`: PLR0913 (too many arguments).
-    *   `create_asset_reservation`: PLR0913 (too many arguments).
-    *   `list_asset_reservations`: PLR0913 (too many arguments).
-    *   `log_schedule_event`: PLR0913 (too many arguments).
-*   `praxis/backend/services/well_outputs.py`:
-    *   `read_well_data_outputs`: PLR0913 (too many arguments).
-*   `praxis/backend/utils/logging.py`:
-    *   `_process_exception`: PLR0913 (too many arguments).
-    *   `log_async_runtime_errors`: PLR0913 (too many arguments).
-    *   `log_runtime_errors`: PLR0913 (too many arguments).
-*   `praxis/backend/utils/plr_inspection.py`:
-    *   `_get_accepted_categories_for_resource_holder`: C901 (complexity).
-*   `praxis/backend/utils/sanitation.py`:
-    *   `tip_mapping`: C901 (complexity), PLR0913 (too many arguments).
+*   Created the `@handle_db_transaction` decorator to standardize database transaction management.
+*   Refactored the `ResourceService`, `DeckService`, and `MachineService` to use the new decorator, significantly reducing boilerplate code.
+*   Resolved a large number of `pyright` errors in the service layer, particularly in `scheduler.py`, by refactoring to a `CRUDBase` service and fixing numerous type and call issues.
+*   Created `ScheduleEntryCreate` and `ScheduleEntryUpdate` Pydantic models to support the `ScheduleEntryCRUDService`.
+*   Addressed `reportMissingImports` errors by activating the virtual environment before running `pyright`.
+*   Fixed a bug in `entity_linking.py` where incorrect variable names were used.
+*   Corrected the `get_multi` method signature in `ScheduleEntryCRUDService` to be compatible with `CRUDBase`.
+*   Fixed several incorrect constructor calls and attribute access errors in `scheduler.py`.
+*   Corrected the `timestamp` vs `created_at` attribute mismatch in `scheduler.py`.
+*   Fixed incorrect argument types being passed to `AssetReservationOrm` and `ScheduleHistoryOrm` constructors.
+*   Resolved `reportIncompatibleMethodOverride` errors in `resource.py` by adding explicit return type hints.
+*   Fixed incorrect argument types in `resource.py` for `apply_date_range_filters` and `apply_property_filters`.
+*   Refactored the `DeckService` and `MachineService` to use the `@handle_db_transaction` decorator.
+*   Updated `GEMINI.md` to reflect the current state of the refactoring.

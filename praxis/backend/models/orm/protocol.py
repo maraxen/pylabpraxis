@@ -169,11 +169,12 @@ class FunctionProtocolDefinitionOrm(Base):
   """
 
   __tablename__ = "function_protocol_definitions"
-  name: Mapped[str] = mapped_column(
+
+  fqn: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
-    comment="The name of the protocol function.",
+    comment="The fully qualified name of the protocol function.",
     kw_only=True,
   )
   version: Mapped[str] = mapped_column(
@@ -590,7 +591,7 @@ class ProtocolRunOrm(Base):
     ),
     comment="Stored duration in milliseconds, computed by the DB when a run completes.",
     nullable=True,
-    kw_only=True,
+    init=False,
   )
 
   current_duration_ms: Mapped[int | None] = mapped_column(
@@ -607,7 +608,7 @@ class ProtocolRunOrm(Base):
     comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the \
       current time.",
     nullable=True,
-    kw_only=True,
+    init=False,
   )
   input_parameters_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -656,7 +657,7 @@ class ProtocolRunOrm(Base):
     back_populates="protocol_runs",
     foreign_keys=[top_level_protocol_definition_accession_id],
     comment="The top-level protocol definition that this run executes.",
-    kw_only=True,
+    init=False,
   )
   function_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(
     "FunctionCallLogOrm",

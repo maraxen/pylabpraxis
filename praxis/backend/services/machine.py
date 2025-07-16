@@ -9,12 +9,9 @@ This includes Machine Definitions, Machine Instances, and Machine configurations
 
 import datetime
 import uuid
-from functools import partial
-from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -31,10 +28,8 @@ from praxis.backend.services.utils.query_builder import (
   apply_pagination,
   apply_specific_id_filters,
 )
-from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
-
-if TYPE_CHECKING:
-  from praxis.backend.utils.db import Base
+from praxis.backend.utils.db_decorator import handle_db_transaction
+from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -42,104 +37,46 @@ logger = get_logger(__name__)
 class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
   """Service for machine-related operations."""
 
-  def __init__(self, model: type[MachineOrm]) -> None:
-    """Initialize the MachineService with the given MachineOrm model."""
-    super().__init__(model)
-    self.machine_data_service_log = partial(
-      log_async_runtime_errors,
-      logger_instance=logger,
-      exception_type=Exception,
-      raises=True,
-      raises_exception=ValueError,
-      return_=None,
-    )
-
+  @handle_db_transaction
   async def create(
     self,
     db: AsyncSession,
     *,
     obj_in: MachineCreate,
   ) -> MachineOrm:
-    """Create a new machine in the database.
+    """Create a new machine in the database."""
+    log_prefix = f"Machine (Name: '{obj_in.name}', creating new):"
+    logger.info("%s Attempting to create new machine.", log_prefix)
 
-    Args:
-      db : AsyncSession
-          The database session to use for the operation.
-      obj_in : MachineCreate
-          The data required to create a new machine.
+    result = await db.execute(select(MachineOrm).filter(MachineOrm.name == obj_in.name))
+    if result.scalar_one_or_none():
+      error_message = (
+        f"{log_prefix} A machine with name '{obj_in.name}' already exists. Use the update "
+        f"function for existing machines."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
 
-    Returns:
-      MachineOrm
-        The newly created machine ORM object.
+    machine_orm = await super().create(db=db, obj_in=obj_in)
+    logger.info("%s Initialized new machine for creation.", log_prefix)
 
-    Raises:
-    ValueError
-        If a machine with the same name already exists or if there is a database integrity error.
-    Exception
-        For any unexpected errors during creation.
-
-    """
-    @self.machine_data_service_log(
-      prefix="Machine Data Service: Creating machine - ",
-      suffix=" - Ensure the machine data is valid and unique.",
+    await _create_or_link_resource_counterpart_for_machine(
+      db=db,
+      machine_orm=machine_orm,
+      resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
+      resource_definition_name=obj_in.resource_def_name,
+      resource_properties_json=obj_in.resource_properties_json,
+      resource_status=obj_in.resource_initial_status,
     )
-    async def _create_machine_internal() -> MachineOrm:
-      """Help machine creation with logging."""
-      log_prefix = f"Machine (Name: '{obj_in.name}', creating new):"
-      logger.info("%s Attempting to create new machine.", log_prefix)
 
-      # Check if a machine with this name already exists
-      result = await db.execute(select(MachineOrm).filter(MachineOrm.name == obj_in.name))
-      if result.scalar_one_or_none():
-        error_message = (
-          f"{log_prefix} A machine with name '{obj_in.name}' already exists. Use the update "
-          f"function for existing machines."
-        )
-        logger.error(error_message)
-        raise ValueError(error_message)
+    await db.flush()
+    await db.refresh(machine_orm)
+    if machine_orm.resource_counterpart:
+      await db.refresh(machine_orm.resource_counterpart)
+    logger.info("%s Successfully committed new machine.", log_prefix)
+    return machine_orm
 
-      # Create a new MachineOrm using the base CRUD method
-      machine_orm = await super().create(db=db, obj_in=obj_in)
-      logger.info("%s Initialized new machine for creation.", log_prefix)
-
-      try:
-        await _create_or_link_resource_counterpart_for_machine(
-          db=db,
-          machine_orm=machine_orm,
-          resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
-          resource_definition_name=obj_in.resource_def_name,
-          resource_properties_json=obj_in.resource_properties_json,
-          resource_status=obj_in.resource_initial_status,
-        )
-
-        await db.commit()
-        await db.refresh(machine_orm)
-        if machine_orm.resource_counterpart:
-          await db.refresh(machine_orm.resource_counterpart)
-        logger.info("%s Successfully committed new machine.", log_prefix)
-
-      except IntegrityError as e:
-        await db.rollback()
-        if "uq_assets_name" in str(e.orig):
-          error_message = (
-            f"{log_prefix} A machine with name '{obj_in.name}' already exists (integrity "
-            f"check failed). Details: {e}"
-          )
-          logger.exception(error_message)
-          raise ValueError(error_message) from e
-        error_message = f"{log_prefix} Database integrity error during creation. Details: {e}"
-        logger.exception(error_message)
-        raise ValueError(error_message) from e
-      except Exception:
-        await db.rollback()
-        logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
-        raise
-
-      logger.info("%s Creation operation completed.", log_prefix)
-      return machine_orm
-
-    return await _create_machine_internal()
-
+  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
@@ -148,74 +85,48 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     obj_in: MachineUpdate,
   ) -> MachineOrm:
     """Update an existing machine with the provided data."""
-    @self.machine_data_service_log(
-      prefix="Machine Data Service: Updating machine - ",
-      suffix=" - Ensure the machine data is valid and unique.",
-    )
-    async def _update_machine_internal() -> MachineOrm:
-      """Help machine update with logging."""
-      update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
-      log_prefix = f"Machine (ID: {db_obj.accession_id}, updating):"
-      logger.info("%s Attempting to update machine.", log_prefix)
+    update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
+    log_prefix = f"Machine (ID: {db_obj.accession_id}, updating):"
+    logger.info("%s Attempting to update machine.", log_prefix)
 
-      # Check for name conflict if it's being changed
-      name = update_data.get("name")
-      if name is not None and db_obj.name != name:
-        existing_name_check = await db.execute(
-          select(MachineOrm)
-          .filter(MachineOrm.name == name)
-          .filter(MachineOrm.accession_id != db_obj.accession_id),
+    name = update_data.get("name")
+    if name is not None and db_obj.name != name:
+      existing_name_check = await db.execute(
+        select(MachineOrm)
+        .filter(MachineOrm.name == name)
+        .filter(MachineOrm.accession_id != db_obj.accession_id),
+      )
+      if existing_name_check.scalar_one_or_none():
+        error_message = (
+          f"{log_prefix} Cannot update name to '{name}' as it already exists for another machine."
         )
-        if existing_name_check.scalar_one_or_none():
-          error_message = (
-            f"{log_prefix} Cannot update name to '{name}' as it already exists for another machine."
-          )
-          logger.error(error_message)
-          raise ValueError(error_message)
-        db_obj.name = name
+        logger.error(error_message)
+        raise ValueError(error_message)
+      db_obj.name = name
 
-        # Synchronize name with linked resource counterpart if it exists
-        await synchronize_machine_resource_names(db, db_obj, name)
+      await synchronize_machine_resource_names(db, db_obj, name)
 
-      # Update attributes using the base CRUD method
-      updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+    updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
 
-      logger.info("%s Initialized machine for update.", log_prefix)
-      if updated_machine.resource_counterpart is not None:
-        try:
-          await _create_or_link_resource_counterpart_for_machine(
-            db=db,
-            machine_orm=updated_machine,
-            resource_counterpart_accession_id=update_data.get(
-              "resource_counterpart_accession_id",
-            ),
-            resource_definition_name=update_data.get("resource_def_name"),
-            resource_properties_json=update_data.get("resource_properties_json"),
-            resource_status=update_data.get("resource_initial_status"),
-          )
+    logger.info("%s Initialized machine for update.", log_prefix)
+    if updated_machine.resource_counterpart is not None:
+      await _create_or_link_resource_counterpart_for_machine(
+        db=db,
+        machine_orm=updated_machine,
+        resource_counterpart_accession_id=update_data.get(
+          "resource_counterpart_accession_id",
+        ),
+        resource_definition_name=update_data.get("resource_def_name"),
+        resource_properties_json=update_data.get("resource_properties_json"),
+        resource_status=update_data.get("resource_initial_status"),
+      )
 
-          await db.commit()
-          await db.refresh(updated_machine)
-          if updated_machine.resource_counterpart:
-            await db.refresh(updated_machine.resource_counterpart)
-          logger.info("%s Successfully committed updated machine.", log_prefix)
-        except IntegrityError as e:
-          await db.rollback()
-          error_message = (
-            f"{log_prefix} Database integrity error during update. "
-            f"This might occur if a unique constraint is violated. Details: {e}"
-          )
-          logger.exception(error_message)
-          raise ValueError(error_message) from e
-        except Exception:
-          await db.rollback()
-          logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
-          raise
-
-        logger.info("%s Update operation completed.", log_prefix)
-      return updated_machine
-
-    return await _update_machine_internal()
+      await db.flush()
+      await db.refresh(updated_machine)
+      if updated_machine.resource_counterpart:
+        await db.refresh(updated_machine.resource_counterpart)
+      logger.info("%s Successfully committed updated machine.", log_prefix)
+    return updated_machine
 
   async def get_multi(
     self,
@@ -239,20 +150,16 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       stmt = stmt.filter(self.model.fqn.like(f"%{pylabrobot_class_filter}%"))
     if name_filter:
       stmt = stmt.filter(self.model.name.ilike(f"%{name_filter}%"))
-
-    # Apply generic filters from query_builder
-    stmt = apply_specific_id_filters(stmt, filters, cast("Base", self.model))
+    stmt = apply_specific_id_filters(stmt, filters, self.model)
     stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
-    # MachineOrm does not have a generic properties_json for apply_property_filters
-
     stmt = apply_pagination(stmt, filters)
-
     stmt = stmt.order_by(self.model.name)
     result = await db.execute(stmt)
     machines = list(result.scalars().all())
     logger.info("Found %d machines.", len(machines))
     return machines
 
+  @handle_db_transaction
   async def update_machine_status(
     self,
     db: AsyncSession,
@@ -310,23 +217,16 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
         machine_accession_id,
       )
 
-    try:
-      await db.commit()
-      await db.refresh(machine_orm)
-      logger.info(
-        "Successfully updated status for machine ID %s to '%s'.",
-        machine_accession_id,
-        new_status.value,
-      )
-    except Exception:
-      await db.rollback()
-      logger.exception(
-        "Unexpected error updating status for machine ID %s. Rolling back.",
-        machine_accession_id,
-      )
-      raise
+    await db.flush()
+    await db.refresh(machine_orm)
+    logger.info(
+      "Successfully updated status for machine ID %s to '%s'.",
+      machine_accession_id,
+      new_status.value,
+    )
     return machine_orm
 
+  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: UUID) -> MachineOrm | None:
     """Delete a specific machine by its ID."""
     logger.info("Attempting to delete machine with ID: %s.", accession_id)
@@ -334,29 +234,12 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     if not machine_orm:
       logger.warning("Machine with ID %s not found for deletion.", accession_id)
       return None
-    try:
-      await db.commit()
-      logger.info(
-        "Successfully deleted machine ID %s: '%s'.",
-        accession_id,
-        machine_orm.name,
-      )
-    except IntegrityError as e:
-      await db.rollback()
-      error_message = (
-        f"Cannot delete machine ID {accession_id} due to existing references. Details: {e}"
-      )
-      logger.exception(error_message)
-      raise ValueError(error_message) from e
-    except Exception:
-      await db.rollback()
-      logger.exception(
-        "Unexpected error deleting machine ID %s. Rolling back.",
-        accession_id,
-      )
-      raise
-    else:
-      return machine_orm
+    logger.info(
+      "Successfully deleted machine ID %s: '%s'.",
+      accession_id,
+      machine_orm.name,
+    )
+    return machine_orm
 
 
 machine_service = MachineService(MachineOrm)

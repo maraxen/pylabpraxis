@@ -12,7 +12,6 @@ from .pydantic_base import PraxisBaseModel
 class AssetBase(BaseModel):
   """Define the base properties for an asset."""
 
-  name: str | None = Field(description="The unique name of the asset.")
   asset_type: AssetType | None = Field(description="The type of the asset.")
   fqn: str | None = Field(
     None,
@@ -30,10 +29,6 @@ class AssetResponse(AssetBase, PraxisBaseModel):
   plr_definition: dict[str, Any] | None = Field(
     default_factory=dict,
     description="A dictionary for the PyLabRobot definition of the asset.",
-  )
-  properties_json: dict[str, Any] | None = Field(
-    default_factory=dict,
-    description="A dictionary for additional metadata about the asset.",
   )
 
 
