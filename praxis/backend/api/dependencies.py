@@ -1,3 +1,5 @@
+"""Dependencies for FastAPI application."""
+
 from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException, Request
