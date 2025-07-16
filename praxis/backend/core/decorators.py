@@ -72,6 +72,7 @@ logger = get_logger(__name__)
 
 
 class ProtocolRuntimeInfo:
+
   """A container for runtime information about a protocol function."""
 
   def __init__(

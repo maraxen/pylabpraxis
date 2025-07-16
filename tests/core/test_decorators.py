@@ -68,6 +68,7 @@ def mock_run_context() -> MagicMock:
 
 @pytest.mark.asyncio
 class TestProtocolDecoratorSetup:
+
   """Tests the decorator's setup-time behavior (static analysis, registry population).
   Functions are decorated inside each test to ensure isolation.
   """
@@ -176,6 +177,7 @@ class TestProtocolDecoratorSetup:
 
 @pytest.mark.asyncio
 class TestProtocolDecoratorRuntime:
+
   """Tests the decorator's runtime wrapper logic.
   Uses a fixture to provide a pre-decorated function for testing.
   """

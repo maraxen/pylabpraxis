@@ -40,12 +40,17 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
-from praxis.backend.models.enums.schedule import ScheduleHistoryEventEnum, ScheduleStatusEnum, ScheduleHistoryEventTriggerEnum
+from praxis.backend.models.enums.schedule import (
+  ScheduleHistoryEventEnum,
+  ScheduleHistoryEventTriggerEnum,
+  ScheduleStatusEnum,
+)
 from praxis.backend.utils.db import Base, CreateMaterializedView, DropMaterializedView
 from praxis.backend.utils.uuid import uuid7
 
 
 class ScheduleEntryOrm(Base):
+
   """SQLAlchemy ORM model for tracking scheduled protocol runs.
 
   This model represents a protocol run that has been scheduled for execution,
@@ -180,6 +185,7 @@ class ScheduleEntryOrm(Base):
 
 
 class AssetReservationOrm(Base):
+
   """SQLAlchemy ORM model for tracking asset reservations.
 
   This model tracks individual asset reservations for scheduled protocol runs,
@@ -325,6 +331,7 @@ class AssetReservationOrm(Base):
 
 
 class ScheduleHistoryOrm(Base):
+
   """SQLAlchemy ORM model for tracking schedule status changes and events.
 
   This model provides an audit trail of all scheduling events for analytics
@@ -517,6 +524,7 @@ event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metri
 
 
 class SchedulerMetricsView(Base):
+
   """Read-only ORM class mapped to the scheduler_metrics_mv materialized view."""
 
   __table__ = scheduler_metrics_mv

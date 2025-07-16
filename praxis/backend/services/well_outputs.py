@@ -45,6 +45,7 @@ log_well_data_errors = partial(
 class WellDataOutputCRUDService(
   CRUDBase[WellDataOutputOrm, WellDataOutputCreate, WellDataOutputUpdate],
 ):
+
   """CRUD service for well data outputs."""
 
   @handle_db_transaction

@@ -13,6 +13,7 @@ from praxis.backend.models import (
 
 
 class MockBackend(MachineBackend):
+
   """A mock backend for testing."""
 
   def __init__(self) -> None:
@@ -33,6 +34,7 @@ def mock_backend() -> MockBackend:
 
 
 class MockPureMachine(Machine):
+
   """A mock machine that is not a resource."""
 
   def __init__(self, backend: MockBackend) -> None:
@@ -41,6 +43,7 @@ class MockPureMachine(Machine):
 
 
 class MockPureResource(Resource):
+
   """A mock resource that is not a machine."""
 
   def __init__(self, name: str, category: str = "plates", **kwargs) -> None:
@@ -51,6 +54,7 @@ class MockPureResource(Resource):
 
 
 class MockMachineResource(Resource, Machine):
+
   """A mock asset that is both a machine and a resource."""
 
   def __init__(
@@ -79,6 +83,7 @@ def workcell() -> Workcell:
 
 
 class TestWorkcell:
+
   """Tests for the Workcell container class."""
 
   def test_add_pure_machine_asset(self, workcell: Workcell, mock_backend: MockBackend) -> None:

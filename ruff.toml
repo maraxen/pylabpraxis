@@ -8,7 +8,7 @@ exclude = ["praxis/backend/commons"]
 
 [lint]
 select = ["ALL"]
-
+ignore = ["D211", "D213"]
 # ignore = ["E501"] # Example: ignore line too long for general code
 
 [format]

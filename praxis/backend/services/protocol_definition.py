@@ -18,6 +18,7 @@ class ProtocolDefinitionCRUDService(
     FunctionProtocolDefinitionUpdate,
   ],
 ):
+
   """CRUD service for protocol definitions."""
 
   async def get_by_fqn(self, db: AsyncSession, fqn: str) -> FunctionProtocolDefinitionOrm | None:

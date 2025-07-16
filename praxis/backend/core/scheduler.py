@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 
 
 class ScheduleEntry:
+
   """Represents a scheduled protocol run with asset reservations."""
 
   def __init__(
@@ -66,6 +67,7 @@ class ScheduleEntry:
 
 
 class ProtocolScheduler:
+
   """Manages protocol scheduling, asset allocation, and execution queueing.
 
   This scheduler analyzes protocol requirements, reserves necessary assets,

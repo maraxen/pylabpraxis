@@ -54,6 +54,7 @@ from praxis.backend.utils.db import Base
 
 
 class ProtocolSourceRepositoryOrm(Base):
+
   """SQLAlchemy ORM model for storing details about a Git repository protocol source.
 
   This model tracks Git repositories where function-based protocols are defined,
@@ -116,6 +117,7 @@ class ProtocolSourceRepositoryOrm(Base):
 
 
 class FileSystemProtocolSourceOrm(Base):
+
   """SQLAlchemy ORM model for storing details about a file system protocol source.
 
   This model tracks local file system paths where function-based protocols are defined,
@@ -162,6 +164,7 @@ class FileSystemProtocolSourceOrm(Base):
 
 
 class FunctionProtocolDefinitionOrm(Base):
+
   """SQLAlchemy ORM model for storing static definitions of function-based protocols.
 
   This model represents a discoverable protocol, including its name, version,
@@ -338,6 +341,7 @@ class FunctionProtocolDefinitionOrm(Base):
 
 
 class ParameterDefinitionOrm(Base):
+
   """SQLAlchemy ORM model for defining parameters of a function protocol.
 
   This model stores metadata about each parameter required by a protocol function,
@@ -429,6 +433,7 @@ class ParameterDefinitionOrm(Base):
 
 
 class AssetRequirementOrm(Base):
+
   """SQLAlchemy ORM model for defining assets required by a function protocol.
 
   This model describes the assets (e.g., resource, machines) a protocol function
@@ -549,6 +554,7 @@ class AssetRequirementOrm(Base):
 
 
 class ProtocolRunOrm(Base):
+
   """SQLAlchemy ORM model for logging a top-level protocol execution.
 
   This model captures the runtime details of a protocol, such as its GUID,
@@ -713,6 +719,7 @@ class ProtocolRunOrm(Base):
 
 
 class FunctionCallLogOrm(Base):
+
   """SQLAlchemy ORM model for logging individual function calls within a protocol run.
 
   This model captures detailed information for each executed function during a protocol

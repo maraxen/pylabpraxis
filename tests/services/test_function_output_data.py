@@ -110,6 +110,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestFunctionDataOutputService:
+
   """Test suite for the Function Data Output service layer."""
 
   async def test_create_function_data_output(

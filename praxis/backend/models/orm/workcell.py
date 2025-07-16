@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 
 class WorkcellOrm(Base):
+
   """SQLAlchemy ORM model representing a workcell.
 
   This model stores details about a logical grouping of machines and resources,

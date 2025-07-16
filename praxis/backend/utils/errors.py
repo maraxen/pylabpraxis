@@ -2,6 +2,7 @@
 
 
 class PraxisError(Exception):
+
   """Base exception for all custom Praxis backend errors.
 
   Attributes:
@@ -25,6 +26,7 @@ class PraxisError(Exception):
 
 
 class OrchestratorError(Exception):
+
   """Exception raised for errors in the orchestrator service.
 
   Attributes:
@@ -48,6 +50,7 @@ class OrchestratorError(Exception):
 
 
 class DataError(Exception):
+
   """Exception raised for errors during data operations (e.g., database interactions).
 
   Attributes:
@@ -71,6 +74,7 @@ class DataError(Exception):
 
 
 class ModelError(Exception):
+
   """Exception raised for data models errors (e.g., validation, serialization).
 
   Attributes:
@@ -94,6 +98,7 @@ class ModelError(Exception):
 
 
 class AssetAcquisitionError(RuntimeError):
+
   """Exception raised when there is an issue acquiring or assigning assets.
 
   Attributes:
@@ -117,6 +122,7 @@ class AssetAcquisitionError(RuntimeError):
 
 
 class AssetReleaseError(RuntimeError):
+
   """Exception raised when there is an issue releasing or returning assets.
 
   Attributes:
@@ -140,6 +146,7 @@ class AssetReleaseError(RuntimeError):
 
 
 class ProtocolCancelledError(Exception):
+
   """Exception raised when a protocol run is explicitly cancelled.
 
   Attributes:
@@ -164,6 +171,7 @@ class ProtocolCancelledError(Exception):
 
 
 class WorkcellRuntimeError(Exception):
+
   """Exception raised for errors specific to the WorkcellRuntime.
 
   Attributes:
@@ -187,6 +195,7 @@ class WorkcellRuntimeError(Exception):
 
 
 class PylabRobotError(PraxisError):
+
   """Base exception for PyLabRobot-related errors within Praxis."""
 
   def __init__(self, message: str, original_plr_exception: Exception | None = None) -> None:
@@ -203,6 +212,7 @@ class PylabRobotError(PraxisError):
 
 
 class PyLabRobotVolumeError(PylabRobotError):
+
   """Specific error for PyLabRobot 'TooLittleLiquidError' scenarios."""
 
   def __init__(
@@ -225,6 +235,7 @@ class PyLabRobotVolumeError(PylabRobotError):
 
 
 class PyLabRobotGenericError(PylabRobotError):
+
   """Generic placeholder for other PyLabRobot errors."""
 
   def __init__(
@@ -237,6 +248,7 @@ class PyLabRobotGenericError(PylabRobotError):
 
 
 class PraxisAPIError(PraxisError):
+
   """Base exception for errors in the Praxis API.
 
   Attributes:

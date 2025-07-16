@@ -124,6 +124,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestProtocolOutputDataService:
+
   """Test suite for protocol output data aggregation services."""
 
   async def test_read_protocol_run_data_summary_with_data(

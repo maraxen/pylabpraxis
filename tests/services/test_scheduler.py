@@ -55,6 +55,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestScheduleEntryService:
+
   """Tests for schedule entry management."""
 
   async def test_create_and_read_schedule_entry(
@@ -131,6 +132,7 @@ class TestScheduleEntryService:
 
 
 class TestAssetReservationService:
+
   """Tests for asset reservation management."""
 
   async def test_create_and_read_asset_reservation(
@@ -206,6 +208,7 @@ class TestAssetReservationService:
 
 
 class TestScheduleHistoryService:
+
   """Tests for schedule history and metrics."""
 
   async def test_log_schedule_event_and_get_history(

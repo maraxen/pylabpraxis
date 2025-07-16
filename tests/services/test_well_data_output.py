@@ -109,6 +109,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestWellDataOutputService:
+
   """Test suite for the Well Data Output service layer."""
 
   async def test_create_and_read_well_data_output(

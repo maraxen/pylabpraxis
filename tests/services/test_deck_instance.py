@@ -75,6 +75,7 @@ async def setup_test_data(db: AsyncSession):
 
 
 class TestDeckService:
+
   """Test suite for deck instance service functions."""
 
   async def test_create_deck_success(

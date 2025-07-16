@@ -115,6 +115,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestProtocolSourceRepositoryService:
+
   """Tests for Git-based protocol source repositories."""
 
   async def test_create_and_read_git_repo(self, db: AsyncSession) -> None:
@@ -163,6 +164,7 @@ class TestProtocolSourceRepositoryService:
 
 
 class TestProtocolDefinitionService:
+
   """Tests for creating and managing protocol definitions."""
 
   async def test_upsert_protocol_create(
@@ -219,6 +221,7 @@ class TestProtocolDefinitionService:
 
 
 class TestProtocolRunService:
+
   """Tests for creating and managing protocol runs."""
 
   async def test_create_and_read_protocol_run(
@@ -274,6 +277,7 @@ class TestProtocolRunService:
 
 
 class TestFunctionCallLogService:
+
   """Tests for logging function calls within a protocol run."""
 
   async def test_log_start_and_end(

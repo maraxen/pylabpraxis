@@ -32,6 +32,7 @@ UUID = uuid.UUID
 
 
 class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
+
   """Service for deck-related operations."""
 
   @handle_db_transaction

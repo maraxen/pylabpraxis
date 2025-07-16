@@ -1,7 +1,4 @@
-# filepath: praxis/backend/api/outputs.py
-#
-# This file contains the FastAPI router for all function data output endpoints,
-# including data outputs from protocol function calls and plate visualization data.
+"""API Endpoints for Outputs and Well Data Outputs."""
 
 from fastapi import APIRouter
 

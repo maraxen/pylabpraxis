@@ -44,6 +44,7 @@ async def existing_deck_type(
 
 
 class TestDeckTypeDefinitionService:
+
   """Test suite for deck type definition service functions."""
 
   async def test_create_deck_type_definition_success(

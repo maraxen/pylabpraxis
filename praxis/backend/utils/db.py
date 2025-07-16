@@ -121,13 +121,11 @@ except Exception:
 KEYCLOAK_DSN_FROM_CONFIG = keycloak_dsn_from_config
 PRAXIS_DATABASE_URL = praxis_database_url
 
-# --- SQLAlchemy Async Engine for Praxis Database ---
 async_engine = create_async_engine(
   PRAXIS_DATABASE_URL,
   echo=False,  # Set to True for debugging SQL queries
 )
 
-# --- SQLAlchemy Async Session Factory for Praxis Database ---
 AsyncSessionLocal = async_sessionmaker(
   async_engine,
   expire_on_commit=False,
@@ -136,8 +134,8 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-# --- Base for ORM Models ---
 class Base(MappedAsDataclass, DeclarativeBase):
+
   """Base class for all ORM models."""
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -176,7 +174,6 @@ class Base(MappedAsDataclass, DeclarativeBase):
   )
 
 
-# --- Dependency for FastAPI Routes to Get an Async DB Session ---
 async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
   """Yield an asynchronous database session.
 
@@ -192,7 +189,6 @@ async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
     await async_session.close()
 
 
-# --- Database Initialization Function (for Praxis DB Schema) ---
 async def init_praxis_db_schema() -> None:
   """Initialize the Praxis database schema.
 
@@ -215,6 +211,7 @@ async def init_praxis_db_schema() -> None:
     raise
 
 class CreateMaterializedView(DDLElement):
+
   """SQLAlchemy DDL element to create a materialized view."""
 
   def __init__(self, name: str, selectable: Select) -> None:
@@ -224,6 +221,7 @@ class CreateMaterializedView(DDLElement):
 
 
 class DropMaterializedView(DDLElement):
+
   """SQLAlchemy DDL element to drop a materialized view."""
 
   def __init__(self, name: str) -> None:

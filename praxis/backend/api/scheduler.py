@@ -34,16 +34,15 @@ from praxis.backend.models.pydantic.scheduler import (
 )
 from praxis.backend.services import scheduler as scheduler_svc
 from praxis.backend.services.protocols import ProtocolRunService
-
-protocol_run_service = ProtocolRunService(ProtocolRunOrm)
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+
+protocol_run_service = ProtocolRunService(ProtocolRunOrm)
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 
 
-# Schedule Management Endpoints
 
 
 @router.post("/schedule", response_model=ScheduleEntryResponse)

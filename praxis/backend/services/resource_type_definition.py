@@ -42,6 +42,7 @@ class ResourceTypeDefinitionService(
     ResourceDefinitionUpdate,
   ],
 ):
+
   """Service for discovering and syncing resource type definitions."""
 
   EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
@@ -214,4 +215,5 @@ class ResourceTypeDefinitionCRUDService(
     ResourceDefinitionUpdate,
   ],
 ):
+
   """CRUD service for resource type definitions."""

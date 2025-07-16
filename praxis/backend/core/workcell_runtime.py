@@ -59,6 +59,7 @@ def _get_class_from_fqn(class_fqn: str) -> type:
 
 
 class WorkcellRuntime:
+
   """Manages live PyLabRobot objects for an active workcell configuration.
 
   This class is responsible for initializing, maintaining, and shutting down

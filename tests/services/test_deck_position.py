@@ -82,6 +82,7 @@ async def setup_test_data_for_definitions(db: AsyncSession) -> DeckDefinitionOrm
 
 
 class TestDeckPositionService:
+
   """Tests for functions managing DeckPositionResourceOrm (items on a deck)."""
 
   async def test_create_deck_position_item_success(
@@ -194,6 +195,7 @@ class TestDeckPositionService:
 
 
 class TestDeckPositionDefinitionService:
+
   """Tests for functions managing DeckPositionDefinitionOrm (definitions for a deck type)."""
 
   async def test_create_deck_position_definitions_success(

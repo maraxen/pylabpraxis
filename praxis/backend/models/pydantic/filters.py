@@ -7,6 +7,7 @@ from pydantic import UUID7, BaseModel, Field
 
 
 class SearchFilters(BaseModel):
+
   """A general-purpose model for search and filtering criteria across service layers."""
 
   limit: int = Field(100, ge=1, le=1000, description="Maximum number of results to return.")
@@ -39,6 +40,7 @@ class SearchFilters(BaseModel):
   parent_accession_id: UUID7 | None = Field(None, description="Filter by parent asset ID.")
 
   class Config:
+
     """Pydantic configuration for SearchFilters model."""
 
     from_attributes = True

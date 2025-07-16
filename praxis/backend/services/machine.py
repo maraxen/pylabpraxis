@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 
 
 class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
+
   """Service for machine-related operations."""
 
   @handle_db_transaction

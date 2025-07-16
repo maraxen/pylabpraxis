@@ -82,6 +82,7 @@ async def deck1(db: AsyncSession, resource1: ResourceOrm) -> DeckOrm:
 
 
 class TestEntityLinking:
+
   """Test suite for entity linking and synchronization functions."""
 
   async def test_read_resource_definition_for_linking(

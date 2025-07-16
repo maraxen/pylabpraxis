@@ -13,8 +13,6 @@ from sqlalchemy.orm import InstrumentedAttribute
 from praxis.backend.models.pydantic.filters import SearchFilters
 from praxis.backend.utils.db import Base
 
-# TODO: determine if these should be sync or async functions.
-
 BaseModel = TypeVar("BaseModel", bound=Base)
 
 def apply_pagination(query: Select, filters: SearchFilters) -> Select:

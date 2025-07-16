@@ -862,6 +862,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
     self, asset_manager: AssetManager, caplog,
   ) -> None:
     class MockComplexResource(MockResource):
+
       """Description for complex resource."""
 
       resource_type = "complex_static_type"
@@ -913,6 +914,7 @@ class TestAssetManagerSyncPylabrobotDefinitions:
     self, asset_manager: AssetManager, caplog,
   ) -> None:
     class MockFailingResource(MockResource):
+
       """Description for failing resource."""
 
       resource_type = "failing_static_type"

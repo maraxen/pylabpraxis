@@ -42,6 +42,7 @@ def raise_connection_error(
 
 
 class PraxisDBService:
+
   """Provides a singleton service for Praxis database interactions.
 
   This class manages connections to the main Praxis database via SQLAlchemy
@@ -237,11 +238,11 @@ class PraxisDBService:
     conn = None
     try:
       conn = await self._keycloak_pool.acquire()
-      if not isinstance(conn, asyncpg.Connection):  # type: ignore
+      if not isinstance(conn, asyncpg.Connection):
         error_message = "Failed to acquire Keycloak connection from pool."
         logger.error(error_message)
         raise ConnectionError(error_message)
-      yield conn  # type: ignore
+      yield conn
       logger.debug("Keycloak connection released.")
     finally:
       if conn and self._keycloak_pool:
@@ -380,17 +381,19 @@ class PraxisDBService:
     This method should be called during application shutdown to ensure
     proper resource cleanup.
 
+    This does NOT dispose of the Praxis database session factory.
+    The Praxis database session factory is managed by the FastAPI app and
+    should not be closed here.
+    It is the responsibility of the FastAPI app to manage the lifecycle of
+    the Praxis database session factory.
+    This method only closes the Keycloak database connection pool if it
+    was initialized.
+
     """
     logger.info("Attempting to close PraxisDBService resources.")
-    if self._keycloak_pool and not self._keycloak_pool._closed:  # type: ignore
-      await self._keycloak_pool.close()  # type: ignore
+    if self._keycloak_pool and not self._keycloak_pool._closed:  # noqa: SLF001
+      await self._keycloak_pool.close()
       logger.info("Keycloak database pool closed.")
-    # The SQLAlchemy engine (from which AsyncSessionLocal is derived) should
-    # be dispositiond of at the application level if it's managed globally.
-    # If AsyncSessionLocal is derived from create_async_engine(),
-    # e.g. engine = create_async_engine(...); AsyncSessionLocal =
-    # async_sessionmaker(engine) then engine.disposition() should be called
-    # elsewhere (e.g., application shutdown).
     logger.info("PraxisDBService resources closed.")
 
 

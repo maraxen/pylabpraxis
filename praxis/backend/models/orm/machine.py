@@ -51,6 +51,7 @@ from .asset import AssetOrm
 
 
 class MachineDefinitionOrm(PLRTypeDefinitionOrm):
+
   """SQLAlchemy ORM model for cataloging machine definitions.
 
   This model stores comprehensive metadata about various types of lab machines,
@@ -177,6 +178,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
 
 
 class MachineOrm(AssetOrm):
+
   """SQLAlchemy ORM model representing a physical machine or machine.
 
   This model tracks individual physical items of lab machines,

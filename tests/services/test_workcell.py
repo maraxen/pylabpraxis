@@ -56,6 +56,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestWorkcellService:
+
   """Test suite for the Workcell service layer."""
 
   async def test_create_and_read_workcell(self, db: AsyncSession) -> None:

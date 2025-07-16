@@ -10,6 +10,7 @@ from praxis.backend.models.pydantic.protocol import AssetRequirementModel
 
 
 class RuntimeAssetRequirement(BaseModel):
+
   """Represents a specific asset requirement for a *protocol run*.
 
   This wraps the static AssetRequirementModel definition with runtime details
@@ -46,6 +47,7 @@ class RuntimeAssetRequirement(BaseModel):
     )
 
   class Config:
+
     """Pydantic configuration for RuntimeAssetRequirement."""
 
     from_attributes = True

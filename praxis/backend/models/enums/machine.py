@@ -11,6 +11,7 @@ import enum
 
 
 class MachineStatusEnum(enum.Enum):
+
   """Enumeration for the possible operational statuses of a machine."""
 
   AVAILABLE = "available"
@@ -22,6 +23,7 @@ class MachineStatusEnum(enum.Enum):
 
 
 class MachineCategoryEnum(enum.Enum):
+
   """Enumeration for classifying machines into predefined categories.
 
   These categories help in broad classification of machines based on their

@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 
 
 class ProtocolExecutionService:
+
   """High-level service for protocol execution management.
 
   This service orchestrates the entire protocol execution workflow:

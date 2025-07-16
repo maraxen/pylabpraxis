@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class DiscoveryService:
+
   """Service for discovering and managing protocol functions and PLR type definitions."""
 
   def __init__(

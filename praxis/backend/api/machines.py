@@ -1,4 +1,3 @@
-# <filename>praxis/backend/api/machines.py</filename>
 """Machine API endpoints.
 
 This file contains the FastAPI router for all machine-related endpoints,
@@ -74,7 +73,7 @@ async def update_machine_status(
   db: Annotated[AsyncSession, Depends(get_db)],
   status_details: str | None = None,
   current_protocol_run_accession_id: UUID | None = None,
-):
+) -> MachineResponse:
   """Update the status of a machine."""
   machine_id = await machine_accession_resolver(
     db=db,
@@ -91,9 +90,16 @@ async def update_machine_status(
     )
     if not updated_machine:
       raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
-    return updated_machine
   except ValueError as e:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail=str(e),
     ) from e
+  else:
+    logger.info(
+      "Machine '%s' (ID: %s) status updated to '%s'.",
+      updated_machine.name,
+      updated_machine.accession_id,
+      new_status.value,
+    )
+    return MachineResponse.model_validate(updated_machine)

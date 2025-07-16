@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 
 
 class ProtocolExecutionContext:
+
   """A context object to hold shared dependencies for Celery tasks."""
 
   def __init__(

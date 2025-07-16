@@ -6,6 +6,7 @@ from typing import Any
 
 
 class PraxisConfiguration:
+
   """Configuration class to handle Praxis configuration settings."""
 
   def __init__(self, config_file: str = "praxis.ini") -> None:

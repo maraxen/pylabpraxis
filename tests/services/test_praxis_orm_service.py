@@ -31,6 +31,7 @@ def cleanup_singleton():
 
 
 class TestPraxisDBService:
+
   """Test suite for the PraxisDBService class."""
 
   def test_singleton_pattern(self) -> None:

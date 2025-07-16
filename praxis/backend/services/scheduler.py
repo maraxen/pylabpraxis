@@ -19,7 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from praxis.backend.models.enums import AssetType, ScheduleStatusEnum, ScheduleHistoryEventEnum, ScheduleHistoryEventTriggerEnum
+from praxis.backend.models.enums import (
+  AssetType,
+  ScheduleHistoryEventEnum,
+  ScheduleHistoryEventTriggerEnum,
+  ScheduleStatusEnum,
+)
 from praxis.backend.models.orm.schedule import (
   AssetReservationOrm,
   AssetReservationStatusEnum,
@@ -241,9 +246,6 @@ class ScheduleEntryCRUDService(
 
 
 schedule_entry_service = ScheduleEntryCRUDService(ScheduleEntryOrm)
-
-
-# Asset Reservation Services
 
 
 @handle_db_transaction

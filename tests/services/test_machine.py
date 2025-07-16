@@ -88,6 +88,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestMachineService:
+
   """Test suite for the machine data service layer."""
 
   async def test_create_machine_simple(self, db: AsyncSession) -> None:

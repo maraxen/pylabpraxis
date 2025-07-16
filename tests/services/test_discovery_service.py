@@ -105,6 +105,7 @@ def not_a_protocol():
 
 @pytest.mark.asyncio
 class TestProtocolDiscoveryService:
+
   """Test suite for the ProtocolDiscoveryService."""
 
   def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files) -> None:

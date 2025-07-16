@@ -13,7 +13,6 @@ import datetime
 import json
 import logging
 import uuid
-from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,13 +37,11 @@ from praxis.backend.services.utils.query_builder import (
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.uuid import uuid7
 
-if TYPE_CHECKING:
-  from praxis.backend.utils.db import Base
-
 logger = logging.getLogger(__name__)
 
 
 class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRunUpdate]):
+
   """Service for protocol run operations."""
 
   @handle_db_transaction
@@ -115,7 +112,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       stmt = stmt.filter(self.model.status == status)
       logger.debug("Filtering by status: '%s'.", status.name)
 
-    stmt = apply_date_range_filters(stmt, filters, cast("Base", self.model).created_at)
+    stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
     stmt = apply_pagination(stmt, filters)
 
     stmt = stmt.order_by(
@@ -157,7 +154,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     return protocol_run
 
   @handle_db_transaction
-  async def update_protocol_run_status( 
+  async def update_protocol_run_status(
     self,
     db: AsyncSession,
     protocol_run_accession_id: uuid.UUID,

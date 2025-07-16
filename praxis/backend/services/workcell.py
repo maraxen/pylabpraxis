@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
+
   """Service for workcell-related operations."""
 
   @handle_db_transaction

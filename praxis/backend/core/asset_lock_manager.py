@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 
 class AssetLockManager:
+
   """Redis-based distributed asset lock manager for protocol scheduling.
 
   This class provides atomic asset reservation operations using Redis

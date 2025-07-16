@@ -113,6 +113,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestPlateVizService:
+
   """Test suite for the plate visualization service."""
 
   async def test_read_plate_data_visualization_success(

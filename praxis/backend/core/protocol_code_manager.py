@@ -81,6 +81,7 @@ def temporary_sys_path(path_to_add: str | None):
 
 
 class ProtocolCodeManager:
+
   """Manages protocol code preparation and loading for execution.
 
   This class handles all aspects of preparing protocol code for execution,

@@ -18,6 +18,7 @@ T = TypeVar("T")
 
 
 class PraxisState:
+
   """Manages application state, persisting it to a Redis server.
 
   This class provides a dictionary-like interface for storing and retrieving

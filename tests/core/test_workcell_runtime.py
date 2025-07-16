@@ -79,6 +79,7 @@ def test_get_class_from_fqn_failure() -> None:
 
 @pytest.mark.asyncio
 class TestWorkcellRuntimeLifecycle:
+
   """Tests for the startup and shutdown of the WorkcellRuntime."""
 
   @patch("praxis.backend.services.create_workcell")
@@ -141,6 +142,7 @@ class TestWorkcellRuntimeLifecycle:
 @pytest.mark.asyncio
 @patch("praxis.backend.core.workcell_runtime._get_class_from_fqn")
 class TestAssetLifecycle:
+
   """Tests for initializing, getting, and shutting down assets."""
 
   @patch("praxis.backend.services.update_machine_status")
@@ -272,6 +274,7 @@ class TestAssetLifecycle:
 
 @pytest.mark.asyncio
 class TestDeckOperations:
+
   """Tests for operations involving decks and resources on them."""
 
   @pytest.fixture

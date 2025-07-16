@@ -13,6 +13,7 @@ from praxis.backend.utils.db import Base
 
 
 class UserOrm(Base):
+
   """SQLAlchemy ORM model representing a user in the Praxis application.
 
   This model stores user account details such as username, email, hashed password,

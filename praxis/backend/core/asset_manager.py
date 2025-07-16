@@ -63,6 +63,7 @@ asset_manager_errors = partial(
 
 
 class AssetManager:
+
   """Manages the lifecycle and allocation of assets."""
 
   def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime) -> None:

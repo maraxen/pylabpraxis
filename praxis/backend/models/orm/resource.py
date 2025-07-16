@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 
 class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
+
   """SQLAlchemy ORM model for cataloging PyLabRobot resource definitions.
 
   This model stores comprehensive metadata about various types of lab resources,
@@ -175,6 +176,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
 
 
 class ResourceOrm(AssetOrm):
+
   """SQLAlchemy ORM model representing a physical instance of a resource.
 
   This model tracks individual physical items of lab resources,

@@ -24,6 +24,7 @@ class MachineTypeDefinitionService(
     MachineDefinitionUpdate,
   ],
 ):
+
   """Service for discovering and syncing machine type definitions."""
 
   def __init__(self, db: AsyncSession) -> None:

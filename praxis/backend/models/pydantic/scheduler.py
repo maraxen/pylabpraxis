@@ -16,6 +16,7 @@ from praxis.backend.models.pydantic.filters import SearchFilters
 
 
 class ScheduleEntryStatus(str, Enum):
+
   """Schedule entry status enum for API."""
 
   QUEUED = "QUEUED"
@@ -28,6 +29,7 @@ class ScheduleEntryStatus(str, Enum):
 
 
 class ResourceReservationStatus(str, Enum):
+
   """Resource reservation status enum for API."""
 
   PENDING = "PENDING"
@@ -39,6 +41,7 @@ class ResourceReservationStatus(str, Enum):
 
 
 class ResourceRequirementRequest(BaseModel):
+
   """Request model for defining resource requirements."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -57,6 +60,7 @@ class ResourceRequirementRequest(BaseModel):
 
 
 class ResourceReservationResponse(BaseModel):
+
   """Response model for resource reservations."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -82,6 +86,7 @@ class ResourceReservationResponse(BaseModel):
 
 
 class ScheduleProtocolRequest(BaseModel):
+
   """Request model for scheduling a protocol run."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -106,6 +111,7 @@ class ScheduleProtocolRequest(BaseModel):
 
 
 class ScheduleEntryResponse(BaseModel):
+
   """Response model for schedule entries."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -130,6 +136,7 @@ class ScheduleEntryResponse(BaseModel):
 
 
 class ScheduleStatusResponse(BaseModel):
+
   """Response model for schedule status queries."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -143,6 +150,7 @@ class ScheduleStatusResponse(BaseModel):
 
 
 class CancelScheduleRequest(BaseModel):
+
   """Request model for cancelling a scheduled run."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -152,6 +160,7 @@ class CancelScheduleRequest(BaseModel):
 
 
 class ScheduleAnalysisResponse(BaseModel):
+
   """Response model for schedule analysis."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -166,6 +175,7 @@ class ScheduleAnalysisResponse(BaseModel):
 
 
 class SchedulerSystemStatusResponse(BaseModel):
+
   """Response model for scheduler system status."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -199,6 +209,7 @@ class SchedulerSystemStatusResponse(BaseModel):
 
 
 class ScheduleHistoryResponse(BaseModel):
+
   """Response model for schedule history entries."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -223,6 +234,7 @@ class ScheduleHistoryResponse(BaseModel):
 
 
 class ScheduleListRequest(BaseModel):
+
   """Request model for listing schedules with filters."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -252,6 +264,7 @@ class ScheduleListRequest(BaseModel):
 
 
 class ScheduleListResponse(BaseModel):
+
   """Response model for schedule listing."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -264,6 +277,7 @@ class ScheduleListResponse(BaseModel):
 
 
 class AssetAvailabilityResponse(BaseModel):
+
   """Response model for asset availability check."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -277,6 +291,7 @@ class AssetAvailabilityResponse(BaseModel):
 
 
 class SchedulePriorityUpdateRequest(BaseModel):
+
   """Request model for updating schedule priority."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -286,6 +301,7 @@ class SchedulePriorityUpdateRequest(BaseModel):
 
 
 class SchedulerMetricsResponse(BaseModel):
+
   """Response model for scheduler performance metrics."""
 
   model_config = ConfigDict(from_attributes=True)
@@ -322,6 +338,7 @@ class SchedulerMetricsResponse(BaseModel):
 
 
 class ScheduleListFilters(BaseModel):
+
     """Model for filtering schedule lists."""
 
     search_filters: SearchFilters
@@ -334,6 +351,7 @@ class ScheduleListFilters(BaseModel):
 
 
 class ScheduleEntryCreate(BaseModel):
+
     """Request model for creating a schedule entry."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -357,6 +375,7 @@ class ScheduleEntryCreate(BaseModel):
 
 
 class ScheduleEntryUpdate(BaseModel):
+
     """Request model for updating a schedule entry."""
 
     model_config = ConfigDict(from_attributes=True)

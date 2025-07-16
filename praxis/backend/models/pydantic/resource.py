@@ -21,6 +21,7 @@ from .pydantic_base import PraxisBaseModel
 
 
 class ResourceBase(AssetBase):
+
   """Base model for a resource instance."""
 
   status: ResourceStatusEnum | None = Field(default=ResourceStatusEnum.UNKNOWN)
@@ -42,6 +43,7 @@ class ResourceBase(AssetBase):
 
 
 class ResourceCreate(ResourceBase, PraxisBaseModel):
+
   """Model for creating a new resource instance."""
 
   machine_initial_status: Optional["MachineStatusEnum"] = Field(
@@ -56,16 +58,19 @@ class ResourceCreate(ResourceBase, PraxisBaseModel):
 
 
 class ResourceUpdate(ResourceBase, AssetUpdate):
+
   """Model for updating a resource instance."""
 
 
 class ResourceResponse(AssetResponse, ResourceBase, PraxisBaseModel):
+
   """Model for API responses for a resource instance."""
 
   parent_response: "ResourceResponse | None" = None
   child_responses: ClassVar[list["ResourceResponse"]] = []
 
   class Config(AssetResponse.Config):
+
     """Pydantic configuration for ResourceResponse."""
 
 
@@ -73,6 +78,7 @@ ResourceResponse.model_rebuild()
 
 
 class ResourceDefinitionBase(BaseModel):
+
   """Defines the base properties for a resource definition."""
 
   resource_type: str | None = None
@@ -92,18 +98,22 @@ class ResourceDefinitionBase(BaseModel):
 
 
 class ResourceDefinitionCreate(ResourceDefinitionBase, PLRTypeDefinitionCreate):
+
   """Represents a resource definition for creation requests."""
 
 
 class ResourceDefinitionUpdate(ResourceDefinitionBase, PLRTypeDefinitionUpdate):
+
   """Specifies the fields that can be updated for an existing resource definition."""
 
 
 class ResourceDefinitionResponse(ResourceDefinitionBase, PLRTypeDefinitionResponse):
+
   """Represents a resource definition for API responses."""
 
 
 class ResourceInventoryReagentItem(BaseModel):
+
   """Represents a single reagent item within resource inventory data."""
 
   reagent_accession_id: UUID7
@@ -122,6 +132,7 @@ class ResourceInventoryReagentItem(BaseModel):
 
 
 class ResourceInventoryItemCount(BaseModel):
+
   """Provides counts and usage information for items within a resource inventory."""
 
   item_type: str | None = None
@@ -131,6 +142,7 @@ class ResourceInventoryItemCount(BaseModel):
 
 
 class ResourceInventoryDataIn(BaseModel):
+
   """Represents inbound inventory data for a resource instance."""
 
   praxis_inventory_schema_version: str | None = "1.0"
@@ -142,12 +154,14 @@ class ResourceInventoryDataIn(BaseModel):
 
 
 class ResourceInventoryDataOut(ResourceInventoryDataIn):
+
   """Represents outbound inventory data for a resource instance."""
 
   last_updated_at: str | None = None
 
 
 class ResourceTypeInfo(BaseModel):
+
   """Provides detailed information about a specific resource type."""
 
   name: str
@@ -159,6 +173,7 @@ class ResourceTypeInfo(BaseModel):
 
 
 class ResourceCategoriesResponse(BaseModel):
+
   """Organizes resource types by category for categorization and discovery."""
 
   categories: dict[str, list[str]]

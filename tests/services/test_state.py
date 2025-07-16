@@ -33,6 +33,7 @@ def run_id() -> uuid.UUID:
 
 
 class TestPraxisState:
+
   """Test suite for the PraxisState class."""
 
   def test_initialization_success(self, mock_redis_client, run_id) -> None:

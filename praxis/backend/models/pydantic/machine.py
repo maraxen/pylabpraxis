@@ -22,6 +22,7 @@ from .asset import AssetBase, AssetResponse, AssetUpdate
 
 
 class MachineBase(AssetBase):
+
   """Defines the base properties for a machine."""
 
   status: MachineStatusEnum | None = Field(default=MachineStatusEnum.OFFLINE)
@@ -48,6 +49,7 @@ class MachineBase(AssetBase):
 
 
 class MachineCreate(MachineBase, PraxisBaseModel):
+
   """Represents a machine for creation requests.
 
   Extends `MachineBase` with fields required for creating a new machine,
@@ -72,6 +74,7 @@ class MachineCreate(MachineBase, PraxisBaseModel):
 
 
 class MachineUpdate(MachineBase, AssetUpdate):
+
   """Represents a machine for update requests."""
 
   status: MachineStatusEnum | None = None
@@ -84,6 +87,7 @@ class MachineUpdate(MachineBase, AssetUpdate):
 
 
 class MachineResponse(AssetResponse, MachineBase):
+
   """Represents a machine for API responses.
 
   Extends `MachineBase` and `AssetResponse` to provide a complete
@@ -92,6 +96,7 @@ class MachineResponse(AssetResponse, MachineBase):
 
 
 class MachineDefinitionBase(PLRTypeDefinitionBase):
+
   """Defines the base properties for a machine definition."""
 
   machine_category: MachineCategoryEnum | None = Field(
@@ -141,11 +146,14 @@ class MachineDefinitionBase(PLRTypeDefinitionBase):
 
 
 class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
+
   """Represents a machine definition for creation requests."""
 
 
 class MachineDefinitionUpdate(MachineDefinitionBase, PLRTypeDefinitionUpdate):
+
   """Specifies the fields that can be updated for an existing machine definition."""
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):
+
   """Represents a machine definition for API responses."""

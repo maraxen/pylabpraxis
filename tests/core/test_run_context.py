@@ -12,6 +12,7 @@ from praxis.backend.services.state import PraxisState
 
 
 class DummyResource:
+
     """Dummy Resource for testing."""
 
     def __repr__(self) -> str:
@@ -20,6 +21,7 @@ class DummyResource:
 
 
 class DummyDeck:
+
     """Dummy Deck for testing."""
 
     def __repr__(self) -> str:
@@ -28,6 +30,7 @@ class DummyDeck:
 
 
 class DummyModel(BaseModel):
+
     """Dummy Pydantic model for testing."""
 
     foo: int
@@ -142,6 +145,7 @@ def test_serialize_arguments_excludes_praxis_run_context_kwarg() -> None:
 def test_serialize_arguments_typeerror_fallback() -> None:
     """Test serialize_arguments fallback when TypeError is raised."""
     class Unserializable:
+
         """A class that is not serializable by default."""
 
     args = (Unserializable(),)

@@ -20,6 +20,7 @@ class DiscoverableTypeServiceBase(
   Generic[ModelType, CreateSchemaType, UpdateSchemaType],
   ABC,
 ):
+
   """An abstract base class for services that handle discoverable pylabrobot type definitions."""
 
   def __init__(self, db: AsyncSession) -> None:

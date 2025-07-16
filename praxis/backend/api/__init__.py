@@ -9,7 +9,7 @@ from praxis.backend.api.outputs import (
   router as outputs_router,
 )
 from praxis.backend.api.resources import router as assets_router
-from praxis.backend.api.workcell_api import router as workcell_router
+from praxis.backend.api.workcell import router as workcell_router
 
 __all__ = [
   "assets_router",

@@ -31,6 +31,7 @@ from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
 
 
 class ProtocolStartRequest(PraxisBaseModel):
+
   """Represents a request to start a protocol run.
 
   This includes details about the protocol to be run, its parameters,
@@ -49,6 +50,7 @@ class ProtocolStartRequest(PraxisBaseModel):
 
 
 class ProtocolStatus(BaseModel):
+
   """Provides a simple status update for a protocol."""
 
   name: str
@@ -56,12 +58,14 @@ class ProtocolStatus(BaseModel):
 
 
 class ProtocolDirectories(BaseModel):
+
   """Lists directories associated with protocols."""
 
   directories: list[str]
 
 
 class ProtocolPrepareRequest(BaseModel):
+
   """Represents a request to prepare a protocol for execution.
 
   This includes the protocol's path or ID, along with any necessary
@@ -74,6 +78,7 @@ class ProtocolPrepareRequest(BaseModel):
 
 
 class ProtocolInfo(BaseModel):
+
   """Provides essential information about a protocol.
 
   This includes its name, source path, description, and whether it has
@@ -90,12 +95,14 @@ class ProtocolInfo(BaseModel):
 
 
 class UIHint(BaseModel):
+
   """Provides hints for parameter/asset rendering in a user interface."""
 
   widget_type: str | None = None
 
 
 class ParameterConstraintsModel(BaseModel):
+
   """Defines validation constraints for a protocol parameter."""
 
   min_value: int | float | None = None
@@ -106,6 +113,7 @@ class ParameterConstraintsModel(BaseModel):
   options: list[Any] | None = None
 
   class Config:
+
     """Pydantic configuration for ParameterConstraintsModel."""
 
     from_attributes = True
@@ -113,6 +121,7 @@ class ParameterConstraintsModel(BaseModel):
 
 
 class ParameterMetadataModel(BaseModel):
+
   """Provides comprehensive metadata for a protocol parameter.
 
   This includes its name, type information, default value, description,
@@ -133,6 +142,7 @@ class ParameterMetadataModel(BaseModel):
 
 
 class LocationConstraintsModel(BaseModel):
+
   """Defines constraints for the location of an asset in a protocol.
 
   This includes required locations, optional locations, and any specific
@@ -146,6 +156,7 @@ class LocationConstraintsModel(BaseModel):
   position_condition: list[str] = Field(default_factory=list)
 
   class Config:
+
     """Pydantic configuration for LocationConstraintsModel."""
 
     from_attributes = True
@@ -153,6 +164,7 @@ class LocationConstraintsModel(BaseModel):
 
 
 class AssetConstraintsModel(BaseModel):
+
   """Defines constraints for an asset required by a protocol."""
 
   required_methods: list[str] = Field(default_factory=list)
@@ -162,6 +174,7 @@ class AssetConstraintsModel(BaseModel):
 
 
 class AssetRequirementModel(BaseModel):
+
   """Describes a single asset required by a protocol.
 
   This includes its name, type information, optionality, default value,
@@ -182,6 +195,7 @@ class AssetRequirementModel(BaseModel):
 
 
 class FunctionProtocolDefinitionCreate(PraxisBaseModel):
+
   """Represents a detailed definition of a function-based protocol.
 
   This model encapsulates core definition details, source information,
@@ -215,6 +229,7 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
 
 
 class FunctionProtocolDefinitionUpdate(BaseModel):
+
   """Model for updating a function protocol definition."""
 
   name: str | None = None
@@ -240,10 +255,12 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
 
 
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate, PraxisBaseModel):
+
   """Model for API responses for a function protocol definition."""
 
 
 class ProtocolParameters(BaseModel):
+
   """Represents the parameters for a protocol run.
 
   This includes both user-defined parameters, derived from the protocol's
@@ -255,6 +272,7 @@ class ProtocolParameters(BaseModel):
   system_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
 
   class Config:
+
     """Pydantic configuration for ProtocolParameters."""
 
     from_attributes = True
@@ -262,6 +280,7 @@ class ProtocolParameters(BaseModel):
 
 
 class ProtocolDefinitionFilters(BaseModel):
+
   """Model for filtering protocol definitions."""
 
   search_filters: SearchFilters
@@ -273,6 +292,7 @@ class ProtocolDefinitionFilters(BaseModel):
 
 
 class ProtocolRunBase(BaseModel):
+
   """Base model for a protocol run."""
 
   status: ProtocolRunStatusEnum | None = None
@@ -289,23 +309,28 @@ class ProtocolRunBase(BaseModel):
 
 
 class ProtocolRunCreate(ProtocolRunBase, PraxisBaseModel):
+
   """Model for creating a new protocol run."""
 
   top_level_protocol_definition_accession_id: UUID7
 
 
 class ProtocolRunUpdate(ProtocolRunBase):
+
   """Model for updating a protocol run."""
 
 
 class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
+
   """Model for API responses for a protocol run."""
 
   class Config(PraxisBaseModel.Config):
+
     """Pydantic configuration for ProtocolRunResponse."""
 
 
 class FunctionCallLogBase(BaseModel):
+
   """Base model for a function call log."""
 
   end_time: datetime | None = None
@@ -317,6 +342,7 @@ class FunctionCallLogBase(BaseModel):
 
 
 class FunctionCallLogCreate(FunctionCallLogBase, PraxisBaseModel):
+
   """Model for creating a new function call log."""
 
   parent_function_call_log_accession_id: UUID7 | None = None
@@ -327,11 +353,14 @@ class FunctionCallLogCreate(FunctionCallLogBase, PraxisBaseModel):
 
 
 class FunctionCallLogUpdate(FunctionCallLogBase):
+
   """Model for updating a function call log."""
 
 
 class FunctionCallLogResponse(FunctionCallLogCreate):
+
   """Model for API responses for a function call log."""
 
   class Config(PraxisBaseModel.Config):
+
     """Pydantic configuration for FunctionCallLogResponse."""

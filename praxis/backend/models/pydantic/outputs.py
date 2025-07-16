@@ -19,6 +19,7 @@ from praxis.backend.models.pydantic.filters import SearchFilters
 
 
 class FunctionDataOutputBase(BaseModel):
+
   """Base fields for function data outputs."""
 
   data_type: DataOutputTypeEnum = Field(..., description="Type of data output")
@@ -68,6 +69,7 @@ class FunctionDataOutputBase(BaseModel):
   )
 
   class Config:
+
     """Pydantic configuration."""
 
     from_attributes = True
@@ -75,6 +77,7 @@ class FunctionDataOutputBase(BaseModel):
 
 
 class FunctionDataOutputCreate(FunctionDataOutputBase):
+
   """Model for creating function data outputs."""
 
   function_call_log_accession_id: UUID7 = Field(
@@ -150,6 +153,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
 
 
 class FunctionDataOutputUpdate(BaseModel):
+
   """Model for updating function data outputs."""
 
   data_quality_score: float | None = Field(
@@ -171,6 +175,7 @@ class FunctionDataOutputUpdate(BaseModel):
 
 
 class FunctionDataOutputResponse(FunctionDataOutputBase):
+
   """Model for function data output responses."""
 
   accession_id: UUID7 = Field(..., description="Unique identifier")
@@ -222,6 +227,7 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
 
 
 class WellDataOutputBase(BaseModel):
+
   """Base fields for well-specific data outputs."""
 
   well_name: str = Field(..., max_length=10, description="Well name (e.g., 'A1')")
@@ -238,6 +244,7 @@ class WellDataOutputBase(BaseModel):
   )
 
   class Config:
+
     """Pydantic configuration."""
 
     from_attributes = True
@@ -245,6 +252,7 @@ class WellDataOutputBase(BaseModel):
 
 
 class WellDataOutputCreate(WellDataOutputBase):
+
   """Model for creating well data outputs."""
 
   function_data_output_accession_id: UUID7 = Field(
@@ -259,6 +267,7 @@ class WellDataOutputCreate(WellDataOutputBase):
 
 
 class WellDataOutputResponse(WellDataOutputBase):
+
   """Model for well data output responses."""
 
   accession_id: UUID7 = Field(..., description="Unique identifier")
@@ -277,6 +286,7 @@ class WellDataOutputResponse(WellDataOutputBase):
 
 
 class WellDataOutputUpdate(BaseModel):
+
   """Model for updating well data outputs."""
 
   data_value: float | None = Field(None, description="Updated data value")
@@ -288,6 +298,7 @@ class WellDataOutputUpdate(BaseModel):
 
 
 class PlateDataVisualization(BaseModel):
+
   """Model for plate-based data visualization."""
 
   plate_resource_accession_id: UUID7 = Field(
@@ -319,6 +330,7 @@ class PlateDataVisualization(BaseModel):
   units: str | None = Field(None, description="Data units")
 
   class Config:
+
     """Pydantic configuration for PlateDataVisualization."""
 
     from_attributes = True
@@ -327,6 +339,7 @@ class PlateDataVisualization(BaseModel):
 
 
 class ProtocolRunDataSummary(BaseModel):
+
   """Model for summarizing all data from a protocol run."""
 
   protocol_run_accession_id: UUID7 = Field(..., description="ID of the protocol run")
@@ -356,6 +369,7 @@ class ProtocolRunDataSummary(BaseModel):
   )
 
   class Config:
+
     """Pydantic configuration for ProtocolRunDataSummary."""
 
     from_attributes = True
@@ -364,6 +378,7 @@ class ProtocolRunDataSummary(BaseModel):
 
 
 class DataExportRequest(BaseModel):
+
   """Model for requesting data export."""
 
   filters: SearchFilters = Field(..., description="Filters for data selection")
@@ -384,6 +399,7 @@ class DataExportRequest(BaseModel):
 
 
 class FunctionDataOutputFilters(BaseModel):
+
   """Model for filtering function data outputs."""
 
   search_filters: SearchFilters = Field(..., description="Search filters for data selection")
@@ -403,6 +419,7 @@ class FunctionDataOutputFilters(BaseModel):
 
 
 class WellDataOutputFilters(BaseModel):
+
   """Model for filtering well data outputs."""
 
   plate_resource_id: UUID | None = Field(None)

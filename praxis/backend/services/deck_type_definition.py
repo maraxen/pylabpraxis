@@ -26,6 +26,7 @@ class DeckTypeDefinitionService(
     DeckTypeDefinitionUpdate,
   ],
 ):
+
   """Service for discovering and syncing deck type definitions."""
 
   def __init__(self, db: AsyncSession) -> None:
@@ -89,4 +90,5 @@ class DeckTypeDefinitionService(
 class DeckTypeDefinitionCRUDService(
   CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCreate, DeckTypeDefinitionUpdate],
 ):
+
   """CRUD service for deck type definitions."""

@@ -7,6 +7,8 @@ pattern. This avoids the use of global variables and makes the code
 more testable and maintainable.
 """
 
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
@@ -16,15 +18,17 @@ logger = get_logger(__name__)
 
 
 class GlobalDependencies:
+
   """A class to hold global dependencies."""
 
   def __init__(self) -> None:
+    """Initialize the global dependencies."""
     self.scheduler: ProtocolScheduler | None = None
     self.asset_lock_manager: AssetLockManager | None = None
 
   async def initialize(
     self,
-    db_session_factory,
+    db_session_factory: async_sessionmaker,
     config: PraxisConfiguration | None = None,
   ) -> None:
     """Initialize global scheduler components."""

@@ -91,6 +91,7 @@ def clear_registry():
 
 @pytest.mark.asyncio
 class TestOrchestratorExecution:
+
   """Tests the main execution flows of the Orchestrator."""
 
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
@@ -238,6 +239,7 @@ class TestOrchestratorExecution:
 
 @pytest.mark.asyncio
 class TestOrchestratorScenarios:
+
   """Tests various edge cases and scenarios for the Orchestrator."""
 
   @patch(

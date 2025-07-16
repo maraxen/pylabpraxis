@@ -58,6 +58,7 @@ def execution_context(mock_orchestrator, mock_db_session_factory):
 
 @pytest.mark.asyncio
 class TestExecuteProtocolRunTask:
+
   """Test suite for the main protocol execution Celery task."""
 
   def test_initialize_celery_context(self, mock_orchestrator, mock_db_session_factory) -> None:
