@@ -62,6 +62,7 @@ scheduler_service_log = partial(
 class ScheduleEntryCRUDService(
   CRUDBase[ScheduleEntryOrm, ScheduleEntryCreate, ScheduleEntryUpdate],
 ):
+
   """CRUD service for schedule entries."""
 
   @handle_db_transaction

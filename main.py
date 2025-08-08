@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 from praxis.backend.api import discovery, function_data_outputs, protocols, resources, workcell_api
-from praxis.backend.api.scheduler_api import initialize_scheduler_components
+from praxis.backend.api.scheduler import initialize_scheduler_components
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.orchestrator import Orchestrator
@@ -39,6 +39,23 @@ logging.basicConfig(
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+# This global context will be initialized once during application startup.
+_execution_context: ProtocolExecutionContext | None = None
+
+
+def initialize_celery_context(
+  db_session_factory: async_sessionmaker[AsyncSession],
+  orchestrator: Orchestrator,
+) -> None:
+  """Initialize the global context for Celery tasks with necessary dependencies.
+
+  This function should be called when the main application starts to ensure
+  that all Celery workers have access to the database and orchestrator.
+  """
+  global _execution_context
+  if not _execution_context:
+    _execution_context = ProtocolExecutionContext(db_session_factory, orchestrator)
+    logger.info("Celery execution context initialized successfully.")
 
 
 @asynccontextmanager

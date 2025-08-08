@@ -455,14 +455,6 @@ class ScheduleHistoryOrm(Base):
   )
 
   # Relationships
-  schedule_entry: Mapped["ScheduleEntryOrm"] = relationship(
-    "ScheduleEntryOrm",
-    back_populates="schedule_history",
-    uselist=False,
-    init=False,
-    foreign_keys=[schedule_entry_accession_id],
-    comment="Back-reference to the schedule entry this history record belongs to.",
-  )
 
   triggered_by: Mapped[ScheduleHistoryEventTriggerEnum] = mapped_column(
     String,

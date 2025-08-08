@@ -83,7 +83,7 @@ class AcquireAsset(BaseModel):
   protocol_run_accession_id: UUID7
   requested_asset_name_in_protocol: str
   fqn: str
-  asset_accession_id: UUID7
+  instance_accession_id: UUID7 | None = None
   location_constraints: dict[str, Any] | None = None
   property_constraints: dict[str, Any] | None = None
 

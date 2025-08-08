@@ -23,7 +23,7 @@ import os
 import uuid
 import warnings
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel
 from pylabrobot.resources import Deck, Resource
@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.services.state import PraxisState
 
 PROTOCOL_REGISTRY: dict[str, Any] = {}
-DeckInputType = Union[str, os.PathLike, io.IOBase, Deck]
+DeckInputType = str | os.PathLike | io.IOBase | Deck
 
 logger = logging.getLogger(__name__)
 
@@ -46,25 +46,28 @@ class PraxisRunContext:
 
   """
 
-  # Identifiers for the overall run
-  run_accession_id: (
-    uuid.UUID
-  )  # User-facing unique ID (e.g. UUID) of the ProtocolRunOrm entry
-
-  # Core shared objects for the run
+  run_accession_id: uuid.UUID
+  """Unique identifier for the protocol run."""
   canonical_state: PraxisState
-  current_db_session: AsyncSession  # SQLAlchemy session
-
-  # For call logging - these track the *current* state of the call stack
-  # This is the FunctionCallLogOrm.accession_id of the *currently executing* function's log entry.
-  # For the next nested call, this becomes the parent_function_call_log_db_accession_id.
+  """Canonical state of the protocol run, shared across all calls."""
+  current_db_session: AsyncSession
+  """Current database session for the run, shared across all calls."""
   current_call_log_db_accession_id: uuid.UUID | None = None
-
-  # Sequence counter for calls within this run_accession_id
-  # This should be managed carefully to ensure it's unique and ordered for a given run.
-  _call_sequence_next_val: int = 1  # Internal counter, starts at 1
-
-  # TODO: CTX-1: Consider if user_accession_id, workcell_accession_id, etc., should be here.
+  """ID of the current function call log entry, if any.
+  This is set to the ID of the FunctionCallLogOrm entry for the currently executing function
+  call, or None if not set.
+  This is used to track the current call in the run context.
+  If this is None, it indicates that the context is not currently associated with a specific
+  function call log entry.
+  """
+  _call_sequence_next_val: int = 1
+  """Internal counter for call sequence numbers.
+  This is used to assign a unique sequence number to each function call within the run.
+  It starts at 1 and increments with each call.
+  This is used to track the order of function calls within the run context.
+  It is not part of the public API and should not be modified directly.
+  It is used internally to assign sequence numbers to function calls.
+  """
 
   def get_and_increment_sequence_val(self) -> int:
     """Return the current sequence value and then increment it for the next call."""
@@ -104,7 +107,7 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
   """Serialize positional and keyword arguments to a JSON string."""
   try:
 
-    def make_serializable(item):
+    def make_serializable(item: Any) -> Any:
       if isinstance(item, BaseModel):  # Check for Pydantic models
         try:
           return item.model_dump()  # Use Pydantic v2 style

@@ -13,6 +13,8 @@ ignore = ["D211", "D213"]
 
 [format]
 indent-style = "space"
+exclude = ["D211", "D213"]
+
 
 [lint.pylint]
 max-args = 8

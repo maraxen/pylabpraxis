@@ -15,7 +15,8 @@ import os
 import sys
 import traceback
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import (
   Any,
   Union,
@@ -46,7 +47,7 @@ from praxis.backend.utils.type_inspection import (
 
 logger = logging.getLogger(__name__)
 
-
+# TODO(mar): Make this much safer, accessing sys.path directly can lead to issues.
 class DiscoveryService:
 
   """Service for discovering and managing protocol functions and PLR type definitions."""
@@ -121,9 +122,26 @@ class DiscoveryService:
     )
     logger.info("All definitions synchronized.")
 
+  def _ensure_path_type(self, search_paths: Sequence[str | Path]) -> list[Path]:
+    """Check the provided search paths."""
+    directory_paths = []
+    for path in search_paths:
+      if isinstance(path, str):
+        directory_paths.append(Path(path))
+      elif isinstance(path, Path):
+        directory_paths.append(path)
+    if not all(p.is_dir() for p in directory_paths):
+      msg = (
+        "DiscoveryService: One or more search paths are not valid directories: "
+        f"{[str(p) for p in directory_paths]}"
+      )
+      logger.info(msg)
+      return []
+    return directory_paths
+
   def _extract_protocol_definitions_from_paths(
     self,
-    search_paths: str | list[str],
+    search_paths: Sequence[str | Path],
   ) -> list[tuple[FunctionProtocolDefinitionCreate, Callable | None]]:
     """Extract protocol function definitions from Python files in the given paths.
 
@@ -155,36 +173,40 @@ class DiscoveryService:
       corresponding function reference, or None if the function could not be found.
 
     """
-    if isinstance(search_paths, str):
-      search_paths = [search_paths]
+    directory_paths = self._ensure_path_type(search_paths)
 
     extracted_definitions: list[tuple[FunctionProtocolDefinitionCreate, Callable | None]] = []
     processed_func_accession_ids: set[int] = set()
     loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
 
-    for path_item in search_paths:
-      abs_path_item = os.path.abspath(path_item)
-      if not os.path.isdir(abs_path_item):
+    for path_item in directory_paths:
+      abs_path_item = path_item.resolve()
+      if not abs_path_item.is_dir():
         continue
 
-      potential_package_parent = os.path.dirname(abs_path_item)
+      potential_package_parent = abs_path_item.parent
       path_added_to_sys = False
       if potential_package_parent not in sys.path:
-        sys.path.insert(0, potential_package_parent)
+        sys.path.insert(0, str(potential_package_parent))
         path_added_to_sys = True
 
       for root, _, files in os.walk(abs_path_item):
         for file in files:
           if file.endswith(".py") and not file.startswith("_"):
-            module_file_path = os.path.join(root, file)
+            module_file_path = Path(root) / Path(file)
             rel_module_path = os.path.relpath(
               module_file_path,
               potential_package_parent,
             )
-            module_import_name = os.path.splitext(rel_module_path)[0].replace(
-              os.sep,
-              ".",
+            module_import_name = (
+              Path(rel_module_path)
+              .with_suffix("")
+              .as_posix()
+              .replace(
+                os.sep,
+                ".",
+              )
             )
 
             try:
@@ -270,7 +292,7 @@ class DiscoveryService:
               )
               traceback.print_exc()
       if path_added_to_sys and potential_package_parent in sys.path:
-        sys.path.remove(potential_package_parent)
+        sys.path.remove(str(potential_package_parent))
     sys.path = original_sys_path
     return extracted_definitions
 

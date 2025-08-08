@@ -87,44 +87,42 @@ To reduce boilerplate and ensure consistent transaction handling across the serv
 
 This approach ensures that the service layer remains decoupled from the web (HTTP) layer, as it does not raise `HTTPException` directly.
 
+## Pydantic Model Management
+
+Pydantic models used for API requests/responses or within core/service layers should be defined in the `praxis/backend/models/pydantic` directory. This promotes consistency and avoids duplicating model definitions across the codebase.
+
+## ISSUES TO PAY ATTENTION TO
+
+- When an issue is repeatedly raised, it should be documented here to prevent recurrence.
+- Pydantic models should be defined in the `models/pydantic` directory, not inline in other modules.
+
 ## WORK IN PROGRESS
 
-**Date:** July 10, 2025
+**Date:** July 17, 2025
 
 **Development Plan:**
 
-*   **Phase 1: Refactor and Enhance the Service Layer** (In Progress)
+*   **Phase 1: Refactor and Enhance the Service Layer** (Completed)
     1.  **Implement `@handle_db_transaction` Decorator**: Created a decorator to standardize database transaction management (`commit`, `rollback`, and exception handling) across the service layer.
-    2.  **Refactor Services to Use Decorator**:
-        -   [x] `praxis/backend/services/resource.py`
-        -   [x] `praxis/backend/services/deck.py`
-        -   [x] `praxis/backend/services/machine.py`
-        -   [ ] Refactor remaining services to use the new decorator.
-    3.  **Resolve Pyright and Ruff Errors**: Continue to resolve remaining type and linting errors throughout the codebase.
+    2.  **Refactor Services to Use Decorator**: Applied the decorator to all applicable services, including `CRUDBase`, to ensure atomic transactions and reduce boilerplate.
+    3.  **Resolve Pyright and Ruff Errors**: Resolved all resulting type and linting errors in the service and API layers.
 
 *   **Phase 2: Pydantic Model Refactoring** (In Progress)
     1.  Convert `RuntimeAssetRequirement` to a proper Pydantic model.
 
 *   **Phase 3: API Layer Refactoring** (In Progress)
-    1.  Implement `crud_router_factory` for generic CRUD operations.
-    2.  Refactor existing API endpoints to use `crud_router_factory`.
+    1.  Refactor existing API endpoints to use `crud_router_factory`.
+        -   [x] `praxis/backend/api/scheduler.py`
+        -   [ ] Refactor remaining APIs.
+
+*   **Phase 4: Core Module Refactoring** (In Progress)
+    1.  Analyze and refactor `praxis/backend/core` modules for clarity, efficiency, and type safety.
+        -   [ ] `praxis/backend/core/asset_manager.py` - Resolve Pyright issues.
 
 ## LAST SESSION
 
-**Date:** July 10, 2025
+**Date:** July 17, 2025
 
 **Accomplished Milestones:**
-*   Created the `@handle_db_transaction` decorator to standardize database transaction management.
-*   Refactored the `ResourceService`, `DeckService`, and `MachineService` to use the new decorator, significantly reducing boilerplate code.
-*   Resolved a large number of `pyright` errors in the service layer, particularly in `scheduler.py`, by refactoring to a `CRUDBase` service and fixing numerous type and call issues.
-*   Created `ScheduleEntryCreate` and `ScheduleEntryUpdate` Pydantic models to support the `ScheduleEntryCRUDService`.
-*   Addressed `reportMissingImports` errors by activating the virtual environment before running `pyright`.
-*   Fixed a bug in `entity_linking.py` where incorrect variable names were used.
-*   Corrected the `get_multi` method signature in `ScheduleEntryCRUDService` to be compatible with `CRUDBase`.
-*   Fixed several incorrect constructor calls and attribute access errors in `scheduler.py`.
-*   Corrected the `timestamp` vs `created_at` attribute mismatch in `scheduler.py`.
-*   Fixed incorrect argument types being passed to `AssetReservationOrm` and `ScheduleHistoryOrm` constructors.
-*   Resolved `reportIncompatibleMethodOverride` errors in `resource.py` by adding explicit return type hints.
-*   Fixed incorrect argument types in `resource.py` for `apply_date_range_filters` and `apply_property_filters`.
-*   Refactored the `DeckService` and `MachineService` to use the `@handle_db_transaction` decorator.
-*   Updated `GEMINI.md` to reflect the current state of the refactoring.
+*   Updated `GEMINI.md` to reflect the completion of the service layer refactoring.
+

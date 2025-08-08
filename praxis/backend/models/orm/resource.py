@@ -266,6 +266,22 @@ class ResourceOrm(AssetOrm):
     default=None,
   )
 
+  current_protocol_run_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_runs.accession_id", ondelete="SET NULL"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the current protocol run this resource is used in, if applicable.",
+    default=None,
+  )
+
+  current_deck_position_name: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="Name of the deck position where the resource is currently located.",
+    default=None,
+  )
+
   # Counterparts
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
