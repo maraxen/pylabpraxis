@@ -1,8 +1,10 @@
-from setuptools import setup, find_packages  # type: ignore
+"""Setup script for Praxis, a hardware agnostic platform for managing lab automation."""
+
+from setuptools import find_packages, setup  # type: ignore
 
 from .__version__ import __version__
 
-with open("README.md", "r", encoding="utf-8") as f:
+with open("README.md", encoding="utf-8") as f:
   long_description = f.read()
 
 
@@ -47,7 +49,7 @@ extras_dev = (
     "sphinx_copybutton",
     "pytest",
     "pytest-timeout",
-    "pylint",
+    "ruff",
     "mypy",
     "responses",
     "freezegun",
@@ -72,7 +74,7 @@ setup(
     "sqlalchemy[asyncio]",
     "asyncpg>0.27.0",
     "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0" "uuid-utils>=0.11.0",
+    "uvicorn[standard]>=0.34.0uuid-utils>=0.11.0",
   ],
   url="https://github.com/maraxen/pylabpraxis.git",
   author="Marielle Russo",

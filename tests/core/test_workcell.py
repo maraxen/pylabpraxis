@@ -1,35 +1,30 @@
 # pylint: disable=redefined-outer-name, protected-access
 """Unit tests for the Workcell and WorkcellView classes."""
 
-import json
-import uuid
-from unittest.mock import MagicMock, patch
-from typing import Any
-
 import pytest
-from pylabrobot.resources import Resource
 from pylabrobot.machines import Machine
 from pylabrobot.machines.backends import MachineBackend
+from pylabrobot.resources import Resource
 
-from praxis.backend.core.workcell import Workcell, WorkcellView
+from praxis.backend.core.workcell import Workcell
 from praxis.backend.models import (
-  AssetRequirementModel,
-  MachineCategoryEnum,
   ResourceCategoryEnum,
 )
 
 
 class MockBackend(MachineBackend):
+
   """A mock backend for testing."""
 
-  def __init__(self):
+  def __init__(self) -> None:
+    """Initialize the mock backend."""
     super().__init__()
 
-  async def setup(self):
-    pass
+  async def setup(self) -> None:
+    """Set up the mock backend (no-op)."""
 
-  async def stop(self):
-    pass
+  async def stop(self) -> None:
+    """Stop the mock backend (no-op)."""
 
 
 @pytest.fixture
@@ -39,33 +34,45 @@ def mock_backend() -> MockBackend:
 
 
 class MockPureMachine(Machine):
-  def __init__(self, backend: MockBackend):
+
+  """A mock machine that is not a resource."""
+
+  def __init__(self, backend: MockBackend) -> None:
+    """Initialize the mock pure machine with a backend."""
     super().__init__(backend=backend)
 
 
-# Case 2: A pure Resource that is NOT a machine.
 class MockPureResource(Resource):
-  def __init__(self, name: str, category: str = "plates", **kwargs):
+
+  """A mock resource that is not a machine."""
+
+  def __init__(self, name: str, category: str = "plates", **kwargs) -> None:
+    """Initialize the mock pure resource with a name and category."""
     super().__init__(
-      name=name, size_x=10, size_y=10, size_z=10, category=category, **kwargs
+      name=name, size_x=10, size_y=10, size_z=10, category=category, **kwargs,
     )
 
 
-# Case 3: A Machine that IS ALSO a Resource.
 class MockMachineResource(Resource, Machine):
+
+  """A mock asset that is both a machine and a resource."""
+
   def __init__(
-    self, name: str, backend: MockBackend, category: str = "robot_arms", **kwargs
-  ):
+    self, name: str, backend: MockBackend, category: str = "robot_arms", **kwargs,
+  ) -> None:
+    """Initialize the mock machine resource with a name, backend, and category."""
     Resource.__init__(
-      self, name=name, size_x=1, size_y=1, size_z=1, category=category, **kwargs
+      self, name=name, size_x=1, size_y=1, size_z=1, category=category, **kwargs,
     )
     Machine.__init__(self, backend=backend)
     self.state = "default"
 
   def serialize_state(self) -> dict:
+    """Serialize the state of the mock machine resource."""
     return {"name": self.name, "state": self.state}
 
-  def load_state(self, state: dict):
+  def load_state(self, state: dict) -> None:
+    """Load the state into the mock machine resource."""
     self.state = state.get("state", "loaded_default")
 
 
@@ -76,9 +83,10 @@ def workcell() -> Workcell:
 
 
 class TestWorkcell:
+
   """Tests for the Workcell container class."""
 
-  def test_add_pure_machine_asset(self, workcell: Workcell, mock_backend: MockBackend):
+  def test_add_pure_machine_asset(self, workcell: Workcell, mock_backend: MockBackend) -> None:
     """Test adding a machine that is NOT a resource."""
     machine = MockPureMachine(backend=mock_backend)
     workcell.add_asset(machine)
@@ -88,10 +96,10 @@ class TestWorkcell:
     assert asset_key in workcell
     assert workcell[asset_key] == machine
 
-  def test_add_pure_resource_asset(self, workcell: Workcell):
+  def test_add_pure_resource_asset(self, workcell: Workcell) -> None:
     """Test adding a resource-only asset to the workcell."""
     resource = MockPureResource(
-      name="test_plate", category=ResourceCategoryEnum.PLATE.value
+      name="test_plate", category=ResourceCategoryEnum.PLATE.value,
     )
     workcell.add_asset(resource)
     assert resource in workcell.children
@@ -99,11 +107,11 @@ class TestWorkcell:
     assert workcell.plates["test_plate"] == resource  # type: ignore
 
   def test_add_machine_resource_asset(
-    self, workcell: Workcell, mock_backend: MockBackend
-  ):
+    self, workcell: Workcell, mock_backend: MockBackend,
+  ) -> None:
     """Test adding an asset that is both a Machine and a Resource."""
     machine_resource = MockMachineResource(
-      name="robot_arm", backend=mock_backend, category="robot_arms"
+      name="robot_arm", backend=mock_backend, category="robot_arms",
     )
     workcell.add_asset(machine_resource)
     assert machine_resource in workcell.children

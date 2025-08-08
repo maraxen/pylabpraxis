@@ -1,7 +1,7 @@
 """Unit tests for the ProtocolScheduler."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -92,7 +92,7 @@ def runtime_asset_requirement():
   return req
 
 
-def test_schedule_entry_init(runtime_asset_requirement):
+def test_schedule_entry_init(runtime_asset_requirement) -> None:
   """Test ScheduleEntry initialization."""
   run_id = uuid.uuid4()
   assets = [runtime_asset_requirement]
@@ -115,7 +115,7 @@ def test_schedule_entry_init(runtime_asset_requirement):
 
 @pytest.mark.asyncio
 @patch("praxis.backend.core.scheduler.uuid7", return_value=uuid.uuid4())
-async def test_analyze_protocol_requirements(mock_uuid7, scheduler, protocol_def_orm):
+async def test_analyze_protocol_requirements(mock_uuid7, scheduler, protocol_def_orm) -> None:
   """Test asset requirement analysis."""
   requirements = await scheduler.analyze_protocol_requirements(protocol_def_orm, {})
 
@@ -132,7 +132,7 @@ async def test_analyze_protocol_requirements(mock_uuid7, scheduler, protocol_def
 
 @pytest.mark.asyncio
 @patch("praxis.backend.core.scheduler.uuid7", return_value=uuid.uuid4())
-async def test_reserve_assets_success(mock_uuid7, scheduler):
+async def test_reserve_assets_success(mock_uuid7, scheduler) -> None:
   """Test successful asset reservation."""
   run_id = uuid.uuid4()
   req = MagicMock(spec=RuntimeAssetRequirement)
@@ -148,7 +148,7 @@ async def test_reserve_assets_success(mock_uuid7, scheduler):
 
 
 @pytest.mark.asyncio
-async def test_reserve_assets_failure_and_rollback(scheduler):
+async def test_reserve_assets_failure_and_rollback(scheduler) -> None:
   """Test failed asset reservation and rollback."""
   run_id_1 = uuid.uuid4()
   run_id_2 = uuid.uuid4()
@@ -170,8 +170,8 @@ async def test_reserve_assets_failure_and_rollback(scheduler):
 @patch("praxis.backend.core.scheduler.execute_protocol_run_task")
 @patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_execution_success(
-  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session
-):
+  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session,
+) -> None:
   """Test successful scheduling of a protocol."""
   mock_celery_task.delay.return_value = MagicMock(id="test_task_id")
   scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
@@ -194,8 +194,8 @@ async def test_schedule_protocol_execution_success(
 @pytest.mark.asyncio
 @patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_asset_failure(
-  mock_svc, scheduler, protocol_run_orm, mock_db_session
-):
+  mock_svc, scheduler, protocol_run_orm, mock_db_session,
+) -> None:
   """Test scheduling failure due to asset reservation."""
   scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
   scheduler.reserve_assets = AsyncMock(return_value=False)
@@ -213,14 +213,14 @@ async def test_schedule_protocol_asset_failure(
 
 
 @pytest.mark.asyncio
-async def test_cancel_scheduled_run(scheduler):
+async def test_cancel_scheduled_run(scheduler) -> None:
   """Test cancelling a scheduled run."""
   run_id = uuid.uuid4()
   req = MagicMock(spec=RuntimeAssetRequirement)
   req.asset_type = "asset"
   req.asset_name = "cancellable_asset"
   entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[req]
+    protocol_run_id=run_id, protocol_name="test", required_assets=[req],
   )
   scheduler._active_schedules[run_id] = entry
   scheduler._asset_reservations["asset:cancellable_asset"] = {run_id}
@@ -233,11 +233,11 @@ async def test_cancel_scheduled_run(scheduler):
 
 
 @pytest.mark.asyncio
-async def test_get_schedule_status(scheduler):
+async def test_get_schedule_status(scheduler) -> None:
   """Test getting schedule status."""
   run_id = uuid.uuid4()
   entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[]
+    protocol_run_id=run_id, protocol_name="test", required_assets=[],
   )
   scheduler._active_schedules[run_id] = entry
 
@@ -250,15 +250,15 @@ async def test_get_schedule_status(scheduler):
 
 
 @pytest.mark.asyncio
-async def test_list_active_schedules(scheduler):
+async def test_list_active_schedules(scheduler) -> None:
   """Test listing active schedules."""
   run_id1 = uuid.uuid4()
   run_id2 = uuid.uuid4()
   scheduler._active_schedules[run_id1] = ScheduleEntry(
-    protocol_run_id=run_id1, protocol_name="p1", required_assets=[]
+    protocol_run_id=run_id1, protocol_name="p1", required_assets=[],
   )
   scheduler._active_schedules[run_id2] = ScheduleEntry(
-    protocol_run_id=run_id2, protocol_name="p2", required_assets=[]
+    protocol_run_id=run_id2, protocol_name="p2", required_assets=[],
   )
 
   schedules = await scheduler.list_active_schedules()

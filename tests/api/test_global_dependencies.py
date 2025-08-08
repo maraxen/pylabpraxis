@@ -1,0 +1,11 @@
+"""Placeholder test file for praxis/backend/api/global_dependencies.py."""
+from fastapi.testclient import TestClient
+
+from praxis.backend.api.global_dependencies import router
+
+client = TestClient(router)
+
+def test_read_main() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"msg": "Hello World"}

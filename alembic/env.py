@@ -1,13 +1,12 @@
 # alembic/env.py
-from praxis.backend.utils.db import Base as PraxisBase, PRAXIS_DATABASE_URL as DATABASE_URL
-import praxis.backend.database_models # type: ignore
 # TODO: Remove this import if not needed
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from praxis.backend.utils.db import PRAXIS_DATABASE_URL as DATABASE_URL
+from praxis.backend.utils.db import Base as PraxisBase
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -35,7 +34,7 @@ target_metadata = PraxisBase.metadata # Use the Base from your application
 # --- MODIFICATION FOR PRAXIS ---
 # Set the SQLAlchemy URL from your application's config
 # This ensures Alembic uses the same database URL as your application
-config.set_main_option('sqlalchemy.url', DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 # --- END MODIFICATION ---
 
 

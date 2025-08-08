@@ -1,15 +1,14 @@
-# <filename>praxis/backend/services/utils.py</filename>
-#
-# This file contains shared utility functions for the service layer, helping
-# to reduce code duplication and centralize common logic.
+"""Shared utility function for the service layer to resolve accessions to UUIDs.
 
-from typing import Awaitable, Callable, Optional, TypeVar
+praxis/backend/services/utils.py
+"""
+
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Define a generic type 'T' that represents any ORM model class.
-# We expect it to have an 'id' attribute.
 T = TypeVar("T")
 
 
@@ -17,8 +16,8 @@ async def get_accession_id_from_accession(
   *,
   accession: str | UUID,
   db: AsyncSession,
-  get_func: Callable[[AsyncSession, UUID], Awaitable[Optional[T]]],
-  get_by_name_func: Callable[[AsyncSession, str], Awaitable[Optional[T]]],
+  get_func: Callable[[AsyncSession, UUID], Awaitable[T | None]],
+  get_by_name_func: Callable[[AsyncSession, str], Awaitable[T | None]],
   entity_type_name: str,
 ) -> UUID:
   """Resolve a string or UUID accession to a specific entity's UUID.
@@ -30,11 +29,11 @@ async def get_accession_id_from_accession(
       accession: The UUID or user-assigned name of the entity to resolve.
       db: The async database session.
       get_func: The service function used to get the entity by its UUID.
-                      Example: `svc.get_resource_instance`
+                      Example: `svc.get_resource`
       get_by_name_func: The service function used to get the entity by its name.
-                        Example: `svc.get_resource_instance_by_name`
-      entity_type_name: The user-friendly name of the entity type (e.g., "Resource Instance")
-                        used for creating clear error messages.
+                        Example: `svc.get_resource_by_name`
+      entity_type_name: The user-friendly name of the entity type (e.g., "Resource
+                        ") used for creating clear error messages.
 
   Returns:
       The UUID of the found entity.
@@ -45,7 +44,7 @@ async def get_accession_id_from_accession(
       RuntimeError: If there is an unexpected error during resolution.
 
   """
-  obj: Optional[T] = None
+  obj: T | None = None
   if isinstance(accession, UUID):
     # If it's already a UUID, we just need to confirm it exists.
     obj = await get_func(db, accession)
@@ -57,11 +56,13 @@ async def get_accession_id_from_accession(
     obj = await get_by_name_func(db, accession)
     if obj and hasattr(obj, "id"):
       # The object was found by name, return its ID.
-      return getattr(obj, "id")  # Ensure we get the ID attribute safely
+      return obj.id  # Ensure we get the ID attribute safely
   else:
     # This case should not be hit if using FastAPI's type hints correctly,
     # but it's good practice to handle it.
-    raise TypeError(f"Invalid accession type provided: {type(accession)}")
+    msg = f"Invalid accession type provided: {type(accession)}"
+    raise TypeError(msg)
 
   # If we reach this point, 'obj' is None, meaning no entity was found.
-  raise ValueError(f"{entity_type_name} with accession '{accession}' not found.")
+  msg = f"{entity_type_name} with accession '{accession}' not found."
+  raise ValueError(msg)

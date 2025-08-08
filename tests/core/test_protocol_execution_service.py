@@ -1,8 +1,9 @@
 """Tests for ProtocolExecutionService in praxis.backend.core.protocol_execution_service."""
 
-import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
 from praxis.backend.models import ProtocolRunStatusEnum
@@ -46,7 +47,7 @@ def orchestrator():
 
 @pytest.fixture
 def service(
-  db_session_factory, asset_manager, workcell_runtime, scheduler, orchestrator
+  db_session_factory, asset_manager, workcell_runtime, scheduler, orchestrator,
 ):
   """Fixture for ProtocolExecutionService with all dependencies mocked."""
   return ProtocolExecutionService(
@@ -59,7 +60,7 @@ def service(
 
 
 @pytest.mark.asyncio
-async def test_execute_protocol_immediately(service, orchestrator):
+async def test_execute_protocol_immediately(service, orchestrator) -> None:
   """Test immediate protocol execution bypassing the scheduler."""
   result = await service.execute_protocol_immediately(
     protocol_name="test_protocol",
@@ -75,7 +76,7 @@ async def test_execute_protocol_immediately(service, orchestrator):
 
 @pytest.mark.asyncio
 @patch("praxis.backend.core.protocol_execution_service.svc")
-async def test_schedule_protocol_execution(mock_svc, service, scheduler):
+async def test_schedule_protocol_execution(mock_svc, service, scheduler) -> None:
   """Test scheduling a protocol for asynchronous execution."""
   protocol_def_orm = MagicMock()
   protocol_def_orm.accession_id = uuid.uuid4()
@@ -102,7 +103,7 @@ async def test_schedule_protocol_execution(mock_svc, service, scheduler):
 
 @pytest.mark.asyncio
 @patch("praxis.backend.core.protocol_execution_service.svc")
-async def test_get_protocol_run_status(mock_svc, service, scheduler):
+async def test_get_protocol_run_status(mock_svc, service, scheduler) -> None:
   """Test getting the status of a protocol run."""
   protocol_run_id = uuid.uuid4()
   protocol_run_orm = MagicMock()
@@ -126,7 +127,7 @@ async def test_get_protocol_run_status(mock_svc, service, scheduler):
 
 @pytest.mark.asyncio
 @patch("praxis.backend.core.protocol_execution_service.svc")
-async def test_cancel_protocol_run(mock_svc, service, scheduler):
+async def test_cancel_protocol_run(mock_svc, service, scheduler) -> None:
   """Test cancelling a protocol run."""
   protocol_run_id = uuid.uuid4()
   mock_svc.update_protocol_run_status = AsyncMock()

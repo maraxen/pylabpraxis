@@ -117,7 +117,7 @@ live_obj, orm_id, asset_type = await asset_manager.acquire_asset(
 
 # Release assets after protocol completion
 await asset_manager.release_machine(machine_orm_id, MachineStatusEnum.AVAILABLE)
-await asset_manager.release_resource(resource_orm_id, ResourceInstanceStatusEnum.AVAILABLE_IN_STORAGE)
+await asset_manager.release_resource(resource_orm_id, ResourceStatusEnum.AVAILABLE_IN_STORAGE)
 ```
 
 ### 7. **AssetLockManager** (`asset_lock_manager.py`)
@@ -261,7 +261,7 @@ async def my_protocol(
     state: PraxisState,
     __praxis_run_context__: PraxisRunContext,
     __function_db_accession_id__: uuid.UUID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Protocol implementation
     await lh.aspirate(volume)
     return {"success": True}
@@ -341,7 +341,7 @@ ProtocolExecutionService
 ### Resource Conflict Resolution
 The system uses a multi-layered approach to handle resource conflicts:
 
-1. **Database-level**: Asset status tracking in ResourceInstanceOrm and MachineOrm
+1. **Database-level**: Asset status tracking in ResourceOrm and MachineOrm
 2. **Redis-level**: Distributed locks via AssetLockManager for atomic reservations
 3. **Scheduler-level**: Resource requirement analysis and pre-execution validation
 4. **Runtime-level**: Live object state management in WorkcellRuntime
@@ -716,3 +716,24 @@ iotop
 4. Clear orphaned call logs
 
 This comprehensive architecture documentation provides the foundation for understanding, deploying, and maintaining the refactored protocol execution system.
+### Standardized API Filtering
+
+To ensure consistency and ease of use, PyLabPraxis employs a standardized filtering mechanism for all `GET` list endpoints (e.g., `/machines/`, `/resources/`, `/protocols/runs/`). This approach combines generic, reusable filters with entity-specific ones.
+
+1.  **Generic Filters (`SearchFilters`)**:
+    -   A common Pydantic model, `praxis.backend.models.filters.SearchFilters`, defines standard filtering parameters that apply across most entities. These include:
+        -   `limit`: For pagination.
+        -   `offset`: For pagination.
+        -   `date_range_start` / `date_range_end`: For filtering by creation/update timestamps.
+        -   `property_filters`: For key-value filtering on JSON fields.
+        -   Common relationship IDs like `protocol_run_accession_id`, `machine_accession_id`, `resource_accession_id`, and `parent_accession_id`.
+    -   In API endpoints, these are automatically populated from query parameters using FastAPI's dependency injection: `filters: SearchFilters = Depends()`.
+
+2.  **Entity-Specific Filters**:
+    -   Filters that are unique to a specific entity (e.g., `status` for machines, `data_types` for data outputs) are defined as separate `Query()` parameters in the API endpoint signature.
+    -   This keeps the `SearchFilters` model clean and generic while providing clear, self-documenting parameters for specific filtering needs.
+
+3.  **Service and Query Builder Integration**:
+    -   The API endpoint passes both the generic `filters` object and any specific filter arguments to the corresponding service layer method.
+    -   The service method then uses helper functions from `praxis.backend.services.utils.query_builder` (like `apply_pagination`, `apply_date_range_filters`) to build the SQLAlchemy query from the `SearchFilters` object.
+    -   Specific filters are applied directly within the service method, creating a clean separation between generic and specific query logic.

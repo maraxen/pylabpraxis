@@ -1,31 +1,33 @@
-# pylint: disable=too-many-arguments,broad-except,fixme
+# pylint: disable=too-many-arguments,fixme
 """Protocol Scheduler - Manages protocol execution scheduling and asset allocation.
+# broad-except is justified at method level.
 
 This module provides the scheduling layer between the API and the Orchestrator,
 handling asset analysis, reservation, and asynchronous task queueing.
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from celery import Celery, Task
+from celery import Celery
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import praxis.backend.services as svc
 from praxis.backend.core.celery_tasks import execute_protocol_run_task
-from praxis.backend.models import (
+from praxis.backend.models.orm.protocol import (
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
-  RuntimeAssetRequirement,
 )
-from praxis.backend.models.protocol_pydantic_models import (
+from praxis.backend.models.pydantic.protocol import (
   AssetConstraintsModel,
   AssetRequirementModel,
   LocationConstraintsModel,
+  ProtocolRunUpdate,
 )
+from praxis.backend.models.pydantic.runtime import RuntimeAssetRequirement
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
 
@@ -33,16 +35,17 @@ logger = get_logger(__name__)
 
 
 class ScheduleEntry:
+
   """Represents a scheduled protocol run with asset reservations."""
 
   def __init__(
     self,
     protocol_run_id: uuid.UUID,
     protocol_name: str,
-    required_assets: List[RuntimeAssetRequirement],
-    estimated_duration_ms: Optional[int] = None,
+    required_assets: list[RuntimeAssetRequirement],
+    estimated_duration_ms: int | None = None,
     priority: int = 1,
-  ):
+  ) -> None:
     """Initialize a ScheduleEntry.
 
     Args:
@@ -60,10 +63,11 @@ class ScheduleEntry:
     self.priority = priority
     self.scheduled_at = datetime.now(timezone.utc)
     self.status = "QUEUED"
-    self.celery_task_id: Optional[str] = None
+    self.celery_task_id: str | None = None
 
 
 class ProtocolScheduler:
+
   """Manages protocol scheduling, asset allocation, and execution queueing.
 
   This scheduler analyzes protocol requirements, reserves necessary assets,
@@ -75,8 +79,8 @@ class ProtocolScheduler:
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
     redis_url: str = "redis://localhost:6379/0",
-    celery_app_instance: Optional[Celery] = None,
-  ):
+    celery_app_instance: Celery | None = None,
+  ) -> None:
     """Initialize the Protocol Scheduler.
 
     Args:
@@ -95,16 +99,16 @@ class ProtocolScheduler:
     )
 
     # In-memory tracking (will be moved to Redis/DB for persistence)
-    self._active_schedules: Dict[uuid.UUID, ScheduleEntry] = {}
-    self._asset_reservations: Dict[str, Set[uuid.UUID]] = {}
+    self._active_schedules: dict[uuid.UUID, ScheduleEntry] = {}
+    self._asset_reservations: dict[str, set[uuid.UUID]] = {}
 
     logger.info("ProtocolScheduler initialized with Redis: %s", redis_url)
 
   async def analyze_protocol_requirements(
     self,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
-    user_params: Dict[str, Any],
-  ) -> List[RuntimeAssetRequirement]:
+    user_params: dict[str, Any],
+  ) -> list[RuntimeAssetRequirement]:
     """Analyze a protocol definition to determine asset requirements.
 
     Args:
@@ -121,7 +125,7 @@ class ProtocolScheduler:
       protocol_def_orm.version,
     )
 
-    requirements: List[RuntimeAssetRequirement] = []
+    requirements: list[RuntimeAssetRequirement] = []
 
     # Analyze asset requirements from protocol definition
     for asset_def in protocol_def_orm.assets:
@@ -147,6 +151,7 @@ class ProtocolScheduler:
         accession_id=uuid7(),
         name=protocol_def_orm.deck_param_name,
         fqn="pylabrobot.resources.Deck",
+        type_hint_str="pylabrobot.resources.Deck",
         optional=False,
         constraints=AssetConstraintsModel(),
         location_constraints=LocationConstraintsModel(),
@@ -174,7 +179,9 @@ class ProtocolScheduler:
     return requirements
 
   async def reserve_assets(
-    self, requirements: List[RuntimeAssetRequirement], protocol_run_id: uuid.UUID
+    self,
+    requirements: list[RuntimeAssetRequirement],
+    protocol_run_id: uuid.UUID,
   ) -> bool:
     """Reserve assets for a protocol run.
 
@@ -192,11 +199,11 @@ class ProtocolScheduler:
       protocol_run_id,
     )
 
-    reserved_assets: List[str] = []
+    reserved_assets: list[str] = []
 
     try:
       for requirement in requirements:
-        asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
+        asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
 
         # Simple asset locking (will be enhanced with Redis locks)
         if asset_key not in self._asset_reservations:
@@ -232,6 +239,9 @@ class ProtocolScheduler:
       )
       return True
 
+    # pylint: disable-next=broad-except
+    # Justification: This is a critical step in asset reservation. Catching broad Exception
+    # ensures that any unhandled error leads to a rollback of reservations and a False return.
     except Exception as e:
       logger.error(
         "Error during asset reservation for run %s: %s",
@@ -244,7 +254,9 @@ class ProtocolScheduler:
       return False
 
   async def _release_reservations(
-    self, asset_keys: List[str], protocol_run_id: uuid.UUID
+    self,
+    asset_keys: list[str],
+    protocol_run_id: uuid.UUID,
   ) -> None:
     """Release asset reservations for a protocol run."""
     for asset_key in asset_keys:
@@ -257,8 +269,8 @@ class ProtocolScheduler:
   async def schedule_protocol_execution(
     self,
     protocol_run_orm: ProtocolRunOrm,
-    user_params: Dict[str, Any],
-    initial_state: Optional[Dict[str, Any]] = None,
+    user_params: dict[str, Any],
+    initial_state: dict[str, Any] | None = None,
   ) -> bool:
     """Schedule a protocol for execution.
 
@@ -285,9 +297,12 @@ class ProtocolScheduler:
         protocol_def = protocol_run_orm.top_level_protocol_definition
         if not protocol_def:
           # Fetch from database if not loaded
-          protocol_def = await svc.read_protocol_definition(
-            db_session,
-            definition_accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
+          protocol_definition_crud_service = ProtocolDefinitionCRUDService(
+            FunctionProtocolDefinitionOrm,
+          )
+          protocol_def = await protocol_definition_crud_service.get(
+            db=db_session,
+            accession_id=protocol_run_orm.top_level_protocol_definition_accession_id,
           )
 
         if not protocol_def:
@@ -299,7 +314,8 @@ class ProtocolScheduler:
 
         # Analyze asset requirements
         requirements = await self.analyze_protocol_requirements(
-          protocol_def, user_params
+          protocol_def,
+          user_params,
         )
 
         # Reserve assets
@@ -309,15 +325,16 @@ class ProtocolScheduler:
             protocol_run_orm.accession_id,
           )
           # Update run status to indicate asset conflict
-          await svc.update_protocol_run_status(
-            db_session,
-            protocol_run_orm.accession_id,
-            ProtocolRunStatusEnum.FAILED,
-            output_data_json=json.dumps(
-              {
+          protocol_run_crud_service = ProtocolRunService(ProtocolRunOrm)
+          await protocol_run_crud_service.update(
+            db=db_session,
+            db_obj=protocol_run_orm,
+            obj_in=ProtocolRunUpdate(
+              status=ProtocolRunStatusEnum.FAILED,
+              output_data_json={
                 "error": "Asset reservation failed",
                 "details": "Required assets are not available",
-              }
+              },
             ),
           )
           await db_session.commit()
@@ -335,15 +352,16 @@ class ProtocolScheduler:
         self._active_schedules[protocol_run_orm.accession_id] = schedule_entry
 
         # Update run status to QUEUED
-        await svc.update_protocol_run_status(
-          db_session,
-          protocol_run_orm.accession_id,
-          ProtocolRunStatusEnum.QUEUED,
-          output_data_json=json.dumps(
-            {
+        protocol_run_crud_service = ProtocolRunService(ProtocolRunOrm)
+        await protocol_run_crud_service.update(
+          db=db_session,
+          db_obj=protocol_run_orm,
+          obj_in=ProtocolRunUpdate(
+            status=ProtocolRunStatusEnum.QUEUED,
+            output_data_json={
               "scheduled_at": schedule_entry.scheduled_at.isoformat(),
               "asset_count": len(requirements),
-            }
+            },
           ),
         )
         await db_session.commit()
@@ -361,10 +379,9 @@ class ProtocolScheduler:
             protocol_run_orm.accession_id,
           )
           return True
-        else:
-          # Clean up reservations on queueing failure
-          await self.cancel_scheduled_run(protocol_run_orm.accession_id)
-          return False
+        # Clean up reservations on queueing failure
+        await self.cancel_scheduled_run(protocol_run_orm.accession_id)
+        return False
 
     except Exception as e:
       logger.error(
@@ -378,8 +395,8 @@ class ProtocolScheduler:
   async def _queue_execution_task(
     self,
     protocol_run_id: uuid.UUID,
-    user_params: Dict[str, Any],
-    initial_state: Optional[Dict[str, Any]],
+    user_params: dict[str, Any],
+    initial_state: dict[str, Any] | None,
   ) -> bool:
     """Queue a protocol execution task using Celery.
 
@@ -402,14 +419,17 @@ class ProtocolScheduler:
       try:
         # Try to use Celery task
         task_result = execute_protocol_run_task.delay(  # type: ignore
-          str(protocol_run_id), user_params, initial_state
+          str(protocol_run_id),
+          user_params,
+          initial_state,
         )
         celery_task_id = getattr(task_result, "id", None)
-      except AttributeError:
+      except AttributeError as e:
         # Fallback: direct call to Celery task is not supported
+        msg = "Direct call to execute_protocol_run_task is not supported. Celery worker must be running."
         raise RuntimeError(
-          "Direct call to execute_protocol_run_task is not supported. Celery worker must be running."
-        )
+          msg,
+        ) from e
 
       logger.info(
         "Successfully queued protocol run %s with Celery task ID: %s",
@@ -453,7 +473,7 @@ class ProtocolScheduler:
 
         # Release asset reservations
         for requirement in schedule_entry.required_assets:
-          asset_key = f"{requirement.asset_type}:{requirement.asset_name}"
+          asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
           if asset_key in self._asset_reservations:
             self._asset_reservations[asset_key].discard(protocol_run_id)
             if not self._asset_reservations[asset_key]:
@@ -464,9 +484,8 @@ class ProtocolScheduler:
 
         logger.info("Successfully cancelled scheduled run %s", protocol_run_id)
         return True
-      else:
-        logger.warning("Run %s not found in active schedules", protocol_run_id)
-        return False
+      logger.warning("Run %s not found in active schedules", protocol_run_id)
+      return False
 
     except Exception as e:
       logger.error(
@@ -478,8 +497,9 @@ class ProtocolScheduler:
       return False
 
   async def get_schedule_status(
-    self, protocol_run_id: uuid.UUID
-  ) -> Optional[Dict[str, Any]]:
+    self,
+    protocol_run_id: uuid.UUID,
+  ) -> dict[str, Any] | None:
     """Get the current schedule status for a protocol run.
 
     Args:
@@ -504,7 +524,7 @@ class ProtocolScheduler:
       "priority": schedule_entry.priority,
     }
 
-  async def list_active_schedules(self) -> List[Dict[str, Any]]:
+  async def list_active_schedules(self) -> list[dict[str, Any]]:
     """List all currently active protocol schedules.
 
     Returns:

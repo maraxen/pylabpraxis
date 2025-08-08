@@ -10,26 +10,22 @@ It also provides a `WorkcellView` class, which acts as a secure proxy for protoc
 allowing them to access only the assets they have explicitly declared as required.
 """
 
-import asyncio
 import json
-from typing import Any, Dict, List, Optional, Self, Set, cast
+from typing import Any, cast
 
 import inflection
 from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Resource
 
-from ..models import (
-  AssetRequirementModel,
-  MachineCategoryEnum,
-  ResourceCategoryEnum,
-)
-from ..utils.logging import get_logger
+from backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
+from backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 class Workcell:
+
   """A dynamic, in-memory container for live PyLabRobot objects.
 
   This class is the runtime representation of a workcell. It is populated by the
@@ -62,7 +58,8 @@ class Workcell:
 
     """
     if not save_file.endswith(".json"):
-      raise ValueError("save_file must be a JSON file ending in .json")
+      msg = "save_file must be a JSON file ending in .json"
+      raise ValueError(msg)
 
     self.name = name
     self.save_file = save_file
@@ -86,7 +83,7 @@ class Workcell:
 
     if "other_machines" not in self.refs:
       self.refs["other_machines"] = {}
-      setattr(self, "other_machines", self.refs["other_machines"])
+      self.other_machines = self.refs["other_machines"]
 
   @property
   def all_machines(self) -> dict[str, Machine]:
@@ -146,11 +143,12 @@ class Workcell:
       and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id]
+        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id],
       )
       liquid_handler.deck = deck
     else:
-      raise KeyError(f"Liquid handler '{liquid_handler_accession_id}' not found.")
+      msg = f"Liquid handler '{liquid_handler_accession_id}' not found."
+      raise KeyError(msg)
 
   def serialize_all_state(self) -> dict[str, Any]:
     """Serialize the state of all resources within the workcell."""
@@ -160,20 +158,20 @@ class Workcell:
         state[child.name] = child.serialize_state()
     return state
 
-  def load_all_state(self, state: dict[str, Any]):
+  def load_all_state(self, state: dict[str, Any]) -> None:
     """Load the state for all resources from a dictionary."""
     for child in self.get_all_children():
       if isinstance(child, Resource) and child.name in state:
         child.load_state(state[child.name])
 
-  def save_state_to_file(self, fn: str, indent: Optional[int] = 4):
+  def save_state_to_file(self, fn: str, indent: int | None = 4) -> None:
     """Save the current state of all workcell resources to a JSON file."""
     with open(fn, "w", encoding="utf-8") as f:
       json.dump(self.serialize_all_state(), f, indent=indent)
 
-  def load_state_from_file(self, fn: str):
+  def load_state_from_file(self, fn: str) -> None:
     """Load the state of all workcell resources from a JSON file."""
-    with open(fn, "r", encoding="utf-8") as f:
+    with open(fn, encoding="utf-8") as f:
       content = json.load(f)
     self.load_all_state(content)
 
@@ -185,10 +183,12 @@ class Workcell:
     """Get the asset category by name."""
     if key in self.refs:
       return self.refs[key]
-    raise KeyError(f"'{key}' is not a valid asset category.")
+    msg = f"'{key}' is not a valid asset category."
+    raise KeyError(msg)
 
 
 class WorkcellView:
+
   """A protocol's sandboxed view into a shared workcell.
 
   This class acts as a secure proxy, providing access ONLY to the assets that
@@ -200,12 +200,12 @@ class WorkcellView:
     self,
     parent_workcell: Workcell,
     protocol_name: str,
-    required_assets: List[AssetRequirementModel],
-  ):
+    required_assets: list[AssetRequirementModel],
+  ) -> None:
     """Initialize the protocol view with required assets."""
     self.parent = parent_workcell
     self.protocol_name = protocol_name
-    self._required_asset_names: Set[str] = {asset.name for asset in required_assets}
+    self._required_asset_names: set[str] = {asset.name for asset in required_assets}
 
   def __contains__(self, asset_name: str) -> bool:
     """Check if an asset was declared as required by the protocol."""
@@ -219,9 +219,12 @@ class WorkcellView:
 
     # Enforce that protocols can only access assets they have declared.
     if name not in self._required_asset_names:
-      raise AttributeError(
+      msg = (
         f"Protocol '{self.protocol_name}' attempted to access asset '{name}' "
         "but did not declare it as a requirement."
+      )
+      raise AttributeError(
+        msg,
       )
 
     # Safely delegate the attribute access to the parent Workcell

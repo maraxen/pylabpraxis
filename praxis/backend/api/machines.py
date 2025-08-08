@@ -1,4 +1,3 @@
-# <filename>praxis/backend/api/machines.py</filename>
 """Machine API endpoints.
 
 This file contains the FastAPI router for all machine-related endpoints,
@@ -6,25 +5,21 @@ including machine creation, retrieval, updates, and deletion.
 """
 
 from functools import partial
-from typing import List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import the service layer, aliased as 'svc' for convenience
-import praxis.backend.services as svc
-
-# Import dependencies from the local 'api' package
 from praxis.backend.api.dependencies import get_db
-
-# Import all necessary Pydantic models from the central models package
-from praxis.backend.models import (
+from praxis.backend.api.utils.crud_router_factory import create_crud_router
+from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
+from praxis.backend.models.pydantic.machine import (
   MachineCreate,
   MachineResponse,
-  MachineStatusEnum,
   MachineUpdate,
 )
+from praxis.backend.services.machine import MachineService
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -35,120 +30,30 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 log_machine_api_errors = partial(
-  log_async_runtime_errors, logger_instance=logger, raises_exception=PraxisAPIError
+  log_async_runtime_errors,
+  logger_instance=logger,
+  raises_exception=PraxisAPIError,
 )
+
+machine_service = MachineService(MachineOrm)
 
 machine_accession_resolver = partial(
   get_accession_id_from_accession,
-  get_func=svc.read_machine,
-  get_by_name_func=svc.read_machine_by_name,
+  get_func=machine_service.get,
+  get_by_name_func=machine_service.get_by_name,
   entity_type_name="Machine",
 )
 
-
-@log_machine_api_errors(
-  exception_type=HTTPException,
-  raises=True,
-  prefix="Failed to create machine: ",
-  suffix="",
+router.include_router(
+  create_crud_router(
+    service=machine_service,
+    prefix="/",
+    tags=["Machines"],
+    create_schema=MachineCreate,
+    update_schema=MachineUpdate,
+    response_schema=MachineResponse,
+  ),
 )
-@router.post(
-  "/",
-  response_model=MachineResponse,
-  status_code=status.HTTP_201_CREATED,
-  tags=["Machines"],
-)
-async def create_machine(machine: MachineCreate, db: AsyncSession = Depends(get_db)):
-  """Create a new machine."""
-  try:
-    created_machine = await svc.create_machine(db=db, **machine.model_dump())
-    return created_machine
-  except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-
-@log_machine_api_errors(
-  exception_type=HTTPException,
-  raises=True,
-  prefix="Failed to get machine: ",
-  suffix="",
-)
-@router.get(
-  "/{accession}",
-  response_model=MachineResponse,
-  tags=["Machines"],
-)
-async def get_machine(accession: str, db: AsyncSession = Depends(get_db)):
-  """Retrieve a machine by accession ID or name."""
-  machine_id = await machine_accession_resolver(db=db, accession=accession)
-
-  db_machine = await svc.read_machine(db, machine_id)
-  if db_machine is None:
-    raise HTTPException(status_code=404, detail="Machine not found")
-  return db_machine
-
-
-@log_machine_api_errors(
-  exception_type=HTTPException,
-  raises=True,
-  prefix="Failed to list machines: ",
-  suffix="",
-)
-@router.get(
-  "/",
-  response_model=List[MachineResponse],
-  tags=["Machines"],
-)
-async def list_machines(
-  db: AsyncSession = Depends(get_db),
-  limit: int = 100,
-  offset: int = 0,
-  status: Optional[MachineStatusEnum] = None,
-  pylabrobot_class_filter: Optional[str] = None,
-  workcell_accession_id: Optional[UUID] = None,
-  user_friendly_name_filter: Optional[str] = None,
-):
-  """List all machines with optional filtering."""
-  return await svc.list_machines(
-    db,
-    status=status,
-    pylabrobot_class_filter=pylabrobot_class_filter,
-    workcell_accession_id=workcell_accession_id,
-    user_friendly_name_filter=user_friendly_name_filter,
-    limit=limit,
-    offset=offset,
-  )
-
-
-@log_machine_api_errors(
-  exception_type=HTTPException,
-  raises=True,
-  prefix="Failed to update machine: ",
-  suffix="",
-)
-@router.put(
-  "/{accession}",
-  response_model=MachineResponse,
-  tags=["Machines"],
-)
-async def update_machine(
-  accession: str,
-  machine_update: MachineUpdate,
-  db: AsyncSession = Depends(get_db),
-):
-  """Update an existing machine."""
-  machine_id = await machine_accession_resolver(db=db, accession=accession)
-
-  update_data = machine_update.model_dump(exclude_unset=True)
-  try:
-    updated_machine = await svc.update_machine(
-      db=db, machine_accession_id=machine_id, **update_data
-    )
-    if not updated_machine:
-      raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
-    return updated_machine
-  except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @log_machine_api_errors(
@@ -165,15 +70,18 @@ async def update_machine(
 async def update_machine_status(
   accession: str,
   new_status: MachineStatusEnum,
-  status_details: Optional[str] = None,
-  current_protocol_run_accession_id: Optional[UUID] = None,
-  db: AsyncSession = Depends(get_db),
-):
+  db: Annotated[AsyncSession, Depends(get_db)],
+  status_details: str | None = None,
+  current_protocol_run_accession_id: UUID | None = None,
+) -> MachineResponse:
   """Update the status of a machine."""
-  machine_id = await machine_accession_resolver(db=db, accession=accession)
+  machine_id = await machine_accession_resolver(
+    db=db,
+    accession=accession,
+  )
 
   try:
-    updated_machine = await svc.update_machine_status(
+    updated_machine = await machine_service.update_machine_status(
       db=db,
       machine_accession_id=machine_id,
       new_status=new_status,
@@ -182,29 +90,16 @@ async def update_machine_status(
     )
     if not updated_machine:
       raise HTTPException(status_code=404, detail=f"Machine '{accession}' not found.")
-    return updated_machine
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-
-@log_machine_api_errors(
-  exception_type=HTTPException,
-  raises=True,
-  prefix="Failed to delete machine: ",
-  suffix="",
-)
-@router.delete(
-  "/{accession}",
-  status_code=status.HTTP_204_NO_CONTENT,
-  tags=["Machines"],
-)
-async def delete_machine(accession: str, db: AsyncSession = Depends(get_db)):
-  """Delete a machine."""
-  machine_id = await machine_accession_resolver(db=db, accession=accession)
-
-  success = await svc.delete_machine(db, machine_id)
-  if not success:
     raise HTTPException(
-      status_code=404,
-      detail=f"Machine '{accession}' not found or could not be deleted.",
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=str(e),
+    ) from e
+  else:
+    logger.info(
+      "Machine '%s' (ID: %s) status updated to '%s'.",
+      updated_machine.name,
+      updated_machine.accession_id,
+      new_status.value,
     )
+    return MachineResponse.model_validate(updated_machine)

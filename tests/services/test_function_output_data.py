@@ -6,16 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import all required ORM and Pydantic models from the top-level package
 from praxis.backend.models import (
-  DataSearchFilters,
   DataOutputTypeEnum,
-  DeckInstanceOrm,
+  DeckOrm,
   FunctionCallLogOrm,
   FunctionDataOutputCreate,
   FunctionDataOutputOrm,
   FunctionDataOutputUpdate,
   MachineOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
+  SearchFilters,
   SpatialContextEnum,
 )
 
@@ -40,30 +40,32 @@ async def setup_dependencies(db: AsyncSession):
   await db.refresh(protocol_run)
 
   function_call_log = FunctionCallLogOrm(
-    protocol_run_accession_id=protocol_run.accession_id, function_name="test_function"
+    protocol_run_accession_id=protocol_run.accession_id,
+    function_name="test_function",
   )
-  machine = MachineOrm(user_friendly_name="Test Machine", python_fqn="machine.fqn")
-  resource_instance = ResourceInstanceOrm(
-    user_assigned_name="Test Resource", name="test_resource_def"
+  machine = MachineOrm(name="Test Machine", fqn="machine.fqn")
+  resource = ResourceOrm(
+    name="Test Resource",
+    resource_definition_name="test_resource_def",
   )
-  deck_instance = DeckInstanceOrm(
+  deck = DeckOrm(
     name="Test Deck",
     deck_accession_id=uuid.uuid4(),
-    python_fqn="deck.fqn",
+    fqn="deck.fqn",
   )
 
-  db.add_all([function_call_log, machine, resource_instance, deck_instance])
+  db.add_all([function_call_log, machine, resource, deck])
   await db.commit()
 
-  for obj in [function_call_log, machine, resource_instance, deck_instance]:
+  for obj in [function_call_log, machine, resource, deck]:
     await db.refresh(obj)
 
   return {
     "protocol_run_id": protocol_run.accession_id,
     "function_call_log_id": function_call_log.accession_id,
     "machine_id": machine.accession_id,
-    "resource_instance_id": resource_instance.accession_id,
-    "deck_instance_id": deck_instance.accession_id,
+    "resource_id": resource.accession_id,
+    "deck_id": deck.accession_id,
   }
 
 
@@ -79,8 +81,8 @@ def base_data_output_create(setup_dependencies) -> FunctionDataOutputCreate:
     machine_accession_id=setup_dependencies["machine_id"],
     data_value_numeric=123.45,
     data_units="units",
-    resource_instance_accession_id=None,
-    deck_instance_accession_id=None,
+    resource_accession_id=None,
+    deck_accession_id=None,
     spatial_coordinates_json=None,
     data_value_json=None,
     data_value_text=None,
@@ -97,36 +99,38 @@ def base_data_output_create(setup_dependencies) -> FunctionDataOutputCreate:
 
 @pytest.fixture
 async def existing_data_output(
-  db: AsyncSession, base_data_output_create: FunctionDataOutputCreate
+  db: AsyncSession,
+  base_data_output_create: FunctionDataOutputCreate,
 ) -> FunctionDataOutputOrm:
   """Fixture to create a data output record in the DB for read/update/delete tests."""
-  data_output = await create_function_data_output(db, base_data_output_create)
-  return data_output
+  return await create_function_data_output(db, base_data_output_create)
 
 
 pytestmark = pytest.mark.asyncio
 
 
 class TestFunctionDataOutputService:
+
   """Test suite for the Function Data Output service layer."""
 
   async def test_create_function_data_output(
-    self, db: AsyncSession, base_data_output_create: FunctionDataOutputCreate
-  ):
+    self,
+    db: AsyncSession,
+    base_data_output_create: FunctionDataOutputCreate,
+  ) -> None:
     """Test successful creation of a function data output."""
     created_output = await create_function_data_output(db, base_data_output_create)
     assert created_output is not None
     assert created_output.accession_id is not None
     assert created_output.data_key == "test_measurement"
     assert created_output.data_value_numeric == 123.45
-    assert (
-      created_output.protocol_run_accession_id
-      == base_data_output_create.protocol_run_accession_id
-    )
+    assert created_output.protocol_run_accession_id == base_data_output_create.protocol_run_accession_id
 
   async def test_read_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
-  ):
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
+  ) -> None:
     """Test reading a function data output by its ID."""
     read_output = await read_function_data_output(db, existing_data_output.accession_id)
     assert read_output is not None
@@ -134,14 +138,16 @@ class TestFunctionDataOutputService:
     assert read_output.data_key == existing_data_output.data_key
     assert read_output.protocol_run is not None
 
-  async def test_read_non_existent_output(self, db: AsyncSession):
+  async def test_read_non_existent_output(self, db: AsyncSession) -> None:
     """Test that reading a non-existent output returns None."""
     non_existent_id = uuid.uuid4()
     assert await read_function_data_output(db, non_existent_id) is None
 
   async def test_update_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
-  ):
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
+  ) -> None:
     """Test updating a function data output record."""
     update_model = FunctionDataOutputUpdate(
       data_quality_score=0.95,
@@ -149,7 +155,9 @@ class TestFunctionDataOutputService:
       measurement_conditions_json=None,
     )
     updated_output = await update_function_data_output(
-      db, existing_data_output.accession_id, update_model
+      db,
+      existing_data_output.accession_id,
+      update_model,
     )
 
     assert updated_output is not None
@@ -158,8 +166,10 @@ class TestFunctionDataOutputService:
     assert updated_output.data_key == existing_data_output.data_key
 
   async def test_delete_function_data_output(
-    self, db: AsyncSession, existing_data_output: FunctionDataOutputOrm
-  ):
+    self,
+    db: AsyncSession,
+    existing_data_output: FunctionDataOutputOrm,
+  ) -> None:
     """Test deleting a function data output record."""
     output_id = existing_data_output.accession_id
 
@@ -168,22 +178,24 @@ class TestFunctionDataOutputService:
 
     assert await read_function_data_output(db, output_id) is None
 
-  async def test_delete_non_existent_output(self, db: AsyncSession):
+  async def test_delete_non_existent_output(self, db: AsyncSession) -> None:
     """Test that deleting a non-existent output returns False."""
     non_existent_id = uuid.uuid4()
     result = await delete_function_data_output(db, non_existent_id)
     assert result is False
 
   async def test_list_function_data_outputs_with_filters(
-    self, db: AsyncSession, setup_dependencies
-  ):
+    self,
+    db: AsyncSession,
+    setup_dependencies,
+  ) -> None:
     """Test the extensive filtering capabilities of the list function."""
     common_args = {
       "function_call_log_accession_id": setup_dependencies["function_call_log_id"],
       "protocol_run_accession_id": setup_dependencies["protocol_run_id"],
       "machine_accession_id": None,
-      "resource_instance_accession_id": None,
-      "deck_instance_accession_id": None,
+      "resource_accession_id": None,
+      "deck_accession_id": None,
       "spatial_coordinates_json": None,
       "data_value_json": None,
       "data_value_text": None,
@@ -222,8 +234,7 @@ class TestFunctionDataOutputService:
         file_path="/path/to/img.png",
         data_quality_score=0.5,
         data_value_numeric=None,
-        measurement_timestamp=datetime.datetime.now(datetime.timezone.utc)
-        - datetime.timedelta(days=1),
+        measurement_timestamp=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1),
       ),
     )
 
@@ -240,15 +251,15 @@ class TestFunctionDataOutputService:
       ),
     )
 
-    # FIX: Provide all optional arguments to the DataSearchFilters constructor.
+    # FIX: Provide all optional arguments to the SearchFilters constructor.
     # Test filter by data type
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=[DataOutputTypeEnum.PLATE_IMAGE],
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=None,
@@ -260,13 +271,13 @@ class TestFunctionDataOutputService:
     assert results[0].data_type == DataOutputTypeEnum.PLATE_IMAGE
 
     # Test filter by has_numeric_data
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=None,
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=True,
@@ -277,13 +288,13 @@ class TestFunctionDataOutputService:
     assert len(results) == 2
 
     # Test filter by min_quality_score
-    filters = DataSearchFilters(
+    filters = SearchFilters(
       protocol_run_accession_id=None,
       function_call_log_accession_id=None,
       data_types=None,
       spatial_contexts=None,
       machine_accession_id=None,
-      resource_instance_accession_id=None,
+      resource_accession_id=None,
       date_range_start=None,
       date_range_end=None,
       has_numeric_data=None,

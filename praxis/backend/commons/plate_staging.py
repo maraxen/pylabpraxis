@@ -1,22 +1,20 @@
-from typing import Optional, Literal
-from pylabrobot.resources import Plate, Well, TipRack, Coordinate
-from pylabrobot.liquid_handling import LiquidHandler
-from praxis.utils.errors import ExperimentError
-from pylabrobot.resources.errors import ResourceNotFoundError
-from pylabrobot.plate_reading import PlateReader
-from pylabrobot.resources import CarrierSite
-from pylabrobot.liquid_handling.standard import GripDirection
-import numpy as np
+from typing import Literal
 
+import numpy as np
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.liquid_handling.standard import GripDirection
+from pylabrobot.plate_reading import PlateReader
+from pylabrobot.resources import CarrierSite, Coordinate, Plate, TipRack, Well
+from pylabrobot.resources.errors import ResourceNotFoundError
+
+from praxis.utils.errors import ExperimentError
 from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
 
 # take advantage of traverse and snake
 
 
 async def plate_accession_idx_to_well(plate: Plate, index: int | str | Well) -> Well:
-  if isinstance(index, str):
-    well = plate[index][0]
-  elif isinstance(index, int):
+  if isinstance(index, str) or isinstance(index, int):
     well = plate[index][0]
   elif isinstance(index, Well):
     well = index
@@ -35,7 +33,7 @@ async def well_to_int(well: Well, plate: Plate) -> int:
 
 
 async def well_axes(
-  wells: list[Well], axis: Optional[Literal[0, 1]] = None
+  wells: list[Well], axis: Literal[0, 1] | None = None,
 ) -> list[int | tuple[int, int]]:
   if not all(isinstance(well, Well) for well in wells):
     raise ValueError("Invalid well type.")
@@ -43,8 +41,7 @@ async def well_axes(
     return [
       (int(well.name.split("_")[-2]), int(well.name.split("_")[-1])) for well in wells
     ]
-  else:
-    return [int(well.name.split("_")[-1 - axis]) for well in wells]
+  return [int(well.name.split("_")[-1 - axis]) for well in wells]
 
 
 async def wells_along_axis(wells: list[Well], axis: int) -> bool:
@@ -63,7 +60,7 @@ async def plate_sufficient_for_transfer(
   if replicate_axis == 0:
     if any(target_plate.num_items_x < n_replicates * len(wells) for wells in wells):
       raise ExperimentError(
-        "Number of replicates exceeds number of wells per row in target plate"
+        "Number of replicates exceeds number of wells per row in target plate",
       )
     if any(
       target_plate.num_items_y < len(wells) + (offset * len(wells)) for wells in wells
@@ -73,7 +70,7 @@ async def plate_sufficient_for_transfer(
     if any(target_plate.num_items_y < n_replicates * len(wells) for wells in wells):
       raise ExperimentError(
         "Number of replicates exceeds number of wells per column in target \
-        plate"
+        plate",
       )
     if any(
       target_plate.num_items_x < len(wells) + (offset * len(wells)) for wells in wells
@@ -83,7 +80,7 @@ async def plate_sufficient_for_transfer(
 
 
 async def group_wells_by_variables(
-  wells: list[Well], key: str, variables: list[str]
+  wells: list[Well], key: str, variables: list[str],
 ) -> list[list[Well]]:
   if not all(isinstance(well, Well) for well in wells):
     raise ValueError("Invalid well type.")
@@ -95,7 +92,7 @@ async def group_wells_by_variables(
 async def well_check(
   wells: list[int | str | Well] | list[Well],
   plate: Plate,
-  replicate_axis: Optional[int] = None,
+  replicate_axis: int | None = None,
 ) -> list[Well]:
   _wells: list[Well] = [
     await plate_accession_idx_to_well(plate, well) for well in wells
@@ -115,7 +112,7 @@ async def split_wells_along_columns(wells: list[Well]) -> list[list[Well]]:
     raise ValueError("Invalid well type.")
   columns = [(await parse_well_name(well))[0] for well in wells]
   return [
-    [well for column, well in zip(columns, wells) if column == i]
+    [well for column, well in zip(columns, wells, strict=False) if column == i]
     for i in range(max(columns) + 1)
   ]
 
@@ -129,7 +126,7 @@ async def simple_interplate_transfer(
   transfer_volume: float,
   source_wells: list[int | str | Well],
   offset: int = 0,
-  n_replicates: Optional[int] = None,
+  n_replicates: int | None = None,
   mix_cycles: int = 1,
   replicate_axis: Literal["x", "y", 0, 1] = "x",
   use_96: bool = False,
@@ -153,12 +150,12 @@ async def simple_interplate_transfer(
         await liquid_handler.aspirate96(resource=source_plate, volume=transfer_volume)
         await liquid_handler.dispense96(resource=target_wells, volume=transfer_volume)
         for target_well, source_well in zip(
-          target_wells, source_plate.get_wells(range(96))
+          target_wells, source_plate.get_wells(range(96)), strict=False,
         ):
           for attr in vars(source_well):
             if not hasattr(target_well, attr):
               setattr(target_well, attr, vars(source_well)[attr])
-          setattr(target_well, "replicate", f"{i}")
+          target_well.replicate = f"{i}"
       if return_tips:
         await liquid_handler.drop_tips96(resource=tips)
     else:
@@ -169,7 +166,7 @@ async def simple_interplate_transfer(
       await liquid_handler.dispense96(resource=target_plate, volume=transfer_volume)
       for target_well, source_well in zip(
         target_plate.get_wells(range(target_plate.num_items)),
-        source_plate.get_wells(range(target_plate.num_items)),
+        source_plate.get_wells(range(target_plate.num_items)), strict=False,
       ):
         for attr in vars(source_well):
           if not hasattr(target_well, attr):
@@ -185,12 +182,12 @@ async def read_plate(
   plate_reader: PlateReader,
   plate: Plate,
   wavelength: int = 580,
-  final_location: Optional[CarrierSite | Coordinate] = None,
+  final_location: CarrierSite | Coordinate | None = None,
 ):
-  """
-  Reads the optical density of a plate at a specified wavelength using a plate reader.
+  """Reads the optical density of a plate at a specified wavelength using a plate reader.
 
-  Parameters:
+  Parameters
+  ----------
     liquid_handler (LiquidHandler): The liquid handler used to move the plate.
     plate_reader (PlateReader): The plate reader used to read the plate.
     plate (Plate): The plate to be read.
@@ -198,11 +195,14 @@ async def read_plate(
     final_location (Optional[CarrierSite], optional): The final location where the plate will be
     moved after reading.  If not specified, the plate will be moved to its parent location. Defaults to None.
 
-  Returns:
+  Returns
+  -------
     numpy.ndarray: An array containing the optical density readings of the plate at the specified wavelength.
 
-  Raises:
+  Raises
+  ------
     ValueError: If the final location is not a valid CarrierSite.
+
   """
   if final_location is None:
     if not isinstance(plate.parent, CarrierSite):

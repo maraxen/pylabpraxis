@@ -86,7 +86,7 @@ PyLabPraxis relies on well-defined data structures for managing information:
   - Defining the structure of `PraxisState` and its sub-components.
   - Representing protocol definitions and steps.
   - Configuration objects.
-- **In-memory Objects**: Instances of Pydantic models and other Python classes that represent the live state of the system (e.g., `PraxisState`, `WorkcellRuntime` device objects).
+- **In-memory Objects**: s of Pydantic models and other Python classes that represent the live state of the system (e.g., `PraxisState`, `WorkcellRuntime` device objects).
 
 ---
 

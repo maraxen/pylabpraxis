@@ -10,43 +10,39 @@ and Assets.
 """
 
 import asyncio
-import json
 import logging
 import os
-import uuid  # For generating run_accession_id
+from collections.abc import AsyncIterator
 from configparser import ConfigParser
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional
+from typing import Any, Optional
 
 import asyncpg  # For Keycloak database
-import uuid
-from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import (
   AsyncSession,
-  async_sessionmaker,
-  create_async_engine,
 )
-from sqlalchemy.orm import joinedload, selectinload
 
-from praxis.backend.models import (
-  AssetDefinitionOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  ProtocolSourceRepositoryOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
-  UserOrm,
-)
 from praxis.backend.utils.db import (
   AsyncSessionLocal,
 )  # This should be an async_sessionmaker
 
 logger = logging.getLogger(__name__)
 
+def raise_connection_error(
+  msg: str,
+  last_error: Exception | None = None,
+) -> ConnectionError:
+  """Raise a connection error with a message and optional last error."""
+  if last_error:
+    logger.error("%s Last error: %s", msg, last_error)
+  else:
+    logger.error(msg)
+  return ConnectionError(msg)
+
 
 class PraxisDBService:
+
   """Provides a singleton service for Praxis database interactions.
 
   This class manages connections to the main Praxis database via SQLAlchemy
@@ -56,11 +52,11 @@ class PraxisDBService:
   """
 
   _instance: Optional["PraxisDBService"] = None
-  _keycloak_pool: Optional[asyncpg.Pool[Any]] = None
+  _keycloak_pool: asyncpg.Pool[Any] | None = None
   _max_retries = 3
   _retry_delay = 1  # seconds
 
-  def __new__(cls, *args, **kwargs):  # type: ignore
+  def __new__(cls, *_args: Any, **_kwargs: Any) -> "PraxisDBService":  # noqa: ANN401
     """Implement the singleton pattern for PraxisDBService."""
     if cls._instance is None:
       cls._instance = super().__new__(cls)
@@ -69,10 +65,10 @@ class PraxisDBService:
   @classmethod
   async def initialize(
     cls,
-    keycloak_dsn: Optional[str] = None,
+    keycloak_dsn: str | None = None,
     min_kc_pool_size: int = 5,
     max_kc_pool_size: int = 10,
-  ):
+  ) -> "PraxisDBService":
     """Initialize the PraxisDBService, including Keycloak database connection.
 
     This method sets up the singleton instance and, if a `keycloak_dsn` is
@@ -106,7 +102,7 @@ class PraxisDBService:
     if keycloak_dsn:
       if not keycloak_dsn.startswith(("postgresql://", "postgres://")):
         error_message = (
-          "Invalid keycloak_dsn: must start with postgresql:// or " "postgres://."
+          "Invalid keycloak_dsn: must start with postgresql:// or postgres://."
         )
         logger.error(error_message)
         raise ValueError(error_message)
@@ -117,7 +113,7 @@ class PraxisDBService:
 
       while retries < cls._max_retries:
         try:
-          if not cls._keycloak_pool or cls._keycloak_pool._closed:
+          if not cls._keycloak_pool or cls._keycloak_pool._closed:  # noqa: SLF001
             logger.info(
               "Attempting to connect to Keycloak database: %s",
               keycloak_dsn.split("@")[-1],
@@ -129,11 +125,15 @@ class PraxisDBService:
               command_timeout=60,
               timeout=10.0,
             )
-            assert (
-              cls._keycloak_pool is not None
-            ), "Failed to create Keycloak database pool"
-            async with cls._keycloak_pool.acquire() as conn:  # type: ignore
-              await conn.execute("SELECT 1")  # type: ignore
+            if cls._keycloak_pool is None:
+              error_message = "Failed to create Keycloak database pool."
+              raise_connection_error(
+                error_message,
+                last_error,
+              )
+
+            async with cls._keycloak_pool.acquire() as conn:  # type: ignore[optional]
+              await conn.execute("SELECT 1")
             logger.info("Successfully connected to Keycloak database.")
             break
         except (ConnectionRefusedError, asyncpg.PostgresError, OSError) as e:
@@ -152,30 +152,32 @@ class PraxisDBService:
             await asyncio.sleep(current_retry_delay)
             current_retry_delay *= 2
           else:
-            logger.error(
+            logger.exception(
               "Failed to connect to Keycloak database after %d attempts.",
               cls._max_retries,
             )
+            msg = f"Could not establish Keycloak database connection: {last_error}"
             raise ConnectionError(
-              f"Could not establish Keycloak database connection: " f"{last_error}"
+              msg,
             ) from last_error
-        except Exception as e:
+        except Exception:
           logger.exception("Unexpected error during Keycloak database initialization.")
           raise
 
       if not cls._keycloak_pool and keycloak_dsn:
+        msg = f"Failed to initialize Keycloak pool. Last error: {last_error}"
         raise ConnectionError(
-          f"Failed to initialize Keycloak pool. Last error: {last_error}"
+          msg,
         )
     else:
       logger.info(
         "Keycloak DSN not provided; Keycloak database pool will not be "
-        "initialized by PraxisDBService."
+        "initialized by PraxisDBService.",
       )
 
     logger.info(
       "PraxisDBService initialized. Praxis DB uses SQLAlchemy async engine "
-      "from praxis.utils.db."
+      "from praxis.utils.db.",
     )
     return cls._instance
 
@@ -236,21 +238,21 @@ class PraxisDBService:
     conn = None
     try:
       conn = await self._keycloak_pool.acquire()
-      if not isinstance(conn, asyncpg.Connection):  # type: ignore
+      if not isinstance(conn, asyncpg.Connection):
         error_message = "Failed to acquire Keycloak connection from pool."
         logger.error(error_message)
         raise ConnectionError(error_message)
-      yield conn  # type: ignore
+      yield conn
       logger.debug("Keycloak connection released.")
     finally:
       if conn and self._keycloak_pool:
         await self._keycloak_pool.release(conn)
 
-  async def get_all_users(self) -> Dict[str, Dict[str, Any]]:
+  async def get_all_users(self) -> dict[str, dict[str, Any]]:
     """Retrieve all active users from the Keycloak database.
 
     Returns:
-        Dict[str, Dict[str, Any]]: A dictionary where keys are usernames
+        dict[str, dict[str, Any]]: A dictionary where keys are usernames
         and values are dictionaries containing user details (id, username,
         email, first_name, last_name, is_active). Returns an empty
         dictionary if the Keycloak pool is not initialized or no users are
@@ -268,7 +270,7 @@ class PraxisDBService:
                 FROM user_entity
                 WHERE enabled = true
                 ORDER BY username
-            """
+            """,
       )
       users_dict = {
         record["username"]: {
@@ -284,7 +286,7 @@ class PraxisDBService:
       logger.info("Found %d active users from Keycloak.", len(users_dict))
       return users_dict
 
-  async def execute_sql(self, sql_statement: str, params: Optional[dict] = None):
+  async def execute_sql(self, sql_statement: str, params: dict | None = None) -> None:
     """Execute a raw SQL statement on the Praxis database.
 
     Args:
@@ -301,8 +303,8 @@ class PraxisDBService:
       logger.debug("Raw SQL statement executed.")
 
   async def fetch_all_sql(
-    self, sql_query: str, params: Optional[dict] = None
-  ) -> List[Dict[Any, Any]]:
+    self, sql_query: str, params: dict | None = None,
+  ) -> list[dict[Any, Any]]:
     """Fetch all rows from a raw SQL query on the Praxis database.
 
     Args:
@@ -311,7 +313,7 @@ class PraxisDBService:
             bind to the SQL query. Defaults to None.
 
     Returns:
-        List[Dict[Any, Any]]: A list of dictionaries, where each dictionary
+        list[dict[Any, Any]]: A list of dictionaries, where each dictionary
         represents a row from the query result.
 
     """
@@ -325,8 +327,8 @@ class PraxisDBService:
       return rows
 
   async def fetch_one_sql(
-    self, sql_query: str, params: Optional[dict] = None
-  ) -> Optional[Dict[Any, Any]]:
+    self, sql_query: str, params: dict | None = None,
+  ) -> dict[Any, Any] | None:
     """Fetch a single row from a raw SQL query on the Praxis database.
 
     Args:
@@ -335,7 +337,7 @@ class PraxisDBService:
             bind to the SQL query. Defaults to None.
 
     Returns:
-        Optional[Dict[Any, Any]]: A dictionary representing the first row
+        Optional[dict[Any, Any]]: A dictionary representing the first row
         from the query result, or None if no rows are found.
 
     """
@@ -351,7 +353,7 @@ class PraxisDBService:
       logger.debug("No row found.")
       return None
 
-  async def fetch_val_sql(self, sql_query: str, params: Optional[dict] = None) -> Any:
+  async def fetch_val_sql(self, sql_query: str, params: dict | None = None) -> Any:
     """Fetch a single scalar value from a raw SQL query on the Praxis database.
 
     Args:
@@ -373,27 +375,29 @@ class PraxisDBService:
       logger.debug("Fetched scalar value: %s.", value)
       return value
 
-  async def close(self):
+  async def close(self) -> None:
     """Close the Keycloak database connection pool.
 
     This method should be called during application shutdown to ensure
     proper resource cleanup.
 
+    This does NOT dispose of the Praxis database session factory.
+    The Praxis database session factory is managed by the FastAPI app and
+    should not be closed here.
+    It is the responsibility of the FastAPI app to manage the lifecycle of
+    the Praxis database session factory.
+    This method only closes the Keycloak database connection pool if it
+    was initialized.
+
     """
     logger.info("Attempting to close PraxisDBService resources.")
-    if self._keycloak_pool and not self._keycloak_pool._closed:  # type: ignore
-      await self._keycloak_pool.close()  # type: ignore
+    if self._keycloak_pool and not self._keycloak_pool._closed:  # noqa: SLF001
+      await self._keycloak_pool.close()
       logger.info("Keycloak database pool closed.")
-    # The SQLAlchemy engine (from which AsyncSessionLocal is derived) should
-    # be dispositiond of at the application level if it's managed globally.
-    # If AsyncSessionLocal is derived from create_async_engine(),
-    # e.g. engine = create_async_engine(...); AsyncSessionLocal =
-    # async_sessionmaker(engine) then engine.disposition() should be called
-    # elsewhere (e.g., application shutdown).
     logger.info("PraxisDBService resources closed.")
 
 
-def _get_keycloak_dsn_from_config() -> Optional[str]:
+def _get_keycloak_dsn_from_config() -> str | None:
   """Retrieve the Keycloak DSN from the praxis.ini configuration file.
 
   Returns:
@@ -407,7 +411,7 @@ def _get_keycloak_dsn_from_config() -> Optional[str]:
 
   if not CONFIG_FILE_PATH.exists():
     logger.warning(
-      "praxis.ini not found at %s for Keycloak DSN lookup.", CONFIG_FILE_PATH
+      "praxis.ini not found at %s for Keycloak DSN lookup.", CONFIG_FILE_PATH,
     )
     return None
 
@@ -418,16 +422,17 @@ def _get_keycloak_dsn_from_config() -> Optional[str]:
     try:
       user = os.getenv("KEYCLOAK_DB_USER", config.get("keycloak_database", "user"))
       password = os.getenv(
-        "KEYCLOAK_DB_PASSWORD", config.get("keycloak_database", "password")
+        "KEYCLOAK_DB_PASSWORD", config.get("keycloak_database", "password"),
       )
       host = os.getenv("KEYCLOAK_DB_HOST", config.get("keycloak_database", "host"))
       port = os.getenv("KEYCLOAK_DB_PORT", config.get("keycloak_database", "port"))
       dbname = os.getenv("KEYCLOAK_DB_NAME", config.get("keycloak_database", "dbname"))
       dsn = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
       logger.info("Successfully retrieved Keycloak DSN from config.")
-      return dsn
     except Exception as e:
-      logger.error("Error reading Keycloak DSN from praxis.ini: %s", e)
+      logger.exception("Error reading Keycloak DSN from praxis.ini: %s", e)
       return None
+    else:
+      return dsn
   logger.info("Keycloak database section not found in praxis.ini.")
   return None

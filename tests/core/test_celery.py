@@ -5,7 +5,7 @@ from celery import Celery
 from praxis.backend.core.celery import celery_app
 
 
-def test_celery_app_instance():
+def test_celery_app_instance() -> None:
   """Test that the celery_app is a correctly configured Celery instance."""
   # Assert: Check that the app is an instance of Celery
   assert isinstance(celery_app, Celery)

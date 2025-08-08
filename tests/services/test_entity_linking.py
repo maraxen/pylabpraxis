@@ -4,15 +4,12 @@ import uuid
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from praxis.backend.models import (
-  DeckInstanceOrm,
+  DeckOrm,
   MachineOrm,
-  MachineStatusEnum,
-  ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
+  ResourceDefinitionOrm,
+  ResourceOrm,
 )
 from praxis.backend.services.entity_linking import (
   _create_or_link_machine_counterpart_for_resource,
@@ -28,11 +25,11 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-async def resource_def(db: AsyncSession) -> ResourceDefinitionCatalogOrm:
-  """Fixture to create a ResourceDefinitionCatalogOrm instance."""
-  definition = ResourceDefinitionCatalogOrm(
+async def resource_def(db: AsyncSession) -> ResourceDefinitionOrm:
+  """Fixture to create a ResourceDefinitionOrm instance."""
+  definition = ResourceDefinitionOrm(
     name=f"test_definition_{uuid.uuid4()}",
-    python_fqn="pylabrobot.resources.Plate",
+    fqn="pylabrobot.resources.Plate",
     category="plate",
   )
   db.add(definition)
@@ -45,8 +42,8 @@ async def resource_def(db: AsyncSession) -> ResourceDefinitionCatalogOrm:
 async def machine1(db: AsyncSession) -> MachineOrm:
   """Fixture to create a basic MachineOrm instance."""
   machine = MachineOrm(
-    user_friendly_name="TestMachine1",
-    python_fqn="pylabrobot.liquid_handling.LiquidHandler",
+    name="TestMachine1",
+    fqn="pylabrobot.liquid_handling.LiquidHandler",
   )
   db.add(machine)
   await db.commit()
@@ -56,11 +53,13 @@ async def machine1(db: AsyncSession) -> MachineOrm:
 
 @pytest.fixture
 async def resource1(
-  db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
-) -> ResourceInstanceOrm:
-  """Fixture to create a basic ResourceInstanceOrm instance."""
-  resource = ResourceInstanceOrm(
-    user_assigned_name="TestResource1", name=resource_def.name
+  db: AsyncSession,
+  resource_def: ResourceDefinitionOrm,
+) -> ResourceOrm:
+  """Fixture to create a basic ResourceOrm instance."""
+  resource = ResourceOrm(
+    name="TestResource1",
+    resource_definition_name=resource_def.name,
   )
   db.add(resource)
   await db.commit()
@@ -69,12 +68,12 @@ async def resource1(
 
 
 @pytest.fixture
-async def deck1(db: AsyncSession, resource1: ResourceInstanceOrm) -> DeckInstanceOrm:
-  """Fixture to create a basic DeckInstanceOrm."""
-  deck = DeckInstanceOrm(
+async def deck1(db: AsyncSession, resource1: ResourceOrm) -> DeckOrm:
+  """Fixture to create a basic DeckOrm."""
+  deck = DeckOrm(
     name="TestDeck1",
     deck_accession_id=resource1.accession_id,  # Just needs a valid UUID
-    python_fqn="pylabrobot.resources.Deck",
+    fqn="pylabrobot.resources.Deck",
   )
   db.add(deck)
   await db.commit()
@@ -83,17 +82,20 @@ async def deck1(db: AsyncSession, resource1: ResourceInstanceOrm) -> DeckInstanc
 
 
 class TestEntityLinking:
+
   """Test suite for entity linking and synchronization functions."""
 
   async def test_read_resource_definition_for_linking(
-    self, db: AsyncSession, resource_def: ResourceDefinitionCatalogOrm
-  ):
+    self,
+    db: AsyncSession,
+    resource_def: ResourceDefinitionOrm,
+  ) -> None:
     """Test successfully reading an existing resource definition."""
     result = await _read_resource_definition_for_linking(db, resource_def.name)
     assert result is not None
     assert result.name == resource_def.name
 
-  async def test_read_resource_definition_not_found(self, db: AsyncSession):
+  async def test_read_resource_definition_not_found(self, db: AsyncSession) -> None:
     """Test that reading a non-existent resource definition raises ValueError."""
     with pytest.raises(ValueError, match="not found"):
       await _read_resource_definition_for_linking(db, "non_existent_def")
@@ -104,8 +106,8 @@ class TestEntityLinking:
     self,
     db: AsyncSession,
     machine1: MachineOrm,
-    resource_def: ResourceDefinitionCatalogOrm,
-  ):
+    resource_def: ResourceDefinitionOrm,
+  ) -> None:
     """Test creating a new resource counterpart for a machine."""
     resource = await _create_or_link_resource_counterpart_for_machine(
       db=db,
@@ -123,11 +125,14 @@ class TestEntityLinking:
     assert machine1.resource_counterpart_accession_id == resource.accession_id
     assert resource.machine_counterpart_accession_id == machine1.accession_id
     assert resource.is_machine is True
-    assert resource.user_assigned_name == machine1.user_friendly_name
+    assert resource.name == machine1.name
 
   async def test_link_existing_resource_to_machine(
-    self, db: AsyncSession, machine1: MachineOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    machine1: MachineOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test linking an existing resource to a machine."""
     linked_resource = await _create_or_link_resource_counterpart_for_machine(
       db=db,
@@ -145,11 +150,14 @@ class TestEntityLinking:
     assert machine1.resource_counterpart_accession_id == resource1.accession_id
     assert resource1.machine_counterpart_accession_id == machine1.accession_id
     assert resource1.is_machine is True
-    assert resource1.user_assigned_name == machine1.user_friendly_name
+    assert resource1.name == machine1.name
 
   async def test_unlink_resource_from_machine(
-    self, db: AsyncSession, machine1: MachineOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    machine1: MachineOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test unlinking a resource from a machine by setting is_resource=False."""
     # First, link them
     machine1.resource_counterpart = resource1
@@ -177,16 +185,18 @@ class TestEntityLinking:
   # --- Resource <-> Machine Linking (Inverse) ---
 
   async def test_create_machine_counterpart_for_resource(
-    self, db: AsyncSession, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test creating a new machine counterpart for a resource."""
     machine = await _create_or_link_machine_counterpart_for_resource(
       db=db,
-      resource_instance_orm=resource1,
+      resource_orm=resource1,
       is_machine=True,
       machine_counterpart_accession_id=None,
-      machine_user_friendly_name=resource1.user_assigned_name,
-      machine_python_fqn="pylabrobot.new.Machine",
+      machine_name=resource1.name,
+      machine_fqn="pylabrobot.new.Machine",
     )
     await db.commit()
 
@@ -197,15 +207,18 @@ class TestEntityLinking:
     assert resource1.machine_counterpart_accession_id == machine.accession_id
     assert machine.resource_counterpart_accession_id == resource1.accession_id
     assert machine.is_resource is True
-    assert machine.user_friendly_name == resource1.user_assigned_name
+    assert machine.name == resource1.name
 
   async def test_link_existing_machine_to_resource(
-    self, db: AsyncSession, machine1: MachineOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    machine1: MachineOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test linking an existing machine to a resource."""
     linked_machine = await _create_or_link_machine_counterpart_for_resource(
       db=db,
-      resource_instance_orm=resource1,
+      resource_orm=resource1,
       is_machine=True,
       machine_counterpart_accession_id=machine1.accession_id,
     )
@@ -219,13 +232,16 @@ class TestEntityLinking:
     assert resource1.machine_counterpart_accession_id == machine1.accession_id
     assert machine1.resource_counterpart_accession_id == resource1.accession_id
     assert machine1.is_resource is True
-    assert machine1.user_friendly_name == resource1.user_assigned_name
+    assert machine1.name == resource1.name
 
   # --- Name Synchronization ---
 
   async def test_synchronize_machine_to_resource_name(
-    self, db: AsyncSession, machine1: MachineOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    machine1: MachineOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test that updating a machine's name synchronizes to its resource counterpart."""
     # Link them
     machine1.resource_counterpart = resource1
@@ -233,16 +249,19 @@ class TestEntityLinking:
     await db.commit()
 
     new_name = "UpdatedMachineName"
-    machine1.user_friendly_name = new_name
+    machine1.name = new_name
     await synchronize_machine_resource_names(db, machine1)
     await db.commit()
 
     await db.refresh(resource1)
-    assert resource1.user_assigned_name == new_name
+    assert resource1.name == new_name
 
   async def test_synchronize_resource_to_machine_name(
-    self, db: AsyncSession, machine1: MachineOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    machine1: MachineOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test that updating a resource's name synchronizes to its machine counterpart."""
     # Link them
     resource1.machine_counterpart = machine1
@@ -251,16 +270,19 @@ class TestEntityLinking:
     await db.commit()
 
     new_name = "UpdatedResourceName"
-    resource1.user_assigned_name = new_name
+    resource1.name = new_name
     await synchronize_resource_machine_names(db, resource1)
     await db.commit()
 
     await db.refresh(machine1)
-    assert machine1.user_friendly_name == new_name
+    assert machine1.name == new_name
 
   async def test_synchronize_deck_to_resource_name(
-    self, db: AsyncSession, deck1: DeckInstanceOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    deck1: DeckOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test that updating a deck's name synchronizes to its resource counterpart."""
     # Link them
     deck1.resource_counterpart = resource1
@@ -273,11 +295,14 @@ class TestEntityLinking:
     await db.commit()
 
     await db.refresh(resource1)
-    assert resource1.user_assigned_name == new_name
+    assert resource1.name == new_name
 
   async def test_synchronize_resource_to_deck_name(
-    self, db: AsyncSession, deck1: DeckInstanceOrm, resource1: ResourceInstanceOrm
-  ):
+    self,
+    db: AsyncSession,
+    deck1: DeckOrm,
+    resource1: ResourceOrm,
+  ) -> None:
     """Test that updating a resource's name synchronizes to its deck counterpart."""
     # Link them
     resource1.deck_counterpart = deck1
@@ -285,7 +310,7 @@ class TestEntityLinking:
     await db.commit()
 
     new_name = "UpdatedResourceNameForDeck"
-    resource1.user_assigned_name = new_name
+    resource1.name = new_name
     await synchronize_resource_deck_names(db, resource1)
     await db.commit()
 

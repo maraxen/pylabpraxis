@@ -15,153 +15,134 @@ import os
 import sys
 import traceback
 import uuid
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import (
   Any,
-  Callable,
-  Dict,
-  List,
-  Optional,
-  Set,
-  Tuple,
   Union,
   get_args,
   get_origin,
 )
 
-from pylabrobot.resources import Resource
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # MODIFIED
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-# Global in-memory registry (populated by decorators, updated by this service)
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY
-from praxis.backend.models.protocol_pydantic_models import (
+from praxis.backend.models.pydantic.protocol import (
   AssetRequirementModel,
-  FunctionProtocolDefinitionModel,
+  FunctionProtocolDefinitionCreate,
+  FunctionProtocolDefinitionUpdate,
   ParameterMetadataModel,
 )
-
-# MODIFIED: Import async version of upsert
-from praxis.backend.services.protocols import (
-  upsert_function_protocol_definition,
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.resource_type_definition import (
+  ResourceTypeDefinitionService,
 )
-
-from praxis.backend.utils.uuid import uuid7
+from praxis.backend.utils.type_inspection import (
+  fqn_from_hint,
+  is_pylabrobot_resource,
+  serialize_type_hint,
+)
 
 logger = logging.getLogger(__name__)
 
+# TODO(mar): Make this much safer, accessing sys.path directly can lead to issues.
+class DiscoveryService:
 
-# --- Helper Functions (copied from decorators.py modification plan) ---
-# These helpers do not involve DB IO, so they remain synchronous.
-def is_pylabrobot_resource(obj_type: Any) -> bool:
-  """Check if the given type hint is a PylabRobot resource type.
-
-  This checks if the type is a subclass of Resource or a Union that includes it.
-
-  Args:
-    obj_type: The type hint to check, can be a type or Union.
-
-  Returns:
-    bool: True if the type is a PylabRobot resource type, False otherwise.
-
-  Raises:
-    TypeError: If obj_type is not a valid type hint or Union.
-
-  """
-  if obj_type is inspect.Parameter.empty:
-    return False
-  origin = get_origin(obj_type)
-  t_args = get_args(obj_type)
-  if origin is Union:
-    return any(is_pylabrobot_resource(arg) for arg in t_args if arg is not type(None))
-  try:
-    if inspect.isclass(obj_type):
-      return issubclass(obj_type, Resource)
-  except TypeError:
-    pass
-  return False
-
-
-def get_actual_type_str_from_hint(type_hint: Any) -> str:
-  """Get the actual type string from a type hint.
-
-  Handles Union types, NoneType, and PylabRobot resource types.
-
-  Args:
-    type_hint: The type hint to process, can be a type or Union.
-
-  Returns:
-    str: The string representation of the actual type, or "Any" if empty.
-
-  """
-  if type_hint == inspect.Parameter.empty:
-    return "Any"
-  actual_type = type_hint
-  origin = get_origin(type_hint)
-  t_args = get_args(type_hint)
-  if origin is Union and type(None) in t_args:
-    non_none_args = [arg for arg in t_args if arg is not type(None)]
-    if len(non_none_args) == 1:
-      actual_type = non_none_args[0]
-    else:
-      actual_type = non_none_args[0] if non_none_args else type_hint  # type: ignore
-  if hasattr(actual_type, "__name__"):
-    module = getattr(actual_type, "__module__", "")
-    if (
-      module.startswith("praxis.")
-      or module.startswith("pylabrobot.")
-      or module == "builtins"
-    ):
-      return (
-        f"{module}.{actual_type.__name__}"
-        if module and module != "builtins"
-        else actual_type.__name__
-      )
-    return actual_type.__name__
-  return str(actual_type)
-
-
-def serialize_type_hint_str(type_hint: Any) -> str:
-  """Serialize a type hint to a string representation.
-
-  Handles Union types, NoneType, and PylabRobot resource types.
-
-  Args:
-    type_hint: The type hint to serialize, can be a type or Union.
-
-  Returns:
-    str: The string representation of the type hint, or "Any" if empty.
-
-  """
-  if type_hint == inspect.Parameter.empty:
-    return "Any"
-  return str(type_hint)
-
-
-# --- End Helper Functions ---
-
-
-class ProtocolDiscoveryService:
-  """Service for discovering and managing protocol functions.
-
-  Discovers protocol functions, prepares their definitions, upserts them to the DB,
-  and updates the in-memory PROTOCOL_REGISTRY with their database IDs.
-  """
+  """Service for discovering and managing protocol functions and PLR type definitions."""
 
   def __init__(
-    self, db_session_factory: Optional[async_sessionmaker[AsyncSession]] = None
-  ):
-    """Initialize the ProtocolDiscoveryService.
+    self,
+    db_session_factory: async_sessionmaker[AsyncSession] | None = None,
+    resource_type_definition_service: ResourceTypeDefinitionService | None = None,
+    machine_type_definition_service: MachineTypeDefinitionService | None = None,
+    deck_type_definition_service: DeckTypeDefinitionService | None = None,
+    protocol_definition_service: ProtocolDefinitionCRUDService | None = None,
+  ) -> None:
+    """Initialize the DiscoveryService.
 
     Args:
       db_session_factory: An async session factory for database operations.
         If not provided, the service will not be able to upsert definitions.
+      resource_type_definition_service: Service for resource type definitions.
+      machine_type_definition_service: Service for machine type definitions.
+      deck_type_definition_service: Service for deck type definitions.
+      protocol_definition_service: Service for protocol definitions.
+
+    Returns:
+      None
 
     """
     self.db_session_factory = db_session_factory
+    self.resource_type_definition_service = resource_type_definition_service
+    self.machine_type_definition_service = machine_type_definition_service
+    self.deck_type_definition_service = deck_type_definition_service
+    self.protocol_definition_service = protocol_definition_service
+
+  async def discover_and_sync_all_definitions(
+    self,
+    protocol_search_paths: str | list[str],
+    source_repository_accession_id: uuid.UUID | None = None,
+    commit_hash: str | None = None,
+    file_system_source_accession_id: uuid.UUID | None = None,
+  ) -> None:
+    """Discovers and synchronizes all PLR type definitions and protocols.
+
+    Args:
+      protocol_search_paths: Paths to search for protocol definitions.
+      source_repository_accession_id: Optional ID of the source repository.
+      commit_hash: Optional commit hash.
+      file_system_source_accession_id: Optional ID of the file system source.
+
+    """
+    logger.info("Starting discovery and synchronization of all definitions...")
+
+    if self.resource_type_definition_service:
+      logger.info("Synchronizing resource type definitions...")
+      await self.resource_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Resource type definitions synchronized.")
+
+    if self.machine_type_definition_service:
+      logger.info("Synchronizing machine type definitions...")
+      await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Machine type definitions synchronized.")
+
+    if self.deck_type_definition_service:
+      logger.info("Synchronizing deck type definitions...")
+      await self.deck_type_definition_service.discover_and_synchronize_type_definitions()
+      logger.info("Deck type definitions synchronized.")
+
+    logger.info("Discovering and upserting protocols...")
+    await self.discover_and_upsert_protocols(
+      search_paths=protocol_search_paths,
+      source_repository_accession_id=source_repository_accession_id,
+      commit_hash=commit_hash,
+      file_system_source_accession_id=file_system_source_accession_id,
+    )
+    logger.info("All definitions synchronized.")
+
+  def _ensure_path_type(self, search_paths: Sequence[str | Path]) -> list[Path]:
+    """Check the provided search paths."""
+    directory_paths = []
+    for path in search_paths:
+      if isinstance(path, str):
+        directory_paths.append(Path(path))
+      elif isinstance(path, Path):
+        directory_paths.append(path)
+    if not all(p.is_dir() for p in directory_paths):
+      msg = (
+        "DiscoveryService: One or more search paths are not valid directories: "
+        f"{[str(p) for p in directory_paths]}"
+      )
+      logger.info(msg)
+      return []
+    return directory_paths
 
   def _extract_protocol_definitions_from_paths(
     self,
-    search_paths: Union[str, List[str]],
-  ) -> List[Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]]:
+    search_paths: Sequence[str | Path],
+  ) -> list[tuple[FunctionProtocolDefinitionCreate, Callable | None]]:
     """Extract protocol function definitions from Python files in the given paths.
 
     Scans the specified directories for Python files, inspects their functions,
@@ -170,7 +151,7 @@ class ProtocolDiscoveryService:
     it infers the protocol definition from the function signature and docstring.
     This method supports both single path strings and lists of paths.
     It also handles reloading of modules to ensure the latest definitions are used.
-    It returns a list of tuples, each containing a FunctionProtocolDefinitionModel
+    It returns a list of tuples, each containing a FunctionProtocolDefinitionCreate
     and the corresponding function reference. If a function cannot be found or
     processed, it logs an error and continues with the next function.
     This method is synchronous and should be called before any async operations
@@ -180,7 +161,7 @@ class ProtocolDiscoveryService:
     missing attributes, or unexpected function signatures.
     It also ensures that the search paths are valid directories and handles
     cases where the provided paths do not exist or are not directories.
-    It returns a list of tuples containing the FunctionProtocolDefinitionModel
+    It returns a list of tuples containing the FunctionProtocolDefinitionCreate
     and the corresponding function reference, or None if the function could not
     be found or processed.
 
@@ -188,55 +169,55 @@ class ProtocolDiscoveryService:
       search_paths: A single path or a list of paths to search for Python files.
 
     Returns:
-      A list of tuples containing the FunctionProtocolDefinitionModel and the
+      A list of tuples containing the FunctionProtocolDefinitionCreate and the
       corresponding function reference, or None if the function could not be found.
 
     """
-    if isinstance(search_paths, str):
-      search_paths = [search_paths]
+    directory_paths = self._ensure_path_type(search_paths)
 
-    extracted_definitions: List[
-      Tuple[FunctionProtocolDefinitionModel, Optional[Callable]]
-    ] = []  # type: ignore
-    processed_func_accession_ids: Set[int] = set()
-    loaded_module_names: Set[str] = set()
+    extracted_definitions: list[tuple[FunctionProtocolDefinitionCreate, Callable | None]] = []
+    processed_func_accession_ids: set[int] = set()
+    loaded_module_names: set[str] = set()
     original_sys_path = list(sys.path)
 
-    for path_item in search_paths:
-      abs_path_item = os.path.abspath(path_item)
-      if not os.path.isdir(abs_path_item):
-        print(f"Warning: Search path '{abs_path_item}' is not a directory. Skipping.")
+    for path_item in directory_paths:
+      abs_path_item = path_item.resolve()
+      if not abs_path_item.is_dir():
         continue
 
-      potential_package_parent = os.path.dirname(abs_path_item)
+      potential_package_parent = abs_path_item.parent
       path_added_to_sys = False
       if potential_package_parent not in sys.path:
-        sys.path.insert(0, potential_package_parent)
+        sys.path.insert(0, str(potential_package_parent))
         path_added_to_sys = True
 
       for root, _, files in os.walk(abs_path_item):
         for file in files:
           if file.endswith(".py") and not file.startswith("_"):
-            module_file_path = os.path.join(root, file)
+            module_file_path = Path(root) / Path(file)
             rel_module_path = os.path.relpath(
-              module_file_path, potential_package_parent
+              module_file_path,
+              potential_package_parent,
             )
-            module_import_name = os.path.splitext(rel_module_path)[0].replace(
-              os.sep, "."
+            module_import_name = (
+              Path(rel_module_path)
+              .with_suffix("")
+              .as_posix()
+              .replace(
+                os.sep,
+                ".",
+              )
             )
 
             try:
               module = None
-              if (
-                module_import_name in loaded_module_names
-                and module_import_name in sys.modules
-              ):
+              if module_import_name in loaded_module_names and module_import_name in sys.modules:
                 module = importlib.reload(sys.modules[module_import_name])
               else:
                 module = importlib.import_module(module_import_name)
               loaded_module_names.add(module_import_name)
 
-              for name, func_obj in inspect.getmembers(module, inspect.isfunction):
+              for _name, func_obj in inspect.getmembers(module, inspect.isfunction):
                 if func_obj.__module__ != module_import_name:
                   continue
                 if id(func_obj) in processed_func_accession_ids:
@@ -245,13 +226,14 @@ class ProtocolDiscoveryService:
 
                 protocol_def_attr = getattr(func_obj, "_protocol_definition", None)
                 if protocol_def_attr and isinstance(
-                  protocol_def_attr, FunctionProtocolDefinitionModel
+                  protocol_def_attr,
+                  FunctionProtocolDefinitionCreate,
                 ):
                   extracted_definitions.append((protocol_def_attr, func_obj))
                 else:
                   sig = inspect.signature(func_obj)
-                  params_list: List[ParameterMetadataModel] = []
-                  assets_list: List[AssetRequirementModel] = []
+                  params_list: list[ParameterMetadataModel] = []
+                  assets_list: list[AssetRequirementModel] = []
 
                   for (
                     param_name,
@@ -262,7 +244,7 @@ class ProtocolDiscoveryService:
                       get_origin(param_type_hint) is Union
                       and type(None) in get_args(param_type_hint)
                     ) or (param_obj_sig.default is not inspect.Parameter.empty)
-                    actual_type_str = get_actual_type_str_from_hint(param_type_hint)
+                    fqn = fqn_from_hint(param_type_hint)
 
                     type_for_plr_check = param_type_hint
                     origin_check, args_check = (
@@ -270,16 +252,14 @@ class ProtocolDiscoveryService:
                       get_args(param_type_hint),
                     )
                     if origin_check is Union and type(None) in args_check:
-                      non_none_args = [
-                        arg for arg in args_check if arg is not type(None)
-                      ]
+                      non_none_args = [arg for arg in args_check if arg is not type(None)]
                       if len(non_none_args) == 1:
                         type_for_plr_check = non_none_args[0]
 
                     common_args = {
                       "name": param_name,
-                      "type_hint_str": serialize_type_hint_str(param_type_hint),
-                      "actual_type_str": actual_type_str,
+                      "type_hint": serialize_type_hint(param_type_hint),
+                      "fqn": fqn,
                       "optional": is_opt,
                       "default_value_repr": repr(param_obj_sig.default)
                       if param_obj_sig.default is not inspect.Parameter.empty
@@ -289,11 +269,10 @@ class ProtocolDiscoveryService:
                       assets_list.append(AssetRequirementModel(**common_args))
                     else:
                       params_list.append(
-                        ParameterMetadataModel(**common_args, is_deck_param=False)
+                        ParameterMetadataModel(**common_args, is_deck_param=False),
                       )
 
-                  inferred_model = FunctionProtocolDefinitionModel(
-                    accession_id=uuid7(), # TODO: ensure that if a reinspection happens it is assigned the already existing
+                  inferred_model = FunctionProtocolDefinitionCreate(  # TODO: ensure that if a reinspection happens it is assigned the already existing
                     name=func_obj.__name__,
                     version="0.0.0-inferred",
                     description=inspect.getdoc(func_obj) or "Inferred from code.",
@@ -305,24 +284,25 @@ class ProtocolDiscoveryService:
                     is_top_level=False,
                   )
                   extracted_definitions.append((inferred_model, func_obj))
-            except Exception as e:
-              logger.error(
-                f"DiscoveryService: Could not import/process module "
-                f"'{module_import_name}' from '{module_file_path}': {e}"
+            except (ImportError, AttributeError, TypeError, ValueError):
+              logger.exception(
+                "DiscoveryService: Could not import/process module '%s' from '%s'",
+                module_import_name,
+                module_file_path,
               )
               traceback.print_exc()
       if path_added_to_sys and potential_package_parent in sys.path:
-        sys.path.remove(potential_package_parent)
+        sys.path.remove(str(potential_package_parent))
     sys.path = original_sys_path
     return extracted_definitions
 
   async def discover_and_upsert_protocols(
     self,
-    search_paths: Union[str, List[str]],
-    source_repository_accession_id: Optional[uuid.UUID] = None,
-    commit_hash: Optional[str] = None,
-    file_system_source_accession_id: Optional[uuid.UUID] = None,
-  ) -> List[Any]:
+    search_paths: str | list[str],
+    source_repository_accession_id: uuid.UUID | None = None,
+    commit_hash: str | None = None,
+    file_system_source_accession_id: uuid.UUID | None = None,
+  ) -> list[Any]:
     """Discover protocol functions in the given paths and upsert them to the DB.
 
     Scans the specified paths for Python files, extracts protocol definitions,
@@ -347,24 +327,15 @@ class ProtocolDiscoveryService:
       found.
 
     """
-    if not self.db_session_factory:
+    if not self.protocol_definition_service:
       logger.error(
-        "DiscoveryService: DB session factory not provided to ProtocolDiscoveryService."
-        " Cannot upsert definitions."
+        "DiscoveryService: Protocol definition service not provided. Cannot upsert definitions.",
       )
       return []
 
-    if not (
-      (source_repository_accession_id and commit_hash)
-      or file_system_source_accession_id
-    ):
-      logger.warning(
-        "DiscoveryService: No source linkage provided for discovery. Protocols may not "
-        "be correctly linked or upserted if service requires it."
-      )
-
     logger.info(
-      f"DiscoveryService: Starting protocol discovery in paths: {search_paths}..."
+      "DiscoveryService: Starting protocol discovery in paths: %s...",
+      search_paths,
     )
     extracted_definitions = self._extract_protocol_definitions_from_paths(search_paths)
 
@@ -373,81 +344,67 @@ class ProtocolDiscoveryService:
       return []
 
     logger.info(
-      f"DiscoveryService: Found {len(extracted_definitions)} protocol functions. "
-      f"Upserting to DB..."
+      "DiscoveryService: Found %d protocol functions. Upserting to DB...",
+      len(extracted_definitions),
     )
-    upserted_definitions_orm: List[Any] = []
+    upserted_definitions_orm: list[Any] = []
 
+    if self.db_session_factory is None:
+      logger.error(
+        "DiscoveryService: No DB session factory provided. Cannot upsert protocol definitions.",
+      )
+      return []
     async with self.db_session_factory() as session:
-      for protocol_pydantic_model, func_ref in extracted_definitions:
+      for protocol_pydantic_model, _func_ref in extracted_definitions:
         protocol_name_for_error = protocol_pydantic_model.name
         protocol_version_for_error = protocol_pydantic_model.version
-        try:  # TODO: have these pull from the protocol database  ORM
-          if source_repository_accession_id and commit_hash:
-            protocol_pydantic_model.source_repository_name = str(
-              source_repository_accession_id
+        try:
+          existing_def = await self.protocol_definition_service.get_by_fqn(
+            db=session,
+            fqn=f"{protocol_pydantic_model.module_name}.{protocol_pydantic_model.function_name}",
+          )
+
+          if existing_def:
+            update_data = FunctionProtocolDefinitionUpdate(**protocol_pydantic_model.model_dump())
+            def_orm = await self.protocol_definition_service.update(
+              db=session,
+              db_obj=existing_def,
+              obj_in=update_data,
             )
-            protocol_pydantic_model.commit_hash = commit_hash
-          elif file_system_source_accession_id:
-            protocol_pydantic_model.file_system_source_name = str(
-              file_system_source_accession_id
+          else:
+            def_orm = await self.protocol_definition_service.create(
+              db=session,
+              obj_in=protocol_pydantic_model,
             )
 
-          def_orm = await upsert_function_protocol_definition(
-            db=session,
-            protocol_pydantic=protocol_pydantic_model,
-            source_repository_accession_id=source_repository_accession_id,
-            commit_hash=commit_hash,
-            file_system_source_accession_id=file_system_source_accession_id,
-          )
           upserted_definitions_orm.append(def_orm)
 
-          protocol_unique_key = (
-            f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
-          )
-
-          func_ref_protocol_def = getattr(func_ref, "_protocol_definition", None)
-          if func_ref and func_ref_protocol_def is protocol_pydantic_model:
-            if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              setattr(func_ref_protocol_def, "db_accession_id", def_orm.accession_id)
+          protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
 
           if protocol_unique_key in PROTOCOL_REGISTRY:
             if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = (
-                def_orm.accession_id
-              )
-              pydantic_def_in_registry = PROTOCOL_REGISTRY[protocol_unique_key].get(
-                "pydantic_definition"
-              )  # type: ignore
-              if pydantic_def_in_registry and isinstance(
-                pydantic_def_in_registry,
-                FunctionProtocolDefinitionModel,
-              ):
-                setattr(
-                  pydantic_def_in_registry, "db_accession_id", def_orm.accession_id
-                )
+              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = def_orm.accession_id
             else:
               logger.warning(
-                f"DiscoveryService: Upserted ORM object for '{protocol_unique_key}' has"
-                f" no 'id'. Cannot update PROTOCOL_REGISTRY."
+                "DiscoveryService: Upserted ORM object for '%s' has no 'id'. "
+                "Cannot update PROTOCOL_REGISTRY.",
+                protocol_unique_key,
               )
 
-        except Exception as e:
-          logger.error(
-            f"ERROR: Failed to process or upsert protocol '{protocol_name_for_error} "
-            f"v{protocol_version_for_error}': {e}"
+        except (ValueError, RuntimeError):
+          logger.exception(
+            "ERROR: Failed to process or upsert protocol '%s v%s'.",
+            protocol_name_for_error,
+            protocol_version_for_error,
           )
           traceback.print_exc()
       # Commit happens when the session context manager exits if no exceptions
 
     num_successful_upserts = len(
-      [
-        d
-        for d in upserted_definitions_orm
-        if hasattr(d, "id") and d.accession_id is not None
-      ]
+      [d for d in upserted_definitions_orm if hasattr(d, "id") and d.accession_id is not None],
     )
     logger.info(
-      f"Successfully upserted {num_successful_upserts} protocol definition(s) to DB."
+      "Successfully upserted %d protocol definition(s) to DB.",
+      num_successful_upserts,
     )
     return upserted_definitions_orm

@@ -61,7 +61,7 @@ class WindowClassRegistrar {
   ~WindowClassRegistrar() = default;
 
   // Returns the singleton registrar instance.
-  static WindowClassRegistrar* GetInstance() {
+  static WindowClassRegistrar* Get() {
     if (!instance_) {
       instance_ = new WindowClassRegistrar();
     }
@@ -94,9 +94,9 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.style = CS_HREDRAW | CS_VREDRAW;
     window_class.cbClsExtra = 0;
     window_class.cbWndExtra = 0;
-    window_class.hInstance = GetModuleHandle(nullptr);
+    window_class.h = GetModuleHandle(nullptr);
     window_class.hIcon =
-        LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
+        LoadIcon(window_class.h, MAKEINTRESOURCE(IDI_APP_ICON));
     window_class.hbrBackground = 0;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
@@ -126,7 +126,7 @@ bool Win32Window::Create(const std::wstring& title,
   Destroy();
 
   const wchar_t* window_class =
-      WindowClassRegistrar::GetInstance()->GetWindowClass();
+      WindowClassRegistrar::Get()->GetWindowClass();
 
   const POINT target_point = {static_cast<LONG>(origin.x),
                               static_cast<LONG>(origin.y)};
@@ -229,7 +229,7 @@ void Win32Window::Destroy() {
     window_handle_ = nullptr;
   }
   if (g_active_window_count == 0) {
-    WindowClassRegistrar::GetInstance()->UnregisterWindowClass();
+    WindowClassRegistrar::Get()->UnregisterWindowClass();
   }
 }
 

@@ -1,26 +1,31 @@
+"""Core backend application for PyLabPraxis."""
+
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Awaitable, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-# Praxis specific imports
-from praxis.backend.api import function_data_outputs, protocols, resources, workcell_api
+from praxis.backend.api import discovery, function_data_outputs, protocols, resources, workcell_api
+from praxis.backend.api.scheduler import initialize_scheduler_components
 from praxis.backend.configure import PraxisConfiguration
-from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.asset_manager import AssetManager
+from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
-
-# New DB related imports
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.services.discovery_service import DiscoveryService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 from praxis.backend.services.praxis_orm_service import PraxisDBService
+from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
 from praxis.backend.utils.db import (
   KEYCLOAK_DSN_FROM_CONFIG,
-  async_engine as praxis_async_engine,
-  init_praxis_db_schema,
-  get_async_db_session,
   AsyncSessionLocal,
+  init_praxis_db_schema,
+)
+from praxis.backend.utils.db import (
+  async_engine as praxis_async_engine,
 )
 
 # --- Configuration and Logging Setup ---
@@ -34,66 +39,127 @@ logging.basicConfig(
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+# This global context will be initialized once during application startup.
+_execution_context: ProtocolExecutionContext | None = None
+
+
+def initialize_celery_context(
+  db_session_factory: async_sessionmaker[AsyncSession],
+  orchestrator: Orchestrator,
+) -> None:
+  """Initialize the global context for Celery tasks with necessary dependencies.
+
+  This function should be called when the main application starts to ensure
+  that all Celery workers have access to the database and orchestrator.
+  """
+  global _execution_context
+  if not _execution_context:
+    _execution_context = ProtocolExecutionContext(db_session_factory, orchestrator)
+    logger.info("Celery execution context initialized successfully.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+  """Manage application startup and shutdown events.
+
+  Initialize database connections, services, and the main orchestrator.
+
+  This function is used to set up the application state and ensure that all
+  necessary components are ready before the application starts handling requests.
+
+  After the application is done, it will clean up resources such as closing
+  database connections and disposing of the SQLAlchemy engine.
+
+  Args:
+    app: The FastAPI application instance.
+
+  Yields:
+    None.
+
+  Raises:
+    Exception: If any error occurs during the startup sequence, it will log the error
+    and re-raise the exception to prevent the application from starting.
+
   """
-  Manages application startup and shutdown events.
-  Initializes database connections, services, and the main orchestrator.
-  """
-  db_service_instance: Optional[PraxisDBService] = None
-  orchestrator: Optional[Orchestrator] = None
-  asset_manager: Optional[AssetManager] = None
-  workcell_runtime: Optional[WorkcellRuntime] = None
+  db_service_instance: PraxisDBService | None = None
+  orchestrator: Orchestrator | None = None
+  asset_manager: AssetManager | None = None
+  workcell_runtime: WorkcellRuntime | None = None
+  discovery_service: DiscoveryService | None = None
   try:
     logger.info("Application startup sequence initiated...")
 
-    # 1. Initialize Praxis Database Schema (SQLAlchemy ORM tables)
     logger.info("Initializing Praxis database schema...")
     await init_praxis_db_schema()
     logger.info("Praxis database schema initialization complete.")
 
-    # 2. Initialize PraxisDBService (handles Praxis DB via SQLAlchemy & Keycloak via asyncpg)
     logger.info("Initializing PraxisDBService...")
     assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
     db_service_instance = await PraxisDBService.initialize(
-      keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG
+      keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG,
     )
     logger.info("PraxisDBService initialized successfully.")
 
-    # 3. Initialize AssetManager and WorkcellRuntime
+    # Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
     workcell_runtime = WorkcellRuntime(
       db_session_factory=AsyncSessionLocal,
-      workcell_name="praxis_workcell",
-      workcell_save_file="workcell_state.json",  # TODO: have these populated from config
+      config=praxis_config,
     )
     logger.info("WorkcellRuntime initialized successfully.")
-    db_session = await anext(get_async_db_session())
-    asset_manager = AssetManager(
-      db_session=db_session, workcell_runtime=workcell_runtime
-    )
+    async with AsyncSessionLocal() as db_session:  # Use async with for session
+      asset_manager = AssetManager(
+        db_session=db_session,
+        workcell_runtime=workcell_runtime,
+      )
 
-    # 3. Instantiate and initialize the Orchestrator with its dependencies
-    logger.info("Initializing orchestrator...")
-    orchestrator = Orchestrator(
-      db_session_factory=AsyncSessionLocal,
-      asset_manager=asset_manager,
-      workcell_runtime=workcell_runtime,
-    )
-    logger.info("Orchestrator dependencies initialized.")
+      # Initialize the new type definition services
+      logger.info("Initializing type definition services...")
+      resource_type_definition_service = ResourceTypeDefinitionService(db_session)
+      machine_type_definition_service = MachineTypeDefinitionService(db_session)
+      deck_type_definition_service = DeckTypeDefinitionService(db_session)
+      logger.info("Type definition services initialized.")
 
-    # 4. Store the fully initialized orchestrator in the app state
-    # This makes it accessible to all API routes via the `request` object.
-    app.state.orchestrator = orchestrator
-    logger.info("Orchestrator attached to application state.")
-    logger.info("Application startup complete.")
+      # Initialize DiscoveryService
+      logger.info("Initializing DiscoveryService...")
+      discovery_service = DiscoveryService(
+        db_session_factory=AsyncSessionLocal,
+        resource_type_definition_service=resource_type_definition_service,
+        machine_type_definition_service=machine_type_definition_service,
+        deck_type_definition_service=deck_type_definition_service,
+      )
+      logger.info("DiscoveryService initialized.")
 
-    yield  # The application is now running
+      # Run initial discovery and synchronization
+      logger.info("Running initial discovery and synchronization...")
+      await discovery_service.discover_and_sync_all_definitions(
+        protocol_search_paths=praxis_config.all_protocol_source_paths,
+      )
+      logger.info("Initial discovery and synchronization complete.")
+
+      # Instantiate and initialize the Orchestrator with its dependencies
+      logger.info("Initializing orchestrator...")
+      orchestrator = Orchestrator(
+        db_session_factory=AsyncSessionLocal,
+        asset_manager=asset_manager,
+        workcell_runtime=workcell_runtime,
+      )
+      logger.info("Orchestrator dependencies initialized.")
+
+      # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
+      logger.info("Initializing scheduler components...")
+      await initialize_scheduler_components(AsyncSessionLocal, praxis_config)
+
+      # Store the fully initialized orchestrator and discovery service in the app state
+      app.state.orchestrator = orchestrator
+      app.state.discovery_service = discovery_service
+      logger.info("Orchestrator and DiscoveryService attached to application state.")
+      logger.info("Application startup complete.")
+
+      yield  # The application is now running
 
   except Exception as e:
-    logger.error(f"Error during application startup: {str(e)}", exc_info=True)
+    logger.exception("Error during application startup: %s", str(e))
     # In a production scenario, you might want to exit or handle this more gracefully
     raise
   finally:
@@ -112,13 +178,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
       logger.info("Application shutdown complete.")
     except Exception as e:
-      logger.error(f"Error during application shutdown: {str(e)}", exc_info=True)
+      logger.exception("Error during application shutdown: %s", str(e))
 
 
-# --- FastAPI App Initialization ---
 app = FastAPI(
   title="PyLabPraxis Backend",
-  description="A comprehensive Python-based platform to automate and manage laboratory workflows.",
+  description="A comprehensive Python-based platform to automate and manage laboratory \
+    workflows.",
   version="1.0.0",
   lifespan=lifespan,
 )
@@ -127,8 +193,8 @@ app = FastAPI(
 app.add_middleware(
   CORSMiddleware,
   allow_origins=[
-    "http://localhost:5173",  # Default Vite dev port
-    "http://localhost:4200",  # Default Angular dev port
+    "http://localhost:5173",
+    "http://localhost:4200",  # TODO: ensure this is the correct URL for your frontend
   ],
   allow_credentials=True,
   allow_methods=["*"],
@@ -137,11 +203,14 @@ app.add_middleware(
 
 # --- API Router Inclusion ---
 app.include_router(
-  function_data_outputs.router, prefix="/api/v1/data-outputs", tags=["Data Outputs"]
+  function_data_outputs.router,
+  prefix="/api/v1/data-outputs",
+  tags=["Data Outputs"],
 )
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["Workcell"])
 app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 
 
 # --- Middleware and Root Endpoint ---
@@ -150,10 +219,13 @@ app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
 @app.middleware("http")
 async def log_requests(request: Request, call_next) -> Response:
   """Middleware to log incoming requests and their response status codes."""
-  logger.info(f"Request: {request.method} {request.url.path}")
+  logger.info("Request: %s %s", request.method, request.url.path)
   response: Response = await call_next(request)
   logger.info(
-    f"Response: {request.method} {request.url.path} - Status {response.status_code}"
+    "Response: %s %s - Status %s",
+    request.method,
+    request.url.path,
+    response.status_code,
   )
   return response
 

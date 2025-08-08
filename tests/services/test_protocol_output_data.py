@@ -11,7 +11,7 @@ from praxis.backend.models import (
   FunctionDataOutputOrm,
   MachineOrm,
   ProtocolRunOrm,
-  ResourceInstanceOrm,
+  ResourceOrm,
   SpatialContextEnum,
 )
 
@@ -25,20 +25,22 @@ from praxis.backend.services.protocol_output_data import (
 
 @pytest.fixture
 async def setup_summary_data(db: AsyncSession):
-  """
-  Fixture to create a rich set of data outputs for a single protocol run,
+  """Fixture to create a rich set of data outputs for a single protocol run,
   enabling a thorough test of the summary aggregation function.
   """
   # Create parent entities
   run = ProtocolRunOrm(name="Summary Test Run")
   f_call = FunctionCallLogOrm(
-    protocol_run_accession_id=run.accession_id, function_name="complex_assay"
+    protocol_run_accession_id=run.accession_id,
+    function_name="complex_assay",
   )
   machine = MachineOrm(
-    user_friendly_name=f"SummaryMachine_{uuid.uuid4()}", python_fqn="machine.fqn"
+    name=f"SummaryMachine_{uuid.uuid4()}",
+    fqn="machine.fqn",
   )
-  resource = ResourceInstanceOrm(
-    user_assigned_name="SummaryResource", name="summary_resource_def"
+  resource = ResourceOrm(
+    name="SummaryResource",
+    resource_definition_name="summary_resource_def",
   )
 
   db.add_all([run, f_call, machine, resource])
@@ -48,10 +50,10 @@ async def setup_summary_data(db: AsyncSession):
 
   # Create a diverse set of FunctionDataOutputOrm records for the same run
   timestamp1 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-    minutes=10
+    minutes=10,
   )
   timestamp2 = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-    minutes=5
+    minutes=5,
   )
 
   data_outputs = [
@@ -64,7 +66,7 @@ async def setup_summary_data(db: AsyncSession):
       data_key="abs_1",
       spatial_context=SpatialContextEnum.MACHINE_LEVEL,
       machine_accession_id=machine.accession_id,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_numeric=0.5,
       measurement_timestamp=timestamp1,
     ),
@@ -89,7 +91,7 @@ async def setup_summary_data(db: AsyncSession):
       data_type=DataOutputTypeEnum.ERROR_LOG,
       data_key="error_1",
       spatial_context=SpatialContextEnum.GLOBAL,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_text="An error occurred",
       measurement_timestamp=timestamp2,
     ),
@@ -102,7 +104,7 @@ async def setup_summary_data(db: AsyncSession):
       data_key="abs_2",
       spatial_context=SpatialContextEnum.MACHINE_LEVEL,
       machine_accession_id=machine.accession_id,
-      resource_instance_accession_id=resource.accession_id,
+      resource_accession_id=resource.accession_id,
       data_value_numeric=0.6,
       measurement_timestamp=timestamp2,
     ),
@@ -122,11 +124,14 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestProtocolOutputDataService:
+
   """Test suite for protocol output data aggregation services."""
 
   async def test_read_protocol_run_data_summary_with_data(
-    self, db: AsyncSession, setup_summary_data
-  ):
+    self,
+    db: AsyncSession,
+    setup_summary_data,
+  ) -> None:
     """Test retrieving a data summary for a protocol run with diverse data outputs."""
     run_id = setup_summary_data["run_id"]
 
@@ -153,25 +158,19 @@ class TestProtocolOutputDataService:
 
     # 5. Test data timeline aggregation
     assert len(summary.data_timeline) == 3  # 2 events at timestamp1, 1 at timestamp2
-    timeline_events = {
-      (event["data_type"], event["count"]) for event in summary.data_timeline
-    }
+    timeline_events = {(event["data_type"], event["count"]) for event in summary.data_timeline}
     assert ("absorbance_reading", 1) in timeline_events
     assert ("plate_image", 1) in timeline_events
     assert ("error_log", 1) in timeline_events
     # Check that another absorbance reading was added to the summary at a different timestamp
     assert (
       len(
-        [
-          event
-          for event in summary.data_timeline
-          if event["data_type"] == "absorbance_reading"
-        ]
+        [event for event in summary.data_timeline if event["data_type"] == "absorbance_reading"],
       )
       == 2
     )
 
-  async def test_read_protocol_run_data_summary_for_empty_run(self, db: AsyncSession):
+  async def test_read_protocol_run_data_summary_for_empty_run(self, db: AsyncSession) -> None:
     """Test retrieving a data summary for a protocol run with no data outputs."""
     # Create a run with no associated data
     empty_run = ProtocolRunOrm(name="Empty Run")

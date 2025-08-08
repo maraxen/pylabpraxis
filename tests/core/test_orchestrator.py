@@ -91,12 +91,13 @@ def clear_registry():
 
 @pytest.mark.asyncio
 class TestOrchestratorExecution:
+
   """Tests the main execution flows of the Orchestrator."""
 
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_happy_path(
@@ -108,7 +109,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test a successful protocol execution from start to finish."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -137,7 +138,7 @@ class TestOrchestratorExecution:
       [
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.RUNNING),
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.COMPLETED, ANY),
-      ]
+      ],
     )
     mock_workcell_runtime_cls.assert_called_once()
     mock_asset_manager_cls.assert_called_once()
@@ -150,7 +151,7 @@ class TestOrchestratorExecution:
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_handles_exception(
@@ -162,7 +163,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that protocol failures are handled and the status is set to FAILED."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -189,14 +190,14 @@ class TestOrchestratorExecution:
       [
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.RUNNING),
         call(mock_db_session, TEST_RUN_ID, ProtocolRunStatusEnum.FAILED, ANY),
-      ]
+      ],
     )
     mock_workcell_runtime.teardown.assert_awaited_once()
 
   @patch("praxis.backend.core.orchestrator.WorkcellRuntime")
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   @patch("praxis.backend.core.orchestrator.update_protocol_run_status")
   async def test_execute_protocol_handles_cancellation(
@@ -208,7 +209,7 @@ class TestOrchestratorExecution:
     orchestrator: Orchestrator,
     mock_db_session: AsyncMock,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that ProtocolCancelledError is handled gracefully."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -238,14 +239,15 @@ class TestOrchestratorExecution:
 
 @pytest.mark.asyncio
 class TestOrchestratorScenarios:
+
   """Tests various edge cases and scenarios for the Orchestrator."""
 
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_raises_error_if_protocol_not_found(
-    self, mock_get_protocol_def: AsyncMock, orchestrator: Orchestrator
-  ):
+    self, mock_get_protocol_def: AsyncMock, orchestrator: Orchestrator,
+  ) -> None:
     """Test that an error is raised if a protocol definition cannot be found."""
     # Arrange
     mock_get_protocol_def.return_value = None
@@ -260,7 +262,7 @@ class TestOrchestratorScenarios:
 
   @patch("praxis.backend.core.orchestrator.AssetManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_raises_error_if_asset_is_missing(
     self,
@@ -268,7 +270,7 @@ class TestOrchestratorScenarios:
     mock_asset_manager_cls: MagicMock,
     orchestrator: Orchestrator,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that a ValueError is raised if a required asset is not available."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -283,7 +285,7 @@ class TestOrchestratorScenarios:
 
     # Act & Assert
     with pytest.raises(
-      ValueError, match="Could not find a required asset 'test_asset'"
+      ValueError, match="Could not find a required asset 'test_asset'",
     ):
       await orchestrator.execute_protocol(
         protocol_name=TEST_PROTOCOL_NAME,
@@ -293,7 +295,7 @@ class TestOrchestratorScenarios:
 
   @patch("praxis.backend.core.orchestrator.ProtocolCodeManager")
   @patch(
-    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version"
+    "praxis.backend.core.orchestrator.get_protocol_definition_orm_by_name_and_version",
   )
   async def test_execute_loads_protocol_not_in_registry(
     self,
@@ -301,7 +303,7 @@ class TestOrchestratorScenarios:
     mock_pcm_cls: MagicMock,
     orchestrator: Orchestrator,
     mock_protocol_definition: FunctionProtocolDefinitionModel,
-  ):
+  ) -> None:
     """Test that execute_protocol dynamically loads code if protocol not registered."""
     # Arrange
     mock_get_protocol_def.return_value = mock_protocol_definition
@@ -313,7 +315,7 @@ class TestOrchestratorScenarios:
       found_state_param_details=None,
     )
 
-    def loader_side_effect(*args, **kwargs):
+    def loader_side_effect(*args, **kwargs) -> None:
       PROTOCOL_REGISTRY[f"{TEST_PROTOCOL_NAME}_v{TEST_PROTOCOL_VERSION}"] = runtime_info
 
     mock_pcm.load_protocol_code.side_effect = loader_side_effect

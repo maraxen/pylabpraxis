@@ -8,7 +8,7 @@ It serves as the main entry point for protocol execution requests.
 
 import json
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 
 
 class ProtocolExecutionService:
+
   """High-level service for protocol execution management.
 
   This service orchestrates the entire protocol execution workflow:
@@ -40,9 +41,9 @@ class ProtocolExecutionService:
     db_session_factory: async_sessionmaker[AsyncSession],
     asset_manager: AssetManager,
     workcell_runtime: WorkcellRuntime,
-    scheduler: Optional[ProtocolScheduler] = None,
-    orchestrator: Optional[Orchestrator] = None,
-  ):
+    scheduler: ProtocolScheduler | None = None,
+    orchestrator: Orchestrator | None = None,
+  ) -> None:
     """Initialize the Protocol Execution Service.
 
     Args:
@@ -51,6 +52,7 @@ class ProtocolExecutionService:
         workcell_runtime: WorkcellRuntime instance for live object management.
         scheduler: Optional ProtocolScheduler instance. If None, creates a new one.
         orchestrator: Optional Orchestrator instance. If None, creates a new one.
+
     """
     self.db_session_factory = db_session_factory
     self.asset_manager = asset_manager
@@ -73,11 +75,11 @@ class ProtocolExecutionService:
   async def execute_protocol_immediately(
     self,
     protocol_name: str,
-    user_input_params: Optional[Dict[str, Any]] = None,
-    initial_state_data: Optional[Dict[str, Any]] = None,
-    protocol_version: Optional[str] = None,
-    commit_hash: Optional[str] = None,
-    source_name: Optional[str] = None,
+    user_input_params: dict[str, Any] | None = None,
+    initial_state_data: dict[str, Any] | None = None,
+    protocol_version: str | None = None,
+    commit_hash: str | None = None,
+    source_name: str | None = None,
   ):
     """Execute a protocol immediately (synchronously) without scheduling.
 
@@ -94,9 +96,10 @@ class ProtocolExecutionService:
 
     Returns:
         The ProtocolRunOrm object representing the execution result.
+
     """
     logger.info(
-      "Executing protocol '%s' immediately (bypassing scheduler)", protocol_name
+      "Executing protocol '%s' immediately (bypassing scheduler)", protocol_name,
     )
 
     return await self.orchestrator.execute_protocol(
@@ -111,11 +114,11 @@ class ProtocolExecutionService:
   async def schedule_protocol_execution(
     self,
     protocol_name: str,
-    user_input_params: Optional[Dict[str, Any]] = None,
-    initial_state_data: Optional[Dict[str, Any]] = None,
-    protocol_version: Optional[str] = None,
-    commit_hash: Optional[str] = None,
-    source_name: Optional[str] = None,
+    user_input_params: dict[str, Any] | None = None,
+    initial_state_data: dict[str, Any] | None = None,
+    protocol_version: str | None = None,
+    commit_hash: str | None = None,
+    source_name: str | None = None,
   ):
     """Schedule a protocol for asynchronous execution via the scheduler.
 
@@ -136,6 +139,7 @@ class ProtocolExecutionService:
     Raises:
         ValueError: If protocol definition is not found.
         RuntimeError: If scheduling fails.
+
     """
     logger.info("Scheduling protocol '%s' for asynchronous execution", protocol_name)
 
@@ -176,21 +180,22 @@ class ProtocolExecutionService:
 
       # Schedule the protocol run
       success = await self.scheduler.schedule_protocol_execution(
-        protocol_run_orm, user_input_params, initial_state_data
+        protocol_run_orm, user_input_params, initial_state_data,
       )
 
       if not success:
         logger.error("Failed to schedule protocol run %s", run_accession_id)
-        raise RuntimeError(f"Failed to schedule protocol run {run_accession_id}")
+        msg = f"Failed to schedule protocol run {run_accession_id}"
+        raise RuntimeError(msg)
 
       logger.info(
-        "Successfully scheduled protocol run %s for execution", run_accession_id
+        "Successfully scheduled protocol run %s for execution", run_accession_id,
       )
       return protocol_run_orm
 
   async def get_protocol_run_status(
-    self, protocol_run_id: uuid.UUID
-  ) -> Optional[Dict[str, Any]]:
+    self, protocol_run_id: uuid.UUID,
+  ) -> dict[str, Any] | None:
     """Get the current status of a protocol run.
 
     Args:
@@ -198,6 +203,7 @@ class ProtocolExecutionService:
 
     Returns:
         Dictionary with run status information, or None if not found.
+
     """
     # Check scheduler status first
     schedule_status = await self.scheduler.get_schedule_status(protocol_run_id)
@@ -205,7 +211,7 @@ class ProtocolExecutionService:
     # Get database status
     async with self.db_session_factory() as db_session:
       protocol_run_orm = await svc.read_protocol_run(
-        db_session, run_accession_id=protocol_run_id
+        db_session, run_accession_id=protocol_run_id,
       )
 
       if not protocol_run_orm:
@@ -251,6 +257,7 @@ class ProtocolExecutionService:
 
     Returns:
         True if successfully cancelled, False otherwise.
+
     """
     logger.info("Cancelling protocol run %s", protocol_run_id)
 
@@ -268,13 +275,13 @@ class ProtocolExecutionService:
             {
               "status": "Cancelled by user via ProtocolExecutionService",
               "cancelled_at": json.dumps(None),  # Would use actual timestamp
-            }
+            },
           ),
         )
         await db_session.commit()
         database_cancelled = True
       except Exception as e:
-        logger.error(
+        logger.exception(
           "Failed to update database status for cancelled run %s: %s",
           protocol_run_id,
           e,

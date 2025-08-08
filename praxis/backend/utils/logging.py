@@ -1,12 +1,17 @@
+"""Logging utilities and decorators for error handling in PyLabPraxis."""
+
 import logging
 import traceback
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Type
+from typing import Any
 
-def get_logger(name):
+
+def get_logger(name):  # TODO: change to use built-in logging.getLogger and config
+  """Create and return a configured logger with stream handler."""
   logger = logging.getLogger(name)
   logger.setLevel(logging.DEBUG)
-  formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
   ch = logging.StreamHandler()
   ch.setFormatter(formatter)
   logger.addHandler(ch)
@@ -16,16 +21,16 @@ def get_logger(name):
 def _process_exception(
   logger_instance: logging.Logger,
   exception: Exception,
-  exception_type: Type[Exception],
+  exception_type: type[Exception],
   raises: bool,
-  raises_exception: Type[Exception],
+  raises_exception: type[Exception],
   prefix: str,
   suffix: str,
   return_: Any,
 ) -> Any:
   """Process the exception to generate a custom error message."""
   error_message = f"{prefix}{exception.__class__.__name__}: \
-    {str(exception)}{suffix}".strip()
+    {exception!s}{suffix}".strip()
   logger_instance.error(error_message)
   traceback.print_exc()
   full_error_message = f"{error_message} {traceback.format_exc()}"
@@ -35,7 +40,7 @@ def _process_exception(
       raise raises_exception(full_error_message) from exception
   else:
     unexpected_error_message = (
-      f"Unexpected error in {exception.__class__.__name__}: " f"{str(exception)[:250]}"
+      f"Unexpected error in {exception.__class__.__name__}: {str(exception)[:250]}"
     )
     logger_instance.critical(unexpected_error_message)
     if raises:
@@ -45,9 +50,9 @@ def _process_exception(
 
 def log_async_runtime_errors(
   logger_instance: logging.Logger,
-  exception_type: Type[Exception] = Exception,
+  exception_type: type[Exception] = Exception,
   raises: bool = True,
-  raises_exception: Type[Exception] = Exception,
+  raises_exception: type[Exception] = Exception,
   prefix: str = "",
   suffix: str = "",
   return_: Any = None,
@@ -89,7 +94,7 @@ def log_async_runtime_errors(
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
       try:
         return await func(*args, **kwargs)
-      except Exception as e:
+      except Exception as e: # noqa: BLE001
         _process_exception(
           logger_instance=logger_instance,
           exception=e,
@@ -108,9 +113,9 @@ def log_async_runtime_errors(
 
 def log_runtime_errors(
   logger_instance: logging.Logger,
-  exception_type: Type[Exception] = Exception,
+  exception_type: type[Exception] = Exception,
   raises: bool = True,
-  raises_exception: Type[Exception] = Exception,
+  raises_exception: type[Exception] = Exception,
   prefix: str = "",
   suffix: str = "",
   return_: Any = None,
@@ -152,7 +157,7 @@ def log_runtime_errors(
     def wrapper(*args: Any, **kwargs: Any) -> Any:
       try:
         return func(*args, **kwargs)
-      except Exception as e:
+      except Exception as e: # noqa: BLE001
         _process_exception(
           logger_instance=logger_instance,
           exception=e,
