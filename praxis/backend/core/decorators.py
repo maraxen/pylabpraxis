@@ -28,14 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.orchestrator import ProtocolCancelledError
 from praxis.backend.core.run_context import (
-  PROTOCOL_REGISTRY,
   PraxisRunContext,
   serialize_arguments,
 )
 from praxis.backend.models.pydantic.asset import CreateProtocolDefinitionData
 from praxis.backend.models.pydantic.protocol import (
   AssetRequirementModel,
-  DecoratedFunctionInfo,
   FunctionCallStatusEnum,
   FunctionProtocolDefinitionCreate,
   ParameterMetadataModel,
@@ -148,14 +146,14 @@ def _create_protocol_definition(
 
   for param_name_sig, param_obj in sig.parameters.items():
     parameters_list, assets_list, found_deck_param, found_state_param_details = (
-      self._process_parameter(
+      _process_parameter(
         param_name_sig,
         param_obj,
         data,
         parameters_list,
         assets_list,
-        found_deck_param,
-        found_state_param_details,
+        found_deck_param=found_deck_param,
+        found_state_param_details=found_state_param_details,
       )
     )
 
@@ -203,6 +201,7 @@ def _process_parameter(
   data: CreateProtocolDefinitionData,
   parameters_list: list[ParameterMetadataModel],
   assets_list: list[AssetRequirementModel],
+  *,
   found_deck_param: bool,
   found_state_param_details: dict[str, Any] | None,
 ) -> tuple[list[ParameterMetadataModel], list[AssetRequirementModel], bool, dict[str, Any] | None]:
@@ -316,8 +315,21 @@ async def _log_call_start(
 
 
 def protocol_function(
-  data: DecoratedFunctionInfo,
-):
+  name: str | None = None,
+  version: str = "0.1.0",
+  description: str | None = None,
+  *,
+  solo: bool = False,
+  is_top_level: bool = False,
+  preconfigure_deck: bool = False,
+  deck_param_name: str = DEFAULT_DECK_PARAM_NAME,
+  deck_construction: Callable | None = None,
+  state_param_name: str = DEFAULT_STATE_PARAM_NAME,
+  param_metadata: dict[str, Any] | None = None,
+  category: str | None = None,
+  tags: list[str] | None = None,
+  top_level_name_format: str = TOP_LEVEL_NAME_REGEX,
+) -> Callable:
   """Decorate a function for use as a Praxis protocol.
 
   This decorator registers the function as a protocol with metadata and
@@ -346,9 +358,9 @@ def protocol_function(
   actual_param_metadata = param_metadata or {}
   actual_tags = tags or []
 
-  def decorator(func: Callable):
+  def decorator(func: Callable) -> Callable:
     protocol_definition, found_state_param_details = _create_protocol_definition(
-      FunctionProtocolDefinitionCreate(
+      CreateProtocolDefinitionData(
         func=func,
         name=name,
         version=version,
@@ -367,14 +379,24 @@ def protocol_function(
     )
     func._protocol_definition = protocol_definition
 
-    _register_protocol(protocol_definition, func, found_state_param_details)
+    # TODO: The protocol registration should be handled by a discovery service.
+    # _register_protocol(protocol_definition, func, found_state_param_details)
 
-    protocol_unique_key = f"{protocol_definition.name}_v{protocol_definition.version}"
-    PROTOCOL_REGISTRY[protocol_unique_key] = protocol_runtime_info
+    # Create the runtime info object and attach it to the function.
+    # This avoids using a global registry and allows for service-based discovery.
+    protocol_runtime_info = ProtocolRuntimeInfo(
+        pydantic_definition=protocol_definition,
+        function_ref=func,
+        found_state_param_details=found_state_param_details,
+    )
+    func._protocol_runtime_info = protocol_runtime_info
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-      current_meta = PROTOCOL_REGISTRY.get(protocol_unique_key)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+      # Get the runtime metadata from the function itself, not a global registry.
+      current_meta = func._protocol_runtime_info
+      protocol_unique_key = f"{current_meta.pydantic_definition.name}_v{current_meta.pydantic_definition.version}"
+
       if not current_meta or not current_meta.db_accession_id:
         msg = f"Protocol '{protocol_unique_key}' not registered or missing DB ID."
         raise RuntimeError(
@@ -400,9 +422,9 @@ def protocol_function(
         current_meta,
         list(args),
         dict(kwargs),
-        state_param_name,
-        protocol_unique_key,  # Pass protocol_unique_key
-        func,  # Pass func
+        _state_param_name=state_param_name,
+        _protocol_unique_key=protocol_unique_key,
+        _func=func,
       )
 
       result = None
@@ -496,9 +518,10 @@ async def _process_wrapper_arguments(
   current_meta: ProtocolRuntimeInfo,
   processed_args: list,
   processed_kwargs: dict,
-  state_param_name: str,
-  protocol_unique_key: str,  # Added
-  func: Callable,  # Added
+  *,
+  _state_param_name: str,
+  _protocol_unique_key: str,
+  _func: Callable,
 ) -> tuple[uuid.UUID, PraxisRunContext, contextvars.Token]:
   this_function_def_db_accession_id = current_meta.db_accession_id
   state_details = current_meta.found_state_param_details
@@ -532,8 +555,6 @@ async def _process_wrapper_arguments(
   )
   token = praxis_run_context_cv.set(context_for_this_call)
   return current_call_log_db_accession_id, context_for_this_call, token
-
-  return decorator
 
 
 async def _handle_pause_state(

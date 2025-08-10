@@ -31,7 +31,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.services.state import PraxisState
 
-PROTOCOL_REGISTRY: dict[str, Any] = {}
 DeckInputType = str | os.PathLike | io.IOBase | Deck
 
 logger = logging.getLogger(__name__)
@@ -107,7 +106,7 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
   """Serialize positional and keyword arguments to a JSON string."""
   try:
 
-    def make_serializable(item: Any) -> Any:
+    def make_serializable(item: Any) -> Any:  # noqa: ANN401
       if isinstance(item, BaseModel):  # Check for Pydantic models
         try:
           return item.model_dump()  # Use Pydantic v2 style
