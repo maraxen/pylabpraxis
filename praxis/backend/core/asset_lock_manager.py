@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 
 
 class AssetLockManager:
+
   """Redis-based distributed asset lock manager for protocol scheduling.
 
   This class provides atomic asset reservation operations using Redis
@@ -35,7 +36,7 @@ class AssetLockManager:
 
   def __init__(
     self,
-    redis_url: str = "redis://localhost:6379/0",
+    redis_client: redis.Redis,
     lock_timeout_seconds: int = 3600,  # 1 hour default
     lock_retry_delay_ms: int = 100,
     max_lock_retries: int = 10,
@@ -43,51 +44,17 @@ class AssetLockManager:
     """Initialize the Asset Lock Manager.
 
     Args:
-        redis_url: Redis connection URL
-        lock_timeout_seconds: Default timeout for asset locks
-        lock_retry_delay_ms: Delay between lock acquisition retries
-        max_lock_retries: Maximum number of lock acquisition attempts
+        redis_client: An initialized Redis client instance.
+        lock_timeout_seconds: Default timeout for asset locks.
+        lock_retry_delay_ms: Delay between lock acquisition retries.
+        max_lock_retries: Maximum number of lock acquisition attempts.
 
     """
-    self.redis_url = redis_url
+    self._redis_client = redis_client
     self.lock_timeout_seconds = lock_timeout_seconds
     self.lock_retry_delay_ms = lock_retry_delay_ms
     self.max_lock_retries = max_lock_retries
-
-    self._redis_pool: redis.ConnectionPool | None = None
-    self._redis_client: redis.Redis | None = None
-
-    logger.info("AssetLockManager initialized with Redis: %s", redis_url)
-
-  async def initialize(self) -> None:
-    """Initialize Redis connection pool."""
-    try:
-      self._redis_pool = redis.ConnectionPool.from_url(
-        self.redis_url,
-        encoding="utf-8",
-        decode_responses=True,
-        max_connections=20,
-      )
-      self._redis_client = redis.Redis(connection_pool=self._redis_pool)
-
-      # Test connection
-      await self._redis_client.ping()
-      logger.info("Redis connection established successfully")
-
-    except Exception:
-      logger.exception("Failed to initialize Redis connection")
-      raise
-
-  async def close(self) -> None:
-    """Close Redis connections."""
-    try:
-      if self._redis_client:
-        await self._redis_client.close()
-      if self._redis_pool:
-        await self._redis_pool.disconnect()
-      logger.info("Redis connections closed")
-    except Exception:
-      logger.exception("Error closing Redis connections")
+    logger.info("AssetLockManager initialized.")
 
   def _get_asset_lock_key(self, asset_type: str, asset_name: str) -> str:
     """Generate Redis key for asset lock."""
@@ -114,9 +81,6 @@ class AssetLockManager:
         True if lock was acquired, False otherwise
 
     """
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
-
     timeout = lock_data.timeout_seconds or self.lock_timeout_seconds
     lock_key = self._get_asset_lock_key(lock_data.asset_type, lock_data.asset_name)
     lock_value = str(lock_data.reservation_id)
@@ -210,9 +174,6 @@ class AssetLockManager:
         True if lock was released, False otherwise
 
     """
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
-
     lock_key = self._get_asset_lock_key(asset_type, asset_name)
     lock_value = str(reservation_id)
 
@@ -266,9 +227,6 @@ class AssetLockManager:
         Number of locks released
 
     """
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
-
     protocol_locks_key = self._get_protocol_locks_key(protocol_run_id)
     released_count = 0
 
@@ -299,8 +257,6 @@ class AssetLockManager:
 
   async def _release_single_protocol_lock(self, lock_key: str) -> bool:
     """Release a single protocol lock."""
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
     try:
       current_value = await self._redis_client.get(lock_key)
       if not current_value:
@@ -351,9 +307,6 @@ class AssetLockManager:
         None if available, reservation data if locked
 
     """
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
-
     lock_key = self._get_asset_lock_key(asset_type, asset_name)
 
     try:
@@ -407,9 +360,6 @@ class AssetLockManager:
         Number of locks cleaned up
 
     """
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
-
     cleaned_count = 0
 
     try:
@@ -436,8 +386,6 @@ class AssetLockManager:
 
   async def _cleanup_single_lock(self, lock_key: str) -> bool:
     """Clean up a single expired or orphaned lock."""
-    if not self._redis_client:
-      raise RuntimeError(self._REDIS_CLIENT_NOT_INITIALIZED_ERROR)
     try:
       if not await self._redis_client.exists(lock_key):
         return False
@@ -494,9 +442,6 @@ class AssetLockManager:
         Dictionary with system status information
 
     """
-    if not self._redis_client:
-      return {"error": "Redis client not initialized"}
-
     try:
       # Count active locks
       lock_pattern = "praxis:asset_lock:*"

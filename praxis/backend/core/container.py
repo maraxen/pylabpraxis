@@ -7,10 +7,10 @@ For more information on `dependency-injector`, see the documentation:
 https://python-dependency-injector.ets-labs.org/
 """
 
-import typing
 
 from dependency_injector import containers, providers
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 
 class Container(containers.DeclarativeContainer):
 
@@ -79,13 +79,6 @@ class Container(containers.DeclarativeContainer):
 
     # --- Core Services (Example of different lifetimes) ---
 
-    # Singleton provider: one instance for the entire app lifecycle.
-    # discovery_service = providers.Singleton(DiscoveryService)
-
-    # Factory provider: a new instance is created on each injection.
-    # e.g. for a service that holds request-specific state.
-    # transient_service = providers.Factory(MyTransientService)
-
     # --- Database ---
     # The db_session_factory creates the sessionmaker. It's a singleton.
     db_session_factory: providers.Singleton[async_sessionmaker[AsyncSession]] = providers.Singleton(
@@ -101,8 +94,38 @@ class Container(containers.DeclarativeContainer):
     # `pyright` struggles to infer the provided type from the Resource provider,
     # so we use `# type: ignore` to suppress the incorrect error.
     db_session: providers.Provider[AsyncSession] = providers.Resource(
-        db_session_factory
+        db_session_factory,
     )  # type: ignore[assignment]
+
+    # --- Redis ---
+    redis_pool = providers.Resource(
+        "redis.asyncio.ConnectionPool.from_url",
+        url=config.redis.url,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+
+    redis_client = providers.Resource(
+        "redis.asyncio.Redis",
+        connection_pool=redis_pool,
+    )
+
+    # --- Celery ---
+    celery_app = providers.Singleton(
+        "praxis.backend.core.celery.create_celery_app",
+        broker_url=config.celery.broker_url,
+        backend_url=config.celery.backend_url,
+    )
+
+    # --- Core Services ---
+    asset_lock_manager = providers.Factory(
+        "praxis.backend.core.asset_lock_manager.AssetLockManager",
+        redis_client=redis_client,
+    )
+
+    protocol_code_manager = providers.Singleton(
+        "praxis.backend.core.protocol_code_manager.ProtocolCodeManager",
+    )
 
     # --- Service Providers ---
     # Services will be registered here as we refactor them.

@@ -6,7 +6,7 @@ import time
 import unittest
 from shelve import DbfilenameShelf
 
-from praxis.utils.state import RuntimeState
+from praxis.backend.services.state import PraxisState as RuntimeState
 
 
 class TestState(unittest.TestCase):

@@ -24,8 +24,9 @@ if TYPE_CHECKING:
 
 from celery.utils.log import get_task_logger
 
-# Import the decoupled Celery app instance from its dedicated module
-from praxis.backend.core.celery import celery_app
+from dependency_injector.wiring import Provide, inject
+
+from praxis.backend.core.container import Container
 from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.services.protocols import protocol_run_service
 from praxis.backend.services.state import PraxisState
@@ -86,7 +87,12 @@ def set_execution_context(context: ProtocolExecutionContext) -> None:
   _execution_context = context
 
 
-@celery_app.task(bind=True, name="execute_protocol_run")
+celery_app_provider = Container.celery_app
+
+# We need to manually provide the celery_app since the task decorator
+# needs to be applied at module load time.
+@celery_app_provider.task(bind=True, name="execute_protocol_run")
+@inject
 def execute_protocol_run_task(
   self: Task,
   protocol_run_id: uuid.UUID,
@@ -276,7 +282,7 @@ async def _update_run_status_on_error(protocol_run_id: uuid.UUID, error_message:
       )
 
 
-@celery_app.task(name="health_check")
+@celery_app_provider.task(name="health_check")
 def health_check() -> dict[str, str]:
   """A simple health check task to verify that Celery workers are responsive."""
   return {

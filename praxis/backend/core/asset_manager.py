@@ -17,9 +17,8 @@ import uuid
 from functools import partial
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from pylabrobot.resources import Deck
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models.orm.deck import DeckOrm
@@ -35,11 +34,11 @@ from praxis.backend.services.deck import deck_service
 from praxis.backend.services.machine import machine_service
 from praxis.backend.services.resource import resource_service
 from praxis.backend.services.resource_type_definition import (
-    resource_type_definition_service,
+  resource_type_definition_service,
 )
 from praxis.backend.utils.errors import (
-    AssetAcquisitionError,
-    AssetReleaseError,
+  AssetAcquisitionError,
+  AssetReleaseError,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors, log_runtime_errors
 
@@ -79,7 +78,7 @@ class AssetManager:
     self.resource_type_definition_svc = resource_type_definition_service
 
   async def _get_and_validate_deck_orms(
-    self, deck_orm_accession_id: uuid.UUID
+    self, deck_orm_accession_id: uuid.UUID,
   ) -> tuple[DeckOrm, ResourceOrm, ResourceDefinitionOrm]:
     deck_orm = await self.deck_svc.get(self.db, deck_orm_accession_id)
     if not deck_orm:
@@ -94,7 +93,7 @@ class AssetManager:
       )
 
     deck_def_orm = await self.resource_type_definition_svc.get_by_name(
-        self.db, deck_resource_orm.name
+        self.db, deck_resource_orm.name,
     )
     if not deck_def_orm or not deck_def_orm.fqn:
       msg = f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing."
@@ -215,7 +214,7 @@ class AssetManager:
     position_name = item_to_place_orm.current_deck_position_name
     if not position_name:
       logger.warning(
-        f"Resource {item_to_place_orm.name} is on deck but has no position name, skipping."
+        f"Resource {item_to_place_orm.name} is on deck but has no position name, skipping.",
       )
       return
 
@@ -698,7 +697,7 @@ class AssetManager:
     except (ImportError, AttributeError):
       return False
 
-  
+
 
   async def _handle_resource_release_location(
     self,

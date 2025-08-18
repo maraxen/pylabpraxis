@@ -581,7 +581,7 @@ class Orchestrator:
           "ORCH: No prior workcell state snapshot found for run %s to rollback.",
           run_accession_id,
         )
-    except Exception as rollback_error:  # pylint: disable=broad-except # noqa: BLE001
+    except Exception as rollback_error:  # pylint: disable=broad-except
       logger.critical(
         "ORCH: CRITICAL - Failed to rollback workcell state for run %s: %s",
         run_accession_id,

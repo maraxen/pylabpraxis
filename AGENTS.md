@@ -261,4 +261,17 @@ As agentic models complete work, they should append notes to this section, forma
     *   Used a `# type: ignore` directive in `container.py` to work around a known limitation in `pyright`'s ability to infer types from the `dependency-injector` library.
     *   Left the `contextvars` pattern for `PraxisRunContext` in place, as it is a suitable pattern for managing "ambient" context in an async application.
 
+## DI Refactoring Phase 2 (12102025)
+
+*   **Task**: Completed Phase 2 of the dependency injection refactoring. This phase focused on refactoring core services to use the enhanced DI container.
+*   **Summary of Changes**:
+    *   **`asset_lock_manager.py`**: Refactored `AssetLockManager` to accept a Redis client via its constructor instead of creating its own. This removes direct configuration dependencies and makes the class easier to test. The `initialize` and `close` methods were removed, as the Redis client's lifecycle is now managed by the DI container.
+    *   **`celery.py`**: Converted the global `celery_app` instance into a `create_celery_app` factory function. This function takes broker and backend URLs as arguments, allowing the DI container to create and configure the Celery app from a central configuration.
+    *   **`protocol_code_manager.py`**: This class was identified as having no external dependencies that needed to be injected. It was added to the DI container as a singleton without any code modifications.
+    *   **`container.py`**: Updated the DI container to provide the newly refactored services. Added providers for `AssetLockManager`, `ProtocolCodeManager`, and the Celery application. A `Resource` provider for the Redis client was also added to manage its lifecycle.
+*   **Key Decisions & Obstacles**:
+    *   The `ProtocolCodeManager` was initially targeted for refactoring, but upon inspection, it was found to be self-contained and required no changes, only registration with the container.
+    *   The decision was made to use a `Resource` provider for the Redis client to ensure that the connection is properly managed by the container.
+    *   The Celery application was refactored into a factory to break the tight coupling with its configuration and allow for a more flexible and testable setup.
+
 Once this section exceeds 250 lines, models should summarize the work detailed, remove it, and write the summary under the section titled previous work summary.

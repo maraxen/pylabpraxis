@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from praxis.backend.main import app
+from main import app
 from praxis.backend.utils.db import SessionLocal, create_tables_if_not_exist, engine
 
 

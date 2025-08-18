@@ -21,6 +21,7 @@ ORM models include:
 import uuid
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar
+from datetime import datetime, timezone
 
 from sqlalchemy import (
   UUID,
@@ -30,6 +31,7 @@ from sqlalchemy import (
   String,
   Text,
   UniqueConstraint,
+  DateTime,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -72,50 +74,43 @@ class DeckOrm(ResourceOrm):
   """
 
   __tablename__ = "decks"
-  __mapper_args__: ClassVar[dict] = {"polymorphic_identity": "deck"}
-
   accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
     ForeignKey("resources.accession_id"),
     primary_key=True,
-    index=True,
-    comment="Primary key, linked to the resource's accession_id.",
-    kw_only=True,
   )
-
-  parent_machine_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("machines.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the machine this deck is part of.",
-    default=None,
-  )
-  parent_machine: Mapped["MachineOrm | None"] = relationship(
-    "MachineOrm",
-    back_populates="deck",
-    comment="Relationship to the parent machine.",
-    uselist=False,
-    foreign_keys=[parent_machine_accession_id],
-    default=None,
-  )
+  __mapper_args__: ClassVar[dict[str, Any]] = {
+    "polymorphic_identity": "deck",
+    "inherit_condition": accession_id == ResourceOrm.accession_id,
+  }
+  __table_args__ = ({'extend_existing': True},)
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
     index=True,
-    comment="Foreign key to the deck type definition.",
-    kw_only=True,
+    init=False,
   )
 
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
-    comment="Relationship to the deck's type definition.",
     uselist=False,
     foreign_keys=[deck_type_id],
     init=False,
-    )
+  )
+
+  parent_machine_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
+    default=None,
+  )
+  parent_machine: Mapped["MachineOrm | None"] = relationship(
+    "MachineOrm",
+    back_populates="deck",
+    uselist=False,
+    foreign_keys=[parent_machine_accession_id],
+    default=None,
+  )
 
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
@@ -129,13 +124,12 @@ class DeckOrm(ResourceOrm):
     uselist=False,
     foreign_keys=[accession_id],
     init=False,
-    )
+  )
   resources: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
-    comment="List of resources that are currently on this deck.",
   )
 
 
@@ -178,25 +172,22 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
   """
 
   __tablename__ = "deck_definition_catalog"
-  __table_args__ = (UniqueConstraint("fqn", name="uq_deck_type_definitions_fqn"),)
+  __table_args__ = (UniqueConstraint("fqn", name="uq_deck_type_definitions_fqn"), {'extend_existing': True})
 
   default_size_x_mm: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
     default=None,
-    comment="Default size in X dimension in mm.",
   )
   default_size_y_mm: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
     default=None,
-    comment="Default size in Y dimension in mm.",
   )
   default_size_z_mm: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
     default=None,
-    comment="Default size in Z dimension in mm.",
   )
   serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
@@ -228,14 +219,12 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
     "DeckPositionDefinitionOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
-    comment="List of all defined positions (slots) available on this deck type.",
     default_factory=list,
   )
   deck: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
-    comment="List of all physical deck instances of this type.",
     default_factory=list,
   )
   machine_definition: Mapped["ResourceDefinitionOrm"] = relationship(
@@ -277,91 +266,94 @@ class DeckPositionDefinitionOrm(Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (UniqueConstraint("deck_type_id", "position_name", name="uq_deck_position"),)
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_name", name="uq_deck_position"), {'extend_existing': True})
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
     index=True,
     nullable=False,
-    comment="Foreign key to the parent deck type definition.",
-    kw_only=True,
+    init=False,
   )
   position_name: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
-    comment="Human-readable identifier for the position (e.g., 'A1', 'trash_bin').",
-    kw_only=True,
+    init=False,
+  )
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+      UUID(as_uuid=True),
+      primary_key=True,
+      default=uuid.uuid4,
+      index=True,
+      unique=True,
+  )
+  created_at: Mapped[datetime] = mapped_column(
+      DateTime(timezone=True),
+      default_factory=lambda: datetime.now(timezone.utc),
+      nullable=False,
+  )
+  updated_at: Mapped[datetime] = mapped_column(
+      DateTime(timezone=True),
+      default_factory=lambda: datetime.now(timezone.utc),
+      onupdate=lambda: datetime.now(timezone.utc),
+      nullable=False,
   )
 
   x_coord: Mapped[float] = mapped_column(
     Float,
     nullable=False,
-    comment="X-coordinate of the position's center.",
     default=0.0,
   )
   y_coord: Mapped[float] = mapped_column(
     Float,
     nullable=False,
-    comment="Y-coordinate of the position's center.",
     default=0.0,
   )
   z_coord: Mapped[float] = mapped_column(
     Float,
     nullable=False,
-    comment="Z-coordinate of the position's center.",
     default=0.0,
   )
   pylabrobot_position_type_name: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
-    comment="PyLabRobot specific position type name.",
     default=None,
   )
   allowed_resource_definition_names: Mapped[list[str] | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="List of specific resource definition names allowed at this position.",
     default=None,
   )
   accepts_tips: Mapped[bool | None] = mapped_column(
     Boolean,
     nullable=True,
-    comment="Indicates if the position accepts tips.",
     default=None,
   )
   accepts_plates: Mapped[bool | None] = mapped_column(
     Boolean,
     nullable=True,
-    comment="Indicates if the position accepts plates.",
     default=None,
   )
   accepts_tubes: Mapped[bool | None] = mapped_column(
     Boolean,
     nullable=True,
-    comment="Indicates if the position accepts tubes.",
     default=None,
   )
   notes: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
-    comment="Additional notes for the position.",
     default=None,
   )
 
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="JSONB field to store additional, position-specific details.",
     default=None,
   )
 
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="positions",
-    nullable=False,
-    comment="Relationship to the parent deck type definition.",
     uselist=False,
-    kw_only=True,
+    init=False,
   )

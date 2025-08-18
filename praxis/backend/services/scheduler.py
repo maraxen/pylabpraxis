@@ -137,7 +137,7 @@ class ScheduleEntryCRUDService(
     stmt = apply_date_range_filters(
       stmt,
       filters,
-      cast(InstrumentedAttribute, self.model.created_at),
+      cast("InstrumentedAttribute", self.model.created_at),
     )
     stmt = apply_pagination(stmt, filters)
 

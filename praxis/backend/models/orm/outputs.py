@@ -63,7 +63,6 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("protocol_runs.accession_id"),
     nullable=False,
     index=True,
-    comment="Foreign key to the protocol run this data output belongs to",
     kw_only=True,
   )
 
@@ -73,21 +72,18 @@ class FunctionDataOutputOrm(Base):
     nullable=False,
     index=True,
     kw_only=True,
-    comment="Foreign key to the function call log this data output belongs to",
   )
 
   data_type: Mapped[DataOutputTypeEnum] = mapped_column(
     SAEnum(DataOutputTypeEnum, name="data_output_type_enum"),
     nullable=False,
     index=True,
-    comment="Type of data output (e.g., measurement, image, file, etc.)",
     default=DataOutputTypeEnum.UNKNOWN,
   )
 
   data_key: Mapped[str] = mapped_column(
     String(255),
     nullable=False,
-    comment="Unique key within the function call (e.g., 'absorbance_580nm', 'well_A1_od')",
     default="",
   )
 
@@ -103,7 +99,6 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("resources.accession_id"),
     nullable=True,
     index=True,
-    comment="Foreign key to the resource this data output is associated with (e.g., plate, well)",
     default=None,
   )
 
@@ -112,7 +107,6 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("machines.accession_id"),
     nullable=True,
     index=True,
-    comment="Foreign key to the machine this data output is associated with (e.g., plate reader)",
     default=None,
   )
 
@@ -121,77 +115,66 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("decks.accession_id"),
     nullable=True,
     index=True,
-    comment="Foreign key to the deck this data output is associated with",
     default=None,
   )
 
   spatial_coordinates_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="Spatial coordinates within resource (e.g., {'well': 'A1', 'row': 0, 'col': 0})",
     default=None,
   )
 
   data_value_numeric: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
-    comment="Numeric data values",
     default=None,
   )
 
   data_value_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="Structured data (arrays, objects, etc.)",
     default=None,
   )
 
   data_value_text: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
-    comment="Text data or serialized content",
     default=None,
   )
 
   data_value_binary: Mapped[bytes | None] = mapped_column(
     LargeBinary,
     nullable=True,
-    comment="Binary data (images, files)",
     default=None,
   )
 
   file_path: Mapped[str | None] = mapped_column(
     String(500),
     nullable=True,
-    comment="Path to external file",
     default=None,
   )
 
   file_size_bytes: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
-    comment="File size in bytes",
     default=None,
   )
 
   data_units: Mapped[str | None] = mapped_column(
     String(50),
     nullable=True,
-    comment="Units of measurement (e.g., 'nm', 'μL', 'OD')",
     default=None,
   )
 
   data_quality_score: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
-    comment="Quality score (0.0-1.0)",
     default=None,
   )
 
   measurement_conditions_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="Measurement conditions (temperature, wavelength, etc.)",
     default=None,
   )
 
@@ -199,13 +182,11 @@ class FunctionDataOutputOrm(Base):
     DateTime(timezone=True),
     nullable=False,
     default=func.now(),
-    comment="When the measurement/data was captured",
   )
 
   sequence_in_function: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
-    comment="Sequence number within the function call",
     default=None,
   )
 
@@ -214,14 +195,12 @@ class FunctionDataOutputOrm(Base):
     ForeignKey("function_data_outputs.accession_id"),
     nullable=True,
     index=True,
-    comment="Foreign key to the data output this is derived from (if applicable)",
     default=None,
   )
 
   processing_metadata_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="Metadata about data processing/transformation",
     default=None,
   )
 
@@ -230,7 +209,6 @@ class FunctionDataOutputOrm(Base):
     "FunctionCallLogOrm",
     foreign_keys=[function_call_log_accession_id],
     back_populates="data_outputs",
-    comment="Link to the function call log this data output belongs to",
     default=None,
   )
 
@@ -238,7 +216,6 @@ class FunctionDataOutputOrm(Base):
     "ProtocolRunOrm",
     foreign_keys=[protocol_run_accession_id],
     back_populates="data_outputs",
-    comment="Link to the protocol run this data output belongs to",
     default=None,
   )
 
@@ -246,7 +223,6 @@ class FunctionDataOutputOrm(Base):
     "ResourceOrm",
     foreign_keys=[resource_accession_id],
     back_populates="data_outputs",
-    comment="Link to the resource this data output belongs to",
     default=None,
   )
 
@@ -254,7 +230,6 @@ class FunctionDataOutputOrm(Base):
     "MachineOrm",
     foreign_keys=[machine_accession_id],
     back_populates="data_outputs",
-    comment="Link to the machine this data output belongs to",
     default=None,
   )
 
@@ -262,7 +237,6 @@ class FunctionDataOutputOrm(Base):
     "DeckOrm",
     foreign_keys=[deck_accession_id],
     back_populates="data_outputs",
-    comment="Link to the deck this data output belongs to",
     default=None,
   )
 
@@ -271,7 +245,6 @@ class FunctionDataOutputOrm(Base):
     remote_side=lambda: [FunctionDataOutputOrm.accession_id],
     backref="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
-    comment="Link to the data output this is derived from (if applicable)",
     default_factory=list,
   )
 
@@ -279,7 +252,6 @@ class FunctionDataOutputOrm(Base):
     "WellDataOutputOrm",
     back_populates="function_data_output",
     cascade="all, delete-orphan",
-    comment="List of well-specific data outputs associated with this function data output",
     default_factory=list,
   )
 
@@ -308,7 +280,6 @@ class WellDataOutputOrm(Base):
     ForeignKey("function_data_outputs.accession_id"),
     nullable=False,
     index=True,
-    comment="Foreign key to the function data output this well data output belongs to",
     default_factory=uuid7,
   )
 
@@ -317,42 +288,36 @@ class WellDataOutputOrm(Base):
     ForeignKey("resources.accession_id"),
     nullable=False,
     index=True,
-    comment="Foreign key to the plate resource this well data output belongs to",
     default_factory=uuid7,
   )
 
   well_name: Mapped[str] = mapped_column(
     String(10),
     nullable=False,
-    comment="Well name (e.g., 'A1', 'H12')",
     default="",
   )
 
   well_row: Mapped[int] = mapped_column(
     Integer,
     nullable=False,
-    comment="0-based row index",
     default=0,
   )
 
   well_column: Mapped[int] = mapped_column(
     Integer,
     nullable=False,
-    comment="0-based column index",
     default=0,
   )
 
   well_index: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
-    comment="Linear well index (0-based)",
     default=None,
   )
 
   data_value: Mapped[float | None] = mapped_column(
     Float,
     nullable=True,
-    comment="Primary numeric value for this well",
     default=None,
   )
 
@@ -360,7 +325,6 @@ class WellDataOutputOrm(Base):
     "FunctionDataOutputOrm",
     foreign_keys=[function_data_output_accession_id],
     back_populates="well_data_outputs",
-    comment="Link to the function data output this well data output belongs to",
     default=None,
   )
 
@@ -368,7 +332,6 @@ class WellDataOutputOrm(Base):
     "ResourceOrm",
     foreign_keys=[plate_resource_accession_id],
     back_populates="well_data_outputs",
-    comment="Link to the plate resource this well data output belongs to",
     default=None,
   )
   resource: Mapped["ResourceOrm"] = relationship(

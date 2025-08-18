@@ -158,11 +158,11 @@ class Base(MappedAsDataclass, DeclarativeBase):
     onupdate=func.now(),
     init=False,
   )
-  properties_json: Mapped[dict[str, Any]] = mapped_column(
+  properties_json: Mapped[dict[str, Any] | None] = mapped_column(
     JSONB,
     nullable=True,
     comment="Arbitrary metadata.",
-    default={},
+    default_factory=dict,
   )
 
   name: Mapped[str] = mapped_column(

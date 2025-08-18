@@ -58,6 +58,7 @@ class ScheduleEntryOrm(Base):
   """
 
   __tablename__ = "schedule_entries"
+  __table_args__ = ({'extend_existing': True},)
 
   protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
@@ -65,7 +66,6 @@ class ScheduleEntryOrm(Base):
     nullable=False,
     unique=True,
     index=True,
-    comment="Foreign key to the protocol run this schedule entry belongs to.",
     default_factory=uuid7,
   )
 
@@ -87,7 +87,6 @@ class ScheduleEntryOrm(Base):
   asset_analysis_completed_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when asset analysis was completed for this schedule entry.",
     kw_only=True,
   )
   assets_reserved_at: Mapped[datetime | None] = mapped_column(
@@ -98,13 +97,11 @@ class ScheduleEntryOrm(Base):
   execution_started_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the protocol run execution started.",
     kw_only=True,
   )
   execution_completed_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the protocol run execution completed.",
     kw_only=True,
   )
 
@@ -114,12 +111,10 @@ class ScheduleEntryOrm(Base):
     JSONB,
     nullable=True,
     default=None,
-    comment="JSONB representation of asset requirements for the protocol run.",
   )
   estimated_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
-    comment="Estimated duration of the protocol run in milliseconds.",
     default=None,
   )
 
@@ -128,14 +123,12 @@ class ScheduleEntryOrm(Base):
     String,
     nullable=True,
     index=True,
-    comment="Celery task ID for the protocol run execution.",
     default=None,
   )
   celery_queue_name: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     index=True,
-    comment="Celery queue name for the protocol run execution.",
     default=None,
   )
 
@@ -145,7 +138,6 @@ class ScheduleEntryOrm(Base):
   last_error_message: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
-    comment="Last error message encountered during execution.",
     default=None,
   )
 
@@ -153,13 +145,11 @@ class ScheduleEntryOrm(Base):
   user_params_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="User-defined parameters for the protocol run, if any.",
     default=None,
   )
   initial_state_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="Initial state of the protocol run, if applicable.",
     default=None,
   )
 
@@ -193,6 +183,7 @@ class AssetReservationOrm(Base):
   """
 
   __tablename__ = "asset_reservations"
+  __table_args__ = ({'extend_existing': True},)
 
   protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
@@ -200,7 +191,6 @@ class AssetReservationOrm(Base):
     nullable=False,
     unique=True,
     index=True,
-    comment="Foreign key to the protocol run this asset reservation belongs to.",
     kw_only=True,
   )
 
@@ -210,7 +200,6 @@ class AssetReservationOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[protocol_run_accession_id],
-    comment="Back-reference to the protocol run this asset reservation belongs to.",
   )
 
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -218,7 +207,6 @@ class AssetReservationOrm(Base):
     ForeignKey("schedule_entries.accession_id"),
     nullable=False,
     index=True,
-    comment="Foreign key to the schedule entry this reservation belongs to.",
     kw_only=True,
   )
 
@@ -227,7 +215,6 @@ class AssetReservationOrm(Base):
     SAEnum(AssetType, name="asset_type_enum"),
     nullable=False,
     index=True,
-    comment="Type of asset being reserved, e.g., machine, asset, deck.",
     default=AssetType.ASSET,
   )
 
@@ -236,7 +223,6 @@ class AssetReservationOrm(Base):
     ForeignKey("assets.accession_id"),
     nullable=True,
     index=True,
-    comment="Foreign key to the specific asset instance being reserved, if applicable.",
     kw_only=True,
   )
   asset: Mapped["AssetOrm"] = relationship(
@@ -245,14 +231,12 @@ class AssetReservationOrm(Base):
     foreign_keys=[asset_accession_id],
     uselist=False,
     init=False,
-    comment="Back-reference to the specific asset instance being reserved.",
   )
   asset_name: Mapped[str] = mapped_column(
     String,
     ForeignKey("assets.name"),
     nullable=False,
     index=True,
-    comment="Name of the asset being reserved.",
     kw_only=True,
   )
   status: Mapped[AssetReservationStatusEnum] = mapped_column(
@@ -267,20 +251,17 @@ class AssetReservationOrm(Base):
     String,
     nullable=False,
     index=True,
-    comment="Redis lock key for the asset reservation.",
     kw_only=True,
   )
   redis_lock_value: Mapped[str | None] = mapped_column(
     String,
     nullable=True,
     default=None,
-    comment="Value of the Redis lock, if applicable.",
   )
   lock_timeout_seconds: Mapped[int] = mapped_column(
     Integer,
     default=3600,
     nullable=False,
-    comment="Timeout for the Redis lock in seconds.",
     kw_only=True,
   )
 
@@ -288,20 +269,17 @@ class AssetReservationOrm(Base):
   reserved_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the asset was reserved.",
     server_default=func.now(),
     init=False,
   )
   released_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the asset reservation was released.",
     kw_only=True,
   )
   expires_at: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the asset reservation expires.",
     default=None,
   )
 
@@ -309,13 +287,11 @@ class AssetReservationOrm(Base):
   required_capabilities_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
-    comment="JSONB representation of required capabilities for the asset reservation.",
     default=None,
   )
   estimated_usage_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
-    comment="Estimated usage duration for the asset reservation in milliseconds.",
     default=None,
   )
 
@@ -326,7 +302,6 @@ class AssetReservationOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[schedule_entry_accession_id],
-    comment="Back-reference to the schedule entry this asset reservation belongs to.",
   )
 
 
@@ -339,13 +314,13 @@ class ScheduleHistoryOrm(Base):
   """
 
   __tablename__ = "schedule_history"
+  __table_args__ = ({'extend_existing': True},)
 
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("schedule_entries.accession_id"),
     nullable=False,
     index=True,
-    comment="Foreign key to the schedule entry this history record belongs to.",
     kw_only=True,
   )
 
@@ -355,7 +330,6 @@ class ScheduleHistoryOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[schedule_entry_accession_id],
-    comment="Back-reference to the schedule entry this history record belongs to.",
   )
 
   # Event details
@@ -363,19 +337,16 @@ class ScheduleHistoryOrm(Base):
     SAEnum(ScheduleHistoryEventEnum, name="schedule_history_event_enum"),
     nullable=False,
     index=True,
-    comment="Type of event being recorded in the schedule history.",
     kw_only=True,
   )
   from_status: Mapped[ScheduleStatusEnum | None] = mapped_column(
     SAEnum(ScheduleStatusEnum, name="schedule_status_enum"),
     nullable=True,
-    comment="Previous status of the schedule entry before this event.",
     default=None,
   )
   to_status: Mapped[ScheduleStatusEnum | None] = mapped_column(
     SAEnum(ScheduleStatusEnum, name="schedule_status_enum"),
     nullable=True,
-    comment="New status of the schedule entry after this event.",
     default=None,
   )
 
@@ -384,18 +355,15 @@ class ScheduleHistoryOrm(Base):
     JSONB,
     nullable=True,
     default=None,
-    comment="Additional event data.",
   )
   message: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
-    comment="Human-readable message describing the event.",
     default=None,
   )
   error_details: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,
-    comment="Details of any error that occurred during the event.",
     default=None,
   )
 
@@ -403,14 +371,12 @@ class ScheduleHistoryOrm(Base):
   event_start: Mapped[datetime] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the event started.",
     server_default=func.now(),
     init=False,
   )
   event_end: Mapped[datetime | None] = mapped_column(
     DateTime(timezone=True),
     nullable=True,
-    comment="Timestamp when the event ended.",
     default=None,
   )
   completed_duration_ms: Mapped[int | None] = mapped_column(
@@ -419,7 +385,6 @@ class ScheduleHistoryOrm(Base):
       "(EXTRACT(EPOCH FROM (event_end - event_start)) * 1000)",
       persisted=True,
     ),
-    comment="Stored duration in milliseconds, computed by the DB when a run completes.",
     nullable=True,
     init=False,
   )
@@ -434,8 +399,6 @@ class ScheduleHistoryOrm(Base):
         """,
       persisted=False,  # This column is VIRTUAL
     ),
-    comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the"
-    "current time.",
     nullable=True,
     init=False,
   )
@@ -443,15 +406,12 @@ class ScheduleHistoryOrm(Base):
     Integer,
     nullable=True,
     default=None,
-    comment=("Override duration in milliseconds, if specified. This is used to manually set the "
-              "duration for events that do not have a natural end time."),
     kw_only=True,
   )
   asset_count: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,
     default=None,
-    comment="Number of assets involved in the event.",
   )
 
   # Relationships
@@ -460,64 +420,63 @@ class ScheduleHistoryOrm(Base):
     String,
     nullable=False,
     default=ScheduleHistoryEventTriggerEnum.SYSTEM,
-    comment="Identifier for the entity that triggered this event, e.g., 'user', 'system', 'celery'.",
     kw_only=True,
   )
 
 
-metrics_query: Select = select(
-  func.date_trunc("hour", ScheduleEntryOrm.created_at).label("metric_timestamp"),
-  func.count(ScheduleEntryOrm.accession_id).label("protocols_scheduled"),
-  func.count()
-  .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.COMPLETED)
-  .label("protocols_completed"),
-  func.count()
-  .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.FAILED)
-  .label("protocols_failed"),
-  func.count()
-  .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.CANCELLED)
-  .label("protocols_cancelled"),
-  (
-    func.avg(
-      func.extract("epoch", ScheduleEntryOrm.execution_started_at - ScheduleEntryOrm.scheduled_at),
-    )
-    * 1000
-  ).label("avg_queue_wait_time_ms"),
-  (
-    func.avg(
-      func.extract(
-        "epoch",
-        ScheduleEntryOrm.execution_completed_at - ScheduleEntryOrm.execution_started_at,
-      ),
-    )
-    * 1000
-  ).label("avg_execution_time_ms"),
-).group_by(func.date_trunc("hour", ScheduleEntryOrm.created_at))
+# metrics_query: Select = select(
+#   func.date_trunc("hour", ScheduleEntryOrm.created_at).label("metric_timestamp"),
+#   func.count(ScheduleEntryOrm.accession_id).label("protocols_scheduled"),
+#   func.count()
+#   .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.COMPLETED)
+#   .label("protocols_completed"),
+#   func.count()
+#   .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.FAILED)
+#   .label("protocols_failed"),
+#   func.count()
+#   .filter(ScheduleEntryOrm.status == ScheduleStatusEnum.CANCELLED)
+#   .label("protocols_cancelled"),
+#   (
+#     func.avg(
+#       func.extract("epoch", ScheduleEntryOrm.execution_started_at - ScheduleEntryOrm.scheduled_at),
+#     )
+#     * 1000
+#   ).label("avg_queue_wait_time_ms"),
+#   (
+#     func.avg(
+#       func.extract(
+#         "epoch",
+#         ScheduleEntryOrm.execution_completed_at - ScheduleEntryOrm.execution_started_at,
+#       ),
+#     )
+#     * 1000
+#   ).label("avg_execution_time_ms"),
+# ).group_by(func.date_trunc("hour", ScheduleEntryOrm.created_at))
 
 
-scheduler_metrics_mv = Table(
-  "scheduler_metrics_mv",
-  Base.metadata,
-  Column("metric_timestamp", DateTime(timezone=True), primary_key=True),
-  Column("protocols_scheduled", Integer),
-  Column("protocols_completed", Integer),
-  Column("protocols_failed", Integer),
-  Column("protocols_cancelled", Integer),
-  Column("avg_queue_wait_time_ms", Float),
-  Column("avg_execution_time_ms", Float),
-)
+# scheduler_metrics_mv = Table(
+#   "scheduler_metrics_mv",
+#   Base.metadata,
+#   Column("metric_timestamp", DateTime(timezone=True), primary_key=True),
+#   Column("protocols_scheduled", Integer),
+#   Column("protocols_completed", Integer),
+#   Column("protocols_failed", Integer),
+#   Column("protocols_cancelled", Integer),
+#   Column("avg_queue_wait_time_ms", Float),
+#   Column("avg_execution_time_ms", Float),
+#   extend_existing=True,
+# )
 
-event.listen(
-  Base.metadata,
-  "after_create",
-  CreateMaterializedView("scheduler_metrics_mv", metrics_query),
-)
-event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
+# event.listen(
+#   Base.metadata,
+#   "after_create",
+#   CreateMaterializedView("scheduler_metrics_mv", metrics_query),
+# )
+# event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
 
 
-class SchedulerMetricsView(Base):
+# class SchedulerMetricsView(Base):
 
-  """Read-only ORM class mapped to the scheduler_metrics_mv materialized view."""
+#   """Read-only ORM class mapped to the scheduler_metrics_mv materialized view."""
 
-  __table__ = scheduler_metrics_mv
-  __tablename__ = "scheduler_metrics_mv"
+#   __table__ = scheduler_metrics_mv

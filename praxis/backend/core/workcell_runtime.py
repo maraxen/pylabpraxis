@@ -470,7 +470,7 @@ class WorkcellRuntime:
 
     machine_instance: Machine
     if shared_plr_instance:
-      machine_instance = cast(Machine, shared_plr_instance)
+      machine_instance = cast("Machine", shared_plr_instance)
     else:
       logger.info(
         "WorkcellRuntime: Initializing new machine '%s' (ID: %s) using class '%s'.",
@@ -576,7 +576,7 @@ class WorkcellRuntime:
       resource_orm = machine_orm.resource_counterpart
       if isinstance(machine_instance, Resource):
         self._active_resources[resource_orm.accession_id] = cast(
-          Resource,
+          "Resource",
           machine_instance,
         )
         logger.info(
@@ -719,7 +719,7 @@ class WorkcellRuntime:
 
     resource: Resource
     if shared_plr_instance:
-      resource = cast(Resource, shared_plr_instance)
+      resource = cast("Resource", shared_plr_instance)
     else:
       logger.info(
         "Creating new PLR resource '%s' (ID: %s) using definition FQN '%s'.",
@@ -778,7 +778,7 @@ class WorkcellRuntime:
       machine_orm = resource_orm.machine_counterpart
       if isinstance(resource, Machine):
         self._active_machines[machine_orm.accession_id] = cast(
-          Machine,
+          "Machine",
           resource,
         )
         logger.info(
@@ -1081,10 +1081,10 @@ class WorkcellRuntime:
 
     match inferred_target_type:
       case "deck_orm_accession_id":
-        deck_orm_accession_id = cast(uuid.UUID, target)
+        deck_orm_accession_id = cast("uuid.UUID", target)
         target_deck = self.get_active_deck(deck_orm_accession_id)
       case "machine_orm_accession_id":
-        machine_orm_accession_id = cast(uuid.UUID, target)
+        machine_orm_accession_id = cast("uuid.UUID", target)
         target_machine = self.get_active_machine(machine_orm_accession_id)
         target_deck = getattr(target_machine, "deck", None)
         if not isinstance(target_deck, Deck):

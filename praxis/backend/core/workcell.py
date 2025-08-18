@@ -143,7 +143,7 @@ class Workcell:
       and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id],
+        "LiquidHandler", self.refs["liquid_handlers"][liquid_handler_accession_id],
       )
       liquid_handler.deck = deck
     else:

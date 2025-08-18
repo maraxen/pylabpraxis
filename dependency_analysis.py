@@ -21,27 +21,27 @@ CORE_MODULES = [
 
 def get_module_name(filepath):
     """Converts a file path to a module name."""
-    return os.path.splitext(filepath.replace('/', '.'))[0]
+    return os.path.splitext(filepath.replace("/", "."))[0]
 
 def get_filepath_from_module(module_name):
     """Converts a module name back to a file path."""
-    return module_name.replace('.', '/') + ".py"
+    return module_name.replace(".", "/") + ".py"
 
 CORE_MODULE_NAMES = {get_module_name(fp) for fp in CORE_MODULES}
 
 def analyze_dependencies(files):
-    """
-    Analyzes the import statements in a list of Python files to build a dependency graph.
+    """Analyzes the import statements in a list of Python files to build a dependency graph.
 
     Args:
         files: A list of file paths to analyze.
 
     Returns:
         A dictionary representing the dependency graph.
+
     """
     dependency_graph = defaultdict(set)
     for filepath in files:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             content = f.read()
             tree = ast.parse(content)
             current_module = get_module_name(filepath)
@@ -55,22 +55,22 @@ def analyze_dependencies(files):
                     if node.module and node.module in CORE_MODULE_NAMES:
                         dependency_graph[current_module].add(node.module)
                     # Also consider relative imports within the core module structure
-                    elif node.module and get_module_name(os.path.normpath(os.path.join(os.path.dirname(filepath), node.module.replace('.', '/')))+'.py') in CORE_MODULE_NAMES:
-                        imported_module_path = os.path.normpath(os.path.join(os.path.dirname(filepath), node.module.replace('.', '/'))) + '.py'
+                    elif node.module and get_module_name(os.path.normpath(os.path.join(os.path.dirname(filepath), node.module.replace(".", "/")))+".py") in CORE_MODULE_NAMES:
+                        imported_module_path = os.path.normpath(os.path.join(os.path.dirname(filepath), node.module.replace(".", "/"))) + ".py"
                         dependency_graph[current_module].add(get_module_name(imported_module_path))
 
 
     return dependency_graph
 
 def find_circular_dependencies(graph):
-    """
-    Finds circular dependencies in a graph using Depth First Search.
+    """Finds circular dependencies in a graph using Depth First Search.
 
     Args:
         graph: A dictionary representing the dependency graph.
 
     Returns:
         A list of tuples, where each tuple represents a circular dependency.
+
     """
     path = set()
     visited = set()
@@ -157,8 +157,7 @@ def detect_cycle_util(node, graph, visiting, visited, path):
 
 
 def analyze_global_state(files):
-    """
-    Analyzes files for potential global state.
+    """Analyzes files for potential global state.
     Looks for module-level variable assignments that are not constants.
     This is a heuristic and may not be 100% accurate.
 
@@ -167,10 +166,11 @@ def analyze_global_state(files):
 
     Returns:
         A dictionary where keys are filepaths and values are lists of global variable names.
+
     """
     global_state = defaultdict(list)
     for filepath in files:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             content = f.read()
             tree = ast.parse(content)
             for node in tree.body:
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     # 4. Assess container.py
     print("\n--- container.py Assessment ---")
     if "praxis/backend/core/container.py" in CORE_MODULES:
-        with open("praxis/backend/core/container.py", 'r') as f:
+        with open("praxis/backend/core/container.py") as f:
             print(f.read())
     else:
         print("container.py not in the list of core modules.")
