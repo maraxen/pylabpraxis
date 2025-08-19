@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
-from praxis.backend.models.pydantic.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.db import Base
 

@@ -9,8 +9,8 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.resource import (
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.resource import (
   ResourceCreate,
   ResourceUpdate,
 )

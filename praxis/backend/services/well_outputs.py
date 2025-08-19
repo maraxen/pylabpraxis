@@ -15,8 +15,8 @@ from sqlalchemy.orm import joinedload
 from praxis.backend.models.orm.outputs import (
   WellDataOutputOrm,
 )
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.outputs import (
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.outputs import (
   WellDataOutputCreate,
   WellDataOutputUpdate,
 )

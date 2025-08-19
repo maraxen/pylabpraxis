@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.machine import MachineCreate, MachineUpdate
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
 from praxis.backend.services.entity_linking import (
   _create_or_link_resource_counterpart_for_machine,
   synchronize_machine_resource_names,

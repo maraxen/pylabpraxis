@@ -27,7 +27,7 @@ from typing import (
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from praxis.backend.core.run_context import PROTOCOL_REGISTRY
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,

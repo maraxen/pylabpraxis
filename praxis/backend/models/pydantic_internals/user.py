@@ -6,7 +6,7 @@ of user configurations, enabling consistent API interactions.
 
 from pydantic import BaseModel, Field
 
-from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 
 class UserBase(BaseModel):

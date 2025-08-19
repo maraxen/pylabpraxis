@@ -10,7 +10,7 @@ from typing import Any, TypeVar
 from sqlalchemy import Select, and_
 from sqlalchemy.orm import InstrumentedAttribute
 
-from praxis.backend.models.pydantic.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.utils.db import Base
 
 BaseModel = TypeVar("BaseModel", bound=Base)

@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionResponse,
   FunctionProtocolDefinitionUpdate,

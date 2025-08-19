@@ -26,8 +26,8 @@ from pydantic import UUID7, BaseModel
 from pydantic.fields import Field
 
 from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 
 class ProtocolStartRequest(PraxisBaseModel):

@@ -16,10 +16,10 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
-from praxis.backend.models.pydantic.deck import DeckResponse
-from praxis.backend.models.pydantic.machine import MachineResponse
-from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
-from praxis.backend.models.pydantic.resource import ResourceResponse
+from praxis.backend.models.pydantic_internals.deck import DeckResponse
+from praxis.backend.models.pydantic_internals.machine import MachineResponse
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
+from praxis.backend.models.pydantic_internals.resource import ResourceResponse
 
 
 class WorkcellBase(BaseModel):

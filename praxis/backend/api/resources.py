@@ -9,7 +9,7 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
-from praxis.backend.models.pydantic.resource import (
+from praxis.backend.models.pydantic_internals.resource import (
   ResourceCreate,
   ResourceDefinitionCreate,
   ResourceDefinitionResponse,

@@ -10,13 +10,13 @@ from typing import Any
 from pydantic import UUID7, Field
 
 from praxis.backend.models.enums import MachineCategoryEnum, MachineStatusEnum, ResourceStatusEnum
-from praxis.backend.models.pydantic.plr_sync import (
+from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionBase,
   PLRTypeDefinitionCreate,
   PLRTypeDefinitionResponse,
   PLRTypeDefinitionUpdate,
 )
-from praxis.backend.models.pydantic.pydantic_base import PraxisBaseModel
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 

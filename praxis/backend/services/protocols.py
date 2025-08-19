@@ -23,8 +23,8 @@ from praxis.backend.models.orm.protocol import (
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
 )
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.protocol import (
   ProtocolRunCreate,
   ProtocolRunStatusEnum,
   ProtocolRunUpdate,

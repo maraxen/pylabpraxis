@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
 )

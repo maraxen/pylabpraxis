@@ -12,7 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from praxis.backend.models.pydantic.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 
 
 class ScheduleEntryStatus(str, Enum):

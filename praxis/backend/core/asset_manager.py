@@ -29,8 +29,8 @@ from praxis.backend.models.orm.resource import (
   ResourceOrm,
   ResourceStatusEnum,
 )
-from praxis.backend.models.pydantic.asset import AcquireAsset
-from praxis.backend.models.pydantic.protocol import AssetRequirementModel
+from praxis.backend.models.pydantic_internals.asset import AcquireAsset
+from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
 from praxis.backend.services.deck import deck_service
 from praxis.backend.services.machine import machine_service
 from praxis.backend.services.resource import resource_service
@@ -698,7 +698,7 @@ class AssetManager:
     except (ImportError, AttributeError):
       return False
 
-  
+
 
   async def _handle_resource_release_location(
     self,

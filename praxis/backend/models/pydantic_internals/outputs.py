@@ -15,7 +15,7 @@ from praxis.backend.models.enums import (
   DataOutputTypeEnum,
   SpatialContextEnum,
 )
-from praxis.backend.models.pydantic.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 
 
 class FunctionDataOutputBase(BaseModel):

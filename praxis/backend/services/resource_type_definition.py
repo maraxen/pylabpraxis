@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic.resource import (
+from praxis.backend.models.pydantic_internals.resource import (
   ResourceDefinitionCreate,
   ResourceDefinitionUpdate,
 )

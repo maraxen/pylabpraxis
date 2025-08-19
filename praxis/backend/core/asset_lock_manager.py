@@ -13,7 +13,7 @@ from typing import Any
 
 import redis.asyncio as redis
 
-from praxis.backend.models.pydantic.asset import AcquireAssetLock
+from praxis.backend.models.pydantic_internals.asset import AcquireAssetLock
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)

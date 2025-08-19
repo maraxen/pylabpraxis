@@ -2,14 +2,17 @@
 
 These models are used for data validation and serialization/deserialization of deck
 configurations, positioning with "positions" which are human accessible location
-accession_ides (e.g., slots or rails), and decks.
+accession_ids (e.g., slots or rails), and decks.
 """
 
 from typing import Any, Literal
 
 from pydantic import UUID7, BaseModel, Field
 
-from praxis.backend.models.pydantic.plr_sync import PLRTypeDefinitionCreate, PLRTypeDefinitionUpdate
+from praxis.backend.models.pydantic_internals.plr_sync import (
+  PLRTypeDefinitionCreate,
+  PLRTypeDefinitionUpdate,
+)
 
 from .resource import (
   ResourceBase,
@@ -20,7 +23,6 @@ from .resource import (
 
 
 class DeckBase(ResourceBase):
-
   """Base model for a deck."""
 
   machine_id: UUID7 | None = None
@@ -28,22 +30,18 @@ class DeckBase(ResourceBase):
 
 
 class DeckCreate(ResourceCreate, DeckBase):
-
   """Model for creating a new deck."""
 
 
 class DeckUpdate(ResourceUpdate):
-
   """Model for updating a deck."""
 
 
 class DeckResponse(ResourceResponse, DeckBase):
-
   """Model for API responses for a deck."""
 
 
 class PositioningConfig(BaseModel):
-
   """Configuration for how positions are calculated/managed for this deck type.
 
   A general configuration for methods that follow the pattern:
@@ -70,14 +68,12 @@ class PositioningConfig(BaseModel):
   )
 
   class Config:
-
     """Pydantic configuration."""
 
     from_attributes = True
 
 
 class DeckPositionDefinitionBase(BaseModel):
-
   """Define the base properties for a deck position definition.
 
   This model specifies the characteristics of a specific position or "position"
@@ -92,7 +88,6 @@ class DeckPositionDefinitionBase(BaseModel):
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
-
   """Model for creating a new deck position definition."""
 
   pylabrobot_position_type_name: str | None = Field(
@@ -124,7 +119,6 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
 
 
 class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
-
   """Model for API responses for a deck position definition."""
 
   accession_id: UUID7
@@ -132,19 +126,16 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
   compatible_resource_fqns: dict[str, Any] | None = None
 
   class Config:
-
     """Pydantic configuration."""
 
     from_attributes = True
 
 
 class DeckPositionDefinitionUpdate(BaseModel):
-
   """Model for updating a deck position definition."""
 
 
 class DeckTypeDefinitionBase(BaseModel):
-
   """Base model for a deck type definition."""
 
   name: str
@@ -163,26 +154,22 @@ class DeckTypeDefinitionBase(BaseModel):
 
 
 class DeckTypeDefinitionCreate(DeckTypeDefinitionBase, PLRTypeDefinitionCreate):
-
   """Model for creating a new deck type definition."""
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
-
   """Model for API responses for a deck type definition."""
 
   accession_id: UUID7
   positions: list[DeckPositionDefinitionResponse]
 
   class Config:
-
     """Pydantic configuration."""
 
     from_attributes = True
 
 
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
-
   """Model for updating a deck type definition."""
 
   description: str | None = None
@@ -198,7 +185,6 @@ class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
   additional_properties_json: dict[str, Any] | None = None
 
   class Config:
-
     """Pydantic configuration."""
 
     from_attributes = True

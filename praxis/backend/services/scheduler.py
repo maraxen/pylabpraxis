@@ -32,8 +32,8 @@ from praxis.backend.models.orm.schedule import (
   ScheduleHistoryOrm,
   ScheduleStatusEnum,
 )
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.scheduler import (
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.scheduler import (
   ScheduleEntryCreate,
   ScheduleEntryStatus,
   ScheduleEntryUpdate,

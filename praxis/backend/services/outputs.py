@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.pydantic.filters import SearchFilters
-from praxis.backend.models.pydantic.outputs import (
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.outputs import (
   FunctionDataOutputCreate,
   FunctionDataOutputUpdate,
 )

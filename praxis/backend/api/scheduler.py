@@ -11,7 +11,7 @@ from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.enums import ScheduleStatusEnum
 from praxis.backend.models.orm.schedule import ScheduleEntryOrm
-from praxis.backend.models.pydantic.scheduler import (
+from praxis.backend.models.pydantic_internals.scheduler import (
     ScheduleEntryCreate,
     ScheduleEntryResponse,
     ScheduleEntryUpdate,

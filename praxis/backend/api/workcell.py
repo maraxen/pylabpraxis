@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.orm.workcell import WorkcellOrm
-from praxis.backend.models.pydantic.workcell import (
+from praxis.backend.models.pydantic_internals.workcell import (
   WorkcellCreate,
   WorkcellResponse,
   WorkcellUpdate,

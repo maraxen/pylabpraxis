@@ -18,7 +18,7 @@ from praxis.backend.models.orm.outputs import (
   FunctionDataOutputOrm,
   WellDataOutputOrm,
 )
-from praxis.backend.models.pydantic.outputs import PlateDataVisualization
+from praxis.backend.models.pydantic_internals.outputs import PlateDataVisualization
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)

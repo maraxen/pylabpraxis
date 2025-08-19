@@ -32,8 +32,8 @@ from praxis.backend.core.run_context import (
   PraxisRunContext,
   serialize_arguments,
 )
-from praxis.backend.models.pydantic.asset import CreateProtocolDefinitionData
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.asset import CreateProtocolDefinitionData
+from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   DecoratedFunctionInfo,
   FunctionCallStatusEnum,

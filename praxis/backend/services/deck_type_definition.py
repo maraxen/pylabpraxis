@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.deck import DeckDefinitionOrm
-from praxis.backend.models.pydantic.deck import (
+from praxis.backend.models.pydantic_internals.deck import (
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionUpdate,
   PositioningConfig,

@@ -19,13 +19,13 @@ from praxis.backend.models.orm.protocol import (
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
 )
-from praxis.backend.models.pydantic.protocol import (
+from praxis.backend.models.pydantic_internals.protocol import (
   AssetConstraintsModel,
   AssetRequirementModel,
   LocationConstraintsModel,
   ProtocolRunUpdate,
 )
-from praxis.backend.models.pydantic.runtime import RuntimeAssetRequirement
+from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger

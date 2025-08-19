@@ -13,7 +13,6 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class PraxisBaseModel(BaseModel):
-
   """A base model that includes timestamp fields for API responses."""
 
   accession_id: UUID7 = Field(
@@ -46,7 +45,6 @@ class PraxisBaseModel(BaseModel):
     self.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
   class Config:
-
     """Pydantic configuration."""
 
     from_attributes = True

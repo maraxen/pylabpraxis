@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
-from praxis.backend.models.pydantic.deck import (
+from praxis.backend.models.pydantic_internals.deck import (
   DeckCreate,
   DeckResponse,
   DeckTypeDefinitionCreate,

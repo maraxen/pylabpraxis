@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Optional
 from pydantic import UUID7, BaseModel, Field
 
 from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
-from praxis.backend.models.pydantic.plr_sync import (
+from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,
   PLRTypeDefinitionResponse,
   PLRTypeDefinitionUpdate,

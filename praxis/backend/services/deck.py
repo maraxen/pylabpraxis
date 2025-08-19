@@ -14,8 +14,8 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
-from praxis.backend.models.pydantic.deck import DeckCreate, DeckUpdate
-from praxis.backend.models.pydantic.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.services.utils.query_builder import (
   apply_date_range_filters,
