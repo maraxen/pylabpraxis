@@ -248,8 +248,17 @@ As agentic models complete work, they should append notes to this section, forma
 
 ## Previous work summary
 
-## TITLE (DATETIME MMHHDDMMYYYY)
+## DI Refactoring Phase 1 (12102025)
 
-Notes on work that was completed, obstacles, and work remaining.
+*   **Task**: Completed Phase 1 of the dependency injection refactoring. This involved setting the foundation for the new DI pattern by refactoring `container.py`, `decorators.py`, and `run_context.py`.
+*   **Summary of Changes**:
+    *   **`container.py`**: Enhanced the DI container with a documented structure for different dependency lifetimes (Singleton, Factory, Resource) and added a `wiring_config` to enable autowiring in other modules.
+    *   **`decorators.py`**: Refactored the main `protocol_function` decorator to remove its dependency on the global `PROTOCOL_REGISTRY`. The decorator now attaches runtime metadata directly to the function, paving the way for a service-based protocol discovery mechanism.
+    *   **`run_context.py`**: Eliminated the global `PROTOCOL_REGISTRY` variable, removing a key piece of global state.
+*   **Key Decisions & Obstacles**:
+    *   The `protocol_function` decorator was complex and had several latent bugs (incorrect signature, undefined variables) that were exposed and fixed during the refactoring.
+    *   Encountered and resolved environment issues where `pyright` was not installed, which required manually installing it.
+    *   Used a `# type: ignore` directive in `container.py` to work around a known limitation in `pyright`'s ability to infer types from the `dependency-injector` library.
+    *   Left the `contextvars` pattern for `PraxisRunContext` in place, as it is a suitable pattern for managing "ambient" context in an async application.
 
 Once this section exceeds 250 lines, models should summarize the work detailed, remove it, and write the summary under the section titled previous work summary.
