@@ -30,6 +30,7 @@ from sqlalchemy import (
   String,
   Text,
   UniqueConstraint,
+  text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -72,7 +73,10 @@ class DeckOrm(ResourceOrm):
   """
 
   __tablename__ = "decks"
-  __mapper_args__: ClassVar[dict] = {"polymorphic_identity": "deck"}
+  __mapper_args__: ClassVar[dict] = {
+      "polymorphic_identity": "deck",
+      "inherit_condition": text("decks.accession_id == resources.accession_id"),
+  }
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
@@ -94,7 +98,6 @@ class DeckOrm(ResourceOrm):
   parent_machine: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="deck",
-    comment="Relationship to the parent machine.",
     uselist=False,
     foreign_keys=[parent_machine_accession_id],
     default=None,
@@ -111,7 +114,6 @@ class DeckOrm(ResourceOrm):
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="deck",
-    comment="Relationship to the deck's type definition.",
     uselist=False,
     foreign_keys=[deck_type_id],
     init=False,
@@ -135,7 +137,6 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
-    comment="List of resources that are currently on this deck.",
   )
 
 
@@ -228,14 +229,12 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
     "DeckPositionDefinitionOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
-    comment="List of all defined positions (slots) available on this deck type.",
     default_factory=list,
   )
   deck: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
     back_populates="deck_type",
     cascade="all, delete-orphan",
-    comment="List of all physical deck instances of this type.",
     default_factory=list,
   )
   machine_definition: Mapped["ResourceDefinitionOrm"] = relationship(
@@ -360,8 +359,6 @@ class DeckPositionDefinitionOrm(Base):
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
     "DeckTypeDefinitionOrm",
     back_populates="positions",
-    nullable=False,
-    comment="Relationship to the parent deck type definition.",
     uselist=False,
     kw_only=True,
   )

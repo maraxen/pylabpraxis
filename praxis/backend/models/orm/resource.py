@@ -132,7 +132,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     "ResourceOrm",
     back_populates="resource_definition",
     cascade="all, delete-orphan",
-    comment="List of all physical resources defined by this definition.",
     default_factory=list,
   )
 
@@ -156,10 +155,8 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
   machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
     "MachineDefinitionOrm",
     back_populates="resource_definition",
-    nullable=True,
     uselist=False,
     foreign_keys=[machine_definition_accession_id],
-    comment="Machine definition associated with this resource, if applicable.",
     default=None,
     init=False,
   )
@@ -168,8 +165,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     back_populates="resource_definition",
     uselist=False,
     foreign_keys=[deck_definition_accession_id],
-    comment="Deck definition associated with this resource, if applicable.",
-    nullable=True,
     default=None,
     init=False,
   )
@@ -209,7 +204,6 @@ class ResourceOrm(AssetOrm):
     back_populates="children",
     foreign_keys=[parent_accession_id],
     uselist=False,
-    comment="Parent resource in a hierarchical structure, if applicable.",
     default=None,
     init=False,
   )
@@ -228,7 +222,6 @@ class ResourceOrm(AssetOrm):
     back_populates="parent",
     cascade="all, delete-orphan",
     default_factory=list,
-    comment="List of child resources under this resource, if applicable.",
     uselist=True,
     init=False,
   )
@@ -288,7 +281,6 @@ class ResourceOrm(AssetOrm):
     back_populates="resource_counterpart",
     default=None,
     uselist=False,
-    comment="Machine counterpart of this resource, if applicable.",
     foreign_keys=[accession_id],
     init=False,
   )
@@ -297,7 +289,6 @@ class ResourceOrm(AssetOrm):
     back_populates="resource_counterpart",
     default=None,
     uselist=False,
-    comment="Deck counterpart of this resource, if applicable.",
     foreign_keys=[accession_id],
     init=False,
   )
@@ -330,7 +321,6 @@ class ResourceOrm(AssetOrm):
     default=None,
     foreign_keys=[machine_location_accession_id],
     init=False,
-    comment="Machine where this resource is currently located, if applicable.",
   )
 
   deck_location_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -359,7 +349,6 @@ class ResourceOrm(AssetOrm):
     back_populates="resources",
     uselist=False,
     foreign_keys=[workcell_accession_id],
-    comment="Workcell this resource belongs to, if applicable.",
     init=False,
     default=None,
   )
@@ -369,7 +358,6 @@ class ResourceOrm(AssetOrm):
     back_populates="resources",
     uselist=False,
     foreign_keys=[deck_location_accession_id],
-    comment="Deck this resource belongs to, if applicable.",
     init=False,
     default=None,
   )

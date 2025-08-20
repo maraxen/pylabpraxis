@@ -12,6 +12,7 @@ from praxis.backend.api import discovery, function_data_outputs, protocols, reso
 from praxis.backend.api.scheduler import initialize_scheduler_components
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
+from praxis.backend.core.celery import celery_app, configure_celery_app
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
@@ -39,23 +40,6 @@ logging.basicConfig(
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-# This global context will be initialized once during application startup.
-_execution_context: ProtocolExecutionContext | None = None
-
-
-def initialize_celery_context(
-  db_session_factory: async_sessionmaker[AsyncSession],
-  orchestrator: Orchestrator,
-) -> None:
-  """Initialize the global context for Celery tasks with necessary dependencies.
-
-  This function should be called when the main application starts to ensure
-  that all Celery workers have access to the database and orchestrator.
-  """
-  global _execution_context
-  if not _execution_context:
-    _execution_context = ProtocolExecutionContext(db_session_factory, orchestrator)
-    logger.info("Celery execution context initialized successfully.")
 
 
 @asynccontextmanager
@@ -145,6 +129,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         workcell_runtime=workcell_runtime,
       )
       logger.info("Orchestrator dependencies initialized.")
+
+      # Configure Celery
+      logger.info("Configuring Celery app...")
+      configure_celery_app(
+          celery_app,
+          broker_url=praxis_config.celery_broker_url,
+          backend_url=praxis_config.celery_result_backend,
+      )
+      logger.info("Celery app configured.")
 
       # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
       logger.info("Initializing scheduler components...")

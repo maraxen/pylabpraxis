@@ -124,7 +124,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     "ResourceOrm",
     back_populates="resource_definition",
     cascade="all, delete-orphan",
-    comment="List of all physical resources defined by this definition.",
     default_factory=list,
   )
 
@@ -141,7 +140,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     back_populates="machine_definition",
     foreign_keys=[resource_definition_accession_id],
     default=None,
-    comment="Resource definition associated with this machine, if applicable.",
     init=False,
     )
 
@@ -158,7 +156,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     "DeckDefinitionOrm",
     back_populates="machine_definition",
     default=None,
-    comment="Deck definition associated with this machine, if applicable.",
     foreign_keys=[deck_definition_accession_id],
     uselist=False,
     init=False,
@@ -284,7 +281,6 @@ class MachineOrm(AssetOrm):
     back_populates="machine_counterpart",
     foreign_keys=[resource_counterpart_accession_id],
     default=None,
-    comment="Resource counterpart of this machine, if applicable.",
     init=False,
   )
 
@@ -312,7 +308,6 @@ class MachineOrm(AssetOrm):
     back_populates="machine",
     uselist=False,
     default=None,
-    comment="Deck associated with this machine, if applicable.",
     foreign_keys=[deck_child_definition_accession_id],
   )
 
@@ -322,7 +317,6 @@ class MachineOrm(AssetOrm):
     back_populates="location_machine",
     default=None,
     uselist=False,
-    comment="Resource located on or in this machine, if applicable.",
   )
 
   # Additional fields for machine state tracking

@@ -10,6 +10,7 @@ from .asset import (
   ReleaseAsset,
 )
 from .deck import (
+  PositioningConfig,
   DeckBase,
   DeckCreate,
   DeckPositionDefinitionBase,
@@ -142,6 +143,7 @@ __all__ = [
   "MachineUpdate",
   "ParameterConstraintsModel",
   "ParameterMetadataModel",
+  "PositioningConfig",
   "ProtocolDefinitionFilters",
   "ProtocolDirectories",
   "ProtocolInfo",

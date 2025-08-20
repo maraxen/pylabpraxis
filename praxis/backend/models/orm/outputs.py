@@ -230,7 +230,6 @@ class FunctionDataOutputOrm(Base):
     "FunctionCallLogOrm",
     foreign_keys=[function_call_log_accession_id],
     back_populates="data_outputs",
-    comment="Link to the function call log this data output belongs to",
     default=None,
   )
 
@@ -238,7 +237,6 @@ class FunctionDataOutputOrm(Base):
     "ProtocolRunOrm",
     foreign_keys=[protocol_run_accession_id],
     back_populates="data_outputs",
-    comment="Link to the protocol run this data output belongs to",
     default=None,
   )
 
@@ -246,7 +244,6 @@ class FunctionDataOutputOrm(Base):
     "ResourceOrm",
     foreign_keys=[resource_accession_id],
     back_populates="data_outputs",
-    comment="Link to the resource this data output belongs to",
     default=None,
   )
 
@@ -254,7 +251,6 @@ class FunctionDataOutputOrm(Base):
     "MachineOrm",
     foreign_keys=[machine_accession_id],
     back_populates="data_outputs",
-    comment="Link to the machine this data output belongs to",
     default=None,
   )
 
@@ -262,7 +258,6 @@ class FunctionDataOutputOrm(Base):
     "DeckOrm",
     foreign_keys=[deck_accession_id],
     back_populates="data_outputs",
-    comment="Link to the deck this data output belongs to",
     default=None,
   )
 
@@ -271,7 +266,6 @@ class FunctionDataOutputOrm(Base):
     remote_side=lambda: [FunctionDataOutputOrm.accession_id],
     backref="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
-    comment="Link to the data output this is derived from (if applicable)",
     default_factory=list,
   )
 
@@ -279,7 +273,6 @@ class FunctionDataOutputOrm(Base):
     "WellDataOutputOrm",
     back_populates="function_data_output",
     cascade="all, delete-orphan",
-    comment="List of well-specific data outputs associated with this function data output",
     default_factory=list,
   )
 
@@ -360,7 +353,6 @@ class WellDataOutputOrm(Base):
     "FunctionDataOutputOrm",
     foreign_keys=[function_data_output_accession_id],
     back_populates="well_data_outputs",
-    comment="Link to the function data output this well data output belongs to",
     default=None,
   )
 
@@ -368,7 +360,6 @@ class WellDataOutputOrm(Base):
     "ResourceOrm",
     foreign_keys=[plate_resource_accession_id],
     back_populates="well_data_outputs",
-    comment="Link to the plate resource this well data output belongs to",
     default=None,
   )
   resource: Mapped["ResourceOrm"] = relationship(

@@ -162,7 +162,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
     JSONB,
     nullable=True,
     comment="Arbitrary metadata.",
-    default={},
+    default_factory=dict,
   )
 
   name: Mapped[str] = mapped_column(

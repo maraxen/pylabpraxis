@@ -18,8 +18,8 @@ from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Resource
 
-from backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
-from backend.utils.logging import get_logger
+from praxis.backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
+from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

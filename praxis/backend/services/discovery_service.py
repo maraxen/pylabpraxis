@@ -26,7 +26,6 @@ from typing import (
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.core.run_context import PROTOCOL_REGISTRY
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetRequirementModel,
   FunctionProtocolDefinitionCreate,
@@ -381,15 +380,6 @@ class DiscoveryService:
 
           protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
 
-          if protocol_unique_key in PROTOCOL_REGISTRY:
-            if hasattr(def_orm, "id") and def_orm.accession_id is not None:
-              PROTOCOL_REGISTRY[protocol_unique_key]["db_accession_id"] = def_orm.accession_id
-            else:
-              logger.warning(
-                "DiscoveryService: Upserted ORM object for '%s' has no 'id'. "
-                "Cannot update PROTOCOL_REGISTRY.",
-                protocol_unique_key,
-              )
 
         except (ValueError, RuntimeError):
           logger.exception(
