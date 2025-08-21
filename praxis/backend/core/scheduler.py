@@ -3,21 +3,20 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
-from celery import Celery
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolRunStatusEnum,
+  FunctionProtocolDefinitionOrm,
+  ProtocolRunOrm,
+  ProtocolRunStatusEnum,
 )
 from praxis.backend.models.pydantic_internals.protocol import (
-    AssetConstraintsModel,
-    AssetRequirementModel,
-    LocationConstraintsModel,
-    ProtocolRunUpdate,
+  AssetConstraintsModel,
+  AssetRequirementModel,
+  LocationConstraintsModel,
+  ProtocolRunUpdate,
 )
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
@@ -27,7 +26,24 @@ from praxis.backend.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+class TaskResult(Protocol):
+
+  """A protocol for a task result."""
+
+  id: str | None
+
+
+class TaskQueue(Protocol):
+
+  """A protocol for a task queue."""
+
+  def send_task(self, name: str, args: list[Any]) -> TaskResult:
+    """Send a task to the queue."""
+    ...
+
+
 class ScheduleEntry:
+
   """Represents a scheduled protocol run with asset reservations."""
 
   def __init__(
@@ -50,18 +66,19 @@ class ScheduleEntry:
 
 
 class ProtocolScheduler:
+
   """Manages protocol scheduling, asset allocation, and execution queueing."""
 
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
-    celery_app: Celery,
+    task_queue: TaskQueue,
     protocol_run_service: ProtocolRunService,
     protocol_definition_service: ProtocolDefinitionCRUDService,
   ) -> None:
     """Initialize the Protocol Scheduler."""
     self.db_session_factory = db_session_factory
-    self.celery_app = celery_app
+    self.task_queue = task_queue
     self.protocol_run_service = protocol_run_service
     self.protocol_definition_service = protocol_definition_service
 
@@ -72,7 +89,7 @@ class ProtocolScheduler:
   async def analyze_protocol_requirements(
     self,
     protocol_def_orm: FunctionProtocolDefinitionOrm,
-    user_params: dict[str, Any],
+    _user_params: dict[str, Any],
   ) -> list[RuntimeAssetRequirement]:
     """Analyze a protocol definition to determine asset requirements."""
     logger.info(
@@ -84,8 +101,9 @@ class ProtocolScheduler:
     requirements: list[RuntimeAssetRequirement] = []
 
     for asset_def in protocol_def_orm.assets:
-      requirement = RuntimeAssetRequirement.from_asset_definition_orm(
-        asset_def,
+      asset_requirement_model = AssetRequirementModel.model_validate(asset_def)
+      requirement = RuntimeAssetRequirement(
+        asset_definition=asset_requirement_model,
         asset_type="asset",
         estimated_duration_ms=None,
         priority=1,
@@ -166,16 +184,15 @@ class ProtocolScheduler:
         len(requirements),
         protocol_run_id,
       )
-      return True
-    except Exception as e:
-      logger.error(
-        "Error during asset reservation for run %s: %s",
+    except Exception:
+      logger.exception(
+        "Error during asset reservation for run %s",
         protocol_run_id,
-        e,
-        exc_info=True,
       )
       await self._release_reservations(reserved_assets, protocol_run_id)
       return False
+    else:
+      return True
 
   async def _release_reservations(
     self,
@@ -281,12 +298,10 @@ class ProtocolScheduler:
         await self.cancel_scheduled_run(protocol_run_orm.accession_id)
         return False
 
-    except Exception as e:
-      logger.error(
-        "Error scheduling protocol execution for run %s: %s",
+    except Exception:
+      logger.exception(
+        "Error scheduling protocol execution for run %s",
         protocol_run_orm.accession_id,
-        e,
-        exc_info=True,
       )
       return False
 
@@ -301,7 +316,7 @@ class ProtocolScheduler:
     user_params = user_params or {}
 
     try:
-      task_result = self.celery_app.send_task(
+      task_result = self.task_queue.send_task(
           "execute_protocol_run",
           args=[
               str(protocol_run_id),
@@ -309,7 +324,7 @@ class ProtocolScheduler:
               initial_state,
           ],
       )
-      celery_task_id = getattr(task_result, "id", None)
+      celery_task_id = task_result.id
       logger.info(
         "Successfully queued protocol run %s with Celery task ID: %s",
         protocol_run_id,
@@ -321,47 +336,45 @@ class ProtocolScheduler:
         schedule_entry.status = "QUEUED"
         schedule_entry.celery_task_id = celery_task_id
 
-      return True
-
-    except Exception as e:
-      logger.error(
-        "Failed to queue execution task for run %s: %s",
+    except Exception:
+      logger.exception(
+        "Failed to queue execution task for run %s",
         protocol_run_id,
-        e,
-        exc_info=True,
       )
       return False
+    else:
+      return True
 
   async def cancel_scheduled_run(self, protocol_run_id: uuid.UUID) -> bool:
     """Cancel a scheduled protocol run and release assets."""
     logger.info("Cancelling scheduled run %s", protocol_run_id)
 
     try:
-      if protocol_run_id in self._active_schedules:
-        schedule_entry = self._active_schedules[protocol_run_id]
+      if protocol_run_id not in self._active_schedules:
+        logger.warning("Run %s not found in active schedules", protocol_run_id)
+        return False
 
-        for requirement in schedule_entry.required_assets:
-          asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
-          if asset_key in self._asset_reservations:
-            self._asset_reservations[asset_key].discard(protocol_run_id)
-            if not self._asset_reservations[asset_key]:
-              del self._asset_reservations[asset_key]
+      schedule_entry = self._active_schedules[protocol_run_id]
 
-        del self._active_schedules[protocol_run_id]
+      for requirement in schedule_entry.required_assets:
+        asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
+        if asset_key in self._asset_reservations:
+          self._asset_reservations[asset_key].discard(protocol_run_id)
+          if not self._asset_reservations[asset_key]:
+            del self._asset_reservations[asset_key]
 
-        logger.info("Successfully cancelled scheduled run %s", protocol_run_id)
-        return True
-      logger.warning("Run %s not found in active schedules", protocol_run_id)
-      return False
+      del self._active_schedules[protocol_run_id]
 
-    except Exception as e:
-      logger.error(
-        "Error cancelling scheduled run %s: %s",
+      logger.info("Successfully cancelled scheduled run %s", protocol_run_id)
+
+    except Exception:
+      logger.exception(
+        "Error cancelling scheduled run %s",
         protocol_run_id,
-        e,
-        exc_info=True,
       )
       return False
+    else:
+      return True
 
   async def get_schedule_status(
     self,
