@@ -11,17 +11,28 @@ allowing them to access only the assets they have explicitly declared as require
 """
 
 import json
-from typing import Any, cast
+from typing import IO, TYPE_CHECKING, Any, Protocol, cast
 
-import inflection
-from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
+import inflection  # pyright: ignore[reportMissingImports]
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Resource
+
+if TYPE_CHECKING:
+  from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 
 from praxis.backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+class FileSystem(Protocol):
+
+  """A protocol for file system operations."""
+
+  def open(self, file: str, mode: str = "r", encoding: str | None = None) -> IO[Any]:
+    """Open a file and return a file object."""
+    ...
 
 
 class Workcell:
@@ -42,6 +53,7 @@ class Workcell:
     self,
     name: str,
     save_file: str,
+    file_system: FileSystem,
     backup_interval: int = 60,
     num_backups: int = 3,
   ) -> None:
@@ -50,6 +62,7 @@ class Workcell:
     Args:
         name: The name of the workcell, corresponding to a WorkcellOrm entry.
         save_file: Path to the JSON file for saving runtime state.
+        file_system: A file system object for file operations.
         backup_interval: Interval in seconds for continuous state backup.
         num_backups: Number of rolling backup files to maintain.
 
@@ -66,8 +79,9 @@ class Workcell:
     self.backup_interval = backup_interval
     self.num_backups = num_backups
     self.backup_num: int = 0
+    self.fs: FileSystem = file_system
 
-    self.refs: dict[str, dict] = {}
+    self.refs: dict[str, dict[str, Resource | Machine]] = {}
     self.children: list[Resource | Machine] = []
 
     for member in MachineCategoryEnum:
@@ -88,11 +102,15 @@ class Workcell:
   @property
   def all_machines(self) -> dict[str, Machine]:
     """Returns a dictionary of all live machine objects in the workcell."""
-    all_machines_dict = {}
+    all_machines_dict: dict[str, Machine] = {}
     for member in MachineCategoryEnum:
       attr_name = inflection.pluralize(member.name.lower())
-      all_machines_dict.update(self.refs.get(attr_name, {}))
-    all_machines_dict.update(self.refs.get("other_machines", {}))
+      all_machines_dict.update(
+        cast("dict[str, Machine]", self.refs.get(attr_name, {})),
+      )
+    all_machines_dict.update(
+      cast("dict[str, Machine]", self.refs.get("other_machines", {})),
+    )
     return all_machines_dict
 
   @property
@@ -143,7 +161,7 @@ class Workcell:
       and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        LiquidHandler, self.refs["liquid_handlers"][liquid_handler_accession_id],
+        "LiquidHandler", self.refs["liquid_handlers"][liquid_handler_accession_id],
       )
       liquid_handler.deck = deck
     else:
@@ -152,7 +170,7 @@ class Workcell:
 
   def serialize_all_state(self) -> dict[str, Any]:
     """Serialize the state of all resources within the workcell."""
-    state = {}
+    state: dict[str, Any] = {}
     for child in self.get_all_children():
       if isinstance(child, Resource):
         state[child.name] = child.serialize_state()
@@ -166,12 +184,12 @@ class Workcell:
 
   def save_state_to_file(self, fn: str, indent: int | None = 4) -> None:
     """Save the current state of all workcell resources to a JSON file."""
-    with open(fn, "w", encoding="utf-8") as f:
+    with self.fs.open(fn, "w", encoding="utf-8") as f:
       json.dump(self.serialize_all_state(), f, indent=indent)
 
   def load_state_from_file(self, fn: str) -> None:
     """Load the state of all workcell resources from a JSON file."""
-    with open(fn, encoding="utf-8") as f:
+    with self.fs.open(fn, encoding="utf-8") as f:
       content = json.load(f)
     self.load_all_state(content)
 
@@ -179,7 +197,7 @@ class Workcell:
     """Check if an asset with the given name exists in the workcell."""
     return item in self.asset_keys
 
-  def __getitem__(self, key: str) -> dict:
+  def __getitem__(self, key: str) -> dict[str, Resource | Machine]:
     """Get the asset category by name."""
     if key in self.refs:
       return self.refs[key]
@@ -198,7 +216,7 @@ class WorkcellView:
 
   def __init__(
     self,
-    parent_workcell: Workcell,
+    parent_workcell: "Workcell",
     protocol_name: str,
     required_assets: list[AssetRequirementModel],
   ) -> None:
@@ -211,7 +229,7 @@ class WorkcellView:
     """Check if an asset was declared as required by the protocol."""
     return asset_name in self._required_asset_names
 
-  def __getattr__(self, name: str) -> Any:
+  def __getattr__(self, name: str) -> "Resource | Machine":
     """Delegate attribute access to the parent workcell for required assets."""
     if name.startswith("_"):
       # Allow access to private attributes of the view itself
