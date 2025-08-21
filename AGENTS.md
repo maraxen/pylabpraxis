@@ -261,4 +261,15 @@ As agentic models complete work, they should append notes to this section, forma
     *   Used a `# type: ignore` directive in `container.py` to work around a known limitation in `pyright`'s ability to infer types from the `dependency-injector` library.
     *   Left the `contextvars` pattern for `PraxisRunContext` in place, as it is a suitable pattern for managing "ambient" context in an async application.
 
+## DI Refactoring Phase 3 (21082025)
+
+*   **Task**: Completed Phase 3 of the dependency injection refactoring. This focused on the business logic layer, specifically `asset_manager.py`, `workcell.py`, and `scheduler.py`.
+*   **Summary of Changes**:
+    *   **`asset_manager.py`**: Refactored to use dependency injection for the `AssetLockManager`. This involved creating a new `IAssetLockManager` protocol, adding `AssetLockManager` as a dependency to `AssetManager`, implementing `lock_asset` and `unlock_asset` methods, and updating the DI container.
+    *   **`workcell.py`**: Analyzed the module and determined that it already followed dependency injection best practices. No refactoring was needed.
+    *   **`scheduler.py`**: Analyzed the module and found that it also already adhered to DI principles. No refactoring was needed.
+*   **Key Decisions & Obstacles**:
+    *   Initial analysis was incorrect due to a misunderstanding of the codebase's state. After resetting and re-evaluating, the correct `AssetManager` was identified and refactored.
+    *   The codebase is in a state of flux, leading to a large number of `pyright` errors. I focused on fixing errors directly related to my changes.
+
 Once this section exceeds 250 lines, models should summarize the work detailed, remove it, and write the summary under the section titled previous work summary.

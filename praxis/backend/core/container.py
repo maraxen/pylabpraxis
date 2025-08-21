@@ -7,29 +7,29 @@ For more information on `dependency-injector`, see the documentation:
 https://python-dependency-injector.ets-labs.org/
 """
 
-import typing
 
+import redis.asyncio as redis
 from celery import Celery
 from dependency_injector import containers, providers
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import redis.asyncio as redis
-
-from .asset_lock_manager import AssetLockManager
-from .celery import celery_app, configure_celery_app
-from .asset_manager import AssetManager
-from .protocol_code_manager import ProtocolCodeManager
-from .workcell import Workcell
-from .workcell_runtime import WorkcellRuntime
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.machine import MachineService
-from praxis.backend.services.resource import ResourceService
-from .scheduler import ProtocolScheduler
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.services.resource import ResourceService
 from praxis.backend.services.resource_type_definition import (
     ResourceTypeDefinitionService,
 )
+
+from .asset_lock_manager import AssetLockManager
+from .asset_manager import AssetManager
+from .celery import celery_app
+from .protocol_code_manager import ProtocolCodeManager
+from .scheduler import ProtocolScheduler
+from .workcell import Workcell
+from .workcell_runtime import WorkcellRuntime
+
 
 class Container(containers.DeclarativeContainer):
 
@@ -131,7 +131,7 @@ class Container(containers.DeclarativeContainer):
     # `pyright` struggles to infer the provided type from the Resource provider,
     # so we use `# type: ignore` to suppress the incorrect error.
     db_session: providers.Provider[AsyncSession] = providers.Resource(
-        db_session_factory
+        db_session_factory,
     )  # type: ignore[assignment]
 
     # --- Service Providers ---
@@ -160,7 +160,10 @@ class Container(containers.DeclarativeContainer):
     deck_service: providers.Singleton[DeckService] = providers.Singleton(DeckService)
     machine_service: providers.Singleton[MachineService] = providers.Singleton(MachineService)
     resource_service: providers.Singleton[ResourceService] = providers.Singleton(ResourceService)
-    resource_type_definition_service: providers.Singleton[ResourceTypeDefinitionService] = providers.Singleton(ResourceTypeDefinitionService)
+    resource_type_definition_service: providers.Singleton[ResourceTypeDefinitionService] = providers.Singleton(
+        ResourceTypeDefinitionService,
+        db=db_session,
+    )
 
     protocol_run_service: providers.Singleton[ProtocolRunService] = providers.Singleton(ProtocolRunService)
     protocol_definition_service: providers.Singleton[ProtocolDefinitionCRUDService] = providers.Singleton(ProtocolDefinitionCRUDService)
@@ -181,6 +184,7 @@ class Container(containers.DeclarativeContainer):
         machine_service=machine_service,
         resource_service=resource_service,
         resource_type_definition_service=resource_type_definition_service,
+        asset_lock_manager=asset_lock_manager,
     )
 
     # For now, keeping the existing orchestrator provider as an example.

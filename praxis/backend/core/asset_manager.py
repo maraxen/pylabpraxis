@@ -6,26 +6,34 @@ import uuid
 from functools import partial
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from pylabrobot.resources import Deck
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.core.protocols.asset_lock_manager import IAssetLockManager
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models.orm.deck import DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
 from praxis.backend.models.orm.resource import (
-    ResourceDefinitionOrm,
-    ResourceOrm,
-    ResourceStatusEnum,
+  ResourceDefinitionOrm,
+  ResourceOrm,
+  ResourceStatusEnum,
 )
-from praxis.backend.models.pydantic_internals.asset import AcquireAsset
+from praxis.backend.models.pydantic_internals.asset import (
+    AcquireAsset,
+    AcquireAssetLock,
+)
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.pydantic_internals.resource import ResourceUpdate
 from praxis.backend.services.deck import DeckService
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.resource import ResourceService
-from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
+from praxis.backend.services.resource_type_definition import (
+  ResourceTypeDefinitionService,
+)
 from praxis.backend.utils.errors import (
-    AssetAcquisitionError,
-    AssetReleaseError,
+  AssetAcquisitionError,
+  AssetReleaseError,
 )
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors, log_runtime_errors
 
@@ -46,6 +54,7 @@ asset_manager_errors = partial(
 
 
 class AssetManager:
+
   """Manages the lifecycle and allocation of assets."""
 
   def __init__(
@@ -56,6 +65,7 @@ class AssetManager:
       machine_service: MachineService,
       resource_service: ResourceService,
       resource_type_definition_service: ResourceTypeDefinitionService,
+      asset_lock_manager: IAssetLockManager,
   ) -> None:
     """Initialize the AssetManager."""
     self.db: AsyncSession = db_session
@@ -64,9 +74,10 @@ class AssetManager:
     self.machine_svc = machine_service
     self.resource_svc = resource_service
     self.resource_type_definition_svc = resource_type_definition_service
+    self.asset_lock_manager = asset_lock_manager
 
   async def _get_and_validate_deck_orms(
-    self, deck_orm_accession_id: uuid.UUID
+    self, deck_orm_accession_id: uuid.UUID,
   ) -> tuple[DeckOrm, ResourceOrm, ResourceDefinitionOrm]:
     deck_orm = await self.deck_svc.get(self.db, deck_orm_accession_id)
     if not deck_orm:
@@ -81,7 +92,7 @@ class AssetManager:
       )
 
     deck_def_orm = await self.resource_type_definition_svc.get_by_name(
-        self.db, deck_resource_orm.name
+        self.db, deck_resource_orm.name,
     )
     if not deck_def_orm or not deck_def_orm.fqn:
       msg = f"Resource definition for deck '{deck_resource_orm.name}' not found or FQN missing."
@@ -128,18 +139,19 @@ class AssetManager:
     parent_machine_accession_id_for_deck: uuid.UUID | None = None
     parent_machine_name_for_log = "N/A (standalone or not specified)"
 
+    update_data = ResourceUpdate(
+        status=ResourceStatusEnum.IN_USE,
+        current_protocol_run_accession_id=protocol_run_accession_id,
+        status_details=f"Deck '{deck_resource_orm.name}' "
+        f"(parent machine: {parent_machine_name_for_log}) in use for config "
+        f"'{deck_orm.name}' by run {protocol_run_accession_id}",
+        machine_location_accession_id=parent_machine_accession_id_for_deck,
+        current_deck_position_name=None,
+    )
     await self.resource_svc.update(
       db=self.db,
       db_obj=deck_resource_orm,
-      obj_in={
-        "status": ResourceStatusEnum.IN_USE,
-        "current_protocol_run_accession_id": protocol_run_accession_id,
-        "status_details": f"Deck '{deck_resource_orm.name}' "
-        f"(parent machine: {parent_machine_name_for_log}) in use for config "
-        f"'{deck_orm.name}' by run {protocol_run_accession_id}",
-        "machine_location_accession_id": parent_machine_accession_id_for_deck,
-        "current_deck_position_name": None,
-      },
+      obj_in=update_data,
     )
     logger.info(
       "AM_DECK_CONFIG: Deck resource '%s' PLR object initialized and IN_USE.",
@@ -174,7 +186,7 @@ class AssetManager:
     position_name = item_to_place_orm.current_deck_position_name
     if not position_name:
       logger.warning(
-        f"Resource {item_to_place_orm.name} is on deck but has no position name, skipping."
+        f"Resource {item_to_place_orm.name} is on deck but has no position name, skipping.",
       )
       return
 
@@ -224,17 +236,18 @@ class AssetManager:
       target=deck_orm_accession_id,
       position_accession_id=position_name,
     )
+    update_data = ResourceUpdate(
+        status=ResourceStatusEnum.IN_USE,
+        current_protocol_run_accession_id=protocol_run_accession_id,
+        machine_location_accession_id=deck_resource_orm.accession_id,
+        current_deck_position_name=position_name,
+        status_details=f"On deck '{deck_resource_orm.name}' "
+        f"pos '{position_name}' for run {protocol_run_accession_id}",
+    )
     await self.resource_svc.update(
       db=self.db,
       db_obj=item_to_place_orm,
-      obj_in={
-        "status": ResourceStatusEnum.IN_USE,
-        "current_protocol_run_accession_id": protocol_run_accession_id,
-        "machine_location_accession_id": deck_resource_orm.accession_id,
-        "current_deck_position_name": position_name,
-        "status_details": f"On deck '{deck_resource_orm.name}' "
-        f"pos '{position_name}' for run {protocol_run_accession_id}",
-      },
+      obj_in=update_data,
     )
     logger.info(
       "Resource %s configured at '%s' on deck '%s'.",
@@ -248,7 +261,6 @@ class AssetManager:
     protocol_run_accession_id: uuid.UUID,
     requested_asset_name_in_protocol: str,
     fqn_constraint: str,
-    constraints: dict[str, Any] | None = None,
   ) -> tuple[Any, uuid.UUID, str]:
     """Acquire a Machine that is available or already in use by the current run."""
     logger.info(
@@ -285,16 +297,29 @@ class AssetManager:
       )
 
     selected_machine_orm: MachineOrm | None = None
+    filters = SearchFilters(
+        search_filters={
+            "pylabrobot_class_filter": fqn_constraint,
+            "status": MachineStatusEnum.IN_USE,
+            "current_protocol_run_accession_id_filter": protocol_run_accession_id,
+        }
+    )
     in_use_by_this_run_list = await self.machine_svc.get_multi(
       self.db,
-      filters={"pylabrobot_class_filter": fqn_constraint, "status": MachineStatusEnum.IN_USE, "current_protocol_run_accession_id_filter": protocol_run_accession_id},
+      filters=filters,
     )
     if in_use_by_this_run_list:
       selected_machine_orm = in_use_by_this_run_list[0]
     else:
+      filters = SearchFilters(
+          search_filters={
+              "status": MachineStatusEnum.AVAILABLE,
+              "pylabrobot_class_filter": fqn_constraint,
+          }
+      )
       available_machines_list = await self.machine_svc.get_multi(
         self.db,
-        filters={"status": MachineStatusEnum.AVAILABLE, "pylabrobot_class_filter": fqn_constraint},
+        filters=filters,
       )
       if available_machines_list:
         selected_machine_orm = available_machines_list[0]
@@ -402,21 +427,37 @@ class AssetManager:
           msg,
         )
       return instance_orm
+    filters = SearchFilters(
+        search_filters={
+            "fqn": fqn,
+            "status": ResourceStatusEnum.IN_USE,
+            "current_protocol_run_accession_id_filter": str(protocol_run_accession_id),
+        },
+        property_filters=property_constraints,
+    )
     in_use_list = await self.resource_svc.get_multi(
       self.db,
-      filters={"fqn": fqn, "status": ResourceStatusEnum.IN_USE, "current_protocol_run_accession_id_filter": str(protocol_run_accession_id), "property_filters": property_constraints},
+      filters=filters,
     )
     if in_use_list:
       return in_use_list[0]
+    filters = SearchFilters(
+        search_filters={"fqn": fqn, "status": ResourceStatusEnum.AVAILABLE_ON_DECK},
+        property_filters=property_constraints,
+    )
     on_deck_list = await self.resource_svc.get_multi(
       self.db,
-      filters={"fqn": fqn, "status": ResourceStatusEnum.AVAILABLE_ON_DECK, "property_filters": property_constraints},
+      filters=filters,
     )
     if on_deck_list:
       return on_deck_list[0]
+    filters = SearchFilters(
+        search_filters={"fqn": fqn, "status": ResourceStatusEnum.AVAILABLE_IN_STORAGE},
+        property_filters=property_constraints,
+    )
     in_storage_list = await self.resource_svc.get_multi(
       self.db,
-      filters={"fqn": fqn, "status": ResourceStatusEnum.AVAILABLE_IN_STORAGE, "property_filters": property_constraints},
+      filters=filters,
     )
     if in_storage_list:
       return in_storage_list[0]
@@ -430,16 +471,17 @@ class AssetManager:
     target_position_name: str | None,
     final_status_details: str,
   ) -> ResourceOrm:
+    update_data = ResourceUpdate(
+        status=ResourceStatusEnum.IN_USE,
+        current_protocol_run_accession_id=protocol_run_accession_id,
+        machine_location_accession_id=target_deck_resource_accession_id,
+        current_deck_position_name=target_position_name,
+        status_details=final_status_details,
+    )
     updated_resource = await self.resource_svc.update(
       db=self.db,
       db_obj=resource_to_acquire,
-      obj_in={
-        "status": ResourceStatusEnum.IN_USE,
-        "current_protocol_run_accession_id": protocol_run_accession_id,
-        "machine_location_accession_id": target_deck_resource_accession_id,
-        "current_deck_position_name": target_position_name,
-        "status_details": final_status_details,
-      },
+      obj_in=update_data,
     )
     if not updated_resource:
       msg = f"CRITICAL: Failed to update DB status for resource '{resource_to_acquire.name}'."
@@ -479,13 +521,14 @@ class AssetManager:
       name=resource_to_acquire.fqn,
     )
     if not resource_def_orm or not resource_def_orm.fqn:
+      update_data = ResourceUpdate(
+          status=ResourceStatusEnum.ERROR,
+          status_details=f"FQN missing for def {resource_to_acquire.fqn}",
+      )
       await self.resource_svc.update(
         db=self.db,
         db_obj=resource_to_acquire,
-        obj_in={
-          "status": ResourceStatusEnum.ERROR,
-          "status_details": f"FQN missing for def {resource_to_acquire.fqn}",
-        },
+        obj_in=update_data,
       )
       msg = f"FQN not found for resource definition '{resource_to_acquire.fqn}'."
       raise AssetAcquisitionError(
@@ -497,13 +540,14 @@ class AssetManager:
       resource_definition_fqn=resource_def_orm.fqn,
     )
     if not live_plr_resource:
+      update_data = ResourceUpdate(
+          status=ResourceStatusEnum.ERROR,
+          status_details="PLR object creation failed.",
+      )
       await self.resource_svc.update(
         db=self.db,
         db_obj=resource_to_acquire,
-        obj_in={
-          "status": ResourceStatusEnum.ERROR,
-          "status_details": "PLR object creation failed.",
-        },
+        obj_in=update_data,
       )
       msg = f"Failed to create/get PLR object for '{resource_to_acquire.name}'."
       raise AssetAcquisitionError(
@@ -759,17 +803,16 @@ class AssetManager:
       final_loc_accession_id_for_ads = clear_from_accession_id
       final_pos_for_ads = clear_from_position_name
 
-    update_data: dict[str, Any] = {
-      "status": final_status,
-      "machine_location_accession_id": final_loc_accession_id_for_ads,
-      "current_deck_position_name": final_pos_for_ads,
-      "current_protocol_run_accession_id": None,
-      "status_details": status_details,
-    }
+    update_data = ResourceUpdate(
+        status=final_status,
+        machine_location_accession_id=final_loc_accession_id_for_ads,
+        current_deck_position_name=final_pos_for_ads,
+        current_protocol_run_accession_id=None,
+        status_details=status_details,
+    )
     if final_properties_json_update:
-      current_properties = resource_to_release.properties_json or {}
-      current_properties.update(final_properties_json_update)
-      update_data["properties_json"] = current_properties
+        update_data.properties_json = resource_to_release.properties_json or {}
+        update_data.properties_json.update(final_properties_json_update)
 
     updated_resource = await self.resource_svc.update(
       db=self.db,
@@ -815,9 +858,9 @@ class AssetManager:
           fqn=asset_fqn,
           property_constraints=dict(asset_requirement.constraints or {}),
           location_constraints=dict(asset_requirement.location_constraints or {}),
-          user_choice_instance_accession_id=getattr(
+          instance_accession_id=getattr(
             asset_requirement,
-            "user_choice_instance_accession_id",
+            "instance_accession_id",
             None,
           ),
         ),
@@ -842,5 +885,35 @@ class AssetManager:
       protocol_run_accession_id=protocol_run_accession_id,
       requested_asset_name_in_protocol=asset_requirement.name,
       fqn_constraint=asset_fqn,
-      constraints=dict(asset_requirement.constraints or {}),
+    )
+
+  async def lock_asset(
+    self,
+    asset_type: str,
+    asset_name: str,
+    protocol_run_id: uuid.UUID,
+    reservation_id: uuid.UUID,
+  ) -> bool:
+    """Lock an asset."""
+    lock_data = AcquireAssetLock(
+      asset_type=asset_type,
+      asset_name=asset_name,
+      protocol_run_id=protocol_run_id,
+      reservation_id=reservation_id,
+    )
+    return await self.asset_lock_manager.acquire_asset_lock(lock_data)
+
+  async def unlock_asset(
+    self,
+    asset_type: str,
+    asset_name: str,
+    protocol_run_id: uuid.UUID,
+    reservation_id: uuid.UUID,
+  ) -> bool:
+    """Unlock an asset."""
+    return await self.asset_lock_manager.release_asset_lock(
+      asset_type=asset_type,
+      asset_name=asset_name,
+      protocol_run_id=protocol_run_id,
+      reservation_id=reservation_id,
     )

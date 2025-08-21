@@ -36,6 +36,11 @@ logger = get_logger(__name__)
 
 
 class ResourceTypeDefinitionService(
+  CRUDBase[
+    ResourceDefinitionOrm,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
+  ],
   DiscoverableTypeServiceBase[
     ResourceDefinitionOrm,
     ResourceDefinitionCreate,
@@ -60,9 +65,9 @@ class ResourceTypeDefinitionService(
     Well,
   )
 
-  def __init__(self, db: AsyncSession) -> None:
+  def __init__(self) -> None:
     """Initialize the ResourceTypeDefinitionService."""
-    super().__init__(db)
+    super().__init__(ResourceDefinitionOrm)
 
   @property
   def _orm_model(self) -> type[ResourceDefinitionOrm]:
