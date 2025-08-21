@@ -9,7 +9,7 @@ from celery import Celery
 
 from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry
 from praxis.backend.models import (
-  AssetDefinitionOrm,
+  AssetRequirementOrm,
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
@@ -45,17 +45,20 @@ def mock_celery_app():
 def scheduler(db_session_factory, mock_celery_app):
   """Fixture for a ProtocolScheduler instance."""
   with patch("praxis.backend.core.scheduler.get_logger"):
+    mock_asset_lock_manager = MagicMock()
+    mock_protocol_code_manager = MagicMock()
     return ProtocolScheduler(
       db_session_factory=db_session_factory,
-      redis_url="redis://localhost:6379/0",
       celery_app_instance=mock_celery_app,
+      asset_lock_manager=mock_asset_lock_manager,
+      protocol_code_manager=mock_protocol_code_manager,
     )
 
 
 @pytest.fixture
 def protocol_def_orm():
   """Fixture for a mock FunctionProtocolDefinitionOrm."""
-  asset_def = MagicMock(spec=AssetDefinitionOrm)
+  asset_def = MagicMock(spec=AssetRequirementOrm)
   asset_def.name = "test_asset"
   asset_def.actual_type_str = "pylabrobot.resources.Resource"
   asset_def.accession_id = uuid.uuid4()

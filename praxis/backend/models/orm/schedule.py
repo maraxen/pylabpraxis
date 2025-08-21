@@ -210,7 +210,6 @@ class AssetReservationOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[protocol_run_accession_id],
-    comment="Back-reference to the protocol run this asset reservation belongs to.",
   )
 
   schedule_entry_accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -245,7 +244,6 @@ class AssetReservationOrm(Base):
     foreign_keys=[asset_accession_id],
     uselist=False,
     init=False,
-    comment="Back-reference to the specific asset instance being reserved.",
   )
   asset_name: Mapped[str] = mapped_column(
     String,
@@ -326,7 +324,6 @@ class AssetReservationOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[schedule_entry_accession_id],
-    comment="Back-reference to the schedule entry this asset reservation belongs to.",
   )
 
 
@@ -355,7 +352,6 @@ class ScheduleHistoryOrm(Base):
     uselist=False,
     init=False,
     foreign_keys=[schedule_entry_accession_id],
-    comment="Back-reference to the schedule entry this history record belongs to.",
   )
 
   # Event details
@@ -519,5 +515,14 @@ class SchedulerMetricsView(Base):
 
   """Read-only ORM class mapped to the scheduler_metrics_mv materialized view."""
 
-  __table__ = scheduler_metrics_mv
   __tablename__ = "scheduler_metrics_mv"
+
+  metric_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True, init=False)
+  protocols_scheduled: Mapped[int] = mapped_column(Integer, init=False)
+  protocols_completed: Mapped[int] = mapped_column(Integer, init=False)
+  protocols_failed: Mapped[int] = mapped_column(Integer, init=False)
+  protocols_cancelled: Mapped[int] = mapped_column(Integer, init=False)
+  avg_queue_wait_time_ms: Mapped[float] = mapped_column(Float, init=False)
+  avg_execution_time_ms: Mapped[float] = mapped_column(Float, init=False)
+
+  __table_args__ = {"extend_existing": True}

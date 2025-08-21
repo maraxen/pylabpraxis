@@ -3,7 +3,7 @@
 
 import pytest
 from pylabrobot.machines import Machine
-from pylabrobot.machines.backends import MachineBackend
+from pylabrobot.machines.backend import MachineBackend
 from pylabrobot.resources import Resource
 
 from praxis.backend.core.workcell import Workcell

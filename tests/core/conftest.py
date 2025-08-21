@@ -17,10 +17,10 @@ from praxis.backend.models import (
 )
 
 # --- Static Test UUIDs (version 7) ---
-TEST_PROTOCOL_RUN_ID = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d", version=7)
-TEST_MACHINE_ID = uuid.UUID("018f4a3c-b034-7548-b4e8-87d464cb3f92", version=7)
-TEST_RESOURCE_ID = uuid.UUID("018f4a3d-3b4f-7b1e-913a-a1c1d858348c", version=7)
-TEST_DECK_RESOURCE_ID = uuid.UUID("018f4a3d-a3e1-75f2-9831-27f329d443e2", version=7)
+TEST_PROTOCOL_RUN_ID = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d")
+TEST_MACHINE_ID = uuid.UUID("018f4a3c-b034-7548-b4e8-87d464cb3f92")
+TEST_RESOURCE_ID = uuid.UUID("018f4a3d-3b4f-7b1e-913a-a1c1d858348c")
+TEST_DECK_RESOURCE_ID = uuid.UUID("018f4a3d-a3e1-75f2-9831-27f329d443e2")
 
 
 @pytest.fixture

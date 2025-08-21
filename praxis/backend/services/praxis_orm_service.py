@@ -52,7 +52,7 @@ class PraxisDBService:
   """
 
   _instance: Optional["PraxisDBService"] = None
-  _keycloak_pool: asyncpg.Pool[Any] | None = None
+  _keycloak_pool: asyncpg.Pool | None = None
   _max_retries = 3
   _retry_delay = 1  # seconds
 
@@ -211,7 +211,7 @@ class PraxisDBService:
   @asynccontextmanager
   async def get_keycloak_connection(
     self,
-  ) -> AsyncIterator[asyncpg.Connection[Any]]:
+  ) -> AsyncIterator[asyncpg.Connection]:
     """Provide an asynchronous connection to the Keycloak database.
 
     This context manager yields an `asyncpg.Connection` instance from the

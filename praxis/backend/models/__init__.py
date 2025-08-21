@@ -106,6 +106,8 @@ from .pydantic_internals import (
   WellDataOutputFilters,
   WellDataOutputResponse,
   WellDataOutputUpdate,
+  PositioningConfig,
+  RuntimeAssetRequirement,
 )
 
 __all__ = [
@@ -182,8 +184,10 @@ __all__ = [
   "MachineUpdate",
   "ParameterConstraintsModel",
   "ParameterMetadataModel",
+  "PositioningConfig",
   "ProtocolDefinitionFilters",
   "ProtocolDirectories",
   "ProtocolInfo",
   "ProtocolParameters",
+  "RuntimeAssetRequirement",
 ]

@@ -20,7 +20,7 @@ from praxis.backend.models import (
 from praxis.backend.utils.errors import WorkcellRuntimeError
 
 # Correctly import the distinct mock classes
-from .test_workcell import MockBackend, MockMachineResource, MockPureResource
+from tests.core.workcell_tests import MockBackend, MockMachineResource, MockPureResource
 
 # --- Fixtures ---
 
@@ -47,10 +47,11 @@ def workcell_runtime(mock_workcell_cls, mock_db_session_factory) -> WorkcellRunt
   """Fixture for a WorkcellRuntime instance with mocked dependencies."""
   mock_workcell_instance = mock_workcell_cls.return_value
   runtime = WorkcellRuntime(
-    db_session_factory=mock_db_session_factory,
-    workcell_name="test_runtime",
-    workcell_save_file="/tmp/test_runtime.json",
+    db_session_factory=mock_db_session_factory, workcell=mock_workcell_instance
   )
+  # The runtime now gets the workcell instance at init, so the following line
+  # is redundant if we assume the __init__ works correctly.
+  # We keep it for explicit clarity in what the mock is.
   runtime._main_workcell = mock_workcell_instance
   return runtime
 

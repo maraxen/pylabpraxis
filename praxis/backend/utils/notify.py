@@ -4,7 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from backend.configure import PraxisConfiguration
+from praxis.backend.configure import PraxisConfiguration
 
 CELLPHONE_CARRIER_GATEWAYS = {
   "att": "@txt.att.net",
@@ -93,4 +93,4 @@ class Notifier:
     self.send_email(sender_email, recipient_email, subject, body)
 
 
-DEFAULT_NOTIFIER = Notifier(**PraxisConfiguration().smtp_details())
+DEFAULT_NOTIFIER = Notifier(**PraxisConfiguration().smtp_details)

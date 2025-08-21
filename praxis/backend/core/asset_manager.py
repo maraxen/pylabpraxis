@@ -1,16 +1,5 @@
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,logging-fstring-interpolation
-# broad-except is disabled at method level where justified, not globally.
-"""Manages the lifecycle and allocation of physical laboratory assets.
-
-praxis/core/asset_manager.py
-
-The AssetManager is responsible for managing the lifecycle and allocation
-of physical laboratory assets (machines and resource instances, including decks).
-It interacts with data services for persistence and infers changes
-passed from WorkcellRuntime to the database for live PyLabRobot object status updates.
-
-Decks are treated as ResourceOrm entities, potentially parented by a MachineOrm.
-"""
+"""Manages the lifecycle and allocation of physical laboratory assets."""
 
 import importlib
 import uuid
@@ -18,25 +7,22 @@ from functools import partial
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from pylabrobot.resources import Deck
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models.orm.deck import DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
 from praxis.backend.models.orm.resource import (
-  ResourceDefinitionOrm,
-  ResourceOrm,
-  ResourceStatusEnum,
+    ResourceDefinitionOrm,
+    ResourceOrm,
+    ResourceStatusEnum,
 )
 from praxis.backend.models.pydantic_internals.asset import AcquireAsset
 from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
-from praxis.backend.services.deck import deck_service
-from praxis.backend.services.machine import machine_service
-from praxis.backend.services.resource import resource_service
-from praxis.backend.services.resource_type_definition import (
-    resource_type_definition_service,
-)
+from praxis.backend.services.deck import DeckService
+from praxis.backend.services.machine import MachineService
+from praxis.backend.services.resource import ResourceService
+from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
 from praxis.backend.utils.errors import (
     AssetAcquisitionError,
     AssetReleaseError,
@@ -60,17 +46,18 @@ asset_manager_errors = partial(
 
 
 class AssetManager:
-
   """Manages the lifecycle and allocation of assets."""
 
-  def __init__(self, db_session: AsyncSession, workcell_runtime: WorkcellRuntime) -> None:
-    """Initialize the AssetManager.
-
-    Args:
-        db_session: The SQLAlchemy async session.
-        workcell_runtime: The WorkcellRuntime instance for live PLR object interaction.
-
-    """
+  def __init__(
+      self,
+      db_session: AsyncSession,
+      workcell_runtime: WorkcellRuntime,
+      deck_service: DeckService,
+      machine_service: MachineService,
+      resource_service: ResourceService,
+      resource_type_definition_service: ResourceTypeDefinitionService,
+  ) -> None:
+    """Initialize the AssetManager."""
     self.db: AsyncSession = db_session
     self.workcell_runtime = workcell_runtime
     self.deck_svc = deck_service
@@ -108,21 +95,7 @@ class AssetManager:
     deck_orm_accession_id: uuid.UUID,
     protocol_run_accession_id: uuid.UUID,
   ) -> Deck:
-    """Apply a deck instanceuration.
-
-    Initialize the deck and assign pre-configured resources.
-
-    Args:
-        deck_orm_accession_id: The ORM ID of the deck.
-        protocol_run_accession_id: The GUID of the current protocol run.
-
-    Returns:
-        The live PyLabRobot Deck object.
-
-    Raises:
-        AssetAcquisitionError: If the deck or its components cannot be configured.
-
-    """
+    """Apply a deck instanceuration."""
     logger.info(
       "AM_DECK_CONFIG: Applying deck instanceuration ID '%s', for run_accession_id: %s",
       deck_orm_accession_id,
@@ -152,22 +125,8 @@ class AssetManager:
         msg,
       )
 
-    # Determine parent machine for location of the deck resource itself
     parent_machine_accession_id_for_deck: uuid.UUID | None = None
     parent_machine_name_for_log = "N/A (standalone or not specified)"
-    # To access deck_orm.deck_parent_machine, it must be loaded by
-    # read_deck
-    # For now, assuming it might not be loaded and rely on an explicit FK if it existed,
-    # or leave None.
-    # If DeckOrm has deck_parent_machine_accession_id FK:
-    # if hasattr(deck_orm, 'deck_parent_machine_accession_id') and
-    # deck_orm.deck_parent_machine_accession_id:
-    #    parent_machine_accession_id_for_deck = deck_orm.deck_parent_machine_accession_id
-    #    # Potentially log parent machine name
-    # elif deck_orm.deck_parent_machine: # If relationship is loaded
-    #    parent_machine_accession_id_for_deck = deck_orm.deck_parent_machine.accession_id
-    #    parent_machine_name_for_log =
-    # deck_orm.deck_parent_machine.name
 
     await self.resource_svc.update(
       db=self.db,
@@ -219,12 +178,11 @@ class AssetManager:
       )
       return
 
-    # Idempotency check
     if (
       item_to_place_orm.status == ResourceStatusEnum.IN_USE
       and item_to_place_orm.current_protocol_run_accession_id == protocol_run_accession_id
       and item_to_place_orm.machine_location_accession_id
-      == deck_resource_orm.accession_id  # Located on this deck
+      == deck_resource_orm.accession_id
       and item_to_place_orm.current_deck_position_name == position_name
     ):
       logger.info(
@@ -292,22 +250,7 @@ class AssetManager:
     fqn_constraint: str,
     constraints: dict[str, Any] | None = None,
   ) -> tuple[Any, uuid.UUID, str]:
-    """Acquire a Machine that is available or already in use by the current run.
-
-    Args:
-        protocol_run_accession_id: GUID of the protocol run.
-        requested_asset_name_in_protocol: Name of the asset as requested in the
-        protocol.
-        fqn_constraint: The FQN of the PyLabRobot Machine class.
-        constraints: Optional dictionary of constraints (e.g., specific serial number).
-
-    Returns:
-        A tuple (live_plr_machine_object, machine_orm_accession_id, "machine").
-
-    Raises:
-        AssetAcquisitionError: If no suitable machine can be acquired or initialized.
-
-    """
+    """Acquire a Machine that is available or already in use by the current run."""
     logger.info(
       "AM_ACQUIRE_MACHINE: Acquiring machine '%s' (FQN: '%s') for run '%s'.",
       requested_asset_name_in_protocol,
@@ -315,12 +258,11 @@ class AssetManager:
       protocol_run_accession_id,
     )
 
-    # Safeguard: Check if FQN might be a Deck type mistakenly passed here
     try:
       module_path, class_name = fqn_constraint.rsplit(".", 1)
       module = importlib.import_module(module_path)
       cls_obj = getattr(module, class_name)
-      if issubclass(cls_obj, Deck):  # Direct check against Deck
+      if issubclass(cls_obj, Deck):
         msg = f"Attempted to acquire Deck FQN '{fqn_constraint}' via acquire_machine. Use acquire_resource."
         raise AssetAcquisitionError(
           msg,
@@ -329,7 +271,6 @@ class AssetManager:
       logger.warning(
         f"Could not dynamically verify FQN '{fqn_constraint}' during machine acquisition safeguard: {e}",
       )
-    # Also check against resource definitions just in case it's cataloged as a deck
     potential_deck_def = await self.resource_type_definition_svc.get_by_name(
       self.db,
       fqn_constraint,
@@ -407,7 +348,7 @@ class AssetManager:
         raise AssetAcquisitionError(
           msg,
         )
-      selected_machine_orm = updated_machine_orm  # Use the updated ORM
+      selected_machine_orm = updated_machine_orm
 
     logger.info(
       "AM_ACQUIRE_MACHINE: Machine '%s' acquired for run '%s'.",
@@ -511,18 +452,7 @@ class AssetManager:
     self,
     resource_data: AcquireAsset,
   ) -> tuple[Any, uuid.UUID, str]:
-    """Acquire a resource instance that is available.
-
-    Args:
-        resource_data: Pydantic model with resource acquisition details.
-
-    Returns:
-        A tuple (live_plr_resource_object, resource_orm_accession_id, "resource").
-
-    Raises:
-        AssetAcquisitionError: If no suitable resource can be acquired or initialized.
-
-    """
+    """Acquire a resource instance that is available."""
     logger.info(
       "AM_ACQUIRE_RESOURCE: Acquiring '%s' (Def: '%s') for run '%s'. Loc: %s",
       resource_data.requested_asset_name_in_protocol,
@@ -596,14 +526,13 @@ class AssetManager:
       resource_data.protocol_run_accession_id,
     )
 
-    # Idempotency check for DB update
     needs_db_update = not (
       resource_to_acquire.status == ResourceStatusEnum.IN_USE
       and resource_to_acquire.current_protocol_run_accession_id
       == uuid.UUID(str(resource_data.protocol_run_accession_id))
       and (
         is_acquiring_a_deck_resource
-        or (  # For non-decks, location must match
+        or (
           resource_to_acquire.machine_location_accession_id == target_deck_resource_accession_id
           and resource_to_acquire.current_deck_position_name == target_position_name
         )
@@ -698,8 +627,6 @@ class AssetManager:
     except (ImportError, AttributeError):
       return False
 
-
-
   async def _handle_resource_release_location(
     self,
     is_releasing_a_deck_resource: bool,
@@ -716,7 +643,7 @@ class AssetManager:
       await self.workcell_runtime.clear_resource(
         resource_orm_accession_id,
       )
-      return None, None  # Not applicable for the deck itself
+      return None, None
     if clear_from_accession_id and clear_from_position_name:
       logger.info(
         "AM_RELEASE_RESOURCE: Clearing '%s' from deck ID %s, pos '%s'.",
@@ -730,7 +657,6 @@ class AssetManager:
         resource_orm_accession_id=resource_orm_accession_id,
       )
       return clear_from_accession_id, clear_from_position_name
-    # Generic resource not on a specific deck or deck not specified
     await self.workcell_runtime.clear_resource(
       resource_orm_accession_id,
     )
@@ -756,13 +682,12 @@ class AssetManager:
       machine_orm_accession_id,
       final_status.name,
     )
-    # Safeguard against releasing Deck FQNs
     if "deck" in machine_to_release.fqn.lower() or "Deck" in machine_to_release.fqn:
       logger.error(
         f"AM_RELEASE_MACHINE: Attempt to release Deck-like FQN "
         f"'{machine_to_release.fqn}' via release_machine. Use release_resource.",
       )
-      return  # Avoid proceeding
+      return
 
     await self.workcell_runtime.shutdown_machine(machine_orm_accession_id)
     updated_machine = await self.machine_svc.update_machine_status(
@@ -897,12 +822,10 @@ class AssetManager:
           ),
         ),
       )
-    # Assume it's a Machine FQN
     logger.debug(
       "AM_ACQUIRE_ASSET: '%s' not in ResourceCatalog. Assuming Machine FQN. Using acquire_machine.",
       asset_fqn,
     )
-    # Final safeguard: if it looks like a Deck FQN but wasn't cataloged, raise error.
     if "deck" in asset_fqn.lower() or "Deck" in asset_fqn:
       try:
         module_path, class_name = asset_fqn.rsplit(".", 1)

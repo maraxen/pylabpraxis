@@ -13,7 +13,7 @@ from praxis.backend.core.protocol_code_manager import (
   ProtocolCodeManager,
   temporary_sys_path,
 )
-from praxis.backend.models import FunctionProtocolDefinitionModel
+from praxis.backend.models import FunctionProtocolDefinitionCreate
 
 
 def make_protocol_def_orm(
@@ -52,11 +52,11 @@ def make_pydantic_def(
   source_file_path: str = "/tmp/file.py",
   module_name: str = "dummy_module",
   function_name: str = "dummy_func",
-) -> FunctionProtocolDefinitionModel:
-  """Create a dummy FunctionProtocolDefinitionModel with only required fields."""
+) -> FunctionProtocolDefinitionCreate:
+  """Create a dummy FunctionProtocolDefinitionCreate with only required fields."""
   if accession_id is None:
     accession_id = uuid.UUID("018f4a3b-3c48-7c87-8c4c-35e6a172c74d")
-  return FunctionProtocolDefinitionModel(
+  return FunctionProtocolDefinitionCreate(
     accession_id=accession_id,
     name=name,
     version=version,
@@ -98,7 +98,7 @@ def test_load_protocol_function_success(monkeypatch) -> None:
   monkeypatch.setitem(sys.modules, module_name, dummy_mod)
   func, pdef = pcm._load_protocol_function(module_name, function_name)
   assert func is dummy_func
-  assert isinstance(pdef, FunctionProtocolDefinitionModel)
+  assert isinstance(pdef, FunctionProtocolDefinitionCreate)
 
 
 def test_load_protocol_function_missing_func(monkeypatch) -> None:
@@ -177,7 +177,7 @@ async def test_prepare_protocol_code_git(monkeypatch) -> None:
   )
   func, pdef = await pcm.prepare_protocol_code(orm)
   assert callable(func)
-  assert isinstance(pdef, FunctionProtocolDefinitionModel)
+  assert isinstance(pdef, FunctionProtocolDefinitionCreate)
 
 
 @pytest.mark.asyncio
@@ -201,7 +201,7 @@ async def test_prepare_protocol_code_filesystem(monkeypatch, tmp_path) -> None:
   )
   func, pdef = await pcm.prepare_protocol_code(orm)
   assert callable(func)
-  assert isinstance(pdef, FunctionProtocolDefinitionModel)
+  assert isinstance(pdef, FunctionProtocolDefinitionCreate)
 
 
 @pytest.mark.asyncio
@@ -220,4 +220,4 @@ async def test_prepare_protocol_code_direct_import(monkeypatch) -> None:
   )
   func, pdef = await pcm.prepare_protocol_code(orm)
   assert callable(func)
-  assert isinstance(pdef, FunctionProtocolDefinitionModel)
+  assert isinstance(pdef, FunctionProtocolDefinitionCreate)

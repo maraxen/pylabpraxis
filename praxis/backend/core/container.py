@@ -9,8 +9,27 @@ https://python-dependency-injector.ets-labs.org/
 
 import typing
 
+from celery import Celery
 from dependency_injector import containers, providers
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+import redis.asyncio as redis
+
+from .asset_lock_manager import AssetLockManager
+from .celery import celery_app, configure_celery_app
+from .asset_manager import AssetManager
+from .protocol_code_manager import ProtocolCodeManager
+from .workcell import Workcell
+from .workcell_runtime import WorkcellRuntime
+from praxis.backend.services.deck import DeckService
+from praxis.backend.services.machine import MachineService
+from praxis.backend.services.resource import ResourceService
+from .scheduler import ProtocolScheduler
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.services.resource_type_definition import (
+    ResourceTypeDefinitionService,
+)
 
 class Container(containers.DeclarativeContainer):
 
@@ -77,6 +96,17 @@ class Container(containers.DeclarativeContainer):
     # The config provider allows injecting configuration values from YAML, .env files, etc.
     config = providers.Configuration(strict=True)
 
+    # --- Redis ---
+    redis_client: providers.Singleton[redis.Redis] = providers.Singleton(
+        redis.Redis.from_url,
+        url=config.redis.url,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+
+    # --- Celery ---
+    celery_app: providers.Object[Celery] = providers.Object(celery_app)
+
     # --- Core Services (Example of different lifetimes) ---
 
     # Singleton provider: one instance for the entire app lifecycle.
@@ -106,6 +136,53 @@ class Container(containers.DeclarativeContainer):
 
     # --- Service Providers ---
     # Services will be registered here as we refactor them.
+    asset_lock_manager: providers.Singleton[AssetLockManager] = providers.Singleton(
+        AssetLockManager,
+        redis_client=redis_client,
+    )
+
+    protocol_code_manager: providers.Singleton[ProtocolCodeManager] = providers.Singleton(
+        ProtocolCodeManager,
+    )
+
+    workcell_runtime: providers.Singleton[WorkcellRuntime] = providers.Singleton(
+        WorkcellRuntime,
+    )
+
+    workcell: providers.Singleton[Workcell] = providers.Singleton(
+        Workcell,
+        name=config.workcell.name,
+        save_file=config.workcell.save_file,
+        backup_interval=config.workcell.backup_interval.as_int(),
+        num_backups=config.workcell.num_backups.as_int(),
+    )
+
+    deck_service: providers.Singleton[DeckService] = providers.Singleton(DeckService)
+    machine_service: providers.Singleton[MachineService] = providers.Singleton(MachineService)
+    resource_service: providers.Singleton[ResourceService] = providers.Singleton(ResourceService)
+    resource_type_definition_service: providers.Singleton[ResourceTypeDefinitionService] = providers.Singleton(ResourceTypeDefinitionService)
+
+    protocol_run_service: providers.Singleton[ProtocolRunService] = providers.Singleton(ProtocolRunService)
+    protocol_definition_service: providers.Singleton[ProtocolDefinitionCRUDService] = providers.Singleton(ProtocolDefinitionCRUDService)
+
+    scheduler: providers.Singleton[ProtocolScheduler] = providers.Singleton(
+        ProtocolScheduler,
+        db_session_factory=db_session_factory,
+        celery_app=celery_app,
+        protocol_run_service=protocol_run_service,
+        protocol_definition_service=protocol_definition_service,
+    )
+
+    asset_manager: providers.Factory[AssetManager] = providers.Factory(
+        AssetManager,
+        db_session=db_session,
+        workcell_runtime=workcell_runtime,
+        deck_service=deck_service,
+        machine_service=machine_service,
+        resource_service=resource_service,
+        resource_type_definition_service=resource_type_definition_service,
+    )
+
     # For now, keeping the existing orchestrator provider as an example.
     orchestrator = providers.Factory(
         "praxis.backend.core.orchestrator.Orchestrator",

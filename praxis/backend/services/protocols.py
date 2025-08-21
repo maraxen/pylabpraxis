@@ -24,6 +24,7 @@ from praxis.backend.models.orm.protocol import (
   ProtocolRunOrm,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.models.pydantic_internals.protocol import (
   ProtocolRunCreate,
   ProtocolRunStatusEnum,
@@ -242,3 +243,57 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
 
 
 protocol_run_service = ProtocolRunService(ProtocolRunOrm)
+
+
+@handle_db_transaction
+async def log_function_call_start(
+    db: AsyncSession,
+    protocol_run_orm_accession_id: uuid.UUID,
+    function_definition_accession_id: uuid.UUID,
+    sequence_in_run: int,
+    input_args_json: str,
+    parent_function_call_log_accession_id: uuid.UUID | None = None,
+) -> FunctionCallLogOrm:
+    """Log the start of a function call."""
+    db_obj = FunctionCallLogOrm(
+        protocol_run_accession_id=protocol_run_orm_accession_id,
+        function_protocol_definition_accession_id=function_definition_accession_id,
+        sequence_in_run=sequence_in_run,
+        input_args_json=json.loads(input_args_json),
+        parent_function_call_log_accession_id=parent_function_call_log_accession_id,
+        status=FunctionCallStatusEnum.SUCCESS,
+    )
+    db.add(db_obj)
+    await db.flush()
+    await db.refresh(db_obj)
+    return db_obj
+
+
+@handle_db_transaction
+async def log_function_call_end(
+    db: AsyncSession,
+    function_call_log_accession_id: uuid.UUID,
+    status: FunctionCallStatusEnum,
+    return_value_json: str | None = None,
+    error_message: str | None = None,
+    error_traceback: str | None = None,
+    duration_ms: float | None = None,
+) -> FunctionCallLogOrm | None:
+    """Log the end of a function call."""
+    stmt = select(FunctionCallLogOrm).filter(
+        FunctionCallLogOrm.accession_id == function_call_log_accession_id
+    )
+    result = await db.execute(stmt)
+    db_obj = result.scalar_one_or_none()
+    if db_obj:
+        db_obj.status = status
+        db_obj.end_time = datetime.datetime.now(datetime.timezone.utc)
+        if return_value_json:
+            db_obj.return_value_json = json.loads(return_value_json)
+        db_obj.error_message_text = error_message
+        db_obj.error_traceback_text = error_traceback
+        if duration_ms:
+            db_obj.completed_duration_ms = int(duration_ms)
+        await db.flush()
+        await db.refresh(db_obj)
+    return db_obj

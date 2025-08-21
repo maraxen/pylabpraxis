@@ -133,7 +133,8 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     "data_value_text",
     "file_path",
   )
-  def validate_data_content(self, v, values):
+  @classmethod
+  def validate_data_content(cls, v, values):
     """Ensure at least one data field is provided."""
     data_fields = [
       values.get("data_value_numeric"),
