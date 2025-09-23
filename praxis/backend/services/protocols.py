@@ -48,6 +48,14 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
     """Create a new protocol run instance."""
+    # Validate that the protocol definition exists.
+    stmt = select(FunctionProtocolDefinitionOrm).filter_by(
+        accession_id=obj_in.top_level_protocol_definition_accession_id
+    )
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none() is None:
+        raise ValueError("Protocol definition not found.")
+
     run_accession_id = uuid7()
     logger.info(
       "Creating new protocol run with GUID '%s' for definition ID %s.",
