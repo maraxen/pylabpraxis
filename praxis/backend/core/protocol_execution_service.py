@@ -12,64 +12,43 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import praxis.backend.services as svc
-from praxis.backend.core.asset_manager import AssetManager
-from praxis.backend.core.orchestrator import Orchestrator
-from praxis.backend.core.protocol_code_manager import ProtocolCodeManager
-from praxis.backend.core.scheduler import ProtocolScheduler
-from praxis.backend.core.workcell_runtime import WorkcellRuntime
-from praxis.backend.models import ProtocolRunStatusEnum
+from praxis.backend.core.protocols.asset_manager import IAssetManager
+from praxis.backend.core.protocols.orchestrator import IOrchestrator
+from praxis.backend.core.protocols.protocol_execution_service import IProtocolExecutionService
+from praxis.backend.core.protocols.scheduler import IProtocolScheduler
+from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
+from praxis.backend.models import ProtocolRunOrm, ProtocolRunStatusEnum
+from praxis.backend.models.pydantic_internals.protocol import ProtocolRunCreate
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)
 
 
-class ProtocolExecutionService:
+class ProtocolExecutionService(IProtocolExecutionService):
 
-  """High-level service for protocol execution management.
-
-  This service orchestrates the entire protocol execution workflow:
-  1. Creates protocol runs in the database
-  2. Uses the Scheduler to analyze resource requirements and queue execution
-  3. Coordinates with Celery workers for async execution
-  4. Provides status monitoring and control capabilities
-  """
+  """High-level service for protocol execution management."""
 
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
-    asset_manager: AssetManager,
-    workcell_runtime: WorkcellRuntime,
-    scheduler: ProtocolScheduler | None = None,
-    orchestrator: Orchestrator | None = None,
+    asset_manager: IAssetManager,
+    workcell_runtime: IWorkcellRuntime,
+    scheduler: IProtocolScheduler,
+    orchestrator: IOrchestrator,
+    protocol_run_service: ProtocolRunService,
+    protocol_definition_service: ProtocolDefinitionCRUDService,
   ) -> None:
-    """Initialize the Protocol Execution Service.
-
-    Args:
-        db_session_factory: Factory for creating database sessions.
-        asset_manager: AssetManager instance for resource management.
-        workcell_runtime: WorkcellRuntime instance for live object management.
-        scheduler: Optional ProtocolScheduler instance. If None, creates a new one.
-        orchestrator: Optional Orchestrator instance. If None, creates a new one.
-
-    """
+    """Initialize the Protocol Execution Service."""
     self.db_session_factory = db_session_factory
     self.asset_manager = asset_manager
     self.workcell_runtime = workcell_runtime
-
-    # Initialize scheduler with dependency injection
-    self.scheduler = scheduler or ProtocolScheduler(db_session_factory)
-
-    # Initialize orchestrator with all its dependencies
-    protocol_code_manager = ProtocolCodeManager()
-    self.orchestrator = orchestrator or Orchestrator(
-      db_session_factory=db_session_factory,
-      asset_manager=asset_manager,
-      workcell_runtime=workcell_runtime,
-      protocol_code_manager=protocol_code_manager,
-    )
-
+    self.scheduler = scheduler
+    self.orchestrator = orchestrator
+    self.protocol_run_service = protocol_run_service
+    self.protocol_definition_service = protocol_definition_service
     logger.info("ProtocolExecutionService initialized.")
 
   async def execute_protocol_immediately(
@@ -80,24 +59,8 @@ class ProtocolExecutionService:
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ):
-    """Execute a protocol immediately (synchronously) without scheduling.
-
-    This bypasses the scheduler and executes the protocol directly.
-    Useful for testing, debugging, or immediate execution scenarios.
-
-    Args:
-        protocol_name: Name of the protocol to execute.
-        user_input_params: User-provided parameters.
-        initial_state_data: Initial state data.
-        protocol_version: Specific version of the protocol.
-        commit_hash: Specific commit hash if from Git source.
-        source_name: Name of the protocol source.
-
-    Returns:
-        The ProtocolRunOrm object representing the execution result.
-
-    """
+  ) -> ProtocolRunOrm:
+    """Execute a protocol immediately (synchronously) without scheduling."""
     logger.info(
       "Executing protocol '%s' immediately (bypassing scheduler)", protocol_name,
     )
@@ -119,28 +82,8 @@ class ProtocolExecutionService:
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ):
-    """Schedule a protocol for asynchronous execution via the scheduler.
-
-    This creates a protocol run, analyzes resource requirements,
-    reserves resources, and queues the execution with Celery.
-
-    Args:
-        protocol_name: Name of the protocol to execute.
-        user_input_params: User-provided parameters.
-        initial_state_data: Initial state data.
-        protocol_version: Specific version of the protocol.
-        commit_hash: Specific commit hash if from Git source.
-        source_name: Name of the protocol source.
-
-    Returns:
-        The ProtocolRunOrm object representing the scheduled run.
-
-    Raises:
-        ValueError: If protocol definition is not found.
-        RuntimeError: If scheduling fails.
-
-    """
+  ) -> ProtocolRunOrm:
+    """Schedule a protocol for asynchronous execution via the scheduler."""
     logger.info("Scheduling protocol '%s' for asynchronous execution", protocol_name)
 
     user_input_params = user_input_params or {}
@@ -149,7 +92,7 @@ class ProtocolExecutionService:
 
     async with self.db_session_factory() as db_session:
       # Get protocol definition
-      protocol_def_orm = await svc.read_protocol_definition_by_name(
+      protocol_def_orm = await self.protocol_definition_service.get_by_name(
         db=db_session,
         name=protocol_name,
         version=protocol_version,
@@ -166,13 +109,15 @@ class ProtocolExecutionService:
         raise ValueError(error_msg)
 
       # Create protocol run record
-      protocol_run_orm = await svc.create_protocol_run(
+      protocol_run_orm = await self.protocol_run_service.create(
         db=db_session,
-        run_accession_id=run_accession_id,
-        top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
-        status=ProtocolRunStatusEnum.PREPARING,
-        input_parameters_json=json.dumps(user_input_params),
-        initial_state_json=json.dumps(initial_state_data),
+        obj_in=ProtocolRunCreate(
+          run_accession_id=run_accession_id,
+          top_level_protocol_definition_accession_id=protocol_def_orm.accession_id,
+          status=ProtocolRunStatusEnum.PREPARING,
+          input_parameters_json=user_input_params,
+          initial_state_json=initial_state_data,
+        ),
       )
       await db_session.flush()
       await db_session.refresh(protocol_run_orm)
@@ -196,22 +141,14 @@ class ProtocolExecutionService:
   async def get_protocol_run_status(
     self, protocol_run_id: uuid.UUID,
   ) -> dict[str, Any] | None:
-    """Get the current status of a protocol run.
-
-    Args:
-        protocol_run_id: UUID of the protocol run.
-
-    Returns:
-        Dictionary with run status information, or None if not found.
-
-    """
+    """Get the current status of a protocol run."""
     # Check scheduler status first
     schedule_status = await self.scheduler.get_schedule_status(protocol_run_id)
 
     # Get database status
     async with self.db_session_factory() as db_session:
-      protocol_run_orm = await svc.read_protocol_run(
-        db_session, run_accession_id=protocol_run_id,
+      protocol_run_orm = await self.protocol_run_service.get(
+        db_session, accession_id=protocol_run_id,
       )
 
       if not protocol_run_orm:
@@ -243,22 +180,14 @@ class ProtocolExecutionService:
       # Add output data if available
       if protocol_run_orm.output_data_json:
         try:
-          status_info["output_data"] = json.load(protocol_run_orm.output_data_json)  # type: ignore
+          status_info["output_data"] = json.load(protocol_run_orm.output_data_json)  # type: ignore[no-untyped-call]
         except json.JSONDecodeError:
           status_info["output_data_raw"] = protocol_run_orm.output_data_json
 
       return status_info
 
   async def cancel_protocol_run(self, protocol_run_id: uuid.UUID) -> bool:
-    """Cancel a protocol run.
-
-    Args:
-        protocol_run_id: UUID of the protocol run to cancel.
-
-    Returns:
-        True if successfully cancelled, False otherwise.
-
-    """
+    """Cancel a protocol run."""
     logger.info("Cancelling protocol run %s", protocol_run_id)
 
     # Cancel in scheduler (releases resources and stops Celery task if possible)
@@ -267,7 +196,7 @@ class ProtocolExecutionService:
     # Update database status
     async with self.db_session_factory() as db_session:
       try:
-        await svc.update_protocol_run_status(
+        await self.protocol_run_service.update_run_status(
           db_session,
           protocol_run_id,
           ProtocolRunStatusEnum.CANCELLED,
@@ -280,11 +209,10 @@ class ProtocolExecutionService:
         )
         await db_session.commit()
         database_cancelled = True
-      except Exception as e:
+      except Exception:
         logger.exception(
-          "Failed to update database status for cancelled run %s: %s",
+          "Failed to update database status for cancelled run %s",
           protocol_run_id,
-          e,
         )
         database_cancelled = False
 

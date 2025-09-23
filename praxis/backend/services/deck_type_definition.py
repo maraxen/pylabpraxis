@@ -1,11 +1,12 @@
 """Service layer for Deck Type Definition Management."""
 
 import inspect
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.deck import DeckDefinitionOrm
+from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckPositionDefinitionOrm
 from praxis.backend.models.pydantic_internals.deck import (
   DeckTypeDefinitionCreate,
   DeckTypeDefinitionUpdate,
@@ -92,3 +93,15 @@ class DeckTypeDefinitionCRUDService(
 ):
 
   """CRUD service for deck type definitions."""
+
+  async def read_position_definitions_for_deck_type(
+    self,
+    db_session: AsyncSession,
+    deck_type_id: uuid.UUID,
+  ) -> list[DeckPositionDefinitionOrm]:
+    """Read all position definitions for a given deck type."""
+    stmt = select(DeckPositionDefinitionOrm).where(
+      DeckPositionDefinitionOrm.deck_type_id == deck_type_id
+    )
+    result = await db_session.execute(stmt)
+    return list(result.scalars().all())

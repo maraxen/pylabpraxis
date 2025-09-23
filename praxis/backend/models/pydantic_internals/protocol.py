@@ -312,6 +312,7 @@ class ProtocolRunCreate(ProtocolRunBase, PraxisBaseModel):
 
   """Model for creating a new protocol run."""
 
+  run_accession_id: UUID7
   top_level_protocol_definition_accession_id: UUID7
 
 

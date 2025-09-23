@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.resource import (
@@ -188,6 +189,33 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       resource_orm.name,
     )
     return resource_orm
+
+  @handle_db_transaction
+  async def update_resource_location_and_status(
+      self,
+      db: AsyncSession,
+      *,
+      resource_accession_id: uuid.UUID,
+      new_status: ResourceStatusEnum,
+      status_details: str | None = None,
+      location_machine_accession_id: uuid.UUID | None = None,
+      current_deck_position_name: str | None = None,
+  ) -> ResourceOrm | None:
+      """Update the location and status of a resource."""
+      resource = await self.get(db, resource_accession_id)
+      if not resource:
+          return None
+
+      update_data = {
+          "status": new_status,
+          "status_details": status_details,
+          "machine_location_accession_id": location_machine_accession_id,
+          "current_deck_position_name": current_deck_position_name,
+      }
+      # Filter out None values so we don't overwrite existing values with None
+      update_data = {k: v for k, v in update_data.items() if v is not None}
+
+      return await self.update(db, db_obj=resource, obj_in=ResourceUpdate(**update_data))
 
 
 resource_service = ResourceService(ResourceOrm)

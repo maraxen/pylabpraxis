@@ -14,12 +14,11 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from celery.utils.log import get_task_logger
-from dependency_injector.wiring import inject, Provide
+from dependency_injector.wiring import Provide, inject
 
 from praxis.backend.core.celery import celery_app
 from praxis.backend.core.container import Container
 from praxis.backend.models import ProtocolRunStatusEnum
-from praxis.backend.services.protocols import protocol_run_service
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.logging import get_logger
 
@@ -29,7 +28,8 @@ if TYPE_CHECKING:
     from celery import Task
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    from praxis.backend.core.orchestrator import Orchestrator
+    from praxis.backend.core.protocols.orchestrator import IOrchestrator
+    from praxis.backend.services.protocols import ProtocolRunService
 
 # Standard loggers
 task_logger = get_task_logger(__name__)
@@ -44,8 +44,9 @@ def execute_protocol_run_task(
     protocol_run_id: uuid.UUID,
     input_parameters: dict[str, Any],
     initial_state: dict[str, Any] | None = None,
-    orchestrator: Orchestrator = Provide[Container.orchestrator],
+    orchestrator: IOrchestrator = Provide[Container.orchestrator],
     db_session_factory: async_sessionmaker[AsyncSession] = Provide[Container.db_session_factory],
+    protocol_run_service: ProtocolRunService = Provide[Container.protocol_run_service],
 ) -> dict[str, Any]:
     """Celery task to execute a full protocol run."""
     task_logger.info(
@@ -63,6 +64,7 @@ def execute_protocol_run_task(
                 self.request.id,
                 orchestrator,
                 db_session_factory,
+                protocol_run_service,
             ),
         )
         task_logger.info("Protocol execution task completed for run_id=%s", protocol_run_id)
@@ -71,11 +73,18 @@ def execute_protocol_run_task(
         error_msg = f"Protocol execution failed for run_id={protocol_run_id}: {e}"
         task_logger.exception(error_msg)
         try:
-            asyncio.run(_update_run_status_on_error(protocol_run_id, str(e), db_session_factory))
-        except Exception as update_error:
+            asyncio.run(
+                _update_run_status_on_error(
+                    protocol_run_id,
+                    str(e),
+                    db_session_factory,
+                    protocol_run_service,
+                ),
+            )
+        except Exception:
             task_logger.critical(
-                "Critical error: Failed to update protocol run status after task failure. Error: %s",
-                update_error,
+                "Critical error: Failed to update protocol run status after task failure.",
+                exc_info=True,
             )
         return {"success": False, "error": error_msg}
     else:
@@ -87,28 +96,30 @@ async def _execute_protocol_async(
     input_parameters: dict[str, Any],
     initial_state: dict[str, Any] | None,
     celery_task_id: str,
-    orchestrator: Orchestrator,
+    orchestrator: IOrchestrator,
     db_session_factory: async_sessionmaker[AsyncSession],
+    protocol_run_service: ProtocolRunService,
 ) -> dict[str, Any]:
     """Asynchronously executes a protocol run using the Orchestrator."""
     validated_initial_state: PraxisState | None = None
     if initial_state is not None:
         try:
-            validated_initial_state = PraxisState.model_validate(initial_state)
+            validated_initial_state = PraxisState(run_accession_id=protocol_run_id)
+            validated_initial_state.update(initial_state)
         except Exception as e:
             msg = f"Invalid initial_state format: {e}"
             raise ValueError(msg) from e
 
     async with db_session_factory() as db_session:
         try:
-            protocol_run_orm = await protocol_run_service.read_protocol_run(
-                db_session, run_accession_id=protocol_run_id,
+            protocol_run_orm = await protocol_run_service.get(
+                db_session, accession_id=protocol_run_id,
             )
             if not protocol_run_orm:
                 msg = f"Protocol run {protocol_run_id} not found."
                 raise ValueError(msg)
 
-            await protocol_run_service.update_protocol_run_status(
+            await protocol_run_service.update_run_status(
                 db=db_session,
                 protocol_run_accession_id=protocol_run_orm.accession_id,
                 new_status=ProtocolRunStatusEnum.RUNNING,
@@ -122,7 +133,9 @@ async def _execute_protocol_async(
             await db_session.commit()
 
             result_run_orm = await orchestrator.execute_existing_protocol_run(
-                protocol_run_orm, input_parameters, validated_initial_state,
+                protocol_run_orm,
+                input_parameters,
+                validated_initial_state.to_dict() if validated_initial_state else None,
             )
 
             return {
@@ -131,22 +144,19 @@ async def _execute_protocol_async(
                 "final_status": result_run_orm.status.value,
                 "message": "Protocol executed successfully via Orchestrator.",
             }
-        except Exception as e:
-            task_logger.error(
-                "Error during async protocol execution for run_id=%s: %s",
+        except Exception:
+            task_logger.exception(
+                "Error during async protocol execution for run_id=%s",
                 protocol_run_id,
-                e,
-                exc_info=True,
             )
             await db_session.rollback()
-            await protocol_run_service.update_protocol_run_status(
+            await protocol_run_service.update_run_status(
                 db=db_session,
                 protocol_run_accession_id=protocol_run_id,
                 new_status=ProtocolRunStatusEnum.FAILED,
                 output_data_json=json.dumps(
                     {
-                        "error": str(e),
-                        "status": "Protocol execution failed in Celery worker.",
+                        "error": "Protocol execution failed in Celery worker.",
                     },
                 ),
             )
@@ -158,11 +168,12 @@ async def _update_run_status_on_error(
     protocol_run_id: uuid.UUID,
     error_message: str,
     db_session_factory: async_sessionmaker[AsyncSession],
+    protocol_run_service: ProtocolRunService,
 ) -> None:
-    """A final-resort function to update a protocol run's status to FAILED."""
+    """Update a protocol run's status to FAILED as a final resort."""
     async with db_session_factory() as db_session:
         try:
-            await protocol_run_service.update_protocol_run_status(
+            await protocol_run_service.update_run_status(
                 db=db_session,
                 protocol_run_accession_id=protocol_run_id,
                 new_status=ProtocolRunStatusEnum.FAILED,
@@ -177,17 +188,17 @@ async def _update_run_status_on_error(
             task_logger.info(
                 "Successfully updated run_id=%s to FAILED status.", protocol_run_id,
             )
-        except Exception as e:
+        except Exception:
             task_logger.critical(
-                "Could not update run status for run_id=%s. DB may be unreachable. Error: %s",
+                "Could not update run status for run_id=%s. DB may be unreachable.",
                 protocol_run_id,
-                e,
+                exc_info=True,
             )
 
 
 @celery_app.task(name="health_check")
 def health_check() -> dict[str, str]:
-    """A simple health check task to verify that Celery workers are responsive."""
+    """Verify that Celery workers are responsive."""
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),

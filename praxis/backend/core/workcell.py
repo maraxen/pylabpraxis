@@ -11,31 +11,26 @@ allowing them to access only the assets they have explicitly declared as require
 """
 
 import json
-from typing import IO, TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import inflection  # pyright: ignore[reportMissingImports]
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Resource
 
+from praxis.backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
+from praxis.backend.utils.logging import get_logger
+
+from .protocols.filesystem import IFileSystem
+from .protocols.workcell import IWorkcell
+
 if TYPE_CHECKING:
   from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
 
-from praxis.backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
-from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class FileSystem(Protocol):
-
-  """A protocol for file system operations."""
-
-  def open(self, file: str, mode: str = "r", encoding: str | None = None) -> IO[Any]:
-    """Open a file and return a file object."""
-    ...
-
-
-class Workcell:
+class Workcell(IWorkcell):
 
   """A dynamic, in-memory container for live PyLabRobot objects.
 
@@ -53,7 +48,7 @@ class Workcell:
     self,
     name: str,
     save_file: str,
-    file_system: FileSystem,
+    file_system: IFileSystem,
     backup_interval: int = 60,
     num_backups: int = 3,
   ) -> None:
@@ -79,7 +74,7 @@ class Workcell:
     self.backup_interval = backup_interval
     self.num_backups = num_backups
     self.backup_num: int = 0
-    self.fs: FileSystem = file_system
+    self.fs: IFileSystem = file_system
 
     self.refs: dict[str, dict[str, Resource | Machine]] = {}
     self.children: list[Resource | Machine] = []
