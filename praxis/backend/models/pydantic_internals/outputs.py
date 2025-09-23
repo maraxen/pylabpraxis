@@ -77,7 +77,7 @@ class FunctionDataOutputBase(BaseModel):
 
 
 class FunctionDataOutputCreate(FunctionDataOutputBase):
-
+  name: str = "default_name"
   """Model for creating function data outputs."""
 
   function_call_log_accession_id: UUID7 = Field(
