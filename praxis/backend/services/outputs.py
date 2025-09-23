@@ -58,12 +58,14 @@ class FunctionDataOutputCRUDService(
     obj_in: FunctionDataOutputCreate,
   ) -> FunctionDataOutputOrm:
     """Create a new function data output record."""
-    log_prefix = f"Data Output (Type: {obj_in.data_type.value}, Key: '{obj_in.data_key}'):"
+    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
+    data_type_enum = DataOutputTypeEnum(obj_in.data_type)
+    log_prefix = f"Data Output (Type: {data_type_enum.value}, Key: '{obj_in.data_key}'):"
     logger.info("%s Creating new function data output.", log_prefix)
 
     # Create the ORM instance
     data_output_orm = FunctionDataOutputOrm(
-      **obj_in.model_dump(),
+      **obj_in.model_dump(exclude={"measurement_timestamp"}),
       measurement_timestamp=obj_in.measurement_timestamp
       or datetime.datetime.now(datetime.timezone.utc),
     )
@@ -85,16 +87,7 @@ class FunctionDataOutputCRUDService(
   ) -> FunctionDataOutputOrm | None:
     """Read a function data output by ID."""
     result = await db.execute(
-      select(self.model)
-      .options(
-        joinedload(self.model.function_call_log),
-        joinedload(self.model.protocol_run),
-        joinedload(self.model.resource),
-        joinedload(self.model.machine),
-        joinedload(self.model.deck),
-        selectinload(self.model.well_data_outputs),
-      )
-      .filter(self.model.accession_id == accession_id),
+        select(self.model).filter(self.model.accession_id == accession_id)
     )
 
     return result.scalar_one_or_none()
