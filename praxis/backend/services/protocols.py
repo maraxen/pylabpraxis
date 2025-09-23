@@ -48,6 +48,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
     """Create a new protocol run instance."""
+
     logger.info(
       "Creating new protocol run with GUID '%s' for definition ID %s.",
       obj_in.run_accession_id,
