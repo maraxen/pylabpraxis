@@ -286,6 +286,7 @@ async def _create_or_link_machine_counterpart_for_resource(
   )
   db.add(new_machine_counterpart)
   await db.flush()
+  resource_orm.machine_counterpart = new_machine_counterpart
   logger.info(
     "%s Created and linked new MachineOrm ID %s.",
     log_prefix,

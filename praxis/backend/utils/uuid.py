@@ -21,6 +21,7 @@ def uuid7() -> uuid.UUID:
       uuid.UUID: A UUID7 instance as a standard Python UUID object.
 
   """
+
   return uuid.UUID(str(uuid_utils.uuid7()))
 
 
@@ -32,6 +33,7 @@ def uuid4() -> uuid.UUID:
 
   """
   return uuid.uuid4()
+
 
 def generate_name(prefix: str) -> str:
   """Generate a default name."""
