@@ -672,6 +672,12 @@ class ProtocolRunOrm(Base):
     comment="Foreign key to the previous protocol run in a continuation chain.",
     default=None,
   )
+  duration_ms: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    comment="Duration of the protocol run in milliseconds.",
+    default=None,
+  )
   continuing_from_accession_id: Mapped["ProtocolRunOrm | None"] = relationship(
     "ProtocolRunOrm",
     back_populates="continuations",

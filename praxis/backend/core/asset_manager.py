@@ -10,7 +10,7 @@ from pylabrobot.resources import Deck
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.core.protocols.asset_lock_manager import IAssetLockManager
-from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
 from praxis.backend.models.orm.deck import DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
 from praxis.backend.models.orm.resource import (
@@ -60,7 +60,7 @@ class AssetManager:
   def __init__(
       self,
       db_session: AsyncSession,
-      workcell_runtime: WorkcellRuntime,
+      workcell_runtime: IWorkcellRuntime,
       deck_service: DeckService,
       machine_service: MachineService,
       resource_service: ResourceService,

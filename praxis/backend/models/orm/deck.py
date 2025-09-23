@@ -286,7 +286,7 @@ class DeckPositionDefinitionOrm(Base):
     comment="Foreign key to the parent deck type definition.",
     kw_only=True,
   )
-  position_name: Mapped[str] = mapped_column(
+  position_accession_id: Mapped[str] = mapped_column(
     String,
     nullable=False,
     index=True,
@@ -294,19 +294,19 @@ class DeckPositionDefinitionOrm(Base):
     kw_only=True,
   )
 
-  x_coord: Mapped[float] = mapped_column(
+  nominal_x_mm: Mapped[float] = mapped_column(
     Float,
     nullable=False,
     comment="X-coordinate of the position's center.",
     default=0.0,
   )
-  y_coord: Mapped[float] = mapped_column(
+  nominal_y_mm: Mapped[float] = mapped_column(
     Float,
     nullable=False,
     comment="Y-coordinate of the position's center.",
     default=0.0,
   )
-  z_coord: Mapped[float] = mapped_column(
+  nominal_z_mm: Mapped[float] = mapped_column(
     Float,
     nullable=False,
     comment="Z-coordinate of the position's center.",

@@ -355,3 +355,21 @@ class MachineOrm(AssetOrm):
       f"<MachineOrm(id={self.accession_id}, name='{self.name}', "
       f"category='{self.machine_category.value}', status='{self.status.value}')>"
     )
+
+  @property
+  def is_machine(self) -> bool:
+    """Return True if the asset is a machine."""
+    return True
+
+  machine_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the machine counterpart of this resource, if applicable.",
+  )
+
+  @property
+  def is_resource(self) -> bool:
+    """Return True if the asset is also a resource."""
+    return self.resource_counterpart_accession_id is not None

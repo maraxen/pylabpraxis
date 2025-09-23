@@ -276,12 +276,19 @@ class ResourceOrm(AssetOrm):
   )
 
   # Counterparts
+  machine_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machines.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the machine counterpart of this resource, if applicable.",
+  )
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="resource_counterpart",
     default=None,
     uselist=False,
-    foreign_keys=[accession_id],
+    foreign_keys=[machine_counterpart_accession_id],
     init=False,
   )
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
@@ -373,3 +380,13 @@ class ResourceOrm(AssetOrm):
       f"<ResourceOrm(accession_id={self.accession_id}, name='{self.name}',"
       f" type='{fqn}')> status={self.status.value}, "
     )
+
+  @property
+  def is_machine(self) -> bool:
+    """Return True if the asset is also a machine."""
+    return self.machine_counterpart_accession_id is not None
+
+  @property
+  def is_resource(self) -> bool:
+    """Return True if the asset is a resource."""
+    return True

@@ -48,21 +48,14 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
     """Create a new protocol run instance."""
-    run_accession_id = uuid7()
     logger.info(
       "Creating new protocol run with GUID '%s' for definition ID %s.",
-      run_accession_id,
+      obj_in.run_accession_id,
       obj_in.top_level_protocol_definition_accession_id,
     )
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     db_protocol_run = self.model(
-      name=obj_in.name,
-      top_level_protocol_definition_accession_id=(
-        obj_in.top_level_protocol_definition_accession_id
-      ),
-      status=obj_in.status if obj_in.status else ProtocolRunStatusEnum.PENDING,
-      input_parameters_json=(obj_in.input_parameters_json if obj_in.input_parameters_json else {}),
-      initial_state_json=(obj_in.initial_state_json if obj_in.initial_state_json else {}),
+      **obj_in.model_dump(),
       start_time=utc_now if obj_in.status != ProtocolRunStatusEnum.PENDING else None,
     )
     db.add(db_protocol_run)
@@ -155,7 +148,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     return protocol_run
 
   @handle_db_transaction
-  async def update_protocol_run_status(
+  async def update_run_status(
     self,
     db: AsyncSession,
     protocol_run_accession_id: uuid.UUID,

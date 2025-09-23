@@ -273,4 +273,18 @@ As agentic models complete work, they should append notes to this section, forma
     *   The refactoring of `scheduler.py` involved creating a `TaskQueue` protocol to decouple the scheduler from the Celery library, which makes the system more modular.
     *   Addressed a number of `ruff` and `pyright` errors to ensure code quality and type safety. This involved fixing issues with type hints, unused arguments, and logging practices.
 
+## DI Refactoring Phase 4 (23092025)
+
+*   **Task**: Completed Phase 4 of the dependency injection refactoring. This focused on the runtime and execution layer, specifically `workcell_runtime.py`, `protocol_execution_service.py`, and `celery_tasks.py`.
+*   **Summary of Changes**:
+    *   **`workcell_runtime.py`**: Refactored to inject `IWorkcell` and service dependencies, removing direct instantiation of its dependencies. This decouples the runtime management from the creation of the workcell and services.
+    *   **`protocol_execution_service.py`**: Refactored to be a pure orchestration layer, with all dependencies (including `IOrchestrator`, `IProtocolScheduler`, and other services) injected via the constructor. This makes the service fully DI-compliant.
+    *   **`celery_tasks.py`**: The main Celery task was refactored to be a thin wrapper that gets all its dependencies from the DI container at runtime. This removes the use of global service instances within the task body.
+    *   **Protocols**: Introduced several new protocols (`IWorkcell`, `IAssetManager`, `IWorkcellRuntime`, `IProtocolScheduler`, `IOrchestrator`, `IProtocolCodeManager`, `IFileSystem`) to define clear contracts for the services.
+    *   **DI Container**: Updated the main DI container to manage the new services and their dependencies.
+*   **Key Decisions & Obstacles**:
+    *   The refactoring of `workcell_runtime.py` revealed a complex set of dependencies on the service layer, which were resolved by injecting the necessary services.
+    *   A significant amount of time was spent resolving `pyright` errors, which were often caused by incorrect type hints in the existing codebase, missing dependencies in the environment, or subtle issues with the ORM models and Pydantic models.
+    *   The decision was made to ignore some of the `ruff` complexity warnings for now, as refactoring the complex methods was outside the scope of this task.
+
 Once this section exceeds 250 lines, models should summarize the work detailed, remove it, and write the summary under the section titled previous work summary.

@@ -26,9 +26,18 @@ from .asset_lock_manager import AssetLockManager
 from .asset_manager import AssetManager
 from .celery import celery_app
 from .protocol_code_manager import ProtocolCodeManager
+from .protocols.asset_manager import IAssetManager
+from .protocols.filesystem import IFileSystem
+from .protocols.workcell import IWorkcell
+from .protocols.workcell_runtime import IWorkcellRuntime
+from .protocols.orchestrator import IOrchestrator
+from .protocols.protocol_code_manager import IProtocolCodeManager
+from .protocols.protocol_execution_service import IProtocolExecutionService
+from .protocols.scheduler import IProtocolScheduler
 from .scheduler import ProtocolScheduler
 from .workcell import Workcell
 from .workcell_runtime import WorkcellRuntime
+from ..utils.filesystem import RealFileSystem
 
 
 class Container(containers.DeclarativeContainer):
@@ -145,16 +154,26 @@ class Container(containers.DeclarativeContainer):
         ProtocolCodeManager,
     )
 
-    workcell_runtime: providers.Singleton[WorkcellRuntime] = providers.Singleton(
-        WorkcellRuntime,
-    )
+    file_system: providers.Singleton[IFileSystem] = providers.Singleton(RealFileSystem)
 
-    workcell: providers.Singleton[Workcell] = providers.Singleton(
+    workcell: providers.Singleton[IWorkcell] = providers.Singleton(
         Workcell,
         name=config.workcell.name,
         save_file=config.workcell.save_file,
+        file_system=file_system,
         backup_interval=config.workcell.backup_interval.as_int(),
         num_backups=config.workcell.num_backups.as_int(),
+    )
+
+    workcell_runtime: providers.Singleton[IWorkcellRuntime] = providers.Singleton(
+        WorkcellRuntime,
+        db_session_factory=db_session_factory,
+        workcell=workcell,
+        deck_service=providers.Factory(DeckService),
+        machine_service=providers.Factory(MachineService),
+        resource_service=providers.Factory(ResourceService),
+        deck_type_definition_service=providers.Factory(DeckTypeDefinitionCRUDService),
+        workcell_service=providers.Factory(WorkcellService),
     )
 
     deck_service: providers.Singleton[DeckService] = providers.Singleton(DeckService)
@@ -168,7 +187,7 @@ class Container(containers.DeclarativeContainer):
     protocol_run_service: providers.Singleton[ProtocolRunService] = providers.Singleton(ProtocolRunService)
     protocol_definition_service: providers.Singleton[ProtocolDefinitionCRUDService] = providers.Singleton(ProtocolDefinitionCRUDService)
 
-    scheduler: providers.Singleton[ProtocolScheduler] = providers.Singleton(
+    scheduler: providers.Singleton[IProtocolScheduler] = providers.Singleton(
         ProtocolScheduler,
         db_session_factory=db_session_factory,
         celery_app=celery_app,
@@ -176,7 +195,26 @@ class Container(containers.DeclarativeContainer):
         protocol_definition_service=protocol_definition_service,
     )
 
-    asset_manager: providers.Factory[AssetManager] = providers.Factory(
+    orchestrator: providers.Factory[IOrchestrator] = providers.Factory(
+        "praxis.backend.core.orchestrator.Orchestrator",
+        db_session_factory=db_session_factory,
+        asset_manager=asset_manager,
+        workcell_runtime=workcell_runtime,
+        protocol_code_manager=protocol_code_manager,
+    )
+
+    protocol_execution_service: providers.Factory[IProtocolExecutionService] = providers.Factory(
+        "praxis.backend.core.protocol_execution_service.ProtocolExecutionService",
+        db_session_factory=db_session_factory,
+        asset_manager=asset_manager,
+        workcell_runtime=workcell_runtime,
+        scheduler=scheduler,
+        orchestrator=orchestrator,
+        protocol_run_service=protocol_run_service,
+        protocol_definition_service=protocol_definition_service,
+    )
+
+    asset_manager: providers.Factory[IAssetManager] = providers.Factory(
         AssetManager,
         db_session=db_session,
         workcell_runtime=workcell_runtime,
@@ -188,7 +226,3 @@ class Container(containers.DeclarativeContainer):
     )
 
     # For now, keeping the existing orchestrator provider as an example.
-    orchestrator = providers.Factory(
-        "praxis.backend.core.orchestrator.Orchestrator",
-        db_session_factory=db_session_factory,
-    )

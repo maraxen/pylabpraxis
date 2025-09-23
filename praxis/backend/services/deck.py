@@ -183,5 +183,13 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     logger.info("Found %d decks.", len(decks))
     return decks
 
+  async def read_decks_by_machine_id(
+      self, db: AsyncSession, machine_id: uuid.UUID
+  ) -> DeckOrm | None:
+      """Read a deck for a given machine."""
+      stmt = select(self.model).filter(self.model.parent_machine_accession_id == machine_id)
+      result = await db.execute(stmt)
+      return result.scalar_one_or_none()
+
 
 deck_service = DeckService(DeckOrm)

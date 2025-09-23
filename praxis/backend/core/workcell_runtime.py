@@ -17,6 +17,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from functools import partial
 from typing import (
+  TYPE_CHECKING,
   Any,
   cast,
 )
@@ -25,9 +26,11 @@ from pylabrobot.machines import Machine
 from pylabrobot.resources import Coordinate, Deck, Resource
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import praxis.backend.services as svc
-from praxis.backend.configure import PraxisConfiguration
-from praxis.backend.core.workcell import Workcell
+if TYPE_CHECKING:
+  from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
+
+from praxis.backend.core.protocols.workcell import IWorkcell
+from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
 from praxis.backend.models import (
   MachineOrm,
   MachineStatusEnum,
@@ -35,6 +38,13 @@ from praxis.backend.models import (
   ResourceOrm,
   ResourceStatusEnum,
 )
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate
+from praxis.backend.services.deck import DeckService
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionCRUDService
+from praxis.backend.services.machine import MachineService
+from praxis.backend.services.resource import ResourceService
+from praxis.backend.services.workcell import WorkcellService
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
@@ -47,6 +57,8 @@ log_workcell_runtime_errors = partial(
   raises_exception=WorkcellRuntimeError,
 )
 
+COORDINATE_TUPLE_LENGTH = 3
+
 
 def _get_class_from_fqn(class_fqn: str) -> type:
   """Import and return a class dynamically from its fully qualified name."""
@@ -58,7 +70,7 @@ def _get_class_from_fqn(class_fqn: str) -> type:
   return getattr(imported_module, class_name)
 
 
-class WorkcellRuntime:
+class WorkcellRuntime(IWorkcellRuntime):
 
   """Manages live PyLabRobot objects for an active workcell configuration.
 
@@ -70,29 +82,27 @@ class WorkcellRuntime:
   def __init__(
     self,
     db_session_factory: async_sessionmaker[AsyncSession],
-    config: PraxisConfiguration,
+    workcell: IWorkcell,
+    deck_service: DeckService,
+    machine_service: MachineService,
+    resource_service: ResourceService,
+    deck_type_definition_service: DeckTypeDefinitionCRUDService,
+    workcell_service: WorkcellService,
   ) -> None:
-    """Initialize the WorkcellRuntime.
-
-    Args:
-      db_session_factory (async_sessionmaker[AsyncSession]): A factory for SQLAlchemy async sessions.
-      workcell_name (str): The name of the workcell.
-      workcell_save_file (str): The path for disk backups.
-
-    """
+    """Initialize the WorkcellRuntime."""
     self.db_session_factory = db_session_factory
+    self.deck_svc = deck_service
+    self.machine_svc = machine_service
+    self.resource_svc = resource_service
+    self.deck_type_definition_svc = deck_type_definition_service
+    self.workcell_svc = workcell_service
     self._active_machines: dict[uuid.UUID, Machine] = {}
     self._active_resources: dict[uuid.UUID, Resource] = {}
     self._active_decks: dict[uuid.UUID, Deck] = {}
     self._last_initialized_deck_object: Deck | None = None
     self._last_initialized_deck_orm_accession_id: uuid.UUID | None = None
 
-    self._main_workcell = Workcell(
-      name="praxis_workcell",  # Hardcoded name for now, can be configurable later
-      save_file=config.workcell_state_file,
-      backup_interval=60,
-      num_backups=3,
-    )
+    self._main_workcell = workcell
     self._workcell_db_accession_id: uuid.UUID | None = None
     self._state_sync_task: asyncio.Task | None = None
     logger.info("WorkcellRuntime initialized.")
@@ -101,10 +111,12 @@ class WorkcellRuntime:
     """Links the in-memory Workcell to its persistent DB entry."""
     if self._workcell_db_accession_id is None:
       async with self.db_session_factory() as db_session:
-        workcell_orm = await svc.create_workcell(
-          db_session,
-          name=self._main_workcell.name,
-          initial_state=self._main_workcell.serialize_all_state(),
+        workcell_orm = await self.workcell_svc.create(
+          db=db_session,
+          obj_in=WorkcellCreate(
+            name=self._main_workcell.name,
+            latest_state_json=self._main_workcell.serialize_all_state(),
+          ),
         )
         await db_session.commit()
         self._workcell_db_accession_id = workcell_orm.accession_id
@@ -114,7 +126,7 @@ class WorkcellRuntime:
           self._workcell_db_accession_id,
         )
 
-        db_state = await svc.read_workcell_state(
+        db_state = await self.workcell_svc.read_workcell_state(
           db_session,
           self._workcell_db_accession_id,
         )
@@ -137,12 +149,12 @@ class WorkcellRuntime:
     )
     last_disk_backup_time = datetime.datetime.now(datetime.timezone.utc)
 
-    while True:
+    while True: # ruff: noqa: PERF203
       try:
         current_state_json = self._main_workcell.serialize_all_state()
 
         async with self.db_session_factory() as db_session:
-          await svc.update_workcell_state(
+          await self.workcell_svc.update_workcell_state(
             db_session,
             self._workcell_db_accession_id,
             current_state_json,
@@ -160,7 +172,9 @@ class WorkcellRuntime:
             f"_{self._main_workcell.backup_num}.json",
           )
           self._main_workcell.save_state_to_file(disk_backup_path)
-          self._main_workcell.backup_num = (self._main_workcell.backup_num + 1) % self._main_workcell.num_backups
+          self._main_workcell.backup_num = (
+            self._main_workcell.backup_num + 1
+          ) % self._main_workcell.num_backups
           last_disk_backup_time = now
           logger.info(
             "Workcell state for ID %s backed up to disk: %s.",
@@ -171,16 +185,10 @@ class WorkcellRuntime:
       except asyncio.CancelledError:
         logger.info("Workcell state sync loop cancelled.")
         break
-      # Justification: This is a top-level background task loop. A broad except
-      # is necessary to catch any unexpected errors during the sync process,
-      # log them, and allow the loop to continue, preventing the entire
-      # runtime from crashing due to a transient issue.
-      except Exception as e:  # pylint: disable=broad-except
-        logger.error(
-          "Error during continuous workcell state sync for ID %s: %s",
+      except Exception:  # pylint: disable=broad-except
+        logger.exception(
+          "Error during continuous workcell state sync for ID %s",
           self._workcell_db_accession_id,
-          e,
-          exc_info=True,
         )
       finally:
         await asyncio.sleep(5)
@@ -213,13 +221,13 @@ class WorkcellRuntime:
         ".json",
         "_final_exit.json",
       )
-      self._main_workcell.save_state_to_file(final_backup_path)  # type: ignore
+      self._main_workcell.save_state_to_file(final_backup_path)  # type: ignore[no-untyped-call]
       logger.info("Workcell state saved to disk on exit: %s", final_backup_path)
 
     if self._workcell_db_accession_id:
       try:
         async with self.db_session_factory() as db_session:
-          await svc.update_workcell_state(
+          await self.workcell_svc.update_workcell_state(
             db_session,
             self._workcell_db_accession_id,
             self._main_workcell.serialize_all_state(),
@@ -229,16 +237,13 @@ class WorkcellRuntime:
             "Final workcell state for ID %s committed to DB on exit.",
             self._workcell_db_accession_id,
           )
-      # Justification: This is a final cleanup step on shutdown. A broad except
-      # is necessary to log any error without crashing the shutdown process.
-      except Exception as e:  # pylint: disable=broad-except
+      except Exception:  # pylint: disable=broad-except
         logger.exception(
-          "Failed to commit final workcell state to DB on exit for ID %s: %s",
+          "Failed to commit final workcell state to DB on exit for ID %s",
           self._workcell_db_accession_id,
-          e,
         )
 
-  def get_main_workcell(self) -> Workcell:
+  def get_main_workcell(self) -> IWorkcell:
     """Return the main Workcell instance managed by the runtime."""
     if self._main_workcell is None:
       msg = "Main Workcell instance is not initialized."
@@ -264,33 +269,8 @@ class WorkcellRuntime:
     deck_type_id: uuid.UUID,
     position_accession_id: str | int | uuid.UUID,
     positioning_config: PositioningConfig | None,
-  ) -> Coordinate:
-    """Calculate the PyLabRobot Coordinate for a given position_accession_id.
-
-    Based on the deck's positioning configuration or predefined positions, returns the
-    corresponding PyLabRobot Coordinate for the position_accession_id on the target deck.
-    Different Deck subclasses have different human interpretable position descriptions
-    (e.g., "A1", "B2", "C3", etc. for slots, or 1,2,3, etc. for rails), this allows
-    for easy interoperability and informing users of how to set-up a deck.
-
-
-    Args:
-        target_deck (Deck): The live PyLabRobot Deck object.
-        deck_type_id (uuid.UUID): The ID of the associated
-        DeckTypeDefinition.
-        position_accession_id (Union[str, int, uuid.UUID]): The human-interpretable identifier for
-        the position.
-        positioning_config (Optional[PositioningConfig]): The general positioning
-            configuration for the deck type.
-
-    Returns:
-        Coordinate: The calculated PyLabRobot Coordinate.
-
-    Raises:
-        WorkcellRuntimeError: If the location cannot be determined.
-        TypeError: If the position_accession_id is not a valid type for the method.
-
-    """
+  ) -> Coordinate:  # ruff: noqa: C901, PLR0912, PLR0915
+    """Calculate the PyLabRobot Coordinate for a given position_accession_id."""
     if positioning_config is None:
       logger.info(
         "No general positioning config for deck type ID %s, "
@@ -299,9 +279,11 @@ class WorkcellRuntime:
       )
       if isinstance(position_accession_id, str | int | uuid.UUID):
         async with self.db_session_factory() as db_session:
-          all_deck_position_definitions = await svc.read_position_definitions_for_deck_type(
-            db_session,
-            deck_type_id,
+          all_deck_position_definitions = (
+            await self.deck_type_definition_svc.read_position_definitions_for_deck_type(
+              db_session,
+              deck_type_id,
+            )
           )
           found_position_def = next(
             (
@@ -312,11 +294,17 @@ class WorkcellRuntime:
             ),
             None,
           )
-          if found_position_def and found_position_def.nominal_x_mm and found_position_def.nominal_y_mm:
+          if (
+            found_position_def
+            and found_position_def.nominal_x_mm
+            and found_position_def.nominal_y_mm
+          ):
             return Coordinate(
               x=found_position_def.nominal_x_mm,
               y=found_position_def.nominal_y_mm,
-              z=found_position_def.nominal_z_mm if found_position_def.nominal_z_mm is not None else 0.0,
+              z=found_position_def.nominal_z_mm
+              if found_position_def.nominal_z_mm is not None
+              else 0.0,
             )
           msg = (
             f"Position '{position_accession_id}' not found in predefined deck position "
@@ -377,9 +365,6 @@ class WorkcellRuntime:
         raise WorkcellRuntimeError(
           msg,
         ) from e
-      # Justification: This wraps a dynamic call to a PyLabRobot method, which could
-      # raise any number of unexpected errors. Catching broadly ensures we can
-      # provide a detailed error message about the failed dynamic call.
       except Exception as e:  # pylint: disable=broad-except
         logger.exception("Unexpected error when calling PLR method '%s'", method_name)
         msg = f"Unexpected error when calling PLR method '{method_name}': {e}"
@@ -388,7 +373,10 @@ class WorkcellRuntime:
         ) from e
 
       if not isinstance(calculated_location, Coordinate):
-        if isinstance(calculated_location, tuple) and len(calculated_location) == 3:
+        if (
+          isinstance(calculated_location, tuple)
+          and len(calculated_location) == COORDINATE_TUPLE_LENGTH
+        ):
           calculated_location = Coordinate(
             x=calculated_location[0],
             y=calculated_location[1],
@@ -408,24 +396,10 @@ class WorkcellRuntime:
     prefix="WorkcellRuntime: Error initializing machine",
     suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
   )
-  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:
-    """Initialize and connects to a machine's PyLabRobot machine/resource.
-
-    Args:
-      machine_orm (MachineOrm): The ORM representing the machine to
-        initialize.
-
-    Raises:
-      WorkcellRuntimeError: If the machine ORM is invalid, or if the machine
-        initialization fails.
-      ValueError: If the machine ORM does not have a valid ID.
-      TypeError: If the initialized machine is not a valid PyLabRobot Machine instance.
-
-    Returns:
-      Machine: The initialized PyLabRobot machine instance.
-          If the machine already exists in _active_machines, it returns that instance.
-
-    """
+  async def initialize_machine(
+    self, machine_orm: MachineOrm
+  ) -> Machine:  # ruff: noqa: C901, PLR0912, PLR0915
+    """Initialize and connects to a machine's PyLabRobot machine/resource."""
     if not hasattr(machine_orm, "id") or machine_orm.accession_id is None:
       msg = "Invalid machine_orm object passed to initialize_machine (no id)."
       raise WorkcellRuntimeError(
@@ -445,7 +419,8 @@ class WorkcellRuntime:
       machine_orm.is_resource
       and machine_orm.resource_counterpart
       and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart_accession_id == machine_orm.accession_id
+      and machine_orm.resource_counterpart.machine_counterpart_accession_id
+      == machine_orm.accession_id
     ):
       resource_orm = machine_orm.resource_counterpart
       if resource_orm.accession_id in self._active_resources:
@@ -470,7 +445,7 @@ class WorkcellRuntime:
 
     machine_instance: Machine
     if shared_plr_instance:
-      machine_instance = cast(Machine, shared_plr_instance)
+      machine_instance = cast("Machine", shared_plr_instance)
     else:
       logger.info(
         "WorkcellRuntime: Initializing new machine '%s' (ID: %s) using class '%s'.",
@@ -479,12 +454,12 @@ class WorkcellRuntime:
         machine_orm.fqn,
       )
       try:
-        TargetClass = _get_class_from_fqn(machine_orm.fqn)
+        target_class = _get_class_from_fqn(machine_orm.fqn)
         machine_config = machine_orm.properties_json or {}
         instance_name = machine_orm.name
 
         init_params = machine_config.copy()
-        sig = inspect.signature(TargetClass.__init__)
+        sig = inspect.signature(target_class.__init__)
 
         if "name" in sig.parameters:
           init_params["name"] = instance_name
@@ -497,29 +472,31 @@ class WorkcellRuntime:
 
         valid_init_params = {k: v for k, v in init_params.items() if k in sig.parameters}
         extra_params = {k: v for k, v in init_params.items() if k not in sig.parameters}
-        if extra_params and "options" in sig.parameters and isinstance(init_params.get("options"), dict):
+        if (
+          extra_params
+          and "options" in sig.parameters
+          and isinstance(init_params.get("options"), dict)
+        ):
           valid_init_params.setdefault("options", {}).update(extra_params)
         elif extra_params and "options" in sig.parameters:
           valid_init_params["options"] = extra_params
         elif extra_params:
           logger.warning(
-            "WorkcellRuntime: Extra parameters in machine_config for %s not accepted by %s.__init__: %s",
+            "WorkcellRuntime: Extra parameters in machine_config for %s not "
+            "accepted by %s.__init__: %s",
             instance_name,
-            TargetClass.__name__,
+            target_class.__name__,
             extra_params.keys(),
           )
 
-        machine_instance = TargetClass(**valid_init_params)
+        machine_instance = target_class(**valid_init_params)
 
         if not isinstance(machine_instance, Machine):
           msg = (
-            f"Machine '{machine_orm.name}' initialized, but it is "
-            f"not a valid PyLabRobot Machine instance. "
-            f"Type is {type(machine_instance).__name__}."
+            f"Machine '{machine_orm.name}' initialized, but it is not a valid PyLabRobot Machine "
+            f"instance. Type is {type(machine_instance).__name__}."
           )
-          raise TypeError(
-            msg,
-          )
+          raise TypeError(msg)
 
         if (
           hasattr(machine_instance, "setup")
@@ -533,24 +510,23 @@ class WorkcellRuntime:
           try:
             await machine_instance.setup()
           except Exception as e:
-            error_message = f"Failed to call setup() for machine '{machine_orm.name}': {str(e)[:250]}"
+            error_message = (
+              f"Failed to call setup() for machine '{machine_orm.name}': {str(e)[:250]}"
+            )
             raise WorkcellRuntimeError(error_message) from e
         else:
-          msg = f"Machine '{machine_orm.name}' does not have a valid" " setup() method that is callable and awaitable."
-          raise WorkcellRuntimeError(
-            msg,
+          msg = (
+            f"Machine '{machine_orm.name}' does not have a valid setup() method that is callable "
+            "and awaitable."
           )
-      # Justification: This wraps the dynamic instantiation and setup of a PyLabRobot
-      # object, which can fail in numerous ways (missing dependencies, connection
-      # errors, etc.). A broad catch is necessary to handle any such failure, log it,
-      # update the machine's status to ERROR, and raise a specific runtime error.
+          raise WorkcellRuntimeError(msg)
       except Exception as e:  # pylint: disable=broad-except
         error_message = f"Failed to instantiate or setup machine \
                 '{machine_orm.name}'\
                 (ID: {machine_orm.accession_id}) using class '{machine_orm.fqn}': \
                 {str(e)[:250]}"
         async with self.db_session_factory() as db_session:
-          await svc.update_machine_status(
+          await self.machine_svc.update_machine_status(
             db_session,
             machine_orm.accession_id,
             MachineStatusEnum.ERROR,
@@ -571,14 +547,12 @@ class WorkcellRuntime:
       machine_orm.is_resource
       and machine_orm.resource_counterpart
       and machine_orm.resource_counterpart.is_machine
-      and machine_orm.resource_counterpart.machine_counterpart_accession_id == machine_orm.accession_id
+      and machine_orm.resource_counterpart.machine_counterpart_accession_id
+      == machine_orm.accession_id
     ):
       resource_orm = machine_orm.resource_counterpart
       if isinstance(machine_instance, Resource):
-        self._active_resources[resource_orm.accession_id] = cast(
-          Resource,
-          machine_instance,
-        )
+        self._active_resources[resource_orm.accession_id] = cast(Resource, machine_instance)
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) also registered as Resource "
           "'%s' (ID: %s) in _active_resources, sharing the same PLR object.",
@@ -597,11 +571,8 @@ class WorkcellRuntime:
           type(machine_instance).__name__,
         )
 
-    if hasattr(machine_instance, "deck") and isinstance(
-      machine_instance.deck,
-      Deck,
-    ):
-      machine_deck: Deck = machine_instance.deck
+    if hasattr(machine_instance, "deck") and isinstance(machine_instance.deck, Deck):
+      machine_deck: Deck = cast("LiquidHandler", machine_instance).deck # type: ignore
       if not isinstance(machine_deck, Deck):
         msg = (
           f"Machine '{machine_orm.name}' has a 'deck' attribute, "
@@ -612,7 +583,7 @@ class WorkcellRuntime:
         )
 
       async with self.db_session_factory() as db_session:
-        deck_orm_entry = await svc.read_decks_by_machine_id(
+        deck_orm_entry = await self.deck_svc.read_decks_by_machine_id(
           db_session,
           machine_orm.accession_id,
         )
@@ -640,7 +611,7 @@ class WorkcellRuntime:
           )
 
     async with self.db_session_factory() as db_session:
-      await svc.update_machine_status(
+      await self.machine_svc.update_machine_status(
         db_session,
         machine_orm.accession_id,
         MachineStatusEnum.AVAILABLE,
@@ -657,24 +628,8 @@ class WorkcellRuntime:
     self,
     resource_orm: ResourceOrm,
     resource_definition_fqn: str,
-  ) -> Resource:
-    """Create or retrieve a live PyLabRobot resource object.
-
-    Args:
-      resource_orm (ResourceOrm): The ORM object representing
-        the resource instance.
-      resource_definition_fqn (str): The fully qualified Python name of the
-        PyLabRobot resource class.
-
-    Raises:
-      ValueError: If the resource_orm does not have a valid ID.
-      WorkcellRuntimeError: If the resource creation fails or if the resource
-        instance ORM is invalid.
-
-    Returns:
-      Resource: The live PyLabRobot resource object.
-
-    """
+  ) -> Resource:  # ruff: noqa: C901, PLR0912
+    """Create or retrieve a live PyLabRobot resource object."""
     if not hasattr(resource_orm, "id") or resource_orm.accession_id is None:
       msg = "Invalid resource_orm object passed to create_or_get_resource (no id)."
       raise ValueError(
@@ -694,7 +649,8 @@ class WorkcellRuntime:
       resource_orm.is_machine
       and resource_orm.machine_counterpart
       and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart_accession_id == resource_orm.accession_id
+      and resource_orm.machine_counterpart.machine_counterpart_accession_id
+      == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
       if machine_orm.accession_id in self._active_machines:
@@ -719,7 +675,7 @@ class WorkcellRuntime:
 
     resource: Resource
     if shared_plr_instance:
-      resource = cast(Resource, shared_plr_instance)
+      resource = cast("Resource", shared_plr_instance)
     else:
       logger.info(
         "Creating new PLR resource '%s' (ID: %s) using definition FQN '%s'.",
@@ -729,11 +685,8 @@ class WorkcellRuntime:
       )
 
       try:
-        ResourceClass = _get_class_from_fqn(resource_definition_fqn)
-        resource = ResourceClass(name=resource_orm.name)
-      # Justification: This wraps the dynamic instantiation of a PyLabRobot resource,
-      # which can fail for various reasons. A broad catch is necessary to handle any
-      # failure, log it, update the resource's status to ERROR, and raise a specific runtime error.
+        resource_class = _get_class_from_fqn(resource_definition_fqn)
+        resource = resource_class(name=resource_orm.name)
       except Exception as e:  # pylint: disable=broad-except
         error_message = (
           f"Failed to create PLR resource for "
@@ -743,16 +696,13 @@ class WorkcellRuntime:
         if hasattr(resource_orm, "id") and resource_orm.accession_id is not None:
           try:
             async with self.db_session_factory() as db_session:
-              await svc.update_resource_location_and_status(
-                db_session,
+              await self.resource_svc.update_resource_location_and_status(
+                db=db_session,
                 resource_accession_id=resource_orm.accession_id,
                 new_status=ResourceStatusEnum.ERROR,
                 status_details=error_message,
               )
               await db_session.commit()
-          # Justification: This is a nested error handler. If updating the DB
-          # status fails, we must catch it to ensure the original, more
-          # important error is still raised.
           except Exception as db_error:  # pylint: disable=broad-except
             error_message += (
               f" Failed to update resource instance ID {resource_orm.accession_id} "
@@ -764,7 +714,8 @@ class WorkcellRuntime:
     self._active_resources[resource_orm.accession_id] = resource
     self._main_workcell.add_asset(resource)
     logger.info(
-      "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main Workcell.",
+      "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main "
+      "Workcell.",
       resource_orm.name,
       resource_orm.accession_id,
     )
@@ -773,14 +724,12 @@ class WorkcellRuntime:
       resource_orm.is_machine
       and resource_orm.machine_counterpart
       and resource_orm.machine_counterpart.is_resource
-      and resource_orm.machine_counterpart.resource_counterpart_accession_id == resource_orm.accession_id
+      and resource_orm.machine_counterpart.machine_counterpart_accession_id
+      == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
       if isinstance(resource, Machine):
-        self._active_machines[machine_orm.accession_id] = cast(
-          Machine,
-          resource,
-        )
+        self._active_machines[machine_orm.accession_id] = cast("Machine", resource)
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) also registered as Machine "
           "'%s' (ID: %s) in _active_machines, sharing the same PLR object.",
@@ -801,18 +750,7 @@ class WorkcellRuntime:
     return resource
 
   def get_active_machine(self, machine_orm_accession_id: uuid.UUID) -> Machine:
-    """Retrieve an active PyLabRobot machine instance by its ORM ID.
-
-    Args:
-      machine_orm_accession_id (uuid.UUID): The ID of the machine ORM object.
-
-    Returns:
-      Machine: The active PyLabRobot machine instance.
-
-    Raises:
-      WorkcellRuntimeError: If the machine is not found in the active machines.
-
-    """
+    """Retrieve an active PyLabRobot machine instance by its ORM ID."""
     machine = self._active_machines.get(machine_orm_accession_id)
     if machine is None:
       msg = f"Machine with ORM ID {machine_orm_accession_id} not found in active machines."
@@ -820,25 +758,15 @@ class WorkcellRuntime:
         msg,
       )
     if not isinstance(machine, Machine):
-      msg = f"Machine with ORM ID {machine_orm_accession_id} is not a valid Machine instance. Type is {type(machine)}."
-      raise TypeError(
-        msg,
+      msg = (
+        f"Machine with ORM ID {machine_orm_accession_id} is not a valid Machine instance. "
+        f"Type is {type(machine)}."
       )
+      raise TypeError(msg)
     return machine
 
   def get_active_machine_accession_id(self, machine: Machine) -> uuid.UUID:
-    """Retrieve the ORM ID of an active PyLabRobot machine instance.
-
-    Args:
-      machine (Machine): The PyLabRobot Machine instance.
-
-    Returns:
-      uuid.UUID: The ORM ID of the machine.
-
-    Raises:
-      WorkcellRuntimeError: If the machine is not found in the active machines.
-
-    """
+    """Retrieve the ORM ID of an active PyLabRobot machine instance."""
     for orm_accession_id, active_machine in self._active_machines.items():
       if active_machine is machine:
         return orm_accession_id
@@ -848,18 +776,7 @@ class WorkcellRuntime:
     )
 
   def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID:
-    """Retrieve the ORM ID of an active PyLabRobot Deck instance.
-
-    Args:
-      deck (Deck): The PyLabRobot Deck instance.
-
-    Returns:
-      uuid.UUID: The ORM ID of the deck.
-
-    Raises:
-      WorkcellRuntimeError: If the deck is not found in the active decks.
-
-    """
+    """Retrieve the ORM ID of an active PyLabRobot Deck instance."""
     for orm_accession_id, active_deck in self._active_decks.items():
       if active_deck is deck:
         return orm_accession_id
@@ -870,15 +787,7 @@ class WorkcellRuntime:
     self,
     resource_orm_accession_id: uuid.UUID,
   ) -> Resource:
-    """Retrieve an active PyLabRobot resource object by its ORM ID.
-
-    Args:
-      resource_orm_accession_id (uuid.UUID): The ID of the resource instance ORM object.
-
-    Returns:
-      Resource: The active PyLabRobot resource object.
-
-    """
+    """Retrieve an active PyLabRobot resource object by its ORM ID."""
     resource = self._active_resources.get(resource_orm_accession_id)
     if resource is None:
       msg = (
@@ -899,15 +808,7 @@ class WorkcellRuntime:
     return resource
 
   def get_active_resource_accession_id(self, resource: Resource) -> uuid.UUID:
-    """Retrieve the ORM ID of an active PyLabRobot resource object.
-
-    Args:
-      resource (Resource): The PyLabRobot Resource instance.
-
-    Returns:
-      uuid.UUID: The ORM ID of the resource.
-
-    """
+    """Retrieve the ORM ID of an active PyLabRobot resource object."""
     for orm_accession_id, active_resource in self._active_resources.items():
       if active_resource is resource:
         return orm_accession_id
@@ -915,15 +816,7 @@ class WorkcellRuntime:
     raise WorkcellRuntimeError(msg)
 
   def get_active_deck(self, deck_orm_accession_id: uuid.UUID) -> Deck:
-    """Retrieve an active PyLabRobot Deck instance by its ORM ID.
-
-    Args:
-      deck_orm_accession_id (uuid.UUID): The ID of the deck ORM object.
-
-    Returns:
-      Deck: The active PyLabRobot Deck instance.
-
-    """
+    """Retrieve an active PyLabRobot Deck instance by its ORM ID."""
     deck = self._active_decks.get(deck_orm_accession_id)
     if deck is None:
       msg = f"Deck with ORM ID {deck_orm_accession_id} not found in active decks."
@@ -931,10 +824,11 @@ class WorkcellRuntime:
         msg,
       )
     if not isinstance(deck, Deck):
-      msg = f"Deck with ORM ID {deck_orm_accession_id} is not a valid PyLabRobot Deck instance. Type is {type(deck)}."
-      raise TypeError(
-        msg,
+      msg = (
+        f"Deck with ORM ID {deck_orm_accession_id} is not a valid PyLabRobot Deck instance. "
+        f"Type is {type(deck)}."
       )
+      raise TypeError(msg)
     return deck
 
   @log_workcell_runtime_errors(
@@ -942,15 +836,7 @@ class WorkcellRuntime:
     suffix=" - Ensure the machine ORM ID is valid and the machine is active.",
   )
   async def shutdown_machine(self, machine_orm_accession_id: uuid.UUID) -> None:
-    """Shut down and removes a live PyLabRobot machine instance.
-
-    Args:
-      machine_orm_accession_id (uuid.UUID): The ID of the machine ORM object to shut down.
-
-    Raises:
-      WorkcellRuntimeError: If the machine is not found, or if the shutdown fails.
-
-    """
+    """Shut down and removes a live PyLabRobot machine instance."""
     machine_instance = self._active_machines.pop(machine_orm_accession_id, None)
     try:
       if machine_instance is not None:
@@ -970,15 +856,12 @@ class WorkcellRuntime:
           await machine_instance.stop()
         else:
           msg = (
-            f"No stop() method for \
-            {machine_instance.__class__.__name__} machine {machine_orm_accession_id} \
-              that is callable and awaitable."
+            f"No stop() method for {machine_instance.__class__.__name__} machine "
+            f"{machine_orm_accession_id} that is callable and awaitable."
           )
-          raise WorkcellRuntimeError(
-            msg,
-          )
+          raise WorkcellRuntimeError(msg)
         async with self.db_session_factory() as db_session:
-          await svc.update_machine_status(
+          await self.machine_svc.update_machine_status(
             db_session,
             machine_orm_accession_id,
             MachineStatusEnum.OFFLINE,
@@ -986,12 +869,9 @@ class WorkcellRuntime:
           )
           await db_session.commit()
 
-      # Justification: This is a fallback for when a machine is not found in the active
-      # list but is expected to be. It ensures the DB status is updated to reflect
-      # the offline state, preventing it from being stuck in an inconsistent state.
       else:  # pylint: disable=broad-except
         async with self.db_session_factory() as db_session:
-          await svc.update_machine_status(
+          await self.machine_svc.update_machine_status(
             db_session,
             machine_orm_accession_id,
             MachineStatusEnum.OFFLINE,
@@ -999,17 +879,11 @@ class WorkcellRuntime:
           )
           await db_session.commit()
         msg = (
-          f"Machine with ID {machine_orm_accession_id} is not currently active and is \
-          unexpectedly offline."
+          f"Machine with ID {machine_orm_accession_id} is not currently active and is "
+          "unexpectedly offline."
         )
-        raise WorkcellRuntimeError(
-          msg,
-        )
+        raise WorkcellRuntimeError(msg)
 
-    # Justification: This wraps the machine's `stop()` method, which can raise
-    # any exception. A broad catch is needed to ensure the machine's status is
-    # updated to ERROR in the database, preventing it from being stuck in an
-    # inconsistent state.
     except Exception as e:  # pylint: disable=broad-except
       if machine_instance is None:
         msg = f"No active machine instance found for machine ID {machine_orm_accession_id}."
@@ -1018,7 +892,7 @@ class WorkcellRuntime:
         ) from e
       self._active_machines[machine_orm_accession_id] = machine_instance
       async with self.db_session_factory() as db_session:
-        await svc.update_machine_status(
+        await self.machine_svc.update_machine_status(
           db_session,
           machine_orm_accession_id,
           MachineStatusEnum.ERROR,
@@ -1043,29 +917,14 @@ class WorkcellRuntime:
     target: uuid.UUID,
     location: Coordinate | tuple[float, float, float] | None = None,
     position_accession_id: str | int | uuid.UUID | None = None,
-  ) -> None:
-    """Assign a live Resource to a specific location or position on a deck.
-
-    Args:
-      resource_orm_accession_id (uuid.UUID): The ID of the resource instance ORM object.
-      target (uuid.UUID): The target deck or machine ORM ID.
-      location (Optional[Union[Coordinate, tuple[float, float, float]]]): The
-        explicit location coordinates on the deck.
-      position_accession_id (Optional[Union[str, int, uuid.UUID]]): The position ID on the deck.
-
-
-    Raises:
-      WorkcellRuntimeError: If neither location nor position_accession_id is provided, or if
-        the resource is not a valid PyLabRobot Resource instance, or if the deck
-        is not found or not active.
-      TypeError: If the resource is not a valid PyLabRobot Resource instance.
-
-    """
+  ) -> None:  # ruff: noqa: C901, PLR0912, PLR0915
+    """Assign a live Resource to a specific location or position on a deck."""
     if location is None and position_accession_id is None:
-      msg = "Either 'location' or 'position_accession_id' must be provided to assign a resource to a deck."
-      raise WorkcellRuntimeError(
-        msg,
+      msg = (
+        "Either 'location' or 'position_accession_id' must be provided to assign a resource to "
+        "a deck."
       )
+      raise WorkcellRuntimeError(msg)
 
     if target in self._active_machines:
       inferred_target_type = "machine_orm_accession_id"
@@ -1081,10 +940,10 @@ class WorkcellRuntime:
 
     match inferred_target_type:
       case "deck_orm_accession_id":
-        deck_orm_accession_id = cast(uuid.UUID, target)
+        deck_orm_accession_id = cast("uuid.UUID", target)
         target_deck = self.get_active_deck(deck_orm_accession_id)
       case "machine_orm_accession_id":
-        machine_orm_accession_id = cast(uuid.UUID, target)
+        machine_orm_accession_id = cast("uuid.UUID", target)
         target_machine = self.get_active_machine(machine_orm_accession_id)
         target_deck = getattr(target_machine, "deck", None)
         if not isinstance(target_deck, Deck):
@@ -1103,30 +962,24 @@ class WorkcellRuntime:
         )
 
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.read_deck(db_session, deck_orm_accession_id)
+      deck_orm = await self.deck_svc.get(db_session, deck_orm_accession_id)
       if deck_orm is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
-        raise WorkcellRuntimeError(
-          msg,
-        )
+        raise WorkcellRuntimeError(msg)
       deck_orm_type_definition_accession_id = deck_orm.deck_type_id
 
       if deck_orm_type_definition_accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} does not have a valid deck type definition."
-        raise WorkcellRuntimeError(
-          msg,
-        )
+        raise WorkcellRuntimeError(msg)
 
-      deck_type_definition_orm = await svc.read_deck_type_definition(
+      deck_type_definition_orm = await self.deck_type_definition_svc.get(
         db_session,
         deck_orm_type_definition_accession_id,
       )
 
       if deck_type_definition_orm is None:
         msg = f"Deck type definition for deck ORM ID {deck_orm_accession_id} not found in database."
-        raise WorkcellRuntimeError(
-          msg,
-        )
+        raise WorkcellRuntimeError(msg)
 
       positioning_config = PositioningConfig.model_validate(
         deck_type_definition_orm.positioning_config_json,
@@ -1150,27 +1003,25 @@ class WorkcellRuntime:
           positioning_config=positioning_config,
         )
       else:
-        msg = "Internal error: Neither location nor position_accession_id provided after initial check."
-        raise WorkcellRuntimeError(
-          msg,
+        msg = (
+          "Internal error: Neither location nor position_accession_id provided after initial "
+          "check."
         )
+        raise WorkcellRuntimeError(msg)
 
       try:
         target_deck.assign_child_resource(
           resource=resource,
           location=final_location_for_plr,
         )
-        await svc.update_resource_location_and_status(
-          db_session,
-          resource_orm_accession_id,
-          ResourceStatusEnum.AVAILABLE_ON_DECK,
+        await self.resource_svc.update_resource_location_and_status(
+          db=db_session,
+          resource_accession_id=resource_orm_accession_id,
+          new_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
           location_machine_accession_id=deck_orm.accession_id,
           current_deck_position_name=str(position_accession_id),
         )
         await db_session.commit()
-      # Justification: This wraps the deck's `assign_child_resource` method, which
-      # can raise various exceptions. A broad catch is needed to provide a
-      # clear error message about the assignment failure.
       except Exception as e:  # pylint: disable=broad-except
         msg = (
           f"Error assigning resource '{resource.name}' to  "
@@ -1190,19 +1041,7 @@ class WorkcellRuntime:
     position_name: str,
     resource_orm_accession_id: uuid.UUID | None = None,
   ) -> None:
-    """Clear a resource from a specific position on a live deck.
-
-    Args:
-      deck_orm_accession_id (uuid.UUID): The ORM ID of the deck.
-      position_name (str): The name of the position to clear.
-      resource_orm_accession_id (Optional[uuid.UUID]): The ORM ID of the resource
-        instance that was in the position, if known. Used for updating DB status.
-
-    Raises:
-      WorkcellRuntimeError: If the deck is not active, not a Deck
-        instance, or if there's an error during unassignment.
-
-    """
+    """Clear a resource from a specific position on a live deck."""
     deck = self.get_active_deck(deck_orm_accession_id)
 
     if not isinstance(deck, Deck):
@@ -1233,10 +1072,10 @@ class WorkcellRuntime:
 
     if resource_orm_accession_id:
       async with self.db_session_factory() as db_session:
-        await svc.update_resource_location_and_status(
-          db_session,
-          resource_orm_accession_id,
-          ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+        await self.resource_svc.update_resource_location_and_status(
+          db=db_session,
+          resource_accession_id=resource_orm_accession_id,
+          new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
           location_machine_accession_id=None,
           current_deck_position_name=None,
         )
@@ -1251,24 +1090,8 @@ class WorkcellRuntime:
     machine_orm_accession_id: uuid.UUID,
     action_name: str,
     params: dict[str, Any] | None = None,
-  ) -> Any:
-    """Execute a method/action on a live PyLabRobot machine instance.
-
-    Args:
-      machine_orm_accession_id (uuid.UUID): The ORM ID of the machine to interact with.
-      action_name (str): The name of the method to call on the machine object.
-      params (Optional[dict[str, Any]]): A dictionary of parameters to pass
-        to the method.
-
-    Returns:
-      Any: The result of the executed action.
-
-    Raises:
-      WorkcellRuntimeError: If the machine is not active or if an error occurs
-        during action execution.
-      AttributeError: If the specified action name does not exist on the machine.
-
-    """
+  ) -> Any:  # ruff: noqa: ANN401
+    """Execute a method/action on a live PyLabRobot machine instance."""
     machine = self.get_active_machine(machine_orm_accession_id)
     logger.info(
       "WorkcellRuntime: Executing action '%s' on machine ID %s with params: %s",
@@ -1291,10 +1114,11 @@ class WorkcellRuntime:
         machine_orm_accession_id,
       )
       return getattr(machine, action_name)(**(params or {}))
-    msg = f"Machine for ID {machine_orm_accession_id} (type: {type(machine).__name__}) has no action '{action_name}'."
-    raise AttributeError(
-      msg,
+    msg = (
+      f"Machine for ID {machine_orm_accession_id} (type: {type(machine).__name__}) has no action "
+      f"'{action_name}'."
     )
+    raise AttributeError(msg)
 
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error shutting down all machines",
@@ -1303,18 +1127,17 @@ class WorkcellRuntime:
   async def shutdown_all_machines(self) -> None:
     """Shut down all currently active PyLabRobot machine instances."""
     logger.info("WorkcellRuntime: Shutting down all active machines...")
-    for machine_accession_id in list(self._active_machines.keys()):
+    for machine_accession_id in list(self._active_machines.keys()): # ruff: noqa: PERF203
       try:
         logger.info(
           "WorkcellRuntime: Shutting down machine ID %s...",
           machine_accession_id,
         )
         await self.shutdown_machine(machine_accession_id)
-      except WorkcellRuntimeError as e:
+      except WorkcellRuntimeError:
         logger.exception(
-          "WorkcellRuntime: Error shutting down machine ID %s: %s",
+          "WorkcellRuntime: Error shutting down machine ID %s",
           machine_accession_id,
-          str(e),
         )
         continue
     logger.info("WorkcellRuntime: All active machines processed for shutdown.")
@@ -1327,42 +1150,29 @@ class WorkcellRuntime:
     self,
     deck_orm_accession_id: uuid.UUID,
   ) -> dict[str, Any]:
-    """Construct a dictionary representing the state of a specific deck.
-
-    This representation is suitable for serialization into `DeckStateResponse`.
-    It uses a database-first approach for resources located on the deck.
-
-    Args:
-      deck_orm_accession_id (uuid.UUID): The ORM ID of the deck.
-
-    Returns:
-      dict[str, Any]: A dictionary representing the deck's current state.
-
-    Raises:
-      WorkcellRuntimeError: If the database session or service is unavailable,
-        the deck is not found in the database, or the machine is not
-        categorized as a DECK.
-
-    """
+    """Construct a dictionary representing the state of a specific deck."""
     async with self.db_session_factory() as db_session:
-      deck_orm = await svc.read_deck(db_session, deck_orm_accession_id)
+      deck_orm = await self.deck_svc.get(db_session, deck_orm_accession_id)
 
       if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
-        raise WorkcellRuntimeError(
-          msg,
-        )
+        raise WorkcellRuntimeError(msg)
 
       response_positions: list[dict[str, Any]] = []
 
-      resources_on_deck: list[ResourceOrm] = await svc.read_resources(
+      resources_on_deck: list[ResourceOrm] = await self.resource_svc.get_multi(
         db=db_session,
-        location_machine_accession_id=deck_orm.accession_id,
+        filters=SearchFilters(
+          search_filters={"location_machine_accession_id": deck_orm.accession_id},
+        ),
       )
 
       for lw_instance in resources_on_deck:
         if lw_instance.current_deck_position_name is not None:
-          if not hasattr(lw_instance, "resource_definition") or not lw_instance.resource_definition:
+          if (
+            not hasattr(lw_instance, "resource_definition")
+            or not lw_instance.resource_definition
+          ):
             logger.warning(
               "Resource instance ID %s is missing resource_definition relationship. Skipping.",
               lw_instance.accession_id,
@@ -1376,9 +1186,11 @@ class WorkcellRuntime:
 
           resource_info_data = {
             "resource_accession_id": lw_instance.accession_id,
-            "name": (lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"),
+            "name": (
+              lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"
+            ),
             "fqn": lw_def.fqn,
-            "category": (str(lw_def.plr_category.value) if lw_def.plr_category else None),
+            "category": str(lw_def.plr_category) if lw_def.plr_category else None,
             "size_x_mm": lw_def.size_x_mm,
             "size_y_mm": lw_def.size_y_mm,
             "size_z_mm": lw_def.size_z_mm,
@@ -1413,10 +1225,7 @@ class WorkcellRuntime:
             deck_orm_accession_id,
             deck_size_tuple,
           )
-        # Justification: This wraps a call to a PyLabRobot object's method, which
-        # could raise unexpected errors. A broad catch allows us to log a warning
-        # and continue, rather than crashing the state representation process.
-        except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
+        except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001
           logger.warning(
             "Could not get size from live deck object for ID %s: %s",
             deck_orm_accession_id,
@@ -1444,21 +1253,13 @@ class WorkcellRuntime:
     suffix=" - Ensure the resource is valid and exists in active resources.",
   )
   async def clear_resource(self, resource_orm_accession_id: uuid.UUID) -> None:
-    """Clear a resource from the workcell runtime.
-
-    Args:
-      resource_orm_accession_id (uuid.UUID): The ORM ID of the resource instance to clear.
-
-    Raises:
-      WorkcellRuntimeError: If the resource is not found in active resources.
-
-    """
+    """Clear a resource from the workcell runtime."""
     if resource_orm_accession_id in self._active_resources:
       del self._active_resources[resource_orm_accession_id]
 
     async with self.db_session_factory() as db_session:
-      await svc.update_resource_location_and_status(
-        db_session,
+      await self.resource_svc.update_resource_location_and_status(
+        db=db_session,
         resource_accession_id=resource_orm_accession_id,
         new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         status_details="Resource cleared from active resources.",
