@@ -239,7 +239,7 @@ class AssetReservationOrm(Base):
     kw_only=True,
   )
   asset: Mapped["AssetOrm"] = relationship(
-    "Asset",
+    "AssetOrm",
     back_populates="asset_reservations",
     foreign_keys=[asset_accession_id],
     uselist=False,

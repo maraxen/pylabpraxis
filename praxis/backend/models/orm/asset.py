@@ -72,6 +72,7 @@ class AssetOrm(Base):
 
   asset_reservations: Mapped[list["AssetReservationOrm"]] = relationship(
     "AssetReservationOrm",
+    foreign_keys="[AssetReservationOrm.asset_accession_id]",
     back_populates="asset",
     cascade="all, delete-orphan",
     default_factory=list,
