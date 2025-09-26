@@ -74,19 +74,19 @@ class WorkcellOrm(Base):
   machines: Mapped[list["MachineOrm"]] = relationship(
     "MachineOrm",
     back_populates="workcell",
-    foreign_keys="[MachineOrm.workcell_accession_id]",
+    foreign_keys="MachineOrm.workcell_accession_id",
     default_factory=list,
   )
   decks: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
     back_populates="workcell",
-    foreign_keys="[DeckOrm.workcell_accession_id]",
+    foreign_keys="DeckOrm.workcell_accession_id",
     default_factory=list,
   )
   resources: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="workcell",
-    foreign_keys="[ResourceOrm.workcell_accession_id]",
+    foreign_keys="ResourceOrm.workcell_accession_id",
     default_factory=list,
   )
 

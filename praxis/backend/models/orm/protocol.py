@@ -303,7 +303,7 @@ class FunctionProtocolDefinitionOrm(Base):
   )
   function_call_logs: Mapped[list["FunctionCallLogOrm"]] = relationship(
     "FunctionCallLogOrm",
-    foreign_keys="[FunctionCallLogOrm.function_protocol_definition_accession_id]",
+    foreign_keys="FunctionCallLogOrm.function_protocol_definition_accession_id",
     back_populates="executed_function_definition",
     default_factory=list,
   )
@@ -500,7 +500,7 @@ class AssetRequirementOrm(Base):
     comment="JSONB representation of location constraints for the asset requirement.",
     default=None,
   )
-  function_protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
+  protocol_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     back_populates="assets",
     kw_only=True,
@@ -533,8 +533,8 @@ class AssetRequirementOrm(Base):
   )
 
   def __repr__(self) -> str:
-    """Return a string representation of the AssetDefinitionOrm instance."""
-    return f"<AssetDefinitionOrm(name='{self.name}', \
+    """Return a string representation of the AssetRequirementOrm instance."""
+    return f"<AssetRequirementOrm(name='{self.name}', \
       protocol_accession_id={self.protocol_definition_accession_id})>"
 
 
@@ -678,18 +678,17 @@ class ProtocolRunOrm(Base):
     comment="Duration of the protocol run in milliseconds.",
     default=None,
   )
-  continuing_from_accession_id: Mapped["ProtocolRunOrm | None"] = relationship(
+  previous_run: Mapped["ProtocolRunOrm | None"] = relationship(
     "ProtocolRunOrm",
     back_populates="continuations",
-    remote_side=[previous_accession_id],
+    remote_side=[accession_id],
     foreign_keys=[previous_accession_id],
     uselist=False,
     default=None,
   )
   continuations: Mapped[list["ProtocolRunOrm"]] = relationship(
     "ProtocolRunOrm",
-    back_populates="continuing_from",
-    foreign_keys="ProtocolRunOrm.continuing_from_accession_id",
+    back_populates="previous_run",
     default_factory=list,
   )
   schedule_entries: Mapped[list["ScheduleEntryOrm"]] = relationship(
@@ -825,11 +824,18 @@ class FunctionCallLogOrm(Base):
     back_populates="function_call_logs",
     kw_only=True,
   )
-  parent_call: Mapped["FunctionCallLogOrm"] = relationship(
+  parent_call: Mapped["FunctionCallLogOrm | None"] = relationship(
     "FunctionCallLogOrm",
     remote_side=[accession_id],
-    backref="child_calls",
-    kw_only=True,
+    back_populates="child_calls",
+    foreign_keys=[parent_function_call_log_accession_id],
+    default=None,
+  )
+  child_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(
+    "FunctionCallLogOrm",
+    back_populates="parent_call",
+    cascade="all, delete-orphan",
+    default_factory=list,
   )
 
   # Relationship to data outputs

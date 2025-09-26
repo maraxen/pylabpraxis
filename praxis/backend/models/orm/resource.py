@@ -208,15 +208,6 @@ class ResourceOrm(AssetOrm):
     init=False,
   )
 
-  child_accession_ids: Mapped[list[uuid.UUID]] = mapped_column(
-    UUID,
-    ForeignKey("resources.accession_id"),
-    nullable=True,
-    index=True,
-    comment="List of child resource accession IDs, if this resource has children.",
-    default_factory=list,
-  )
-
   children: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="parent",
@@ -233,7 +224,6 @@ class ResourceOrm(AssetOrm):
     nullable=False,
     index=True,
     comment="Foreign key to the resource definition catalog.",
-    default=None,
   )
 
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
@@ -360,7 +350,7 @@ class ResourceOrm(AssetOrm):
     default=None,
   )
 
-  location_deck: Mapped["DeckOrm | None"] = relationship(
+  deck: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
     back_populates="resources",
     uselist=False,

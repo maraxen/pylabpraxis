@@ -286,7 +286,7 @@ class MachineOrm(AssetOrm):
 
   deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("deck_catalog.accession_id", ondelete="SET NULL"),
+    ForeignKey("decks.accession_id", ondelete="SET NULL"),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this machine has, if applicable.",
@@ -305,7 +305,6 @@ class MachineOrm(AssetOrm):
   # If this machine has a deck (e.g., a liquid handler)
   deck_child_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
     "DeckDefinitionOrm",
-    back_populates="machine",
     uselist=False,
     default=None,
     foreign_keys=[deck_child_definition_accession_id],
@@ -344,7 +343,7 @@ class MachineOrm(AssetOrm):
 
   decks: Mapped[list["DeckOrm"]] = relationship(
     "DeckOrm",
-    back_populates="machine",
+    back_populates="parent_machine",
     cascade="all, delete-orphan",
     default_factory=list,
   )
@@ -360,14 +359,6 @@ class MachineOrm(AssetOrm):
   def is_machine(self) -> bool:
     """Return True if the asset is a machine."""
     return True
-
-  machine_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("machines.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the machine counterpart of this resource, if applicable.",
-  )
 
   @property
   def is_resource(self) -> bool:
