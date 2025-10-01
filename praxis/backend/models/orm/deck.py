@@ -97,9 +97,24 @@ class DeckOrm(ResourceOrm):
   )
   parent_machine: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
-    back_populates="deck",
+    back_populates="decks",
     uselist=False,
     foreign_keys=[parent_machine_accession_id],
+    default=None,
+  )
+
+  workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("workcells.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the workcell this deck belongs to, if applicable.",
+    default=None,
+  )
+  workcell: Mapped["WorkcellOrm | None"] = relationship(
+    "WorkcellOrm",
+    back_populates="decks",
+    foreign_keys=[workcell_accession_id],
     default=None,
   )
 
@@ -112,7 +127,7 @@ class DeckOrm(ResourceOrm):
   )
 
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm",
+    "DeckDefinitionOrm",
     back_populates="deck",
     uselist=False,
     foreign_keys=[deck_type_id],
@@ -357,7 +372,7 @@ class DeckPositionDefinitionOrm(Base):
   )
 
   deck_type: Mapped["DeckDefinitionOrm"] = relationship(
-    "DeckTypeDefinitionOrm",
+    "DeckDefinitionOrm",
     back_populates="positions",
     uselist=False,
     kw_only=True,

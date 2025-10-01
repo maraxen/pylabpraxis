@@ -261,11 +261,18 @@ class FunctionDataOutputOrm(Base):
     default=None,
   )
 
-  derived_from: Mapped["FunctionDataOutputOrm"] = relationship(
+  derived_from: Mapped["FunctionDataOutputOrm | None"] = relationship(
     "FunctionDataOutputOrm",
-    remote_side=lambda: [FunctionDataOutputOrm.accession_id],
-    backref="derived_data_outputs",
+    remote_side=[accession_id],
+    back_populates="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
+    default=None,
+  )
+
+  derived_data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
+    "FunctionDataOutputOrm",
+    back_populates="derived_from",
+    cascade="all, delete-orphan",
     default_factory=list,
   )
 
@@ -360,20 +367,6 @@ class WellDataOutputOrm(Base):
     "ResourceOrm",
     foreign_keys=[plate_resource_accession_id],
     back_populates="well_data_outputs",
-    default=None,
-  )
-  resource: Mapped["ResourceOrm"] = relationship(
-    "ResourceOrm",
-    foreign_keys=[plate_resource_accession_id],
-    back_populates="well_data_outputs",
-    uselist=False,
-    default=None,
-  )
-  machine: Mapped["MachineOrm"] = relationship(
-    "MachineOrm",
-    foreign_keys="FunctionDataOutputOrm.machine_accession_id",
-    back_populates="well_data_outputs",
-    uselist=False,
     default=None,
   )
 
