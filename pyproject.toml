@@ -20,6 +20,7 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "uuid-utils>=0.11.0",
     "dependency-injector",
+    "celery[redis]",
 ]
 
 [project.optional-dependencies]

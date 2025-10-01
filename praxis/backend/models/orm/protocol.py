@@ -681,7 +681,7 @@ class ProtocolRunOrm(Base):
   previous_run: Mapped["ProtocolRunOrm | None"] = relationship(
     "ProtocolRunOrm",
     back_populates="continuations",
-    remote_side=[accession_id],
+    remote_side=["accession_id"],
     foreign_keys=[previous_accession_id],
     uselist=False,
     default=None,

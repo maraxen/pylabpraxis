@@ -291,7 +291,7 @@ class DeckPositionDefinitionOrm(Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (UniqueConstraint("deck_type_id", "position_name", name="uq_deck_position"),)
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),)
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,

@@ -190,6 +190,25 @@ class ResourceOrm(AssetOrm):
     comment="Unique identifier for the resource, derived from the Asset base class.",
   )
 
+  # Definition
+  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    ForeignKey("resource_definition_catalog.accession_id"),
+    nullable=False,
+    index=True,
+    comment="Foreign key to the resource definition catalog.",
+    kw_only=True,
+  )
+
+  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
+    "ResourceDefinitionOrm",
+    back_populates="resource_list",
+    default=None,
+    uselist=False,
+    foreign_keys=[resource_definition_accession_id],
+    init=False,
+  )
+
   parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resources.accession_id"),
@@ -214,24 +233,6 @@ class ResourceOrm(AssetOrm):
     cascade="all, delete-orphan",
     default_factory=list,
     uselist=True,
-    init=False,
-  )
-
-  # Definition
-  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
-    ForeignKey("resource_definition_catalog.accession_id"),
-    nullable=False,
-    index=True,
-    comment="Foreign key to the resource definition catalog.",
-  )
-
-  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
-    "ResourceDefinitionOrm",
-    back_populates="resource_list",
-    default=None,
-    uselist=False,
-    foreign_keys=[resource_definition_accession_id],
     init=False,
   )
 
@@ -272,6 +273,7 @@ class ResourceOrm(AssetOrm):
     nullable=True,
     index=True,
     comment="Foreign key to the machine counterpart of this resource, if applicable.",
+    default=None,
   )
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
