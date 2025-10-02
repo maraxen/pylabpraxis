@@ -1,7 +1,6 @@
 import pytest
 import uuid
 from unittest.mock import MagicMock, patch
-
 from praxis.backend.core.decorators import protocol_function
 from praxis.backend.core.run_context import PraxisRunContext, PraxisState, Resource
 from praxis.backend.models.pydantic_internals.protocol import (
