@@ -510,6 +510,7 @@ class AssetRequirementOrm(Base):
     back_populates="asset_requirement",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[DeckDefinitionOrm.asset_requirement_accession_id]",
   )
   machine_definitions: Mapped[list["MachineDefinitionOrm"]] = relationship(
     "MachineDefinitionOrm",

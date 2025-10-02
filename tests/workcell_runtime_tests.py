@@ -10,9 +10,9 @@ ManagedDeviceOrmMock = MagicMock
 ResourceOrmMock = MagicMock
 
 # Enums
-from praxis.backend.database_models.asset_management_orm import (
-  ManagedDeviceStatusEnum,
-  ResourceStatusEnum,
+from praxis.backend.models.enums import (
+    MachineStatusEnum as ManagedDeviceStatusEnum,
+    ResourceStatusEnum,
 )
 
 

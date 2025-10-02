@@ -1,5 +1,6 @@
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # --- Test Data ---
 VALID_WORKCELL_ID = "test_workcell_id"
@@ -9,86 +10,95 @@ INVALID_WORKCELL_ID = "invalid_workcell_id"
 
 # --- CRUD Endpoint Tests ---
 
-def test_create_workcell(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_create_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
     workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
-    response = client.post("/api/workcell/", json=workcell_data)
+    response = await api_client.post("/api/v1/workcell/", json=workcell_data)
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == VALID_WORKCELL_NAME
     assert "accession_id" in data
 
     # Test creating with existing name (should fail)
-    response = client.post("/api/workcell/", json=workcell_data)
+    response = await api_client.post("/api/v1/workcell/", json=workcell_data)
     assert response.status_code == 400
 
-def test_get_workcell_by_id(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_get_workcell_by_id(api_client: AsyncClient, db_session: AsyncSession) -> None:
     # Create a workcell first
-    workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
-    create_response = client.post("/api/workcell/", json=workcell_data)
+    workcell_data = {"name": "get_by_id_test", "description": "A test workcell"}
+    create_response = await api_client.post("/api/v1/workcell/", json=workcell_data)
     created_workcell_id = create_response.json()["accession_id"]
 
-    response = client.get(f"/api/workcell/{created_workcell_id}")
+    response = await api_client.get(f"/api/v1/workcell/{created_workcell_id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == VALID_WORKCELL_NAME
+    assert data["name"] == "get_by_id_test"
     assert data["accession_id"] == created_workcell_id
 
-def test_get_workcell_by_name(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_get_workcell_by_name(api_client: AsyncClient, db_session: AsyncSession) -> None:
     # Create a workcell first
-    workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
-    client.post("/api/workcell/", json=workcell_data)
+    workcell_data = {"name": "get_by_name_test", "description": "A test workcell"}
+    await api_client.post("/api/v1/workcell/", json=workcell_data)
 
-    response = client.get(f"/api/workcell/{VALID_WORKCELL_NAME}")
+    response = await api_client.get(f"/api/v1/workcell/{'get_by_name_test'}")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == VALID_WORKCELL_NAME
+    assert data["name"] == "get_by_name_test"
 
-def test_get_non_existent_workcell(client: TestClient, db_session: Session) -> None:
-    response = client.get(f"/api/workcell/{INVALID_WORKCELL_ID}")
+@pytest.mark.asyncio
+async def test_get_non_existent_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
+    response = await api_client.get(f"/api/v1/workcell/{INVALID_WORKCELL_ID}")
     assert response.status_code == 404
 
-def test_list_workcells(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_list_workcells(api_client: AsyncClient, db_session: AsyncSession) -> None:
     # Create a few workcells
-    client.post("/api/workcell/", json={"name": "Workcell 1"})
-    client.post("/api/workcell/", json={"name": "Workcell 2"})
+    await api_client.post("/api/v1/workcell/", json={"name": "Workcell 1"})
+    await api_client.post("/api/v1/workcell/", json={"name": "Workcell 2"})
 
-    response = client.get("/api/workcell/")
+    response = await api_client.get("/api/v1/workcell/")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) >= 2 # May have other workcells from other tests if not properly isolated
+    assert len(data) >= 2
 
-def test_update_workcell(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_update_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
     # Create a workcell first
-    workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
-    create_response = client.post("/api/workcell/", json=workcell_data)
+    workcell_data = {"name": "update_test", "description": "A test workcell"}
+    create_response = await api_client.post("/api/v1/workcell/", json=workcell_data)
     created_workcell_id = create_response.json()["accession_id"]
 
     update_data = {"name": UPDATED_WORKCELL_NAME, "description": "Updated description"}
-    response = client.put(f"/api/workcell/{created_workcell_id}", json=update_data)
+    response = await api_client.put(f"/api/v1/workcell/{created_workcell_id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == UPDATED_WORKCELL_NAME
     assert data["description"] == "Updated description"
 
-def test_update_non_existent_workcell(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_update_non_existent_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
     update_data = {"name": UPDATED_WORKCELL_NAME}
-    response = client.put(f"/api/workcell/{INVALID_WORKCELL_ID}", json=update_data)
+    response = await api_client.put(f"/api/v1/workcell/{INVALID_WORKCELL_ID}", json=update_data)
     assert response.status_code == 404
 
-def test_delete_workcell(client: TestClient, db_session: Session) -> None:
+@pytest.mark.asyncio
+async def test_delete_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
     # Create a workcell first
-    workcell_data = {"name": VALID_WORKCELL_NAME, "description": "A test workcell"}
-    create_response = client.post("/api/workcell/", json=workcell_data)
+    workcell_data = {"name": "delete_test", "description": "A test workcell"}
+    create_response = await api_client.post("/api/v1/workcell/", json=workcell_data)
     created_workcell_id = create_response.json()["accession_id"]
 
-    response = client.delete(f"/api/workcell/{created_workcell_id}")
+    response = await api_client.delete(f"/api/v1/workcell/{created_workcell_id}")
     assert response.status_code == 204
 
     # Verify it's deleted
-    response = client.get(f"/api/workcell/{created_workcell_id}")
+    response = await api_client.get(f"/api/v1/workcell/{created_workcell_id}")
     assert response.status_code == 404
 
-def test_delete_non_existent_workcell(client: TestClient, db_session: Session) -> None:
-    response = client.delete(f"/api/workcell/{INVALID_WORKCELL_ID}")
+@pytest.mark.asyncio
+async def test_delete_non_existent_workcell(api_client: AsyncClient, db_session: AsyncSession) -> None:
+    response = await api_client.delete(f"/api/v1/workcell/{INVALID_WORKCELL_ID}")
     assert response.status_code == 404

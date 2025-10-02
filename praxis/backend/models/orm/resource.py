@@ -28,7 +28,7 @@ from sqlalchemy import (
   Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, remote
 
 from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
@@ -136,14 +136,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
   )
 
 
-  machine_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("machine_definition_catalog.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the machine definition catalog, if this resource is also a machine.",
-    default=None,
-  )
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
@@ -151,14 +143,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     index=True,
     comment="Foreign key to the deck definition catalog, if this resource is also a deck.",
     default=None,
-  )
-  machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
-    "MachineDefinitionOrm",
-    back_populates="resource_definition",
-    uselist=False,
-    foreign_keys=[machine_definition_accession_id],
-    default=None,
-    init=False,
   )
   deck_definition: Mapped["DeckDefinitionOrm | None"] = relationship(
     "DeckDefinitionOrm",
@@ -234,6 +218,7 @@ class ResourceOrm(AssetOrm):
     default_factory=list,
     uselist=True,
     init=False,
+    foreign_keys=[parent_accession_id],
   )
 
   # State
@@ -276,12 +261,12 @@ class ResourceOrm(AssetOrm):
     default=None,
   )
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
-    "MachineOrm",
-    back_populates="resource_counterpart",
-    default=None,
-    uselist=False,
-    foreign_keys=[machine_counterpart_accession_id],
-    init=False,
+      "MachineOrm",
+      back_populates="resource_counterpart",
+      primaryjoin="ResourceOrm.machine_counterpart_accession_id == remote(MachineOrm.accession_id)",
+      uselist=False,
+      default=None,
+      init=False,
   )
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
@@ -359,6 +344,21 @@ class ResourceOrm(AssetOrm):
     foreign_keys=[deck_location_accession_id],
     init=False,
     default=None,
+  )
+
+  parent_machine_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("machine_definition_catalog.accession_id"),
+    nullable=True,
+    index=True,
+    default=None,
+  )
+  parent_machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
+    "MachineDefinitionOrm",
+    back_populates="resource_child_list",
+    foreign_keys=[parent_machine_definition_accession_id],
+    default=None,
+    init=False,
   )
 
   def __repr__(self) -> str:

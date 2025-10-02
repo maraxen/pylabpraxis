@@ -2,11 +2,19 @@
 
 from celery import Celery
 
-from praxis.backend.core.celery import celery_app
+from praxis.backend.core.celery import celery_app, configure_celery_app
 
 
 def test_celery_app_instance() -> None:
   """Test that the celery_app is a correctly configured Celery instance."""
+  # Arrange
+  # Configure the app for the test environment
+  configure_celery_app(
+      celery_app,
+      broker_url="redis://localhost:6379/0",
+      backend_url="redis://localhost:6379/0",
+  )
+
   # Assert: Check that the app is an instance of Celery
   assert isinstance(celery_app, Celery)
 

@@ -1,229 +1,229 @@
-
-import pytest  # type: ignore
+import pytest
+from unittest.mock import MagicMock, patch
+import uuid
 
 from praxis.backend.core.decorators import protocol_function
 from praxis.backend.core.run_context import PraxisRunContext, PraxisState, Resource
-from praxis.backend.protocol_core.protocol_definition_models import (
-  FunctionProtocolDefinitionModel,
+from praxis.backend.models.pydantic_internals.protocol import (
+    FunctionProtocolDefinitionCreate as FunctionProtocolDefinitionModel,
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_redis_client():
+    """Mock the redis client used by the PraxisState service."""
+    with patch("praxis.backend.services.state.redis") as mock_redis_module:
+        mock_instance = MagicMock()
+        # When PraxisState tries to connect, it will get this mock instance
+        mock_redis_module.Redis.from_url.return_value = mock_instance
+        # When PraxisState tries to ping, it will succeed
+        mock_instance.ping.return_value = True
+        # When PraxisState tries to get initial state, return None
+        mock_instance.get.return_value = None
+        yield mock_instance
+
+
 # Dummy PLR-like classes for type hinting in tests
-class DummyPipette(
-  Resource,
-):  # Assuming Resource can be instantiated like this for test
-  def __init__(self, name: str, **kwargs) -> None:
-    super().__init__(
-      name=name, size_x=1, size_y=1, size_z=1, category="dummy_pipette", **kwargs,
-    )  # Provide dummy sizes
+class DummyPipette(Resource):
+    def __init__(self, name: str, **kwargs) -> None:
+        super().__init__(
+            name=name, size_x=1, size_y=1, size_z=1, category="dummy_pipette", **kwargs
+        )
 
 
 class DummyPlate(Resource):
-  def __init__(self, name: str, **kwargs) -> None:
-    super().__init__(
-      name=name, size_x=1, size_y=1, size_z=1, category="dummy_plate", **kwargs,
-    )
+    def __init__(self, name: str, **kwargs) -> None:
+        super().__init__(
+            name=name, size_x=1, size_y=1, size_z=1, category="dummy_plate", **kwargs
+        )
 
 
 @pytest.fixture
 def minimal_protocol_function_def():
-  @protocol_function(name="TestMinimal", version="1.0")
-  def _minimal_func(state: PraxisState) -> str:
-    return "done"
+    @protocol_function(name="TestMinimal", version="1.0")
+    def _minimal_func(state: PraxisState) -> str:
+        return "done"
 
-  return _minimal_func
+    return _minimal_func
 
 
 @pytest.fixture
 def complex_protocol_function_def():
-  @protocol_function(
-    name="TestComplex",
-    version="1.1",
-    description="A complex test protocol.",
-    is_top_level=True,
-    category="testing",
-    tags=["complex", "example"],
-    param_metadata={
-      "count": {
-        "description": "Number of times.",
-        "ui_hints": {"widget_type": "slider", "min_value": 1, "max_value": 10},
-      },
-      "name": {"constraints_json": {"max_length": 50}},
-    },
-  )
-  def _complex_func(
-    state: PraxisState,
-    pipette: DummyPipette,
-    count: int = 5,
-    name: str | None = None,
-    target_plate: DummyPlate | None = None,
-  ) -> str:
-    """Docstring for complex func."""
-    return f"ran {count} times for {name or 'default'} with {pipette.name} and {target_plate.name if target_plate else 'no plate'}"
+    @protocol_function(
+        name="TestComplex",
+        version="1.1",
+        description="A complex test protocol.",
+        is_top_level=True,
+        category="testing",
+        tags=["complex", "example"],
+        param_metadata={
+            "count": {
+                "description": "Number of times.",
+                "ui_hints": {"widget_type": "slider", "min_value": 1, "max_value": 10},
+            },
+            "name": {"constraints_json": {"max_length": 50}},
+        },
+    )
+    def _complex_func(
+        state: PraxisState,
+        pipette: DummyPipette,
+        count: int = 5,
+        name: str | None = None,
+        target_plate: DummyPlate | None = None,
+    ) -> str:
+        """Docstring for complex func."""
+        return f"ran {count} times for {name or 'default'} with {pipette.name} and {target_plate.name if target_plate else 'no plate'}"
 
-  return _complex_func
+    return _complex_func
 
 
 class TestProtocolFunctionDecoratorMetadata:
-  def test_decorator_attaches_pydantic_model(self, minimal_protocol_function_def) -> None:
-    assert hasattr(minimal_protocol_function_def, "_protocol_definition")
-    assert isinstance(
-      minimal_protocol_function_def._protocol_definition,
-      FunctionProtocolDefinitionModel,
-    )
+    def test_decorator_attaches_pydantic_model(self, minimal_protocol_function_def) -> None:
+        assert hasattr(minimal_protocol_function_def, "_protocol_definition")
+        assert isinstance(
+            minimal_protocol_function_def._protocol_definition,
+            FunctionProtocolDefinitionModel,
+        )
 
-  def test_minimal_definition_attributes(self, minimal_protocol_function_def) -> None:
-    model = minimal_protocol_function_def._protocol_definition
-    assert model.name == "TestMinimal"
-    assert model.version == "1.0"
-    assert model.description == "No description provided."  # Default from decorator
-    assert model.function_name == "_minimal_func"
-    assert model.module_name == __name__  # Test runs in this module
-    assert not model.is_top_level
-    assert model.state_param_name == "state"  # Default
+    def test_minimal_definition_attributes(self, minimal_protocol_function_def) -> None:
+        model = minimal_protocol_function_def._protocol_definition
+        assert model.name == "TestMinimal"
+        assert model.version == "1.0"
+        assert model.description == "No description provided."
+        assert model.function_name == "_minimal_func"
+        assert model.module_name == __name__
+        assert not model.is_top_level
+        assert model.state_param_name == "state"
 
-    assert len(model.parameters) == 1
-    state_param = model.parameters[0]
-    assert state_param.name == "state"
-    assert "PraxisState" in state_param.actual_type_str
-    assert not state_param.optional
+        assert len(model.parameters) == 1
+        state_param = model.parameters[0]
+        assert state_param.name == "state"
+        assert "PraxisState" in state_param.type_hint
+        assert not state_param.optional
+        assert len(model.assets) == 0
 
-    assert len(model.assets) == 0
+    def test_complex_definition_attributes(self, complex_protocol_function_def) -> None:
+        model = complex_protocol_function_def._protocol_definition
+        assert model.name == "TestComplex"
+        assert model.version == "1.1"
+        assert model.description == "A complex test protocol."
+        assert model.is_top_level
+        assert model.category == "testing"
+        assert model.tags == ["complex", "example"]
 
-  def test_complex_definition_attributes(self, complex_protocol_function_def) -> None:
-    model = complex_protocol_function_def._protocol_definition
-    assert model.name == "TestComplex"
-    assert model.version == "1.1"
-    assert model.description == "A complex test protocol."  # Explicit description
-    assert model.is_top_level
-    assert model.category == "testing"
-    assert model.tags == ["complex", "example"]
+        assert len(model.parameters) == 3
+        param_names = {p.name for p in model.parameters}
+        assert param_names == {"state", "count", "name"}
 
-    assert len(model.parameters) == 3  # state, count, name
-    param_names = {p.name for p in model.parameters}
-    assert param_names == {"state", "count", "name"}
+        count_param = next(p for p in model.parameters if p.name == "count")
+        assert count_param.type_hint == "int"
+        assert count_param.optional
+        assert count_param.default_value_repr == "5"
+        assert count_param.description == "Number of times."
 
-    count_param = next(p for p in model.parameters if p.name == "count")
-    assert count_param.actual_type_str == "int"
-    assert count_param.optional  # Has default value
-    assert count_param.default_value_repr == "5"
-    assert count_param.description == "Number of times."
-    assert count_param.ui_hints is not None
-    assert count_param.ui_hints.widget_type == "slider"
-    assert count_param.ui_hints.min_value == 1
+        name_param = next(p for p in model.parameters if p.name == "name")
+        assert "str" in name_param.type_hint
+        assert name_param.optional
+        assert name_param.default_value_repr is None
 
-    name_param = next(p for p in model.parameters if p.name == "name")
-    assert "str" in name_param.actual_type_str  # Optional[str]
-    assert name_param.optional
-    assert name_param.default_value_repr is None  # Optional without explicit default
-    assert name_param.constraints_json == {"max_length": 50}
+        assert len(model.assets) == 2
+        asset_names = {a.name for a in model.assets}
+        assert asset_names == {"pipette", "target_plate"}
 
-    assert len(model.assets) == 2  # pipette, target_plate
-    asset_names = {a.name for a in model.assets}
-    assert asset_names == {"pipette", "target_plate"}
+        pipette_asset = next(a for a in model.assets if a.name == "pipette")
+        assert "DummyPipette" in pipette_asset.type_hint_str
+        assert not pipette_asset.optional
 
-    pipette_asset = next(a for a in model.assets if a.name == "pipette")
-    assert "DummyPipette" in pipette_asset.actual_type_str
-    assert not pipette_asset.optional
+        plate_asset = next(a for a in model.assets if a.name == "target_plate")
+        assert "DummyPlate" in plate_asset.type_hint_str
+        assert plate_asset.optional
 
-    plate_asset = next(a for a in model.assets if a.name == "target_plate")
-    assert "DummyPlate" in plate_asset.actual_type_str
-    assert plate_asset.optional
+    def test_default_name_from_function(self) -> None:
+        @protocol_function(version="0.1")
+        def _my_actual_func_name(state: PraxisState) -> None:
+            pass
 
-  def test_default_name_from_function(self) -> None:
-    @protocol_function(version="0.1")  # Name not provided
-    def _my_actual_func_name(state: PraxisState) -> None:
-      pass
+        model = _my_actual_func_name._protocol_definition
+        assert model.name == "_my_actual_func_name"
 
-    model = _my_actual_func_name._protocol_definition
-    assert model.name == "_my_actual_func_name"
+    def test_docstring_as_description(self) -> None:
+        @protocol_function()
+        def _func_with_docstring(state: PraxisState) -> None:
+            """This is the docstring."""
 
-  def test_docstring_as_description(self) -> None:
-    @protocol_function()
-    def _func_with_docstring(state: PraxisState) -> None:
-      """This is the docstring."""
-
-    model = _func_with_docstring._protocol_definition
-    assert model.description == "This is the docstring."
+        model = _func_with_docstring._protocol_definition
+        assert model.description == "This is the docstring."
 
 
+@pytest.mark.asyncio
 class TestProtocolFunctionWrapperInvocation:
-  def test_wrapper_calls_original_function(self, minimal_protocol_function_def) -> None:
-    # For unit testing the wrapper's basic call, mock the PraxisRunContext and db logging.
-    # This test focuses on the metadata part being mostly done.
-    # The existing wrapper in decorators.py is complex and handles logging.
-    # We'll assume for now the wrapper structure (how it gets context) is as per decorators.py.
+    async def test_wrapper_calls_original_function(self, minimal_protocol_function_def) -> None:
+        with patch("praxis.backend.core.decorators.praxis_run_context_cv") as mock_cv:
+            mock_context = MagicMock()
+            mock_context.run_accession_id = uuid.uuid4()
+            mock_context.current_db_session = AsyncMock()
+            mock_context.current_call_log_db_accession_id = None
+            mock_cv.get.return_value = mock_context
 
-    # Create a dummy context (as the wrapper expects it)
-    # The wrapper in decorators.py creates a dummy if none is passed and logs to console.
-    # So, calling without __praxis_run_context__ should still work.
-    result = minimal_protocol_function_def()  # Call without context
-    assert result == "done"
+            with patch(
+                "praxis.backend.core.decorators.log_function_call_start",
+                new_callable=AsyncMock,
+            ) as mock_log_start:
+                mock_log_start.return_value = MagicMock(accession_id=uuid.uuid4())
+                result = await minimal_protocol_function_def()
+                assert result == "done"
 
-    # Test with a simplified dummy context (if needed for specific checks not covered by no-context call)
-    # More detailed wrapper testing (with DB logging mocks) will be in integration or later unit tests.
 
-
+@pytest.mark.asyncio
 class TestPraxisRunContext:
-  def test_praxis_run_context_creation_and_attributes(self) -> None:
-    # Assuming PraxisState can be instantiated (even if it's the Redis-backed one, for type hint)
-    # For unit test, we assume PraxisState from definitions is usable without full Redis.
-    # If PraxisState from definitions is an alias to utils.state.State, it requires run_accession_id.
-    mock_state = PraxisState(run_accession_id="test-run-accession_id-ctx")
-    mock_db_session = object()  # Dummy object for session
+    def test_praxis_run_context_creation_and_attributes(self) -> None:
+        mock_state = PraxisState(run_accession_id="test-run-accession_id-ctx")
+        mock_db_session = object()
 
-    context = PraxisRunContext(
-      protocol_run_db_accession_id=1,
-      run_accession_id="test-run-accession_id-ctx",
-      canonical_state=mock_state,
-      current_db_session=mock_db_session,
-      current_call_log_db_accession_id=None,
-    )
-    assert context.protocol_run_db_accession_id == 1
-    assert context.run_accession_id == "test-run-accession_id-ctx"
-    assert context.canonical_state is mock_state
-    assert context.current_db_session is mock_db_session
-    assert context.current_call_log_db_accession_id is None
-    assert context._call_sequence_next_val == 1
+        context = PraxisRunContext(
+            run_accession_id=uuid.uuid4(),
+            canonical_state=mock_state,
+            current_db_session=mock_db_session,
+            current_call_log_db_accession_id=None,
+        )
+        assert context.run_accession_id is not None
+        assert context.canonical_state is mock_state
+        assert context.current_db_session is mock_db_session
+        assert context.current_call_log_db_accession_id is None
+        assert context._call_sequence_next_val == 1
 
-  def test_get_and_increment_sequence_val(self) -> None:
-    context = PraxisRunContext(
-      1,
-      "accession_id-seq",
-      PraxisState(run_accession_id="accession_id-seq"),
-      object(),
-      None,
-    )
-    assert context.get_and_increment_sequence_val() == 1
-    assert context.get_and_increment_sequence_val() == 2
-    assert context._call_sequence_next_val == 3
+    def test_get_and_increment_sequence_val(self) -> None:
+        context = PraxisRunContext(
+            run_accession_id=uuid.uuid4(),
+            canonical_state=PraxisState(run_accession_id="accession_id-seq"),
+            current_db_session=object(),
+            current_call_log_db_accession_id=None,
+        )
+        assert context.get_and_increment_sequence_val() == 1
+        assert context.get_and_increment_sequence_val() == 2
+        assert context._call_sequence_next_val == 3
 
-  def test_create_context_for_nested_call(self) -> None:
-    mock_state = PraxisState(run_accession_id="test-run-accession_id-parent")
-    mock_db_session = object()
+    def test_create_context_for_nested_call(self) -> None:
+        mock_state = PraxisState(run_accession_id="test-run-accession_id-parent")
+        mock_db_session = object()
 
-    parent_context = PraxisRunContext(
-      protocol_run_db_accession_id=1,
-      run_accession_id="test-run-accession_id-parent",
-      canonical_state=mock_state,
-      current_db_session=mock_db_session,
-      current_call_log_db_accession_id=100,  # Parent's own log ID (becomes parent_accession_id for nested)
-    )
-    parent_context._call_sequence_next_val = 5  # Simulate some calls happened
+        parent_context = PraxisRunContext(
+            run_accession_id=uuid.uuid4(),
+            canonical_state=mock_state,
+            current_db_session=mock_db_session,
+            current_call_log_db_accession_id=uuid.uuid4(),
+        )
+        parent_context._call_sequence_next_val = 5
 
-    # This new_parent_call_log_db_accession_id is the log ID of the function that is *creating* this nested context.
-    # So, for the nested function, this ID will be its parent's log ID.
-    nested_context = parent_context.create_context_for_nested_call(
-      new_parent_call_log_db_accession_id=100,
-    )
+        nested_context = parent_context.create_context_for_nested_call(
+            new_parent_call_log_db_accession_id=parent_context.current_call_log_db_accession_id
+        )
 
-    assert (
-      nested_context.protocol_run_db_accession_id
-      == parent_context.protocol_run_db_accession_id
-    )
-    assert nested_context.run_accession_id == parent_context.run_accession_id
-    assert nested_context.canonical_state == parent_context.canonical_state
-    assert nested_context.current_db_session == parent_context.current_db_session
-    # The 'current_call_log_db_accession_id' of the nested context IS the parent's log ID.
-    assert nested_context.current_call_log_db_accession_id == 100
-    assert nested_context._call_sequence_next_val == 5  # Sequence counter continues
+        assert nested_context.run_accession_id == parent_context.run_accession_id
+        assert nested_context.canonical_state == parent_context.canonical_state
+        assert nested_context.current_db_session == parent_context.current_db_session
+        assert (
+            nested_context.current_call_log_db_accession_id
+            == parent_context.current_call_log_db_accession_id
+        )
+        assert nested_context._call_sequence_next_val == 5

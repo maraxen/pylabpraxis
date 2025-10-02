@@ -2,6 +2,7 @@
 """Unit tests for the Workcell and WorkcellView classes."""
 
 import pytest
+from unittest.mock import MagicMock
 from pylabrobot.machines import Machine
 from pylabrobot.machines.backend import MachineBackend
 from pylabrobot.resources import Resource
@@ -77,9 +78,19 @@ class MockMachineResource(Resource, Machine):
 
 
 @pytest.fixture
-def workcell() -> Workcell:
-  """Fixture for a Workcell instance with a temporary save file."""
-  return Workcell(name="test_cell", save_file="/tmp/test_cell.json")
+def mock_file_system() -> MagicMock:
+    """Fixture for a mock file system."""
+    return MagicMock()
+
+
+@pytest.fixture
+def workcell(mock_file_system: MagicMock) -> Workcell:
+    """Fixture for a Workcell instance with a temporary save file."""
+    return Workcell(
+        name="test_cell",
+        save_file="/tmp/test_cell.json",
+        file_system=mock_file_system,
+    )
 
 
 class TestWorkcell:

@@ -38,7 +38,7 @@ from sqlalchemy import (
   Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, remote
 
 from praxis.backend.models.enums import (
   AssetType,
@@ -122,9 +122,10 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
 
   resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
-    back_populates="resource_definition",
+    back_populates="parent_machine_definition",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[ResourceOrm.parent_machine_definition_accession_id]",
   )
 
   resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -137,7 +138,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
   )
   resource_definition: Mapped["ResourceDefinitionOrm | None"] = relationship(
     "ResourceDefinitionOrm",
-    back_populates="machine_definition",
     foreign_keys=[resource_definition_accession_id],
     default=None,
     init=False,
@@ -166,11 +166,20 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="JSONB representation of setup method for this machine definition.",
     default=None,
   )
+  asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_asset_requirements.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the asset requirement this machine definition is associated with.",
+    default=None,
+  )
   asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
     "AssetRequirementOrm",
     back_populates="machine_definitions",
     uselist=False,
     default=None,
+    foreign_keys=[asset_requirement_accession_id],
   )
 
 
@@ -277,11 +286,13 @@ class MachineOrm(AssetOrm):
     default=None,
   )
   resource_counterpart: Mapped["ResourceOrm | None"] = relationship(
-    "ResourceOrm",
-    back_populates="machine_counterpart",
-    foreign_keys=[resource_counterpart_accession_id],
-    default=None,
-    init=False,
+      "ResourceOrm",
+      back_populates="machine_counterpart",
+      primaryjoin="MachineOrm.resource_counterpart_accession_id == remote(ResourceOrm.accession_id)",
+      uselist=False,
+      post_update=True,
+      default=None,
+      init=False,
   )
 
   deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(

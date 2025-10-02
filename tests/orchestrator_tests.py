@@ -9,16 +9,16 @@ from praxis.backend.core.run_context import (
   Deck,
   PraxisRunContext,
 )  # ADDED for DeckLoading tests in Orchestrator
-from praxis.backend.database_models.protocol_definitions_orm import (
-  FileSystemProtocolSourceOrm,  # For mock_protocol_def_orm
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  ProtocolSourceRepositoryOrm,  # ADDED for GitOps tests
+from praxis.backend.models.enums import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
 )
-from praxis.backend.protocol_core.protocol_definition_models import (
-  AssetRequirementModel,
-  FunctionProtocolDefinitionModel,
+from praxis.backend.models.pydantic_internals.protocol import (
+    AssetRequirementModel,
+    FunctionProtocolDefinitionCreate as FunctionProtocolDefinitionModel,
 )
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError

@@ -272,7 +272,12 @@ def _process_parameter(
         type_for_plr_check = non_none_args[0]
 
     if is_pylabrobot_resource(type_for_plr_check):
-      assets_list.append(AssetRequirementModel(**common_model_args))
+      asset_model_args = common_model_args.copy()
+      asset_model_args["accession_id"] = uuid7()
+      asset_model_args["type_hint_str"] = asset_model_args.pop("type_hint")
+      asset_model_args.pop("constraints_json", None)
+      asset_model_args.pop("ui_hints", None)
+      assets_list.append(AssetRequirementModel(**asset_model_args))
     else:
       parameters_list.append(ParameterMetadataModel(**common_model_args))
   return parameters_list, assets_list, found_deck_param, found_state_param_details
@@ -422,7 +427,7 @@ def protocol_function(
           msg,
         )
 
-      parent_context = praxis_run_context_cv.get()
+      parent_context = praxis_run_context_cv.get(None)
       if parent_context is None:
         msg = (
           "No PraxisRunContext found in contextvars. Ensure this function is called "

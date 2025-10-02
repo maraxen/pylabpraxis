@@ -12,12 +12,11 @@ from praxis.backend.services.state import (
 # Mock Redis client for all tests in this file
 @pytest.fixture(autouse=True)
 def mock_redis_client():
-  # This mock will replace redis.Redis globally for the duration of tests in this module.
-  # Individual tests can then .return_value on specific methods like get, set, delete, ping.
-  with patch("redis.Redis") as mock_redis_constructor:
+  """Mock the redis client used by the PraxisState service."""
+  with patch("praxis.backend.services.state.redis") as mock_redis_module:
     mock_instance = MagicMock()
-    mock_redis_constructor.return_value = mock_instance
-    yield mock_instance  # Provide the instance for tests to configure
+    mock_redis_module.Redis.return_value = mock_instance
+    yield mock_instance
 
 
 class TestPraxisState:

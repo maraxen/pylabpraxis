@@ -4,7 +4,8 @@ from collections.abc import AsyncGenerator, Generator
 from os import getenv
 
 import pytest
-from httpx import AsyncClient
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -69,7 +70,7 @@ async def setup_database() -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provide a transactional database session for each test.
 
@@ -88,31 +89,18 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
-    """Provide a test client for the FastAPI application.
-
-    This fixture creates an `AsyncClient` that can be used to make requests
-    to the FastAPI application during tests.
-
-    Yields:
-        An `AsyncClient` instance.
-    """
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    """Provide a test client for the FastAPI application."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def authenticated_api_client() -> AsyncGenerator[AsyncClient, None]:
-    """Provide an authenticated test client.
-
-    This fixture overrides the `get_current_user` dependency to return a
-    hardcoded test user. It allows for testing authenticated endpoints
-    without needing to mock the entire authentication flow.
-
-    Yields:
-        An `AsyncClient` instance that is authenticated as a test user.
-    """
+    """Provide an authenticated test client."""
     from praxis.backend.api.users import get_current_user, UserResponse
     from datetime import datetime
     import uuid
@@ -132,6 +120,8 @@ async def authenticated_api_client() -> AsyncGenerator[AsyncClient, None]:
         )
 
     app.dependency_overrides[get_current_user] = override_get_current_user
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
     del app.dependency_overrides[get_current_user]

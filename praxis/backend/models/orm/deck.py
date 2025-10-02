@@ -139,6 +139,7 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[FunctionDataOutputOrm.deck_accession_id]",
   )
   resource_counterpart: Mapped["ResourceOrm"] = relationship(
     "ResourceOrm",
@@ -152,6 +153,7 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[ResourceOrm.deck_location_accession_id]",
   )
 
 
@@ -252,15 +254,31 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
     cascade="all, delete-orphan",
     default_factory=list,
   )
-  machine_definition: Mapped["ResourceDefinitionOrm"] = relationship(
-    "ResourceDefinitionOrm",
+  machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
+    "MachineDefinitionOrm",
     back_populates="deck_definition",
     uselist=False,
     default=None,
   )
-  asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
+  resource_definition: Mapped["ResourceDefinitionOrm | None"] = relationship(
+      "ResourceDefinitionOrm",
+      back_populates="deck_definition",
+      uselist=False,
+      default=None,
+      init=False,
+  )
+  asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_asset_requirements.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the asset requirement this deck definition is associated with.",
+    default=None,
+  )
+  asset_requirement: Mapped["AssetRequirementOrm | None"] = relationship(
     "AssetRequirementOrm",
     back_populates="deck_definitions",
+    foreign_keys=[asset_requirement_accession_id],
     uselist=False,
     default=None,
   )

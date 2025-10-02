@@ -12,18 +12,22 @@ from sqlalchemy.orm import Session as DbSession  # For type hinting if needed
 # Added imports
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.run_context import Resource
-from praxis.backend.database_models.protocol_definitions_orm import (
+from praxis.backend.models.enums import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import (
     FileSystemProtocolSourceOrm,
     FunctionCallLogOrm,
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
-    ProtocolRunStatusEnum,
-    ProtocolSourceRepositoryOrm,  # Ensured these are grouped
+    ProtocolSourceRepositoryOrm,
 )
-from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
+from praxis.backend.models.pydantic_internals.protocol import (
+    FunctionProtocolDefinitionCreate as FunctionProtocolDefinitionModel,
+)
 
 # Modules to test
-from praxis.backend.services.discovery_service import ProtocolDiscoveryService
+from praxis.backend.services.discovery_service import (
+    DiscoveryService as ProtocolDiscoveryService,
+)
 
 try: # Try importing jsonschema for specific error catching
     from jsonschema import ValidationError as JsonSchemaValidationError

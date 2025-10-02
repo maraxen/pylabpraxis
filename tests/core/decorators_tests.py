@@ -147,7 +147,7 @@ class TestProtocolDecoratorRuntime:
   """Tests the decorator's runtime wrapper logic."""
 
   @pytest.fixture
-  async def decorated_protocol(self) -> Callable:
+  def decorated_protocol(self) -> Callable:
     """Provides a fully decorated async function for runtime tests."""
 
     async def my_runtime_protocol(state: dict, volume: float, resource: Resource):
@@ -164,7 +164,7 @@ class TestProtocolDecoratorRuntime:
     return decorated_func
 
   @pytest.fixture
-  async def decorated_sync_protocol(self) -> Callable:
+  def decorated_sync_protocol(self) -> Callable:
     """Provides a decorated synchronous function."""
 
     def my_sync_protocol(state: dict) -> str:
@@ -272,17 +272,20 @@ class TestProtocolDecoratorRuntime:
     assert "ValueError" in end_kwargs["error_traceback"]
 
   async def test_wrapper_fails_without_valid_context(
-    self, decorated_protocol, monkeypatch,
+    self, decorated_protocol
   ) -> None:
     """Test that calling a decorated function without a proper context raises a RuntimeError."""
-    monkeypatch.setattr(praxis_run_context_cv, "get", lambda: None)
+    # Ensure no context is set
+    with pytest.raises(LookupError):
+        praxis_run_context_cv.get()
+
     with pytest.raises(RuntimeError, match="No PraxisRunContext found"):
       await decorated_protocol(state={}, volume=50, resource=MagicMock())
 
   @patch("praxis.backend.core.decorators.clear_control_command", new_callable=AsyncMock)
   @patch("praxis.backend.core.decorators.get_control_command", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.services.protocols.protocol_run_service.update_protocol_run_status",
+    "praxis.backend.services.protocols.ProtocolRunService.update_run_status",
     new_callable=AsyncMock,
   )
   @patch(
@@ -313,7 +316,7 @@ class TestProtocolDecoratorRuntime:
   @patch("praxis.backend.core.decorators.clear_control_command", new_callable=AsyncMock)
   @patch("praxis.backend.core.decorators.get_control_command", new_callable=AsyncMock)
   @patch(
-    "praxis.backend.services.protocols.protocol_run_service.update_protocol_run_status",
+    "praxis.backend.services.protocols.ProtocolRunService.update_run_status",
     new_callable=AsyncMock,
   )
   @patch("praxis.backend.core.decorators.log_function_call_end", new_callable=AsyncMock)
