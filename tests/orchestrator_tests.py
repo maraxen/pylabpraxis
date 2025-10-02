@@ -9,16 +9,16 @@ from praxis.backend.core.run_context import (
   Deck,
   PraxisRunContext,
 )  # ADDED for DeckLoading tests in Orchestrator
-from praxis.backend.database_models.protocol_definitions_orm import (
-  FileSystemProtocolSourceOrm,  # For mock_protocol_def_orm
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  ProtocolSourceRepositoryOrm,  # ADDED for GitOps tests
+from praxis.backend.models.enums.protocol import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
 )
-from praxis.backend.protocol_core.protocol_definition_models import (
-  AssetRequirementModel,
-  FunctionProtocolDefinitionModel,
+from praxis.backend.models.pydantic_internals.protocol import (
+    AssetRequirementModel,
+    FunctionProtocolDefinitionResponse as FunctionProtocolDefinitionModel,
 )
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError
@@ -128,23 +128,23 @@ def orchestrator_instance(
 ):  # Removed self from params
   with (
     patch(
-      "praxis.backend.core.orchestrator.create_protocol_run",
+      "praxis.backend.services.protocols.protocol_run_service.create",
       mock_create_protocol_run,
     ),
     patch(
-      "praxis.backend.core.orchestrator.update_protocol_run_status",
+      "praxis.backend.services.protocols.protocol_run_service.update",
       mock_update_protocol_run_status,
     ),
     patch(
-      "praxis.backend.core.orchestrator.get_protocol_definition_details",
+      "praxis.backend.services.protocol_definition.protocol_definition_service.get_by_name_and_version",
       mock_get_protocol_definition_details,
     ),
     patch(
-      "praxis.backend.core.orchestrator.get_control_command",
+      "praxis.backend.utils.run_control.get_control_command",
       mock_run_control_get,
     ),
     patch(
-      "praxis.backend.core.orchestrator.clear_control_command",
+      "praxis.backend.utils.run_control.clear_control_command",
       mock_run_control_clear,
     ),
     patch(

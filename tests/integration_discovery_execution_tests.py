@@ -12,18 +12,22 @@ from sqlalchemy.orm import Session as DbSession  # For type hinting if needed
 # Added imports
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.run_context import Resource
-from praxis.backend.database_models.protocol_definitions_orm import (
+from praxis.backend.models.enums.protocol import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import (
     FileSystemProtocolSourceOrm,
     FunctionCallLogOrm,
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
-    ProtocolRunStatusEnum,
-    ProtocolSourceRepositoryOrm,  # Ensured these are grouped
+    ProtocolSourceRepositoryOrm,
 )
-from praxis.backend.protocol_core.protocol_definition_models import FunctionProtocolDefinitionModel
+from praxis.backend.models.pydantic_internals.protocol import (
+    FunctionProtocolDefinitionResponse as FunctionProtocolDefinitionModel,
+)
 
 # Modules to test
-from praxis.backend.services.discovery_service import ProtocolDiscoveryService
+from praxis.backend.services.discovery_service import (
+    DiscoveryService as ProtocolDiscoveryService,
+)
 
 try: # Try importing jsonschema for specific error catching
     from jsonschema import ValidationError as JsonSchemaValidationError
@@ -59,10 +63,10 @@ def temp_integration_protocols():
         f.write("# Integration test protocol package root\n")
 
     protocol_content = """
-from praxis.backend.protocol_core.decorators import protocol_function
-from praxis.backend.protocol_core.definitions import PraxisState
+from praxis.backend.core.decorators import protocol_function
+from praxis.backend.services.state import PraxisState
 # Import the dummy resource from this test file
-from tests.test_integration_discovery_execution import IntegrationPipette # Path relative to where pytest runs
+from tests.integration_discovery_execution_tests import IntegrationPipette # Path relative to where pytest runs
 
 @protocol_function(name="NestedProtocolStep", version="1.0")
 def nested_step(state: PraxisState, message: str):
@@ -94,6 +98,7 @@ def main_protocol(state: PraxisState, pipette: IntegrationPipette, initial_messa
 
     shutil.rmtree(base_temp_dir)
 
+@pytest.fixture
 def mock_db_session():
     return MagicMock(spec=DbSession) # Mock a synchronous session
 
@@ -140,12 +145,12 @@ def mock_data_services(request): # request is a pytest fixture
     # Define specific patch targets
     # These must be where the function is *looked up* by the calling module
     patch_targets = {
-        "praxis.backend.core.orchestrator.create_protocol_run": _mock_create_pr,
-        "praxis.backend.core.orchestrator.update_protocol_run_status": _mock_update_pr_status,
-        "praxis.backend.core.orchestrator.get_protocol_definition_details": _mock_get_fpd_details,
+        "praxis.backend.services.protocols.protocol_run_service.create": _mock_create_pr,
+        "praxis.backend.services.protocols.protocol_run_service.update": _mock_update_pr_status,
+        "praxis.backend.services.protocol_definition.protocol_definition_service.get_by_name_and_version": _mock_get_fpd_details,
         "praxis.backend.services.discovery_service.upsert_function_protocol_definition": _mock_upsert_fpd,
-        "praxis.backend.protocol_core.decorators.log_function_call_start": _mock_log_fcs,
-        "praxis.backend.protocol_core.decorators.log_function_call_end": _mock_log_fce,
+        "praxis.backend.core.decorators.log_function_call_start": _mock_log_fcs,
+        "praxis.backend.core.decorators.log_function_call_end": _mock_log_fce,
     }
 
     active_patches = []
@@ -213,13 +218,6 @@ class TestIntegrationDiscoveryExecution:
         # Configure get_protocol_definition_details from the new fixture
         mock_data_services["get_protocol_definition_details"].return_value = main_proto_orm_mock
         main_proto_orm_mock.file_system_source.base_path = temp_integration_protocols
-
-        from praxis.backend.protocol_core.definitions import PROTOCOL_REGISTRY
-        registry_key = f"{mod.main_protocol._protocol_definition.name}_v{mod.main_protocol._protocol_definition.version}"
-        if registry_key in PROTOCOL_REGISTRY:
-             PROTOCOL_REGISTRY[registry_key]["pydantic_definition"] = mod.main_protocol._protocol_definition
-        else:
-             pytest.fail(f"PROTOCOL_REGISTRY not populated for {registry_key} by discovery service mock.")
 
         orchestrator = Orchestrator(db_session=mock_db_session)
         orchestrator.asset_manager = mock_asset_manager_instance

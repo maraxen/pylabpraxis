@@ -14,6 +14,7 @@ from dependency_injector import containers, providers
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from praxis.backend.services.deck import DeckService
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
@@ -21,6 +22,7 @@ from praxis.backend.services.resource import ResourceService
 from praxis.backend.services.resource_type_definition import (
     ResourceTypeDefinitionService,
 )
+from praxis.backend.services.workcell import WorkcellService
 
 from .asset_lock_manager import AssetLockManager
 from .asset_manager import AssetManager
@@ -172,7 +174,7 @@ class Container(containers.DeclarativeContainer):
         deck_service=providers.Factory(DeckService),
         machine_service=providers.Factory(MachineService),
         resource_service=providers.Factory(ResourceService),
-        deck_type_definition_service=providers.Factory(DeckTypeDefinitionCRUDService),
+        deck_type_definition_service=providers.Factory(DeckTypeDefinitionService),
         workcell_service=providers.Factory(WorkcellService),
     )
 
@@ -195,6 +197,28 @@ class Container(containers.DeclarativeContainer):
         protocol_definition_service=protocol_definition_service,
     )
 
+    asset_manager: providers.Factory[IAssetManager] = providers.Factory(
+        AssetManager,
+        db_session=db_session,
+        workcell_runtime=workcell_runtime,
+        deck_service=deck_service,
+        machine_service=machine_service,
+        resource_service=resource_service,
+        resource_type_definition_service=resource_type_definition_service,
+        asset_lock_manager=asset_lock_manager,
+    )
+
+    asset_manager: providers.Factory[IAssetManager] = providers.Factory(
+        AssetManager,
+        db_session=db_session,
+        workcell_runtime=workcell_runtime,
+        deck_service=deck_service,
+        machine_service=machine_service,
+        resource_service=resource_service,
+        resource_type_definition_service=resource_type_definition_service,
+        asset_lock_manager=asset_lock_manager,
+    )
+
     orchestrator: providers.Factory[IOrchestrator] = providers.Factory(
         "praxis.backend.core.orchestrator.Orchestrator",
         db_session_factory=db_session_factory,
@@ -212,17 +236,6 @@ class Container(containers.DeclarativeContainer):
         orchestrator=orchestrator,
         protocol_run_service=protocol_run_service,
         protocol_definition_service=protocol_definition_service,
-    )
-
-    asset_manager: providers.Factory[IAssetManager] = providers.Factory(
-        AssetManager,
-        db_session=db_session,
-        workcell_runtime=workcell_runtime,
-        deck_service=deck_service,
-        machine_service=machine_service,
-        resource_service=resource_service,
-        resource_type_definition_service=resource_type_definition_service,
-        asset_lock_manager=asset_lock_manager,
     )
 
     # For now, keeping the existing orchestrator provider as an example.
