@@ -10,10 +10,8 @@ ManagedDeviceOrmMock = MagicMock
 ResourceOrmMock = MagicMock
 
 # Enums
-from praxis.backend.database_models.asset_management_orm import (
-  ManagedDeviceStatusEnum,
-  ResourceStatusEnum,
-)
+from praxis.backend.models.enums.machine import MachineStatusEnum
+from praxis.backend.models.enums.resource import ResourceStatusEnum
 
 
 # Mock PLR classes
@@ -117,7 +115,7 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
       workcell_runtime.db_session,
       1,
-      ManagedDeviceStatusEnum.AVAILABLE,
+      MachineStatusEnum.AVAILABLE,
       "Backend initialized.",
     )
 
@@ -180,7 +178,7 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
       workcell_runtime.db_session,
       3,
-      ManagedDeviceStatusEnum.ERROR,
+      MachineStatusEnum.ERROR,
       "Backend init failed: Module not found",
     )
 
@@ -198,7 +196,7 @@ class TestWorkcellRuntimeDeviceHandling:
     mock_ads_service_wcr.update_managed_machine_status.assert_called_once_with(
       workcell_runtime.db_session,
       1,
-      ManagedDeviceStatusEnum.OFFLINE,
+      MachineStatusEnum.OFFLINE,
       "Backend shut down.",
     )
 

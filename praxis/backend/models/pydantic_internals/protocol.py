@@ -138,7 +138,7 @@ class ParameterMetadataModel(BaseModel):
   constraints: ParameterConstraintsModel = Field(
     default_factory=ParameterConstraintsModel,
   )
-  ui_hint: UIHint = Field(default_factory=UIHint)
+  ui_hint: UIHint | None = None
 
 
 class LocationConstraintsModel(BaseModel):

@@ -263,7 +263,6 @@ class FunctionDataOutputOrm(Base):
 
   derived_from: Mapped["FunctionDataOutputOrm | None"] = relationship(
     "FunctionDataOutputOrm",
-    remote_side=[accession_id],
     back_populates="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
     default=None,

@@ -62,6 +62,7 @@ class ProtocolSourceRepositoryOrm(Base):
   """
 
   __tablename__ = "protocol_source_repositories"
+  __table_args__ = {"extend_existing": True}
 
   name: Mapped[str] = mapped_column(
     String,
@@ -681,7 +682,6 @@ class ProtocolRunOrm(Base):
   previous_run: Mapped["ProtocolRunOrm | None"] = relationship(
     "ProtocolRunOrm",
     back_populates="continuations",
-    remote_side=[accession_id],
     foreign_keys=[previous_accession_id],
     uselist=False,
     default=None,
@@ -826,7 +826,6 @@ class FunctionCallLogOrm(Base):
   )
   parent_call: Mapped["FunctionCallLogOrm | None"] = relationship(
     "FunctionCallLogOrm",
-    remote_side=[accession_id],
     back_populates="child_calls",
     foreign_keys=[parent_function_call_log_accession_id],
     default=None,

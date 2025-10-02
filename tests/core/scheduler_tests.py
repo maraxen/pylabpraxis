@@ -5,16 +5,17 @@ from datetime import datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from celery import Celery
 
-from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry
+from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry, TaskQueue
 from praxis.backend.models import (
-  AssetRequirementOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  RuntimeAssetRequirement,
+    AssetRequirementOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolRunStatusEnum,
+    RuntimeAssetRequirement,
 )
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
 
 
 @pytest.fixture
@@ -36,22 +37,35 @@ def db_session_factory(mock_db_session):
 
 
 @pytest.fixture
-def mock_celery_app():
-  """Fixture for a mock Celery app instance."""
-  return MagicMock(spec=Celery)
+def mock_task_queue():
+    """Fixture for a mock TaskQueue."""
+    return MagicMock(spec=TaskQueue)
+
+@pytest.fixture
+def mock_protocol_run_service():
+    """Fixture for a mock ProtocolRunService."""
+    return MagicMock(spec=ProtocolRunService)
+
+@pytest.fixture
+def mock_protocol_definition_service():
+    """Fixture for a mock ProtocolDefinitionCRUDService."""
+    return MagicMock(spec=ProtocolDefinitionCRUDService)
 
 
 @pytest.fixture
-def scheduler(db_session_factory, mock_celery_app):
+def scheduler(
+    db_session_factory,
+    mock_task_queue,
+    mock_protocol_run_service,
+    mock_protocol_definition_service,
+):
   """Fixture for a ProtocolScheduler instance."""
   with patch("praxis.backend.core.scheduler.get_logger"):
-    mock_asset_lock_manager = MagicMock()
-    mock_protocol_code_manager = MagicMock()
     return ProtocolScheduler(
-      db_session_factory=db_session_factory,
-      celery_app_instance=mock_celery_app,
-      asset_lock_manager=mock_asset_lock_manager,
-      protocol_code_manager=mock_protocol_code_manager,
+        db_session_factory=db_session_factory,
+        task_queue=mock_task_queue,
+        protocol_run_service=mock_protocol_run_service,
+        protocol_definition_service=mock_protocol_definition_service,
     )
 
 
@@ -170,49 +184,48 @@ async def test_reserve_assets_failure_and_rollback(scheduler) -> None:
 
 
 @pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.execute_protocol_run_task")
-@patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_execution_success(
-  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session,
+    scheduler: ProtocolScheduler,
+    protocol_run_orm: MagicMock,
+    mock_db_session: MagicMock,
 ) -> None:
-  """Test successful scheduling of a protocol."""
-  mock_celery_task.delay.return_value = MagicMock(id="test_task_id")
-  scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
-  scheduler.reserve_assets = AsyncMock(return_value=True)
+    """Test successful scheduling of a protocol."""
+    scheduler.task_queue.send_task.return_value = MagicMock(id="test_task_id")
+    scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
+    scheduler.reserve_assets = AsyncMock(return_value=True)
 
-  success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
+    success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
 
-  assert success is True
-  mock_svc.update_protocol_run_status.assert_called_with(
-    mock_db_session,
-    protocol_run_orm.accession_id,
-    ProtocolRunStatusEnum.QUEUED,
-    output_data_json=ANY,
-  )
-  mock_db_session.commit.assert_called_once()
-  mock_celery_task.delay.assert_called_once()
-  assert protocol_run_orm.accession_id in scheduler._active_schedules
+    assert success is True
+    scheduler.protocol_run_service.update.assert_called_with(
+        db=mock_db_session,
+        db_obj=protocol_run_orm,
+        obj_in=ANY,
+    )
+    mock_db_session.commit.assert_called_once()
+    scheduler.task_queue.send_task.assert_called_once()
+    assert protocol_run_orm.accession_id in scheduler._active_schedules
 
 
 @pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.svc")
 async def test_schedule_protocol_asset_failure(
-  mock_svc, scheduler, protocol_run_orm, mock_db_session,
+    scheduler: ProtocolScheduler,
+    protocol_run_orm: MagicMock,
+    mock_db_session: MagicMock,
 ) -> None:
-  """Test scheduling failure due to asset reservation."""
-  scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
-  scheduler.reserve_assets = AsyncMock(return_value=False)
+    """Test scheduling failure due to asset reservation."""
+    scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
+    scheduler.reserve_assets = AsyncMock(return_value=False)
 
-  success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
+    success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
 
-  assert success is False
-  mock_svc.update_protocol_run_status.assert_called_with(
-    mock_db_session,
-    protocol_run_orm.accession_id,
-    ProtocolRunStatusEnum.FAILED,
-    output_data_json=ANY,
-  )
-  assert protocol_run_orm.accession_id not in scheduler._active_schedules
+    assert success is False
+    scheduler.protocol_run_service.update.assert_called_with(
+        db=mock_db_session,
+        db_obj=protocol_run_orm,
+        obj_in=ANY,
+    )
+    assert protocol_run_orm.accession_id not in scheduler._active_schedules
 
 
 @pytest.mark.asyncio

@@ -15,8 +15,6 @@ from praxis.backend.models import (
 )
 
 # --- Test Constants ---
-TEST_RUN_ID = uuid.uuid4()
-TEST_PROTOCOL_DEF_ID = uuid.uuid4()
 TEST_PROTOCOL_NAME = "test_protocol"
 TEST_PROTOCOL_VERSION = "1.0.0"
 
@@ -36,16 +34,20 @@ def mock_workcell() -> MagicMock:
   return MagicMock()
 
 
+from praxis.backend.utils.uuid import uuid7
+
+
 @pytest.fixture
 def mock_protocol_definition() -> FunctionProtocolDefinitionCreate:
   """Provide a mock protocol definition model."""
   asset_req = AssetRequirementModel(
-    accession_id=uuid.uuid4(),
+    accession_id=uuid7(),
     name="test_asset",
     fqn="pylabrobot.resources.resource.Resource",
+    type_hint_str="pylabrobot.resources.resource.Resource",
   )
   return FunctionProtocolDefinitionCreate(
-    accession_id=TEST_PROTOCOL_DEF_ID,
+    accession_id=uuid7(),
     name=TEST_PROTOCOL_NAME,
     version=TEST_PROTOCOL_VERSION,
     assets=[asset_req],

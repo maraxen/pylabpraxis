@@ -147,7 +147,7 @@ class TestProtocolDecoratorRuntime:
   """Tests the decorator's runtime wrapper logic."""
 
   @pytest.fixture
-  async def decorated_protocol(self) -> Callable:
+  def decorated_protocol(self) -> Callable:
     """Provides a fully decorated async function for runtime tests."""
 
     async def my_runtime_protocol(state: dict, volume: float, resource: Resource):
@@ -164,7 +164,7 @@ class TestProtocolDecoratorRuntime:
     return decorated_func
 
   @pytest.fixture
-  async def decorated_sync_protocol(self) -> Callable:
+  def decorated_sync_protocol(self) -> Callable:
     """Provides a decorated synchronous function."""
 
     def my_sync_protocol(state: dict) -> str:

@@ -8,7 +8,7 @@ to interact with the database and handle business logic.
 from fastapi import APIRouter
 
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.resource import (
   ResourceCreate,
   ResourceDefinitionCreate,
@@ -17,14 +17,14 @@ from praxis.backend.models.pydantic_internals.resource import (
   ResourceResponse,
   ResourceUpdate,
 )
-from praxis.backend.services.resource import ResourceService
+from praxis.backend.services.resource import resource_service
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionCRUDService
 
 router = APIRouter()
 
 router.include_router(
   create_crud_router(
-    service=ResourceService(ResourceOrm),
+    service=resource_service,
     prefix="/",
     tags=["Resources"],
     create_schema=ResourceCreate,
