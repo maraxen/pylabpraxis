@@ -116,7 +116,7 @@ class PraxisConfiguration:
   @property
   def redis_host(self) -> str:
     """Return the Redis host."""
-    return self._redis_section.get("host", "localhost")
+    return self._redis_section.get("host", "127.0.0.1")
 
   @property
   def redis_port(self) -> int:
@@ -141,12 +141,12 @@ class PraxisConfiguration:
   @property
   def celery_broker_url(self) -> str:
     """Return the Celery broker URL."""
-    return self._celery_section.get("broker", "redis://localhost:6379/0")
+    return self._celery_section.get("broker", "redis://127.0.0.1:6379/0")
 
   @property
   def celery_result_backend(self) -> str:
     """Return the Celery result backend URL."""
-    return self._celery_section.get("backend", "redis://localhost:6379/0")
+    return self._celery_section.get("backend", "redis://127.0.0.1:6379/0")
 
   @property
   def _logging_section(self) -> dict[str, str]:

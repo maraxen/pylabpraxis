@@ -136,14 +136,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
   )
 
 
-  machine_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("machine_definition_catalog.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the machine definition catalog, if this resource is also a machine.",
-    default=None,
-  )
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
@@ -156,7 +148,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     "MachineDefinitionOrm",
     back_populates="resource_definition",
     uselist=False,
-    foreign_keys=[machine_definition_accession_id],
     default=None,
     init=False,
   )
@@ -190,6 +181,25 @@ class ResourceOrm(AssetOrm):
     comment="Unique identifier for the resource, derived from the Asset base class.",
   )
 
+  # Definition
+  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    ForeignKey("resource_definition_catalog.accession_id"),
+    nullable=False,
+    index=True,
+    comment="Foreign key to the resource definition catalog.",
+    kw_only=True,
+  )
+
+  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
+    "ResourceDefinitionOrm",
+    back_populates="resource_list",
+    default=None,
+    uselist=False,
+    foreign_keys=[resource_definition_accession_id],
+    init=False,
+  )
+
   parent_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resources.accession_id"),
@@ -215,24 +225,7 @@ class ResourceOrm(AssetOrm):
     default_factory=list,
     uselist=True,
     init=False,
-  )
-
-  # Definition
-  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
-    ForeignKey("resource_definition_catalog.accession_id"),
-    nullable=False,
-    index=True,
-    comment="Foreign key to the resource definition catalog.",
-  )
-
-  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
-    "ResourceDefinitionOrm",
-    back_populates="resource_list",
-    default=None,
-    uselist=False,
-    foreign_keys=[resource_definition_accession_id],
-    init=False,
+    foreign_keys=[parent_accession_id],
   )
 
   # State
@@ -266,19 +259,11 @@ class ResourceOrm(AssetOrm):
   )
 
   # Counterparts
-  machine_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("machines.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the machine counterpart of this resource, if applicable.",
-  )
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="resource_counterpart",
     default=None,
     uselist=False,
-    foreign_keys=[machine_counterpart_accession_id],
     init=False,
   )
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
@@ -320,7 +305,7 @@ class ResourceOrm(AssetOrm):
     init=False,
   )
 
-  deck_location_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+  deck_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("decks.accession_id"),
     nullable=True,
@@ -354,7 +339,7 @@ class ResourceOrm(AssetOrm):
     "DeckOrm",
     back_populates="resources",
     uselist=False,
-    foreign_keys=[deck_location_accession_id],
+    foreign_keys=[deck_accession_id],
     init=False,
     default=None,
   )

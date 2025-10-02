@@ -120,12 +120,12 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=None,
   )
 
-  resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
-    "ResourceOrm",
-    back_populates="resource_definition",
-    cascade="all, delete-orphan",
-    default_factory=list,
-  )
+  # resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
+  #   "ResourceOrm",
+  #   back_populates="resource_definition",
+  #   cascade="all, delete-orphan",
+  #   default_factory=list,
+  # )
 
   resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -137,11 +137,12 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
   )
   resource_definition: Mapped["ResourceDefinitionOrm | None"] = relationship(
     "ResourceDefinitionOrm",
-    back_populates="machine_definition",
+    uselist=False,
     foreign_keys=[resource_definition_accession_id],
+    back_populates="machine_definition",
     default=None,
     init=False,
-    )
+  )
 
 
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -166,11 +167,20 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="JSONB representation of setup method for this machine definition.",
     default=None,
   )
+  asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_asset_requirements.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the asset requirement this machine definition satisfies.",
+    default=None,
+  )
   asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
     "AssetRequirementOrm",
     back_populates="machine_definitions",
     uselist=False,
     default=None,
+    foreign_keys=[asset_requirement_accession_id],
   )
 
 

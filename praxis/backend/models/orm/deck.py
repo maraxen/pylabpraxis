@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     FunctionDataOutputOrm,
     MachineOrm,
     ResourceDefinitionOrm,
+    MachineDefinitionOrm,
   )
 
 generate_deck_name = partial(
@@ -73,6 +74,7 @@ class DeckOrm(ResourceOrm):
   """
 
   __tablename__ = "decks"
+  __table_args__ = {"extend_existing": True}
   __mapper_args__: ClassVar[dict] = {
       "polymorphic_identity": "deck",
       "inherit_condition": text("decks.accession_id == resources.accession_id"),
@@ -139,6 +141,7 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[FunctionDataOutputOrm.deck_accession_id]",
   )
   resource_counterpart: Mapped["ResourceOrm"] = relationship(
     "ResourceOrm",
@@ -152,6 +155,7 @@ class DeckOrm(ResourceOrm):
     back_populates="deck",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="[ResourceOrm.deck_accession_id]",
   )
 
 
@@ -252,15 +256,30 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
     cascade="all, delete-orphan",
     default_factory=list,
   )
-  machine_definition: Mapped["ResourceDefinitionOrm"] = relationship(
+  resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
     "ResourceDefinitionOrm",
     back_populates="deck_definition",
     uselist=False,
     default=None,
   )
+  asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_asset_requirements.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the asset requirement this deck definition satisfies.",
+    default=None,
+  )
   asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
     "AssetRequirementOrm",
     back_populates="deck_definitions",
+    uselist=False,
+    default=None,
+    foreign_keys=[asset_requirement_accession_id],
+  )
+  machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
+    "MachineDefinitionOrm",
+    back_populates="deck_definition",
     uselist=False,
     default=None,
   )
@@ -291,7 +310,7 @@ class DeckPositionDefinitionOrm(Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (UniqueConstraint("deck_type_id", "position_name", name="uq_deck_position"),)
+  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),)
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,

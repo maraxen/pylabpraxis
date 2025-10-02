@@ -1,198 +1,118 @@
-import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from uuid_utils import uuid7
 
-# Pydantic models for request/response validation and constructing test data
-from praxis.backend.api.resources import (
-  ResourceInventoryDataIn,
-  ResourceInventoryDataOut,
+from praxis.backend.models.orm import ResourceOrm
+from praxis.backend.models.pydantic_internals.resource import (
+    ResourceUpdate,
 )
+from praxis.backend.api.resources import router as resource_router
 
-# Router to be tested
-from praxis.backend.api.resources import router as assets_router
-
-# ORM Model mock for service layer
-from praxis.backend.database_models.asset_management_orm import ResourceOrm
-
-# Setup FastAPI app and TestClient
 app = FastAPI()
-app.include_router(
-  assets_router,
-)  # Assuming default prefix, adjust if /api/assets is used in main app
+app.include_router(resource_router, prefix="/resources")
 
 client = TestClient(app)
 
 
-# --- Test Class for Resource  Inventory API Endpoints ---
-class TestResourceInventoryAPI:
-  MOCK_INSTANCE_ID = 123
-  MOCK_USER_ID = "test_user_api"
+@pytest.fixture
+def mock_resource_service():
+    """Fixture to mock the resource service."""
+    with patch(
+        "praxis.backend.services.resource.resource_service",
+        autospec=True,
+    ) as mock_service:
+        yield mock_service
 
-  @pytest.fixture(autouse=True)
-  def patch_dependencies(self, monkeypatch) -> None:
-    # Mock the get_db dependency to avoid actual DB calls
-    self.mock_db_session = MagicMock()
-    mock_get_db = MagicMock(return_value=self.mock_db_session)
-    monkeypatch.setattr("praxis.backend.api.assets.get_db", mock_get_db)
 
-    # Mock the asset_data_service functions used by the API
-    self.mock_get_resource = MagicMock()
-    self.mock_update_lw_status = MagicMock()
+class TestResourceApi:
+    """Test suite for the resource API endpoints."""
 
-    monkeypatch.setattr(
-      "praxis.backend.api.assets.asset_data_service.get_resource",
-      self.mock_get_resource,
-    )
-    monkeypatch.setattr(
-      "praxis.backend.api.assets.asset_data_service.update_resource_location_and_status",
-      self.mock_update_lw_status,
-    )
+    def test_get_resource_with_inventory(self, mock_resource_service):
+        """Test retrieving a resource with inventory data."""
+        resource_id = uuid7()
+        inventory_data = {"items": 23, "status": "full"}
+        mock_resource = ResourceOrm(
+            accession_id=resource_id,
+            name="test_resource",
+            properties_json=inventory_data,
+            fqn="test.fqn",
+            resource_definition_accession_id=uuid7(),
+        )
+        mock_resource_service.get.return_value = mock_resource
 
-  def test_get_resource_inventory_success(self) -> None:
-    mock_orm = MagicMock(spec=ResourceOrm)
-    inventory_dict = {
-      "praxis_inventory_schema_version": "1.0",
-      "reagents": [
-        {
-          "reagent_accession_id": "R1",
-          "initial_quantity": {"value": 10, "unit": "ml"},
-          "current_quantity": {"value": 5, "unit": "ml"},
-        },
-      ],
-      "item_count": {"initial_max_items": 96, "current_available_items": 90},
-      "consumable_state": "partially_used",
-      "last_updated_by": "user1",
-      "inventory_notes": "Some notes",
-      "last_updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
-    mock_orm.properties_json = inventory_dict
-    self.mock_get_resource.return_value = mock_orm
+        response = client.get(f"/resources/{resource_id}")
 
-    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["accession_id"] == str(resource_id)
+        assert response_data["properties_json"] == inventory_data
+        mock_resource_service.get.assert_called_once()
 
-    assert response.status_code == 200
-    self.mock_get_resource.assert_called_once_with(
-      self.mock_db_session,
-      self.MOCK_INSTANCE_ID,
-    )
+    def test_update_resource_inventory(self, mock_resource_service):
+        """Test updating a resource's inventory data."""
+        resource_id = uuid7()
+        initial_inventory = {"items": 23, "status": "full"}
+        updated_inventory = {"items": 22, "status": "partially_used"}
 
-    # Validate against ResourceInventoryDataOut model structure
-    expected_data = ResourceInventoryDataOut(
-      **inventory_dict,
-    ).model_dump()  # Pydantic v2
-    # For Pydantic v1: expected_data = ResourceInventoryDataOut(**inventory_dict).dict()
-    assert response.json() == expected_data
+        mock_initial_resource = ResourceOrm(
+            accession_id=resource_id,
+            name="test_resource",
+            properties_json=initial_inventory,
+            fqn="test.fqn",
+            resource_definition_accession_id=uuid7(),
+        )
+        mock_updated_resource = ResourceOrm(
+            accession_id=resource_id,
+            name="test_resource",
+            properties_json=updated_inventory,
+            fqn="test.fqn",
+            resource_definition_accession_id=uuid7(),
+        )
 
-  def test_get_resource_inventory_not_found(self) -> None:
-    self.mock_get_resource.return_value = None
-    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
-    assert response.status_code == 404
-    self.mock_get_resource.assert_called_once_with(
-      self.mock_db_session,
-      self.MOCK_INSTANCE_ID,
-    )
+        mock_resource_service.get.return_value = mock_initial_resource
+        mock_resource_service.update.return_value = mock_updated_resource
 
-  def test_get_resource_inventory_empty(self) -> None:
-    mock_orm = MagicMock(spec=ResourceOrm)
-    mock_orm.properties_json = None  # Or {}
-    self.mock_get_resource.return_value = mock_orm
+        update_payload = ResourceUpdate(properties_json=updated_inventory)
 
-    response = client.get(f"/resource/{self.MOCK_INSTANCE_ID}/inventory")
-    assert response.status_code == 200
-    # Expecting ResourceInventoryDataOut default values (all None)
-    expected_empty_data = ResourceInventoryDataOut().model_dump()  # Pydantic v2
-    # For Pydantic v1: expected_empty_data = ResourceInventoryDataOut().dict()
-    assert response.json() == expected_empty_data
-    self.mock_get_resource.assert_called_once_with(
-      self.mock_db_session,
-      self.MOCK_INSTANCE_ID,
-    )
+        response = client.put(
+            f"/resources/{resource_id}",
+            json=update_payload.model_dump(exclude_unset=True),
+        )
 
-  def test_update_resource_inventory_success(self) -> None:
-    mock_orm_initial = MagicMock(spec=ResourceOrm)
-    mock_orm_initial.accession_id = self.MOCK_INSTANCE_ID
-    mock_orm_initial.properties_json = {
-      "praxis_inventory_schema_version": "1.0",
-      "consumable_state": "new",
-    }
-    self.mock_get_resource.return_value = mock_orm_initial
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["properties_json"] == updated_inventory
+        mock_resource_service.update.assert_called_once()
 
-    # This is what the service function should return
-    mock_orm_updated = MagicMock(spec=ResourceOrm)
-    mock_orm_updated.accession_id = self.MOCK_INSTANCE_ID
+    def test_get_resource_not_found(self, mock_resource_service):
+        """Test retrieving a non-existent resource."""
+        resource_id = uuid7()
+        mock_resource_service.get.return_value = None
 
-    request_payload_dict = {
-      "praxis_inventory_schema_version": "1.0",
-      "consumable_state": "partially_used",
-      "last_updated_by": self.MOCK_USER_ID,
-      "inventory_notes": "Updated by API test",
-    }
-    request_payload_model = ResourceInventoryDataIn(**request_payload_dict)
+        response = client.get(f"/resources/{resource_id}")
 
-    # Simulate what properties_json will look like after service update
-    # (service adds last_updated_at)
-    final_properties_from_service = request_payload_model.model_dump(
-      exclude_unset=True,
-    )  # Pydantic v2
-    # For Pydantic v1: final_properties_from_service = request_payload_model.dict(exclude_unset=True)
-    final_properties_from_service["last_updated_at"] = datetime.datetime.now(
-      datetime.timezone.utc,
-    ).isoformat()  # This needs to be consistent
-    mock_orm_updated.properties_json = final_properties_from_service
+        assert response.status_code == 404
+        mock_resource_service.get.assert_called_once()
 
-    self.mock_update_lw_status.return_value = mock_orm_updated
+    def test_get_resource_with_empty_inventory(self, mock_resource_service):
+        """Test retrieving a resource with empty inventory data."""
+        resource_id = uuid7()
+        mock_resource = ResourceOrm(
+            accession_id=resource_id,
+            name="test_resource",
+            properties_json=None,
+            fqn="test.fqn",
+            resource_definition_accession_id=uuid7(),
+        )
+        mock_resource_service.get.return_value = mock_resource
 
-    with patch("praxis.backend.api.assets.datetime") as mock_dt:
-      mock_now = datetime.datetime.now(datetime.timezone.utc)
-      mock_dt.datetime.now.return_value = mock_now
-      iso_now = mock_now.isoformat()
+        response = client.get(f"/resources/{resource_id}")
 
-      response = client.put(
-        f"/resource/{self.MOCK_INSTANCE_ID}/inventory",
-        json=request_payload_dict,
-      )
-
-    assert response.status_code == 200
-    self.mock_get_resource.assert_called_once_with(
-      self.mock_db_session,
-      self.MOCK_INSTANCE_ID,
-    )
-
-    # Check what update_resource_location_and_status was called with
-    expected_properties_for_service = request_payload_model.model_dump(
-      exclude_unset=True,
-    )  # Pydantic v2
-    # For Pydantic v1: expected_properties_for_service = request_payload_model.dict(exclude_unset=True)
-    expected_properties_for_service["last_updated_at"] = iso_now
-    self.mock_update_lw_status.assert_called_once_with(
-      self.mock_db_session,
-      resource_accession_id=self.MOCK_INSTANCE_ID,
-      properties_json_update=expected_properties_for_service,
-    )
-
-    # Check the response from the API
-    expected_response_data = ResourceInventoryDataOut(
-      **final_properties_from_service,
-    ).model_dump()  # Pydantic v2
-    # For Pydantic v1: expected_response_data = ResourceInventoryDataOut(**final_properties_from_service).dict()
-    assert response.json() == expected_response_data
-
-  def test_update_resource_inventory_not_found(self) -> None:
-    self.mock_get_resource.return_value = None
-    request_payload_dict = {
-      "consumable_state": "used",
-      "last_updated_by": self.MOCK_USER_ID,
-    }
-    response = client.put(
-      f"/resource/{self.MOCK_INSTANCE_ID}/inventory",
-      json=request_payload_dict,
-    )
-    assert response.status_code == 404
-    self.mock_get_resource.assert_called_once_with(
-      self.mock_db_session,
-      self.MOCK_INSTANCE_ID,
-    )
-    self.mock_update_lw_status.assert_not_called()
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["accession_id"] == str(resource_id)
+        assert response_data["properties_json"] is None
+        mock_resource_service.get.assert_called_once()

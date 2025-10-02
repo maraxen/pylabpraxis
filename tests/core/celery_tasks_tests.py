@@ -60,7 +60,7 @@ class TestExecuteProtocolRunTask:
     with patch("asyncio.run", return_value=expected_result) as mock_asyncio_run:
       # Act
       result = execute_protocol_run_task(
-          self=mock_task,
+          mock_task,
           protocol_run_id=str(TEST_RUN_ID),
           input_parameters={"volume": 50},
           initial_state=None,
@@ -85,7 +85,7 @@ class TestExecuteProtocolRunTask:
 
       # Act
       result = execute_protocol_run_task(
-        self=MagicMock(),
+        MagicMock(),
         protocol_run_id=str(TEST_RUN_ID),
         input_parameters={},
         orchestrator=mock_orchestrator,
@@ -100,7 +100,8 @@ class TestExecuteProtocolRunTask:
   async def test_async_helper_happy_path(self, mock_orchestrator, mock_db_session_factory) -> None:
     """Test the internal async execution logic for a successful run."""
     # Arrange
-    mock_run_orm = ProtocolRunOrm(accession_id=TEST_RUN_ID)
+    mock_run_orm = MagicMock(spec=ProtocolRunOrm)
+    mock_run_orm.accession_id = TEST_RUN_ID
     with patch(
       "praxis.backend.services.protocols.protocol_run_service.read_protocol_run",
       new_callable=AsyncMock,
@@ -125,7 +126,8 @@ class TestExecuteProtocolRunTask:
   async def test_async_helper_orchestrator_fails(self, mock_orchestrator, mock_db_session_factory) -> None:
     """Test that a failure in the orchestrator is caught and handled."""
     # Arrange
-    mock_run_orm = ProtocolRunOrm(accession_id=TEST_RUN_ID)
+    mock_run_orm = MagicMock(spec=ProtocolRunOrm)
+    mock_run_orm.accession_id = TEST_RUN_ID
     mock_orchestrator.execute_existing_protocol_run.side_effect = (
       RuntimeError("Test Fail")
     )

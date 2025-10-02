@@ -37,6 +37,9 @@ def scheduler():
   return mock
 
 
+from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+
 @pytest.fixture
 def orchestrator():
   """Fixture for a mock Orchestrator."""
@@ -44,10 +47,25 @@ def orchestrator():
   mock.execute_protocol = AsyncMock(return_value="protocol_run_result")
   return mock
 
+@pytest.fixture
+def protocol_run_service():
+    """Fixture for a mock ProtocolRunService."""
+    return MagicMock(spec=ProtocolRunService)
+
+@pytest.fixture
+def protocol_definition_service():
+    """Fixture for a mock ProtocolDefinitionCRUDService."""
+    return MagicMock(spec=ProtocolDefinitionCRUDService)
 
 @pytest.fixture
 def service(
-  db_session_factory, asset_manager, workcell_runtime, scheduler, orchestrator,
+  db_session_factory,
+  asset_manager,
+  workcell_runtime,
+  scheduler,
+  orchestrator,
+  protocol_run_service,
+  protocol_definition_service,
 ):
   """Fixture for ProtocolExecutionService with all dependencies mocked."""
   return ProtocolExecutionService(
@@ -56,6 +74,8 @@ def service(
     workcell_runtime=workcell_runtime,
     scheduler=scheduler,
     orchestrator=orchestrator,
+    protocol_run_service=protocol_run_service,
+    protocol_definition_service=protocol_definition_service,
   )
 
 
