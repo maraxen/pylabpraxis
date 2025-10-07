@@ -7,7 +7,7 @@ This document outlines the testing strategy for the PyLabPraxis backend componen
 * **Test Pyramid**: We will adhere to the testing pyramid concept, emphasizing a large base of unit tests, a smaller layer of integration tests, and an even smaller layer of end-to-end (API) tests.
 * **Isolation**: Unit tests should test components in isolation, mocking external dependencies.
 * **Readability and Maintainability**: Tests should be clear, concise, and easy to understand and maintain.
-* **Coverage**: Aim for high test coverage of critical business logic. While 100% coverage is not always practical or valuable, critical paths and complex logic must be thoroughly tested.
+* **Coverage**: Aim for high test coverage of critical business logic. A concrete target of >90% line and branch coverage for all new and refactored code should be enforced. While 100% coverage is not always practical or valuable, critical paths and complex logic must be thoroughly tested.
 * **Automation**: All tests should be automated and runnable with a single command (e.g., `make test` or `pytest`).
 * **CI/CD Integration**: Tests will be integrated into the CI/CD pipeline to ensure that no regressions are introduced.
 
@@ -33,7 +33,7 @@ This document outlines the testing strategy for the PyLabPraxis backend componen
   * Verify that components work together as expected.
   * Test data flow and communication paths between services.
   * Example: Test the `ProtocolExecutionService` calling the `Orchestrator`, which in turn interacts with a mocked `AssetManager` and `WorkcellRuntime`.
-  * For database interactions, a separate test database should be used, and tests should clean up after themselves.
+  * For database interactions, a separate, ephemeral test database should be used. This database should be automatically migrated to the latest schema (e.g., using `alembic upgrade head`) before the test suite runs, and all data should be cleaned up after each test or test session.
 
 ### 3. API (End-to-End) Tests
 
@@ -45,6 +45,16 @@ This document outlines the testing strategy for the PyLabPraxis backend componen
   * Test request validation, authentication/authorization (if applicable and mockable), response codes, and response payloads.
   * These tests will cover the interaction of many backend components.
   * May require a running application instance or a carefully managed test environment.
+
+### 4. Property-Based Testing
+
+* **Scope**: Enhance unit and integration tests by testing a wide range of auto-generated data, uncovering edge cases that might be missed with example-based testing.
+* **Tools**: `Hypothesis` library, integrated with `pytest`.
+* **Location**: Within existing unit and integration test files.
+* **Focus**:
+  * Testing parsing logic, data validation, and state machines.
+  * Generating a broad spectrum of inputs to ensure robustness.
+  * Identifying unexpected failures in pure functions and components.
 
 ## Test Implementation Details
 
@@ -134,6 +144,27 @@ make test
 # or directly with pytest
 pytest
 ```
+
+## Advanced Testing Practices
+
+### Mutation Testing
+
+High code coverage doesn't always mean the tests are effective. Mutation testing helps ensure that your tests are actually testing the logic correctly. A tool like `mutmut` can be used to periodically assess the quality of the test suite by making small changes (mutations) to the code and verifying that the tests fail.
+
+## Security Testing
+
+Security is a critical aspect of any modern application. The following practices should be integrated into the development lifecycle.
+
+*   **Static Application Security Testing (SAST)**: Integrate a tool like `Bandit` into the CI pipeline to scan for common security vulnerabilities in the code.
+*   **Dependency Scanning**: Use a tool like `pip-audit` or GitHub's Dependabot to automatically check for vulnerabilities in third-party packages.
+*   **Dynamic Application Security Testing (DAST)**: For more mature applications, consider using a DAST scanner to probe the running application for vulnerabilities.
+
+## Performance and Load Testing
+
+As the application grows, performance will become a critical concern. It's best to plan for this early.
+
+*   **Load Testing**: We will simulate a high number of concurrent users to test the performance of key API endpoints under stress. Tools like `locust` are excellent for this.
+*   **Benchmarking**: We will create benchmarks for critical business logic to track performance regressions over time. The `pytest-benchmark` plugin is a great option here.
 
 ## Continuous Improvement
 
