@@ -267,4 +267,11 @@ def compile_drop_materialized_view(
     str: The SQL statement to drop the materialized view.
 
   """
-  return f"DROP MATERIALIZED VIEW IF EXISTS {element.name}"
+  SCHEDULER_METRICS_MV_CREATOR = CreateMaterializedView("scheduler_metrics_mv", metrics_query)
+
+event.listen(
+  Base.metadata,
+  "after_create",
+  SCHEDULER_METRICS_MV_CREATOR,
+)
+event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))

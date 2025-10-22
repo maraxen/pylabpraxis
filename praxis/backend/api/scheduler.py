@@ -24,7 +24,7 @@ router = APIRouter()
 router.include_router(
     create_crud_router(
         service=schedule_entry_service,
-        prefix="",
+        prefix="/entries",
         tags=["Scheduler"],
         create_schema=ScheduleEntryCreate,
         update_schema=ScheduleEntryUpdate,

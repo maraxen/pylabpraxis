@@ -22,7 +22,7 @@ Models included:
 from datetime import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel
+from pydantic import UUID7, BaseModel, ConfigDict
 from pydantic.fields import Field
 
 from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
@@ -112,12 +112,10 @@ class ParameterConstraintsModel(BaseModel):
   regex_pattern: str | None = None
   options: list[Any] | None = None
 
-  class Config:
-
-    """Pydantic configuration for ParameterConstraintsModel."""
-
-    from_attributes = True
-    validate_assignment = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    validate_assignment=True,
+  )
 
 
 class ParameterMetadataModel(BaseModel):
@@ -155,12 +153,10 @@ class LocationConstraintsModel(BaseModel):
   directly_position: bool = Field(default=False)
   position_condition: list[str] = Field(default_factory=list)
 
-  class Config:
-
-    """Pydantic configuration for LocationConstraintsModel."""
-
-    from_attributes = True
-    validate_assignment = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    validate_assignment=True,
+  )
 
 
 class AssetConstraintsModel(BaseModel):
@@ -271,12 +267,10 @@ class ProtocolParameters(BaseModel):
   user_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
   system_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
 
-  class Config:
-
-    """Pydantic configuration for ProtocolParameters."""
-
-    from_attributes = True
-    validate_assignment = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    validate_assignment=True,
+  )
 
 
 class ProtocolDefinitionFilters(BaseModel):
@@ -325,9 +319,7 @@ class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
 
   """Model for API responses for a protocol run."""
 
-  class Config(PraxisBaseModel.Config):
-
-    """Pydantic configuration for ProtocolRunResponse."""
+  model_config = PraxisBaseModel.model_config
 
 
 class FunctionCallLogBase(BaseModel):
@@ -362,6 +354,4 @@ class FunctionCallLogResponse(FunctionCallLogCreate):
 
   """Model for API responses for a function call log."""
 
-  class Config(PraxisBaseModel.Config):
-
-    """Pydantic configuration for FunctionCallLogResponse."""
+  model_config = PraxisBaseModel.model_config

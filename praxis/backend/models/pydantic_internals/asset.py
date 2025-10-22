@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import UUID7, BaseModel, Field, ConfigDict
 
 from praxis.backend.models.enums import AssetType
 
@@ -10,6 +10,7 @@ from .pydantic_base import PraxisBaseModel
 
 
 class AssetBase(BaseModel):
+
   """Define the base properties for an asset."""
 
   asset_type: AssetType | None = Field(description="The type of the asset.")
@@ -21,6 +22,7 @@ class AssetBase(BaseModel):
 
 
 class AssetResponse(AssetBase, PraxisBaseModel):
+
   """Represent an asset for API responses."""
 
   plr_state: dict[str, Any] | None = Field(
@@ -34,6 +36,7 @@ class AssetResponse(AssetBase, PraxisBaseModel):
 
 
 class AssetUpdate(BaseModel):
+
   """Define the properties for updating an asset."""
 
   name: str | None = Field(None, description="The unique name of the asset.")
@@ -55,13 +58,13 @@ class AssetUpdate(BaseModel):
     description="A dictionary for additional metadata about the asset.",
   )
 
-  class Config:
-    """Pydantic configuration for AssetUpdate."""
-
-    from_attributes = True
+  model_config = ConfigDict(
+    from_attributes=True,
+  )
 
 
 class AcquireAssetLock(BaseModel):
+
   """Model for acquiring an asset lock."""
 
   asset_type: str
@@ -73,6 +76,7 @@ class AcquireAssetLock(BaseModel):
 
 
 class AcquireAsset(BaseModel):
+
   """Model for acquiring an asset."""
 
   protocol_run_accession_id: UUID7
@@ -84,6 +88,7 @@ class AcquireAsset(BaseModel):
 
 
 class ReleaseAsset(BaseModel):
+
   """Model for releasing an asset."""
 
   asset_accession_id: UUID7

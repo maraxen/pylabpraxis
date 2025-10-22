@@ -511,6 +511,7 @@ class AssetRequirementOrm(Base):
     back_populates="asset_requirement",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="ResourceDefinitionOrm.asset_requirement_accession_id",
   )
   machine_definitions: Mapped[list["MachineDefinitionOrm"]] = relationship(
     "MachineDefinitionOrm",
@@ -574,33 +575,6 @@ class ProtocolRunOrm(Base):
     nullable=True,
     comment="The end time of the protocol run. Null if not yet completed.",
     default=None,
-  )
-  completed_duration_ms: Mapped[int | None] = mapped_column(
-    Integer,
-    Computed(
-      "(EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)",
-      persisted=True,
-    ),
-    comment="Stored duration in milliseconds, computed by the DB when a run completes.",
-    nullable=True,
-    init=False,
-  )
-
-  current_duration_ms: Mapped[int | None] = mapped_column(
-    Integer,
-    Computed(
-      """CASE
-              WHEN start_time IS NULL THEN NULL
-              WHEN end_time IS NOT NULL THEN (EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)
-              ELSE (EXTRACT(EPOCH FROM (NOW() - start_time)) * 1000)
-           END
-        """,
-      persisted=False,
-    ),
-    comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the \
-      current time.",
-    nullable=True,
-    init=False,
   )
   input_parameters_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -685,6 +659,7 @@ class ProtocolRunOrm(Base):
     foreign_keys=[previous_accession_id],
     uselist=False,
     default=None,
+    remote_side="ProtocolRunOrm.accession_id",
   )
   continuations: Mapped[list["ProtocolRunOrm"]] = relationship(
     "ProtocolRunOrm",
@@ -694,6 +669,12 @@ class ProtocolRunOrm(Base):
   schedule_entries: Mapped[list["ScheduleEntryOrm"]] = relationship(
     "ScheduleEntryOrm",
     back_populates="protocol_run",
+    default_factory=list,
+  )
+  asset_reservations: Mapped[list["AssetReservationOrm"]] = relationship(
+    "AssetReservationOrm",
+    back_populates="protocol_run",
+    cascade="all, delete-orphan",
     default_factory=list,
   )
 
@@ -757,32 +738,6 @@ class FunctionCallLogOrm(Base):
     default=None,
     kw_only=True,
   )
-  completed_duration_ms: Mapped[int | None] = mapped_column(
-    Integer,
-    Computed(
-      "(EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)",
-      persisted=True,
-    ),
-    comment="Stored duration in milliseconds, computed by the DB when a call completes.",
-    nullable=True,
-    kw_only=True,
-  )
-  current_duration_ms: Mapped[int | None] = mapped_column(
-    Integer,
-    Computed(
-      """CASE
-              WHEN start_time IS NULL THEN NULL
-              WHEN end_time IS NOT NULL THEN (EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)
-              ELSE (EXTRACT(EPOCH FROM (NOW() - start_time)) * 1000)
-           END
-        """,
-      persisted=False,
-    ),
-    comment="Virtual duration in ms. For ongoing calls, it's calculated on-the-fly against the \
-      current time.",
-    nullable=True,
-    kw_only=True,
-  )
   input_args_json: Mapped[dict | None] = mapped_column(
     JSONB,
     nullable=True,
@@ -828,6 +783,7 @@ class FunctionCallLogOrm(Base):
     "FunctionCallLogOrm",
     back_populates="child_calls",
     foreign_keys=[parent_function_call_log_accession_id],
+    remote_side="FunctionCallLogOrm.accession_id",
     default=None,
   )
   child_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(

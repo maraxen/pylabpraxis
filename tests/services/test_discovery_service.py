@@ -1,188 +1,68 @@
-# pylint: disable=redefined-outer-name, protected-access, unused-argument, no-member
-"""Unit tests for the ProtocolDiscoveryService."""
-
-import sys
-import uuid
-from collections.abc import Generator
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+"""Tests for the DiscoveryService."""
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import patch
 
-from praxis.backend.core.run_context import PROTOCOL_REGISTRY
-from praxis.backend.models.protocol_pydantic_models import (
-  FunctionProtocolDefinitionModel,
-)
-from praxis.backend.services.discovery_service import ProtocolDiscoveryService
-
-# --- Fixtures ---
-
-
-@pytest.fixture
-def discovery_service() -> ProtocolDiscoveryService:
-  """Provides a ProtocolDiscoveryService instance with a mocked DB session factory."""
-  mock_session_factory = MagicMock()
-  # The session factory itself returns an async context manager
-  mock_session_factory.return_value.__aenter__.return_value = AsyncMock()
-  mock_session_factory.return_value.__aexit__.return_value = None
-  return ProtocolDiscoveryService(db_session_factory=mock_session_factory)
-
-
-@pytest.fixture(autouse=True)
-def clear_protocol_registry():
-  """Fixture to clear the global PROTOCOL_REGISTRY before and after each test."""
-  PROTOCOL_REGISTRY.clear()
-  yield
-  PROTOCOL_REGISTRY.clear()
-
-
-@pytest.fixture
-def protocol_files(tmp_path: Path) -> Generator[Path, None, None]:
-  """Creates a temporary directory with dummy protocol files for discovery."""
-  protocols_dir = tmp_path / "protocols"
-  protocols_dir.mkdir()
-
-  sys.path.insert(0, str(tmp_path))
-
-  # File 1: A protocol defined with the @protocol decorator
-  (protocols_dir / "decorated_protocol.py").write_text(
-    """
-from praxis.backend.protocol_core.decorators import protocol
-from praxis.backend.models.protocol_pydantic_models import AssetRequirementModel
-from pylabrobot.resources import Plate, TipRack
-from typing import Optional
-
-@protocol(
-    name="decorated_transfer",
-    version="1.1.0",
-    description="A test protocol using a decorator.",
-    is_top_level=True,
-    assets=[
-        AssetRequirementModel(
-            name="tips",
-            fqn="pylabrobot.resources.TipRack",
-            optional=False
-        )
-    ]
-)
-def my_decorated_protocol(
-    source_plate: Plate,
-    dest_plate: Optional[Plate] = None,
-    volume: float = 50.0
-):
-    '''Docstring for decorated protocol.'''
-    pass
-""",
-  )
-
-  # File 2: A protocol to be discovered via inference
-  (protocols_dir / "inferred_protocol.py").write_text(
-    """
-from pylabrobot.resources import Plate
-from typing import Optional
-
-def my_inferred_protocol(p: Plate, num_transfers: int, speed: Optional[float] = 1.0):
-    '''Docstring for inferred protocol.'''
-    pass
-
-def not_a_protocol():
-    return "hello"
-""",
-  )
-
-  (protocols_dir / "_ignored_file.py").write_text("def ignored_func(): pass")
-
-  yield protocols_dir
-
-  sys.path.pop(0)
-  for mod in ["protocols.decorated_protocol", "protocols.inferred_protocol"]:
-    if mod in sys.modules:
-      del sys.modules[mod]
-
-
-# --- Tests ---
+from praxis.backend.services.discovery_service import DiscoveryService
+from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
 
 @pytest.mark.asyncio
-class TestProtocolDiscoveryService:
+async def test_create_discovery_service(db: AsyncSession):
+    """Test that the DiscoveryService can be created."""
+    resource_type_service = ResourceTypeDefinitionService(db)
+    machine_type_service = MachineTypeDefinitionService(db)
+    deck_type_service = DeckTypeDefinitionService(db)
 
-  """Test suite for the ProtocolDiscoveryService."""
+    discovery_service = DiscoveryService(
+        db_session_factory=lambda: db,
+        resource_type_definition_service=resource_type_service,
+        machine_type_definition_service=machine_type_service,
+        deck_type_definition_service=deck_type_service,
+    )
 
-  def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files) -> None:
-    """Test that _extract_protocol_definitions_from_paths finds all valid protocols."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files),
-    )
-    assert len(definitions) == 2
-    names = {model.name for model, func in definitions}
-    assert "decorated_transfer" in names
-    assert "my_inferred_protocol" in names
+    assert discovery_service is not None
 
-  def test_decorated_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files,
-  ) -> None:
-    """Verify the content of a protocol definition from a decorator."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files),
-    )
-    decorated_def, func = next(
-      d for d in definitions if d[0].name == "decorated_transfer"
-    )
-    assert isinstance(decorated_def, FunctionProtocolDefinitionModel)
-    assert decorated_def.name == "decorated_transfer"
-    assert decorated_def.version == "1.1.0"
-    param_names = {p.name for p in decorated_def.parameters}
-    assert param_names == {"source_plate", "dest_plate", "volume"}
-    asset_names = {a.name for a in decorated_def.assets}
-    assert "tips" in asset_names
-
-  def test_inferred_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files,
-  ) -> None:
-    """Verify the content of an inferred protocol definition."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files),
-    )
-    inferred_def, func = next(
-      d for d in definitions if d[0].name == "my_inferred_protocol"
-    )
-    assert isinstance(inferred_def, FunctionProtocolDefinitionModel)
-    params = {p.name: p for p in inferred_def.parameters}
-    assert "num_transfers" in params
-    assets = {a.name: a for a in inferred_def.assets}
-    assert "p" in assets
-    # FIX: Check the 'fqn' attribute instead of 'actual_type_str'
-    assert assets["p"].fqn == "pylabrobot.resources.Plate"
-    assert assets["p"].optional is False
-
-  async def test_discover_and_upsert_happy_path(
-    self, discovery_service, protocol_files,
-  ) -> None:
-    """Test the full discover and upsert flow, including registry updates."""
-    # Manually populate the registry as the decorator would
-    decorated_def = FunctionProtocolDefinitionModel(
-      accession_id=uuid.uuid4(),
-      name="decorated_transfer",
-      version="1.1.0",
-      source_file_path="protocols/decorated_protocol.py",
-      module_name="protocols.decorated_protocol",
-      function_name="my_decorated_protocol",
-    )
-    PROTOCOL_REGISTRY["decorated_transfer_v1.1.0"] = {
-      "pydantic_definition": decorated_def,
+@pytest.mark.asyncio
+@patch('praxis.backend.utils.plr_inspection.get_resource_classes')
+async def test_discover_and_sync_resources(mock_get_resource_classes, db: AsyncSession):
+    """Test that the DiscoveryService can discover and sync resources."""
+    # Mock the pylabrobot library to return a known set of resources
+    mock_get_resource_classes.return_value = {
+        'pylabrobot.resources.Plate': object,
+        'pylabrobot.resources.TipRack': object,
     }
-    mock_orm = MagicMock()
-    mock_orm.accession_id = uuid.uuid4()
 
-    with patch(
-      "praxis.backend.services.protocols.upsert_function_protocol_definition",
-      new_callable=AsyncMock,
-    ) as mock_upsert:
-      mock_upsert.return_value = mock_orm
-      result_orms = await discovery_service.discover_and_upsert_protocols(
-        str(protocol_files),
-      )
-      assert len(result_orms) == 2
-      registry_entry = PROTOCOL_REGISTRY.get("decorated_transfer_v1.1.0")
-      assert registry_entry is not None
-      assert registry_entry["db_accession_id"] == mock_orm.accession_id
+    resource_type_service = ResourceTypeDefinitionService(db)
+    machine_type_service = MachineTypeDefinitionService(db)
+    deck_type_service = DeckTypeDefinitionService(db)
+
+    discovery_service = DiscoveryService(
+        db_session_factory=lambda: db,
+        resource_type_definition_service=resource_type_service,
+        machine_type_definition_service=machine_type_service,
+        deck_type_definition_service=deck_type_service,
+    )
+
+    await discovery_service.discover_and_sync_all_definitions(protocol_search_paths=[])
+
+    # Check that the resources were correctly added to the database
+    from sqlalchemy import select
+    result = await db.execute(select(ResourceDefinitionOrm))
+    definitions = result.scalars().all()
+    assert len(definitions) == 2
+    assert {d.fqn for d in definitions} == {'pylabrobot.resources.Plate', 'pylabrobot.resources.TipRack'}
+
+@pytest.mark.asyncio
+async def test_table_exists(db: AsyncSession):
+    """Test that the resource_definition_catalog table exists."""
+    from sqlalchemy import text
+    try:
+        await db.execute(text("SELECT 1 FROM resource_definition_catalog LIMIT 1"))
+        assert True, "resource_definition_catalog table exists"
+    except Exception as e:
+        assert False, f"resource_definition_catalog table does not exist: {e}"

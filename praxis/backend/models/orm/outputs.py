@@ -265,6 +265,7 @@ class FunctionDataOutputOrm(Base):
     "FunctionDataOutputOrm",
     back_populates="derived_data_outputs",
     foreign_keys=[derived_from_data_output_accession_id],
+    remote_side="FunctionDataOutputOrm.accession_id",
     default=None,
   )
 

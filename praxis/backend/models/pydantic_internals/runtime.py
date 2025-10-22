@@ -2,7 +2,7 @@
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
@@ -46,9 +46,7 @@ class RuntimeAssetRequirement(BaseModel):
       priority=priority,
     )
 
-  class Config:
-
-    """Pydantic configuration for RuntimeAssetRequirement."""
-
-    from_attributes = True
-    validate_assignment = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    validate_assignment=True,
+  )

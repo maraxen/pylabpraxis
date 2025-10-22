@@ -8,8 +8,8 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from praxis.backend.api import discovery, function_data_outputs, protocols, resources, workcell_api
-from praxis.backend.api.scheduler import initialize_scheduler_components
+from praxis.backend.api import discovery, outputs, protocols, resources, workcell
+
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.celery import celery_app, configure_celery_app
@@ -139,9 +139,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       )
       logger.info("Celery app configured.")
 
-      # Initialize scheduler components (AssetLockManager, ProtocolScheduler)
-      logger.info("Initializing scheduler components...")
-      await initialize_scheduler_components(AsyncSessionLocal, praxis_config)
+
 
       # Store the fully initialized orchestrator and discovery service in the app state
       app.state.orchestrator = orchestrator
@@ -196,12 +194,12 @@ app.add_middleware(
 
 # --- API Router Inclusion ---
 app.include_router(
-  function_data_outputs.router,
+  outputs.router,
   prefix="/api/v1/data-outputs",
   tags=["Data Outputs"],
 )
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
-app.include_router(workcell_api.router, prefix="/api/v1/workcell", tags=["Workcell"])
+app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["Workcell"])
 app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 

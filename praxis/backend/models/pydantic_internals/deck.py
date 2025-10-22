@@ -7,7 +7,7 @@ accession_ids (e.g., slots or rails), and decks.
 
 from typing import Any, Literal
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import UUID7, BaseModel, Field, ConfigDict
 
 from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,
@@ -66,11 +66,9 @@ class PositioningConfig(BaseModel):
     None,
     description="Additional parameters for the positioning method.",
   )
-
-  class Config:
-    """Pydantic configuration."""
-
-    from_attributes = True
+  model_config = ConfigDict(
+    from_attributes=True,
+  )
 
 
 class DeckPositionDefinitionBase(BaseModel):
@@ -123,12 +121,9 @@ class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
 
   accession_id: UUID7
   deck_type_accession_id: UUID7
-  compatible_resource_fqns: dict[str, Any] | None = None
-
-  class Config:
-    """Pydantic configuration."""
-
-    from_attributes = True
+  model_config = ConfigDict(
+    from_attributes=True,
+  )
 
 
 class DeckPositionDefinitionUpdate(BaseModel):
@@ -163,10 +158,10 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
   accession_id: UUID7
   positions: list[DeckPositionDefinitionResponse]
 
-  class Config:
-    """Pydantic configuration."""
-
-    from_attributes = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+  )
 
 
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
@@ -184,8 +179,6 @@ class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
   serialized_constructor_hints_json: dict[str, Any] | None = None
   additional_properties_json: dict[str, Any] | None = None
 
-  class Config:
-    """Pydantic configuration."""
-
-    from_attributes = True
-    use_enum_values = True
+  model_config = ConfigDict(
+    from_attributes=True,
+  )

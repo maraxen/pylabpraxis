@@ -107,6 +107,4 @@ class WorkcellResponse(WorkcellBase, PraxisBaseModel):
     description="List of deck configurations associated with this workcell.",
   )
 
-  class Config(PraxisBaseModel.Config):
-
-    """Pydantic configuration for WorkcellResponse."""
+  model_config = PraxisBaseModel.model_config.copy()

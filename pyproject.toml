@@ -68,6 +68,10 @@ test = [
     "responses",
     "freezegun",
     "fakeredis",
+    "celery",
+    "aiosqlite",
+    "alembic",
+    "psycopg2-binary",
 ]
 dev = [
     "praxis[fw,http,plate_reading,websockets,opentrons,server,inheco,agrow,email,test]",
@@ -187,3 +191,8 @@ module = [
     "locust.*",
 ]
 ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]

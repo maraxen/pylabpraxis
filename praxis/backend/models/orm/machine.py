@@ -290,6 +290,7 @@ class MachineOrm(AssetOrm):
     "ResourceOrm",
     back_populates="machine_counterpart",
     foreign_keys=[resource_counterpart_accession_id],
+    remote_side="ResourceOrm.accession_id",
     default=None,
     init=False,
   )
@@ -326,6 +327,7 @@ class MachineOrm(AssetOrm):
     back_populates="location_machine",
     default=None,
     uselist=False,
+    foreign_keys="ResourceOrm.machine_location_accession_id",
   )
 
   # Additional fields for machine state tracking
@@ -356,6 +358,7 @@ class MachineOrm(AssetOrm):
     back_populates="parent_machine",
     cascade="all, delete-orphan",
     default_factory=list,
+    foreign_keys="DeckOrm.parent_machine_accession_id",
   )
 
   def __repr__(self) -> str:

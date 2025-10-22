@@ -65,9 +65,10 @@ class ResourceTypeDefinitionService(
     Well,
   )
 
-  def __init__(self) -> None:
+  def __init__(self, db: AsyncSession) -> None:
     """Initialize the ResourceTypeDefinitionService."""
     super().__init__(ResourceDefinitionOrm)
+    self.db = db
 
   @property
   def _orm_model(self) -> type[ResourceDefinitionOrm]:

@@ -419,22 +419,6 @@ class ScheduleHistoryOrm(Base):
     nullable=True,
     init=False,
   )
-  current_duration_ms: Mapped[int | None] = mapped_column(
-    Integer,
-    Computed(
-      """CASE
-              WHEN start_time IS NULL THEN NULL
-              WHEN end_time IS NOT NULL THEN (EXTRACT(EPOCH FROM (end_time - start_time)) * 1000)
-              ELSE (EXTRACT(EPOCH FROM (NOW() - start_time)) * 1000)
-           END
-        """,
-      persisted=False,  # This column is VIRTUAL
-    ),
-    comment="Virtual duration in ms. For ongoing runs, it's calculated on-the-fly against the"
-    "current time.",
-    nullable=True,
-    init=False,
-  )
   override_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
     nullable=True,

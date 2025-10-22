@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import UUID7, BaseModel, Field, field_validator
+from pydantic import UUID7, BaseModel, Field, field_validator, ConfigDict
 
 from praxis.backend.models.enums import (
   DataOutputTypeEnum,
@@ -63,17 +63,10 @@ class FunctionDataOutputBase(BaseModel):
     description="Sequence number within the function call",
   )
 
-  processing_metadata_json: dict[str, Any] | None = Field(
-    None,
-    description="Data processing metadata",
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
   )
-
-  class Config:
-
-    """Pydantic configuration."""
-
-    from_attributes = True
-    use_enum_values = True
 
 
 class FunctionDataOutputCreate(FunctionDataOutputBase):
@@ -244,12 +237,10 @@ class WellDataOutputBase(BaseModel):
     description="Primary numeric value for this well",
   )
 
-  class Config:
-
-    """Pydantic configuration."""
-
-    from_attributes = True
-    use_enum_values = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+  )
 
 
 class WellDataOutputCreate(WellDataOutputBase):
@@ -330,13 +321,11 @@ class PlateDataVisualization(BaseModel):
 
   units: str | None = Field(None, description="Data units")
 
-  class Config:
-
-    """Pydantic configuration for PlateDataVisualization."""
-
-    from_attributes = True
-    use_enum_values = True
-    arbitrary_types_allowed = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+    arbitrary_types_allowed=True,
+  )
 
 
 class ProtocolRunDataSummary(BaseModel):
@@ -369,13 +358,11 @@ class ProtocolRunDataSummary(BaseModel):
     description="List of file attachments with metadata",
   )
 
-  class Config:
-
-    """Pydantic configuration for ProtocolRunDataSummary."""
-
-    from_attributes = True
-    use_enum_values = True
-    arbitrary_types_allowed = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+    arbitrary_types_allowed=True,
+  )
 
 
 class DataExportRequest(BaseModel):

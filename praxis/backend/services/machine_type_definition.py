@@ -29,7 +29,7 @@ class MachineTypeDefinitionService(
 
   def __init__(self, db: AsyncSession) -> None:
     """Initialize the MachineDefinitionService."""
-    super().__init__(db)
+    self.db = db
 
   @property
   def _orm_model(self) -> type[MachineDefinitionOrm]:

@@ -7,7 +7,7 @@ to ensure consistency in API responses.
 import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import UUID7, BaseModel, Field, ConfigDict
 
 from praxis.backend.utils.uuid import uuid7
 
@@ -44,9 +44,8 @@ class PraxisBaseModel(BaseModel):
     """Set the updated_at field to the current time after model initialization."""
     self.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
-  class Config:
-    """Pydantic configuration."""
-
-    from_attributes = True
-    use_enum_values = True
-    validate_assignment = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+    validate_assignment=True,
+  )

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import UUID7, BaseModel, Field, ConfigDict
 
 
 class SearchFilters(BaseModel):
@@ -38,8 +38,7 @@ class SearchFilters(BaseModel):
   resource_accession_id: UUID7 | None = Field(None, description="Filter by associated resource ID.")
   parent_accession_id: UUID7 | None = Field(None, description="Filter by parent asset ID.")
 
-  class Config:
-    """Pydantic configuration for SearchFilters model."""
-
-    from_attributes = True
-    use_enum_values = True
+  model_config = ConfigDict(
+    from_attributes=True,
+    use_enum_values=True,
+  )

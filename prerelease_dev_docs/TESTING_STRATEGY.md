@@ -137,13 +137,16 @@ The following is a non-exhaustive list of key backend components and areas to fo
 
 ## Running Tests
 
-Tests can be run using:
+To run the test suite and generate a coverage report, use the following command:
 
 ```bash
-make test
-# or directly with pytest
-pytest
+uv run pytest --cov=praxis/backend --cov-report=xml
 ```
+
+This command will:
+- Run `pytest` using the `uv` tool.
+- Generate a coverage report for the `praxis/backend` directory.
+- The coverage report will be in XML format.
 
 ## Advanced Testing Practices
 

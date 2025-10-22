@@ -147,7 +147,7 @@ class DeckOrm(ResourceOrm):
     "ResourceOrm",
     back_populates="deck_counterpart",
     uselist=False,
-    foreign_keys=[accession_id],
+    foreign_keys="DeckOrm.accession_id",
     init=False,
     )
   resources: Mapped[list["ResourceOrm"]] = relationship(

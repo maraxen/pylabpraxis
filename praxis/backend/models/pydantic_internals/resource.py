@@ -69,9 +69,7 @@ class ResourceResponse(AssetResponse, ResourceBase, PraxisBaseModel):
   parent_response: "ResourceResponse | None" = None
   child_responses: ClassVar[list["ResourceResponse"]] = []
 
-  class Config(AssetResponse.Config):
-
-    """Pydantic configuration for ResourceResponse."""
+  model_config = AssetResponse.model_config.copy()
 
 
 ResourceResponse.model_rebuild()

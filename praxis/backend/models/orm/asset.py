@@ -9,7 +9,7 @@ including:
 
 from typing import TYPE_CHECKING, ClassVar
 
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum, String, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,7 @@ from praxis.backend.utils.db import Base
 if TYPE_CHECKING:
   from praxis.backend.models.orm.schedule import AssetReservationOrm
 
+JsonVariant = JSON().with_variant(JSONB, 'postgresql')
 
 class AssetOrm(Base):
 
@@ -39,6 +40,7 @@ class AssetOrm(Base):
   name: Mapped[str] = mapped_column(
     String,
     nullable=False,
+    unique=True,
     index=True,
     comment="Name of the asset.",
     kw_only=True,
@@ -58,13 +60,13 @@ class AssetOrm(Base):
     comment="Location of the asset in the lab.",
   )
   plr_state: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="PLR state of the asset, if applicable.",
     default=None,
   )
   plr_definition: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="PLR definition of the asset, if applicable.",
     default=None,

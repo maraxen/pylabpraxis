@@ -64,6 +64,19 @@ These type definition services inherit from `DiscoverableTypeServiceBase`, which
 
 This clear separation of concerns allows for modular and extensible type discovery, ensuring that the system accurately reflects the capabilities of the connected laboratory hardware.
 
+## Running Tests
+
+To run the test suite and generate a coverage report, use the following command:
+
+```bash
+uv run pytest --cov=praxis/backend --cov-report=xml
+```
+
+This command will:
+- Run `pytest` using the `uv` tool.
+- Generate a coverage report for the `praxis/backend` directory.
+- The coverage report will be in XML format.
+
 ## Testing Strategy
 
 For backend components (core, services, api, models, utils - excluding `commons`):

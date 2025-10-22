@@ -144,6 +144,21 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Foreign key to the deck definition catalog, if this resource is also a deck.",
     default=None,
   )
+  asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
+    UUID,
+    ForeignKey("protocol_asset_requirements.accession_id"),
+    nullable=True,
+    index=True,
+    comment="Foreign key to the asset requirement this resource definition satisfies.",
+    default=None,
+  )
+  asset_requirement: Mapped["AssetRequirementOrm"] = relationship(
+    "AssetRequirementOrm",
+    back_populates="resource_definitions",
+    uselist=False,
+    default=None,
+    foreign_keys=[asset_requirement_accession_id],
+  )
   machine_definition: Mapped["MachineDefinitionOrm | None"] = relationship(
     "MachineDefinitionOrm",
     back_populates="resource_definition",
@@ -264,6 +279,8 @@ class ResourceOrm(AssetOrm):
     back_populates="resource_counterpart",
     default=None,
     uselist=False,
+    primaryjoin="ResourceOrm.accession_id == foreign(MachineOrm.accession_id)",
+    viewonly=True,
     init=False,
   )
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
