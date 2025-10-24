@@ -306,7 +306,7 @@ class ResourceOrm(AssetOrm):
 
   machine_location_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("machines.accession_id"),
+    ForeignKey("machines.accession_id", use_alter=True, name="fk_resource_machine_location"),
     nullable=True,
     index=True,
     comment="Foreign key to the machine where this resource is currently located, if applicable.",
@@ -324,7 +324,7 @@ class ResourceOrm(AssetOrm):
 
   deck_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("decks.accession_id"),
+    ForeignKey("decks.accession_id", use_alter=True, name="fk_resource_deck"),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this resource is located on, if applicable.",
