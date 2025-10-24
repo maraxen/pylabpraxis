@@ -246,7 +246,7 @@ def compile_create_materialized_view(
     str: The SQL statement to create the materialized view.
 
   """
-  return f"CREATE MATERIALIZED VIEW {element.name} AS \
+  return f"CREATE MATERIALIZED VIEW IF NOT EXISTS {element.name} AS \
     {compiler.sql_compiler.process(element.selectable, literal_binds=True)}"
 
 
@@ -267,11 +267,5 @@ def compile_drop_materialized_view(
     str: The SQL statement to drop the materialized view.
 
   """
-  SCHEDULER_METRICS_MV_CREATOR = CreateMaterializedView("scheduler_metrics_mv", metrics_query)
-
-event.listen(
-  Base.metadata,
-  "after_create",
-  SCHEDULER_METRICS_MV_CREATOR,
-)
-event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
+  return f"DROP MATERIALIZED VIEW IF EXISTS {element.name}"
+  return f"DROP MATERIALIZED VIEW IF EXISTS {element.name}"

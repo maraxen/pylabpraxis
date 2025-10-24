@@ -91,7 +91,7 @@ class DeckOrm(ResourceOrm):
 
   parent_machine_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("machines.accession_id"),
+    ForeignKey("machines.accession_id", use_alter=True, name="fk_deck_parent_machine"),
     nullable=True,
     index=True,
     comment="Foreign key to the machine this deck is part of.",
