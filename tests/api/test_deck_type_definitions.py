@@ -28,7 +28,7 @@ async def test_create_deck_type_definition(client: AsyncClient) -> None:
             },
             "position_definitions": [
                 {
-                    "position_accession_id": "A1",
+                    "name": "A1",
                     "nominal_x_mm": 0.0,
                     "nominal_y_mm": 0.0,
                     "nominal_z_mm": 0.0,

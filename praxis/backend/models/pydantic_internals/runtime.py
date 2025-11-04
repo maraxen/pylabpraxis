@@ -2,14 +2,15 @@
 
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
 
 
-class RuntimeAssetRequirement(BaseModel):
+class RuntimeAssetRequirement(PraxisBaseModel):
 
   """Represents a specific asset requirement for a *protocol run*.
 

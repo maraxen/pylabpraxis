@@ -48,7 +48,7 @@ class MachineBase(AssetBase):
   current_protocol_run_accession_id: UUID7 | None = None
 
 
-class MachineCreate(MachineBase, PraxisBaseModel):
+class MachineCreate(MachineBase):
 
   """Represents a machine for creation requests.
 
