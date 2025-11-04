@@ -10,9 +10,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 
 class ScheduleEntryStatus(str, Enum):
@@ -40,7 +41,7 @@ class ResourceReservationStatus(str, Enum):
   FAILED = "FAILED"
 
 
-class ResourceRequirementRequest(BaseModel):
+class ResourceRequirementRequest(PraxisBaseModel):
 
   """Request model for defining resource requirements."""
 
@@ -59,13 +60,12 @@ class ResourceRequirementRequest(BaseModel):
   priority: int = Field(default=1, description="Priority level (1-10)")
 
 
-class ResourceReservationResponse(BaseModel):
-
+class ResourceReservationResponse(PraxisBaseModel):
   """Response model for resource reservations."""
 
-  model_config = ConfigDict(from_attributes=True)
+  # Remove accession_id and created_at fields, they are inherited.
+  # The model_config is also inherited from PraxisBaseModel.
 
-  accession_id: uuid.UUID
   resource_type: str
   resource_name: str
   resource_identifier: str | None
@@ -76,7 +76,7 @@ class ResourceReservationResponse(BaseModel):
     alias="required_capabilities_json",
   )
   constraint_details: dict[str, Any] | None = Field(alias="constraint_details_json")
-  created_at: datetime
+  # created_at is inherited
   reserved_at: datetime | None
   released_at: datetime | None
   expires_at: datetime | None
@@ -84,8 +84,14 @@ class ResourceReservationResponse(BaseModel):
   status_details: str | None
   error_details: dict[str, Any] | None = Field(alias="error_details_json")
 
+  # Add model_config if you need to override values from PraxisBaseModel.
+  # Otherwise, remove it as it is inherited.
+  model_config = ConfigDict(
+    from_attributes=True,
+  )
 
-class ScheduleProtocolRequest(BaseModel):
+
+class ScheduleProtocolRequest(PraxisBaseModel):
 
   """Request model for scheduling a protocol run."""
 
@@ -110,17 +116,12 @@ class ScheduleProtocolRequest(BaseModel):
   )
 
 
-class ScheduleEntryResponse(BaseModel):
+class ScheduleEntryResponse(PraxisBaseModel):
 
   """Response model for schedule entries."""
-
-  model_config = ConfigDict(from_attributes=True)
-
-  accession_id: uuid.UUID
   protocol_run_accession_id: uuid.UUID
   status: ScheduleEntryStatus
   priority: int
-  created_at: datetime
   scheduled_at: datetime | None
   started_at: datetime | None
   completed_at: datetime | None
@@ -135,7 +136,7 @@ class ScheduleEntryResponse(BaseModel):
   resource_reservations: list[ResourceReservationResponse] | None = None
 
 
-class ScheduleStatusResponse(BaseModel):
+class ScheduleStatusResponse(PraxisBaseModel):
 
   """Response model for schedule status queries."""
 
@@ -149,7 +150,7 @@ class ScheduleStatusResponse(BaseModel):
   resource_availability: dict[str, Any] | None
 
 
-class CancelScheduleRequest(BaseModel):
+class CancelScheduleRequest(PraxisBaseModel):
 
   """Request model for cancelling a scheduled run."""
 
@@ -159,7 +160,7 @@ class CancelScheduleRequest(BaseModel):
   force: bool = Field(default=False, description="Force cancellation even if running")
 
 
-class ScheduleAnalysisResponse(BaseModel):
+class ScheduleAnalysisResponse(PraxisBaseModel):
 
   """Response model for schedule analysis."""
 
@@ -174,7 +175,7 @@ class ScheduleAnalysisResponse(BaseModel):
   errors: list[str] | None = None
 
 
-class SchedulerSystemStatusResponse(BaseModel):
+class SchedulerSystemStatusResponse(PraxisBaseModel):
 
   """Response model for scheduler system status."""
 
@@ -208,13 +209,9 @@ class SchedulerSystemStatusResponse(BaseModel):
   last_cleanup_timestamp: datetime | None
 
 
-class ScheduleHistoryResponse(BaseModel):
+class ScheduleHistoryResponse(PraxisBaseModel):
 
   """Response model for schedule history entries."""
-
-  model_config = ConfigDict(from_attributes=True)
-
-  accession_id: uuid.UUID
   schedule_entry_accession_id: uuid.UUID
   event_type: str
   event_timestamp: datetime
@@ -233,7 +230,7 @@ class ScheduleHistoryResponse(BaseModel):
   triggered_by: str | None
 
 
-class ScheduleListRequest(BaseModel):
+class ScheduleListRequest(PraxisBaseModel):
 
   """Request model for listing schedules with filters."""
 
@@ -263,7 +260,7 @@ class ScheduleListRequest(BaseModel):
   offset: int = Field(default=0, ge=0, description="Results offset")
 
 
-class ScheduleListResponse(BaseModel):
+class ScheduleListResponse(PraxisBaseModel):
 
   """Response model for schedule listing."""
 
@@ -276,7 +273,7 @@ class ScheduleListResponse(BaseModel):
   has_more: bool
 
 
-class AssetAvailabilityResponse(BaseModel):
+class AssetAvailabilityResponse(PraxisBaseModel):
 
   """Response model for asset availability check."""
 
@@ -290,7 +287,7 @@ class AssetAvailabilityResponse(BaseModel):
   alternative_assets: list[str] | None
 
 
-class SchedulePriorityUpdateRequest(BaseModel):
+class SchedulePriorityUpdateRequest(PraxisBaseModel):
 
   """Request model for updating schedule priority."""
 
@@ -300,7 +297,7 @@ class SchedulePriorityUpdateRequest(BaseModel):
   reason: str | None = Field(default=None, description="Reason for priority change")
 
 
-class SchedulerMetricsResponse(BaseModel):
+class SchedulerMetricsResponse(PraxisBaseModel):
 
   """Response model for scheduler performance metrics."""
 
@@ -337,7 +334,7 @@ class SchedulerMetricsResponse(BaseModel):
   celery_task_success_rate: float
 
 
-class ScheduleListFilters(BaseModel):
+class ScheduleListFilters(PraxisBaseModel):
 
     """Model for filtering schedule lists."""
 
@@ -350,7 +347,7 @@ class ScheduleListFilters(BaseModel):
     include_cancelled: bool = False
 
 
-class ScheduleEntryCreate(BaseModel):
+class ScheduleEntryCreate(PraxisBaseModel):
 
     """Request model for creating a schedule entry."""
 
@@ -374,7 +371,7 @@ class ScheduleEntryCreate(BaseModel):
     )
 
 
-class ScheduleEntryUpdate(BaseModel):
+class ScheduleEntryUpdate(PraxisBaseModel):
 
     """Request model for updating a schedule entry."""
 

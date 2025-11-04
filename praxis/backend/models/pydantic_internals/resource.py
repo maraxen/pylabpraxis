@@ -42,7 +42,7 @@ class ResourceBase(AssetBase):
   )
 
 
-class ResourceCreate(ResourceBase, PraxisBaseModel):
+class ResourceCreate(ResourceBase):
 
   """Model for creating a new resource instance."""
 
@@ -62,7 +62,7 @@ class ResourceUpdate(ResourceBase, AssetUpdate):
   """Model for updating a resource instance."""
 
 
-class ResourceResponse(AssetResponse, ResourceBase, PraxisBaseModel):
+class ResourceResponse(AssetResponse, ResourceBase):
 
   """Model for API responses for a resource instance."""
 
@@ -75,7 +75,7 @@ class ResourceResponse(AssetResponse, ResourceBase, PraxisBaseModel):
 ResourceResponse.model_rebuild()
 
 
-class ResourceDefinitionBase(BaseModel):
+class ResourceDefinitionBase(PraxisBaseModel):
 
   """Defines the base properties for a resource definition."""
 
@@ -110,7 +110,7 @@ class ResourceDefinitionResponse(ResourceDefinitionBase, PLRTypeDefinitionRespon
   """Represents a resource definition for API responses."""
 
 
-class ResourceInventoryReagentItem(BaseModel):
+class ResourceInventoryReagentItem(PraxisBaseModel):
 
   """Represents a single reagent item within resource inventory data."""
 
@@ -129,7 +129,7 @@ class ResourceInventoryReagentItem(BaseModel):
   custom_fields: dict[str, Any] | None = None
 
 
-class ResourceInventoryItemCount(BaseModel):
+class ResourceInventoryItemCount(PraxisBaseModel):
 
   """Provides counts and usage information for items within a resource inventory."""
 
@@ -139,7 +139,7 @@ class ResourceInventoryItemCount(BaseModel):
   positions_used: list[str] | None = None
 
 
-class ResourceInventoryDataIn(BaseModel):
+class ResourceInventoryDataIn(PraxisBaseModel):
 
   """Represents inbound inventory data for a resource instance."""
 
@@ -158,7 +158,7 @@ class ResourceInventoryDataOut(ResourceInventoryDataIn):
   last_updated_at: str | None = None
 
 
-class ResourceTypeInfo(BaseModel):
+class ResourceTypeInfo(PraxisBaseModel):
 
   """Provides detailed information about a specific resource type."""
 
@@ -170,7 +170,7 @@ class ResourceTypeInfo(BaseModel):
   module: str
 
 
-class ResourceCategoriesResponse(BaseModel):
+class ResourceCategoriesResponse(PraxisBaseModel):
 
   """Organizes resource types by category for categorization and discovery."""
 

@@ -6,7 +6,9 @@ from typing import Any
 from pydantic import UUID7, BaseModel, Field, ConfigDict
 
 
-class SearchFilters(BaseModel):
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
+
+class SearchFilters(PraxisBaseModel):
   """A general-purpose model for search and filtering criteria across service layers."""
 
   limit: int = Field(100, ge=1, le=1000, description="Maximum number of results to return.")

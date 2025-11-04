@@ -9,7 +9,7 @@ from praxis.backend.models.enums import AssetType
 from .pydantic_base import PraxisBaseModel
 
 
-class AssetBase(BaseModel):
+class AssetBase(PraxisBaseModel):
 
   """Define the base properties for an asset."""
 
@@ -35,7 +35,7 @@ class AssetResponse(AssetBase, PraxisBaseModel):
   )
 
 
-class AssetUpdate(BaseModel):
+class AssetUpdate(PraxisBaseModel):
 
   """Define the properties for updating an asset."""
 
@@ -58,12 +58,8 @@ class AssetUpdate(BaseModel):
     description="A dictionary for additional metadata about the asset.",
   )
 
-  model_config = ConfigDict(
-    from_attributes=True,
-  )
 
-
-class AcquireAssetLock(BaseModel):
+class AcquireAssetLock(PraxisBaseModel):
 
   """Model for acquiring an asset lock."""
 
@@ -75,7 +71,7 @@ class AcquireAssetLock(BaseModel):
   required_capabilities: dict[str, Any] | None = None
 
 
-class AcquireAsset(BaseModel):
+class AcquireAsset(PraxisBaseModel):
 
   """Model for acquiring an asset."""
 
@@ -87,7 +83,7 @@ class AcquireAsset(BaseModel):
   property_constraints: dict[str, Any] | None = None
 
 
-class ReleaseAsset(BaseModel):
+class ReleaseAsset(PraxisBaseModel):
 
   """Model for releasing an asset."""
 

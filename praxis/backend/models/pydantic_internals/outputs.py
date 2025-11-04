@@ -18,7 +18,9 @@ from praxis.backend.models.enums import (
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 
 
-class FunctionDataOutputBase(BaseModel):
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
+
+class FunctionDataOutputBase(PraxisBaseModel):
 
   """Base fields for function data outputs."""
 
@@ -146,7 +148,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     return v
 
 
-class FunctionDataOutputUpdate(BaseModel):
+class FunctionDataOutputUpdate(PraxisBaseModel):
 
   """Model for updating function data outputs."""
 
@@ -220,7 +222,7 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
   updated_at: datetime | None = Field(None, description="Last update timestamp")
 
 
-class WellDataOutputBase(BaseModel):
+class WellDataOutputBase(PraxisBaseModel):
 
   """Base fields for well-specific data outputs."""
 
@@ -277,7 +279,7 @@ class WellDataOutputResponse(WellDataOutputBase):
   created_at: datetime = Field(..., description="Creation timestamp")
 
 
-class WellDataOutputUpdate(BaseModel):
+class WellDataOutputUpdate(PraxisBaseModel):
 
   """Model for updating well data outputs."""
 
@@ -289,7 +291,7 @@ class WellDataOutputUpdate(BaseModel):
   )  # TODO: figure out how to integrate this
 
 
-class PlateDataVisualization(BaseModel):
+class PlateDataVisualization(PraxisBaseModel):
 
   """Model for plate-based data visualization."""
 
@@ -328,7 +330,7 @@ class PlateDataVisualization(BaseModel):
   )
 
 
-class ProtocolRunDataSummary(BaseModel):
+class ProtocolRunDataSummary(PraxisBaseModel):
 
   """Model for summarizing all data from a protocol run."""
 
@@ -365,7 +367,7 @@ class ProtocolRunDataSummary(BaseModel):
   )
 
 
-class DataExportRequest(BaseModel):
+class DataExportRequest(PraxisBaseModel):
 
   """Model for requesting data export."""
 
@@ -386,7 +388,7 @@ class DataExportRequest(BaseModel):
   )
 
 
-class FunctionDataOutputFilters(BaseModel):
+class FunctionDataOutputFilters(PraxisBaseModel):
 
   """Model for filtering function data outputs."""
 
@@ -406,7 +408,7 @@ class FunctionDataOutputFilters(BaseModel):
   )
 
 
-class WellDataOutputFilters(BaseModel):
+class WellDataOutputFilters(PraxisBaseModel):
 
   """Model for filtering well data outputs."""
 

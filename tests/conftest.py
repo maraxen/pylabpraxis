@@ -59,3 +59,16 @@ async def db(engine, setup_database) -> AsyncGenerator[AsyncSession, None]:
             finally:
                 await session.close()
                 await transaction.rollback()
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def factories_session(db: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Fixture that provides the db session to all factory-boy factories.
+    """
+    from tests.factories import WorkcellFactory, MachineFactory, ResourceDefinitionFactory, DeckDefinitionFactory, DeckFactory
+    factories = [WorkcellFactory, MachineFactory, ResourceDefinitionFactory, DeckDefinitionFactory, DeckFactory]
+    for factory in factories:
+        factory._meta.sqlalchemy_session = db
+        factory._meta.sqlalchemy_session_persistence = "commit"
+    yield db

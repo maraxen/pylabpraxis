@@ -22,7 +22,7 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 from praxis.backend.models.pydantic_internals.resource import ResourceResponse
 
 
-class WorkcellBase(BaseModel):
+class WorkcellBase(PraxisBaseModel):
 
   """Defines the base properties for a workcell."""
 
@@ -56,7 +56,7 @@ class WorkcellCreate(WorkcellBase):
   """
 
 
-class WorkcellUpdate(BaseModel):
+class WorkcellUpdate(PraxisBaseModel):
 
   """Specifies the fields that can be updated for an existing workcell.
 
@@ -83,7 +83,7 @@ class WorkcellUpdate(BaseModel):
   )
 
 
-class WorkcellResponse(WorkcellBase, PraxisBaseModel):
+class WorkcellResponse(WorkcellBase):
 
   """Represents a workcell for API responses.
 

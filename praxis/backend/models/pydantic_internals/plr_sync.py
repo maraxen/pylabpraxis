@@ -5,17 +5,16 @@ from pydantic import BaseModel
 from .pydantic_base import PraxisBaseModel
 
 
-class PLRTypeDefinitionBase(BaseModel):
+class PLRTypeDefinitionBase(PraxisBaseModel):
 
   """Base model for a PyLabRobot type definition."""
 
-  name: str
   fqn: str
   description: str | None = None
   plr_category: str | None = None
 
 
-class PLRTypeDefinition(PLRTypeDefinitionBase, PraxisBaseModel):
+class PLRTypeDefinition(PLRTypeDefinitionBase):
 
   """Model for a PyLabRobot type definition."""
 
@@ -25,7 +24,7 @@ class PLRTypeDefinitionResponse(PLRTypeDefinition):
   """Model for API responses for a PyLabRobot type definition."""
 
 
-class PLRTypeDefinitionCreate(PLRTypeDefinition):
+class PLRTypeDefinitionCreate(PLRTypeDefinitionBase):
 
   """Model for creating a new PyLabRobot type definition."""
 

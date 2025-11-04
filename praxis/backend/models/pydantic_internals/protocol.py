@@ -49,7 +49,7 @@ class ProtocolStartRequest(PraxisBaseModel):
   kwargs: dict[str, Any] | None = None
 
 
-class ProtocolStatus(BaseModel):
+class ProtocolStatus(PraxisBaseModel):
 
   """Provides a simple status update for a protocol."""
 
@@ -57,14 +57,14 @@ class ProtocolStatus(BaseModel):
   status: str
 
 
-class ProtocolDirectories(BaseModel):
+class ProtocolDirectories(PraxisBaseModel):
 
   """Lists directories associated with protocols."""
 
   directories: list[str]
 
 
-class ProtocolPrepareRequest(BaseModel):
+class ProtocolPrepareRequest(PraxisBaseModel):
 
   """Represents a request to prepare a protocol for execution.
 
@@ -77,7 +77,7 @@ class ProtocolPrepareRequest(BaseModel):
   asset_assignments: dict[str, str] | None = None
 
 
-class ProtocolInfo(BaseModel):
+class ProtocolInfo(PraxisBaseModel):
 
   """Provides essential information about a protocol.
 
@@ -94,14 +94,14 @@ class ProtocolInfo(BaseModel):
   protocol_definition_accession_id: UUID7 | None = None
 
 
-class UIHint(BaseModel):
+class UIHint(PraxisBaseModel):
 
   """Provides hints for parameter/asset rendering in a user interface."""
 
   widget_type: str | None = None
 
 
-class ParameterConstraintsModel(BaseModel):
+class ParameterConstraintsModel(PraxisBaseModel):
 
   """Defines validation constraints for a protocol parameter."""
 
@@ -118,7 +118,7 @@ class ParameterConstraintsModel(BaseModel):
   )
 
 
-class ParameterMetadataModel(BaseModel):
+class ParameterMetadataModel(PraxisBaseModel):
 
   """Provides comprehensive metadata for a protocol parameter.
 
@@ -139,7 +139,7 @@ class ParameterMetadataModel(BaseModel):
   ui_hint: UIHint | None = None
 
 
-class LocationConstraintsModel(BaseModel):
+class LocationConstraintsModel(PraxisBaseModel):
 
   """Defines constraints for the location of an asset in a protocol.
 
@@ -159,7 +159,7 @@ class LocationConstraintsModel(BaseModel):
   )
 
 
-class AssetConstraintsModel(BaseModel):
+class AssetConstraintsModel(PraxisBaseModel):
 
   """Defines constraints for an asset required by a protocol."""
 
@@ -169,7 +169,7 @@ class AssetConstraintsModel(BaseModel):
   required_method_args: dict[str, list[str]] = Field(default_factory=dict)
 
 
-class AssetRequirementModel(BaseModel):
+class AssetRequirementModel(PraxisBaseModel):
 
   """Describes a single asset required by a protocol.
 
@@ -224,7 +224,7 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   assets: list[AssetRequirementModel] = Field(default_factory=list)
 
 
-class FunctionProtocolDefinitionUpdate(BaseModel):
+class FunctionProtocolDefinitionUpdate(PraxisBaseModel):
 
   """Model for updating a function protocol definition."""
 
@@ -250,12 +250,12 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   assets: list[AssetRequirementModel] | None = None
 
 
-class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate, PraxisBaseModel):
+class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate):
 
   """Model for API responses for a function protocol definition."""
 
 
-class ProtocolParameters(BaseModel):
+class ProtocolParameters(PraxisBaseModel):
 
   """Represents the parameters for a protocol run.
 
@@ -273,7 +273,7 @@ class ProtocolParameters(BaseModel):
   )
 
 
-class ProtocolDefinitionFilters(BaseModel):
+class ProtocolDefinitionFilters(PraxisBaseModel):
 
   """Model for filtering protocol definitions."""
 
@@ -285,7 +285,7 @@ class ProtocolDefinitionFilters(BaseModel):
   include_deprecated: bool = False
 
 
-class ProtocolRunBase(BaseModel):
+class ProtocolRunBase(PraxisBaseModel):
 
   """Base model for a protocol run."""
 
@@ -302,7 +302,7 @@ class ProtocolRunBase(BaseModel):
   previous_accession_id: UUID7 | None = None
 
 
-class ProtocolRunCreate(ProtocolRunBase, PraxisBaseModel):
+class ProtocolRunCreate(ProtocolRunBase):
 
   """Model for creating a new protocol run."""
 
@@ -315,14 +315,14 @@ class ProtocolRunUpdate(ProtocolRunBase):
   """Model for updating a protocol run."""
 
 
-class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
+class ProtocolRunResponse(ProtocolRunBase):
 
   """Model for API responses for a protocol run."""
 
   model_config = PraxisBaseModel.model_config
 
 
-class FunctionCallLogBase(BaseModel):
+class FunctionCallLogBase(PraxisBaseModel):
 
   """Base model for a function call log."""
 

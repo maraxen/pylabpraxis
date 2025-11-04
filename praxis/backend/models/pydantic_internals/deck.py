@@ -14,6 +14,7 @@ from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionUpdate,
 )
 
+from .pydantic_base import PraxisBaseModel
 from .resource import (
   ResourceBase,
   ResourceCreate,
@@ -41,7 +42,7 @@ class DeckResponse(ResourceResponse, DeckBase):
   """Model for API responses for a deck."""
 
 
-class PositioningConfig(BaseModel):
+class PositioningConfig(PraxisBaseModel):
   """Configuration for how positions are calculated/managed for this deck type.
 
   A general configuration for methods that follow the pattern:
@@ -66,20 +67,15 @@ class PositioningConfig(BaseModel):
     None,
     description="Additional parameters for the positioning method.",
   )
-  model_config = ConfigDict(
-    from_attributes=True,
-  )
 
 
-class DeckPositionDefinitionBase(BaseModel):
+class DeckPositionDefinitionBase(PraxisBaseModel):
   """Define the base properties for a deck position definition.
 
   This model specifies the characteristics of a specific position or "position"
   on a deck, including its identifier, compatibility with different resource
   types, and physical location coordinates.
   """
-
-  position_accession_id: str
   nominal_x_mm: float
   nominal_y_mm: float
   nominal_z_mm: float
@@ -118,50 +114,19 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
 
 class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
   """Model for API responses for a deck position definition."""
-
-  accession_id: UUID7
   deck_type_accession_id: UUID7
-  model_config = ConfigDict(
-    from_attributes=True,
-  )
 
 
-class DeckPositionDefinitionUpdate(BaseModel):
-  """Model for updating a deck position definition."""
-
-
-class DeckTypeDefinitionBase(BaseModel):
-  """Base model for a deck type definition."""
-
-  name: str
-  fqn: str
-  description: str | None = None
-  positioning_config: PositioningConfig
-  position_definitions: list[DeckPositionDefinitionCreate] | None = None
-  plr_category: str | None = None
-  default_size_x_mm: float | None = None
-  default_size_y_mm: float | None = None
-  default_size_z_mm: float | None = None
-  serialized_constructor_args_json: dict[str, Any] | None = None
-  serialized_assignment_methods_json: dict[str, Any] | None = None
-  serialized_constructor_hints_json: dict[str, Any] | None = None
-  additional_properties_json: dict[str, Any] | None = None
-
-
-class DeckTypeDefinitionCreate(DeckTypeDefinitionBase, PLRTypeDefinitionCreate):
+class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
   """Model for creating a new deck type definition."""
+  name: str
+  positioning_config: PositioningConfig
 
 
-class DeckTypeDefinitionResponse(DeckTypeDefinitionBase):
+class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
   """Model for API responses for a deck type definition."""
 
-  accession_id: UUID7
   positions: list[DeckPositionDefinitionResponse]
-
-  model_config = ConfigDict(
-    from_attributes=True,
-    use_enum_values=True,
-  )
 
 
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
