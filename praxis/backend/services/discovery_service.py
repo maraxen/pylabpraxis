@@ -32,7 +32,6 @@ from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionUpdate,
   ParameterMetadataModel,
 )
-from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.resource_type_definition import (
@@ -56,7 +55,6 @@ class DiscoveryService:
     db_session_factory: async_sessionmaker[AsyncSession] | None = None,
     resource_type_definition_service: ResourceTypeDefinitionService | None = None,
     machine_type_definition_service: MachineTypeDefinitionService | None = None,
-    deck_type_definition_service: DeckTypeDefinitionService | None = None,
     protocol_definition_service: ProtocolDefinitionCRUDService | None = None,
   ) -> None:
     """Initialize the DiscoveryService.
@@ -76,7 +74,6 @@ class DiscoveryService:
     self.db_session_factory = db_session_factory
     self.resource_type_definition_service = resource_type_definition_service
     self.machine_type_definition_service = machine_type_definition_service
-    self.deck_type_definition_service = deck_type_definition_service
     self.protocol_definition_service = protocol_definition_service
 
   async def discover_and_sync_all_definitions(
@@ -107,10 +104,6 @@ class DiscoveryService:
       await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
       logger.info("Machine type definitions synchronized.")
 
-    if self.deck_type_definition_service:
-      logger.info("Synchronizing deck type definitions...")
-      await self.deck_type_definition_service.discover_and_synchronize_type_definitions()
-      logger.info("Deck type definitions synchronized.")
 
     logger.info("Discovering and upserting protocols...")
     await self.discover_and_upsert_protocols(

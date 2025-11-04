@@ -2,9 +2,9 @@ import asyncio
 from typing import AsyncGenerator
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
-    AsyncConnection,
     AsyncSession,
     create_async_engine,
 )

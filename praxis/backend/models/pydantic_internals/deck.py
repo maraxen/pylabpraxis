@@ -80,9 +80,9 @@ class DeckPositionDefinitionBase(BaseModel):
   """
 
   position_accession_id: str
-  x_coord: float
-  y_coord: float
-  z_coord: float
+  nominal_x_mm: float
+  nominal_y_mm: float
+  nominal_z_mm: float
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):

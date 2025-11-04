@@ -3,7 +3,7 @@
 from typing import Annotated, Any, TypeVar
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,10 +37,10 @@ def create_crud_router(
     tags=tags,
   )
   async def create(
-    obj_in: CreateSchemaType,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    obj_in: CreateSchemaType = Body(...),
+    db: AsyncSession = Depends(get_db),
   ) -> ModelType:
-    return await service.create(db=db, obj_in=create_schema.model_validate(obj_in))
+    return await service.create(db=db, obj_in=obj_in)
 
   @router.get(prefix, response_model=list[ResponseSchemaType], tags=tags)
   async def get_multi(
