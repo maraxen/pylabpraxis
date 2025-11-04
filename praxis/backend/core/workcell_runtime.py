@@ -41,7 +41,7 @@ from praxis.backend.models import (
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate
 from praxis.backend.services.deck import DeckService
-from praxis.backend.services.deck_type_definition import DeckTypeDefinitionCRUDService
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.machine import MachineService
 from praxis.backend.services.resource import ResourceService
 from praxis.backend.services.workcell import WorkcellService
@@ -86,7 +86,7 @@ class WorkcellRuntime(IWorkcellRuntime):
     deck_service: DeckService,
     machine_service: MachineService,
     resource_service: ResourceService,
-    deck_type_definition_service: DeckTypeDefinitionCRUDService,
+    deck_type_definition_service: DeckTypeDefinitionService,
     workcell_service: WorkcellService,
   ) -> None:
     """Initialize the WorkcellRuntime."""
@@ -279,12 +279,14 @@ class WorkcellRuntime(IWorkcellRuntime):
       )
       if isinstance(position_accession_id, str | int | uuid.UUID):
         async with self.db_session_factory() as db_session:
-          all_deck_position_definitions = (
-            await self.deck_type_definition_svc.read_position_definitions_for_deck_type(
-              db_session,
-              deck_type_id,
-            )
+          deck_type_definition = await self.deck_type_definition_svc.get(
+            db=db_session, accession_id=deck_type_id
           )
+          if not deck_type_definition:
+            raise WorkcellRuntimeError(
+              f"Deck type definition with ID {deck_type_id} not found."
+            )
+          all_deck_position_definitions = deck_type_definition.positions
           found_position_def = next(
             (
               p
@@ -962,7 +964,7 @@ class WorkcellRuntime(IWorkcellRuntime):
         )
 
     async with self.db_session_factory() as db_session:
-      deck_orm = await self.deck_svc.get(db_session, deck_orm_accession_id)
+      deck_orm = await self.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
       if deck_orm is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
@@ -973,8 +975,8 @@ class WorkcellRuntime(IWorkcellRuntime):
         raise WorkcellRuntimeError(msg)
 
       deck_type_definition_orm = await self.deck_type_definition_svc.get(
-        db_session,
-        deck_orm_type_definition_accession_id,
+        db=db_session,
+        accession_id=deck_orm_type_definition_accession_id,
       )
 
       if deck_type_definition_orm is None:
@@ -1152,7 +1154,7 @@ class WorkcellRuntime(IWorkcellRuntime):
   ) -> dict[str, Any]:
     """Construct a dictionary representing the state of a specific deck."""
     async with self.db_session_factory() as db_session:
-      deck_orm = await self.deck_svc.get(db_session, deck_orm_accession_id)
+      deck_orm = await self.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
 
       if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."

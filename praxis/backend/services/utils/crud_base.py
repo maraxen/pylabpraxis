@@ -18,7 +18,6 @@ from praxis.backend.services.utils.query_builder import (
   apply_specific_id_filters,
 )
 from praxis.backend.utils.db import Base
-from praxis.backend.utils.db_decorator import handle_db_transaction
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -81,7 +80,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     result = await db.execute(statement)
     return list(result.scalars().all())
 
-  @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
     """Create a new object."""
     obj_in_data = jsonable_encoder(obj_in)
@@ -91,7 +89,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     await db.refresh(db_obj)
     return db_obj
 
-  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
@@ -110,7 +107,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     await db.refresh(db_obj)
     return db_obj
 
-  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: UUID) -> ModelType | None:
     """Delete an object by its primary key."""
     statement = select(self.model).where(self.model.accession_id == accession_id)
@@ -118,6 +114,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     obj = result.scalars().first()
     if obj:
       await db.delete(obj)
+      await db.flush()
     return obj
 
   async def get_by_name(self, db: AsyncSession, name: str) -> ModelType | None:

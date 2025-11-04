@@ -1,6 +1,7 @@
 """Core backend application for PyLabPraxis."""
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,13 +9,18 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from praxis.backend.api import discovery, outputs, protocols, resources, workcell
+from praxis.backend.api import decks, discovery, outputs, protocols, resources, workcell
 
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.celery import celery_app, configure_celery_app
+from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.discovery_service import DiscoveryService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
@@ -74,34 +80,58 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application startup sequence initiated...")
 
     logger.info("Initializing Praxis database schema...")
-    await init_praxis_db_schema()
+    engine = getattr(app.state, "async_engine", None)
+    await init_praxis_db_schema(engine=engine)
     logger.info("Praxis database schema initialization complete.")
 
-    logger.info("Initializing PraxisDBService...")
-    assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
-    db_service_instance = await PraxisDBService.initialize(
-      keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG,
-    )
-    logger.info("PraxisDBService initialized successfully.")
+    # logger.info("Initializing PraxisDBService...")
+    # assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
+    # db_service_instance = await PraxisDBService.initialize(
+    #   keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG,
+    # )
+    # logger.info("PraxisDBService initialized successfully.")
 
     # Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
-    workcell_runtime = WorkcellRuntime(
-      db_session_factory=AsyncSessionLocal,
-      config=praxis_config,
-    )
+    from praxis.backend.core.workcell import Workcell
+    from praxis.backend.services.deck import DeckService
+    from praxis.backend.services.machine import MachineService
+    from praxis.backend.services.resource import ResourceService
+    from praxis.backend.services.workcell import WorkcellService
+    from praxis.backend.core.filesystem import FileSystem
+    workcell = Workcell(name="test_workcell", save_file="test_workcell.json", file_system=FileSystem())
+    async with AsyncSessionLocal() as db_session:
+        deck_service = DeckService(DeckOrm)
+        machine_service = MachineService(MachineOrm)
+        resource_service = ResourceService(ResourceOrm)
+        deck_type_definition_service = DeckTypeDefinitionService(DeckDefinitionOrm)
+        workcell_service = WorkcellService(WorkcellOrm)
+        workcell_runtime = WorkcellRuntime(
+          db_session_factory=AsyncSessionLocal,
+          workcell=workcell,
+          deck_service=deck_service,
+          machine_service=machine_service,
+          resource_service=resource_service,
+          deck_type_definition_service=deck_type_definition_service,
+          workcell_service=workcell_service,
+        )
     logger.info("WorkcellRuntime initialized successfully.")
     async with AsyncSessionLocal() as db_session:  # Use async with for session
+      asset_lock_manager = AssetLockManager()
+      resource_type_definition_service = ResourceTypeDefinitionService(db_session)
       asset_manager = AssetManager(
         db_session=db_session,
         workcell_runtime=workcell_runtime,
+        deck_service=deck_service,
+        machine_service=machine_service,
+        resource_service=resource_service,
+        resource_type_definition_service=resource_type_definition_service,
+        asset_lock_manager=asset_lock_manager,
       )
 
       # Initialize the new type definition services
       logger.info("Initializing type definition services...")
-      resource_type_definition_service = ResourceTypeDefinitionService(db_session)
       machine_type_definition_service = MachineTypeDefinitionService(db_session)
-      deck_type_definition_service = DeckTypeDefinitionService(db_session)
       logger.info("Type definition services initialized.")
 
       # Initialize DiscoveryService
@@ -110,16 +140,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         db_session_factory=AsyncSessionLocal,
         resource_type_definition_service=resource_type_definition_service,
         machine_type_definition_service=machine_type_definition_service,
-        deck_type_definition_service=deck_type_definition_service,
       )
       logger.info("DiscoveryService initialized.")
 
       # Run initial discovery and synchronization
-      logger.info("Running initial discovery and synchronization...")
-      await discovery_service.discover_and_sync_all_definitions(
-        protocol_search_paths=praxis_config.all_protocol_source_paths,
-      )
-      logger.info("Initial discovery and synchronization complete.")
+      # logger.info("Running initial discovery and synchronization...")
+      # await discovery_service.discover_and_sync_all_definitions(
+      #   protocol_search_paths=praxis_config.all_protocol_source_paths,
+      # )
+      # logger.info("Initial discovery and synchronization complete.")
 
       # Instantiate and initialize the Orchestrator with its dependencies
       logger.info("Initializing orchestrator...")
@@ -201,6 +230,7 @@ app.include_router(
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["Workcell"])
 app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(decks.router, prefix="/api/v1/decks", tags=["Decks"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 
 

@@ -1,99 +1,69 @@
-"""Utility for managing database transactions in service layer methods."""
+"""Database transaction decorator for handling session management."""
 
-import functools
-from collections.abc import Callable, Coroutine
-from typing import Any, ParamSpec, TypeVar
+from functools import wraps
+from typing import Awaitable, Callable, ParamSpec, TypeVar
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.utils.logging import get_logger
-
-logger = get_logger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def ensure_async_session(session: Any) -> AsyncSession:
-  """Ensure the session is an AsyncSession."""
-  if isinstance(session, AsyncSession):
-    return session
-  msg = "The decorated function must have a `db: AsyncSession` argument."
-  raise TypeError(
-    msg,
-  )
-
-
 def handle_db_transaction(
-  func: Callable[P, Coroutine[Any, Any, R]],
-) -> Callable[P, Coroutine[Any, Any, R]]:
-  """Manage database transactions for service layer methods.
+  func: Callable[P, Awaitable[R]],
+) -> Callable[P, Awaitable[R]]:
+  """Decorator to manage database transactions in service layer methods.
 
-  Wrap a service method to provide automatic transaction
-  handling (commit/rollback) and standardized exception handling. It ensures
-  that the service layer remains decoupled from the web (HTTP) layer.
+  This decorator wraps an async function that takes a SQLAlchemy `AsyncSession`
+  as its first argument. It ensures that the session is properly committed
+  on success and rolled back on any exception.
+
+  Args:
+      func (Callable): The async function to be decorated.
+
+  Returns:
+      Callable: The wrapped async function with transaction management logic.
+
+  Raises:
+      Exception: Re-raises any exception that occurs within the decorated function
+      after rolling back the transaction.
+
   """
 
-  @functools.wraps(func)
+  @wraps(func)
   async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-    """Wrap the function to handle transactions."""
-    db: AsyncSession | None = None
-    _db: Any = None
+    """Wrap the function with transaction handling.
+
+    Args:
+        *args: Positional arguments passed to the decorated function.
+        **kwargs: Keyword arguments passed to the decorated function.
+
+    Returns:
+        The return value of the decorated function.
+
+    Raises:
+        Exception: Re-raises any exception from the decorated function.
+
+    """
+    db_session_arg_index = -1
+    for i, arg in enumerate(args):
+      if isinstance(arg, AsyncSession):
+        db_session_arg_index = i
+        break
+
+    if db_session_arg_index == -1 and "db" not in kwargs:
+      msg = "Function decorated with @handle_db_transaction must have a 'db' argument."
+      raise TypeError(
+        msg,
+      )
+
+    db: AsyncSession = args[db_session_arg_index] if db_session_arg_index != -1 else kwargs["db"]
     try:
-      if "db" in kwargs:
-        _db = kwargs["db"]
-      else:
-        arg_names = func.__code__.co_varnames[: func.__code__.co_argcount]
-        if "db" in arg_names:
-          db_index = arg_names.index("db")
-          if db_index < len(args):
-            _db = args[db_index]
-
-      db = ensure_async_session(_db)
-
-      result: R = await func(*args, **kwargs)
+      result = await func(*args, **kwargs)
       await db.commit()
-    except IntegrityError as e:
-      if db:
-        await db.rollback()
-      logger.warning(
-        "Database integrity error in %s: %s",
-        func.__name__,
-        e,
-      )
-      msg = (
-        "A resource with this name or identifier already exists. "
-        "Please choose a different name or identifier."
-      )
-      logger.exception(
-        "Integrity error in %s",
-        func.__name__,
-      )
-      raise ValueError(msg) from e
-    except ValueError:
-      # If it's already a ValueError, rollback and re-raise
-      if db:
-        await db.rollback()
-      raise
-    except TypeError as e:
-      if db:
-        await db.rollback()
-      logger.exception(
-        "Type error in %s",
-        func.__name__,
-      )
-      msg = "Invalid input data provided."
-      raise ValueError(msg) from e
-    except Exception as e:
-      if db:
-        await db.rollback()
-      logger.exception(
-        "An unexpected error occurred in %s",
-        func.__name__,
-      )
-      msg = "An unexpected internal error occurred."
-      raise ValueError(msg) from e
-    else:
       return result
+    except Exception:
+      await db.rollback()
+      raise
 
   return wrapper

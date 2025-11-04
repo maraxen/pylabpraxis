@@ -13,7 +13,7 @@ from praxis.backend.models.pydantic_internals.deck import (
   DeckUpdate,
 )
 from praxis.backend.services.deck import DeckService
-from praxis.backend.services.deck_type_definition import DeckTypeDefinitionCRUDService
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ router.include_router(
 
 router.include_router(
   create_crud_router(
-    service=DeckTypeDefinitionCRUDService(DeckDefinitionOrm),
+    service=DeckTypeDefinitionService(DeckDefinitionOrm),
     prefix="/types",
     tags=["Deck Type Definitions"],
     create_schema=DeckTypeDefinitionCreate,
