@@ -21,6 +21,7 @@ async def test_create_deck(client: AsyncClient, db: AsyncSession) -> None:
         "/api/v1/decks/",
         json={
             "name": "test_deck",
+                "asset_type": "DECK",
             "deck_type_id": str(deck_type.accession_id),
             "machine_id": str(machine.accession_id),
             "resource_definition_accession_id": str(

@@ -64,8 +64,9 @@ class FunctionDataOutputCRUDService(
     logger.info("%s Creating new function data output.", log_prefix)
 
     # Create the ORM instance
+    dumped_obj = obj_in.model_dump(exclude={"measurement_timestamp", "accession_id", "created_at", "updated_at"})
     data_output_orm = FunctionDataOutputOrm(
-      **obj_in.model_dump(exclude={"measurement_timestamp"}),
+      **dumped_obj,
       measurement_timestamp=obj_in.measurement_timestamp
       or datetime.datetime.now(datetime.timezone.utc),
     )

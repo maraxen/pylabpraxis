@@ -44,7 +44,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       obj_in.parent_accession_id,
     )
 
-    deck_data = obj_in.model_dump(exclude={"plr_state"})
+    deck_data = obj_in.model_dump(exclude={"plr_state", "created_at", "updated_at", "children", "parent", "child_accession_ids", "machine_id", "machine_initial_status", "deck_initial_status"})
     deck_orm = self.model(**deck_data)
 
     if obj_in.plr_state:

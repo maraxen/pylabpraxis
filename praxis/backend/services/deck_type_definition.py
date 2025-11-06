@@ -12,6 +12,10 @@ class DeckTypeDefinitionService(CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCr
     async def create(self, db: AsyncSession, *, obj_in: DeckTypeDefinitionCreate) -> DeckDefinitionOrm:
         """Create a new deck type definition."""
         obj_in_data = obj_in.model_dump()
+        obj_in_data.pop("accession_id", None)
+        obj_in_data.pop("created_at", None)
+        obj_in_data.pop("updated_at", None)
+        obj_in_data.pop("positioning_config", None)
         position_definitions = obj_in_data.pop("position_definitions", [])
 
         db_obj = self.model(**obj_in_data)
