@@ -18,13 +18,6 @@ from praxis.backend.utils.db import Base
 ASYNC_DATABASE_URL = "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test session."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -70,5 +63,5 @@ async def factories_session(db: AsyncSession) -> AsyncGenerator[AsyncSession, No
     factories = [WorkcellFactory, MachineFactory, ResourceDefinitionFactory, DeckDefinitionFactory, DeckFactory]
     for factory in factories:
         factory._meta.sqlalchemy_session = db
-        factory._meta.sqlalchemy_session_persistence = "commit"
+        factory._meta.sqlalchemy_session_persistence = "flush"
     yield db

@@ -3,7 +3,7 @@
 from typing import Annotated, Any, TypeVar
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,9 +37,11 @@ def create_crud_router(
     tags=tags,
   )
   async def create(
-    obj_in: CreateSchemaType = Body(...),
+    request: Request,
     db: AsyncSession = Depends(get_db),
   ) -> ModelType:
+    obj_in_data = await request.json()
+    obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
   @router.get(prefix, response_model=list[ResponseSchemaType], tags=tags)
@@ -68,7 +70,9 @@ def create_crud_router(
     db_obj = await service.get(db, accession_id=accession_id)
     if db_obj is None:
       raise HTTPException(status_code=404, detail="Not found")
-    return await service.update(db=db, db_obj=db_obj, obj_in=update_schema.model_validate(obj_in))
+    return await service.update(
+      db=db, db_obj=db_obj, obj_in=obj_in.model_dump(exclude_unset=True)
+    )
 
   @router.delete(f"{prefix}/{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
   async def delete(
