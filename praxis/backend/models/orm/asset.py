@@ -51,6 +51,7 @@ class AssetOrm(Base):
     index=True,
     comment="Fully qualified name of the asset's class, if applicable.",
     kw_only=True,
+    default="",
   )
   location: Mapped[str | None] = mapped_column(
     String,

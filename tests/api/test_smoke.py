@@ -1,11 +1,13 @@
 """Smoke test to ensure the API can start and respond."""
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi.testclient import TestClient
-from main import app
 
-client = TestClient(app)
-
-def test_api_smoke():
-    """Test that the API root returns 200 OK."""
-    response = client.get("/")
+@pytest.mark.asyncio
+async def test_api_smoke(client: tuple[AsyncClient, sessionmaker[AsyncSession]]):
+    """Test that the API docs returns 200 OK."""
+    http_client, _ = client
+    response = await http_client.get("/docs")
     assert response.status_code == 200
