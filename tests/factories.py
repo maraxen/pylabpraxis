@@ -94,6 +94,13 @@ class DeckDefinitionFactory(SQLAlchemyModelFactory):
         "tests.factories.ResourceDefinitionFactory",
     )
 
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        """Create a deck definition and a resource definition."""
+        resource_definition = ResourceDefinitionFactory()
+        kwargs["resource_definition"] = resource_definition
+        return super()._create(model_class, *args, **kwargs)
+
 
 class DeckFactory(SQLAlchemyModelFactory):
     """Factory for DeckOrm."""

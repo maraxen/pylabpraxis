@@ -67,7 +67,7 @@ class WorkcellOrm(Base):
   status: Mapped[str] = mapped_column(
     String,
     nullable=False,
-    default=WorkcellStatusEnum.AVAILABLE,
+    default=WorkcellStatusEnum.AVAILABLE.value,
     comment="Current status of the workcell",
   )
 

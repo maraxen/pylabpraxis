@@ -7,23 +7,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from main import app  # Import your main FastAPI application
 from praxis.backend.api.dependencies import get_db
-from tests.conftest import engine  # Import the TEST engine from your service tests
+
+
+from sqlalchemy.ext.asyncio import create_async_engine
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[tuple[AsyncClient, sessionmaker[AsyncSession]], None]:
     """
-    Fixture to get an AsyncClient for the FastAPI app with
-    the overridden db dependency.
+    Fixture to get an AsyncClient for the FastAPI app and a sessionmaker.
     """
+    from tests.conftest import ASYNC_DATABASE_URL
+    engine = create_async_engine(ASYNC_DATABASE_URL)
+    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     async def override_get_db_for_client() -> AsyncGenerator[AsyncSession, None]:
-        yield db
+        async with Session() as session:
+            yield session
 
     app.dependency_overrides[get_db] = override_get_db_for_client
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+        yield c, Session
 
-    # Clean up the override after the test
-    del app.dependency_overrides[get_db]
+    await engine.dispose()
