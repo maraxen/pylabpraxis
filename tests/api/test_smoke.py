@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
-async def test_api_smoke(client: tuple[AsyncClient, sessionmaker[AsyncSession]]):
+async def test_api_smoke(client: AsyncClient):
     """Test that the API docs returns 200 OK."""
-    http_client, _ = client
-    response = await http_client.get("/docs")
+    response = await client.get("/docs")
     assert response.status_code == 200

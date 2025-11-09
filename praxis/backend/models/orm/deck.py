@@ -105,21 +105,6 @@ class DeckOrm(ResourceOrm):
     default=None,
   )
 
-  workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
-    UUID,
-    ForeignKey("workcells.accession_id"),
-    nullable=True,
-    index=True,
-    comment="Foreign key to the workcell this deck belongs to, if applicable.",
-    default=None,
-  )
-  workcell: Mapped["WorkcellOrm | None"] = relationship(
-    "WorkcellOrm",
-    back_populates="decks",
-    foreign_keys=[workcell_accession_id],
-    default=None,
-  )
-
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),

@@ -32,6 +32,7 @@ class DeckBase(ResourceBase):
 
 class DeckCreate(ResourceCreate, DeckBase):
   """Model for creating a new deck."""
+  resource_definition_accession_id: UUID7
 
 
 class DeckUpdate(ResourceUpdate):

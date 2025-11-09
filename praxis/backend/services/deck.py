@@ -44,7 +44,24 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       obj_in.parent_accession_id,
     )
 
-    deck_data = obj_in.model_dump(exclude={"plr_state", "created_at", "updated_at", "children", "parent", "child_accession_ids", "machine_id", "machine_initial_status", "deck_initial_status"})
+    # Note: 'machine_id' is intentionally left in the dump to be remapped below.
+    deck_data = obj_in.model_dump(
+      exclude={
+        "plr_state",
+        "created_at",
+        "updated_at",
+        "children",
+        "parent",
+        "child_accession_ids",
+        "machine_initial_status",
+        "deck_initial_status",
+      }
+    )
+
+    # Remap the Pydantic `machine_id` to the ORM's `parent_machine_accession_id`.
+    if machine_id := deck_data.pop("machine_id", None):
+      deck_data["parent_machine_accession_id"] = machine_id
+
     deck_orm = self.model(**deck_data)
 
     if obj_in.plr_state:
@@ -52,7 +69,8 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     db.add(deck_orm)
     await db.flush()
-    await db.refresh(deck_orm)
+    # Refresh the object to eager-load relationships required for the response model.
+    await db.refresh(deck_orm, ["deck_type", "parent"])
     logger.info(
       "Successfully created deck '%s' with ID %s.",
       deck_orm.name,

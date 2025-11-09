@@ -107,17 +107,19 @@ class DeckFactory(SQLAlchemyModelFactory):
 
     class Meta:
         """Meta class for DeckOrm."""
-
         model = DeckOrm
+
+    class Params:
+        # Transient parameters to build dependencies without passing them to the model's __init__
+        deck_type_def = factory.SubFactory(DeckDefinitionFactory)
+        machine_def = factory.SubFactory(MachineFactory)
 
     accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
-    deck_type_id = factory.SelfAttribute("deck_type.accession_id")
-    parent_machine_accession_id = factory.SelfAttribute("machine.accession_id")
 
-    deck_type = factory.SubFactory(
-        "tests.factories.DeckDefinitionFactory",
-    )
-    machine = factory.SubFactory(
-        "tests.factories.MachineFactory",
+    # Use the transient parameters to correctly populate the model's foreign key fields.
+    deck_type_id = factory.LazyAttribute(lambda o: o.deck_type_def.accession_id)
+    parent_machine_accession_id = factory.LazyAttribute(lambda o: o.machine_def.accession_id)
+    resource_definition_accession_id = factory.LazyAttribute(
+        lambda o: o.deck_type_def.resource_definition.accession_id
     )

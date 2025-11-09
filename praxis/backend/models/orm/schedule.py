@@ -492,7 +492,7 @@ event.listen(
   "after_create",
   CreateMaterializedView("scheduler_metrics_mv", metrics_query),
 )
-event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
+# event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
 
 
 class SchedulerMetricsView(Base):
