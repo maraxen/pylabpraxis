@@ -26,5 +26,5 @@ class DeckTypeDefinitionService(CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCr
 
         db.add(db_obj)
         await db.flush()
-        await db.refresh(db_obj)
+        await db.refresh(db_obj, ["positions", "resource_definition"])
         return db_obj

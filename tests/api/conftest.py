@@ -1,34 +1,49 @@
-# In: tests/api/conftest.py
+from typing import AsyncGenerator
+
 import pytest_asyncio
-from collections.abc import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from main import app  # Import your main FastAPI application
 from praxis.backend.api.dependencies import get_db
-
-
-from sqlalchemy.ext.asyncio import create_async_engine
+from tests.factories import (
+    DeckDefinitionFactory,
+    DeckFactory,
+    MachineFactory,
+    WorkcellFactory,
+    ResourceDefinitionFactory,
+)
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client() -> AsyncGenerator[tuple[AsyncClient, sessionmaker[AsyncSession]], None]:
+async def client(
+    db_session: AsyncSession,
+) -> AsyncGenerator[AsyncClient, None]:
     """
-    Fixture to get an AsyncClient for the FastAPI app and a sessionmaker.
+    Creates the FastAPI test client.
+
+    Crucially, it overrides the app's `get_db` dependency
+    to use the *exact same session* as the test function and
+    binds that session to all factory-boy factories.
     """
-    from tests.conftest import ASYNC_DATABASE_URL
-    engine = create_async_engine(ASYNC_DATABASE_URL)
-    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    async def override_get_db_for_client() -> AsyncGenerator[AsyncSession, None]:
-        async with Session() as session:
-            yield session
+    # This is the magic: tell the app to use our test session
+    def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db_for_client
+    app.dependency_overrides[get_db] = override_get_db
+
+    # Set up factories to use this session
+    WorkcellFactory._meta.sqlalchemy_session = db_session
+    MachineFactory._meta.sqlalchemy_session = db_session
+    DeckDefinitionFactory._meta.sqlalchemy_session = db_session
+    ResourceDefinitionFactory._meta.sqlalchemy_session = db_session
+    DeckFactory._meta.sqlalchemy_session = db_session
+    # ... set for all other factories ...
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c, Session
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
-    await engine.dispose()
+    # Clean up the override
+    del app.dependency_overrides[get_db]
