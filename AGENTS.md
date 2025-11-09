@@ -1,290 +1,117 @@
-# AGENTS.md
+# Agent and Developer Guide for PyLabPraxis
 
-This file contains instructions and guidelines for AI agents working on the PyLabPraxis codebase.
+Welcome to the PyLabPraxis repository. This guide provides essential information for agents and developers to contribute effectively and consistently to the project.
 
-## Project Overview
+## 1. Core Project Objective
 
-PyLabPraxis is a comprehensive Python-based platform for laboratory automation built on top of PyLabRobot. It provides a FastAPI backend with PostgreSQL/Redis persistence, Celery task management, and a service-oriented architecture for managing laboratory workflows.
+Our current primary objective is to achieve **full test coverage of the backend services** to create a stable foundation for frontend development.
 
-## Architecture Guidelines
+## 2. System Architecture Overview
 
-### Core Principles
+PyLabPraxis is a Python-based platform for lab automation. It features a FastAPI backend, PostgreSQL and Redis for data persistence, and a service-oriented architecture.
 
-- **Separation of Concerns**: API layer, service layer, and data layer are clearly separated
-- **Type Safety**: Heavy use of Pydantic models and type hints throughout
-- **Async Operations**: Long-running lab operations use Celery for asynchronous execution
-- **State Management**: Multi-layered state management with Redis, PostgreSQL, and in-memory objects
+The backend is organized into three main layers:
+1.  **API Layer** (`praxis/backend/api/`): Handles HTTP requests, validation, and serialization.
+2.  **Service Layer** (`praxis/backend/services/`): Contains the core business logic.
+3.  **Data Model Layer** (`praxis/backend/models/`): Defines Pydantic models for data structures and ORM models for database interaction.
 
-### Key Architectural Patterns
+For a detailed breakdown of the architecture, refer to `prerelease_dev_docs/ARCHITECTURE.md`.
 
-1. **Service Layer Pattern**: All business logic is in `praxis/backend/services/`
-   - `CRUDBase` for standard CRUD operations
-   - `DiscoverableTypeServiceBase` for PyLabRobot type discovery
-   - `@handle_db_transaction` decorator for transaction management
+## 3. Development Environment and Tooling
 
-2. **Repository Pattern**: Database interactions abstracted through service layer
-3. **Factory Pattern**: Used for API router generation (`crud_router_factory`)
+### 3.1. Dependency Management
+-   **Tool**: We use `uv` for all Python dependency management.
+-   **Installation**: Install development dependencies with:
+    ```bash
+    uv pip install --system -e '.[dev]'
+    ```
 
-## Directory Structure
+### 3.2. Running Tools
+All development tools (`pytest`, `ruff`, etc.) should be executed via `uv run`. This ensures that the correct versions of the tools and dependencies are used.
 
-```
-praxis/
-├── backend/
-│   ├── api/           # FastAPI routers and endpoints
-│   ├── core/          # Core business logic (Orchestrator, AssetManager, etc.)
-│   ├── models/        # Pydantic and SQLAlchemy ORM models
-│   ├── services/      # Service layer for business logic
-│   └── utils/         # Utility functions and decorators
-├── frontend/          # Frontend code (if applicable)
-└── tests/             # Test files mirroring backend structure
+**Example**:
+```bash
+uv run pytest
+uv run ruff check .
 ```
 
-## Development Guidelines
+## 4. Testing Strategy
 
-### Code Quality Standards
+A robust testing strategy is critical to our project's success. The complete strategy is documented in `prerelease_dev_docs/TESTING_STRATEGY.md`.
 
-- **Ruff**: Address critical issues (F, E, B categories) first
-- **Pyright**: Target <40 issues across codebase
-- **pytest**: Comprehensive test coverage required
-- **Type Hints**: All functions must have proper type annotations
+### 4.1. Running the Test Suite
+-   **Command**: To run the entire test suite, use:
+    ```bash
+    uv run pytest
+    ```
+-   **Coverage**: To run tests and generate a coverage report, use:
+    ```bash
+    uv run pytest --cov=praxis/backend --cov-report=term-missing
+    ```
+-   **Target**: We aim for **>90% line and branch coverage** for all new and refactored code.
 
-### Database Interactions
+### 4.2. Test Database
+-   **Technology**: We use a PostgreSQL database for testing.
+-   **Setup**: The test database is managed via Docker. The necessary Docker environment is already configured for agent development environments. To start it manually, use:
+    ```bash
+    sudo docker compose -f docker-compose.test.yml up -d
+    ```
+-   **Isolation**: The test database is ephemeral. The schema is automatically migrated to the latest version before each test run, and each test runs in an isolated transaction that is rolled back upon completion.
 
-- Always use service layer, never direct SQLAlchemy in API/core
-- Use `@handle_db_transaction` decorator for write operations
-- Handle `IntegrityError` → `ValueError` conversion in services
+### 4.3. Scoping Tests
+The `tests/` directory mirrors the application's structure. When adding or modifying code, ensure corresponding tests are added or updated in the matching location.
 
-### State Management
+-   **Unit Tests**: Test individual functions or classes in isolation. Place them in `tests/` mirroring the component's path (e.g., tests for `praxis/backend/services/deck_service.py` go in `tests/services/test_deck_service.py`).
+-   **API Tests**: Test API endpoints from an end-to-end perspective. Place them in `tests/api/`.
+-   **Smoke Tests**: A small subset of critical tests are marked with `@pytest.mark.smoke`. These are run in a `smoke-test` job in the CI pipeline to provide a quick health check.
 
-Understanding the multi-layered state system is crucial:
+## 5. Linting and Code Style
 
-1. **PraxisState (Redis)**: Run-specific JSON-serializable data
-2. **In-Memory Objects**: Rich Pydantic models for live state
-3. **Database (PostgreSQL)**: Persistent configuration and history
-4. **WorkcellRuntime**: Live PyLabRobot object states
+### 5.1. Tooling
+-   **Linter**: We use `ruff` for linting and code formatting.
+-   **Type Checking**: We use `pyright` for static type analysis.
 
-### API Development
+### 5.2. Workflow
+-   **Continuous Linting**: Run `ruff check .` periodically to identify issues.
+-   **End-of-Cycle Resolution**: While you should aim to write clean code, perform **lint resolution and auto-fixing at the end of a development cycle**, just before submitting your work. This avoids unnecessary churn and focuses effort.
+    ```bash
+    # Check for issues
+    uv run ruff check .
 
-- Use `crud_router_factory` for standard CRUD endpoints
-- Pydantic models for request/response validation
-- Proper error handling with appropriate HTTP status codes
+    # Apply safe fixes
+    uv run ruff check . --fix
+    ```
 
-## Key Components
+## 6. Output Styles and Patterns
 
-### Core Services (`praxis/backend/core/`)
+To maintain clarity and consistency, agents should adhere to the following output patterns.
 
-- **Orchestrator**: Central execution coordinator
-- **AssetManager**: Physical asset lifecycle management
-- **WorkcellRuntime**: Live PyLabRobot object management
-- **ProtocolScheduler**: Async execution scheduling
-- **AssetLockManager**: Distributed asset locking
+### Plan Output
+Plans must be formatted as a numbered list using Markdown.
 
-### Service Layer (`praxis/backend/services/`)
-
-- Inherits from `CRUDBase` or `DiscoverableTypeServiceBase`
-- Uses `@handle_db_transaction` for database operations
-- Provides business logic abstraction
-
-### Models (`praxis/backend/models/`)
-
-- **ORM Models**: SQLAlchemy for database schema
-- **Pydantic Models**: API validation and in-memory state structure
-- **Unified Asset Model**: All assets inherit from base `Asset` model
-
-## Asset Management
-
-Post-2025-06 refactor, all assets use unified model:
-
-- Common fields: `accession_id`, `name`, `fqn`, `asset_type`, `location`, `plr_state`
-- Standardized relationships between asset types
-- Remove references to legacy fields/classes
-
-## Type Definition Discovery
-
-Critical system for hardware capability awareness:
-
-- `ResourceTypeDefinitionService`: Discovers PyLabRobot resources
-- `MachineTypeDefinitionService`: Discovers PyLabRobot machines
-- `DeckTypeDefinitionService`: Discovers PyLabRobot decks
-- `DiscoveryService`: Orchestrates all type discovery
-
-## Testing Strategy
-
-### Test Requirements
-
-1. Each component file must have corresponding test file
-2. Comprehensive coverage of business logic
-3. Integration tests for database operations
-4. Mock external dependencies (hardware, Redis, etc.)
-
-### Test Structure
-
-```
-tests/
-├── backend/
-│   ├── api/
-│   ├── core/
-│   ├── services/
-│   └── models/
+**Example**:
+```markdown
+1.  ***Add a new service function `get_deck_by_id` in `praxis/backend/services/deck_service.py`.***
+    *   The function will accept a `deck_id` and return the corresponding deck ORM object.
+2.  ***Add a unit test for the new service function in `tests/services/test_deck_service.py`.***
+    *   The test will verify that the function correctly retrieves a deck and handles cases where the deck is not found.
+3.  ***Complete pre-commit steps.***
+    *   Ensure proper testing, verification, review, and reflection are done.
+4.  ***Submit the change.***
+    *   Once all checks pass, I will submit the change with a descriptive commit message.
 ```
 
-## Common Patterns to Follow
+### Verification Output
+After every action that modifies a file (`create_file_with_block`, `replace_with_git_merge_diff`, etc.), you **must** verify the change using a read-only tool like `read_file` or `grep`.
 
-### Service Implementation
+## 7. Project History and Context
 
-```python
-class ExampleService(CRUDBase[ExampleOrm, ExampleCreate, ExampleUpdate]):
-    @handle_db_transaction
-    def create_with_validation(self, db: Session, obj_in: ExampleCreate) -> ExampleOrm:
-        # Custom validation logic
-        return super().create(db, obj_in=obj_in)
-```
+To maintain a searchable and structured log of agent and developer contributions, we use an append-only JSON Lines file: `agent_history.jsonl`.
 
-### API Router
+-   **Purpose**: This file serves as the official log of significant decisions, milestones, and completed tasks.
+-   **Interaction Pattern**: Do **not** load the entire file into context. Instead, append a new JSON object to the end of the file to record your work.
+-   **Format**: Each entry must be a single-line JSON object with the following structure:
 
-```python
-from praxis.backend.utils.crud_router_factory import crud_router_factory
-
-router = crud_router_factory(
-    service_class=ExampleService,
-    create_schema=ExampleCreate,
-    update_schema=ExampleUpdate,
-    response_schema=ExampleResponse,
-    prefix="/examples"
-)
-```
-
-### Error Handling
-
-- Service layer raises `ValueError` for business logic errors
-- API layer converts to appropriate `HTTPException`
-- Use `@handle_db_transaction` for automatic rollback
-
-## Restrictions
-
-### Do Not Edit
-
-- Files in `praxis/backend/commons/` directory
-- Legacy/deprecated model classes (post-asset-refactor)
-
-### File Handling
-
-- Wrap paths with spaces in quotes
-- Use proper path handling for cross-platform compatibility
-
-## Development Workflow
-
-### Before Making Changes
-
-1. Run `pyright` to check current type issues
-2. Run `ruff check` for linting issues
-3. Ensure tests pass with `pytest`
-
-### After Making Changes
-
-1. Update/add tests for new functionality
-2. Verify type safety with `pyright`
-3. Check code style with `ruff`
-4. Update documentation if needed
-
-## Integration Points
-
-### PyLabRobot Integration
-
-- All hardware interactions go through `WorkcellRuntime`
-- Type definitions discovered via specialized services
-- Live object state managed in-memory
-
-### Database Integration
-
-- PostgreSQL for persistent data
-- Redis for run-specific state and Celery
-- Service layer abstracts all database operations
-
-### Task Management
-
-- Celery for async operations
-- Redis as broker and result backend
-- Protocol execution runs as Celery tasks
-
-## Troubleshooting Common Issues
-
-### Type Errors
-
-- Ensure all Pydantic models have proper imports
-- Check for circular import issues
-- Verify generic type parameters in service classes
-
-### Database Issues
-
-- Check transaction handling in service methods
-- Verify foreign key relationships in ORM models
-- Ensure proper session management
-
-### State Management
-
-- Distinguish between PraxisState (Redis) and in-memory objects
-- Verify state persistence points in workflow
-- Check asset locking mechanisms
-
-## References
-
-- `README.md`: Comprehensive project documentation
-- `GEMINI.md`: Additional agent-specific instructions
-- `OVERVIEW.md`: High-level architecture overview
-- Component docstrings: Detailed implementation guidance
-
----
-
-**Last Updated**: August 2025
-**Target Python Version**: 3.11+
-**Key Dependencies**: FastAPI, SQLAlchemy, Pydantic v2, Celery, Redis, PostgreSQL
-
----
-
-# NOTES FROM MODEL
-
-As agentic models complete work, they should append notes to this section, formatted as below.
-
-## Previous work summary
-
-## DI Refactoring Phase 1 (12102025)
-
-*   **Task**: Completed Phase 1 of the dependency injection refactoring. This involved setting the foundation for the new DI pattern by refactoring `container.py`, `decorators.py`, and `run_context.py`.
-*   **Summary of Changes**:
-    *   **`container.py`**: Enhanced the DI container with a documented structure for different dependency lifetimes (Singleton, Factory, Resource) and added a `wiring_config` to enable autowiring in other modules.
-    *   **`decorators.py`**: Refactored the main `protocol_function` decorator to remove its dependency on the global `PROTOCOL_REGISTRY`. The decorator now attaches runtime metadata directly to the function, paving the way for a service-based protocol discovery mechanism.
-    *   **`run_context.py`**: Eliminated the global `PROTOCOL_REGISTRY` variable, removing a key piece of global state.
-*   **Key Decisions & Obstacles**:
-    *   The `protocol_function` decorator was complex and had several latent bugs (incorrect signature, undefined variables) that were exposed and fixed during the refactoring.
-    *   Encountered and resolved environment issues where `pyright` was not installed, which required manually installing it.
-    *   Used a `# type: ignore` directive in `container.py` to work around a known limitation in `pyright`'s ability to infer types from the `dependency-injector` library.
-    *   Left the `contextvars` pattern for `PraxisRunContext` in place, as it is a suitable pattern for managing "ambient" context in an async application.
-
-## DI Refactoring Phase 3 (21082025)
-
-*   **Task**: Completed Phase 3 of the dependency injection refactoring. This focused on the business logic layer, specifically `asset_manager.py`, `workcell.py`, and `scheduler.py`.
-*   **Summary of Changes**:
-    *   **`asset_manager.py`**: (Completed previously) This module was refactored to remove direct dependencies and improve its internal design, setting the stage for further decoupling.
-    *   **`workcell.py`**: Refactored to abstract its direct file system interactions. A `FileSystem` protocol was introduced to handle file I/O, and this dependency is now injected into the `Workcell` class constructor. This change decouples the `Workcell` from the concrete file system, making it easier to test in isolation. Full type annotation coverage was also ensured.
-    *   **`scheduler.py`**: The `ProtocolScheduler` was refactored to remove its direct dependency on the Celery library. A `TaskQueue` protocol was defined to abstract the `send_task` functionality. The `ProtocolScheduler` now depends on this protocol, which is injected via its constructor. This allows for easier testing and swapping of the underlying task queue implementation. The module was also brought to 100% type annotation coverage.
-*   **Key Decisions & Obstacles**:
-    *   The refactoring of `workcell.py` required abstracting file system operations into a `FileSystem` protocol to improve testability.
-    *   The refactoring of `scheduler.py` involved creating a `TaskQueue` protocol to decouple the scheduler from the Celery library, which makes the system more modular.
-    *   Addressed a number of `ruff` and `pyright` errors to ensure code quality and type safety. This involved fixing issues with type hints, unused arguments, and logging practices.
-
-## DI Refactoring Phase 4 (23092025)
-
-*   **Task**: Completed Phase 4 of the dependency injection refactoring. This focused on the runtime and execution layer, specifically `workcell_runtime.py`, `protocol_execution_service.py`, and `celery_tasks.py`.
-*   **Summary of Changes**:
-    *   **`workcell_runtime.py`**: Refactored to inject `IWorkcell` and service dependencies, removing direct instantiation of its dependencies. This decouples the runtime management from the creation of the workcell and services.
-    *   **`protocol_execution_service.py`**: Refactored to be a pure orchestration layer, with all dependencies (including `IOrchestrator`, `IProtocolScheduler`, and other services) injected via the constructor. This makes the service fully DI-compliant.
-    *   **`celery_tasks.py`**: The main Celery task was refactored to be a thin wrapper that gets all its dependencies from the DI container at runtime. This removes the use of global service instances within the task body.
-    *   **Protocols**: Introduced several new protocols (`IWorkcell`, `IAssetManager`, `IWorkcellRuntime`, `IProtocolScheduler`, `IOrchestrator`, `IProtocolCodeManager`, `IFileSystem`) to define clear contracts for the services.
-    *   **DI Container**: Updated the main DI container to manage the new services and their dependencies.
-*   **Key Decisions & Obstacles**:
-    *   The refactoring of `workcell_runtime.py` revealed a complex set of dependencies on the service layer, which were resolved by injecting the necessary services.
-    *   A significant amount of time was spent resolving `pyright` errors, which were often caused by incorrect type hints in the existing codebase, missing dependencies in the environment, or subtle issues with the ORM models and Pydantic models.
-    *   The decision was made to ignore some of the `ruff` complexity warnings for now, as refactoring the complex methods was outside the scope of this task.
-
-Once this section exceeds 250 lines, models should summarize the work detailed, remove it, and write the summary under the section titled previous work summary.
+    ```json
+    {"date": "YYYY-MM-DD", "agent": "YourName", "task": "A brief description of the overall task.", "summary_of_actions": ["Action 1.", "Action 2."], "key_decisions": ["Decision 1.", "Decision 2."]}
+    ```
