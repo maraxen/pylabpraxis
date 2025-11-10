@@ -76,7 +76,7 @@ class DeckOrm(ResourceOrm):
   __tablename__ = "decks"
   __table_args__ = {"extend_existing": True}
   __mapper_args__: ClassVar[dict] = {
-      "polymorphic_identity": "deck",
+      "polymorphic_identity": "DECK",  # Uppercase to match AssetType.DECK
       "inherit_condition": text("decks.accession_id = resources.accession_id"),
   }
 
