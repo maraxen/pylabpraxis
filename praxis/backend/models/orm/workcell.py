@@ -87,6 +87,7 @@ class WorkcellOrm(Base):
     "ResourceOrm",
     back_populates="workcell",
     foreign_keys="ResourceOrm.workcell_accession_id",
+    overlaps="decks",
     default_factory=list,
   )
 
