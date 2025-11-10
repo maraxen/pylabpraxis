@@ -41,6 +41,4 @@ class UserResponse(UserBase):
 
   """Represents a user for API responses."""
 
-  class Config(PraxisBaseModel.Config):
-
-    """Pydantic configuration for UserResponse."""
+  pass
