@@ -29,9 +29,13 @@ async def client(
 
     # This is the magic: tell the app to use our test session
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        print(f"DEBUG override_get_db: Yielding session ID {id(db_session)}")
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    print(f"DEBUG client fixture: Overriding get_db with session ID {id(db_session)}")
+    print(f"DEBUG: App dependency_overrides: {app.dependency_overrides}")
+    print(f"DEBUG: get_db function: {get_db}")
 
     # Set up factories to use this session
     WorkcellFactory._meta.sqlalchemy_session = db_session
