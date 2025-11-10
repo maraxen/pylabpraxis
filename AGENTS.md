@@ -58,6 +58,10 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 ⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
 
 -   **Technology**: PostgreSQL 15+ (required)
+
+#### Environment-Specific Setup
+
+**For Jules (Docker pre-configured)**:
 -   **Setup**: Start the test database via Docker:
     ```bash
     docker compose -f docker-compose.test.yml up -d
@@ -66,6 +70,26 @@ A robust testing strategy is critical to our project's success. Comprehensive do
     ```bash
     docker compose -f docker-compose.test.yml ps
     ```
+
+**For Claude Code (Manual PostgreSQL)**:
+-   **Setup**: Install and configure PostgreSQL directly:
+    ```bash
+    # Install PostgreSQL 16
+    apt-get update && apt-get install -y postgresql-16 postgresql-contrib-16
+
+    # Start PostgreSQL service
+    service postgresql start
+
+    # Create test database and user
+    sudo -u postgres psql -c "CREATE DATABASE test_db;"
+    sudo -u postgres psql -c "CREATE USER test_user WITH PASSWORD 'test_password';"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO test_user;"
+    sudo -u postgres psql -d test_db -c "GRANT ALL ON SCHEMA public TO test_user;"
+
+    # Set environment variable
+    export TEST_DATABASE_URL="postgresql+asyncpg://test_user:test_password@localhost:5432/test_db"
+    ```
+
 -   **Isolation**: Each test runs in an isolated transaction that is rolled back upon completion, ensuring tests are fully independent.
 
 ### 4.3. Test Organization
@@ -87,20 +111,21 @@ tests/
 
 **Detailed examples and patterns**: See `tests/TESTING_PATTERNS.md`
 
-### 4.4. Test Data Factories
+### 4.4. Test Data Creation
 
-Use Factory Boy factories (defined in `tests/factories.py`) to create test data:
+Use async helper functions (defined in `tests/helpers.py`) to create test data:
 ```python
-from tests.factories import WorkcellFactory, MachineFactory
+from tests.helpers import create_workcell, create_machine, create_deck
 
-# API tests - factories auto-bound via client fixture
-machine = MachineFactory()
-await db_session.flush()
+# Create test data with default values
+workcell = await create_workcell(db_session)
+machine = await create_machine(db_session, workcell=workcell)
 
-# Service tests - bind manually
-WorkcellFactory._meta.sqlalchemy_session = db_session
-workcell = WorkcellFactory()
+# Create with custom attributes
+deck = await create_deck(db_session, name="custom_deck")
 ```
+
+**Note**: We use async helpers instead of Factory Boy because PyLabPraxis uses AsyncSession, which is incompatible with Factory Boy's synchronous SQLAlchemyModelFactory.
 
 ## 5. Linting and Code Style
 

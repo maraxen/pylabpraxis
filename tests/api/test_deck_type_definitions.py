@@ -2,15 +2,13 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
-from tests.factories import DeckDefinitionFactory, WorkcellFactory
+from tests.helpers import create_workcell
 
 
 @pytest.mark.asyncio
 async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) -> None:
     """Test creating a workcell."""
-    workcell = WorkcellFactory()
-    await db_session.flush()
+    workcell = await create_workcell(db_session, name="test_workcell")
 
     response = await client.get(f"/api/v1/workcells/{workcell.accession_id}")
     assert response.status_code == 200

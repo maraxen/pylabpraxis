@@ -28,7 +28,7 @@ async def client(
     """
 
     # This is the magic: tell the app to use our test session
-    def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
