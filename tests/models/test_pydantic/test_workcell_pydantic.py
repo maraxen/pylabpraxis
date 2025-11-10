@@ -19,13 +19,10 @@ from praxis.backend.utils.uuid import uuid7
 
 def test_workcell_base_minimal() -> None:
     """Test creating a WorkcellBase with minimal required fields."""
-    workcell = WorkcellBase(
-        name="test_workcell",
-        fqn="test.workcell"
-    )
+    workcell = WorkcellBase(name="test_workcell")
 
     assert workcell.name == "test_workcell"
-    assert workcell.fqn == "test.workcell"
+    assert workcell.fqn is None  # fqn is now optional
     assert workcell.status == WorkcellStatusEnum.AVAILABLE
     assert workcell.description is None
     assert workcell.physical_location is None
@@ -62,12 +59,11 @@ def test_workcell_create_inherits_from_base() -> None:
     """Test that WorkcellCreate inherits all properties from WorkcellBase."""
     workcell = WorkcellCreate(
         name="create_test",
-        fqn="test.create",
         description="Testing create model",
     )
 
     assert workcell.name == "create_test"
-    assert workcell.fqn == "test.create"
+    assert workcell.fqn is None  # fqn is optional
     assert workcell.description == "Testing create model"
     assert workcell.status == WorkcellStatusEnum.AVAILABLE
 
@@ -90,11 +86,9 @@ def test_workcell_update_all_fields_optional() -> None:
 
 def test_workcell_response_with_empty_relationships() -> None:
     """Test WorkcellResponse with empty relationship lists."""
-    workcell = WorkcellResponse(
-        name="response_test",
-        fqn="test.response",
-    )
+    workcell = WorkcellResponse(name="response_test")
 
+    assert workcell.fqn is None
     assert workcell.machines == []
     assert workcell.resources == []
     assert workcell.decks == []
@@ -104,7 +98,7 @@ def test_workcell_response_serialization_to_dict() -> None:
     """Test that WorkcellResponse can be serialized to a dictionary."""
     workcell = WorkcellResponse(
         name="serialize_test",
-        fqn="test.serialize",
+        fqn="test.serialize",  # Providing fqn explicitly
         description="Testing serialization",
         status=WorkcellStatusEnum.MAINTENANCE,
     )
@@ -127,7 +121,6 @@ def test_workcell_response_serialization_to_json() -> None:
     now = datetime.now(timezone.utc)
     workcell = WorkcellResponse(
         name="json_test",
-        fqn="test.json",
         status=WorkcellStatusEnum.ERROR,
         last_state_update_time=now,
     )
@@ -137,7 +130,7 @@ def test_workcell_response_serialization_to_json() -> None:
     assert isinstance(json_str, str)
     data = json.loads(json_str)
     assert data["name"] == "json_test"
-    assert data["fqn"] == "test.json"
+    assert data["fqn"] is None  # fqn is optional
     assert data["status"] == "error"  # Enum value
 
 
@@ -172,7 +165,6 @@ def test_workcell_response_enum_validation() -> None:
     # Valid enum value as string
     workcell1 = WorkcellResponse(
         name="enum_test_1",
-        fqn="test.enum.1",
         status="active",
     )
     # With use_enum_values=True, status is stored as string
@@ -181,7 +173,6 @@ def test_workcell_response_enum_validation() -> None:
     # Valid enum value as enum
     workcell2 = WorkcellResponse(
         name="enum_test_2",
-        fqn="test.enum.2",
         status=WorkcellStatusEnum.RESERVED,
     )
     # With use_enum_values=True, enum is converted to string value
@@ -191,7 +182,6 @@ def test_workcell_response_enum_validation() -> None:
     with pytest.raises(ValueError):
         WorkcellResponse(
             name="enum_test_3",
-            fqn="test.enum.3",
             status="invalid_status",
         )
 
@@ -223,24 +213,11 @@ def test_workcell_response_roundtrip_serialization() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Model mismatch: WorkcellOrm missing 'fqn' field (tracked issue)")
 async def test_workcell_response_from_orm(db_session: AsyncSession) -> None:
     """Test converting a WorkcellOrm instance to WorkcellResponse (critical for API layer).
 
-    KNOWN ISSUE: WorkcellOrm doesn't inherit from AssetOrm and lacks the 'fqn' field,
-    but WorkcellResponse requires it. This prevents direct ORM-to-Pydantic conversion.
-
-    Root cause:
-    - AssetOrm has 'fqn' field (praxis/backend/models/orm/asset.py:47-54)
-    - MachineOrm and ResourceOrm inherit from AssetOrm (have fqn)
-    - WorkcellOrm inherits from Base directly (no fqn)
-    - WorkcellResponse.fqn is required field (no default)
-
-    Fix options:
-    1. Add 'fqn' column to workcells table (requires migration)
-    2. Make fqn optional in WorkcellBase/WorkcellResponse
-    3. Add computed fqn property to WorkcellOrm
-    4. Have WorkcellOrm inherit from AssetOrm
+    Note: WorkcellOrm doesn't have an 'fqn' field (doesn't inherit from AssetOrm),
+    but WorkcellResponse.fqn is now optional, so conversion works with fqn=None.
     """
     # Create an ORM instance
     workcell_id = uuid7()
@@ -256,16 +233,16 @@ async def test_workcell_response_from_orm(db_session: AsyncSession) -> None:
     db_session.add(orm_workcell)
     await db_session.flush()
 
-    # This will fail with: ValidationError: fqn - Field required
+    # Convert ORM to Pydantic using model_validate with from_attributes=True
     response = WorkcellResponse.model_validate(orm_workcell)
 
-    # Expected behavior if fqn was present:
+    # Verify all fields are correctly converted
     assert response.accession_id == workcell_id
     assert response.name == "orm_test_workcell"
-    assert response.fqn == "orm_test_workcell"  # Or computed value
+    assert response.fqn is None  # fqn is optional and not present in ORM
     assert response.description == "Testing ORM to Pydantic conversion"
     assert response.physical_location == "Lab 4"
-    assert response.status == "active"
+    assert response.status == "active"  # Enum converted to string value
     assert response.latest_state_json == {"key": "value"}
     assert response.machines == []
     assert response.resources == []

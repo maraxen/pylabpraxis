@@ -27,7 +27,10 @@ class WorkcellBase(PraxisBaseModel):
   """Defines the base properties for a workcell."""
 
   name: str = Field(description="The unique name of the workcell.")
-  fqn: str = Field(description="The fully qualified name for the workcell.")
+  fqn: str | None = Field(
+    None,
+    description="The fully qualified name for the workcell. Defaults to name if not provided.",
+  )
   description: str | None = Field(None, description="A description of the workcell.")
   physical_location: str | None = Field(
     None,
