@@ -37,7 +37,10 @@ uv run ruff check .
 
 ## 4. Testing Strategy
 
-A robust testing strategy is critical to our project's success. The complete strategy is documented in `prerelease_dev_docs/TESTING_STRATEGY.md`.
+A robust testing strategy is critical to our project's success. Comprehensive documentation:
+- **Strategy Overview**: `prerelease_dev_docs/TESTING_STRATEGY.md`
+- **Setup Guide**: `tests/README.md`
+- **Pattern Examples**: `tests/TESTING_PATTERNS.md`
 
 ### 4.1. Running the Test Suite
 -   **Command**: To run the entire test suite, use:
@@ -46,24 +49,58 @@ A robust testing strategy is critical to our project's success. The complete str
     ```
 -   **Coverage**: To run tests and generate a coverage report, use:
     ```bash
-    uv run pytest --cov=praxis/backend --cov-report=term-missing
+    uv run pytest --cov=praxis/backend --cov-report=html --cov-report=term-missing
     ```
 -   **Target**: We aim for **>90% line and branch coverage** for all new and refactored code.
 
 ### 4.2. Test Database
--   **Technology**: We use a PostgreSQL database for testing.
--   **Setup**: The test database is managed via Docker. The necessary Docker environment is already configured for agent development environments. To start it manually, use:
+
+⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
+
+-   **Technology**: PostgreSQL 15+ (required)
+-   **Setup**: Start the test database via Docker:
     ```bash
-    sudo docker compose -f docker-compose.test.yml up -d
+    docker compose -f docker-compose.test.yml up -d
     ```
--   **Isolation**: The test database is ephemeral. The schema is automatically migrated to the latest version before each test run, and each test runs in an isolated transaction that is rolled back upon completion.
+-   **Verification**: Check database status:
+    ```bash
+    docker compose -f docker-compose.test.yml ps
+    ```
+-   **Isolation**: Each test runs in an isolated transaction that is rolled back upon completion, ensuring tests are fully independent.
 
-### 4.3. Scoping Tests
-The `tests/` directory mirrors the application's structure. When adding or modifying code, ensure corresponding tests are added or updated in the matching location.
+### 4.3. Test Organization
 
--   **Unit Tests**: Test individual functions or classes in isolation. Place them in `tests/` mirroring the component's path (e.g., tests for `praxis/backend/services/deck_service.py` go in `tests/services/test_deck_service.py`).
--   **API Tests**: Test API endpoints from an end-to-end perspective. Place them in `tests/api/`.
--   **Smoke Tests**: A small subset of critical tests are marked with `@pytest.mark.smoke`. These are run in a `smoke-test` job in the CI pipeline to provide a quick health check.
+The `tests/` directory mirrors the backend structure:
+```
+tests/
+├── api/              # API endpoint tests (E2E)
+├── services/         # Service layer tests (business logic)
+├── core/             # Core component tests (protocol execution)
+└── integration/      # Multi-component integration tests
+```
+
+**Testing Patterns by Layer**:
+-   **API Tests** (`tests/api/`): Test full HTTP request/response cycle using FastAPI TestClient
+-   **Service Tests** (`tests/services/`): Test business logic with real database, mock external dependencies
+-   **Core Tests** (`tests/core/`): Test components in isolation with heavy mocking
+-   **Integration Tests** (`tests/integration/`): Test component interactions with minimal mocking
+
+**Detailed examples and patterns**: See `tests/TESTING_PATTERNS.md`
+
+### 4.4. Test Data Factories
+
+Use Factory Boy factories (defined in `tests/factories.py`) to create test data:
+```python
+from tests.factories import WorkcellFactory, MachineFactory
+
+# API tests - factories auto-bound via client fixture
+machine = MachineFactory()
+await db_session.flush()
+
+# Service tests - bind manually
+WorkcellFactory._meta.sqlalchemy_session = db_session
+workcell = WorkcellFactory()
+```
 
 ## 5. Linting and Code Style
 
