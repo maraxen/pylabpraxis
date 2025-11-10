@@ -28,8 +28,8 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
         name="test_resource",
         fqn="test.resource.Fqn",
         asset_type=AssetType.RESOURCE,
-        resource_definition_accession_id=def_id,
     )
+    resource.resource_definition = resource_def
 
     # Verify defaults are set
     assert resource.accession_id == resource_id
@@ -37,21 +37,13 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
     assert resource.fqn == "test.resource.Fqn"
     assert resource.asset_type == AssetType.RESOURCE
     assert resource.status == ResourceStatusEnum.UNKNOWN
-    assert resource.resource_definition_accession_id == def_id
+    assert resource.resource_definition == resource_def
     assert resource.parent_accession_id is None
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> None:
-    """Test that a ResourceOrm can be persisted to the database.
-
-    KNOWN ISSUE: resource_definition_accession_id is not being persisted even when
-    passed in constructor. This is due to MappedAsDataclass + kw_only + joined-table
-    inheritance causing the FK value to become NULL during INSERT.
-
-    See: prerelease_dev_docs/MODEL_ISSUES.md Issue #5
-    """
+    """Test that a ResourceOrm can be persisted to the database."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
@@ -71,8 +63,9 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
         fqn="test.persistence.Resource",
         asset_type=AssetType.RESOURCE,
         status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
-        resource_definition_accession_id=def_id,
     )
+    # Set FK via relationship instead of direct FK assignment
+    resource.resource_definition = resource_def
 
     # Add to session and flush
     db_session.add(resource)
@@ -94,12 +87,8 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> None:
-    """Test that resource names must be unique.
-
-    KNOWN ISSUE: Cannot persist ResourceOrm to database - see MODEL_ISSUES.md Issue #5
-    """
+    """Test that resource names must be unique."""
     from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
 
@@ -119,7 +108,7 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
         fqn="test.resource.1",
         asset_type=AssetType.RESOURCE,
     )
-    resource1.resource_definition_accession_id = def_id
+    resource1.resource_definition = resource_def
     db_session.add(resource1)
     await db_session.flush()
 
@@ -130,7 +119,7 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
         fqn="test.resource.2",
         asset_type=AssetType.RESOURCE,
     )
-    resource2.resource_definition_accession_id = def_id
+    resource2.resource_definition = resource_def
     db_session.add(resource2)
 
     # Should raise IntegrityError
@@ -139,12 +128,8 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None:
-    """Test that resource status enum values are stored correctly.
-
-    KNOWN ISSUE: Cannot persist ResourceOrm to database - see MODEL_ISSUES.md Issue #5
-    """
+    """Test that resource status enum values are stored correctly."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
@@ -172,7 +157,7 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
             asset_type=AssetType.RESOURCE,
             status=status,
         )
-        resource.resource_definition_accession_id = def_id
+        resource.resource_definition = resource_def
         db_session.add(resource)
         await db_session.flush()
 
@@ -181,12 +166,8 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) -> None:
-    """Test self-referential parent-child relationship between resources.
-
-    KNOWN ISSUE: Cannot persist ResourceOrm to database - see MODEL_ISSUES.md Issue #5
-    """
+    """Test self-referential parent-child relationship between resources."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
@@ -206,7 +187,7 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
         fqn="test.resource.Parent",
         asset_type=AssetType.RESOURCE,
     )
-    parent.resource_definition_accession_id = def_id
+    parent.resource_definition = resource_def
     db_session.add(parent)
     await db_session.flush()
 
@@ -218,8 +199,8 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
         fqn="test.resource.Child",
         asset_type=AssetType.RESOURCE,
     )
-    child.resource_definition_accession_id = def_id
-    child.parent_accession_id = parent_id
+    child.resource_definition = resource_def
+    child.parent = parent
     db_session.add(child)
     await db_session.flush()
 
@@ -234,12 +215,8 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession) -> None:
-    """Test creating a resource with a workcell relationship.
-
-    KNOWN ISSUE: Cannot persist ResourceOrm to database - see MODEL_ISSUES.md Issue #5
-    """
+    """Test creating a resource with a workcell relationship."""
     from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.workcell import WorkcellOrm
 
@@ -269,8 +246,8 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
         fqn="test.resource.InWorkcell",
         asset_type=AssetType.RESOURCE,
     )
-    resource.resource_definition_accession_id = def_id
-    resource.workcell_accession_id = workcell_id
+    resource.resource_definition = resource_def
+    resource.workcell = workcell
     db_session.add(resource)
     await db_session.flush()
 
@@ -285,12 +262,8 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm.resource_definition_accession_id not persisting - MappedAsDataclass + kw_only FK issue")
 async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
-    """Test that resource plr_state JSONB field works correctly.
-
-    KNOWN ISSUE: Cannot persist ResourceOrm to database - see MODEL_ISSUES.md Issue #5
-    """
+    """Test that resource plr_state JSONB field works correctly."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
@@ -316,7 +289,7 @@ async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
         asset_type=AssetType.RESOURCE,
         plr_state=plr_state,
     )
-    resource.resource_definition_accession_id = def_id
+    resource.resource_definition = resource_def
 
     db_session.add(resource)
     await db_session.flush()

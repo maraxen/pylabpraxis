@@ -220,16 +220,11 @@ def test_resource_response_roundtrip_serialization() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm persistence blocked by Issue #5 - cannot create test ORM instances")
 async def test_resource_response_from_orm(db_session: AsyncSession) -> None:
-    """Test converting a ResourceOrm instance to ResourceResponse.
+    """Test converting a ResourceOrm instance to ResourceResponse (critical for API layer).
 
-    SKIPPED: ResourceOrm cannot be persisted to database due to
-    resource_definition_accession_id FK issue (see MODEL_ISSUES.md Issue #5).
-
-    This test validates that models inheriting from AssetOrm (with fqn field)
-    can be successfully converted to their Pydantic response models, similar
-    to MachineResponse which works correctly.
+    This validates that models inheriting from AssetOrm (with fqn field)
+    can be successfully converted to their Pydantic response models.
     """
     from praxis.backend.utils.uuid import uuid7
 
@@ -249,8 +244,8 @@ async def test_resource_response_from_orm(db_session: AsyncSession) -> None:
         fqn="test.orm.Resource",
         asset_type=AssetType.RESOURCE,
         status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
-        resource_definition_accession_id=resource_def.accession_id,
     )
+    orm_resource.resource_definition = resource_def
 
     db_session.add(orm_resource)
     await db_session.flush()
@@ -268,12 +263,8 @@ async def test_resource_response_from_orm(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="ResourceOrm persistence blocked by Issue #5 - cannot create test ORM instances")
 async def test_resource_response_from_orm_minimal(db_session: AsyncSession) -> None:
-    """Test ORM-to-Pydantic conversion with minimal fields.
-
-    SKIPPED: ResourceOrm persistence issue (see MODEL_ISSUES.md Issue #5).
-    """
+    """Test ORM-to-Pydantic conversion with minimal fields."""
     from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
@@ -291,8 +282,8 @@ async def test_resource_response_from_orm_minimal(db_session: AsyncSession) -> N
         name="minimal_resource",
         fqn="test.minimal.Resource",
         asset_type=AssetType.RESOURCE,
-        resource_definition_accession_id=resource_def.accession_id,
     )
+    orm_resource.resource_definition = resource_def
 
     db_session.add(orm_resource)
     await db_session.flush()
