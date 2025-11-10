@@ -61,6 +61,9 @@ async def create_machine(
     if workcell is None:
         workcell = await create_workcell(db_session)
 
+    if 'accession_id' not in kwargs:
+        kwargs['accession_id'] = uuid7()
+
     machine = MachineOrm(
         name=name,
         fqn=fqn,

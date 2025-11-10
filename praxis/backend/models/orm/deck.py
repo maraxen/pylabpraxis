@@ -77,7 +77,7 @@ class DeckOrm(ResourceOrm):
   __table_args__ = {"extend_existing": True}
   __mapper_args__: ClassVar[dict] = {
       "polymorphic_identity": "deck",
-      "inherit_condition": text("decks.accession_id == resources.accession_id"),
+      "inherit_condition": text("decks.accession_id = resources.accession_id"),
   }
 
   accession_id: Mapped[uuid.UUID] = mapped_column(

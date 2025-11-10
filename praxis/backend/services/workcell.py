@@ -56,7 +56,11 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     logger.info("Attempting to retrieve workcell with ID: %s.", accession_id)
     stmt = (
       select(self.model)
-      .options(selectinload(self.model.machines))
+      .options(
+        selectinload(self.model.machines),
+        selectinload(self.model.resources),
+        selectinload(self.model.decks)
+      )
       .filter(self.model.accession_id == accession_id)
     )
     result = await db.execute(stmt)
@@ -79,7 +83,15 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
   ) -> list[WorkcellOrm]:
     """List all workcells with pagination."""
     logger.info("Listing workcells with filters: %s", filters.model_dump_json())
-    stmt = select(self.model).options(selectinload(self.model.machines)).order_by(self.model.name)
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.machines),
+        selectinload(self.model.resources),
+        selectinload(self.model.decks)
+      )
+      .order_by(self.model.name)
+    )
     stmt = apply_date_range_filters(stmt, filters, self.model.created_at)
     stmt = apply_pagination(stmt, filters)
     stmt = stmt.order_by(self.model.name)
