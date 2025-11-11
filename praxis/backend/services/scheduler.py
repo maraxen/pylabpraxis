@@ -204,7 +204,7 @@ class ScheduleEntryCRUDService(
 
     previous_status = schedule_entry.status
     update_schema = ScheduleEntryUpdate(
-      status=ScheduleEntryStatus(new_status.value),
+      status=ScheduleEntryStatus(new_status.value.upper()),
       last_error_message=error_details,
       execution_started_at=started_at,
       execution_completed_at=completed_at,

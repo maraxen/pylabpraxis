@@ -44,7 +44,7 @@ async def create_protocol_definition(
     # Create source_repository if not provided
     if not source_repository:
         source_repository = ProtocolSourceRepositoryOrm(
-            name="test-repo",
+            name=f"test-repo-{uuid7()}",
             git_url="https://github.com/test/repo.git",
         )
         db_session.add(source_repository)
@@ -53,7 +53,7 @@ async def create_protocol_definition(
     # Create file_system_source if not provided
     if not file_system_source:
         file_system_source = FileSystemProtocolSourceOrm(
-            name="test-fs-source",
+            name=f"test-fs-source-{uuid7()}",
             base_path="/tmp/protocols",
         )
         db_session.add(file_system_source)

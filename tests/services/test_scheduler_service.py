@@ -286,17 +286,17 @@ async def test_schedule_entry_service_update_status(
     entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
     assert entry.status == ScheduleStatusEnum.QUEUED
 
-    # Update to RUNNING
+    # Update to EXECUTING
     started_at = datetime.now(timezone.utc)
     updated = await schedule_entry_service.update_status(
         db_session,
         schedule_entry_accession_id=entry.accession_id,
-        new_status=ScheduleStatusEnum.RUNNING,
+        new_status=ScheduleStatusEnum.EXECUTING,
         started_at=started_at,
     )
 
     assert updated is not None
-    assert updated.status == ScheduleStatusEnum.RUNNING
+    assert updated.status == ScheduleStatusEnum.EXECUTING
     assert updated.execution_started_at == started_at
 
     # Verify history was logged
@@ -306,7 +306,7 @@ async def test_schedule_entry_service_update_status(
     status_changed = [h for h in history if h.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED]
     assert len(status_changed) >= 1
     assert status_changed[0].from_status == ScheduleStatusEnum.QUEUED
-    assert status_changed[0].to_status == ScheduleStatusEnum.RUNNING
+    assert status_changed[0].to_status == ScheduleStatusEnum.EXECUTING
 
 
 @pytest.mark.asyncio
@@ -747,13 +747,13 @@ async def test_log_schedule_event(
     history_entry = await log_schedule_event(
         db_session,
         schedule_entry_accession_id=entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.ASSET_ANALYSIS_STARTED,
+        event_type=ScheduleHistoryEventEnum.SCHEDULED,
         event_details_json={"asset_count": 3, "analysis_type": "compatibility"},
         message="Started analyzing asset requirements",
     )
 
     assert history_entry.schedule_entry_accession_id == entry.accession_id
-    assert history_entry.event_type == ScheduleHistoryEventEnum.ASSET_ANALYSIS_STARTED
+    assert history_entry.event_type == ScheduleHistoryEventEnum.SCHEDULED
     assert history_entry.event_data_json["asset_count"] == 3
     assert history_entry.message == "Started analyzing asset requirements"
 
@@ -778,12 +778,12 @@ async def test_get_schedule_history(
     await log_schedule_event(
         db_session,
         entry.accession_id,
-        ScheduleHistoryEventEnum.ASSET_ANALYSIS_STARTED,
+        ScheduleHistoryEventEnum.SCHEDULED,
     )
     await log_schedule_event(
         db_session,
         entry.accession_id,
-        ScheduleHistoryEventEnum.ASSET_ANALYSIS_COMPLETED,
+        ScheduleHistoryEventEnum.EXECUTED,
     )
 
     # Get all history
@@ -818,7 +818,7 @@ async def test_get_scheduling_metrics(
     await schedule_entry_service.update_status(
         db_session,
         entry1.accession_id,
-        ScheduleStatusEnum.COMPLETED,
+        ScheduleStatusEnum.CANCELLED,
     )
 
     run2 = await create_protocol_run(db_session)
