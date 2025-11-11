@@ -144,15 +144,18 @@ Covers:
 
 ## 🔧 Running Tests
 
-### Test Database Setup (Already Running)
-```bash
-# PostgreSQL 18 on port 5433
-# Database: test_db
-# User: test_user / test_password
+### Test Database Setup (Already Configured for You!)
 
-# Test database is already running and configured
-# All 23 tables have been created
-```
+**PostgreSQL 18 (Debian Trixie)** is already running and configured in your environment:
+- **Host:** localhost
+- **Port:** 5433
+- **Database:** test_db
+- **User:** test_user
+- **Password:** test_password
+
+✅ **All 23 tables have been created and are ready to use.**
+
+⚠️ **You don't need to set up PostgreSQL yourself** - it's already running in the background. Just run the tests!
 
 ### Run Tests
 ```bash

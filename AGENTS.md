@@ -57,18 +57,19 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 
 ⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
 
--   **Technology**: PostgreSQL 18+ (required)
+-   **Technology**: PostgreSQL 18 (Debian Trixie)
 
 #### Environment-Specific Setup
 
-**For Jules (Docker pre-configured)**:
--   **Setup**: Start the test database via Docker:
+**For Jules (Pre-configured in your environment)**:
+-   **Setup**: ✅ **Database is already running and ready to use!**
+    - Host: localhost, Port: 5433
+    - Database: test_db, User: test_user
+    - All tables created and initialized
+-   **No setup needed**: Just run your tests with `pytest`
+-   **Verification**: If you want to check the database:
     ```bash
-    docker compose -f docker-compose.test.yml up -d
-    ```
--   **Verification**: Check database status:
-    ```bash
-    docker compose -f docker-compose.test.yml ps
+    psql -h localhost -p 5433 -U test_user -d test_db -c "SELECT version();"
     ```
 
 **For Claude Code (Manual PostgreSQL)**:
