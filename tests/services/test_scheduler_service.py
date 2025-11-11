@@ -260,7 +260,7 @@ async def test_schedule_entry_service_get_multi_with_sorting(
     entry3 = await create_schedule_entry(db_session, protocol_run=run3, priority=5)
 
     # Sort by priority ascending
-    filters = SearchFilters(skip=0, limit=10, sort_by="priority_asc")
+    filters = SearchFilters(skip=0, limit=10, sort_by="priority")
     sorted_entries = await schedule_entry_service.get_multi(db_session, filters=filters)
 
     # Find our test entries in results
@@ -301,8 +301,8 @@ async def test_schedule_entry_service_update_status(
 
     # Verify history was logged
     history = await get_schedule_history(db_session, entry.accession_id)
-    # Should have: SCHEDULE_CREATED + STATUS_CHANGED
-    assert len(history) >= 2
+    # Should have STATUS_CHANGED (factory doesn't log SCHEDULE_CREATED)
+    assert len(history) >= 1
     status_changed = [h for h in history if h.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED]
     assert len(status_changed) >= 1
     assert status_changed[0].from_status == ScheduleStatusEnum.QUEUED
@@ -788,8 +788,8 @@ async def test_get_schedule_history(
 
     # Get all history
     history = await get_schedule_history(db_session, entry.accession_id, limit=100)
-    # Should have: SCHEDULE_CREATED + 2 custom events
-    assert len(history) >= 3
+    # Should have 2 custom events (factory doesn't log SCHEDULE_CREATED)
+    assert len(history) >= 2
 
     # Get with limit
     limited = await get_schedule_history(db_session, entry.accession_id, limit=2)

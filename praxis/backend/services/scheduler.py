@@ -165,20 +165,27 @@ class ScheduleEntryCRUDService(
 
     # Apply ordering
     order_col = self.model.created_at
-    order_desc = True
+    order_desc = True  # Default for created_at
 
     if filters.sort_by:
-      if filters.sort_by == "created_at":
-        order_col = self.model.created_at
-      elif filters.sort_by == "priority":
-        order_col = self.model.priority
-      elif filters.sort_by == "scheduled_at":
-        order_col = self.model.scheduled_at
-
-      if filters.sort_by.endswith("_asc"):
-        order_desc = False
-      elif filters.sort_by.endswith("_desc"):
+      # Determine sort direction based on suffix
+      if filters.sort_by.endswith("_desc"):
         order_desc = True
+        sort_field = filters.sort_by[:-5]  # Remove "_desc" suffix
+      elif filters.sort_by.endswith("_asc"):
+        order_desc = False
+        sort_field = filters.sort_by[:-4]  # Remove "_asc" suffix
+      else:
+        order_desc = False  # Default to ascending for explicit field names
+        sort_field = filters.sort_by
+
+      # Map sort field to model column
+      if sort_field == "created_at":
+        order_col = self.model.created_at
+      elif sort_field == "priority":
+        order_col = self.model.priority
+      elif sort_field == "scheduled_at":
+        order_col = self.model.scheduled_at
 
     stmt = stmt.order_by(desc(order_col)) if order_desc else stmt.order_by(asc(order_col))
 
@@ -532,7 +539,7 @@ async def get_scheduling_metrics(
 
   # Get average timing metrics
   avg_stmt = select(
-    func.avg(ScheduleHistoryOrm.accession_id).label("avg_duration"),
+    func.avg(ScheduleHistoryOrm.completed_duration_ms).label("avg_duration"),
   ).filter(
     and_(
       ScheduleHistoryOrm.created_at >= start_time,
