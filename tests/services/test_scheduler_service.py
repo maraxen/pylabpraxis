@@ -30,6 +30,8 @@ from praxis.backend.models.orm.schedule import (
 from praxis.backend.models.orm.protocol import (
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+    FileSystemProtocolSourceOrm,
 )
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.pydantic_internals.scheduler import (
@@ -63,13 +65,43 @@ from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
-async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
+async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
+    """Create a ProtocolSourceRepositoryOrm for testing."""
+    repo = ProtocolSourceRepositoryOrm(
+        name="test-repo",
+        git_url="https://github.com/test/repo.git",
+    )
+    db_session.add(repo)
+    await db_session.flush()
+    return repo
+
+
+@pytest_asyncio.fixture
+async def file_system_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
+    """Create a FileSystemProtocolSourceOrm for testing."""
+    source = FileSystemProtocolSourceOrm(
+        name="test-fs-source",
+        base_path="/tmp/protocols",
+    )
+    db_session.add(source)
+    await db_session.flush()
+    return source
+
+
+@pytest_asyncio.fixture
+async def protocol_definition(
+    db_session: AsyncSession,
+    source_repository: ProtocolSourceRepositoryOrm,
+    file_system_source: FileSystemProtocolSourceOrm,
+) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing."""
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
+        source_repository=source_repository,
+        file_system_source=file_system_source,
     )
     db_session.add(protocol)
     await db_session.flush()
@@ -84,6 +116,7 @@ async def protocol_run(
 ) -> ProtocolRunOrm:
     """Create a protocol run for testing."""
     run = ProtocolRunOrm(
+        name="test_protocol_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     db_session.add(run)
@@ -96,6 +129,7 @@ async def protocol_run(
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a machine asset for reservation testing."""
     machine = MachineOrm(
+        accession_id=uuid7(),
         name="test_machine_scheduler",
         fqn="test.machines.SchedulerTestMachine",
         asset_type=AssetType.MACHINE,

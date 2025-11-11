@@ -18,6 +18,8 @@ from praxis.backend.models.orm.protocol import (
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
     FunctionCallLogOrm,
+    ProtocolSourceRepositoryOrm,
+    FileSystemProtocolSourceOrm,
 )
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceOrm
@@ -34,15 +36,36 @@ from praxis.backend.utils.uuid import uuid7
 
 async def create_protocol_definition(
     db_session: AsyncSession,
+    source_repository: ProtocolSourceRepositoryOrm | None = None,
+    file_system_source: FileSystemProtocolSourceOrm | None = None,
     **kwargs
 ) -> FunctionProtocolDefinitionOrm:
     """Factory for creating FunctionProtocolDefinitionOrm."""
+    # Create source_repository if not provided
+    if not source_repository:
+        source_repository = ProtocolSourceRepositoryOrm(
+            name="test-repo",
+            git_url="https://github.com/test/repo.git",
+        )
+        db_session.add(source_repository)
+        await db_session.flush()
+
+    # Create file_system_source if not provided
+    if not file_system_source:
+        file_system_source = FileSystemProtocolSourceOrm(
+            name="test-fs-source",
+            base_path="/tmp/protocols",
+        )
+        db_session.add(file_system_source)
+        await db_session.flush()
+
     defaults = {
-        "accession_id": uuid7(),
         "name": f"test_protocol_{uuid7()}",
         "fqn": f"test.protocols.test_protocol_{uuid7()}",
         "version": "1.0.0",
         "is_top_level": True,
+        "source_repository": source_repository,
+        "file_system_source": file_system_source,
     }
     defaults.update(kwargs)
 
@@ -64,7 +87,7 @@ async def create_protocol_run(
         protocol_definition = await create_protocol_definition(db_session)
 
     defaults = {
-        "accession_id": uuid7(),
+        "name": f"test_protocol_run_{uuid7()}",
         "top_level_protocol_definition_accession_id": protocol_definition.accession_id,
     }
     defaults.update(kwargs)
@@ -97,11 +120,17 @@ async def create_schedule_entry(
     if not protocol_run:
         protocol_run = await create_protocol_run(db_session)
 
-    # Build entry with kw_only field as keyword arg
+    # Build entry with all kw_only fields as keyword args
     entry = ScheduleEntryOrm(
-        protocol_run_accession_id=protocol_run.accession_id,
         status=kwargs.get('status', ScheduleStatusEnum.QUEUED),
         priority=kwargs.get('priority', 1),
+        name=kwargs.get('name', f"test_schedule_entry_{uuid7()}"),
+        protocol_run=protocol_run,
+        scheduled_at=kwargs.get('scheduled_at', datetime.now(timezone.utc)),
+        asset_analysis_completed_at=kwargs.get('asset_analysis_completed_at', None),
+        assets_reserved_at=kwargs.get('assets_reserved_at', None),
+        execution_started_at=kwargs.get('execution_started_at', None),
+        execution_completed_at=kwargs.get('execution_completed_at', None),
     )
 
     # Set optional JSONB fields if provided
@@ -111,9 +140,6 @@ async def create_schedule_entry(
         entry.user_params_json = kwargs['user_params_json']
     if 'initial_state_json' in kwargs:
         entry.initial_state_json = kwargs['initial_state_json']
-
-    # Set relationship (has init=False)
-    entry.protocol_run = protocol_run
 
     db_session.add(entry)
     await db_session.flush()
@@ -241,15 +267,19 @@ async def create_function_call_log(
         protocol_run = await create_protocol_run(db_session)
     if not protocol_definition:
         # Use the protocol run's definition
+        await db_session.refresh(protocol_run, ["top_level_protocol_definition"])
         protocol_definition = protocol_run.top_level_protocol_definition
 
     defaults = {
-        "accession_id": uuid7(),
         "protocol_run_accession_id": protocol_run.accession_id,
         "function_protocol_definition_accession_id": protocol_definition.accession_id,
-        "sequence_in_run": 0,
-        "start_time": datetime.now(timezone.utc),
+        "sequence_in_run": kwargs.get('sequence_in_run', 0),
+        "start_time": kwargs.get('start_time', datetime.now(timezone.utc)),
     }
+    # Don't let kwargs override the required fields
+    for key in ['protocol_run_accession_id', 'function_protocol_definition_accession_id']:
+        if key in kwargs:
+            del kwargs[key]
     defaults.update(kwargs)
 
     call_log = FunctionCallLogOrm(**defaults)

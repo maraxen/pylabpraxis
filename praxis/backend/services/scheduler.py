@@ -78,6 +78,21 @@ class ScheduleEntryCRUDService(
     )
     logger.info("%s Attempting to create new schedule entry.", log_prefix)
 
+    # Fetch the protocol run
+    from praxis.backend.models.orm.protocol import ProtocolRunOrm
+    protocol_run_result = await db.execute(
+      select(ProtocolRunOrm).filter(
+        ProtocolRunOrm.accession_id == obj_in.protocol_run_accession_id,
+      ),
+    )
+    protocol_run = protocol_run_result.scalar_one_or_none()
+    if not protocol_run:
+      error_message = (
+        f"{log_prefix} Protocol run '{obj_in.protocol_run_accession_id}' not found."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+
     # Check if a schedule entry for this protocol run already exists
     existing_entry = await db.execute(
       select(self.model).filter(
@@ -94,9 +109,16 @@ class ScheduleEntryCRUDService(
       raise ValueError(error_message)
 
     # Create a new ScheduleEntryOrm
+    from datetime import datetime, timezone
     schedule_entry = self.model(
-      **obj_in.model_dump(),
+      **obj_in.model_dump(exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"}),
       status=ScheduleStatusEnum.QUEUED,
+      protocol_run=protocol_run,
+      scheduled_at=datetime.now(timezone.utc),
+      asset_analysis_completed_at=None,
+      assets_reserved_at=None,
+      execution_started_at=None,
+      execution_completed_at=None,
     )
     db.add(schedule_entry)
     logger.info("%s Initialized new schedule entry for creation.", log_prefix)
