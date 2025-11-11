@@ -1,15 +1,67 @@
 """Unit tests for Deck-related ORM models."""
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.deck import (
     DeckOrm,
     DeckDefinitionOrm,
     DeckPositionDefinitionOrm,
 )
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.resource import ResourceOrm, ResourceDefinitionOrm
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
+
+
+@pytest_asyncio.fixture
+async def deck_definition(db_session: AsyncSession) -> DeckDefinitionOrm:
+    """Create a DeckDefinitionOrm for testing."""
+    deck_def = DeckDefinitionOrm(
+        name="test_deck_definition_fixture",
+        fqn="test.deck.DefinitionFixture",
+    )
+    db_session.add(deck_def)
+    await db_session.flush()
+    return deck_def
+
+
+@pytest_asyncio.fixture
+async def resource_definition(db_session: AsyncSession) -> ResourceDefinitionOrm:
+    """Create a ResourceDefinitionOrm for testing."""
+    res_def = ResourceDefinitionOrm(
+        name="test_resource_definition_fixture",
+        fqn="test.resource.DefinitionFixture",
+    )
+    db_session.add(res_def)
+    await db_session.flush()
+    return res_def
+
+
+@pytest_asyncio.fixture
+async def deck(
+    db_session: AsyncSession,
+    deck_definition: DeckDefinitionOrm,
+    resource_definition: ResourceDefinitionOrm,
+) -> DeckOrm:
+    """Create a complete DeckOrm instance for testing."""
+    from praxis.backend.utils.uuid import uuid7
+
+    deck = DeckOrm(
+        accession_id=uuid7(),
+        name="test_deck_fixture",
+        fqn="test.deck.Fixture",
+        asset_type=AssetType.DECK,
+        deck_type_id=deck_definition.accession_id,
+        resource_definition_accession_id=resource_definition.accession_id,
+    )
+    deck.deck_type = deck_definition
+    deck.resource_definition = resource_definition
+    db_session.add(deck)
+    await db_session.flush()
+    return deck
 
 
 @pytest.mark.asyncio
@@ -440,3 +492,70 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
     assert retrieved_resource is not None
     assert retrieved_resource.deck_accession_id == deck_id
     assert retrieved_resource.current_deck_position_name == "A1"
+
+
+@pytest.mark.asyncio
+async def test_deck_orm_is_resource_and_asset(
+    db_session: AsyncSession, deck: DeckOrm
+) -> None:
+    """Verify that a DeckOrm is also a ResourceOrm and AssetOrm."""
+    # Query as Asset
+    asset_result = await db_session.execute(
+        select(AssetOrm).where(AssetOrm.accession_id == deck.accession_id)
+    )
+    asset = asset_result.scalars().first()
+    assert asset is not None
+    assert asset.accession_id == deck.accession_id
+    assert asset.name == "test_deck_fixture"
+    assert asset.asset_type == AssetType.DECK
+
+    # Query as Resource
+    resource_result = await db_session.execute(
+        select(ResourceOrm).where(ResourceOrm.accession_id == deck.accession_id)
+    )
+    resource = resource_result.scalars().first()
+    assert resource is not None
+    assert resource.accession_id == deck.accession_id
+    assert resource.name == "test_deck_fixture"
+    assert resource.status == ResourceStatusEnum.UNKNOWN
+
+
+@pytest.mark.asyncio
+async def test_deck_orm_relationships(
+    db_session: AsyncSession,
+    deck: DeckOrm,
+    deck_definition: DeckDefinitionOrm,
+    resource_definition: ResourceDefinitionOrm,
+) -> None:
+    """Test the relationships of the DeckOrm model."""
+    result = await db_session.execute(
+        select(DeckOrm)
+        .where(DeckOrm.accession_id == deck.accession_id)
+        .options(
+            selectinload(DeckOrm.deck_type),
+            selectinload(DeckOrm.resource_definition),
+            selectinload(DeckOrm.resources),
+        )
+    )
+    retrieved_deck = result.scalars().first()
+
+    assert retrieved_deck is not None
+    assert retrieved_deck.deck_type is not None
+    assert retrieved_deck.deck_type.accession_id == deck_definition.accession_id
+    assert retrieved_deck.resource_definition is not None
+    assert (
+        retrieved_deck.resource_definition.accession_id
+        == resource_definition.accession_id
+    )
+    assert retrieved_deck.resources == []
+
+    # Test bidirectional relationship from DeckDefinition
+    result_def = await db_session.execute(
+        select(DeckDefinitionOrm)
+        .where(DeckDefinitionOrm.accession_id == deck_definition.accession_id)
+        .options(selectinload(DeckDefinitionOrm.deck))
+    )
+    retrieved_def = result_def.scalars().first()
+    assert retrieved_def is not None
+    assert len(retrieved_def.deck) == 1
+    assert retrieved_def.deck[0].accession_id == deck.accession_id
