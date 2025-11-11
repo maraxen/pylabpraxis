@@ -198,7 +198,6 @@ class AssetReservationOrm(Base):
     UUID,
     ForeignKey("protocol_runs.accession_id"),
     nullable=False,
-    unique=True,
     index=True,
     comment="Foreign key to the protocol run this asset reservation belongs to.",
     kw_only=True,
