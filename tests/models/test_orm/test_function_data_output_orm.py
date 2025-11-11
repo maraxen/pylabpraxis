@@ -149,9 +149,9 @@ async def test_function_data_output_orm_creation_minimal(
         name="test_output",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -186,15 +186,11 @@ async def test_function_data_output_orm_creation_with_all_fields(
         name="test_output_all_fields",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         data_type=DataOutputTypeEnum.GENERIC_MEASUREMENT,
         data_key="absorbance_580nm",
         spatial_context=SpatialContextEnum.WELL_SPECIFIC,
         resource_accession_id=resource_asset.accession_id,
         machine_accession_id=machine_asset.accession_id,
-        resource=resource_asset,
-        machine=machine_asset,
         spatial_coordinates_json={"well": "A1"},
         data_value_numeric=0.456,
         data_value_json={"a": 1},
@@ -203,6 +199,10 @@ async def test_function_data_output_orm_creation_with_all_fields(
         file_path="/path/to/file",
         measurement_conditions_json={"b": 2},
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
+    output.resource = resource_asset
+    output.machine = machine_asset
     db_session.add(output)
     await db_session.flush()
 
@@ -230,9 +230,9 @@ async def test_function_data_output_orm_persist_to_database(
         name="test_output_persist",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.commit()
 
@@ -258,10 +258,10 @@ async def test_function_data_output_orm_data_type_values(
             name=f"test_output_{data_type.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
-            protocol_run=function_call_log.protocol_run,
-            function_call_log=function_call_log,
             data_type=data_type,
         )
+        output.protocol_run = function_call_log.protocol_run
+        output.function_call_log = function_call_log
         db_session.add(output)
 
     await db_session.flush()
@@ -288,10 +288,10 @@ async def test_function_data_output_orm_spatial_context_values(
             name=f"test_output_{spatial_context.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
-            protocol_run=function_call_log.protocol_run,
-            function_call_log=function_call_log,
             spatial_context=spatial_context,
         )
+        output.protocol_run = function_call_log.protocol_run
+        output.function_call_log = function_call_log
         db_session.add(output)
 
     await db_session.flush()
@@ -317,12 +317,12 @@ async def test_function_data_output_orm_numeric_data(
         name="test_output_numeric",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         data_type=DataOutputTypeEnum.GENERIC_MEASUREMENT,
         data_key="absorbance_580nm",
         data_value_numeric=0.456,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -340,10 +340,10 @@ async def test_function_data_output_orm_json_data(
         name="test_output_json",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         data_value_json=json_data,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -360,10 +360,10 @@ async def test_function_data_output_orm_text_data(
         name="test_output_text",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         data_value_text="test_text",
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -380,10 +380,10 @@ async def test_function_data_output_orm_binary_data(
         name="test_output_binary",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         data_value_binary=b"test_binary",
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -401,10 +401,10 @@ async def test_function_data_output_orm_spatial_coordinates_jsonb(
         name="test_output_spatial",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         spatial_coordinates_json=coordinates,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -422,10 +422,10 @@ async def test_function_data_output_orm_metadata_jsonb(
         name="test_output_metadata",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         measurement_conditions_json=metadata,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -442,10 +442,10 @@ async def test_function_data_output_orm_file_path(
         name="test_output_file_path",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         file_path="/path/to/test/file",
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -462,9 +462,9 @@ async def test_function_data_output_orm_relationship_to_protocol_run(
         name="test_output_relationship_run",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -483,9 +483,9 @@ async def test_function_data_output_orm_relationship_to_function_call_log(
         name="test_output_relationship_log",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
     db_session.add(output)
     await db_session.flush()
 
@@ -505,11 +505,11 @@ async def test_function_data_output_orm_relationship_to_resource(
         name="test_output_relationship_resource",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         resource_accession_id=resource_asset.accession_id,
-        resource=resource_asset,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
+    output.resource = resource_asset
     db_session.add(output)
     await db_session.flush()
 
@@ -529,11 +529,11 @@ async def test_function_data_output_orm_relationship_to_machine(
         name="test_output_relationship_machine",
         protocol_run_accession_id=function_call_log.protocol_run_accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        protocol_run=function_call_log.protocol_run,
-        function_call_log=function_call_log,
         machine_accession_id=machine_asset.accession_id,
-        machine=machine_asset,
     )
+    output.protocol_run = function_call_log.protocol_run
+    output.function_call_log = function_call_log
+    output.machine = machine_asset
     db_session.add(output)
     await db_session.flush()
 
@@ -553,10 +553,10 @@ async def test_function_data_output_orm_query_by_data_type(
             name=f"test_output_{data_type.value}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
-            protocol_run=function_call_log.protocol_run,
-            function_call_log=function_call_log,
             data_type=data_type,
         )
+        output.protocol_run = function_call_log.protocol_run
+        output.function_call_log = function_call_log
         db_session.add(output)
     await db_session.flush()
 
@@ -581,9 +581,9 @@ async def test_function_data_output_orm_query_by_protocol_run(
             name=f"test_output_{i}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
-            protocol_run=function_call_log.protocol_run,
-            function_call_log=function_call_log,
         )
+        output.protocol_run = function_call_log.protocol_run
+        output.function_call_log = function_call_log
         db_session.add(output)
     await db_session.flush()
 
@@ -609,11 +609,11 @@ async def test_function_data_output_orm_query_by_resource(
             name=f"test_output_{i}",
             protocol_run_accession_id=function_call_log.protocol_run_accession_id,
             function_call_log_accession_id=function_call_log.accession_id,
-            protocol_run=function_call_log.protocol_run,
-            function_call_log=function_call_log,
             resource_accession_id=resource_asset.accession_id,
-            resource=resource_asset,
         )
+        output.protocol_run = function_call_log.protocol_run
+        output.function_call_log = function_call_log
+        output.resource = resource_asset
         db_session.add(output)
     await db_session.flush()
 
