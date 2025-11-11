@@ -6,27 +6,10 @@ I've reviewed the actual ORM models and identified several schema issues that ex
 
 ## Key Schema Issues Identified
 
-### 1. **AssetReservationOrm - Critical Issue** ⚠️
-**Problem**: Line 201 in `praxis/backend/models/orm/schedule.py`:
-```python
-protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
-    UUID,
-    ForeignKey("protocol_runs.accession_id"),
-    nullable=False,
-    unique=True,  # ⚠️ THIS IS WRONG - prevents multiple reservations per run!
-    index=True,
-    ...
-)
-```
+### 1. **AssetReservationOrm - Schema Issue Resolved** ✅
+**Status**: The `unique=True` constraint on `protocol_run_accession_id` has been removed from the schema.
 
-**Impact**: This `unique=True` constraint means each protocol run can only have ONE asset reservation, which doesn't make sense for a reservation system. A protocol run should be able to reserve multiple assets (multiple plates, machines, etc.).
-
-**Workaround for Tests**:
-- Only create ONE AssetReservationOrm per ProtocolRunOrm in your tests
-- Or use different ProtocolRunOrm instances for each reservation
-- Document this limitation in test comments
-
-**Long-term Fix**: This should be changed to `unique=False` in the schema.
+**Verification**: The test `test_multiple_reservations_for_same_run` in `tests/models/test_orm/test_asset_reservation_orm.py` now passes, confirming that multiple asset reservations can be created for a single protocol run.
 
 ### 2. **Field Attribute Patterns - Common Issues**
 
