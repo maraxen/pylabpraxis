@@ -121,8 +121,9 @@ async def test_schedule_history_orm_creation_minimal(
     schedule_entry = await schedule_entry_factory()
 
     history = ScheduleHistoryOrm(
+        name="test_history_minimal",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
     )
     history.schedule_entry = schedule_entry
 
@@ -133,7 +134,7 @@ async def test_schedule_history_orm_creation_minimal(
     # Verify minimal creation
     assert history.accession_id is not None
     assert history.schedule_entry_accession_id == schedule_entry.accession_id
-    assert history.event_type == ScheduleHistoryEventEnum.STATUS_CHANGE
+    assert history.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED
     assert history.event_start is not None
     assert isinstance(history.event_start, datetime)
     assert history.triggered_by == ScheduleHistoryEventTriggerEnum.SYSTEM
@@ -168,8 +169,9 @@ async def test_schedule_history_orm_creation_with_all_fields(
     event_data = {"retry_count": 1, "reason": "Network timeout"}
 
     history = ScheduleHistoryOrm(
+        name="test_history_all_fields",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+        event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
         from_status=ScheduleStatusEnum.QUEUED,
         to_status=ScheduleStatusEnum.READY_TO_EXECUTE,
         event_data_json=event_data,
@@ -202,8 +204,9 @@ async def test_schedule_history_orm_persist_to_database(
     schedule_entry = await schedule_entry_factory()
 
     history = ScheduleHistoryOrm(
+        name="test_history_persist",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.ASSET_RESERVED,
+        event_type=ScheduleHistoryEventEnum.SCHEDULED,
         message="Assets reserved successfully",
         asset_count=2,
     )
@@ -222,7 +225,7 @@ async def test_schedule_history_orm_persist_to_database(
 
     assert retrieved_history is not None
     assert retrieved_history.accession_id == history.accession_id
-    assert retrieved_history.event_type == ScheduleHistoryEventEnum.ASSET_RESERVED
+    assert retrieved_history.event_type == ScheduleHistoryEventEnum.SCHEDULED
     assert retrieved_history.message == "Assets reserved successfully"
     assert retrieved_history.asset_count == 2
 
@@ -248,6 +251,7 @@ async def test_schedule_history_orm_all_event_types(
 
     for event_type in ScheduleHistoryEventEnum:
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=event_type,
             message=f"Test event: {event_type.value}",
@@ -292,8 +296,9 @@ async def test_schedule_history_orm_status_transitions(
 
     for from_status, to_status in transitions:
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
             from_status=from_status,
             to_status=to_status,
             message=f"Transition: {from_status} → {to_status}",
@@ -334,8 +339,9 @@ async def test_schedule_history_orm_event_timing(
     now = datetime.now(timezone.utc)
 
     history = ScheduleHistoryOrm(
+        name="test_history_timing",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.EXECUTION_COMPLETED,
+        event_type=ScheduleHistoryEventEnum.COMPLETED,
         override_duration_ms=5000,
     )
     history.schedule_entry = schedule_entry
@@ -378,8 +384,9 @@ async def test_schedule_history_orm_event_data_jsonb(
     }
 
     history = ScheduleHistoryOrm(
+        name="test_history_jsonb",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.ASSET_RESERVED,
+        event_type=ScheduleHistoryEventEnum.SCHEDULED,
         event_data_json=event_data,
     )
     history.schedule_entry = schedule_entry
@@ -410,8 +417,9 @@ async def test_schedule_history_orm_error_tracking(
     """
 
     history = ScheduleHistoryOrm(
+        name="test_history_error",
         schedule_entry_accession_id=schedule_entry.accession_id,
-        event_type=ScheduleHistoryEventEnum.EXECUTION_FAILED,
+        event_type=ScheduleHistoryEventEnum.FAILED,
         error_details=error_message,
         message="Execution failed due to asset conflict",
     )
@@ -441,8 +449,9 @@ async def test_schedule_history_orm_all_trigger_types(
 
     for trigger in ScheduleHistoryEventTriggerEnum:
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
             triggered_by=trigger,
             message=f"Triggered by: {trigger.value}",
         )
@@ -474,8 +483,9 @@ async def test_schedule_history_orm_asset_count_tracking(
     asset_counts = [0, 1, 5, 10]
     for count in asset_counts:
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.ASSET_RESERVED,
+            event_type=ScheduleHistoryEventEnum.SCHEDULED,
             asset_count=count,
             message=f"Reserved {count} assets",
         )
@@ -505,8 +515,9 @@ async def test_schedule_history_orm_relationship_to_schedule_entry(
     # Create multiple history entries for same schedule entry
     for i in range(3):
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
             message=f"Event {i}",
         )
         history.schedule_entry = schedule_entry
@@ -533,14 +544,15 @@ async def test_schedule_history_orm_query_by_event_type(
 
     # Create mix of event types
     event_types = [
-        ScheduleHistoryEventEnum.STATUS_CHANGE,
-        ScheduleHistoryEventEnum.ASSET_RESERVED,
-        ScheduleHistoryEventEnum.STATUS_CHANGE,
-        ScheduleHistoryEventEnum.EXECUTION_STARTED,
+        ScheduleHistoryEventEnum.STATUS_CHANGED,
+        ScheduleHistoryEventEnum.SCHEDULED,
+        ScheduleHistoryEventEnum.STATUS_CHANGED,
+        ScheduleHistoryEventEnum.EXECUTED,
     ]
 
     for event_type in event_types:
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
             event_type=event_type,
         )
@@ -549,10 +561,10 @@ async def test_schedule_history_orm_query_by_event_type(
 
     await db_session.flush()
 
-    # Query STATUS_CHANGE events
+    # Query STATUS_CHANGED events
     result = await db_session.execute(
         select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.event_type == ScheduleHistoryEventEnum.STATUS_CHANGE
+            ScheduleHistoryOrm.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED
         )
     )
     status_changes = result.scalars().all()
@@ -571,8 +583,9 @@ async def test_schedule_history_orm_query_by_time_range(
     # Create entries (event_start will be set automatically)
     for i in range(5):
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
             message=f"Event {i}",
         )
         history.schedule_entry = schedule_entry
@@ -608,8 +621,9 @@ async def test_schedule_history_orm_cascade_delete(
     # Create history entries
     for i in range(3):
         history = ScheduleHistoryOrm(
+            name=f"test_history_{uuid7()}",
             schedule_entry_accession_id=schedule_entry.accession_id,
-            event_type=ScheduleHistoryEventEnum.STATUS_CHANGE,
+            event_type=ScheduleHistoryEventEnum.STATUS_CHANGED,
         )
         history.schedule_entry = schedule_entry
         db_session.add(history)
