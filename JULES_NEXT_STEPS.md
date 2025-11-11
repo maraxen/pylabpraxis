@@ -146,7 +146,7 @@ Covers:
 
 ### Test Database Setup (Already Running)
 ```bash
-# PostgreSQL 16 on port 5433
+# PostgreSQL 18 on port 5433
 # Database: test_db
 # User: test_user / test_password
 

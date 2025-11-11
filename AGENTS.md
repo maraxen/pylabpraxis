@@ -57,7 +57,7 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 
 ⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
 
--   **Technology**: PostgreSQL 15+ (required)
+-   **Technology**: PostgreSQL 18+ (required)
 
 #### Environment-Specific Setup
 
@@ -74,8 +74,8 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 **For Claude Code (Manual PostgreSQL)**:
 -   **Setup**: Install and configure PostgreSQL directly:
     ```bash
-    # Install PostgreSQL 16
-    apt-get update && apt-get install -y postgresql-16 postgresql-contrib-16
+    # Install PostgreSQL 18
+    apt-get update && apt-get install -y postgresql-18 postgresql-contrib-18
 
     # Start PostgreSQL service
     service postgresql start

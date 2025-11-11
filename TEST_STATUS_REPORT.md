@@ -176,7 +176,7 @@ Ensure CI pipeline includes:
 ```yaml
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     env:
       POSTGRES_DB: test_db
       POSTGRES_USER: test_user

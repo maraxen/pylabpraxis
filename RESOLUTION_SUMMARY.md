@@ -24,7 +24,7 @@ iptables: Failed to initialize nft: Protocol not supported
 ###Solution: PostgreSQL Installed Directly
 
 Instead of Docker-compose, we:
-1. Installed PostgreSQL 16 directly in the container
+1. Installed PostgreSQL 18 directly in the container
 2. Started PostgreSQL on port 5432
 3. Created `test_db` database and `test_user` role
 4. Set environment variable: `TEST_DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db`
