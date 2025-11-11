@@ -18,6 +18,7 @@ These tests serve as examples for testing complex scheduling services with:
 - Complex filtering and aggregation
 """
 import pytest
+import pytest_asyncio
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,11 +62,10 @@ from praxis.backend.utils.uuid import uuid7
 # ============================================================================
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing."""
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -73,35 +73,36 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
     )
     db_session.add(protocol)
     await db_session.flush()
+    await db_session.refresh(protocol)
     return protocol
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_run(
     db_session: AsyncSession,
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> ProtocolRunOrm:
     """Create a protocol run for testing."""
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     db_session.add(run)
     await db_session.flush()
+    await db_session.refresh(run)
     return run
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a machine asset for reservation testing."""
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_scheduler",
         fqn="test.machines.SchedulerTestMachine",
         asset_type=AssetType.MACHINE,
     )
     db_session.add(machine)
     await db_session.flush()
+    await db_session.refresh(machine)
     return machine
 
 
