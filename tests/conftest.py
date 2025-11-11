@@ -38,18 +38,17 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest_asyncio.fixture(scope="function")
 async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
     """
-    Creates a function-scoped test database engine.
-
-    IMPORTANT: This requires a running PostgreSQL database. Start it with:
-        docker compose -f docker-compose.test.yml up -d
-
-    If the database is unavailable, tests requiring it will fail with a clear error.
-    This is intentional - we must test against PostgreSQL due to JSONB and other
-    PostgreSQL-specific features used in production.
+    Creates a function-scoped test database engine and creates/drops tables.
     """
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     yield engine
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
 
