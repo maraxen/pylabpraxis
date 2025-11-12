@@ -20,14 +20,15 @@ class ScheduleEntryStatus(str, Enum):
 
   """Schedule entry status enum for API."""
 
-  QUEUED = "QUEUED"
-  RESOURCE_ANALYSIS = "RESOURCE_ANALYSIS"
-  RESOURCE_RESERVATION = "RESOURCE_RESERVATION"
-  READY_FOR_EXECUTION = "READY_FOR_EXECUTION"
-  EXECUTION_QUEUED = "EXECUTION_QUEUED"
-  EXECUTING = "EXECUTING"
-  CANCELLED = "CANCELLED"
-  FAILED = "FAILED"
+  QUEUED = "queued"
+  RESOURCE_ANALYSIS = "resource_analysis"
+  RESOURCE_RESERVATION = "resource_reservation"
+  READY_FOR_EXECUTION = "ready_for_execution"
+  EXECUTION_QUEUED = "execution_queued"
+  EXECUTING = "executing"
+  COMPLETED = "completed"
+  CANCELLED = "cancelled"
+  FAILED = "failed"
 
 
 class ResourceReservationStatus(str, Enum):

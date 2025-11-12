@@ -199,6 +199,41 @@ async def test_schedule_entry_service_create_duplicate_prevention(
 
 
 @pytest.mark.asyncio
+async def test_get_schedule_entry_by_id(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test retrieving a single schedule entry by its ID."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    retrieved_entry = await schedule_entry_service.get(db_session, entry.accession_id)
+    assert retrieved_entry is not None
+    assert retrieved_entry.accession_id == entry.accession_id
+
+
+@pytest.mark.asyncio
+async def test_get_schedule_entries_by_status(
+    db_session: AsyncSession,
+) -> None:
+    """Test filtering schedule entries by their status."""
+    from tests.factories_schedule import create_protocol_run, create_schedule_entry
+    run1 = await create_protocol_run(db_session)
+    await create_schedule_entry(db_session, protocol_run=run1)
+    run2 = await create_protocol_run(db_session)
+    entry2 = await create_schedule_entry(db_session, protocol_run=run2)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry2.accession_id,
+        ScheduleStatusEnum.COMPLETED,
+    )
+    filters = SearchFilters(status=ScheduleStatusEnum.QUEUED)
+    queued_entries = await schedule_entry_service.get_multi(db_session, filters=filters)
+    assert len(queued_entries) >= 1
+    for entry in queued_entries:
+        assert entry.status == ScheduleStatusEnum.QUEUED
+
+
+@pytest.mark.asyncio
 async def test_schedule_entry_service_get_multi_with_pagination(
     db_session: AsyncSession,
 ) -> None:
@@ -369,9 +404,253 @@ async def test_schedule_entry_service_update_priority(
     assert priority_changes[0].event_data_json["reason"] == "Urgent request"
 
 
+@pytest.mark.asyncio
+async def test_update_status_running_to_completed(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test the transition from RUNNING to COMPLETED."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.EXECUTING,
+    )
+    completed_at = datetime.now(timezone.utc)
+    updated_entry = await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.COMPLETED,
+        completed_at=completed_at,
+    )
+    assert updated_entry is not None
+    assert updated_entry.status == ScheduleStatusEnum.COMPLETED
+    assert updated_entry.execution_completed_at == completed_at
+
+
+@pytest.mark.asyncio
+async def test_update_status_running_to_failed(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test the transition from RUNNING to FAILED."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.EXECUTING,
+    )
+    error_details = "Execution failed due to an error."
+    updated_entry = await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.FAILED,
+        error_details=error_details,
+    )
+    assert updated_entry is not None
+    assert updated_entry.status == ScheduleStatusEnum.FAILED
+    assert updated_entry.last_error_message == error_details
+
+
+@pytest.mark.asyncio
+async def test_update_status_invalid_transition(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test that an invalid status transition (e.g., COMPLETED to RUNNING) is handled correctly."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.EXECUTING,
+    )
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.COMPLETED,
+    )
+    with pytest.raises(ValueError):
+        await schedule_entry_service.update_status(
+            db_session,
+            entry.accession_id,
+            ScheduleStatusEnum.EXECUTING,
+        )
+
+
+@pytest.mark.asyncio
+async def test_calculate_metrics_completed_entries(
+    db_session: AsyncSession,
+) -> None:
+    """Test calculating metrics for completed entries."""
+    from tests.factories_schedule import create_protocol_run, create_schedule_entry
+    start_time = datetime.now(timezone.utc) - timedelta(days=1)
+    run1 = await create_protocol_run(db_session)
+    entry1 = await create_schedule_entry(db_session, protocol_run=run1)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.COMPLETED, completed_at=datetime.now(timezone.utc))
+
+    run2 = await create_protocol_run(db_session)
+    entry2 = await create_schedule_entry(db_session, protocol_run=run2)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.COMPLETED, completed_at=datetime.now(timezone.utc))
+
+    end_time = datetime.now(timezone.utc) + timedelta(days=1)
+    metrics = await get_scheduling_metrics(db_session, start_time, end_time)
+    assert metrics['status_counts'].get(ScheduleStatusEnum.COMPLETED, 0) >= 2
+
+
+@pytest.mark.asyncio
+async def test_calculate_metrics_by_status(
+    db_session: AsyncSession,
+) -> None:
+    """Test calculating metrics grouped by status."""
+    from tests.factories_schedule import create_protocol_run, create_schedule_entry
+    start_time = datetime.now(timezone.utc) - timedelta(days=1)
+
+    run1 = await create_protocol_run(db_session)
+    entry1 = await create_schedule_entry(db_session, protocol_run=run1)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.COMPLETED)
+
+    run2 = await create_protocol_run(db_session)
+    entry2 = await create_schedule_entry(db_session, protocol_run=run2)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.FAILED)
+
+    end_time = datetime.now(timezone.utc) + timedelta(days=1)
+    metrics = await get_scheduling_metrics(db_session, start_time, end_time)
+    assert metrics['status_counts'].get(ScheduleStatusEnum.COMPLETED, 0) >= 1
+    assert metrics['status_counts'].get(ScheduleStatusEnum.FAILED, 0) >= 1
+
+
+@pytest.mark.asyncio
+async def test_calculate_average_duration(
+    db_session: AsyncSession,
+) -> None:
+    """Test calculating the average duration of schedule entries."""
+    from tests.factories_schedule import create_protocol_run, create_schedule_entry
+    start_time = datetime.now(timezone.utc) - timedelta(days=1)
+
+    run1 = await create_protocol_run(db_session)
+    entry1 = await create_schedule_entry(db_session, protocol_run=run1)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.COMPLETED, completed_at=datetime.now(timezone.utc))
+
+    run2 = await create_protocol_run(db_session)
+    entry2 = await create_schedule_entry(db_session, protocol_run=run2)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.COMPLETED, completed_at=datetime.now(timezone.utc))
+
+    end_time = datetime.now(timezone.utc) + timedelta(days=1)
+    metrics = await get_scheduling_metrics(db_session, start_time, end_time)
+    assert metrics['avg_duration_ms'] is not None
+
+
+@pytest.mark.asyncio
+async def test_track_execution_timing(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test that execution timing is tracked correctly."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+
+    started_at = datetime.now(timezone.utc)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.EXECUTING,
+        started_at=started_at,
+    )
+
+    completed_at = datetime.now(timezone.utc)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.COMPLETED,
+        completed_at=completed_at,
+    )
+
+    updated_entry = await schedule_entry_service.get(db_session, entry.accession_id)
+    assert updated_entry.execution_started_at == started_at
+    assert updated_entry.execution_completed_at == completed_at
+
+
 # ============================================================================
 # Asset Reservation Tests
 # ============================================================================
+@pytest.mark.asyncio
+async def test_reserve_assets_for_entry(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+    machine_asset: MachineOrm,
+) -> None:
+    """Test reserving assets for a schedule entry."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    reservation = await create_asset_reservation(
+        db_session,
+        schedule_entry_accession_id=entry.accession_id,
+        asset_type=AssetType.MACHINE,
+        asset_name=machine_asset.name,
+        protocol_run_accession_id=protocol_run.accession_id,
+        asset_accession_id=machine_asset.accession_id,
+    )
+    assert reservation is not None
+    assert reservation.status == AssetReservationStatusEnum.PENDING
+    updated_reservation = await update_asset_reservation_status(
+        db_session,
+        reservation.accession_id,
+        AssetReservationStatusEnum.RESERVED,
+    )
+    assert updated_reservation is not None
+    assert updated_reservation.status == AssetReservationStatusEnum.RESERVED
+
+
+@pytest.mark.asyncio
+async def test_release_assets_for_entry(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+    machine_asset: MachineOrm,
+) -> None:
+    """Test releasing assets for a schedule entry."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    reservation = await create_asset_reservation(
+        db_session,
+        schedule_entry_accession_id=entry.accession_id,
+        asset_type=AssetType.MACHINE,
+        asset_name=machine_asset.name,
+        protocol_run_accession_id=protocol_run.accession_id,
+        asset_accession_id=machine_asset.accession_id,
+    )
+    await update_asset_reservation_status(
+        db_session,
+        reservation.accession_id,
+        AssetReservationStatusEnum.RESERVED,
+    )
+    updated_reservation = await update_asset_reservation_status(
+        db_session,
+        reservation.accession_id,
+        AssetReservationStatusEnum.RELEASED,
+    )
+    assert updated_reservation is not None
+    assert updated_reservation.status == AssetReservationStatusEnum.RELEASED
 
 
 @pytest.mark.asyncio
@@ -719,6 +998,101 @@ async def test_cleanup_expired_reservations(
 # ============================================================================
 # Schedule History Tests
 # ============================================================================
+@pytest.mark.asyncio
+async def test_retry_failed_entry(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test retrying a failed schedule entry."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.FAILED,
+    )
+    updated_entry = await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.QUEUED,
+    )
+    assert updated_entry is not None
+    assert updated_entry.status == ScheduleStatusEnum.QUEUED
+
+
+@pytest.mark.asyncio
+async def test_get_history_for_entry(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test retrieving the history for a schedule entry."""
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.EXECUTING,
+    )
+    await schedule_entry_service.update_status(
+        db_session,
+        entry.accession_id,
+        ScheduleStatusEnum.COMPLETED,
+    )
+    history = await get_schedule_history(db_session, entry.accession_id)
+    assert len(history) >= 2
+
+
+@pytest.mark.asyncio
+async def test_concurrent_status_updates(
+    db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm,
+) -> None:
+    """Test that concurrent status updates are handled correctly."""
+    import asyncio
+    from tests.factories_schedule import create_schedule_entry
+    entry = await create_schedule_entry(db_session, protocol_run=protocol_run)
+
+    async def update_status_task(status: ScheduleStatusEnum):
+        await schedule_entry_service.update_status(
+            db_session,
+            entry.accession_id,
+            status,
+        )
+
+    tasks = [
+        update_status_task(ScheduleStatusEnum.EXECUTING),
+        update_status_task(ScheduleStatusEnum.CANCELLED),
+    ]
+    await asyncio.gather(*tasks, return_exceptions=True)
+    updated_entry = await schedule_entry_service.get(db_session, entry.accession_id)
+    assert updated_entry.status in [ScheduleStatusEnum.EXECUTING, ScheduleStatusEnum.CANCELLED]
+
+
+@pytest.mark.asyncio
+async def test_schedule_entry_metrics_aggregation(
+    db_session: AsyncSession,
+) -> None:
+    """Test the aggregation of schedule entry metrics."""
+    from tests.factories_schedule import create_protocol_run, create_schedule_entry
+    start_time = datetime.now(timezone.utc) - timedelta(days=1)
+
+    run1 = await create_protocol_run(db_session)
+    entry1 = await create_schedule_entry(db_session, protocol_run=run1)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry1.accession_id, ScheduleStatusEnum.COMPLETED)
+
+    run2 = await create_protocol_run(db_session)
+    entry2 = await create_schedule_entry(db_session, protocol_run=run2)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.EXECUTING)
+    await schedule_entry_service.update_status(
+        db_session, entry2.accession_id, ScheduleStatusEnum.FAILED)
+
+    end_time = datetime.now(timezone.utc) + timedelta(days=1)
+    metrics = await get_scheduling_metrics(db_session, start_time, end_time)
+    assert metrics['total_events'] >= 4
 
 
 @pytest.mark.asyncio
