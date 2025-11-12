@@ -21,7 +21,8 @@ from .pydantic_base import PraxisBaseModel
 
 
 class ResourceBase(AssetBase):
-
+  model_config = AssetBase.model_config.copy()
+  model_config['use_enum_values'] = True
   """Base model for a resource instance."""
 
   status: ResourceStatusEnum | None = Field(default=ResourceStatusEnum.UNKNOWN)

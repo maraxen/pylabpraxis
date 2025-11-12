@@ -206,7 +206,6 @@ async def test_resource_definition_response_from_orm(db_session: AsyncSession) -
     # Create ORM instance
     resource_id = uuid7()
     orm_resource_def = ResourceDefinitionOrm(
-        accession_id=resource_id,
         name="orm_test_plate",
         fqn="test.orm.Plate",
         resource_type="plate",
@@ -223,7 +222,7 @@ async def test_resource_definition_response_from_orm(db_session: AsyncSession) -
         rotation_json=rotation,
         plr_category="plate",
     )
-
+    orm_resource_def.accession_id = resource_id
     db_session.add(orm_resource_def)
     await db_session.flush()
 
@@ -256,10 +255,10 @@ async def test_resource_definition_response_from_orm_minimal(db_session: AsyncSe
 
     resource_id = uuid7()
     orm_resource_def = ResourceDefinitionOrm(
-        accession_id=resource_id,
         name="minimal_plate",
         fqn="test.minimal.Plate",
     )
+    orm_resource_def.accession_id = resource_id
 
     db_session.add(orm_resource_def)
     await db_session.flush()

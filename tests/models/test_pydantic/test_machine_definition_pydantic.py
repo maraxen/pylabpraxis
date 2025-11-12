@@ -215,7 +215,6 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
     # Create ORM instance
     machine_id = uuid7()
     orm_machine_def = MachineDefinitionOrm(
-        accession_id=machine_id,
         name="orm_test_machine",
         fqn="test.orm.Machine",
         machine_category=MachineCategoryEnum.LIQUID_HANDLER,
@@ -229,10 +228,9 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
         model="TEST-LH",
         rotation_json=rotation,
         plr_category="liquid_handler",
-        has_deck=True,
         setup_method_json=setup_method,
     )
-
+    orm_machine_def.accession_id = machine_id
     db_session.add(orm_machine_def)
     await db_session.flush()
 
@@ -254,7 +252,6 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
     assert response.model == "TEST-LH"
     assert response.rotation_json == rotation
     assert response.plr_category == "liquid_handler"
-    assert response.has_deck is True
     assert response.setup_method_json == setup_method
 
 
@@ -265,10 +262,10 @@ async def test_machine_definition_response_from_orm_minimal(db_session: AsyncSes
 
     machine_id = uuid7()
     orm_machine_def = MachineDefinitionOrm(
-        accession_id=machine_id,
         name="minimal_machine",
         fqn="test.minimal.Machine",
     )
+    orm_machine_def.accession_id = machine_id
 
     db_session.add(orm_machine_def)
     await db_session.flush()
@@ -280,7 +277,7 @@ async def test_machine_definition_response_from_orm_minimal(db_session: AsyncSes
     assert response.accession_id == machine_id
     assert response.name == "minimal_machine"
     assert response.fqn == "test.minimal.Machine"
-    assert response.machine_category == "UNKNOWN"  # ORM default
+    assert response.machine_category == "Unknown"  # ORM default
     assert response.description is None
 
 

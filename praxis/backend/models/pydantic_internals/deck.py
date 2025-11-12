@@ -25,7 +25,8 @@ from .resource import (
 
 class DeckBase(ResourceBase):
   """Base model for a deck."""
-
+  model_config = ResourceBase.model_config.copy()
+  model_config['use_enum_values'] = True
   machine_id: UUID7 | None = None
   deck_type_id: UUID7 | None = None
 
