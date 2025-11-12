@@ -15,7 +15,6 @@ from praxis.backend.models.orm.protocol import (
     FileSystemProtocolSourceOrm,
 )
 from praxis.backend.models.enums import ScheduleStatusEnum
-from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture

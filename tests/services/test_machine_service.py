@@ -6,10 +6,6 @@ Each test should verify service functionality using the database session.
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.enums import AssetType
 from praxis.backend.services.machine import machine_service
 
 

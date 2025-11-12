@@ -16,18 +16,16 @@ These tests serve as examples for testing complex services with:
 """
 import pytest
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.protocol import (
-    ProtocolRunOrm,
     FunctionProtocolDefinitionOrm,
     FunctionCallLogOrm,
 )
 from praxis.backend.models.pydantic_internals.protocol import (
     ProtocolRunCreate,
-    ProtocolRunUpdate,
     ProtocolRunStatusEnum,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters

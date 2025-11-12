@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from praxis.backend.utils.db import Base
 # Import all ORM models to ensure they're registered
-from praxis.backend.models import orm  # noqa: F401
+from praxis.backend.models import orm  # noqa: F401 - models must be imported to register with Base
 
 
 async def create_tables():

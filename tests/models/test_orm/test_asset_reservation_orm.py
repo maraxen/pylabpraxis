@@ -323,7 +323,7 @@ async def test_asset_reservation_orm_asset_type_field(
     machine_asset: MachineOrm,
 ) -> None:
     """Test asset_type field for different asset types."""
-    for asset_type in AssetType:
+    for asset_type in list(AssetType):
         protocol_run = await protocol_run_factory()
         schedule_entry = await schedule_entry_factory(protocol_run)
         reservation = AssetReservationOrm(
@@ -340,7 +340,7 @@ async def test_asset_reservation_orm_asset_type_field(
 
     await db_session.flush()
 
-    for asset_type in AssetType:
+    for asset_type in list(AssetType):
         result = await db_session.execute(
             select(AssetReservationOrm).where(
                 AssetReservationOrm.asset_type == asset_type

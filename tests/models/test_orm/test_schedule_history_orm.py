@@ -165,7 +165,6 @@ async def test_schedule_history_orm_creation_with_all_fields(
     - Custom trigger (USER, CELERY, etc.)
     """
     schedule_entry = await schedule_entry_factory()
-    now = datetime.now(timezone.utc)
     event_data = {"retry_count": 1, "reason": "Network timeout"}
 
     history = ScheduleHistoryOrm(
@@ -336,7 +335,6 @@ async def test_schedule_history_orm_event_timing(
     - Support override_duration_ms for manual duration
     """
     schedule_entry = await schedule_entry_factory()
-    now = datetime.now(timezone.utc)
 
     history = ScheduleHistoryOrm(
         name="test_history_timing",

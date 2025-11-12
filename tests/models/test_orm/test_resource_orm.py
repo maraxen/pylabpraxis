@@ -19,7 +19,6 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Create a resource with only required fields
     resource_id = uuid7()
@@ -99,7 +98,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Create first resource
     resource1 = ResourceOrm(
@@ -139,7 +137,6 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Test a few key statuses
     statuses = [
@@ -177,7 +174,6 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Create parent resource
     parent_id = uuid7()
@@ -236,7 +232,6 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Create resource in workcell
     resource_id = uuid7()
@@ -273,7 +268,6 @@ async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
     )
     db_session.add(resource_def)
     await db_session.flush()
-    def_id = resource_def.accession_id
 
     # Create resource with PLR state
     plr_state = {
