@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import UUID7, BaseModel, Field, ConfigDict
 
-
+from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 class SearchFilters(PraxisBaseModel):
@@ -39,6 +39,7 @@ class SearchFilters(PraxisBaseModel):
   machine_accession_id: UUID7 | None = Field(None, description="Filter by associated machine ID.")
   resource_accession_id: UUID7 | None = Field(None, description="Filter by associated resource ID.")
   parent_accession_id: UUID7 | None = Field(None, description="Filter by parent asset ID.")
+  status: ScheduleStatusEnum | None = Field(None, description="Filter by status.")
 
   model_config = ConfigDict(
     from_attributes=True,
