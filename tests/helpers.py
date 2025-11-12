@@ -18,14 +18,14 @@ from praxis.backend.utils.uuid import uuid7
 
 async def create_workcell(
     db_session: AsyncSession,
-    name: str = "test_workcell",
+    name: str | None = None,
     **kwargs: Any
 ) -> WorkcellOrm:
     """Create a workcell for testing.
 
     Args:
         db_session: Async database session
-        name: Workcell name (default: "test_workcell")
+        name: Workcell name (default: auto-generated unique name)
         **kwargs: Additional attributes to set on the workcell
 
     Returns:
@@ -33,6 +33,10 @@ async def create_workcell(
     """
     if 'accession_id' not in kwargs:
         kwargs['accession_id'] = uuid7()
+
+    if name is None:
+        import uuid
+        name = f"test_workcell_{uuid.uuid4().hex[:8]}"
 
     workcell = WorkcellOrm(name=name, **kwargs)
     db_session.add(workcell)
@@ -43,8 +47,8 @@ async def create_workcell(
 async def create_machine(
     db_session: AsyncSession,
     workcell: WorkcellOrm | None = None,
-    name: str = "test_machine",
-    fqn: str = "test.machine",
+    name: str | None = None,
+    fqn: str | None = None,
     **kwargs: Any
 ) -> MachineOrm:
     """Create a machine for testing.
@@ -52,8 +56,8 @@ async def create_machine(
     Args:
         db_session: Async database session
         workcell: Parent workcell (will create one if not provided)
-        name: Machine name (default: "test_machine")
-        fqn: Fully qualified name (default: "test.machine")
+        name: Machine name (default: auto-generated unique name)
+        fqn: Fully qualified name (default: auto-generated)
         **kwargs: Additional attributes to set on the machine
 
     Returns:
@@ -64,6 +68,14 @@ async def create_machine(
 
     if 'accession_id' not in kwargs:
         kwargs['accession_id'] = uuid7()
+
+    if name is None:
+        import uuid
+        name = f"test_machine_{uuid.uuid4().hex[:8]}"
+
+    if fqn is None:
+        import uuid
+        fqn = f"test.machine.{uuid.uuid4().hex[:8]}"
 
     machine = MachineOrm(
         name=name,
