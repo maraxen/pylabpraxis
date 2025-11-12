@@ -78,6 +78,21 @@ class ScheduleEntryCRUDService(
     )
     logger.info("%s Attempting to create new schedule entry.", log_prefix)
 
+    # Fetch the protocol run
+    from praxis.backend.models.orm.protocol import ProtocolRunOrm
+    protocol_run_result = await db.execute(
+      select(ProtocolRunOrm).filter(
+        ProtocolRunOrm.accession_id == obj_in.protocol_run_accession_id,
+      ),
+    )
+    protocol_run = protocol_run_result.scalar_one_or_none()
+    if not protocol_run:
+      error_message = (
+        f"{log_prefix} Protocol run '{obj_in.protocol_run_accession_id}' not found."
+      )
+      logger.error(error_message)
+      raise ValueError(error_message)
+
     # Check if a schedule entry for this protocol run already exists
     existing_entry = await db.execute(
       select(self.model).filter(
@@ -94,9 +109,16 @@ class ScheduleEntryCRUDService(
       raise ValueError(error_message)
 
     # Create a new ScheduleEntryOrm
+    from datetime import datetime, timezone
     schedule_entry = self.model(
-      **obj_in.model_dump(),
+      **obj_in.model_dump(exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"}),
       status=ScheduleStatusEnum.QUEUED,
+      protocol_run=protocol_run,
+      scheduled_at=datetime.now(timezone.utc),
+      asset_analysis_completed_at=None,
+      assets_reserved_at=None,
+      execution_started_at=None,
+      execution_completed_at=None,
     )
     db.add(schedule_entry)
     logger.info("%s Initialized new schedule entry for creation.", log_prefix)
@@ -143,20 +165,27 @@ class ScheduleEntryCRUDService(
 
     # Apply ordering
     order_col = self.model.created_at
-    order_desc = True
+    order_desc = True  # Default for created_at
 
     if filters.sort_by:
-      if filters.sort_by == "created_at":
-        order_col = self.model.created_at
-      elif filters.sort_by == "priority":
-        order_col = self.model.priority
-      elif filters.sort_by == "scheduled_at":
-        order_col = self.model.scheduled_at
-
-      if filters.sort_by.endswith("_asc"):
-        order_desc = False
-      elif filters.sort_by.endswith("_desc"):
+      # Determine sort direction based on suffix
+      if filters.sort_by.endswith("_desc"):
         order_desc = True
+        sort_field = filters.sort_by[:-5]  # Remove "_desc" suffix
+      elif filters.sort_by.endswith("_asc"):
+        order_desc = False
+        sort_field = filters.sort_by[:-4]  # Remove "_asc" suffix
+      else:
+        order_desc = False  # Default to ascending for explicit field names
+        sort_field = filters.sort_by
+
+      # Map sort field to model column
+      if sort_field == "created_at":
+        order_col = self.model.created_at
+      elif sort_field == "priority":
+        order_col = self.model.priority
+      elif sort_field == "scheduled_at":
+        order_col = self.model.scheduled_at
 
     stmt = stmt.order_by(desc(order_col)) if order_desc else stmt.order_by(asc(order_col))
 
@@ -182,7 +211,7 @@ class ScheduleEntryCRUDService(
 
     previous_status = schedule_entry.status
     update_schema = ScheduleEntryUpdate(
-      status=ScheduleEntryStatus(new_status.value),
+      status=ScheduleEntryStatus(new_status.value.upper()),
       last_error_message=error_details,
       execution_started_at=started_at,
       execution_completed_at=completed_at,
@@ -510,7 +539,7 @@ async def get_scheduling_metrics(
 
   # Get average timing metrics
   avg_stmt = select(
-    func.avg(ScheduleHistoryOrm.accession_id).label("avg_duration"),
+    func.avg(ScheduleHistoryOrm.completed_duration_ms).label("avg_duration"),
   ).filter(
     and_(
       ScheduleHistoryOrm.created_at >= start_time,

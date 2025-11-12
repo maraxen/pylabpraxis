@@ -37,7 +37,10 @@ uv run ruff check .
 
 ## 4. Testing Strategy
 
-A robust testing strategy is critical to our project's success. The complete strategy is documented in `prerelease_dev_docs/TESTING_STRATEGY.md`.
+A robust testing strategy is critical to our project's success. Comprehensive documentation:
+- **Strategy Overview**: `prerelease_dev_docs/TESTING_STRATEGY.md`
+- **Setup Guide**: `tests/README.md`
+- **Pattern Examples**: `tests/TESTING_PATTERNS.md`
 
 ### 4.1. Running the Test Suite
 -   **Command**: To run the entire test suite, use:
@@ -46,24 +49,84 @@ A robust testing strategy is critical to our project's success. The complete str
     ```
 -   **Coverage**: To run tests and generate a coverage report, use:
     ```bash
-    uv run pytest --cov=praxis/backend --cov-report=term-missing
+    uv run pytest --cov=praxis/backend --cov-report=html --cov-report=term-missing
     ```
 -   **Target**: We aim for **>90% line and branch coverage** for all new and refactored code.
 
 ### 4.2. Test Database
--   **Technology**: We use a PostgreSQL database for testing.
--   **Setup**: The test database is managed via Docker. The necessary Docker environment is already configured for agent development environments. To start it manually, use:
+
+⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
+
+-   **Technology**: PostgreSQL 18 (Debian Trixie)
+
+#### Environment-Specific Setup
+
+**For Jules (Pre-configured in your environment)**:
+-   **Setup**: ✅ **Database is already running and ready to use!**
+    - Host: localhost, Port: 5433
+    - Database: test_db, User: test_user
+    - All tables created and initialized
+-   **No setup needed**: Just run your tests with `pytest`
+-   **Verification**: If you want to check the database:
     ```bash
-    sudo docker compose -f docker-compose.test.yml up -d
+    psql -h localhost -p 5433 -U test_user -d test_db -c "SELECT version();"
     ```
--   **Isolation**: The test database is ephemeral. The schema is automatically migrated to the latest version before each test run, and each test runs in an isolated transaction that is rolled back upon completion.
 
-### 4.3. Scoping Tests
-The `tests/` directory mirrors the application's structure. When adding or modifying code, ensure corresponding tests are added or updated in the matching location.
+**For Claude Code (Manual PostgreSQL)**:
+-   **Setup**: Install and configure PostgreSQL directly:
+    ```bash
+    # Install PostgreSQL 18
+    apt-get update && apt-get install -y postgresql-18 postgresql-contrib-18
 
--   **Unit Tests**: Test individual functions or classes in isolation. Place them in `tests/` mirroring the component's path (e.g., tests for `praxis/backend/services/deck_service.py` go in `tests/services/test_deck_service.py`).
--   **API Tests**: Test API endpoints from an end-to-end perspective. Place them in `tests/api/`.
--   **Smoke Tests**: A small subset of critical tests are marked with `@pytest.mark.smoke`. These are run in a `smoke-test` job in the CI pipeline to provide a quick health check.
+    # Start PostgreSQL service
+    service postgresql start
+
+    # Create test database and user
+    sudo -u postgres psql -c "CREATE DATABASE test_db;"
+    sudo -u postgres psql -c "CREATE USER test_user WITH PASSWORD 'test_password';"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO test_user;"
+    sudo -u postgres psql -d test_db -c "GRANT ALL ON SCHEMA public TO test_user;"
+
+    # Set environment variable
+    export TEST_DATABASE_URL="postgresql+asyncpg://test_user:test_password@localhost:5432/test_db"
+    ```
+
+-   **Isolation**: Each test runs in an isolated transaction that is rolled back upon completion, ensuring tests are fully independent.
+
+### 4.3. Test Organization
+
+The `tests/` directory mirrors the backend structure:
+```
+tests/
+├── api/              # API endpoint tests (E2E)
+├── services/         # Service layer tests (business logic)
+├── core/             # Core component tests (protocol execution)
+└── integration/      # Multi-component integration tests
+```
+
+**Testing Patterns by Layer**:
+-   **API Tests** (`tests/api/`): Test full HTTP request/response cycle using FastAPI TestClient
+-   **Service Tests** (`tests/services/`): Test business logic with real database, mock external dependencies
+-   **Core Tests** (`tests/core/`): Test components in isolation with heavy mocking
+-   **Integration Tests** (`tests/integration/`): Test component interactions with minimal mocking
+
+**Detailed examples and patterns**: See `tests/TESTING_PATTERNS.md`
+
+### 4.4. Test Data Creation
+
+Use async helper functions (defined in `tests/helpers.py`) to create test data:
+```python
+from tests.helpers import create_workcell, create_machine, create_deck
+
+# Create test data with default values
+workcell = await create_workcell(db_session)
+machine = await create_machine(db_session, workcell=workcell)
+
+# Create with custom attributes
+deck = await create_deck(db_session, name="custom_deck")
+```
+
+**Note**: We use async helpers instead of Factory Boy because PyLabPraxis uses AsyncSession, which is incompatible with Factory Boy's synchronous SQLAlchemyModelFactory.
 
 ## 5. Linting and Code Style
 

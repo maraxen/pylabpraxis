@@ -97,11 +97,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     obj_in: UpdateSchemaType,
   ) -> ModelType:
     """Update an existing object."""
-    obj_data = jsonable_encoder(db_obj)
     update_data = obj_in.model_dump(exclude_unset=True)
-    for field in obj_data:
-      if field in update_data:
-        setattr(db_obj, field, update_data[field])
+    for field, value in update_data.items():
+      setattr(db_obj, field, value)
     db.add(db_obj)
     await db.flush()
     await db.refresh(db_obj)

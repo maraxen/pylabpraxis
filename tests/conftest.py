@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -9,61 +10,66 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
+from sqlalchemy.pool import NullPool
 
 from praxis.backend.utils.db import Base
 
-# Use the PostgreSQL database from the docker-compose.test.yml file
-TEST_DATABASE_URL = "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
+# Use PostgreSQL test database - NO SQLITE FALLBACK
+# The application uses PostgreSQL-specific features (JSONB) that SQLite doesn't support.
+# Tests must run against the actual production database to ensure compatibility.
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
+)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """
-    Creates a session-wide event loop for testing.
-    This ensures pytest-asyncio uses a single loop.
+    Creates a function-scoped event loop for testing.
+    This ensures each test gets a fresh event loop.
     """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
     """
-    Creates a session-wide test database engine and initializes the schema.
+    Creates a function-scoped test database engine and creates/drops tables.
     """
-    engine = create_async_engine(TEST_DATABASE_URL)
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
+
     async with engine.begin() as conn:
-        # Re-create the database schema for a clean test run
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
     await engine.dispose()
-
-
-@pytest.fixture(scope="session")
-def db_sessionmaker(
-    db_engine: AsyncEngine,
-) -> async_sessionmaker[AsyncSession]:
-    """Creates a session-wide sessionmaker bound to the test engine."""
-    return async_sessionmaker(
-        bind=db_engine, class_=AsyncSession, expire_on_commit=False
-    )
 
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(
-    db_sessionmaker: async_sessionmaker[AsyncSession],
+    db_engine: AsyncEngine,
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     Yields a single, transacted session for one test function.
     The transaction is rolled back after the test completes.
+
+    Uses connection-level transactions to ensure proper rollback.
     """
-    async with db_sessionmaker() as session:
-        transaction = await session.begin()
-        try:
-            yield session
-        finally:
-            await transaction.rollback()
+    async with db_engine.connect() as connection:
+        async with connection.begin() as transaction:
+            # Create session bound to this connection
+            session = AsyncSession(bind=connection, expire_on_commit=False)
+
+            try:
+                yield session
+            finally:
+                await session.close()
+                await transaction.rollback()

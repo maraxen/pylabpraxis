@@ -169,6 +169,64 @@ As the application grows, performance will become a critical concern. It's best 
 *   **Load Testing**: We will simulate a high number of concurrent users to test the performance of key API endpoints under stress. Tools like `locust` are excellent for this.
 *   **Benchmarking**: We will create benchmarks for critical business logic to track performance regressions over time. The `pytest-benchmark` plugin is a great option here.
 
+## Phased Implementation Plan
+
+Based on our learnings from initial test infrastructure setup, follow this order to build a robust test suite:
+
+### Phase 0: Test Infrastructure (✅ COMPLETE)
+- ✅ PostgreSQL test database setup
+- ✅ Async session fixtures with proper transaction isolation
+- ✅ FastAPI TestClient with dependency overrides
+- ✅ Async test helper functions (replacing Factory Boy)
+- ✅ Transaction visibility between test fixtures and API endpoints
+
+### Phase 1: Model Layer Tests (CURRENT PRIORITY)
+**Why First:** Model configuration issues (Pydantic serialization, ORM relationships) must be resolved before testing higher layers. Attempting API tests first leads to confusing errors that mask underlying model problems.
+
+- **Pydantic Model Tests** (`tests/models/test_pydantic/`)
+  - Test serialization/deserialization for each model
+  - Test model validation rules
+  - Test nested model relationships
+  - Identify and fix circular dependency issues
+  - Target: WorkcellResponse, MachineResponse, ResourceResponse, DeckResponse
+
+- **ORM Model Tests** (`tests/models/test_orm/`)
+  - Test model creation with required fields
+  - Test relationship loading (lazy vs eager)
+  - Test inheritance conditions (e.g., DeckOrm → ResourceOrm)
+  - Verify SQLAlchemy configurations work correctly
+  - Target: WorkcellOrm, MachineOrm, ResourceOrm, DeckOrm
+
+### Phase 2: Service Layer Tests
+Once models work correctly in isolation, test business logic:
+
+- **Database Service Tests** (`tests/services/`)
+  - Test CRUD operations for each service
+  - Test query filtering and pagination
+  - Test relationship loading strategies
+  - Mock external dependencies (Redis, Celery)
+  - Target: WorkcellService, MachineService, DeckService, ResourceService
+
+### Phase 3: API Layer Tests
+With working models and services, test the full stack:
+
+- **API Endpoint Tests** (`tests/api/`)
+  - Test request/response cycles
+  - Test validation errors
+  - Test authentication/authorization
+  - Test complete CRUD workflows
+  - Target: All API routers
+
+### Phase 4: Core Component Tests
+Test protocol execution and orchestration:
+
+- **AssetManager, Orchestrator, WorkcellRuntime**
+- **Protocol execution flows**
+- **State management and recovery**
+
+### Phase 5: Integration Tests
+Test multi-component workflows end-to-end.
+
 ## Continuous Improvement
 
 This testing strategy is a living document and will be updated as the project evolves. Regular review of test coverage and effectiveness is encouraged.

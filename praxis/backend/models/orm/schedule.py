@@ -198,7 +198,6 @@ class AssetReservationOrm(Base):
     UUID,
     ForeignKey("protocol_runs.accession_id"),
     nullable=False,
-    unique=True,
     index=True,
     comment="Foreign key to the protocol run this asset reservation belongs to.",
     kw_only=True,
@@ -437,7 +436,7 @@ class ScheduleHistoryOrm(Base):
   # Relationships
 
   triggered_by: Mapped[ScheduleHistoryEventTriggerEnum] = mapped_column(
-    String,
+    SAEnum(ScheduleHistoryEventTriggerEnum, name="schedule_history_event_trigger_enum"),
     nullable=False,
     default=ScheduleHistoryEventTriggerEnum.SYSTEM,
     comment="Identifier for the entity that triggered this event, e.g., 'user', 'system', 'celery'.",

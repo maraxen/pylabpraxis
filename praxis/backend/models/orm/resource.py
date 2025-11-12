@@ -186,7 +186,7 @@ class ResourceOrm(AssetOrm):
   """
 
   __tablename__ = "resources"
-  __mapper_args__: ClassVar[dict[str, str]] = {"polymorphic_identity": "resource"}
+  __mapper_args__: ClassVar[dict[str, str]] = {"polymorphic_identity": "RESOURCE"}
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
@@ -197,13 +197,13 @@ class ResourceOrm(AssetOrm):
   )
 
   # Definition
-  resource_definition_accession_id: Mapped[uuid.UUID] = mapped_column(
+  resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resource_definition_catalog.accession_id"),
-    nullable=False,
+    nullable=True,  # Nullable due to MappedAsDataclass + joined inheritance limitation
     index=True,
     comment="Foreign key to the resource definition catalog.",
-    kw_only=True,
+    default=None,
   )
 
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(

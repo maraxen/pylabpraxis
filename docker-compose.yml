@@ -2,7 +2,7 @@
 services:
 
   keycloak-postgres:
-    image: postgres:17
+    image: postgres:18-alpine
     restart: always
     environment:
       POSTGRES_USER: keycloak
@@ -45,7 +45,7 @@ services:
 
 
   praxis-db:
-    image: postgres:17
+    image: postgres:18-alpine
     restart: always
     environment:
       POSTGRES_DB: praxis_db
