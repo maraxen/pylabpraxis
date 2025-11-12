@@ -12,6 +12,7 @@ from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.enums.asset import AssetType
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -67,6 +68,7 @@ async def create_machine(
     machine = MachineOrm(
         name=name,
         fqn=fqn,
+        asset_type=AssetType.MACHINE,
         workcell_accession_id=workcell.accession_id,
         **kwargs
     )
@@ -160,8 +162,12 @@ async def create_deck(
     if deck_definition is None:
         deck_definition = await create_deck_definition(db_session)
 
+    if 'accession_id' not in kwargs:
+        kwargs['accession_id'] = uuid7()
+
     deck = DeckOrm(
         name=name,
+        asset_type=AssetType.DECK,
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
         resource_definition_accession_id=deck_definition.resource_definition.accession_id,
