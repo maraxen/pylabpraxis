@@ -11,7 +11,6 @@ from praxis.backend.models.orm.deck import (
     DeckDefinitionOrm,
     DeckPositionDefinitionOrm,
 )
-from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceOrm, ResourceDefinitionOrm
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 

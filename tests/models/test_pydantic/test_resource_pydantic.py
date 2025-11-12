@@ -1,9 +1,6 @@
 """Unit tests for Resource Pydantic models."""
 import json
 import pytest
-import pytest_asyncio
-from datetime import datetime, timezone
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.pydantic_internals.resource import (

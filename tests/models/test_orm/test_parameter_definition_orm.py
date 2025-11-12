@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 from praxis.backend.models.orm.protocol import (
     ParameterDefinitionOrm,
     FunctionProtocolDefinitionOrm,
-    ProtocolSourceRepositoryOrm,
 )
 
 

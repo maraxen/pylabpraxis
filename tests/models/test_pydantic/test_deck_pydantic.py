@@ -1,6 +1,5 @@
 """Unit tests for Deck Pydantic models."""
 import pytest
-from pydantic import UUID7, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.pydantic_internals.deck import (
@@ -15,7 +14,6 @@ from praxis.backend.models.pydantic_internals.deck import (
 from praxis.backend.models.orm.deck import (
     DeckOrm,
     DeckDefinitionOrm,
-    DeckPositionDefinitionOrm,
 )
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum

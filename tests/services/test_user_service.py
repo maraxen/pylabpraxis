@@ -3,7 +3,6 @@
 Tests cover all CRUD operations, authentication, and user-specific functionality.
 """
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 

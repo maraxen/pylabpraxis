@@ -1,9 +1,6 @@
 """Unit tests for Machine Pydantic models."""
 import json
 import pytest
-import pytest_asyncio
-from datetime import datetime, timezone
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.pydantic_internals.machine import (
@@ -14,7 +11,6 @@ from praxis.backend.models.pydantic_internals.machine import (
 )
 from praxis.backend.models.enums import (
     AssetType,
-    MachineCategoryEnum,
     MachineStatusEnum,
 )
 from praxis.backend.models.orm.machine import MachineOrm

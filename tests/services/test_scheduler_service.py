@@ -22,11 +22,6 @@ import pytest_asyncio
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.schedule import (
-    ScheduleEntryOrm,
-    AssetReservationOrm,
-    ScheduleHistoryOrm,
-)
 from praxis.backend.models.orm.protocol import (
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
@@ -36,7 +31,6 @@ from praxis.backend.models.orm.protocol import (
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.pydantic_internals.scheduler import (
     ScheduleEntryCreate,
-    ScheduleEntryUpdate,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.enums import (
@@ -526,7 +520,7 @@ async def test_list_asset_reservations_with_filters(
     entry2 = await create_schedule_entry(db_session, protocol_run=run2)
     machine2 = await create_machine(db_session, name="machine_2")
 
-    reservation2 = await create_asset_reservation(
+    await create_asset_reservation(
         db_session,
         schedule_entry_accession_id=entry2.accession_id,
         asset_type=AssetType.MACHINE,
