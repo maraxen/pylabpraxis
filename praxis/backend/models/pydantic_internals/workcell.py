@@ -23,7 +23,8 @@ from praxis.backend.models.pydantic_internals.resource import ResourceResponse
 
 
 class WorkcellBase(PraxisBaseModel):
-
+  model_config = PraxisBaseModel.model_config.copy()
+  model_config['use_enum_values'] = True
   """Defines the base properties for a workcell."""
 
   name: str = Field(description="The unique name of the workcell.")
