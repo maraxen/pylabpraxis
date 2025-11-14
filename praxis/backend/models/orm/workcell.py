@@ -39,6 +39,12 @@ class WorkcellOrm(Base):
     nullable=False,
     default_factory=partial(generate_name, prefix="workcell_"),
   )
+  fqn: Mapped[str | None] = mapped_column(
+    String,
+    nullable=True,
+    comment="Fully qualified name of the workcell, if applicable.",
+    default=None,
+  )
   description: Mapped[str | None] = mapped_column(
     Text,
     nullable=True,

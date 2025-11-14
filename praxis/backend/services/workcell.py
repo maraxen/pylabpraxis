@@ -15,7 +15,9 @@ import uuid
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from praxis.backend.models.orm.machine import MachineOrm
 from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.orm.workcell import WorkcellOrm
@@ -39,6 +41,10 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
   async def create(self, db: AsyncSession, *, obj_in: WorkcellCreate) -> WorkcellOrm:
     """Create a new workcell."""
     logger.info("Attempting to create workcell '%s'.", obj_in.name)
+
+    result = await db.execute(select(self.model).filter(self.model.name == obj_in.name))
+    if result.scalar_one_or_none():
+        raise IntegrityError(f"Workcell with name '{obj_in.name}' already exists.", params=None, orig=None)
 
     workcell_orm = await super().create(db=db, obj_in=obj_in)
 
@@ -133,11 +139,14 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       logger.warning("Workcell with ID %s not found for deletion.", accession_id)
       return None
 
-    logger.info(
-      "Successfully deleted workcell ID %s: '%s'.",
-      accession_id,
-      workcell_orm.name,
+    machines = await db.execute(
+        select(MachineOrm).filter(MachineOrm.workcell_accession_id == accession_id)
     )
+    if machines.scalars().first():
+        raise ValueError(f"Cannot delete workcell {accession_id}: it has associated machines")
+
+    await db.delete(workcell_orm)
+    await db.flush()
     return workcell_orm
 
   async def read_workcell_state(

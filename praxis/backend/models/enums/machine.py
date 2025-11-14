@@ -14,12 +14,12 @@ class MachineStatusEnum(enum.Enum):
 
   """Enumeration for the possible operational statuses of a machine."""
 
-  AVAILABLE = "available"
-  IN_USE = "in_use"
-  ERROR = "error"
-  OFFLINE = "offline"
-  INITIALIZING = "initializing"
-  MAINTENANCE = "maintenance"
+  AVAILABLE = "AVAILABLE"
+  IN_USE = "IN_USE"
+  ERROR = "ERROR"
+  OFFLINE = "OFFLINE"
+  INITIALIZING = "INITIALIZING"
+  MAINTENANCE = "MAINTENANCE"
 
 
 class MachineCategoryEnum(enum.Enum):
