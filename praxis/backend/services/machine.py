@@ -15,7 +15,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
+from praxis.backend.models.orm.machine import (
+  MachineCategoryEnum,
+  MachineOrm,
+  MachineStatusEnum,
+)
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
 from praxis.backend.services.entity_linking import (
@@ -58,17 +62,38 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       logger.error(error_message)
       raise ValueError(error_message)
 
-    machine_orm = await super().create(db=db, obj_in=obj_in)
+    # Convert Pydantic model to dict and handle enum conversions
+    obj_in_data = obj_in.model_dump()
+
+    # These fields are not part of the ORM constructor and need to be removed.
+    obj_in_data.pop("created_at", None)
+    obj_in_data.pop("updated_at", None)
+    obj_in_data.pop("workcell_id", None)
+    obj_in_data.pop("workcell_accession_id", None)
+    obj_in_data.pop("has_deck_child", None)
+    obj_in_data.pop("has_resource_child", None)
+    obj_in_data.pop("resource_def_name", None)
+    obj_in_data.pop("resource_properties_json", None)
+    obj_in_data.pop("resource_initial_status", None)
+    obj_in_data.pop("resource_counterpart_accession_id", None)
+
+    if obj_in_data.get("status") and isinstance(obj_in_data["status"], str):
+      obj_in_data["status"] = MachineStatusEnum(obj_in_data["status"])
+    if obj_in_data.get("machine_category") and isinstance(obj_in_data["machine_category"], str):
+      obj_in_data["machine_category"] = MachineCategoryEnum(obj_in_data["machine_category"])
+
+    machine_orm = await super().create(db=db, obj_in=obj_in_data)
     logger.info("%s Initialized new machine for creation.", log_prefix)
 
-    await _create_or_link_resource_counterpart_for_machine(
-      db=db,
-      machine_orm=machine_orm,
-      resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
-      resource_definition_name=obj_in.resource_def_name,
-      resource_properties_json=obj_in.resource_properties_json,
-      resource_status=obj_in.resource_initial_status,
-    )
+    if obj_in.resource_counterpart_accession_id or obj_in.resource_def_name:
+        await _create_or_link_resource_counterpart_for_machine(
+            db=db,
+            machine_orm=machine_orm,
+            resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
+            resource_definition_name=obj_in.resource_def_name,
+            resource_properties_json=obj_in.resource_properties_json,
+            resource_status=obj_in.resource_initial_status,
+        )
 
     await db.flush()
     await db.refresh(machine_orm)
@@ -107,7 +132,10 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
 
       await synchronize_machine_resource_names(db, db_obj, name)
 
-    updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+    if update_data.get("status") and isinstance(update_data["status"], str):
+      update_data["status"] = MachineStatusEnum(update_data["status"])
+
+    updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=update_data)
 
     logger.info("%s Initialized machine for update.", log_prefix)
     if updated_machine.resource_counterpart is not None:

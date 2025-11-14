@@ -26,6 +26,7 @@ class MachineBase(AssetBase):
   model_config['use_enum_values'] = True
   """Defines the base properties for a machine."""
 
+  machine_category: MachineCategoryEnum | None = Field(default=MachineCategoryEnum.UNKNOWN)
   status: MachineStatusEnum | None = Field(default=MachineStatusEnum.OFFLINE)
   status_details: str | None = None
   workcell_id: UUID7 | None = None
