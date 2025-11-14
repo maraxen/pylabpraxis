@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -80,10 +81,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     result = await db.execute(statement)
     return list(result.scalars().all())
 
-  async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
+  async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType | dict) -> ModelType:
     """Create a new object."""
-    obj_in_data = jsonable_encoder(obj_in)
-    db_obj = self.model(**obj_in_data)
+    if isinstance(obj_in, dict):
+      obj_in_data = obj_in
+    else:
+      obj_in_data = jsonable_encoder(obj_in)
+    db_obj = self.model(**obj_in_data)  # type: ignore
     db.add(db_obj)
     await db.flush()
     await db.refresh(db_obj)
@@ -94,10 +98,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     db: AsyncSession,
     *,
     db_obj: ModelType,
-    obj_in: UpdateSchemaType,
+    obj_in: UpdateSchemaType | dict,
   ) -> ModelType:
     """Update an existing object."""
-    update_data = obj_in.model_dump(exclude_unset=True)
+    if isinstance(obj_in, dict):
+      update_data = obj_in
+    else:
+      update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
       setattr(db_obj, field, value)
     db.add(db_obj)
