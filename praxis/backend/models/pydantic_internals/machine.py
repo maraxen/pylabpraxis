@@ -22,9 +22,11 @@ from .asset import AssetBase, AssetResponse, AssetUpdate
 
 
 class MachineBase(AssetBase):
-
+  model_config = AssetBase.model_config.copy()
+  model_config['use_enum_values'] = True
   """Defines the base properties for a machine."""
 
+  machine_category: MachineCategoryEnum | None = Field(default=MachineCategoryEnum.UNKNOWN)
   status: MachineStatusEnum | None = Field(default=MachineStatusEnum.OFFLINE)
   status_details: str | None = None
   workcell_id: UUID7 | None = None
@@ -96,7 +98,8 @@ class MachineResponse(AssetResponse, MachineBase):
 
 
 class MachineDefinitionBase(PLRTypeDefinitionBase):
-
+  model_config = PLRTypeDefinitionBase.model_config.copy()
+  model_config['use_enum_values'] = True
   """Defines the base properties for a machine definition."""
 
   machine_category: MachineCategoryEnum | None = Field(

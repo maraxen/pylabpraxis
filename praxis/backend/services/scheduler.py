@@ -155,6 +155,12 @@ class ScheduleEntryCRUDService(
     """List schedule entries with optional filters."""
     stmt = select(self.model)
 
+    if filters.status:
+        if isinstance(filters.status, str):
+            stmt = stmt.filter(self.model.status == ScheduleStatusEnum(filters.status))
+        else:
+            stmt = stmt.filter(self.model.status == filters.status)
+
     # Apply generic filters from query_builder
     stmt = apply_date_range_filters(
       stmt,
@@ -210,13 +216,29 @@ class ScheduleEntryCRUDService(
       return None
 
     previous_status = schedule_entry.status
-    update_schema = ScheduleEntryUpdate(
-      status=ScheduleEntryStatus(new_status.value.upper()),
-      last_error_message=error_details,
-      execution_started_at=started_at,
-      execution_completed_at=completed_at,
-    )
-    updated_entry = await self.update(db, db_obj=schedule_entry, obj_in=update_schema)
+
+    valid_transitions = {
+        ScheduleStatusEnum.QUEUED: [ScheduleStatusEnum.EXECUTING, ScheduleStatusEnum.CANCELLED, ScheduleStatusEnum.FAILED, ScheduleStatusEnum.COMPLETED],
+        ScheduleStatusEnum.EXECUTING: [ScheduleStatusEnum.COMPLETED, ScheduleStatusEnum.FAILED, ScheduleStatusEnum.CANCELLED],
+        ScheduleStatusEnum.COMPLETED: [],
+        ScheduleStatusEnum.FAILED: [ScheduleStatusEnum.QUEUED], # for retries
+        ScheduleStatusEnum.CANCELLED: [],
+    }
+
+    if new_status not in valid_transitions.get(previous_status, []):
+        raise ValueError(f"Invalid status transition from {previous_status.value} to {new_status.value}")
+    schedule_entry.status = new_status
+    if error_details:
+        schedule_entry.last_error_message = error_details
+    if started_at:
+        schedule_entry.execution_started_at = started_at
+    if completed_at:
+        schedule_entry.execution_completed_at = completed_at
+
+    db.add(schedule_entry)
+    await db.flush()
+    await db.refresh(schedule_entry)
+    updated_entry = schedule_entry
 
     # Log the status change
     await log_schedule_event(
@@ -226,6 +248,7 @@ class ScheduleEntryCRUDService(
       previous_status=previous_status,
       new_status=new_status,
       event_details_json={"error_details": error_details},
+      event_end=completed_at,
     )
 
     logger.info(
