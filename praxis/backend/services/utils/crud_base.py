@@ -92,6 +92,21 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     # Filter the input data to include only keys that are valid constructor parameters
     filtered_data = {key: value for key, value in obj_in_data.items() if key in valid_params}
 
+    # Convert enum string values back to enum members for SQLAlchemy
+    # This is necessary because jsonable_encoder converts enums to strings
+    import enum
+    for attr_name, column in inspect(self.model).columns.items():
+      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+        enum_class = column.type.enum_class
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = filtered_data[attr_name]
+          if isinstance(value, str):
+            # Find the enum member with this value
+            for member in enum_class:
+              if member.value == value:
+                filtered_data[attr_name] = member
+                break
+
     db_obj = self.model(**filtered_data)
     db.add(db_obj)
     await db.flush()
