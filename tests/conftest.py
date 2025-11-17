@@ -19,7 +19,7 @@ from praxis.backend.utils.db import Base
 # Tests must run against the actual production database to ensure compatibility.
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
+    "postgresql+asyncpg://test_user:test_password@localhost:5432/test_db",
 )
 
 

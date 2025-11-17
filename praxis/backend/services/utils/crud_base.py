@@ -1,5 +1,6 @@
 """Generic CRUD base class for SQLAlchemy models."""
 
+import inspect as py_inspect
 from typing import Generic, TypeVar
 from uuid import UUID
 
@@ -83,7 +84,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
   async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
     """Create a new object."""
     obj_in_data = jsonable_encoder(obj_in)
-    db_obj = self.model(**obj_in_data)
+
+    # Get the valid constructor parameters for the ORM model
+    init_signature = py_inspect.signature(self.model.__init__)
+    valid_params = {p.name for p in init_signature.parameters.values()}
+
+    # Filter the input data to include only keys that are valid constructor parameters
+    filtered_data = {key: value for key, value in obj_in_data.items() if key in valid_params}
+
+    db_obj = self.model(**filtered_data)
     db.add(db_obj)
     await db.flush()
     await db.refresh(db_obj)
