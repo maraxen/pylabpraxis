@@ -121,6 +121,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
         selectinload(self.model.parent),
         selectinload(self.model.parent_machine),
         selectinload(self.model.deck_type),
+        selectinload(self.model.children),  # Load children for serialization
       )
       .filter(self.model.accession_id == accession_id)
     )
