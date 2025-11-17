@@ -59,14 +59,12 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     )
 
     # Remap the Pydantic `machine_id` or `parent_accession_id` to the ORM's `parent_machine_accession_id`.
-    # Also keep parent_accession_id for API response compatibility
+    # Don't keep parent_accession_id as it has FK constraint to resources table (machines are in machines table)
     if machine_id := deck_data.pop("machine_id", None):
       deck_data["parent_machine_accession_id"] = machine_id
-      deck_data["parent_accession_id"] = machine_id  # Keep for response
     elif parent_id := deck_data.pop("parent_accession_id", None):
       # For decks, parent_accession_id actually refers to the parent machine
       deck_data["parent_machine_accession_id"] = parent_id
-      deck_data["parent_accession_id"] = parent_id  # Keep for response
 
     # Filter to only valid constructor parameters
     import inspect as py_inspect

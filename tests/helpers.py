@@ -8,6 +8,7 @@ async tests.
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums import AssetType
 from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
@@ -63,6 +64,10 @@ async def create_machine(
 
     if 'accession_id' not in kwargs:
         kwargs['accession_id'] = uuid7()
+
+    # Set asset_type if not provided
+    if 'asset_type' not in kwargs:
+        kwargs['asset_type'] = AssetType.MACHINE
 
     machine = MachineOrm(
         name=name,
@@ -163,6 +168,11 @@ async def create_deck(
         deck_definition = await create_deck_definition(db_session)
 
     deck_id = uuid7()
+
+    # Set asset_type if not provided
+    if 'asset_type' not in kwargs:
+        kwargs['asset_type'] = AssetType.DECK
+
     deck = DeckOrm(
         accession_id=deck_id,
         name=name,
