@@ -126,7 +126,7 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       stmt = stmt.filter(and_(*conditions))
 
     # Apply generic filters from query_builder
-    if not isinstance(self.model, Base):
+    if not issubclass(self.model, Base):
       msg = f"Model {self.model.__name__} must inherit from Base to use generic filters."
       raise TypeError(
         msg,
