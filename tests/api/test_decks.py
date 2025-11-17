@@ -87,12 +87,15 @@ async def test_update_deck(client: AsyncClient, db_session: AsyncSession) -> Non
 
     # 2. ACT: Call the API with new data
     new_name = "updated_deck_name"
-    response = await client.patch(
+    response = await client.put(
         f"/api/v1/decks/{deck.accession_id}",
         json={"name": new_name},
     )
 
     # 3. ASSERT: Check the response and database state
+    if response.status_code != 200:
+        print(f"DEBUG Response status: {response.status_code}")
+        print(f"DEBUG Response body: {response.json()}")
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == new_name

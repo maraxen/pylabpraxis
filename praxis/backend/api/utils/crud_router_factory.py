@@ -67,12 +67,14 @@ def create_crud_router(
   @router.put(f"{prefix}{sep}{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
   async def update(
     accession_id: UUID,
-    obj_in: UpdateSchemaType,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
   ) -> ModelType:
     db_obj = await service.get(db, accession_id=accession_id)
     if db_obj is None:
       raise HTTPException(status_code=404, detail="Not found")
+    obj_in_data = await request.json()
+    obj_in = update_schema.model_validate(obj_in_data)
     return await service.update(
       db=db, db_obj=db_obj, obj_in=obj_in.model_dump(exclude_unset=True)
     )

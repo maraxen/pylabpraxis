@@ -9,7 +9,7 @@ from typing import Any, ClassVar, Optional
 
 from pydantic import UUID7, BaseModel, Field
 
-from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.enums import AssetType, MachineStatusEnum, ResourceStatusEnum
 from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,
   PLRTypeDefinitionResponse,
@@ -60,6 +60,9 @@ class ResourceCreate(ResourceBase):
 class ResourceUpdate(ResourceBase, AssetUpdate):
 
   """Model for updating a resource instance."""
+
+  # Override asset_type to make it optional for updates (shouldn't change during update)
+  asset_type: AssetType | None = Field(None, description="The type of the asset.")
 
 
 class ResourceResponse(AssetResponse, ResourceBase):
