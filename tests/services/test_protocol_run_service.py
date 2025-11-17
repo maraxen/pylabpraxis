@@ -42,13 +42,16 @@ from praxis.backend.services.protocols import (
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing."""
     from praxis.backend.utils.uuid import uuid7
+    import inspect as py_inspect
 
+    # Create protocol definition with required relationship arguments as None
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
+        source_repository=None,
+        file_system_source=None,
     )
     db_session.add(protocol)
     await db_session.flush()
