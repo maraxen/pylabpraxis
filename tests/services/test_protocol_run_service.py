@@ -15,6 +15,7 @@ These tests serve as examples for testing complex services with:
 - Integration with other models
 """
 import pytest
+import pytest_asyncio
 import json
 from datetime import datetime, timezone
 from sqlalchemy import select
@@ -37,7 +38,7 @@ from praxis.backend.services.protocols import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing."""
     from praxis.backend.utils.uuid import uuid7
