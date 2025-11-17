@@ -154,13 +154,17 @@ async def create_deck(
     Returns:
         DeckOrm instance with generated accession_id
     """
+    from praxis.backend.utils.uuid import uuid7
+
     if machine is None:
         machine = await create_machine(db_session)
 
     if deck_definition is None:
         deck_definition = await create_deck_definition(db_session)
 
+    deck_id = uuid7()
     deck = DeckOrm(
+        accession_id=deck_id,
         name=name,
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
