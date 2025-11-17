@@ -183,4 +183,6 @@ async def create_deck(
     )
     db_session.add(deck)
     await db_session.flush()
+    await db_session.refresh(deck)  # Ensure the deck is fully loaded
+    print(f"DEBUG helper created deck ID: {deck.accession_id}, name: {deck.name}")
     return deck

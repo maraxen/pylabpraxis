@@ -30,6 +30,9 @@ def create_crud_router(
   """Create a FastAPI router with standard CRUD endpoints."""
   router = APIRouter()
 
+  # Handle trailing slash in prefix to avoid double slashes
+  sep = "" if prefix.endswith("/") else "/"
+
   @router.post(
     prefix,
     response_model=response_schema,
@@ -51,7 +54,7 @@ def create_crud_router(
   ) -> list[ModelType]:
     return await service.get_multi(db, filters=filters)
 
-  @router.get(f"{prefix}/{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
   async def get(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -61,7 +64,7 @@ def create_crud_router(
       raise HTTPException(status_code=404, detail="Not found")
     return db_obj
 
-  @router.put(f"{prefix}/{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
   async def update(
     accession_id: UUID,
     obj_in: UpdateSchemaType,
@@ -74,7 +77,7 @@ def create_crud_router(
       db=db, db_obj=db_obj, obj_in=obj_in.model_dump(exclude_unset=True)
     )
 
-  @router.delete(f"{prefix}/{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
+  @router.delete(f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
   async def delete(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
@@ -103,7 +103,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     await db.flush()
     logger.debug(f"DEBUG After flush - parent_accession_id: {deck_orm.parent_accession_id}")
     # Refresh the object to eager-load relationships required for the response model.
-    await db.refresh(deck_orm, ["deck_type", "parent"])
+    await db.refresh(deck_orm, ["deck_type", "parent_machine"])
     logger.debug(f"DEBUG After refresh - parent_accession_id: {deck_orm.parent_accession_id}")
     logger.info(
       "Successfully created deck '%s' with ID %s.",
@@ -118,8 +118,9 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     stmt = (
       select(self.model)
       .options(
-        joinedload(self.model.parent),
-        joinedload(self.model.deck_type),
+        selectinload(self.model.parent),
+        selectinload(self.model.parent_machine),
+        selectinload(self.model.deck_type),
       )
       .filter(self.model.accession_id == accession_id)
     )
@@ -147,8 +148,9 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       filters.model_dump_json(),
     )
     stmt = select(self.model).options(
-      joinedload(self.model.parent),
-      joinedload(self.model.deck_type),
+      selectinload(self.model.parent),
+      selectinload(self.model.parent_machine),
+      selectinload(self.model.deck_type),
     )
 
     conditions = []
@@ -227,8 +229,9 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     """Retrieve all decks from the database."""
     logger.info("Retrieving all decks.")
     stmt = select(self.model).options(
-      joinedload(self.model.parent),
-      joinedload(self.model.deck_type),
+      selectinload(self.model.parent),
+      selectinload(self.model.parent_machine),
+      selectinload(self.model.deck_type),
     )
     result = await db.execute(stmt)
     decks = list(result.scalars().all())
