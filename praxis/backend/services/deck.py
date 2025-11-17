@@ -58,19 +58,55 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       }
     )
 
-    # Remap the Pydantic `machine_id` to the ORM's `parent_machine_accession_id`.
+    # Remap the Pydantic `machine_id` or `parent_accession_id` to the ORM's `parent_machine_accession_id`.
+    # Also keep parent_accession_id for API response compatibility
     if machine_id := deck_data.pop("machine_id", None):
       deck_data["parent_machine_accession_id"] = machine_id
+      deck_data["parent_accession_id"] = machine_id  # Keep for response
+    elif parent_id := deck_data.pop("parent_accession_id", None):
+      # For decks, parent_accession_id actually refers to the parent machine
+      deck_data["parent_machine_accession_id"] = parent_id
+      deck_data["parent_accession_id"] = parent_id  # Keep for response
 
-    deck_orm = self.model(**deck_data)
+    # Filter to only valid constructor parameters
+    import inspect as py_inspect
+    from sqlalchemy import inspect as sa_inspect
+    import enum
+
+    init_signature = py_inspect.signature(self.model.__init__)
+    valid_params = {p.name for p in init_signature.parameters.values()}
+    filtered_data = {key: value for key, value in deck_data.items() if key in valid_params}
+
+    logger.debug(f"DEBUG deck_data keys: {list(deck_data.keys())}")
+    logger.debug(f"DEBUG filtered_data keys: {list(filtered_data.keys())}")
+    logger.debug(f"DEBUG parent_accession_id in deck_data: {deck_data.get('parent_accession_id')}")
+    logger.debug(f"DEBUG parent_accession_id in filtered_data: {filtered_data.get('parent_accession_id')}")
+
+    # Convert enum string values back to enum members for SQLAlchemy
+    for attr_name, column in sa_inspect(self.model).columns.items():
+      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+        enum_class = column.type.enum_class
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = filtered_data[attr_name]
+          if isinstance(value, str):
+            for member in enum_class:
+              if member.value == value:
+                filtered_data[attr_name] = member
+                break
+
+    deck_orm = self.model(**filtered_data)
+
+    logger.debug(f"DEBUG After construction - parent_accession_id: {deck_orm.parent_accession_id}")
 
     if obj_in.plr_state:
       deck_orm.plr_state = obj_in.plr_state
 
     db.add(deck_orm)
     await db.flush()
+    logger.debug(f"DEBUG After flush - parent_accession_id: {deck_orm.parent_accession_id}")
     # Refresh the object to eager-load relationships required for the response model.
     await db.refresh(deck_orm, ["deck_type", "parent"])
+    logger.debug(f"DEBUG After refresh - parent_accession_id: {deck_orm.parent_accession_id}")
     logger.info(
       "Successfully created deck '%s' with ID %s.",
       deck_orm.name,
