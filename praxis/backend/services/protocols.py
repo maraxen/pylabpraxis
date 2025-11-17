@@ -55,10 +55,48 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       obj_in.top_level_protocol_definition_accession_id,
     )
     utc_now = datetime.datetime.now(datetime.timezone.utc)
+    # Exclude start_time from model_dump since we're setting it manually
+    data = obj_in.model_dump(exclude={'start_time'})
+
+    # Map Pydantic field name to ORM field name
+    if 'run_accession_id' in data:
+      data['accession_id'] = data.pop('run_accession_id')
+
+    # Extract accession_id before filtering (since it has init=False in Base)
+    accession_id = data.pop('accession_id', None)
+
+    # Filter to only valid constructor parameters
+    import inspect as py_inspect
+    from sqlalchemy import inspect as sa_inspect
+    import enum
+
+    init_signature = py_inspect.signature(self.model.__init__)
+    valid_params = {p.name for p in init_signature.parameters.values()}
+    filtered_data = {key: value for key, value in data.items() if key in valid_params}
+
+    # Convert enum string values back to enum members for SQLAlchemy
+    for attr_name, column in sa_inspect(self.model).columns.items():
+      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+        enum_class = column.type.enum_class
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = filtered_data[attr_name]
+          if isinstance(value, str):
+            for member in enum_class:
+              if member.value == value:
+                filtered_data[attr_name] = member
+                break
+
+    # Use the converted status value for the PENDING check
+    status_value = filtered_data.get('status', obj_in.status)
     db_protocol_run = self.model(
-      **obj_in.model_dump(),
-      start_time=utc_now if obj_in.status != ProtocolRunStatusEnum.PENDING else None,
+      **filtered_data,
+      start_time=utc_now if status_value != ProtocolRunStatusEnum.PENDING else None,
     )
+
+    # Set accession_id manually since it's not a constructor parameter
+    if accession_id is not None:
+      db_protocol_run.accession_id = accession_id
+
     db.add(db_protocol_run)
     await db.flush()
     await db.refresh(db_protocol_run)
@@ -249,7 +287,10 @@ async def log_function_call_start(
     parent_function_call_log_accession_id: uuid.UUID | None = None,
 ) -> FunctionCallLogOrm:
     """Log the start of a function call."""
+    call_id = uuid7()
     db_obj = FunctionCallLogOrm(
+        accession_id=call_id,
+        name=f"call_{call_id}",  # kw_only from Base
         protocol_run_accession_id=protocol_run_orm_accession_id,
         function_protocol_definition_accession_id=function_definition_accession_id,
         sequence_in_run=sequence_in_run,

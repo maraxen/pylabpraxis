@@ -74,7 +74,7 @@ async def test_protocol_run_service_create_pending(
 
     run_id = uuid7()
     create_data = ProtocolRunCreate(
-        accession_id=run_id,
+        run_accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.PENDING,
         input_parameters_json={"volume": 100, "temperature": 37},
@@ -105,7 +105,7 @@ async def test_protocol_run_service_create_running(
 
     run_id = uuid7()
     create_data = ProtocolRunCreate(
-        accession_id=run_id,
+        run_accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
     )
@@ -146,7 +146,7 @@ async def test_protocol_run_service_create_with_complex_jsonb(
     }
 
     create_data = ProtocolRunCreate(
-        accession_id=uuid7(),
+        run_accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         input_parameters_json=input_params,
         initial_state_json=initial_state,
@@ -180,7 +180,7 @@ async def test_protocol_run_service_get_multi_basic(
     runs = []
     for i in range(5):
         create_data = ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name=f"test_run_{i}",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.RUNNING if i % 2 == 0 else ProtocolRunStatusEnum.COMPLETED,
@@ -214,11 +214,12 @@ async def test_protocol_run_service_get_multi_with_definition_filter(
 
     # Create another protocol definition
     other_protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="other_protocol",
         fqn="test.protocols.other_protocol",
         version="1.0.0",
         is_top_level=True,
+        source_repository=None,
+        file_system_source=None,
     )
     db_session.add(other_protocol)
     await db_session.flush()
@@ -227,7 +228,7 @@ async def test_protocol_run_service_get_multi_with_definition_filter(
     run1 = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="run_proto1",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
@@ -235,7 +236,7 @@ async def test_protocol_run_service_get_multi_with_definition_filter(
     run2 = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="run_proto2",
             top_level_protocol_definition_accession_id=other_protocol.accession_id,
         ),
@@ -272,7 +273,7 @@ async def test_protocol_run_service_get_multi_with_status_filter(
     completed_run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="completed_run",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.COMPLETED,
@@ -281,7 +282,7 @@ async def test_protocol_run_service_get_multi_with_status_filter(
     running_run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="running_run",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.RUNNING,
@@ -319,7 +320,7 @@ async def test_protocol_run_service_get_by_name(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="my_run_instance",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
@@ -350,7 +351,7 @@ async def test_protocol_run_service_update_status_to_running(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.PENDING,
         ),
@@ -390,7 +391,7 @@ async def test_protocol_run_service_update_status_to_completed(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.RUNNING,
         ),
@@ -438,7 +439,7 @@ async def test_protocol_run_service_update_status_to_failed(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.RUNNING,
         ),
@@ -506,7 +507,7 @@ async def test_log_function_call_start(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
     )
@@ -547,7 +548,7 @@ async def test_log_function_call_with_parent(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
     )
@@ -592,7 +593,7 @@ async def test_log_function_call_end_success(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
     )
@@ -640,7 +641,7 @@ async def test_log_function_call_end_failure(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         ),
     )
@@ -660,14 +661,14 @@ async def test_log_function_call_end_failure(
     failed_call = await log_function_call_end(
         db_session,
         function_call_log_accession_id=call_log.accession_id,
-        status=FunctionCallStatusEnum.FAILED,
+        status=FunctionCallStatusEnum.ERROR,
         error_message=error_message,
         error_traceback=error_traceback,
     )
 
     # Verify failure logged
     assert failed_call is not None
-    assert failed_call.status == FunctionCallStatusEnum.FAILED
+    assert failed_call.status == FunctionCallStatusEnum.ERROR
     assert failed_call.error_message_text == error_message
     assert failed_call.error_traceback_text == error_traceback
 
@@ -710,7 +711,7 @@ async def test_protocol_run_service_full_lifecycle(
     run = await protocol_run_service.create(
         db_session,
         obj_in=ProtocolRunCreate(
-            accession_id=uuid7(),
+            run_accession_id=uuid7(),
             name="lifecycle_test",
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=ProtocolRunStatusEnum.PENDING,
