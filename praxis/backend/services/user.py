@@ -78,7 +78,13 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         user_data = obj_in.model_dump(exclude={"password"})
         user_data["hashed_password"] = self._hash_password(obj_in.password)
 
-        user_orm = UserOrm(**user_data)
+        # Filter to only valid constructor parameters
+        import inspect as py_inspect
+        init_signature = py_inspect.signature(UserOrm.__init__)
+        valid_params = {p.name for p in init_signature.parameters.values()}
+        filtered_data = {key: value for key, value in user_data.items() if key in valid_params}
+
+        user_orm = UserOrm(**filtered_data)
         db.add(user_orm)
         await db.flush()
         await db.refresh(user_orm)
