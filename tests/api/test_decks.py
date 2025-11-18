@@ -65,10 +65,15 @@ async def test_get_deck(client: AsyncClient, db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_get_multi_decks(client: AsyncClient, db_session: AsyncSession) -> None:
     """Test retrieving multiple decks."""
-    # 1. SETUP: Create multiple decks
-    await create_deck(db_session, name="deck_1")
-    await create_deck(db_session, name="deck_2")
-    await create_deck(db_session, name="deck_3")
+    # 1. SETUP: Create shared resources once to avoid constraint violations
+    from tests.helpers import create_machine, create_deck_definition
+    machine = await create_machine(db_session, name="shared_machine")
+    deck_def = await create_deck_definition(db_session)
+
+    # Create multiple decks sharing the same machine and deck definition
+    await create_deck(db_session, name="deck_1", machine=machine, deck_definition=deck_def)
+    await create_deck(db_session, name="deck_2", machine=machine, deck_definition=deck_def)
+    await create_deck(db_session, name="deck_3", machine=machine, deck_definition=deck_def)
 
     # 2. ACT: Call the API
     response = await client.get("/api/v1/decks/")

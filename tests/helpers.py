@@ -43,7 +43,7 @@ async def create_workcell(
 async def create_machine(
     db_session: AsyncSession,
     workcell: WorkcellOrm | None = None,
-    name: str = "test_machine",
+    name: str | None = None,
     fqn: str = "test.machine",
     **kwargs: Any
 ) -> MachineOrm:
@@ -52,7 +52,7 @@ async def create_machine(
     Args:
         db_session: Async database session
         workcell: Parent workcell (will create one if not provided)
-        name: Machine name (default: "test_machine")
+        name: Machine name (default: unique generated name)
         fqn: Fully qualified name (default: "test.machine")
         **kwargs: Additional attributes to set on the machine
 
@@ -60,10 +60,16 @@ async def create_machine(
         MachineOrm instance with generated accession_id
     """
     if workcell is None:
-        workcell = await create_workcell(db_session)
+        # Generate unique workcell name to avoid constraint violations
+        unique_suffix = str(uuid7())
+        workcell = await create_workcell(db_session, name=f"test_workcell_{unique_suffix}")
 
     if 'accession_id' not in kwargs:
         kwargs['accession_id'] = uuid7()
+
+    # Generate unique machine name if not provided
+    if name is None:
+        name = f"test_machine_{str(uuid7())}"
 
     # Set asset_type if not provided
     if 'asset_type' not in kwargs:

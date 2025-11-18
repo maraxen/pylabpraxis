@@ -47,7 +47,7 @@ def create_crud_router(
     obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
-  @router.get(prefix, response_model=list[ResponseSchemaType], tags=tags)
+  @router.get(prefix, response_model=list[response_schema], tags=tags)
   async def get_multi(
     db: Annotated[AsyncSession, Depends(get_db)],
     filters: Annotated[SearchFilters, Depends()],
