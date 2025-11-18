@@ -8,11 +8,13 @@ async tests.
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum, ProtocolRunStatusEnum
 from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
+from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -238,3 +240,167 @@ async def create_deck(
     await db_session.refresh(deck)  # Ensure the deck is fully loaded
     print(f"DEBUG helper created deck ID: {deck.accession_id}, name: {deck.name}")
     return deck
+
+
+async def create_protocol_definition(
+    db_session: AsyncSession,
+    name: str | None = None,
+    **kwargs: Any
+) -> FunctionProtocolDefinitionOrm:
+    """Create a protocol definition for testing.
+
+    Args:
+        db_session: Async database session
+        name: Protocol name (generates unique name if not provided)
+        **kwargs: Additional attributes to set on the protocol definition
+
+    Returns:
+        FunctionProtocolDefinitionOrm instance
+    """
+    from praxis.backend.models.orm.protocol import (
+        FileSystemProtocolSourceOrm,
+        ProtocolSourceRepositoryOrm,
+    )
+
+    # Generate unique name if not provided
+    if name is None:
+        name = f"test_protocol_{str(uuid7())}"
+
+    # Create a file system source if not provided
+    if 'file_system_source' not in kwargs:
+        fs_source = FileSystemProtocolSourceOrm(
+            name=f"test_fs_source_{str(uuid7())}",
+            base_path="/test/protocols"
+        )
+        db_session.add(fs_source)
+        await db_session.flush()
+        kwargs['file_system_source'] = fs_source
+
+    # Create source repository if not provided (required kw_only arg)
+    if 'source_repository' not in kwargs:
+        repo = ProtocolSourceRepositoryOrm(
+            name=f"test_repo_{str(uuid7())}",
+            git_url="https://github.com/test/test.git"
+        )
+        db_session.add(repo)
+        await db_session.flush()
+        kwargs['source_repository'] = repo
+
+    # Set required defaults
+    defaults = {
+        "name": name,
+        "fqn": f"test.protocols.{name}",
+        "source_file_path": f"/test/protocols/{name}.py",
+        "module_name": f"test.protocols.{name}",
+        "function_name": name,
+        "version": "1.0.0",
+    }
+    defaults.update(kwargs)
+
+    protocol_def = FunctionProtocolDefinitionOrm(**defaults)
+    db_session.add(protocol_def)
+    await db_session.flush()
+    return protocol_def
+
+
+async def create_protocol_run(
+    db_session: AsyncSession,
+    protocol_definition: FunctionProtocolDefinitionOrm | None = None,
+    **kwargs: Any
+) -> ProtocolRunOrm:
+    """Create a protocol run for testing.
+
+    Args:
+        db_session: Async database session
+        protocol_definition: Associated protocol definition (creates one if not provided)
+        **kwargs: Additional attributes to set on the protocol run
+
+    Returns:
+        ProtocolRunOrm instance
+    """
+    # Create protocol definition if not provided
+    if protocol_definition is None:
+        protocol_definition = await create_protocol_definition(db_session)
+
+    # Set defaults
+    defaults = {
+        "accession_id": uuid7(),
+        "top_level_protocol_definition_accession_id": protocol_definition.accession_id,
+        "status": ProtocolRunStatusEnum.PENDING,
+    }
+    defaults.update(kwargs)
+
+    protocol_run = ProtocolRunOrm(**defaults)
+    db_session.add(protocol_run)
+    await db_session.flush()
+    return protocol_run
+
+
+async def create_function_data_output(
+    db_session: AsyncSession,
+    **kwargs: Any
+) -> FunctionDataOutputOrm:
+    """Create a function data output for testing.
+
+    Args:
+        db_session: Async database session
+        **kwargs: Additional attributes to set on the data output
+
+    Returns:
+        FunctionDataOutputOrm instance
+    """
+    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
+    import datetime
+
+    # Set defaults
+    defaults = {
+        "data_key": f"test_output_{str(uuid7())}",
+        "data_type": DataOutputTypeEnum.SCALAR,
+        "data_value_json": {"value": 42},
+        "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
+    }
+    defaults.update(kwargs)
+
+    data_output = FunctionDataOutputOrm(**defaults)
+    db_session.add(data_output)
+    await db_session.flush()
+    return data_output
+
+
+async def create_well_data_output(
+    db_session: AsyncSession,
+    resource: ResourceOrm | None = None,
+    **kwargs: Any
+) -> WellDataOutputOrm:
+    """Create a well data output for testing.
+
+    Args:
+        db_session: Async database session
+        resource: Associated resource (creates one if not provided)
+        **kwargs: Additional attributes to set on the well data output
+
+    Returns:
+        WellDataOutputOrm instance
+    """
+    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
+    import datetime
+
+    # Create resource if not provided
+    if resource is None:
+        resource = await create_resource(db_session)
+
+    # Set defaults
+    defaults = {
+        "data_key": f"test_well_output_{str(uuid7())}",
+        "data_type": DataOutputTypeEnum.SCALAR,
+        "data_value_json": {"value": 42},
+        "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
+        "resource_accession_id": resource.accession_id,
+        "well_position": "A1",
+    }
+    defaults.update(kwargs)
+
+    well_output = WellDataOutputOrm(**defaults)
+    db_session.add(well_output)
+    await db_session.flush()
+    return well_output
