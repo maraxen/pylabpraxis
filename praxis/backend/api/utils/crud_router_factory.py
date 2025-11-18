@@ -54,7 +54,7 @@ def create_crud_router(
   ) -> list[ModelType]:
     return await service.get_multi(db, filters=filters)
 
-  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
   async def get(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -64,7 +64,7 @@ def create_crud_router(
       raise HTTPException(status_code=404, detail="Not found")
     return db_obj
 
-  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
   async def update(
     accession_id: UUID,
     request: Request,

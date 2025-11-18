@@ -201,7 +201,8 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       flag_modified(db_obj, "plr_state")
 
     await db.flush()
-    await db.refresh(db_obj)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(db_obj, ["parent", "parent_machine", "children", "deck_type"])
     logger.info(
       "Successfully updated deck ID %s: '%s'.",
       db_obj.accession_id,
