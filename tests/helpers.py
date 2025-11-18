@@ -8,11 +8,11 @@ async tests.
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import AssetType
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -111,6 +111,52 @@ async def create_resource_definition(
     db_session.add(resource_def)
     await db_session.flush()
     return resource_def
+
+
+async def create_resource(
+    db_session: AsyncSession,
+    name: str | None = None,
+    resource_definition: ResourceDefinitionOrm | None = None,
+    **kwargs: Any
+) -> ResourceOrm:
+    """Create a resource for testing.
+
+    Args:
+        db_session: Async database session
+        name: Resource name (generates unique name if not provided)
+        resource_definition: Associated resource definition (creates one if not provided)
+        **kwargs: Additional attributes to set on the resource
+
+    Returns:
+        ResourceOrm instance
+    """
+    # Generate unique name if not provided
+    if name is None:
+        name = f"test_resource_{str(uuid7())}"
+
+    # Create resource definition if not provided
+    if resource_definition is None:
+        resource_definition = await create_resource_definition(
+            db_session,
+            name=f"def_{name}",
+            fqn=f"test.resource.def.{str(uuid7())}"
+        )
+
+    # Set defaults
+    defaults = {
+        "accession_id": uuid7(),
+        "name": name,
+        "fqn": f"test.resource.{str(uuid7())}",
+        "asset_type": AssetType.RESOURCE,
+        "status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
+        "resource_definition_accession_id": resource_definition.accession_id,
+    }
+    defaults.update(kwargs)
+
+    resource = ResourceOrm(**defaults)
+    db_session.add(resource)
+    await db_session.flush()
+    return resource
 
 
 async def create_deck_definition(

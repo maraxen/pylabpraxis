@@ -223,3 +223,14 @@ class ResourceTypeDefinitionCRUDService(
 ):
 
   """CRUD service for resource type definitions."""
+
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: ResourceDefinitionOrm,
+    obj_in: ResourceDefinitionUpdate | dict[str, Any],
+  ) -> ResourceDefinitionOrm:
+    """Update an existing resource definition."""
+    obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
+    return await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)

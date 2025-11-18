@@ -22,17 +22,8 @@ from praxis.backend.services.resource_type_definition import ResourceTypeDefinit
 
 router = APIRouter()
 
-router.include_router(
-  create_crud_router(
-    service=resource_service,
-    prefix="/",
-    tags=["Resources"],
-    create_schema=ResourceCreate,
-    update_schema=ResourceUpdate,
-    response_schema=ResourceResponse,
-  ),
-)
-
+# IMPORTANT: Include /definitions router BEFORE / router to ensure
+# more specific routes are matched first
 router.include_router(
   create_crud_router(
     service=ResourceTypeDefinitionCRUDService(ResourceDefinitionOrm),
@@ -41,5 +32,16 @@ router.include_router(
     create_schema=ResourceDefinitionCreate,
     update_schema=ResourceDefinitionUpdate,
     response_schema=ResourceDefinitionResponse,
+  ),
+)
+
+router.include_router(
+  create_crud_router(
+    service=resource_service,
+    prefix="/",
+    tags=["Resources"],
+    create_schema=ResourceCreate,
+    update_schema=ResourceUpdate,
+    response_schema=ResourceResponse,
   ),
 )
