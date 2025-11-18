@@ -131,6 +131,7 @@ class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
 class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
   """Model for API responses for a deck type definition."""
 
+  positioning_config: PositioningConfig | None = None  # Override to make optional for responses
   positions: list[DeckPositionDefinitionResponse]
 
 
