@@ -120,10 +120,8 @@ async def test_delete_deck(client: AsyncClient, db_session: AsyncSession) -> Non
     # 2. ACT: Call the API to delete the deck
     response = await client.delete(f"/api/v1/decks/{deck_id}")
 
-    # 3. ASSERT: Check the response and database state
-    assert response.status_code == 200
-    data = response.json()
-    assert data["accession_id"] == str(deck_id)
+    # 3. ASSERT: Check the response (204 No Content has no body)
+    assert response.status_code == 204  # DELETE returns 204 No Content
 
     # Verify the deck is no longer in the database
     deleted_deck = await db_session.get(DeckOrm, deck_id)

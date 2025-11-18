@@ -211,7 +211,6 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     )
     return db_obj
 
-  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: str | UUID) -> DeckOrm | None:
     """Delete a specific deck by its ID."""
     logger.info("Attempting to delete deck with ID: %s.", accession_id)
@@ -221,6 +220,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       return None
 
     await db.delete(deck_orm)
+    await db.flush()  # Flush delete operation
     logger.info(
       "Successfully deleted deck ID %s: '%s'.",
       accession_id,
