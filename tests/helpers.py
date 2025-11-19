@@ -322,8 +322,12 @@ async def create_protocol_run(
     if protocol_definition is None:
         protocol_definition = await create_protocol_definition(db_session)
 
+    # Generate unique name if not provided
+    unique_id = str(uuid7())
+
     # Set defaults
     defaults = {
+        "name": f"test_protocol_run_{unique_id}",
         "top_level_protocol_definition_accession_id": protocol_definition.accession_id,
         "status": ProtocolRunStatusEnum.PENDING,
     }
