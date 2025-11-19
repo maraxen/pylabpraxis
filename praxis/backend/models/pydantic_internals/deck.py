@@ -43,6 +43,10 @@ class DeckResponse(ResourceResponse, DeckBase):
   """Model for API responses for a deck."""
 
 
+# Rebuild model to resolve forward references from ResourceResponse
+DeckResponse.model_rebuild()
+
+
 class PositioningConfig(PraxisBaseModel):
   """Configuration for how positions are calculated/managed for this deck type.
 
@@ -127,6 +131,7 @@ class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
 class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
   """Model for API responses for a deck type definition."""
 
+  positioning_config: PositioningConfig | None = None  # Override to make optional for responses
   positions: list[DeckPositionDefinitionResponse]
 
 

@@ -1,6 +1,6 @@
 """Generic CRUD router factory for creating FastAPI routers with standard CRUD endpoints."""
 
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any, List, TypeVar
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
@@ -30,6 +30,9 @@ def create_crud_router(
   """Create a FastAPI router with standard CRUD endpoints."""
   router = APIRouter()
 
+  # Handle trailing slash in prefix to avoid double slashes
+  sep = "" if prefix.endswith("/") else "/"
+
   @router.post(
     prefix,
     response_model=response_schema,
@@ -44,14 +47,14 @@ def create_crud_router(
     obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
-  @router.get(prefix, response_model=list[ResponseSchemaType], tags=tags)
+  @router.get(prefix, response_model=List[response_schema], tags=tags)
   async def get_multi(
     db: Annotated[AsyncSession, Depends(get_db)],
     filters: Annotated[SearchFilters, Depends()],
-  ) -> list[ModelType]:
+  ) -> List[ModelType]:
     return await service.get_multi(db, filters=filters)
 
-  @router.get(f"{prefix}/{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.get(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
   async def get(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -61,20 +64,22 @@ def create_crud_router(
       raise HTTPException(status_code=404, detail="Not found")
     return db_obj
 
-  @router.put(f"{prefix}/{{accession_id}}", response_model=ResponseSchemaType, tags=tags)
+  @router.put(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
   async def update(
     accession_id: UUID,
-    obj_in: UpdateSchemaType,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
   ) -> ModelType:
     db_obj = await service.get(db, accession_id=accession_id)
     if db_obj is None:
       raise HTTPException(status_code=404, detail="Not found")
+    obj_in_data = await request.json()
+    obj_in = update_schema.model_validate(obj_in_data)
     return await service.update(
-      db=db, db_obj=db_obj, obj_in=obj_in.model_dump(exclude_unset=True)
+      db=db, db_obj=db_obj, obj_in=obj_in
     )
 
-  @router.delete(f"{prefix}/{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
+  @router.delete(f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
   async def delete(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

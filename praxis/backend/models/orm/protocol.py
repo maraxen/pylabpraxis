@@ -728,7 +728,7 @@ class FunctionCallLogOrm(Base):
     DateTime(timezone=True),
     nullable=False,
     server_default=func.now(),
-    kw_only=True,
+    init=False,
     comment="The start time of the function call, automatically set when the call is created.",
   )
   end_time: Mapped[datetime | None] = mapped_column(
@@ -736,7 +736,7 @@ class FunctionCallLogOrm(Base):
     nullable=True,
     comment="The end time of the function call, automatically set when the call is completed.",
     default=None,
-    kw_only=True,
+    init=False,
   )
   input_args_json: Mapped[dict | None] = mapped_column(
     JSONB,
@@ -771,13 +771,13 @@ class FunctionCallLogOrm(Base):
     "ProtocolRunOrm",
     back_populates="function_calls",
     foreign_keys=[protocol_run_accession_id],
-    kw_only=True,
+    init=False,
   )
   executed_function_definition: Mapped["FunctionProtocolDefinitionOrm"] = relationship(
     "FunctionProtocolDefinitionOrm",
     foreign_keys=[function_protocol_definition_accession_id],
     back_populates="function_call_logs",
-    kw_only=True,
+    init=False,
   )
   parent_call: Mapped["FunctionCallLogOrm | None"] = relationship(
     "FunctionCallLogOrm",
@@ -785,12 +785,14 @@ class FunctionCallLogOrm(Base):
     foreign_keys=[parent_function_call_log_accession_id],
     remote_side="FunctionCallLogOrm.accession_id",
     default=None,
+    init=False,
   )
   child_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(
     "FunctionCallLogOrm",
     back_populates="parent_call",
     cascade="all, delete-orphan",
     default_factory=list,
+    init=False,
   )
 
   # Relationship to data outputs
@@ -799,6 +801,7 @@ class FunctionCallLogOrm(Base):
     back_populates="function_call_log",
     cascade="all, delete-orphan",
     default_factory=list,
+    init=False,
   )
 
   def __repr__(self) -> str:

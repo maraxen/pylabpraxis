@@ -198,6 +198,8 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   execution behavior, categorization, and inferred parameters and assets.
   """
 
+  name: str
+  fqn: str
   version: str = "0.1.0"
   description: str | None = None
 
@@ -253,6 +255,15 @@ class FunctionProtocolDefinitionUpdate(PraxisBaseModel):
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate):
 
   """Model for API responses for a function protocol definition."""
+
+  # Override fields to match ORM structure
+  # ORM has JSONB for tags which can store list or dict
+  tags: list[str] | dict | None = None
+  # Parameters and assets are relationships - will be eagerly loaded by service
+  parameters: list[ParameterMetadataModel] = Field(default_factory=list)
+  assets: list[AssetRequirementModel] = Field(default_factory=list)
+
+  model_config = ConfigDict(from_attributes=True)
 
 
 class ProtocolParameters(PraxisBaseModel):

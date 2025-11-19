@@ -56,7 +56,8 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       flag_modified(resource_orm, "plr_state")
 
     await db.flush()
-    await db.refresh(resource_orm)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(resource_orm, ["children", "parent", "resource_definition"])
     logger.info(
       "Successfully created resource '%s' with ID %s.",
       resource_orm.name,
@@ -126,7 +127,7 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       stmt = stmt.filter(and_(*conditions))
 
     # Apply generic filters from query_builder
-    if not isinstance(self.model, Base):
+    if not issubclass(self.model, Base):
       msg = f"Model {self.model.__name__} must inherit from Base to use generic filters."
       raise TypeError(
         msg,
@@ -153,12 +154,14 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
     db: AsyncSession,
     *,
     db_obj: ResourceOrm,
-    obj_in: ResourceUpdate,
+    obj_in: ResourceUpdate | dict,
   ) -> ResourceOrm:
     """Update an existing resource."""
     logger.info("Attempting to update resource with ID: %s.", db_obj.accession_id)
 
-    updated_resource = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+    obj_in_model = ResourceUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
+
+    updated_resource = await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
 
     if "plr_state" in (
       obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
@@ -166,7 +169,8 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
       flag_modified(updated_resource, "plr_state")
 
     await db.flush()
-    await db.refresh(updated_resource)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(updated_resource, ["children", "parent", "resource_definition"])
     logger.info(
       "Successfully updated resource ID %s: '%s'.",
       updated_resource.accession_id,

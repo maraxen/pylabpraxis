@@ -43,7 +43,8 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     workcell_orm = await super().create(db=db, obj_in=obj_in)
 
     await db.flush()
-    await db.refresh(workcell_orm)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(workcell_orm, ["machines", "resources", "decks"])
     logger.info(
       "Successfully created workcell '%s' with ID %s.",
       obj_in.name,
@@ -116,7 +117,8 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     updated_workcell = await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
 
     await db.flush()
-    await db.refresh(updated_workcell)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(updated_workcell, ["machines", "resources", "decks"])
     logger.info(
       "Successfully updated workcell ID %s: '%s'.",
       updated_workcell.accession_id,

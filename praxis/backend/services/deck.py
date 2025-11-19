@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
@@ -58,19 +58,53 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       }
     )
 
-    # Remap the Pydantic `machine_id` to the ORM's `parent_machine_accession_id`.
+    # Remap the Pydantic `machine_id` or `parent_accession_id` to the ORM's `parent_machine_accession_id`.
+    # Don't keep parent_accession_id as it has FK constraint to resources table (machines are in machines table)
     if machine_id := deck_data.pop("machine_id", None):
       deck_data["parent_machine_accession_id"] = machine_id
+    elif parent_id := deck_data.pop("parent_accession_id", None):
+      # For decks, parent_accession_id actually refers to the parent machine
+      deck_data["parent_machine_accession_id"] = parent_id
 
-    deck_orm = self.model(**deck_data)
+    # Filter to only valid constructor parameters
+    import inspect as py_inspect
+    from sqlalchemy import inspect as sa_inspect
+    import enum
+
+    init_signature = py_inspect.signature(self.model.__init__)
+    valid_params = {p.name for p in init_signature.parameters.values()}
+    filtered_data = {key: value for key, value in deck_data.items() if key in valid_params}
+
+    logger.debug(f"DEBUG deck_data keys: {list(deck_data.keys())}")
+    logger.debug(f"DEBUG filtered_data keys: {list(filtered_data.keys())}")
+    logger.debug(f"DEBUG parent_accession_id in deck_data: {deck_data.get('parent_accession_id')}")
+    logger.debug(f"DEBUG parent_accession_id in filtered_data: {filtered_data.get('parent_accession_id')}")
+
+    # Convert enum string values back to enum members for SQLAlchemy
+    for attr_name, column in sa_inspect(self.model).columns.items():
+      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+        enum_class = column.type.enum_class
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = filtered_data[attr_name]
+          if isinstance(value, str):
+            for member in enum_class:
+              if member.value == value:
+                filtered_data[attr_name] = member
+                break
+
+    deck_orm = self.model(**filtered_data)
+
+    logger.debug(f"DEBUG After construction - parent_accession_id: {deck_orm.parent_accession_id}")
 
     if obj_in.plr_state:
       deck_orm.plr_state = obj_in.plr_state
 
     db.add(deck_orm)
     await db.flush()
+    logger.debug(f"DEBUG After flush - parent_accession_id: {deck_orm.parent_accession_id}")
     # Refresh the object to eager-load relationships required for the response model.
-    await db.refresh(deck_orm, ["deck_type", "parent"])
+    await db.refresh(deck_orm, ["deck_type", "parent_machine"])
+    logger.debug(f"DEBUG After refresh - parent_accession_id: {deck_orm.parent_accession_id}")
     logger.info(
       "Successfully created deck '%s' with ID %s.",
       deck_orm.name,
@@ -84,8 +118,10 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     stmt = (
       select(self.model)
       .options(
-        joinedload(self.model.parent),
-        joinedload(self.model.deck_type),
+        selectinload(self.model.parent),
+        selectinload(self.model.parent_machine),
+        selectinload(self.model.deck_type),
+        selectinload(self.model.children),  # Load children for serialization
       )
       .filter(self.model.accession_id == accession_id)
     )
@@ -113,8 +149,10 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       filters.model_dump_json(),
     )
     stmt = select(self.model).options(
-      joinedload(self.model.parent),
-      joinedload(self.model.deck_type),
+      selectinload(self.model.parent),
+      selectinload(self.model.parent_machine),
+      selectinload(self.model.deck_type),
+      selectinload(self.model.children),  # Load children for serialization
     )
 
     conditions = []
@@ -164,7 +202,8 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       flag_modified(db_obj, "plr_state")
 
     await db.flush()
-    await db.refresh(db_obj)
+    # Refresh with relationships loaded for serialization
+    await db.refresh(db_obj, ["parent", "parent_machine", "children", "deck_type"])
     logger.info(
       "Successfully updated deck ID %s: '%s'.",
       db_obj.accession_id,
@@ -172,7 +211,6 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     )
     return db_obj
 
-  @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: str | UUID) -> DeckOrm | None:
     """Delete a specific deck by its ID."""
     logger.info("Attempting to delete deck with ID: %s.", accession_id)
@@ -182,6 +220,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
       return None
 
     await db.delete(deck_orm)
+    await db.flush()  # Flush delete operation
     logger.info(
       "Successfully deleted deck ID %s: '%s'.",
       accession_id,
@@ -193,8 +232,9 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     """Retrieve all decks from the database."""
     logger.info("Retrieving all decks.")
     stmt = select(self.model).options(
-      joinedload(self.model.parent),
-      joinedload(self.model.deck_type),
+      selectinload(self.model.parent),
+      selectinload(self.model.parent_machine),
+      selectinload(self.model.deck_type),
     )
     result = await db.execute(stmt)
     decks = list(result.scalars().all())
