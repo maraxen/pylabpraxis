@@ -364,7 +364,7 @@ async def create_function_data_output(
     # Set defaults
     defaults = {
         "data_key": f"test_output_{str(uuid7())}",
-        "data_type": DataOutputTypeEnum.SCALAR,
+        "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
         "data_value_json": {"value": 42},
         "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
     }
@@ -401,7 +401,7 @@ async def create_well_data_output(
     # Set defaults
     defaults = {
         "data_key": f"test_well_output_{str(uuid7())}",
-        "data_type": DataOutputTypeEnum.SCALAR,
+        "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
         "data_value_json": {"value": 42},
         "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
         "resource_accession_id": resource.accession_id,
