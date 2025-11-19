@@ -30,16 +30,16 @@ async def test_get_well_data_output(client: AsyncClient, db_session: AsyncSessio
     assert response.status_code == 200
     data = response.json()
     assert data["accession_id"] == str(well_output.accession_id)
-    assert data["well_position"] == well_output.well_position
+    assert data["well_name"] == well_output.well_name
 
 
 @pytest.mark.asyncio
 async def test_get_multi_well_data_outputs(client: AsyncClient, db_session: AsyncSession) -> None:
     """Test retrieving multiple well data outputs."""
     # 1. SETUP: Create multiple well data outputs
-    await create_well_data_output(db_session, well_position="A1")
-    await create_well_data_output(db_session, well_position="A2")
-    await create_well_data_output(db_session, well_position="A3")
+    await create_well_data_output(db_session, well_name="A1")
+    await create_well_data_output(db_session, well_name="A2")
+    await create_well_data_output(db_session, well_name="A3")
 
     # 2. ACT: Call the API
     response = await client.get("/api/v1/data-outputs/well-outputs")

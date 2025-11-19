@@ -347,30 +347,58 @@ async def create_protocol_run(
 
 async def create_function_data_output(
     db_session: AsyncSession,
+    protocol_run: ProtocolRunOrm | None = None,
     **kwargs: Any
 ) -> FunctionDataOutputOrm:
     """Create a function data output for testing.
 
     Args:
         db_session: Async database session
+        protocol_run: Associated protocol run (creates one if not provided)
         **kwargs: Additional attributes to set on the data output
 
     Returns:
         FunctionDataOutputOrm instance
     """
-    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-    import datetime
+    from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
+    from praxis.backend.models.orm.protocol import FunctionCallLogOrm
+
+    # Create protocol run if not provided
+    if protocol_run is None:
+        protocol_run = await create_protocol_run(db_session)
+
+    # Create a function call log (required FK)
+    protocol_def = await create_protocol_definition(
+        db_session,
+        name=f"test_protocol_for_fcl_{str(uuid7())}"
+    )
+
+    function_call_log = FunctionCallLogOrm(
+        accession_id=uuid7(),
+        name=f"test_function_call_log_{str(uuid7())}",
+        protocol_run_accession_id=protocol_run.accession_id,
+        sequence_in_run=0,
+        function_protocol_definition_accession_id=protocol_def.accession_id,
+    )
+    db_session.add(function_call_log)
+    await db_session.flush()
 
     # Set defaults
     defaults = {
+        "name": f"test_data_output_{str(uuid7())}",
         "data_key": f"test_output_{str(uuid7())}",
         "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
         "data_value_json": {"value": 42},
-        "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
     }
     defaults.update(kwargs)
 
-    data_output = FunctionDataOutputOrm(**defaults)
+    # kw_only fields must be passed as keyword arguments
+    data_output = FunctionDataOutputOrm(
+        **defaults,
+        protocol_run_accession_id=protocol_run.accession_id,
+        function_call_log_accession_id=function_call_log.accession_id
+    )
+
     db_session.add(data_output)
     await db_session.flush()
     return data_output
@@ -378,34 +406,37 @@ async def create_function_data_output(
 
 async def create_well_data_output(
     db_session: AsyncSession,
-    resource: ResourceOrm | None = None,
+    plate_resource: ResourceOrm | None = None,
+    function_data_output: FunctionDataOutputOrm | None = None,
     **kwargs: Any
 ) -> WellDataOutputOrm:
     """Create a well data output for testing.
 
     Args:
         db_session: Async database session
-        resource: Associated resource (creates one if not provided)
+        plate_resource: Associated plate resource (creates one if not provided)
+        function_data_output: Associated function data output (creates one if not provided)
         **kwargs: Additional attributes to set on the well data output
 
     Returns:
         WellDataOutputOrm instance
     """
-    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-    import datetime
+    # Create plate resource if not provided
+    if plate_resource is None:
+        plate_resource = await create_resource(db_session, name=f"test_plate_{str(uuid7())}")
 
-    # Create resource if not provided
-    if resource is None:
-        resource = await create_resource(db_session)
+    # Create function data output if not provided
+    if function_data_output is None:
+        function_data_output = await create_function_data_output(db_session)
 
     # Set defaults
     defaults = {
-        "data_key": f"test_well_output_{str(uuid7())}",
-        "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
-        "data_value_json": {"value": 42},
-        "measurement_timestamp": datetime.datetime.now(datetime.timezone.utc),
-        "resource_accession_id": resource.accession_id,
-        "well_position": "A1",
+        "name": f"test_well_output_{str(uuid7())}",
+        "function_data_output_accession_id": function_data_output.accession_id,
+        "plate_resource_accession_id": plate_resource.accession_id,
+        "well_name": "A1",
+        "well_row": 0,
+        "well_column": 0,
     }
     defaults.update(kwargs)
 
