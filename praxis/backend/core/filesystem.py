@@ -1,10 +1,11 @@
 """Filesystem interface for Praxis."""
 
-import os
+from pathlib import Path
 from typing import IO, Any, overload
 
+
 class FileSystem:
-    """A simple filesystem interface that uses the built-in `open` function."""
+    """A simple filesystem interface using pathlib for modern path operations."""
 
     @overload
     def open(
@@ -26,30 +27,32 @@ class FileSystem:
 
     def exists(self, path: str | bytes | int) -> bool:
         """Return True if path refers to an existing path."""
-        return os.path.exists(path)
+        return Path(path).exists()
 
     def isdir(self, path: str | bytes | int) -> bool:
         """Return True if path is an existing directory."""
-        return os.path.isdir(path)
+        return Path(path).is_dir()
 
     def listdir(self, path: str | bytes | int | None = None) -> list[str]:
         """Return a list of the entries in the directory given by path."""
-        return os.listdir(path)
+        if path is None:
+            path = "."
+        return [item.name for item in Path(path).iterdir()]
 
     def mkdir(self, path: str | bytes | int, mode: int = 0o777) -> None:
         """Create a directory named path with numeric mode mode."""
-        os.mkdir(path, mode)
+        Path(path).mkdir(mode=mode)
 
     def makedirs(
         self, path: str | bytes | int, mode: int = 0o777, exist_ok: bool = False
     ) -> None:
         """Create a directory named path with numeric mode mode."""
-        os.makedirs(path, mode, exist_ok=exist_ok)
+        Path(path).mkdir(mode=mode, parents=True, exist_ok=exist_ok)
 
     def remove(self, path: str | bytes | int) -> None:
         """Remove (delete) the file path."""
-        os.remove(path)
+        Path(path).unlink()
 
     def rmdir(self, path: str | bytes | int) -> None:
         """Remove (delete) the directory path."""
-        os.rmdir(path)
+        Path(path).rmdir()
