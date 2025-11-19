@@ -2,6 +2,7 @@
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.orm.protocol import (
     FunctionProtocolDefinitionOrm,
@@ -119,7 +120,12 @@ class ProtocolDefinitionCRUDService(
 
     db.add(protocol_def)
     await db.flush()
-    await db.refresh(protocol_def)
+
+    # Eagerly load relationships to avoid lazy loading errors during serialization
+    await db.refresh(
+      protocol_def,
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"]
+    )
 
     logger.info(
       "Successfully created protocol definition '%s' with ID %s",
@@ -128,11 +134,71 @@ class ProtocolDefinitionCRUDService(
     )
     return protocol_def
 
-  async def get_by_fqn(self, db: AsyncSession, fqn: str) -> FunctionProtocolDefinitionOrm | None:
-    """Retrieve a specific protocol definition by its fully qualified name."""
-    stmt = select(self.model).filter(self.model.fqn == fqn)
+  async def get(self, db: AsyncSession, *, accession_id) -> FunctionProtocolDefinitionOrm | None:
+    """Get a single protocol definition by ID with eager loaded relationships."""
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .where(self.model.accession_id == accession_id)
+    )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+  async def get_multi(
+    self, db: AsyncSession, *, filters=None
+  ) -> list[FunctionProtocolDefinitionOrm]:
+    """Get multiple protocol definitions with eager loaded relationships."""
+    from praxis.backend.models.pydantic_internals.filters import SearchFilters
+
+    # Get results from parent class (which handles filters)
+    if filters is None:
+      filters = SearchFilters()
+
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .offset(filters.offset)
+      .limit(filters.limit)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+  async def get_by_fqn(self, db: AsyncSession, fqn: str) -> FunctionProtocolDefinitionOrm | None:
+    """Retrieve a specific protocol definition by its fully qualified name."""
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .filter(self.model.fqn == fqn)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: FunctionProtocolDefinitionOrm,
+    obj_in: FunctionProtocolDefinitionUpdate,
+  ) -> FunctionProtocolDefinitionOrm:
+    """Update a protocol definition with eager loaded relationships."""
+    # Call parent update method
+    updated_obj = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+
+    # Eagerly load relationships after update
+    await db.refresh(
+      updated_obj,
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"]
+    )
+    return updated_obj
 
   async def get_by_name(
       self,

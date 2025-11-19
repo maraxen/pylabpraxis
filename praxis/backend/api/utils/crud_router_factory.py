@@ -76,7 +76,7 @@ def create_crud_router(
     obj_in_data = await request.json()
     obj_in = update_schema.model_validate(obj_in_data)
     return await service.update(
-      db=db, db_obj=db_obj, obj_in=obj_in.model_dump(exclude_unset=True)
+      db=db, db_obj=db_obj, obj_in=obj_in
     )
 
   @router.delete(f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
