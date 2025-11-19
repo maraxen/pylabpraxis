@@ -324,13 +324,18 @@ async def create_protocol_run(
 
     # Set defaults
     defaults = {
-        "accession_id": uuid7(),
         "top_level_protocol_definition_accession_id": protocol_definition.accession_id,
         "status": ProtocolRunStatusEnum.PENDING,
     }
     defaults.update(kwargs)
 
+    # Extract accession_id before creating ORM (it's init=False)
+    accession_id = defaults.pop("accession_id", uuid7())
+
     protocol_run = ProtocolRunOrm(**defaults)
+    # Set accession_id manually
+    protocol_run.accession_id = accession_id
+
     db_session.add(protocol_run)
     await db_session.flush()
     return protocol_run
