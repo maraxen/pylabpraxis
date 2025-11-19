@@ -392,11 +392,13 @@ async def create_function_data_output(
     }
     defaults.update(kwargs)
 
-    # kw_only fields must be passed as keyword arguments
+    # Create ORM with BOTH FK IDs and relationship objects - MappedAsDataclass requires both
     data_output = FunctionDataOutputOrm(
         **defaults,
         protocol_run_accession_id=protocol_run.accession_id,
-        function_call_log_accession_id=function_call_log.accession_id
+        function_call_log_accession_id=function_call_log.accession_id,
+        protocol_run=protocol_run,
+        function_call_log=function_call_log,
     )
 
     db_session.add(data_output)
@@ -432,15 +434,20 @@ async def create_well_data_output(
     # Set defaults
     defaults = {
         "name": f"test_well_output_{str(uuid7())}",
-        "function_data_output_accession_id": function_data_output.accession_id,
-        "plate_resource_accession_id": plate_resource.accession_id,
         "well_name": "A1",
         "well_row": 0,
         "well_column": 0,
     }
     defaults.update(kwargs)
 
-    well_output = WellDataOutputOrm(**defaults)
+    # Create with BOTH FK IDs and relationship objects - MappedAsDataclass pattern
+    well_output = WellDataOutputOrm(
+        **defaults,
+        function_data_output_accession_id=function_data_output.accession_id,
+        plate_resource_accession_id=plate_resource.accession_id,
+        function_data_output=function_data_output,
+        plate_resource=plate_resource,
+    )
     db_session.add(well_output)
     await db_session.flush()
     return well_output

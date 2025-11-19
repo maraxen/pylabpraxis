@@ -52,25 +52,25 @@ async def test_get_multi_well_data_outputs(client: AsyncClient, db_session: Asyn
 
 @pytest.mark.asyncio
 async def test_update_well_data_output(client: AsyncClient, db_session: AsyncSession) -> None:
-    """Test updating a well data output's quality score."""
+    """Test updating a well data output's data value."""
     # 1. SETUP: Create well data output to update
     well_output = await create_well_data_output(db_session)
 
     # 2. ACT: Update via API
-    new_quality_score = 0.85
+    new_data_value = 123.45
     response = await client.put(
         f"/api/v1/data-outputs/well-outputs/{well_output.accession_id}",
-        json={"data_quality_score": new_quality_score},
+        json={"data_value": new_data_value},
     )
 
     # 3. ASSERT: Verify response
     assert response.status_code == 200
     data = response.json()
-    assert data["data_quality_score"] == new_quality_score
+    assert data["data_value"] == new_data_value
 
     # Verify persistence in database
     await db_session.refresh(well_output)
-    assert well_output.data_quality_score == new_quality_score
+    assert well_output.data_value == new_data_value
 
 
 @pytest.mark.asyncio
