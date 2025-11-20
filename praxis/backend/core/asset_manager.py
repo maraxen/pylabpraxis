@@ -506,7 +506,7 @@ class AssetManager:
     resource_to_acquire = await self._find_resource_to_acquire(
       resource_data.protocol_run_accession_id,
       resource_data.fqn,
-      resource_data.user_choice_instance_accession_id,
+      resource_data.instance_accession_id,
       resource_data.property_constraints,
     )
 

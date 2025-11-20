@@ -292,7 +292,6 @@ class TestGetProtocolRunStatus:
 
         assert result is None
 
-    @pytest.mark.skip(reason="Production code bug: uses json.load() instead of json.loads() on line 183")
     @pytest.mark.asyncio
     async def test_get_protocol_run_status_with_output_data(self) -> None:
         """Test status retrieval with output data."""
@@ -328,9 +327,12 @@ class TestGetProtocolRunStatus:
         service.scheduler.get_schedule_status = AsyncMock(return_value=None)
         service.protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
 
-        # This will fail because production code uses json.load() on a string instead of json.loads()
-        with pytest.raises(AttributeError):
-            result = await service.get_protocol_run_status(run_id)
+        result = await service.get_protocol_run_status(run_id)
+
+        # Verify output data was parsed correctly
+        assert result is not None
+        assert result["output_data"] == {"result": "success"}
+        assert result["status"] == "completed"
 
 
 class TestCancelProtocolRun:

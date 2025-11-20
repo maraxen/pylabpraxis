@@ -156,7 +156,6 @@ class TestGetCallableFqn:
 class TestCreateProtocolDefinition:
     """Tests for _create_protocol_definition function."""
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_create_protocol_definition_basic(self) -> None:
         """Test creating a basic protocol definition."""
 
@@ -189,7 +188,6 @@ class TestCreateProtocolDefinition:
         assert protocol_def.is_top_level is False
         assert state_details is None
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_create_protocol_definition_with_name(self) -> None:
         """Test creating protocol definition with explicit name."""
 
@@ -222,7 +220,6 @@ class TestCreateProtocolDefinition:
         assert protocol_def.category == "testing"
         assert protocol_def.tags == ["test", "custom"]
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_create_protocol_definition_with_parameters(self) -> None:
         """Test creating protocol definition with parameters."""
 
@@ -516,7 +513,6 @@ class TestPrepareFunctionArguments:
 class TestProtocolFunctionDecorator:
     """Tests for protocol_function decorator."""
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_basic_decoration(self) -> None:
         """Test basic protocol function decoration."""
 
@@ -530,7 +526,6 @@ class TestProtocolFunctionDecorator:
         assert my_protocol._protocol_definition.name == "test_protocol"
         assert my_protocol._protocol_definition.version == "1.0"
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_with_description(self) -> None:
         """Test protocol function with description."""
 
@@ -540,7 +535,6 @@ class TestProtocolFunctionDecorator:
 
         assert my_protocol._protocol_definition.description == "This is a test protocol"
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_uses_function_name_if_not_provided(self) -> None:
         """Test that decorator uses function name if name not provided."""
 
@@ -550,7 +544,6 @@ class TestProtocolFunctionDecorator:
 
         assert my_custom_protocol._protocol_definition.name == "my_custom_protocol"
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_with_tags_and_category(self) -> None:
         """Test protocol function with tags and category."""
 
@@ -561,7 +554,6 @@ class TestProtocolFunctionDecorator:
         assert my_protocol._protocol_definition.category == "testing"
         assert my_protocol._protocol_definition.tags == ["unit", "test"]
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_with_parameters(self) -> None:
         """Test protocol function with parameters."""
 
@@ -577,7 +569,6 @@ class TestProtocolFunctionDecorator:
         assert my_protocol._protocol_definition.parameters[0].name == "volume"
         assert my_protocol._protocol_definition.parameters[0].description == "Volume in microliters"
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_protocol_function_solo_execution(self) -> None:
         """Test protocol function with solo execution flag."""
 
@@ -669,7 +660,6 @@ class TestDecoratorsModuleStructure:
 class TestDecoratorIntegration:
     """Integration tests for decorator functionality."""
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_decorated_function_retains_original_attributes(self) -> None:
         """Test that decorated function retains original attributes."""
 
@@ -682,7 +672,6 @@ class TestDecoratorIntegration:
         assert my_protocol.__name__ == "my_protocol"
         assert "My protocol docstring" in my_protocol.__doc__
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_decorated_function_has_runtime_info(self) -> None:
         """Test that decorated function has runtime info."""
 
@@ -695,7 +684,6 @@ class TestDecoratorIntegration:
         assert isinstance(runtime_info, ProtocolRuntimeInfo)
         assert runtime_info.function_ref == my_protocol.__wrapped__
 
-    @pytest.mark.skip(reason="Production code missing fqn field in FunctionProtocolDefinitionCreate")
     def test_multiple_decorations_work_independently(self) -> None:
         """Test that multiple functions can be decorated independently."""
 

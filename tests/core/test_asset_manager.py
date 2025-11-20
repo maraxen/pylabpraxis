@@ -233,7 +233,6 @@ class TestAcquireMachine:
 class TestAcquireResource:
     """Tests for acquire_resource method."""
 
-    @pytest.mark.skip(reason="Production code has field name mismatch: user_choice_instance_accession_id vs instance_accession_id")
     @pytest.mark.asyncio
     async def test_acquire_resource_success(self) -> None:
         """Test successful resource acquisition."""
@@ -283,7 +282,6 @@ class TestAcquireResource:
         assert res_id == resource_id
         assert asset_type == "resource"
 
-    @pytest.mark.skip(reason="Production code has field name mismatch: user_choice_instance_accession_id vs instance_accession_id")
     @pytest.mark.asyncio
     async def test_acquire_resource_not_found(self) -> None:
         """Test error when resource is not found."""
