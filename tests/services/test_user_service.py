@@ -190,7 +190,7 @@ async def test_user_service_get_multi(db_session: AsyncSession) -> None:
         await user_service.create(db_session, obj_in=user_data)
 
     # Get all users
-    filters = SearchFilters(skip=0, limit=10)
+    filters = SearchFilters(offset=0, limit=10)
     users = await user_service.get_multi(db_session, filters=filters)
 
     # Should find at least our 5 users
@@ -213,12 +213,12 @@ async def test_user_service_get_multi_pagination(db_session: AsyncSession) -> No
         await user_service.create(db_session, obj_in=user_data)
 
     # Get first page (2 users)
-    filters = SearchFilters(skip=0, limit=2)
+    filters = SearchFilters(offset=0, limit=2)
     page1 = await user_service.get_multi(db_session, filters=filters)
     assert len(page1) == 2
 
     # Get second page (2 users)
-    filters = SearchFilters(skip=2, limit=2)
+    filters = SearchFilters(offset=2, limit=2)
     page2 = await user_service.get_multi(db_session, filters=filters)
     assert len(page2) == 2
 
