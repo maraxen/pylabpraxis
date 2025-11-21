@@ -165,14 +165,15 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
 
     # Exclude relationships and protected fields
     for field in ["children", "parent", "created_at", "updated_at", "accession_id"]:
-        update_data.pop(field, None)
+      update_data.pop(field, None)
 
     # Convert enum string values back to enum members for SQLAlchemy
     import enum
+
     from sqlalchemy import inspect as sa_inspect
 
     for attr_name, column in sa_inspect(self.model).columns.items():
-      if attr_name in update_data and hasattr(column.type, 'enum_class'):
+      if attr_name in update_data and hasattr(column.type, "enum_class"):
         enum_class = column.type.enum_class
         if enum_class and issubclass(enum_class, enum.Enum):
           value = update_data[attr_name]
@@ -218,30 +219,30 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
 
   @handle_db_transaction
   async def update_resource_location_and_status(
-      self,
-      db: AsyncSession,
-      *,
-      resource_accession_id: uuid.UUID,
-      new_status: ResourceStatusEnum,
-      status_details: str | None = None,
-      location_machine_accession_id: uuid.UUID | None = None,
-      current_deck_position_name: str | None = None,
+    self,
+    db: AsyncSession,
+    *,
+    resource_accession_id: uuid.UUID,
+    new_status: ResourceStatusEnum,
+    status_details: str | None = None,
+    location_machine_accession_id: uuid.UUID | None = None,
+    current_deck_position_name: str | None = None,
   ) -> ResourceOrm | None:
-      """Update the location and status of a resource."""
-      resource = await self.get(db, resource_accession_id)
-      if not resource:
-          return None
+    """Update the location and status of a resource."""
+    resource = await self.get(db, resource_accession_id)
+    if not resource:
+      return None
 
-      update_data = {
-          "status": new_status,
-          "status_details": status_details,
-          "machine_location_accession_id": location_machine_accession_id,
-          "current_deck_position_name": current_deck_position_name,
-      }
-      # Filter out None values so we don't overwrite existing values with None
-      update_data = {k: v for k, v in update_data.items() if v is not None}
+    update_data = {
+      "status": new_status,
+      "status_details": status_details,
+      "machine_location_accession_id": location_machine_accession_id,
+      "current_deck_position_name": current_deck_position_name,
+    }
+    # Filter out None values so we don't overwrite existing values with None
+    update_data = {k: v for k, v in update_data.items() if v is not None}
 
-      return await self.update(db, db_obj=resource, obj_in=ResourceUpdate(**update_data))
+    return await self.update(db, db_obj=resource, obj_in=ResourceUpdate(**update_data))
 
 
 resource_service = ResourceService(ResourceOrm)

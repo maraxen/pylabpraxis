@@ -8,6 +8,7 @@ from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
 @runtime_checkable
 class IProtocolExecutionService(Protocol):
+
   """A protocol for a protocol execution service."""
 
   async def execute_protocol_immediately(
@@ -18,8 +19,7 @@ class IProtocolExecutionService(Protocol):
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> ProtocolRunOrm:
-    ...
+  ) -> ProtocolRunOrm: ...
 
   async def schedule_protocol_execution(
     self,
@@ -29,13 +29,11 @@ class IProtocolExecutionService(Protocol):
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> ProtocolRunOrm:
-    ...
+  ) -> ProtocolRunOrm: ...
 
   async def get_protocol_run_status(
-    self, protocol_run_id: uuid.UUID,
-  ) -> dict[str, Any] | None:
-    ...
+    self,
+    protocol_run_id: uuid.UUID,
+  ) -> dict[str, Any] | None: ...
 
-  async def cancel_protocol_run(self, protocol_run_id: uuid.UUID) -> bool:
-    ...
+  async def cancel_protocol_run(self, protocol_run_id: uuid.UUID) -> bool: ...

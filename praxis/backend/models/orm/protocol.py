@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 from sqlalchemy import (
   UUID,
   Boolean,
-  Computed,
   DateTime,
   ForeignKey,
   Integer,

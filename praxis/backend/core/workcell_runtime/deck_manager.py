@@ -5,7 +5,7 @@ import inspect
 import uuid
 from typing import TYPE_CHECKING, Any, cast
 
-from pylabrobot.resources import Coordinate, Deck, Resource
+from pylabrobot.resources import Coordinate, Deck
 
 if TYPE_CHECKING:
   from praxis.backend.core.workcell_runtime.core import WorkcellRuntime
@@ -26,6 +26,7 @@ COORDINATE_TUPLE_LENGTH = 3
 
 
 class DeckManagerMixin:
+
   """Mixin for managing decks in WorkcellRuntime."""
 
   def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID:
@@ -101,10 +102,8 @@ class DeckManagerMixin:
           )
         deck_orm_accession_id = self.get_active_deck_accession_id(target_deck)
       case _:
-        msg = (
-          f"Unexpected target type: {inferred_target_type}. Expected deck_orm_accession_id or \
+        msg = f"Unexpected target type: {inferred_target_type}. Expected deck_orm_accession_id or \
             machine_orm_accession_id."
-        )
         raise WorkcellRuntimeError(
           msg,
         )
@@ -152,8 +151,7 @@ class DeckManagerMixin:
         )
       else:
         msg = (
-          "Internal error: Neither location nor position_accession_id provided after initial "
-          "check."
+          "Internal error: Neither location nor position_accession_id provided after initial check."
         )
         raise WorkcellRuntimeError(msg)
 
@@ -258,10 +256,7 @@ class DeckManagerMixin:
 
       for lw_instance in resources_on_deck:
         if lw_instance.current_deck_position_name is not None:
-          if (
-            not hasattr(lw_instance, "resource_definition")
-            or not lw_instance.resource_definition
-          ):
+          if not hasattr(lw_instance, "resource_definition") or not lw_instance.resource_definition:
             logger.warning(
               "Resource instance ID %s is missing resource_definition relationship. Skipping.",
               lw_instance.accession_id,
@@ -275,9 +270,7 @@ class DeckManagerMixin:
 
           resource_info_data = {
             "resource_accession_id": lw_instance.accession_id,
-            "name": (
-              lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"
-            ),
+            "name": (lw_def.name or lw_instance.name or f"Resource_{lw_instance.accession_id}"),
             "fqn": lw_def.fqn,
             "category": str(lw_def.plr_category) if lw_def.plr_category else None,
             "size_x_mm": lw_def.size_x_mm,
@@ -360,12 +353,10 @@ class DeckManagerMixin:
       if isinstance(position_accession_id, str | int | uuid.UUID):
         async with self.db_session_factory() as db_session:
           deck_type_definition = await self.deck_type_definition_svc.get(
-            db=db_session, accession_id=deck_type_id
+            db=db_session, accession_id=deck_type_id,
           )
           if not deck_type_definition:
-            raise WorkcellRuntimeError(
-              f"Deck type definition with ID {deck_type_id} not found."
-            )
+            raise WorkcellRuntimeError(f"Deck type definition with ID {deck_type_id} not found.")
           all_deck_position_definitions = deck_type_definition.positions
           found_position_def = next(
             (

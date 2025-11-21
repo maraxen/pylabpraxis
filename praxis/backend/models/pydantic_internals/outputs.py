@@ -9,16 +9,15 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import UUID7, BaseModel, Field, field_validator, ConfigDict
+from pydantic import UUID7, ConfigDict, Field, field_validator
 
 from praxis.backend.models.enums import (
   DataOutputTypeEnum,
   SpatialContextEnum,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-
-
 from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
+
 
 class FunctionDataOutputBase(PraxisBaseModel):
 

@@ -1,7 +1,8 @@
 """Database transaction decorator for handling session management."""
 
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Awaitable, Callable, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 

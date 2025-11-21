@@ -45,7 +45,7 @@ from praxis.backend.models.enums.schedule import (
   ScheduleHistoryEventTriggerEnum,
   ScheduleStatusEnum,
 )
-from praxis.backend.utils.db import Base, CreateMaterializedView, DropMaterializedView
+from praxis.backend.utils.db import Base, CreateMaterializedView
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -422,8 +422,10 @@ class ScheduleHistoryOrm(Base):
     Integer,
     nullable=True,
     default=None,
-    comment=("Override duration in milliseconds, if specified. This is used to manually set the "
-              "duration for events that do not have a natural end time."),
+    comment=(
+      "Override duration in milliseconds, if specified. This is used to manually set the "
+      "duration for events that do not have a natural end time."
+    ),
     kw_only=True,
   )
   asset_count: Mapped[int | None] = mapped_column(
@@ -500,7 +502,9 @@ class SchedulerMetricsView(Base):
 
   __tablename__ = "scheduler_metrics_mv"
 
-  metric_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True, init=False)
+  metric_timestamp: Mapped[datetime] = mapped_column(
+    DateTime(timezone=True), primary_key=True, init=False,
+  )
   protocols_scheduled: Mapped[int] = mapped_column(Integer, init=False)
   protocols_completed: Mapped[int] = mapped_column(Integer, init=False)
   protocols_failed: Mapped[int] = mapped_column(Integer, init=False)

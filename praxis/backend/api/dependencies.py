@@ -35,7 +35,9 @@ def get_workcell_runtime(request: Request) -> WorkcellRuntime:
   """Get WorkcellRuntime instance from request state."""
   app = request.app
   workcell_runtime: WorkcellRuntime | None = getattr(
-    app.state, "workcell_runtime", None,
+    app.state,
+    "workcell_runtime",
+    None,
   )
   if workcell_runtime is None:
     raise HTTPException(

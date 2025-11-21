@@ -10,7 +10,6 @@ from .asset import (
   ReleaseAsset,
 )
 from .deck import (
-  PositioningConfig,
   DeckBase,
   DeckCreate,
   DeckPositionDefinitionBase,
@@ -21,6 +20,7 @@ from .deck import (
   DeckTypeDefinitionResponse,
   DeckTypeDefinitionUpdate,
   DeckUpdate,
+  PositioningConfig,
 )
 from .filters import SearchFilters
 from .machine import MachineBase, MachineCreate, MachineResponse, MachineUpdate

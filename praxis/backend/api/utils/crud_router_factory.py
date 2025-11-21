@@ -1,9 +1,9 @@
 """Generic CRUD router factory for creating FastAPI routers with standard CRUD endpoints."""
 
-from typing import Annotated, Any, List, TypeVar
+from typing import Annotated, Any, TypeVar
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,11 +47,11 @@ def create_crud_router(
     obj_in = create_schema.model_validate(obj_in_data)
     return await service.create(db=db, obj_in=obj_in)
 
-  @router.get(prefix, response_model=List[response_schema], tags=tags)
+  @router.get(prefix, response_model=list[response_schema], tags=tags)
   async def get_multi(
     db: Annotated[AsyncSession, Depends(get_db)],
     filters: Annotated[SearchFilters, Depends()],
-  ) -> List[ModelType]:
+  ) -> list[ModelType]:
     return await service.get_multi(db, filters=filters)
 
   @router.get(f"{prefix}{sep}{{accession_id}}", response_model=response_schema, tags=tags)
@@ -75,11 +75,11 @@ def create_crud_router(
       raise HTTPException(status_code=404, detail="Not found")
     obj_in_data = await request.json()
     obj_in = update_schema.model_validate(obj_in_data)
-    return await service.update(
-      db=db, db_obj=db_obj, obj_in=obj_in
-    )
+    return await service.update(db=db, db_obj=db_obj, obj_in=obj_in)
 
-  @router.delete(f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags)
+  @router.delete(
+    f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags,
+  )
   async def delete(
     accession_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -13,7 +13,7 @@ Models included:
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.models.pydantic_internals.deck import DeckResponse

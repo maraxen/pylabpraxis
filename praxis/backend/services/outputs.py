@@ -12,7 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
@@ -59,12 +59,15 @@ class FunctionDataOutputCRUDService(
   ) -> FunctionDataOutputOrm:
     """Create a new function data output record."""
     from praxis.backend.models.enums.outputs import DataOutputTypeEnum
+
     data_type_enum = DataOutputTypeEnum(obj_in.data_type)
     log_prefix = f"Data Output (Type: {data_type_enum.value}, Key: '{obj_in.data_key}'):"
     logger.info("%s Creating new function data output.", log_prefix)
 
     # Create the ORM instance
-    dumped_obj = obj_in.model_dump(exclude={"measurement_timestamp", "accession_id", "created_at", "updated_at"})
+    dumped_obj = obj_in.model_dump(
+      exclude={"measurement_timestamp", "accession_id", "created_at", "updated_at"},
+    )
     data_output_orm = FunctionDataOutputOrm(
       **dumped_obj,
       measurement_timestamp=obj_in.measurement_timestamp
@@ -87,9 +90,7 @@ class FunctionDataOutputCRUDService(
     accession_id: UUID,
   ) -> FunctionDataOutputOrm | None:
     """Read a function data output by ID."""
-    result = await db.execute(
-        select(self.model).filter(self.model.accession_id == accession_id)
-    )
+    result = await db.execute(select(self.model).filter(self.model.accession_id == accession_id))
 
     return result.scalar_one_or_none()
 

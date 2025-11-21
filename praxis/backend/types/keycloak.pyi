@@ -20,7 +20,11 @@ class KeycloakAdmin:
 
 class KeycloakOpenID:
   def __init__(
-    self, server_url: str, client_id: str, realm_name: str, client_secret_key: str,
+    self,
+    server_url: str,
+    client_id: str,
+    realm_name: str,
+    client_secret_key: str,
   ) -> None: ...
   def introspect(self, token: str) -> dict[str, Any]: ...
   def token(self, username: str, password: str) -> dict[str, str]: ...

@@ -92,60 +92,60 @@ async def _create_or_link_resource_counterpart_for_machine(
       )
       new_resource = current_resource
     else:
-        new_resource = await db.get(
-          ResourceOrm,
-          resource_counterpart_accession_id,
+      new_resource = await db.get(
+        ResourceOrm,
+        resource_counterpart_accession_id,
+      )
+      if not new_resource:
+        msg = (
+          f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} "
+          "not found for linking."
         )
-        if not new_resource:
-          msg = (
-            f"{log_prefix} ResourceOrm with ID {resource_counterpart_accession_id} "
-            "not found for linking."
-          )
-          raise ValueError(
-            msg,
-          )
-        machine_orm.resource_counterpart = new_resource
-        logger.info(
-          "%s Linked to existing Resource ID %s.",
-          log_prefix,
-          new_resource.accession_id,
+        raise ValueError(
+          msg,
         )
+      machine_orm.resource_counterpart = new_resource
+      logger.info(
+        "%s Linked to existing Resource ID %s.",
+        log_prefix,
+        new_resource.accession_id,
+      )
 
     if not new_resource.machine_counterpart:
-        new_resource.machine_counterpart = machine_orm
-        new_resource.name = machine_orm.name  # Sync name
-        db.add(new_resource)
-        logger.debug(
-          "%s Ensured reciprocal link from Resource ID %s.",
-          log_prefix,
-          new_resource.accession_id,
-        )
+      new_resource.machine_counterpart = machine_orm
+      new_resource.name = machine_orm.name  # Sync name
+      db.add(new_resource)
+      logger.debug(
+        "%s Ensured reciprocal link from Resource ID %s.",
+        log_prefix,
+        new_resource.accession_id,
+      )
 
     if current_resource and current_resource.accession_id != new_resource.accession_id:
-        current_resource.machine_counterpart = None
-        db.add(current_resource)
-        logger.info(
-          "%s Unlinked old Resource ID %s.",
-          log_prefix,
-          current_resource.accession_id,
-        )
-
-    return new_resource
-  if current_resource:
-      logger.debug(
-        "%s Reusing existing linked Resource ID %s as no new ID provided.",
+      current_resource.machine_counterpart = None
+      db.add(current_resource)
+      logger.info(
+        "%s Unlinked old Resource ID %s.",
         log_prefix,
         current_resource.accession_id,
       )
-      return current_resource
+
+    return new_resource
+  if current_resource:
+    logger.debug(
+      "%s Reusing existing linked Resource ID %s as no new ID provided.",
+      log_prefix,
+      current_resource.accession_id,
+    )
+    return current_resource
 
   if not resource_definition_name:
-      msg = (
-        f"{log_prefix} Cannot create new ResourceOrm: 'resource_definition_name' is "
-        "required when 'is_resource' is True and no "
-        "'resource_counterpart_accession_id' is provided."
-      )
-      raise ValueError(msg)
+    msg = (
+      f"{log_prefix} Cannot create new ResourceOrm: 'resource_definition_name' is "
+      "required when 'is_resource' is True and no "
+      "'resource_counterpart_accession_id' is provided."
+    )
+    raise ValueError(msg)
 
   logger.info("%s Creating new ResourceOrm as counterpart.", log_prefix)
   definition = await _read_resource_definition_for_linking(db, resource_definition_name)

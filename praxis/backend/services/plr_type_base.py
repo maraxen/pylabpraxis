@@ -3,8 +3,6 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,

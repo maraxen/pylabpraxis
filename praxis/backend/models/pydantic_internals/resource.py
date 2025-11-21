@@ -7,7 +7,7 @@ inventory data.
 
 from typing import Any, ClassVar, Optional
 
-from pydantic import UUID7, BaseModel, Field
+from pydantic import UUID7, Field
 
 from praxis.backend.models.enums import AssetType, MachineStatusEnum, ResourceStatusEnum
 from praxis.backend.models.pydantic_internals.plr_sync import (

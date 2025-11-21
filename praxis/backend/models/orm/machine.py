@@ -144,7 +144,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     init=False,
   )
 
-
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
@@ -280,7 +279,12 @@ class MachineOrm(AssetOrm):
   )
   resource_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("resources.accession_id", ondelete="SET NULL", use_alter=True, name="fk_machine_resource_counterpart"),
+    ForeignKey(
+      "resources.accession_id",
+      ondelete="SET NULL",
+      use_alter=True,
+      name="fk_machine_resource_counterpart",
+    ),
     nullable=True,
     index=True,
     comment="Foreign key to the resource counterpart of this machine, if applicable.",
@@ -297,7 +301,9 @@ class MachineOrm(AssetOrm):
 
   deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("decks.accession_id", ondelete="SET NULL", use_alter=True, name="fk_machine_deck_child"),
+    ForeignKey(
+      "decks.accession_id", ondelete="SET NULL", use_alter=True, name="fk_machine_deck_child",
+    ),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this machine has, if applicable.",

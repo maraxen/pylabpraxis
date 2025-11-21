@@ -80,6 +80,7 @@ class ScheduleEntryCRUDService(
 
     # Fetch the protocol run
     from praxis.backend.models.orm.protocol import ProtocolRunOrm
+
     protocol_run_result = await db.execute(
       select(ProtocolRunOrm).filter(
         ProtocolRunOrm.accession_id == obj_in.protocol_run_accession_id,
@@ -87,9 +88,7 @@ class ScheduleEntryCRUDService(
     )
     protocol_run = protocol_run_result.scalar_one_or_none()
     if not protocol_run:
-      error_message = (
-        f"{log_prefix} Protocol run '{obj_in.protocol_run_accession_id}' not found."
-      )
+      error_message = f"{log_prefix} Protocol run '{obj_in.protocol_run_accession_id}' not found."
       logger.error(error_message)
       raise ValueError(error_message)
 
@@ -110,8 +109,11 @@ class ScheduleEntryCRUDService(
 
     # Create a new ScheduleEntryOrm
     from datetime import datetime, timezone
+
     schedule_entry = self.model(
-      **obj_in.model_dump(exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"}),
+      **obj_in.model_dump(
+        exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"},
+      ),
       status=ScheduleStatusEnum.QUEUED,
       protocol_run=protocol_run,
       scheduled_at=datetime.now(timezone.utc),
@@ -159,7 +161,7 @@ class ScheduleEntryCRUDService(
     stmt = apply_date_range_filters(
       stmt,
       filters,
-      cast(InstrumentedAttribute, self.model.created_at),
+      cast("InstrumentedAttribute", self.model.created_at),
     )
     stmt = apply_pagination(stmt, filters)
 

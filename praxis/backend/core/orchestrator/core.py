@@ -17,11 +17,12 @@ logger = get_logger(__name__)
 
 
 class Orchestrator(
-    ProtocolPreparationMixin,
-    AssetAcquisitionMixin,
-    ExecutionMixin,
-    ErrorHandlingMixin,
+  ProtocolPreparationMixin,
+  AssetAcquisitionMixin,
+  ExecutionMixin,
+  ErrorHandlingMixin,
 ):
+
   """Central component for managing and executing laboratory protocols.
 
   The Orchestrator is responsible for coordinating the execution of protocols.

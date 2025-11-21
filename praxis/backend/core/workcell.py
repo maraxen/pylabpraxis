@@ -152,11 +152,11 @@ class Workcell(IWorkcell):
   def specify_deck(self, liquid_handler_accession_id: str, deck: Deck) -> None:
     """Assign a deck resource to a specific liquid handler."""
     if (
-      "liquid_handlers" in self.refs
-      and liquid_handler_accession_id in self.refs["liquid_handlers"]
+      "liquid_handlers" in self.refs and liquid_handler_accession_id in self.refs["liquid_handlers"]
     ):
       liquid_handler = cast(
-        "LiquidHandler", self.refs["liquid_handlers"][liquid_handler_accession_id],
+        "LiquidHandler",
+        self.refs["liquid_handlers"][liquid_handler_accession_id],
       )
       liquid_handler.deck = deck
     else:

@@ -317,12 +317,12 @@ class ProtocolScheduler:
 
     try:
       task_result = self.task_queue.send_task(
-          "execute_protocol_run",
-          args=[
-              str(protocol_run_id),
-              user_params,
-              initial_state,
-          ],
+        "execute_protocol_run",
+        args=[
+          str(protocol_run_id),
+          user_params,
+          initial_state,
+        ],
       )
       celery_task_id = task_result.id
       logger.info(

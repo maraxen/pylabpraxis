@@ -22,7 +22,7 @@ from praxis.backend.services.workcell import WorkcellService
 from praxis.backend.utils.logging import get_logger
 
 if TYPE_CHECKING:
-  from praxis.backend.models.orm.deck import DeckOrm # noqa: F401
+  from praxis.backend.models.orm.deck import DeckOrm  # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -34,6 +34,7 @@ class WorkcellRuntime(
   StateSyncMixin,
   IWorkcellRuntime,
 ):
+
   """Manages live PyLabRobot objects for an active workcell configuration.
 
   This class is responsible for initializing, maintaining, and shutting down

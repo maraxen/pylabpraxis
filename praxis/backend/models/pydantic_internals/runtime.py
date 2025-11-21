@@ -5,9 +5,9 @@ import uuid
 from pydantic import ConfigDict
 
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
-from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.protocol import AssetRequirementModel
+from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 
 class RuntimeAssetRequirement(PraxisBaseModel):

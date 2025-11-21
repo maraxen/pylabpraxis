@@ -65,10 +65,8 @@ async def coerce_to_list(items: list | tuple, target_length: int | None) -> list
     elif len(item) == target_length:
       new_items.append(item)
     else:
-      msg = (
-        f"Expected list of length {target_length} but got list of length \
+      msg = f"Expected list of length {target_length} but got list of length \
           {len(item)}"
-      )
       raise ValueError(
         msg,
       )
@@ -273,10 +271,8 @@ async def tip_mapping(
   if isinstance(tips, TipRack):
     output_tips = []
     if not all(isinstance(item, Well) for item in map_onto):
-      msg = (
-        "Cannot map between source or target containers and tip rack. Specify \
+      msg = "Cannot map between source or target containers and tip rack. Specify \
         tips as list[TipSpot]."
-      )
       raise ValueError(
         msg,
       )

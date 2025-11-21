@@ -181,7 +181,9 @@ class ProtocolCodeManager:
       logger.exception(error_message)
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
-      error_message = ("CODE-GIT: Git command not found. Ensure git is installed. Command: {}").format(" ".join(command))
+      error_message = (
+        "CODE-GIT: Git command not found. Ensure git is installed. Command: {}"
+      ).format(" ".join(command))
       logger.exception(error_message)
       raise RuntimeError(error_message) from None
 

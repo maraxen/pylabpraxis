@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field, ConfigDict
+from pydantic import UUID7, Field
 
 from praxis.backend.models.enums import AssetType
 

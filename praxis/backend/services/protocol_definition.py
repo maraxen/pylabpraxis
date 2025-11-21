@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
+  FileSystemProtocolSourceOrm,
+  FunctionProtocolDefinitionOrm,
+  ProtocolSourceRepositoryOrm,
 )
 from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
@@ -48,19 +48,18 @@ class ProtocolDefinitionCRUDService(
     source_repository = None
     if obj_in.source_repository_name:
       stmt = select(ProtocolSourceRepositoryOrm).filter(
-        ProtocolSourceRepositoryOrm.name == obj_in.source_repository_name
+        ProtocolSourceRepositoryOrm.name == obj_in.source_repository_name,
       )
       result = await db.execute(stmt)
       source_repository = result.scalar_one_or_none()
 
       if not source_repository:
         logger.warning(
-          "Source repository '%s' not found, creating default",
-          obj_in.source_repository_name
+          "Source repository '%s' not found, creating default", obj_in.source_repository_name,
         )
         source_repository = ProtocolSourceRepositoryOrm(
           name=obj_in.source_repository_name,
-          git_url=f"https://github.com/default/{obj_in.source_repository_name}.git"
+          git_url=f"https://github.com/default/{obj_in.source_repository_name}.git",
         )
         db.add(source_repository)
         await db.flush()
@@ -69,19 +68,17 @@ class ProtocolDefinitionCRUDService(
     file_system_source = None
     if obj_in.file_system_source_name:
       stmt = select(FileSystemProtocolSourceOrm).filter(
-        FileSystemProtocolSourceOrm.name == obj_in.file_system_source_name
+        FileSystemProtocolSourceOrm.name == obj_in.file_system_source_name,
       )
       result = await db.execute(stmt)
       file_system_source = result.scalar_one_or_none()
 
       if not file_system_source:
         logger.warning(
-          "File system source '%s' not found, creating default",
-          obj_in.file_system_source_name
+          "File system source '%s' not found, creating default", obj_in.file_system_source_name,
         )
         file_system_source = FileSystemProtocolSourceOrm(
-          name=obj_in.file_system_source_name,
-          base_path="/default/protocols"
+          name=obj_in.file_system_source_name, base_path="/default/protocols",
         )
         db.add(file_system_source)
         await db.flush()
@@ -90,25 +87,25 @@ class ProtocolDefinitionCRUDService(
     if not source_repository and not file_system_source:
       logger.info("No sources provided, creating defaults for testing")
       source_repository = ProtocolSourceRepositoryOrm(
-        name="default_test_repo",
-        git_url="https://github.com/test/default.git"
+        name="default_test_repo", git_url="https://github.com/test/default.git",
       )
       file_system_source = FileSystemProtocolSourceOrm(
-        name="default_test_fs",
-        base_path="/test/protocols"
+        name="default_test_fs", base_path="/test/protocols",
       )
       db.add(source_repository)
       db.add(file_system_source)
       await db.flush()
 
     # Build protocol definition with relationships
-    protocol_def_data = obj_in.model_dump(exclude={
-      'source_repository_name',
-      'file_system_source_name',
-      'accession_id',  # Exclude init=False fields from Base
-      'created_at',
-      'updated_at',
-    })
+    protocol_def_data = obj_in.model_dump(
+      exclude={
+        "source_repository_name",
+        "file_system_source_name",
+        "accession_id",  # Exclude init=False fields from Base
+        "created_at",
+        "updated_at",
+      },
+    )
 
     protocol_def = FunctionProtocolDefinitionOrm(
       **protocol_def_data,
@@ -124,13 +121,13 @@ class ProtocolDefinitionCRUDService(
     # Eagerly load relationships to avoid lazy loading errors during serialization
     await db.refresh(
       protocol_def,
-      attribute_names=["parameters", "assets", "source_repository", "file_system_source"]
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
     )
 
     logger.info(
       "Successfully created protocol definition '%s' with ID %s",
       protocol_def.name,
-      protocol_def.accession_id
+      protocol_def.accession_id,
     )
     return protocol_def
 
@@ -148,7 +145,7 @@ class ProtocolDefinitionCRUDService(
     return result.scalar_one_or_none()
 
   async def get_multi(
-    self, db: AsyncSession, *, filters=None
+    self, db: AsyncSession, *, filters=None,
   ) -> list[FunctionProtocolDefinitionOrm]:
     """Get multiple protocol definitions with eager loaded relationships."""
     from praxis.backend.models.pydantic_internals.filters import SearchFilters
@@ -196,25 +193,25 @@ class ProtocolDefinitionCRUDService(
     # Eagerly load relationships after update
     await db.refresh(
       updated_obj,
-      attribute_names=["parameters", "assets", "source_repository", "file_system_source"]
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
     )
     return updated_obj
 
   async def get_by_name(
-      self,
-      db: AsyncSession,
-      name: str,
-      version: str | None = None,
-      source_name: str | None = None,
-      commit_hash: str | None = None,
+    self,
+    db: AsyncSession,
+    name: str,
+    version: str | None = None,
+    source_name: str | None = None,
+    commit_hash: str | None = None,
   ) -> FunctionProtocolDefinitionOrm | None:
-      """Retrieve a protocol definition by name and other optional criteria."""
-      stmt = select(self.model).filter(self.model.name == name)
-      if version:
-          stmt = stmt.filter(self.model.version == version)
-      if source_name:
-          stmt = stmt.filter(self.model.source_name == source_name)
-      if commit_hash:
-          stmt = stmt.filter(self.model.commit_hash == commit_hash)
-      result = await db.execute(stmt)
-      return result.scalar_one_or_none()
+    """Retrieve a protocol definition by name and other optional criteria."""
+    stmt = select(self.model).filter(self.model.name == name)
+    if version:
+      stmt = stmt.filter(self.model.version == version)
+    if source_name:
+      stmt = stmt.filter(self.model.source_name == source_name)
+    if commit_hash:
+      stmt = stmt.filter(self.model.commit_hash == commit_hash)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()

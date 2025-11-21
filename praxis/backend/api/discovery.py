@@ -24,7 +24,6 @@ async def sync_all_definitions(
   """
   discovery_service: DiscoveryService = request.app.state.discovery_service
 
-
   try:
     await discovery_service.discover_and_sync_all_definitions(
       protocol_search_paths=request.app.state.praxis_config.all_protocol_source_paths,

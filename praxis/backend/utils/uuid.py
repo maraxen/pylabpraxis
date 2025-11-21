@@ -21,7 +21,6 @@ def uuid7() -> uuid.UUID:
       uuid.UUID: A UUID7 instance as a standard Python UUID object.
 
   """
-
   return uuid.UUID(str(uuid_utils.uuid7()))
 
 

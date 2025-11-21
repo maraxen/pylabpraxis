@@ -44,9 +44,9 @@ if TYPE_CHECKING:
   from praxis.backend.models.orm import (
     AssetRequirementOrm,
     FunctionDataOutputOrm,
+    MachineDefinitionOrm,
     MachineOrm,
     ResourceDefinitionOrm,
-    MachineDefinitionOrm,
   )
 
 generate_deck_name = partial(
@@ -76,8 +76,8 @@ class DeckOrm(ResourceOrm):
   __tablename__ = "decks"
   __table_args__ = {"extend_existing": True}
   __mapper_args__: ClassVar[dict] = {
-      "polymorphic_identity": "DECK",  # Uppercase to match AssetType.DECK
-      "inherit_condition": text("decks.accession_id = resources.accession_id"),
+    "polymorphic_identity": "DECK",  # Uppercase to match AssetType.DECK
+    "inherit_condition": text("decks.accession_id = resources.accession_id"),
   }
 
   accession_id: Mapped[uuid.UUID] = mapped_column(
@@ -119,7 +119,7 @@ class DeckOrm(ResourceOrm):
     uselist=False,
     foreign_keys=[deck_type_id],
     init=False,
-    )
+  )
 
   data_outputs: Mapped[list["FunctionDataOutputOrm"]] = relationship(
     "FunctionDataOutputOrm",
@@ -134,7 +134,7 @@ class DeckOrm(ResourceOrm):
     uselist=False,
     foreign_keys="DeckOrm.accession_id",
     init=False,
-    )
+  )
   resources: Mapped[list["ResourceOrm"]] = relationship(
     "ResourceOrm",
     back_populates="deck",
@@ -295,7 +295,9 @@ class DeckPositionDefinitionOrm(Base):
   """
 
   __tablename__ = "deck_position_definitions"
-  __table_args__ = (UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),)
+  __table_args__ = (
+    UniqueConstraint("deck_type_id", "position_accession_id", name="uq_deck_position"),
+  )
 
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,

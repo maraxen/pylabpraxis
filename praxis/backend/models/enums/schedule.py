@@ -44,6 +44,7 @@ class ScheduleHistoryEventEnum(enum.Enum):
   PRIORITY_CHANGED = "priority_changed"  # Priority of the schedule changed
   UNKNOWN = "unknown"  # Unknown event type
 
+
 class ScheduleHistoryEventTriggerEnum(enum.Enum):
 
   """Enumeration for the types of events in schedule history."""
@@ -53,4 +54,3 @@ class ScheduleHistoryEventTriggerEnum(enum.Enum):
   PYLABROBOT = "pylabrobot"  # Triggered by PylabRobot
   CELERY = "celery"  # Triggered by a Celery task
   SYSTEM = "system"  # Triggered by the system
-
