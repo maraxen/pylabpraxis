@@ -195,6 +195,7 @@ def _create_protocol_definition(
     name=resolved_name,
     version=data.version,
     description=(data.description or inspect.getdoc(data.func) or "No description provided."),
+    fqn=get_callable_fqn(data.func),
     source_file_path=inspect.getfile(data.func),
     module_name=data.func.__module__,
     function_name=data.func.__name__,

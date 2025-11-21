@@ -180,7 +180,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
       # Add output data if available
       if protocol_run_orm.output_data_json:
         try:
-          status_info["output_data"] = json.load(protocol_run_orm.output_data_json)  # type: ignore[no-untyped-call]
+          status_info["output_data"] = json.loads(protocol_run_orm.output_data_json)  # type: ignore[no-untyped-call]
         except json.JSONDecodeError:
           status_info["output_data_raw"] = protocol_run_orm.output_data_json
 

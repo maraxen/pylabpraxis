@@ -1,0 +1,472 @@
+"""Tests for core/workcell_runtime.py."""
+
+import uuid
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from pylabrobot.resources import Coordinate, Deck, Resource
+
+from praxis.backend.core.workcell_runtime import WorkcellRuntime, _get_class_from_fqn
+from praxis.backend.utils.errors import WorkcellRuntimeError
+from praxis.backend.utils.uuid import uuid7
+
+
+class TestGetClassFromFqn:
+    """Tests for _get_class_from_fqn helper function."""
+
+    def test_get_class_from_fqn_success(self) -> None:
+        """Test successful class loading from FQN."""
+        # Test with a known standard library class
+        result = _get_class_from_fqn("collections.OrderedDict")
+        from collections import OrderedDict
+        assert result == OrderedDict
+
+    def test_get_class_from_fqn_invalid_no_dot(self) -> None:
+        """Test with invalid FQN (no dot)."""
+        with pytest.raises(ValueError):
+            _get_class_from_fqn("InvalidClass")
+
+    def test_get_class_from_fqn_empty_string(self) -> None:
+        """Test with empty string."""
+        with pytest.raises(ValueError):
+            _get_class_from_fqn("")
+
+    def test_get_class_from_fqn_nonexistent_module(self) -> None:
+        """Test with non-existent module."""
+        with pytest.raises((ImportError, ModuleNotFoundError)):
+            _get_class_from_fqn("nonexistent.module.ClassName")
+
+
+class TestWorkcellRuntimeInit:
+    """Tests for WorkcellRuntime initialization."""
+
+    def test_workcell_runtime_initialization(self) -> None:
+        """Test WorkcellRuntime initialization."""
+        mock_db_session_factory = Mock()
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+        mock_deck_service = Mock()
+        mock_machine_service = Mock()
+        mock_resource_service = Mock()
+        mock_deck_type_def_service = Mock()
+        mock_workcell_service = Mock()
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=mock_deck_service,
+            machine_service=mock_machine_service,
+            resource_service=mock_resource_service,
+            deck_type_definition_service=mock_deck_type_def_service,
+            workcell_service=mock_workcell_service,
+        )
+
+        assert runtime.db_session_factory == mock_db_session_factory
+        assert runtime._main_workcell == mock_workcell
+        assert runtime.deck_svc == mock_deck_service
+        assert runtime.machine_svc == mock_machine_service
+        assert runtime.resource_svc == mock_resource_service
+        assert runtime.deck_type_definition_svc == mock_deck_type_def_service
+        assert runtime.workcell_svc == mock_workcell_service
+        assert isinstance(runtime._active_machines, dict)
+        assert isinstance(runtime._active_resources, dict)
+        assert isinstance(runtime._active_decks, dict)
+
+
+class TestGetMainWorkcell:
+    """Tests for get_main_workcell method."""
+
+    def test_get_main_workcell_success(self) -> None:
+        """Test successful retrieval of main workcell."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        result = runtime.get_main_workcell()
+        assert result == mock_workcell
+
+    def test_get_main_workcell_not_initialized(self) -> None:
+        """Test error when main workcell is not initialized."""
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=Mock(),
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        # Set to None to simulate not initialized
+        runtime._main_workcell = None
+
+        with pytest.raises(WorkcellRuntimeError, match="not initialized"):
+            runtime.get_main_workcell()
+
+
+class TestStateManagement:
+    """Tests for state snapshot and restoration methods."""
+
+    def test_get_state_snapshot(self) -> None:
+        """Test capturing state snapshot."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+        mock_workcell.serialize_all_state.return_value = {"state": "data"}
+
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        result = runtime.get_state_snapshot()
+
+        assert result == {"state": "data"}
+        mock_workcell.serialize_all_state.assert_called_once()
+
+    def test_apply_state_snapshot(self) -> None:
+        """Test applying state snapshot."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        snapshot = {"state": "restored_data"}
+        runtime.apply_state_snapshot(snapshot)
+
+        mock_workcell.load_all_state.assert_called_once_with(snapshot)
+
+
+class TestLinkWorkcellToDb:
+    """Tests for _link_workcell_to_db method."""
+
+    @pytest.mark.asyncio
+    async def test_link_workcell_to_db_new_workcell(self) -> None:
+        """Test linking a new workcell to the database."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+        mock_workcell.serialize_all_state.return_value = {"state": "data"}
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        mock_workcell_orm = Mock()
+        mock_workcell_orm.accession_id = uuid7()
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_orm)
+        runtime.workcell_svc.read_workcell_state = AsyncMock(return_value={"db_state": "data"})
+
+        await runtime._link_workcell_to_db()
+
+        assert runtime._workcell_db_accession_id == mock_workcell_orm.accession_id
+        runtime.workcell_svc.create.assert_called_once()
+        mock_workcell.load_all_state.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_link_workcell_to_db_already_linked(self) -> None:
+        """Test linking when already linked (should skip)."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        # Already linked
+        runtime._workcell_db_accession_id = uuid7()
+        runtime.workcell_svc.create = AsyncMock()
+
+        await runtime._link_workcell_to_db()
+
+        # Should not create a new entry
+        runtime.workcell_svc.create.assert_not_called()
+
+
+class TestStartStopWorkcellStateSync:
+    """Tests for start/stop workcell state sync methods."""
+
+    @pytest.mark.asyncio
+    async def test_start_workcell_state_sync(self) -> None:
+        """Test starting workcell state synchronization."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+        mock_workcell.serialize_all_state.return_value = {"state": "data"}
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        mock_workcell_orm = Mock()
+        mock_workcell_orm.accession_id = uuid7()
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        runtime.workcell_svc.create = AsyncMock(return_value=mock_workcell_orm)
+        runtime.workcell_svc.read_workcell_state = AsyncMock(return_value=None)
+
+        await runtime.start_workcell_state_sync()
+
+        assert runtime._state_sync_task is not None
+        assert not runtime._state_sync_task.done()
+
+        # Clean up
+        await runtime.stop_workcell_state_sync()
+
+    @pytest.mark.asyncio
+    async def test_stop_workcell_state_sync(self) -> None:
+        """Test stopping workcell state synchronization."""
+        import asyncio
+
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+        mock_workcell.save_file = "/tmp/test.json"
+        mock_workcell.save_state_to_file = Mock()
+        mock_workcell.serialize_all_state.return_value = {"state": "data"}
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        runtime._workcell_db_accession_id = uuid7()
+        runtime.workcell_svc.update_workcell_state = AsyncMock()
+
+        # Create a proper async task
+        async def dummy_task():
+            await asyncio.sleep(10)  # Long-running task
+
+        runtime._state_sync_task = asyncio.create_task(dummy_task())
+
+        await runtime.stop_workcell_state_sync()
+
+        # Task should be cancelled and set to None
+        assert runtime._state_sync_task is None
+        mock_workcell.save_state_to_file.assert_called_once()
+
+
+class TestGetCalculatedLocation:
+    """Tests for _get_calculated_location method."""
+
+    @pytest.mark.asyncio
+    async def test_get_calculated_location_with_positioning_config(self) -> None:
+        """Test calculating location with positioning configuration."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        runtime = WorkcellRuntime(
+            db_session_factory=Mock(),
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        # Create mock deck with position method
+        mock_deck = Mock(spec=Deck)
+
+        def mock_get_position(num: int) -> Coordinate:
+            return Coordinate(x=100.0 + num, y=200.0 + num, z=0.0)
+
+        mock_deck.get_position = mock_get_position
+
+        # Create positioning config
+        mock_positioning_config = Mock()
+        mock_positioning_config.method_name = "get_position"
+        mock_positioning_config.arg_name = "num"
+        mock_positioning_config.arg_type = "int"
+        mock_positioning_config.params = {}
+
+        deck_type_id = uuid7()
+        position_id = "1"
+
+        result = await runtime._get_calculated_location(
+            mock_deck,
+            deck_type_id,
+            position_id,
+            mock_positioning_config,
+        )
+
+        assert isinstance(result, Coordinate)
+        assert result.x == 101.0
+        assert result.y == 201.0
+
+    @pytest.mark.asyncio
+    async def test_get_calculated_location_no_config_uses_db(self) -> None:
+        """Test calculating location without config (uses database)."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        mock_deck = Mock(spec=Deck)
+        deck_type_id = uuid7()
+
+        # Mock deck type definition with position
+        mock_position_def = Mock()
+        mock_position_def.position_accession_id = "A1"
+        mock_position_def.nominal_x_mm = 10.0
+        mock_position_def.nominal_y_mm = 20.0
+        mock_position_def.nominal_z_mm = 0.0
+
+        mock_deck_type_def = Mock()
+        mock_deck_type_def.positions = [mock_position_def]
+
+        runtime.deck_type_definition_svc.get = AsyncMock(return_value=mock_deck_type_def)
+
+        result = await runtime._get_calculated_location(
+            mock_deck,
+            deck_type_id,
+            "A1",
+            None,  # No positioning config
+        )
+
+        assert isinstance(result, Coordinate)
+        assert result.x == 10.0
+        assert result.y == 20.0
+        assert result.z == 0.0
+
+    @pytest.mark.asyncio
+    async def test_get_calculated_location_position_not_found(self) -> None:
+        """Test error when position not found in database."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        mock_deck = Mock(spec=Deck)
+        deck_type_id = uuid7()
+
+        # Mock deck type definition with no matching position
+        mock_deck_type_def = Mock()
+        mock_deck_type_def.positions = []
+
+        runtime.deck_type_definition_svc.get = AsyncMock(return_value=mock_deck_type_def)
+
+        with pytest.raises(WorkcellRuntimeError, match="Position.*not found"):
+            await runtime._get_calculated_location(
+                mock_deck,
+                deck_type_id,
+                "NONEXISTENT",
+                None,
+            )
+
+
+class TestModuleStructure:
+    """Tests for module structure and exports."""
+
+    def test_module_has_workcell_runtime_class(self) -> None:
+        """Test that module exports WorkcellRuntime."""
+        from praxis.backend.core import workcell_runtime
+
+        assert hasattr(workcell_runtime, "WorkcellRuntime")
+
+    def test_module_has_logger(self) -> None:
+        """Test that module defines logger."""
+        from praxis.backend.core import workcell_runtime
+
+        assert hasattr(workcell_runtime, "logger")
+
+    def test_module_has_helper_functions(self) -> None:
+        """Test that module defines helper functions."""
+        from praxis.backend.core import workcell_runtime
+
+        assert hasattr(workcell_runtime, "_get_class_from_fqn")
+        assert hasattr(workcell_runtime, "log_workcell_runtime_errors")
+
+    def test_module_defines_constants(self) -> None:
+        """Test that module defines expected constants."""
+        from praxis.backend.core import workcell_runtime
+
+        assert hasattr(workcell_runtime, "COORDINATE_TUPLE_LENGTH")
+        assert workcell_runtime.COORDINATE_TUPLE_LENGTH == 3
