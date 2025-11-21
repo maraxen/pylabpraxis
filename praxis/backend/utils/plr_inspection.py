@@ -35,7 +35,9 @@ def get_class_fqn(klass: type[Any]) -> str:
 
 
 def get_module_classes(
-  module: Any, parent_class: type[Any] | None = None, concrete_only: bool = False,
+  module: Any,
+  parent_class: type[Any] | None = None,
+  concrete_only: bool = False,
 ) -> dict[str, type[Any]]:
   """Get all classes from a module that are subclasses of parent_class.
 
@@ -60,7 +62,8 @@ def get_module_classes(
       is_submodule_class = False
       if hasattr(module, "__path__"):  # Check if module is a package
         for _importer, modname, _ispkg in pkgutil.iter_modules(
-          module.__path__, module.__name__ + ".",
+          module.__path__,
+          module.__name__ + ".",
         ):
           if obj.__module__.startswith(modname):
             is_submodule_class = True
@@ -75,7 +78,8 @@ def get_module_classes(
 
 
 def get_constructor_params_with_defaults(
-  klass: type[Any], required_only: bool = False,
+  klass: type[Any],
+  required_only: bool = False,
 ) -> dict[str, Any]:
   """Get the constructor parameters and their default values for a class.
 
@@ -166,7 +170,8 @@ def _discover_classes_in_module_recursive(
 
     if hasattr(module, "__path__"):
       for _, sub_module_name, _ in pkgutil.walk_packages(
-        module.__path__, module_name + ".",
+        module.__path__,
+        module_name + ".",
       ):
         if sub_module_name not in visited_modules:
           found_classes.update(
@@ -202,13 +207,14 @@ def get_all_classes(
   """
   all_classes: dict[str, type[Any]] = {}
   visited_modules: set[str] = set()
-  module_list = (
-    [base_module_names] if isinstance(base_module_names, str) else base_module_names
-  )
+  module_list = [base_module_names] if isinstance(base_module_names, str) else base_module_names
   for base_module_name in module_list:
     all_classes.update(
       _discover_classes_in_module_recursive(
-        base_module_name, parent_class, concrete_only, visited_modules,
+        base_module_name,
+        parent_class,
+        concrete_only,
+        visited_modules,
       ),
     )
   return all_classes
@@ -249,9 +255,7 @@ def get_deck_classes(concrete_only: bool = True) -> dict[str, type[Deck]]:
     parent_class=Deck,
     concrete_only=concrete_only,
   )
-  return {
-    fqn: deck_class for fqn, deck_class in all_decks.items() if deck_class is not Deck
-  }
+  return {fqn: deck_class for fqn, deck_class in all_decks.items() if deck_class is not Deck}
 
 
 # --- Phase 1: Enhanced PyLabRobot Deck and General Asset Introspection ---
@@ -283,7 +287,8 @@ def discover_deck_classes(
 
 
 def _get_accepted_categories_for_resource_holder(
-  holder: ResourceHolder, parent_carrier: Carrier | None = None,
+  holder: ResourceHolder,
+  parent_carrier: Carrier | None = None,
 ) -> list[str]:
   """Determine accepted resource categories for a ResourceHolder.
 
@@ -472,13 +477,14 @@ def get_all_classes_with_inspection(
   """
   all_classes: dict[str, type[Any]] = {}
   visited_modules: set[str] = set()
-  module_list = (
-    [base_module_names] if isinstance(base_module_names, str) else base_module_names
-  )
+  module_list = [base_module_names] if isinstance(base_module_names, str) else base_module_names
   for base_module_name in module_list:
     all_classes.update(
       _discover_classes_in_module_recursive(
-        base_module_name, parent_class, concrete_only, visited_modules,
+        base_module_name,
+        parent_class,
+        concrete_only,
+        visited_modules,
       ),
     )
 
@@ -569,9 +575,7 @@ def get_deck_details(deck_class: type[Deck]) -> dict[str, Any]:
         {
           "name": pname,
           "annotation": str(param.annotation),
-          "default": (
-            param.default if param.default is not inspect.Parameter.empty else None
-          ),
+          "default": (param.default if param.default is not inspect.Parameter.empty else None),
         }
         for pname, param in sig.parameters.items()
       ]

@@ -7,7 +7,7 @@ accession_ids (e.g., slots or rails), and decks.
 
 from typing import Any, Literal
 
-from pydantic import UUID7, BaseModel, Field, ConfigDict
+from pydantic import UUID7, ConfigDict, Field
 
 from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,
@@ -24,6 +24,7 @@ from .resource import (
 
 
 class DeckBase(ResourceBase):
+
   """Base model for a deck."""
 
   machine_id: UUID7 | None = None
@@ -31,15 +32,19 @@ class DeckBase(ResourceBase):
 
 
 class DeckCreate(ResourceCreate, DeckBase):
+
   """Model for creating a new deck."""
+
   resource_definition_accession_id: UUID7
 
 
 class DeckUpdate(ResourceUpdate):
+
   """Model for updating a deck."""
 
 
 class DeckResponse(ResourceResponse, DeckBase):
+
   """Model for API responses for a deck."""
 
 
@@ -48,6 +53,7 @@ DeckResponse.model_rebuild()
 
 
 class PositioningConfig(PraxisBaseModel):
+
   """Configuration for how positions are calculated/managed for this deck type.
 
   A general configuration for methods that follow the pattern:
@@ -75,18 +81,21 @@ class PositioningConfig(PraxisBaseModel):
 
 
 class DeckPositionDefinitionBase(PraxisBaseModel):
+
   """Define the base properties for a deck position definition.
 
   This model specifies the characteristics of a specific position or "position"
   on a deck, including its identifier, compatibility with different resource
   types, and physical location coordinates.
   """
+
   nominal_x_mm: float
   nominal_y_mm: float
   nominal_z_mm: float
 
 
 class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
+
   """Model for creating a new deck position definition."""
 
   pylabrobot_position_type_name: str | None = Field(
@@ -118,17 +127,22 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
 
 
 class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
+
   """Model for API responses for a deck position definition."""
+
   deck_type_accession_id: UUID7
 
 
 class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
+
   """Model for creating a new deck type definition."""
+
   name: str
   positioning_config: PositioningConfig
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
+
   """Model for API responses for a deck type definition."""
 
   positioning_config: PositioningConfig | None = None  # Override to make optional for responses
@@ -136,6 +150,7 @@ class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
 
 
 class DeckTypeDefinitionUpdate(PLRTypeDefinitionUpdate):
+
   """Model for updating a deck type definition."""
 
   description: str | None = None

@@ -45,6 +45,7 @@ from praxis.backend.utils.type_inspection import (
 
 logger = logging.getLogger(__name__)
 
+
 # TODO(mar): Make this much safer, accessing sys.path directly can lead to issues.
 class DiscoveryService:
 
@@ -103,7 +104,6 @@ class DiscoveryService:
       logger.info("Synchronizing machine type definitions...")
       await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
       logger.info("Machine type definitions synchronized.")
-
 
     logger.info("Discovering and upserting protocols...")
     await self.discover_and_upsert_protocols(
@@ -372,7 +372,6 @@ class DiscoveryService:
           upserted_definitions_orm.append(def_orm)
 
           protocol_unique_key = f"{protocol_pydantic_model.name}_v{protocol_pydantic_model.version}"
-
 
         except (ValueError, RuntimeError):
           logger.exception(

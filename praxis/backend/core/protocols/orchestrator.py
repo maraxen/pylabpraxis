@@ -7,6 +7,7 @@ from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
 @runtime_checkable
 class IOrchestrator(Protocol):
+
   """A protocol for an orchestrator."""
 
   async def execute_protocol(
@@ -17,13 +18,11 @@ class IOrchestrator(Protocol):
     protocol_version: str | None = None,
     commit_hash: str | None = None,
     source_name: str | None = None,
-  ) -> ProtocolRunOrm:
-    ...
+  ) -> ProtocolRunOrm: ...
 
   async def execute_existing_protocol_run(
     self,
     protocol_run_orm: ProtocolRunOrm,
     user_input_params: dict[str, Any] | None = None,
     initial_state_data: dict[str, Any] | None = None,
-  ) -> ProtocolRunOrm:
-    ...
+  ) -> ProtocolRunOrm: ...

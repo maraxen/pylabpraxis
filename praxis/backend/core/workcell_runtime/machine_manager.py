@@ -11,6 +11,7 @@ from pylabrobot.resources import Deck, Resource
 
 if TYPE_CHECKING:
   from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
+
   from praxis.backend.core.workcell_runtime.core import WorkcellRuntime
 
 from praxis.backend.core.workcell_runtime.utils import (
@@ -25,15 +26,14 @@ logger = get_logger(__name__)
 
 
 class MachineManagerMixin:
+
   """Mixin for managing machines in WorkcellRuntime."""
 
   @log_workcell_runtime_errors(
     prefix="WorkcellRuntime: Error initializing machine",
     suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
   )
-  async def initialize_machine(
-    self, machine_orm: MachineOrm
-  ) -> Machine:  # ruff: noqa: C901, PLR0912, PLR0915
+  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:  # ruff: noqa: C901, PLR0912, PLR0915
     """Initialize and connects to a machine's PyLabRobot machine/resource."""
     # We assume self is WorkcellRuntime
     self = cast("WorkcellRuntime", self)
@@ -190,7 +190,7 @@ class MachineManagerMixin:
     ):
       resource_orm = machine_orm.resource_counterpart
       if isinstance(machine_instance, Resource):
-        self._active_resources[resource_orm.accession_id] = cast(Resource, machine_instance)
+        self._active_resources[resource_orm.accession_id] = cast("Resource", machine_instance)
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) also registered as Resource "
           "'%s' (ID: %s) in _active_resources, sharing the same PLR object.",
@@ -210,7 +210,7 @@ class MachineManagerMixin:
         )
 
     if hasattr(machine_instance, "deck") and isinstance(machine_instance.deck, Deck):
-      machine_deck: Deck = cast("LiquidHandler", machine_instance).deck # type: ignore
+      machine_deck: Deck = cast("LiquidHandler", machine_instance).deck  # type: ignore
       if not isinstance(machine_deck, Deck):
         msg = (
           f"Machine '{machine_orm.name}' has a 'deck' attribute, "
@@ -355,10 +355,8 @@ class MachineManagerMixin:
           f"Shutdown failed: {str(e)[:250]}",
         )
         await db_session.commit()
-      msg = (
-        f"Error shutting down machine ID {machine_orm_accession_id}: \
+      msg = f"Error shutting down machine ID {machine_orm_accession_id}: \
         {str(e)[:250]}"
-      )
       raise WorkcellRuntimeError(
         msg,
       ) from e
@@ -411,7 +409,7 @@ class MachineManagerMixin:
     """Shut down all currently active PyLabRobot machine instances."""
     self = cast("WorkcellRuntime", self)
     logger.info("WorkcellRuntime: Shutting down all active machines...")
-    for machine_accession_id in list(self._active_machines.keys()): # ruff: noqa: PERF203
+    for machine_accession_id in list(self._active_machines.keys()):  # ruff: noqa: PERF203
       try:
         logger.info(
           "WorkcellRuntime: Shutting down machine ID %s...",

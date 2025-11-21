@@ -7,12 +7,13 @@ to ensure consistency in API responses.
 import datetime
 from typing import Any
 
-from pydantic import UUID7, BaseModel, Field, ConfigDict
+from pydantic import UUID7, BaseModel, ConfigDict, Field
 
 from praxis.backend.utils.uuid import uuid7
 
 
 class PraxisBaseModel(BaseModel):
+
   """A base model that includes timestamp fields for API responses."""
 
   accession_id: UUID7 = Field(

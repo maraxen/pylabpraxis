@@ -35,50 +35,50 @@ config_parser = ConfigParser()
 config_parser.read(CONFIG_FILE_PATH)
 
 if "PYTEST_CURRENT_TEST" in os.environ:
-    praxis_database_url = os.getenv(
-        "TEST_DATABASE_URL",
-        "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
-    )
+  praxis_database_url = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
+  )
 else:
-    praxis_database_url = os.getenv("PRAXIS_DB_DSN")
+  praxis_database_url = os.getenv("PRAXIS_DB_DSN")
 
-    if not praxis_database_url:
-        try:
-            praxis_db_user = config_parser.get("database", "user", fallback="user")
-            praxis_db_password = config_parser.get(
-                "database",
-                "password",
-                fallback="password",
-            )  # TODO(mar): Use a secure method for production # noqa: TD003
-            praxis_db_host = config_parser.get("database", "host", fallback="localhost")
-            praxis_db_port = config_parser.get("database", "port", fallback="5432")
-            praxis_db_name = config_parser.get("database", "dbname", fallback="praxis_db")
+  if not praxis_database_url:
+    try:
+      praxis_db_user = config_parser.get("database", "user", fallback="user")
+      praxis_db_password = config_parser.get(
+        "database",
+        "password",
+        fallback="password",
+      )  # TODO(mar): Use a secure method for production # noqa: TD003
+      praxis_db_host = config_parser.get("database", "host", fallback="localhost")
+      praxis_db_port = config_parser.get("database", "port", fallback="5432")
+      praxis_db_name = config_parser.get("database", "dbname", fallback="praxis_db")
 
-            praxis_db_user = os.getenv("POSTGRES_USER", praxis_db_user)
-            praxis_db_password = os.getenv(
-                "POSTGRES_PASSWORD",
-                praxis_db_password,
-            )  # TODO(mar): Use a secure method for production # noqa: TD003
-            praxis_db_host = os.getenv("POSTGRES_HOST", praxis_db_host)
-            praxis_db_port = os.getenv("POSTGRES_PORT", praxis_db_port)
-            praxis_db_name = os.getenv("POSTGRES_DB", praxis_db_name)
+      praxis_db_user = os.getenv("POSTGRES_USER", praxis_db_user)
+      praxis_db_password = os.getenv(
+        "POSTGRES_PASSWORD",
+        praxis_db_password,
+      )  # TODO(mar): Use a secure method for production # noqa: TD003
+      praxis_db_host = os.getenv("POSTGRES_HOST", praxis_db_host)
+      praxis_db_port = os.getenv("POSTGRES_PORT", praxis_db_port)
+      praxis_db_name = os.getenv("POSTGRES_DB", praxis_db_name)
 
-            praxis_database_url = (
-                f"postgresql+asyncpg://{praxis_db_user}:{praxis_db_password}@"
-                f"{praxis_db_host}:{praxis_db_port}/{praxis_db_name}"
-            )
-            logger.info(
-                "Praxis Database URL configured: %s",
-                praxis_database_url.replace(praxis_db_password, "****"),
-            )
+      praxis_database_url = (
+        f"postgresql+asyncpg://{praxis_db_user}:{praxis_db_password}@"
+        f"{praxis_db_host}:{praxis_db_port}/{praxis_db_name}"
+      )
+      logger.info(
+        "Praxis Database URL configured: %s",
+        praxis_database_url.replace(praxis_db_password, "****"),
+      )
 
-        except Exception:
-            logger.exception("Error reading Praxis database configuration from praxis.ini")
-            praxis_database_url = "postgresql+asyncpg://user:password@localhost:5432/praxis_db"
-            logger.warning(
-                "Falling back to default praxis_database_url: %s",
-                praxis_database_url.replace("password", "****"),
-            )
+    except Exception:
+      logger.exception("Error reading Praxis database configuration from praxis.ini")
+      praxis_database_url = "postgresql+asyncpg://user:password@localhost:5432/praxis_db"
+      logger.warning(
+        "Falling back to default praxis_database_url: %s",
+        praxis_database_url.replace("password", "****"),
+      )
 
 keycloak_dsn_from_config = None
 try:
@@ -199,31 +199,32 @@ async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_praxis_db_schema(engine=None) -> None:
-    """Initialize the Praxis database schema.
+  """Initialize the Praxis database schema.
 
-    Create all tables defined by ORM models inheriting from `Base`.
-    """
-    if engine is None:
-        engine = create_async_engine(PRAXIS_DATABASE_URL, echo=False)
+  Create all tables defined by ORM models inheriting from `Base`.
+  """
+  if engine is None:
+    engine = create_async_engine(PRAXIS_DATABASE_URL, echo=False)
 
-    logger.info("Importing ORM models for Praxis database schema initialization...")
+  logger.info("Importing ORM models for Praxis database schema initialization...")
+  logger.info(
+    "Initializing Praxis database tables at %s...",
+    str(engine.url).replace(engine.url.password, "****"),
+  )
+  try:
+    async with engine.begin() as conn:
+      await conn.run_sync(Base.metadata.create_all)
     logger.info(
-        "Initializing Praxis database tables at %s...",
-        str(engine.url).replace(engine.url.password, "****"),
+      "Praxis database tables created successfully (if they didn't already exist).",
     )
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info(
-            "Praxis database tables created successfully (if they didn't already exist).",
-        )
-    except Exception:
-        # Use logging.exception instead of logging.error.
-        logger.exception("Error creating Praxis database tables")
-        raise
-    finally:
-        if engine is None:
-            await engine.dispose()
+  except Exception:
+    # Use logging.exception instead of logging.error.
+    logger.exception("Error creating Praxis database tables")
+    raise
+  finally:
+    if engine is None:
+      await engine.dispose()
+
 
 class CreateMaterializedView(DDLElement):
 

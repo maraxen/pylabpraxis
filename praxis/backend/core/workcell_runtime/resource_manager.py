@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 
 class ResourceManagerMixin:
+
   """Mixin for managing resources in WorkcellRuntime."""
 
   @log_workcell_runtime_errors(
@@ -162,18 +163,14 @@ class ResourceManagerMixin:
     self = cast("WorkcellRuntime", self)
     resource = self._active_resources.get(resource_orm_accession_id)
     if resource is None:
-      msg = (
-        f"Resource instance with ORM ID {resource_orm_accession_id} not found in active \
+      msg = f"Resource instance with ORM ID {resource_orm_accession_id} not found in active \
           resources."
-      )
       raise WorkcellRuntimeError(
         msg,
       )
     if not isinstance(resource, Resource):
-      msg = (
-        f"Resource instance with ORM ID {resource_orm_accession_id} is not a valid \
+      msg = f"Resource instance with ORM ID {resource_orm_accession_id} is not a valid \
           PyLabRobot Resource instance. Type is {type(resource)}."
-      )
       raise TypeError(
         msg,
       )

@@ -4,7 +4,7 @@ These models are used for data validation and serialization/deserialization
 of user configurations, enabling consistent API interactions.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
@@ -41,4 +41,3 @@ class UserResponse(UserBase):
 
   """Represents a user for API responses."""
 
-  pass

@@ -62,7 +62,8 @@ class ProtocolExecutionService(IProtocolExecutionService):
   ) -> ProtocolRunOrm:
     """Execute a protocol immediately (synchronously) without scheduling."""
     logger.info(
-      "Executing protocol '%s' immediately (bypassing scheduler)", protocol_name,
+      "Executing protocol '%s' immediately (bypassing scheduler)",
+      protocol_name,
     )
 
     return await self.orchestrator.execute_protocol(
@@ -125,7 +126,9 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
       # Schedule the protocol run
       success = await self.scheduler.schedule_protocol_execution(
-        protocol_run_orm, user_input_params, initial_state_data,
+        protocol_run_orm,
+        user_input_params,
+        initial_state_data,
       )
 
       if not success:
@@ -134,12 +137,14 @@ class ProtocolExecutionService(IProtocolExecutionService):
         raise RuntimeError(msg)
 
       logger.info(
-        "Successfully scheduled protocol run %s for execution", run_accession_id,
+        "Successfully scheduled protocol run %s for execution",
+        run_accession_id,
       )
       return protocol_run_orm
 
   async def get_protocol_run_status(
-    self, protocol_run_id: uuid.UUID,
+    self,
+    protocol_run_id: uuid.UUID,
   ) -> dict[str, Any] | None:
     """Get the current status of a protocol run."""
     # Check scheduler status first
@@ -148,7 +153,8 @@ class ProtocolExecutionService(IProtocolExecutionService):
     # Get database status
     async with self.db_session_factory() as db_session:
       protocol_run_orm = await self.protocol_run_service.get(
-        db_session, accession_id=protocol_run_id,
+        db_session,
+        accession_id=protocol_run_id,
       )
 
       if not protocol_run_orm:
@@ -156,18 +162,14 @@ class ProtocolExecutionService(IProtocolExecutionService):
 
       status_info = {
         "protocol_run_id": str(protocol_run_id),
-        "status": protocol_run_orm.status.value
-        if protocol_run_orm.status
-        else "UNKNOWN",
+        "status": protocol_run_orm.status.value if protocol_run_orm.status else "UNKNOWN",
         "created_at": protocol_run_orm.created_at.isoformat()
         if protocol_run_orm.created_at
         else None,
         "start_time": protocol_run_orm.start_time.isoformat()
         if protocol_run_orm.start_time
         else None,
-        "end_time": protocol_run_orm.end_time.isoformat()
-        if protocol_run_orm.end_time
-        else None,
+        "end_time": protocol_run_orm.end_time.isoformat() if protocol_run_orm.end_time else None,
         "duration_ms": protocol_run_orm.duration_ms,
         "protocol_name": (
           protocol_run_orm.top_level_protocol_definition.name

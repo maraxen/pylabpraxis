@@ -60,7 +60,8 @@ class PraxisConfiguration:
 
     """
     dsn = self._database_section.get(
-      "praxis_dsn", "postgresql://praxis:praxis@localhost:5432/praxis_db",
+      "praxis_dsn",
+      "postgresql://praxis:praxis@localhost:5432/praxis_db",
     )
     if not dsn.startswith(("postgresql://", "postgres://")):
       return f"postgresql://{dsn}"
@@ -77,7 +78,8 @@ class PraxisConfiguration:
 
     """
     dsn = self._database_section.get(
-      "keycloak_dsn", "postgresql://keycloak:keycloak@localhost:5432/keycloak",
+      "keycloak_dsn",
+      "postgresql://keycloak:keycloak@localhost:5432/keycloak",
     )
     if not dsn.startswith(("postgresql://", "postgres://")):
       return f"postgresql://{dsn}"
@@ -198,7 +200,8 @@ class PraxisConfiguration:
     default_path = os.path.join(os.path.dirname(__file__), "protocol", "protocols")
     path = self._protocol_directories_section.get("default_directory", default_path)
     os.makedirs(
-      path, exist_ok=True,
+      path,
+      exist_ok=True,
     )  # Use exist_ok=True to avoid error if it already exists
     return path
 

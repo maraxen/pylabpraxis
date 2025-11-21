@@ -60,7 +60,7 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       .options(
         selectinload(self.model.machines),
         selectinload(self.model.resources),
-        selectinload(self.model.decks)
+        selectinload(self.model.decks),
       )
       .filter(self.model.accession_id == accession_id)
     )
@@ -89,7 +89,7 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
       .options(
         selectinload(self.model.machines),
         selectinload(self.model.resources),
-        selectinload(self.model.decks)
+        selectinload(self.model.decks),
       )
       .order_by(self.model.name)
     )

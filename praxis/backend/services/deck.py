@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from praxis.backend.models import DeckOrm
@@ -55,15 +55,18 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
         "child_accession_ids",
         "machine_initial_status",
         "deck_initial_status",
-      }
+      },
     )
 
     # Remap the Pydantic `machine_id` or `parent_accession_id` to the ORM's `parent_machine_accession_id`.
     # Don't keep parent_accession_id as it has FK constraint to resources table (machines are in machines table)
-    machine_id_to_use = deck_data.pop("machine_id", None) or deck_data.pop("parent_accession_id", None)
+    machine_id_to_use = deck_data.pop("machine_id", None) or deck_data.pop(
+      "parent_accession_id", None,
+    )
 
     if machine_id_to_use:
       from praxis.backend.models import MachineOrm
+
       machine = await db.get(MachineOrm, machine_id_to_use)
       if machine:
         deck_data["parent_machine"] = machine
@@ -73,9 +76,10 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
         deck_data["parent_machine_accession_id"] = machine_id_to_use
 
     # Filter to only valid constructor parameters
-    import inspect as py_inspect
-    from sqlalchemy import inspect as sa_inspect
     import enum
+    import inspect as py_inspect
+
+    from sqlalchemy import inspect as sa_inspect
 
     init_signature = py_inspect.signature(self.model.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
@@ -83,7 +87,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     # Convert enum string values back to enum members for SQLAlchemy
     for attr_name, column in sa_inspect(self.model).columns.items():
-      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+      if attr_name in filtered_data and hasattr(column.type, "enum_class"):
         enum_class = column.type.enum_class
         if enum_class and issubclass(enum_class, enum.Enum):
           value = filtered_data[attr_name]
@@ -98,11 +102,16 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     # Workaround for FKs not sticking in MappedAsDataclass hierarchy or joined inheritance
     if "resource_definition_accession_id" in filtered_data:
       from praxis.backend.models import ResourceDefinitionOrm
-      res_def = await db.get(ResourceDefinitionOrm, filtered_data["resource_definition_accession_id"])
+
+      res_def = await db.get(
+        ResourceDefinitionOrm, filtered_data["resource_definition_accession_id"],
+      )
       if res_def:
         deck_orm.resource_definition = res_def
       else:
-        deck_orm.resource_definition_accession_id = filtered_data["resource_definition_accession_id"]
+        deck_orm.resource_definition_accession_id = filtered_data[
+          "resource_definition_accession_id"
+        ]
 
     if obj_in.plr_state:
       deck_orm.plr_state = obj_in.plr_state
@@ -248,12 +257,12 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     return decks
 
   async def read_decks_by_machine_id(
-      self, db: AsyncSession, machine_id: uuid.UUID
+    self, db: AsyncSession, machine_id: uuid.UUID,
   ) -> DeckOrm | None:
-      """Read a deck for a given machine."""
-      stmt = select(self.model).filter(self.model.parent_machine_accession_id == machine_id)
-      result = await db.execute(stmt)
-      return result.scalar_one_or_none()
+    """Read a deck for a given machine."""
+    stmt = select(self.model).filter(self.model.parent_machine_accession_id == machine_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 deck_service = DeckService(DeckOrm)

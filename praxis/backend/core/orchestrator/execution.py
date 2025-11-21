@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 
 
 class ExecutionMixin:
+
   """Mixin for executing protocols."""
 
   # Type hints for dependencies

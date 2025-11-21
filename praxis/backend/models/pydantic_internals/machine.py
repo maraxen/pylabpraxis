@@ -16,7 +16,6 @@ from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionResponse,
   PLRTypeDefinitionUpdate,
 )
-from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 from .asset import AssetBase, AssetResponse, AssetUpdate
 
@@ -153,6 +152,7 @@ class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
 class MachineDefinitionUpdate(MachineDefinitionBase, PLRTypeDefinitionUpdate):
 
   """Specifies the fields that can be updated for an existing machine definition."""
+
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):
 

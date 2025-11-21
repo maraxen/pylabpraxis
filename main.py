@@ -1,7 +1,6 @@
 """Core backend application for PyLabPraxis."""
 
 import logging
-import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -10,11 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 from praxis.backend.api import decks, discovery, outputs, protocols, resources, workcell
-
 from praxis.backend.configure import PraxisConfiguration
+from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.core.celery import celery_app, configure_celery_app
-from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
@@ -27,7 +25,6 @@ from praxis.backend.services.machine_type_definition import MachineTypeDefinitio
 from praxis.backend.services.praxis_orm_service import PraxisDBService
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
 from praxis.backend.utils.db import (
-  KEYCLOAK_DSN_FROM_CONFIG,
   AsyncSessionLocal,
   init_praxis_db_schema,
 )
@@ -93,28 +90,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
+    from praxis.backend.core.filesystem import FileSystem
     from praxis.backend.core.workcell import Workcell
     from praxis.backend.services.deck import DeckService
     from praxis.backend.services.machine import MachineService
     from praxis.backend.services.resource import ResourceService
     from praxis.backend.services.workcell import WorkcellService
-    from praxis.backend.core.filesystem import FileSystem
-    workcell = Workcell(name="test_workcell", save_file="test_workcell.json", file_system=FileSystem())
+
+    workcell = Workcell(
+      name="test_workcell", save_file="test_workcell.json", file_system=FileSystem(),
+    )
     async with AsyncSessionLocal() as db_session:
-        deck_service = DeckService(DeckOrm)
-        machine_service = MachineService(MachineOrm)
-        resource_service = ResourceService(ResourceOrm)
-        deck_type_definition_service = DeckTypeDefinitionService(DeckDefinitionOrm)
-        workcell_service = WorkcellService(WorkcellOrm)
-        workcell_runtime = WorkcellRuntime(
-          db_session_factory=AsyncSessionLocal,
-          workcell=workcell,
-          deck_service=deck_service,
-          machine_service=machine_service,
-          resource_service=resource_service,
-          deck_type_definition_service=deck_type_definition_service,
-          workcell_service=workcell_service,
-        )
+      deck_service = DeckService(DeckOrm)
+      machine_service = MachineService(MachineOrm)
+      resource_service = ResourceService(ResourceOrm)
+      deck_type_definition_service = DeckTypeDefinitionService(DeckDefinitionOrm)
+      workcell_service = WorkcellService(WorkcellOrm)
+      workcell_runtime = WorkcellRuntime(
+        db_session_factory=AsyncSessionLocal,
+        workcell=workcell,
+        deck_service=deck_service,
+        machine_service=machine_service,
+        resource_service=resource_service,
+        deck_type_definition_service=deck_type_definition_service,
+        workcell_service=workcell_service,
+      )
     logger.info("WorkcellRuntime initialized successfully.")
     async with AsyncSessionLocal() as db_session:  # Use async with for session
       asset_lock_manager = AssetLockManager()
@@ -162,13 +162,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       # Configure Celery
       logger.info("Configuring Celery app...")
       configure_celery_app(
-          celery_app,
-          broker_url=praxis_config.celery_broker_url,
-          backend_url=praxis_config.celery_result_backend,
+        celery_app,
+        broker_url=praxis_config.celery_broker_url,
+        backend_url=praxis_config.celery_result_backend,
       )
       logger.info("Celery app configured.")
-
-
 
       # Store the fully initialized orchestrator and discovery service in the app state
       app.state.orchestrator = orchestrator

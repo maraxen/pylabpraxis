@@ -3,7 +3,7 @@ ifeq ($(shell test -e ./env/ && echo yes),yes)
 	$(info Using virtualenv in env)
 endif
 
-.PHONY: docs lint format test typecheck
+.PHONY: docs lint format test
 
 docs:
 	sphinx-build -b html docs docs/build/ -j 1 -W
@@ -22,9 +22,6 @@ format:
 
 test:
 	$(BIN)python -m pytest -s -v
-
-typecheck:
-	$(BIN)python -m mypy pylabpraxis --check-untyped-defs
 
 clear-pyc:
 	find . -name "*.pyc" | xargs rm

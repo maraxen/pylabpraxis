@@ -49,19 +49,23 @@ class ResourceRequirementRequest(PraxisBaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   resource_type: str = Field(
-    ..., description="Type of resource (machine, resource, deck)",
+    ...,
+    description="Type of resource (machine, resource, deck)",
   )
   resource_name: str = Field(..., description="Name/identifier of the resource")
   required_capabilities: dict[str, Any] | None = Field(
-    default=None, description="Required capabilities for the resource",
+    default=None,
+    description="Required capabilities for the resource",
   )
   estimated_duration_ms: int | None = Field(
-    default=None, description="Estimated duration in milliseconds",
+    default=None,
+    description="Estimated duration in milliseconds",
   )
   priority: int = Field(default=1, description="Priority level (1-10)")
 
 
 class ResourceReservationResponse(PraxisBaseModel):
+
   """Response model for resource reservations."""
 
   # Remove accession_id and created_at fields, they are inherited.
@@ -99,27 +103,33 @@ class ScheduleProtocolRequest(PraxisBaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   protocol_run_id: uuid.UUID = Field(
-    ..., description="ID of the protocol run to schedule",
+    ...,
+    description="ID of the protocol run to schedule",
   )
   user_params: dict[str, Any] = Field(..., description="User-provided parameters")
   initial_state: dict[str, Any] | None = Field(
-    default=None, description="Initial state data for the protocol",
+    default=None,
+    description="Initial state data for the protocol",
   )
   priority: int = Field(default=1, description="Schedule priority (1-10)")
   estimated_duration_ms: int | None = Field(
-    default=None, description="Estimated execution duration",
+    default=None,
+    description="Estimated execution duration",
   )
   resource_requirements: list[ResourceRequirementRequest] | None = Field(
-    default=None, description="Override resource requirements analysis",
+    default=None,
+    description="Override resource requirements analysis",
   )
   scheduling_constraints: dict[str, Any] | None = Field(
-    default=None, description="Additional scheduling constraints",
+    default=None,
+    description="Additional scheduling constraints",
   )
 
 
 class ScheduleEntryResponse(PraxisBaseModel):
 
   """Response model for schedule entries."""
+
   protocol_run_accession_id: uuid.UUID
   status: ScheduleEntryStatus
   priority: int
@@ -213,6 +223,7 @@ class SchedulerSystemStatusResponse(PraxisBaseModel):
 class ScheduleHistoryResponse(PraxisBaseModel):
 
   """Response model for schedule history entries."""
+
   schedule_entry_accession_id: uuid.UUID
   event_type: str
   event_timestamp: datetime
@@ -238,24 +249,30 @@ class ScheduleListRequest(PraxisBaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   status: list[ScheduleEntryStatus] | None = Field(
-    default=None, description="Filter by schedule status",
+    default=None,
+    description="Filter by schedule status",
   )
   protocol_run_ids: list[uuid.UUID] | None = Field(
-    default=None, description="Filter by specific protocol run IDs",
+    default=None,
+    description="Filter by specific protocol run IDs",
   )
   priority_min: int | None = Field(default=None, description="Minimum priority")
   priority_max: int | None = Field(default=None, description="Maximum priority")
   created_after: datetime | None = Field(
-    default=None, description="Filter by creation time (after)",
+    default=None,
+    description="Filter by creation time (after)",
   )
   created_before: datetime | None = Field(
-    default=None, description="Filter by creation time (before)",
+    default=None,
+    description="Filter by creation time (before)",
   )
   include_completed: bool = Field(
-    default=False, description="Include completed schedules",
+    default=False,
+    description="Include completed schedules",
   )
   include_cancelled: bool = Field(
-    default=False, description="Include cancelled schedules",
+    default=False,
+    description="Include cancelled schedules",
   )
   limit: int = Field(default=50, ge=1, le=1000, description="Maximum results")
   offset: int = Field(default=0, ge=0, description="Results offset")
@@ -337,49 +354,54 @@ class SchedulerMetricsResponse(PraxisBaseModel):
 
 class ScheduleListFilters(PraxisBaseModel):
 
-    """Model for filtering schedule lists."""
+  """Model for filtering schedule lists."""
 
-    search_filters: SearchFilters
-    status: list[ScheduleEntryStatus] | None = None
-    protocol_run_ids: list[uuid.UUID] | None = None
-    priority_min: int | None = None
-    priority_max: int | None = None
-    include_completed: bool = False
-    include_cancelled: bool = False
+  search_filters: SearchFilters
+  status: list[ScheduleEntryStatus] | None = None
+  protocol_run_ids: list[uuid.UUID] | None = None
+  priority_min: int | None = None
+  priority_max: int | None = None
+  include_completed: bool = False
+  include_cancelled: bool = False
 
 
 class ScheduleEntryCreate(PraxisBaseModel):
 
-    """Request model for creating a schedule entry."""
+  """Request model for creating a schedule entry."""
 
-    model_config = ConfigDict(from_attributes=True)
+  model_config = ConfigDict(from_attributes=True)
 
-    protocol_run_accession_id: uuid.UUID = Field(
-        ..., description="ID of the protocol run to schedule",
-    )
-    priority: int = Field(default=1, description="Schedule priority (1-10)")
-    estimated_duration_ms: int | None = Field(
-        default=None, description="Estimated execution duration",
-    )
-    required_asset_count: int | None = Field(
-        default=None, description="Estimated number of assets required",
-    )
-    asset_requirements_json: dict[str, Any] | None = Field(
-        default=None, description="Asset requirements analysis results",
-    )
-    user_params_json: dict[str, Any] | None = Field(
-        default=None, description="User-provided scheduling parameters",
-    )
+  protocol_run_accession_id: uuid.UUID = Field(
+    ...,
+    description="ID of the protocol run to schedule",
+  )
+  priority: int = Field(default=1, description="Schedule priority (1-10)")
+  estimated_duration_ms: int | None = Field(
+    default=None,
+    description="Estimated execution duration",
+  )
+  required_asset_count: int | None = Field(
+    default=None,
+    description="Estimated number of assets required",
+  )
+  asset_requirements_json: dict[str, Any] | None = Field(
+    default=None,
+    description="Asset requirements analysis results",
+  )
+  user_params_json: dict[str, Any] | None = Field(
+    default=None,
+    description="User-provided scheduling parameters",
+  )
 
 
 class ScheduleEntryUpdate(PraxisBaseModel):
 
-    """Request model for updating a schedule entry."""
+  """Request model for updating a schedule entry."""
 
-    model_config = ConfigDict(from_attributes=True)
+  model_config = ConfigDict(from_attributes=True)
 
-    status: ScheduleEntryStatus | None = None
-    priority: int | None = None
-    last_error_message: str | None = None
-    execution_started_at: datetime | None = None
-    execution_completed_at: datetime | None = None
+  status: ScheduleEntryStatus | None = None
+  priority: int | None = None
+  last_error_message: str | None = None
+  execution_started_at: datetime | None = None
+  execution_completed_at: datetime | None = None

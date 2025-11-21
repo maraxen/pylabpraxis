@@ -75,7 +75,8 @@ class PraxisRunContext:
     return current_val
 
   def create_context_for_nested_call(
-    self, new_parent_call_log_db_accession_id: uuid.UUID | None,
+    self,
+    new_parent_call_log_db_accession_id: uuid.UUID | None,
   ) -> "PraxisRunContext":
     """Prepare context for a nested function call.
 
@@ -124,9 +125,7 @@ def serialize_arguments(args: tuple, kwargs: dict) -> str:
     cleaned_args = [make_serializable(arg) for arg in args]
     # Filter out __praxis_run_context__ from kwargs before serialization
     cleaned_kwargs = {
-      k: make_serializable(v)
-      for k, v in kwargs.items()
-      if k != "__praxis_run_context__"
+      k: make_serializable(v) for k, v in kwargs.items() if k != "__praxis_run_context__"
     }
 
     return json.dumps({"args": cleaned_args, "kwargs": cleaned_kwargs}, default=str)

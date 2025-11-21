@@ -18,13 +18,13 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.models.orm.protocol import (
   FunctionCallLogOrm,
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.models.pydantic_internals.protocol import (
   ProtocolRunCreate,
   ProtocolRunStatusEnum,
@@ -48,7 +48,6 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: ProtocolRunCreate) -> ProtocolRunOrm:
     """Create a new protocol run instance."""
-
     logger.info(
       "Creating new protocol run with GUID '%s' for definition ID %s.",
       obj_in.run_accession_id,
@@ -56,19 +55,20 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     )
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     # Exclude start_time from model_dump since we're setting it manually
-    data = obj_in.model_dump(exclude={'start_time'})
+    data = obj_in.model_dump(exclude={"start_time"})
 
     # Map Pydantic field name to ORM field name
-    if 'run_accession_id' in data:
-      data['accession_id'] = data.pop('run_accession_id')
+    if "run_accession_id" in data:
+      data["accession_id"] = data.pop("run_accession_id")
 
     # Extract accession_id before filtering (since it has init=False in Base)
-    accession_id = data.pop('accession_id', None)
+    accession_id = data.pop("accession_id", None)
 
     # Filter to only valid constructor parameters
-    import inspect as py_inspect
-    from sqlalchemy import inspect as sa_inspect
     import enum
+    import inspect as py_inspect
+
+    from sqlalchemy import inspect as sa_inspect
 
     init_signature = py_inspect.signature(self.model.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
@@ -76,7 +76,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
 
     # Convert enum string values back to enum members for SQLAlchemy
     for attr_name, column in sa_inspect(self.model).columns.items():
-      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+      if attr_name in filtered_data and hasattr(column.type, "enum_class"):
         enum_class = column.type.enum_class
         if enum_class and issubclass(enum_class, enum.Enum):
           value = filtered_data[attr_name]
@@ -87,7 +87,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
                 break
 
     # Use the converted status value for the PENDING check
-    status_value = filtered_data.get('status', obj_in.status)
+    status_value = filtered_data.get("status", obj_in.status)
     db_protocol_run = self.model(
       **filtered_data,
       start_time=utc_now if status_value != ProtocolRunStatusEnum.PENDING else None,
@@ -279,56 +279,56 @@ protocol_run_service = ProtocolRunService(ProtocolRunOrm)
 
 @handle_db_transaction
 async def log_function_call_start(
-    db: AsyncSession,
-    protocol_run_orm_accession_id: uuid.UUID,
-    function_definition_accession_id: uuid.UUID,
-    sequence_in_run: int,
-    input_args_json: str,
-    parent_function_call_log_accession_id: uuid.UUID | None = None,
+  db: AsyncSession,
+  protocol_run_orm_accession_id: uuid.UUID,
+  function_definition_accession_id: uuid.UUID,
+  sequence_in_run: int,
+  input_args_json: str,
+  parent_function_call_log_accession_id: uuid.UUID | None = None,
 ) -> FunctionCallLogOrm:
-    """Log the start of a function call."""
-    call_id = uuid7()
-    db_obj = FunctionCallLogOrm(
-        accession_id=call_id,
-        name=f"call_{call_id}",  # kw_only from Base
-        protocol_run_accession_id=protocol_run_orm_accession_id,
-        function_protocol_definition_accession_id=function_definition_accession_id,
-        sequence_in_run=sequence_in_run,
-        input_args_json=json.loads(input_args_json),
-        parent_function_call_log_accession_id=parent_function_call_log_accession_id,
-        status=FunctionCallStatusEnum.SUCCESS,
-    )
-    db.add(db_obj)
-    await db.flush()
-    await db.refresh(db_obj)
-    return db_obj
+  """Log the start of a function call."""
+  call_id = uuid7()
+  db_obj = FunctionCallLogOrm(
+    accession_id=call_id,
+    name=f"call_{call_id}",  # kw_only from Base
+    protocol_run_accession_id=protocol_run_orm_accession_id,
+    function_protocol_definition_accession_id=function_definition_accession_id,
+    sequence_in_run=sequence_in_run,
+    input_args_json=json.loads(input_args_json),
+    parent_function_call_log_accession_id=parent_function_call_log_accession_id,
+    status=FunctionCallStatusEnum.SUCCESS,
+  )
+  db.add(db_obj)
+  await db.flush()
+  await db.refresh(db_obj)
+  return db_obj
 
 
 @handle_db_transaction
 async def log_function_call_end(
-    db: AsyncSession,
-    function_call_log_accession_id: uuid.UUID,
-    status: FunctionCallStatusEnum,
-    return_value_json: str | None = None,
-    error_message: str | None = None,
-    error_traceback: str | None = None,
-    duration_ms: float | None = None,
+  db: AsyncSession,
+  function_call_log_accession_id: uuid.UUID,
+  status: FunctionCallStatusEnum,
+  return_value_json: str | None = None,
+  error_message: str | None = None,
+  error_traceback: str | None = None,
+  duration_ms: float | None = None,
 ) -> FunctionCallLogOrm | None:
-    """Log the end of a function call."""
-    stmt = select(FunctionCallLogOrm).filter(
-        FunctionCallLogOrm.accession_id == function_call_log_accession_id
-    )
-    result = await db.execute(stmt)
-    db_obj = result.scalar_one_or_none()
-    if db_obj:
-        db_obj.status = status
-        db_obj.end_time = datetime.datetime.now(datetime.timezone.utc)
-        if return_value_json:
-            db_obj.return_value_json = json.loads(return_value_json)
-        db_obj.error_message_text = error_message
-        db_obj.error_traceback_text = error_traceback
-        if duration_ms:
-            db_obj.completed_duration_ms = int(duration_ms)
-        await db.flush()
-        await db.refresh(db_obj)
-    return db_obj
+  """Log the end of a function call."""
+  stmt = select(FunctionCallLogOrm).filter(
+    FunctionCallLogOrm.accession_id == function_call_log_accession_id,
+  )
+  result = await db.execute(stmt)
+  db_obj = result.scalar_one_or_none()
+  if db_obj:
+    db_obj.status = status
+    db_obj.end_time = datetime.datetime.now(datetime.timezone.utc)
+    if return_value_json:
+      db_obj.return_value_json = json.loads(return_value_json)
+    db_obj.error_message_text = error_message
+    db_obj.error_traceback_text = error_traceback
+    if duration_ms:
+      db_obj.completed_duration_ms = int(duration_ms)
+    await db.flush()
+    await db.refresh(db_obj)
+  return db_obj

@@ -4,6 +4,7 @@ This module provides a set of reusable functions to build SQLAlchemy queries
 based on a standardized SearchFilters model, promoting consistency and
 reducing boilerplate code in the service layer.
 """
+
 from datetime import datetime
 from typing import Any, TypeVar
 
@@ -14,6 +15,7 @@ from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.utils.db import Base
 
 BaseModel = TypeVar("BaseModel", bound=Base)
+
 
 def apply_pagination(query: Select, filters: SearchFilters) -> Select:
   """Apply limit and offset for pagination to a SQLAlchemy query.
@@ -98,7 +100,6 @@ def apply_property_filters(
     if isinstance(value, dict):
       conditions.append((key, value) in orm_model_properties_field.items())
     else:
-
       conditions.append(orm_model_properties_field[key].astext == str(value))
 
   if conditions:

@@ -9,8 +9,6 @@ import praxis.backend.services as svc
 from praxis.backend.core.asset_manager import AssetManager
 from praxis.backend.models import (
   FunctionProtocolDefinitionCreate,
-  MachineStatusEnum,
-  ResourceStatusEnum,
 )
 from praxis.backend.utils.errors import AssetAcquisitionError
 from praxis.backend.utils.logging import get_logger
@@ -19,6 +17,7 @@ logger = get_logger(__name__)
 
 
 class AssetAcquisitionMixin:
+
   """Mixin for asset acquisition and deck configuration."""
 
   # Type hints for dependencies

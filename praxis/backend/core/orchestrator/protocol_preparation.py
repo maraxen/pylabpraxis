@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 
 class ProtocolPreparationMixin:
+
   """Mixin for protocol preparation and argument processing."""
 
   # Type hints for dependencies expected from the main class

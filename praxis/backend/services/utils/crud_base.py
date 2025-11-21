@@ -96,8 +96,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     # Convert enum string values back to enum members for SQLAlchemy
     # This is necessary because jsonable_encoder converts enums to strings
     import enum
+
     for attr_name, column in inspect(self.model).columns.items():
-      if attr_name in filtered_data and hasattr(column.type, 'enum_class'):
+      if attr_name in filtered_data and hasattr(column.type, "enum_class"):
         enum_class = column.type.enum_class
         if enum_class and issubclass(enum_class, enum.Enum):
           value = filtered_data[attr_name]

@@ -46,7 +46,11 @@ class Notifier:
     self.smtp_password = smtp_password
 
   def send_email(
-    self, sender_email: str, recipient_email: str, subject: str, body: str,
+    self,
+    sender_email: str,
+    recipient_email: str,
+    subject: str,
+    body: str,
   ) -> None:
     """Send an email using the configured SMTP server.
 
@@ -67,7 +71,7 @@ class Notifier:
       with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
         server.login(self.smtp_username, self.smtp_password)
         server.send_message(message)
-    except Exception: # noqa: BLE001
+    except Exception:  # noqa: BLE001
       pass
 
   def send_text(

@@ -135,7 +135,6 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     default_factory=list,
   )
 
-
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
@@ -325,9 +324,6 @@ class ResourceOrm(AssetOrm):
     comment="Foreign key to the deck this resource is located on, if applicable.",
     default=None,
   )
-
-
-
 
   workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
