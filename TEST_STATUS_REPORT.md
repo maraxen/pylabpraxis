@@ -253,4 +253,4 @@ column decks.accession_id under attribute 'accession_id'
 - Test Setup Guide: `tests/README.md`
 - Testing Patterns: `tests/TESTING_PATTERNS.md`
 - Agent Guide: `AGENTS.md` (Section 4)
-- Testing Strategy: `prerelease_dev_docs/TESTING_STRATEGY.md`
+- Testing Strategy: `docs/testing.md`

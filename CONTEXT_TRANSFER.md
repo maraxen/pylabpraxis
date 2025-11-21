@@ -37,7 +37,7 @@ When starting a new session or taking over work, follow these steps:
 
 1.  **Review Core Documentation**:
     -   Read `AGENTS.md` to understand the project's development norms and standards.
-    -   Read `prerelease_dev_docs/ARCHITECTURE.md` to understand the system's design.
+    -   Read `docs/architecture.md` to understand the system's design.
 
 2.  **Review Historical Context**:
     -   Consult `agent_history.jsonl` to understand the evolution of the project and past agent contributions. As this is a JSONL file, you can search it programmatically without loading the entire file.

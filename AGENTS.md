@@ -15,7 +15,7 @@ The backend is organized into three main layers:
 2.  **Service Layer** (`praxis/backend/services/`): Contains the core business logic.
 3.  **Data Model Layer** (`praxis/backend/models/`): Defines Pydantic models for data structures and ORM models for database interaction.
 
-For a detailed breakdown of the architecture, refer to `prerelease_dev_docs/ARCHITECTURE.md`.
+For a detailed breakdown of the architecture, refer to `docs/architecture.md`.
 
 ## 3. Development Environment and Tooling
 
@@ -38,7 +38,7 @@ uv run ruff check .
 ## 4. Testing Strategy
 
 A robust testing strategy is critical to our project's success. Comprehensive documentation:
-- **Strategy Overview**: `prerelease_dev_docs/TESTING_STRATEGY.md`
+- **Strategy Overview**: `docs/testing.md`
 - **Setup Guide**: `tests/README.md`
 - **Pattern Examples**: `tests/TESTING_PATTERNS.md`
 
