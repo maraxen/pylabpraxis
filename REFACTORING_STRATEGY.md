@@ -10,7 +10,7 @@ Several core modules have grown too large (>700 lines) and would benefit from be
 |--------|-------|---------|--------|----------|
 | workcell_runtime.py | 1274 | 1 | NEEDS REFACTORING | HIGH |
 | orchestrator.py | 963 | 1 | NEEDS REFACTORING | HIGH |
-| asset_manager.py | 919 | 1 | NEEDS REFACTORING | HIGH |
+| asset_manager.py | 919 | 1 | COMPLETED | HIGH |
 | decorators.py | 735 | 2 | NEEDS REFACTORING | MEDIUM |
 | protocol_code_manager.py | 521 | 1 | CONSIDER REFACTORING | LOW |
 | scheduler.py | 407 | 1 | OK FOR NOW | - |
@@ -327,6 +327,29 @@ from .resource_manager import ResourceManagerMixin
 class WorkcellRuntime(MachineManagerMixin, ResourceManagerMixin):
     pass
 ```
+
+### 6. Detailed Step-by-Step Instructions (Example: asset_manager)
+
+1.  **Preparation**:
+    *   Run existing tests to ensure a clean state: `uv run pytest tests/core/test_asset_manager.py`.
+    *   Identify dependencies and imports in the original file.
+
+2.  **Structure Creation**:
+    *   Create the directory: `mkdir -p praxis/backend/core/asset_manager/`.
+    *   Create empty files for the submodules (e.g., `machine_manager.py`, `resource_manager.py`).
+
+3.  **Code Migration (Iterative)**:
+    *   **Step 3a**: Move self-contained logic first. For `asset_manager`, `LocationHandlerMixin` was moved to `location_handler.py`.
+    *   **Step 3b**: Move larger chunks of logic into Mixins. Ensure to add `TYPE_CHECKING` imports to avoid circular dependencies and provide type hints for the expected `self` attributes (e.g., `self.db`, `self.svc`).
+    *   **Step 3c**: Create `core.py` that defines the main class inheriting from these Mixins.
+
+4.  **Re-exporting**:
+    *   Create `__init__.py` to export the main class and any other public symbols (exceptions, loggers) that were previously available at the module level.
+
+5.  **Verification**:
+    *   Rename the original file (e.g., `asset_manager_OLD.py`) to avoid import conflicts.
+    *   Run tests again: `uv run pytest tests/core/test_asset_manager.py`.
+    *   If tests pass, delete the old file.
 
 ---
 

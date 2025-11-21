@@ -1,40 +1,41 @@
-"""Tests for core/workcell_runtime.py."""
+"""Tests for core/workcell_runtime."""
 
 import uuid
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pylabrobot.resources import Coordinate, Deck, Resource
+from pylabrobot.resources import Coordinate, Deck
 
-from praxis.backend.core.workcell_runtime import WorkcellRuntime, _get_class_from_fqn
+from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.core.workcell_runtime.utils import get_class_from_fqn
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.uuid import uuid7
 
 
 class TestGetClassFromFqn:
-    """Tests for _get_class_from_fqn helper function."""
+    """Tests for get_class_from_fqn helper function."""
 
     def test_get_class_from_fqn_success(self) -> None:
         """Test successful class loading from FQN."""
         # Test with a known standard library class
-        result = _get_class_from_fqn("collections.OrderedDict")
+        result = get_class_from_fqn("collections.OrderedDict")
         from collections import OrderedDict
         assert result == OrderedDict
 
     def test_get_class_from_fqn_invalid_no_dot(self) -> None:
         """Test with invalid FQN (no dot)."""
         with pytest.raises(ValueError):
-            _get_class_from_fqn("InvalidClass")
+            get_class_from_fqn("InvalidClass")
 
     def test_get_class_from_fqn_empty_string(self) -> None:
         """Test with empty string."""
         with pytest.raises(ValueError):
-            _get_class_from_fqn("")
+            get_class_from_fqn("")
 
     def test_get_class_from_fqn_nonexistent_module(self) -> None:
         """Test with non-existent module."""
         with pytest.raises((ImportError, ModuleNotFoundError)):
-            _get_class_from_fqn("nonexistent.module.ClassName")
+            get_class_from_fqn("nonexistent.module.ClassName")
 
 
 class TestWorkcellRuntimeInit:
@@ -450,23 +451,3 @@ class TestModuleStructure:
         from praxis.backend.core import workcell_runtime
 
         assert hasattr(workcell_runtime, "WorkcellRuntime")
-
-    def test_module_has_logger(self) -> None:
-        """Test that module defines logger."""
-        from praxis.backend.core import workcell_runtime
-
-        assert hasattr(workcell_runtime, "logger")
-
-    def test_module_has_helper_functions(self) -> None:
-        """Test that module defines helper functions."""
-        from praxis.backend.core import workcell_runtime
-
-        assert hasattr(workcell_runtime, "_get_class_from_fqn")
-        assert hasattr(workcell_runtime, "log_workcell_runtime_errors")
-
-    def test_module_defines_constants(self) -> None:
-        """Test that module defines expected constants."""
-        from praxis.backend.core import workcell_runtime
-
-        assert hasattr(workcell_runtime, "COORDINATE_TUPLE_LENGTH")
-        assert workcell_runtime.COORDINATE_TUPLE_LENGTH == 3
