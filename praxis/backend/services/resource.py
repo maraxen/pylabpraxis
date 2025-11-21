@@ -161,22 +161,44 @@ class ResourceService(CRUDBase[ResourceOrm, ResourceCreate, ResourceUpdate]):
 
     obj_in_model = ResourceUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
 
-    updated_resource = await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)
+    update_data = obj_in_model.model_dump(exclude_unset=True)
 
-    if "plr_state" in (
-      obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
-    ):
-      flag_modified(updated_resource, "plr_state")
+    # Exclude relationships and protected fields
+    for field in ["children", "parent", "created_at", "updated_at", "accession_id"]:
+        update_data.pop(field, None)
 
+    # Convert enum string values back to enum members for SQLAlchemy
+    import enum
+    from sqlalchemy import inspect as sa_inspect
+
+    for attr_name, column in sa_inspect(self.model).columns.items():
+      if attr_name in update_data and hasattr(column.type, 'enum_class'):
+        enum_class = column.type.enum_class
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = update_data[attr_name]
+          if isinstance(value, str):
+            for member in enum_class:
+              if member.value == value:
+                update_data[attr_name] = member
+                break
+
+    for field, value in update_data.items():
+      if hasattr(db_obj, field):
+        setattr(db_obj, field, value)
+
+    if "plr_state" in update_data:
+      flag_modified(db_obj, "plr_state")
+
+    db.add(db_obj)
     await db.flush()
     # Refresh with relationships loaded for serialization
-    await db.refresh(updated_resource, ["children", "parent", "resource_definition"])
+    await db.refresh(db_obj, ["children", "parent", "resource_definition"])
     logger.info(
       "Successfully updated resource ID %s: '%s'.",
-      updated_resource.accession_id,
-      updated_resource.name,
+      db_obj.accession_id,
+      db_obj.name,
     )
-    return updated_resource
+    return db_obj
 
   @handle_db_transaction
   async def remove(self, db: AsyncSession, *, accession_id: UUID) -> ResourceOrm | None:  # type: ignore[override]

@@ -189,7 +189,7 @@ async def test_resource_service_update_partial(db_session: AsyncSession) -> None
         name="partial_update",
         fqn="resources.partial",
         asset_type=AssetType.RESOURCE,
-        status=ResourceStatusEnum.RESERVED,
+        status=ResourceStatusEnum.IN_USE,
     )
     updated_resource = await resource_service.update(
         db_session,
@@ -197,7 +197,7 @@ async def test_resource_service_update_partial(db_session: AsyncSession) -> None
         obj_in=update_data,
     )
 
-    assert updated_resource.status == ResourceStatusEnum.RESERVED
+    assert updated_resource.status == ResourceStatusEnum.IN_USE
     assert updated_resource.location == original_location  # Unchanged
 
 
@@ -243,19 +243,26 @@ async def test_resource_service_with_resource_definition(db_session: AsyncSessio
     is complex. We'll just test that the field can be set.
     """
     from praxis.backend.utils.uuid import uuid7
+    from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
-    # Create resource with a fake definition ID (just to test field works)
-    fake_def_id = uuid7()
+    # Create a real resource definition
+    res_def = ResourceDefinitionOrm(
+        name="test_def",
+        fqn="test.def",
+    )
+    db_session.add(res_def)
+    await db_session.flush()
+
     resource_data = ResourceCreate(
         name="with_definition",
         fqn="resources.with_def",
         asset_type=AssetType.RESOURCE,
-        resource_definition_accession_id=fake_def_id,
+        resource_definition_accession_id=res_def.accession_id,
     )
 
     resource = await resource_service.create(db_session, obj_in=resource_data)
 
-    assert resource.resource_definition_accession_id == fake_def_id
+    assert resource.resource_definition_accession_id == res_def.accession_id
 
 
 @pytest.mark.asyncio

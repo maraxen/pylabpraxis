@@ -34,16 +34,11 @@ async def test_create_deck_remaps_machine_id():
     mock_db.flush = AsyncMock()
     mock_db.refresh = AsyncMock()
 
-    # 3. Call the service, mocking the DeckOrm model to capture its constructor args
-    with MagicMock() as mock_deck_orm_class:
-        # Temporarily replace the service's model with our mock
-        original_model = deck_service.model
-        deck_service.model = mock_deck_orm_class
+    # 3. Call the service
+    # We use the real DeckOrm model, so no need to mock the class.
+    # We will inspect the object passed to db.add() to verify the fields were set correctly.
 
-        await deck_service.create(db=mock_db, obj_in=mock_deck_create)
-
-        # Restore the original model
-        deck_service.model = original_model
+    await deck_service.create(db=mock_db, obj_in=mock_deck_create)
 
     # 4. Assertions
 
@@ -53,10 +48,11 @@ async def test_create_deck_remaps_machine_id():
     mock_db.flush.assert_awaited_once()
     mock_db.refresh.assert_awaited_once()
 
-    # Get the keyword args passed to the DeckOrm constructor
-    _, kwargs = mock_deck_orm_class.call_args
+    # Get the object passed to add
+    args, _ = mock_db.add.call_args
+    added_deck = args[0]
 
     # Check that the remapping was successful
-    assert "machine_id" not in kwargs
-    assert kwargs["parent_machine_accession_id"] == test_machine_id
-    assert kwargs["name"] == "test_deck"
+    # Note: DeckOrm uses parent_machine_accession_id, not machine_id
+    assert added_deck.parent_machine_accession_id == test_machine_id
+    assert added_deck.name == "test_deck"
