@@ -1,6 +1,19 @@
 """Utility functions for WorkcellRuntime."""
 
 import importlib
+from functools import partial
+
+from praxis.backend.utils.errors import WorkcellRuntimeError
+from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+
+logger = get_logger(__name__)
+
+log_workcell_runtime_errors = partial(
+  log_async_runtime_errors,
+  logger_instance=logger,
+  raises=True,
+  raises_exception=WorkcellRuntimeError,
+)
 
 
 def get_class_from_fqn(class_fqn: str) -> type:
