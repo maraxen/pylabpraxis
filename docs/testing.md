@@ -137,16 +137,34 @@ The following is a non-exhaustive list of key backend components and areas to fo
 
 ## Running Tests
 
-To run the test suite and generate a coverage report, use the following command:
+### Environment Setup
+
+**Local Development**:
+Tests require a PostgreSQL database.
+- **Default Port:** The test configuration in `praxis/backend/utils/db.py` defaults to `localhost:5433` if `TEST_DATABASE_URL` is not set.
+- **Recommended:** Run a dedicated test database container on port **5433** to avoid conflicts with local development instances running on the default port 5432.
+
+**CI Environment**:
+The CI workflow (`.github/workflows/ci.yml`) runs PostgreSQL on port **5432**.
+
+### Execution
+
+To run tests locally against a specific database (e.g., port 5433):
+```bash
+export TEST_DATABASE_URL="postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
+uv run pytest
+```
+
+To run the test suite and generate a coverage report:
 
 ```bash
-uv run pytest --cov=praxis/backend --cov-report=xml
+uv run pytest --cov=praxis/backend --cov-report=term-missing --cov-report=xml
 ```
 
 This command will:
 - Run `pytest` using the `uv` tool.
 - Generate a coverage report for the `praxis/backend` directory.
-- The coverage report will be in XML format.
+- output the report to the terminal and an XML file.
 
 ## Advanced Testing Practices
 
