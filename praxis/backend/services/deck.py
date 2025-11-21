@@ -60,11 +60,17 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     # Remap the Pydantic `machine_id` or `parent_accession_id` to the ORM's `parent_machine_accession_id`.
     # Don't keep parent_accession_id as it has FK constraint to resources table (machines are in machines table)
-    if machine_id := deck_data.pop("machine_id", None):
-      deck_data["parent_machine_accession_id"] = machine_id
-    elif parent_id := deck_data.pop("parent_accession_id", None):
-      # For decks, parent_accession_id actually refers to the parent machine
-      deck_data["parent_machine_accession_id"] = parent_id
+    machine_id_to_use = deck_data.pop("machine_id", None) or deck_data.pop("parent_accession_id", None)
+
+    if machine_id_to_use:
+      from praxis.backend.models import MachineOrm
+      machine = await db.get(MachineOrm, machine_id_to_use)
+      if machine:
+        deck_data["parent_machine"] = machine
+      else:
+        # Fallback to ID if machine not found (will likely cause FK violation or be cleared,
+        # but usually implies invalid ID)
+        deck_data["parent_machine_accession_id"] = machine_id_to_use
 
     # Filter to only valid constructor parameters
     import inspect as py_inspect
@@ -74,11 +80,6 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     init_signature = py_inspect.signature(self.model.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
     filtered_data = {key: value for key, value in deck_data.items() if key in valid_params}
-
-    logger.debug(f"DEBUG deck_data keys: {list(deck_data.keys())}")
-    logger.debug(f"DEBUG filtered_data keys: {list(filtered_data.keys())}")
-    logger.debug(f"DEBUG parent_accession_id in deck_data: {deck_data.get('parent_accession_id')}")
-    logger.debug(f"DEBUG parent_accession_id in filtered_data: {filtered_data.get('parent_accession_id')}")
 
     # Convert enum string values back to enum members for SQLAlchemy
     for attr_name, column in sa_inspect(self.model).columns.items():
@@ -94,17 +95,22 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     deck_orm = self.model(**filtered_data)
 
-    logger.debug(f"DEBUG After construction - parent_accession_id: {deck_orm.parent_accession_id}")
+    # Workaround for FKs not sticking in MappedAsDataclass hierarchy or joined inheritance
+    if "resource_definition_accession_id" in filtered_data:
+      from praxis.backend.models import ResourceDefinitionOrm
+      res_def = await db.get(ResourceDefinitionOrm, filtered_data["resource_definition_accession_id"])
+      if res_def:
+        deck_orm.resource_definition = res_def
+      else:
+        deck_orm.resource_definition_accession_id = filtered_data["resource_definition_accession_id"]
 
     if obj_in.plr_state:
       deck_orm.plr_state = obj_in.plr_state
 
     db.add(deck_orm)
     await db.flush()
-    logger.debug(f"DEBUG After flush - parent_accession_id: {deck_orm.parent_accession_id}")
     # Refresh the object to eager-load relationships required for the response model.
     await db.refresh(deck_orm, ["deck_type", "parent_machine"])
-    logger.debug(f"DEBUG After refresh - parent_accession_id: {deck_orm.parent_accession_id}")
     logger.info(
       "Successfully created deck '%s' with ID %s.",
       deck_orm.name,

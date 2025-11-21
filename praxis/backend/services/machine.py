@@ -61,14 +61,15 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     machine_orm = await super().create(db=db, obj_in=obj_in)
     logger.info("%s Initialized new machine for creation.", log_prefix)
 
-    await _create_or_link_resource_counterpart_for_machine(
-      db=db,
-      machine_orm=machine_orm,
-      resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
-      resource_definition_name=obj_in.resource_def_name,
-      resource_properties_json=obj_in.resource_properties_json,
-      resource_status=obj_in.resource_initial_status,
-    )
+    if obj_in.resource_counterpart_accession_id or obj_in.resource_def_name:
+      await _create_or_link_resource_counterpart_for_machine(
+        db=db,
+        machine_orm=machine_orm,
+        resource_counterpart_accession_id=obj_in.resource_counterpart_accession_id,
+        resource_definition_name=obj_in.resource_def_name,
+        resource_properties_json=obj_in.resource_properties_json,
+        resource_status=obj_in.resource_initial_status,
+      )
 
     await db.flush()
     await db.refresh(machine_orm)
