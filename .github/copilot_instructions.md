@@ -27,4 +27,4 @@ This guide provides a concise summary of key development norms. For full details
 
 ## 5. Architectural Principles
 -   **Layers**: The backend follows a standard API -> Service -> Data Model architecture.
--   **Documentation**: For in-depth architectural details, consult `prerelease_dev_docs/ARCHITECTURE.md`.
+-   **Documentation**: For in-depth architectural details, consult `docs/architecture.md`.

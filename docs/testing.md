@@ -230,3 +230,22 @@ Test multi-component workflows end-to-end.
 ## Continuous Improvement
 
 This testing strategy is a living document and will be updated as the project evolves. Regular review of test coverage and effectiveness is encouraged.
+
+## Known Issues & Troubleshooting
+
+The following configuration issues have been identified during initial testing and are documented here for reference.
+
+### 1. Pydantic `use_enum_values=True` Behavior
+
+*   **Description**: `PraxisBaseModel` uses `use_enum_values=True`. This causes enum fields to be stored as their string values rather than enum instances on the Pydantic model.
+*   **Impact**: When comparing Pydantic model fields in tests, compare against `Enum.VALUE.value` or the expected string, not the Enum member itself (e.g., `assert model.status == "active"` or `assert model.status == WorkcellStatusEnum.ACTIVE.value`, NOT `assert model.status == WorkcellStatusEnum.ACTIVE`).
+
+### 2. SQLAlchemy Relationship Overlap
+
+*   **Description**: `WorkcellOrm` has overlapping relationships between `resources` and `decks`.
+*   **Status**: Resolved by adding `overlaps="decks"` to the relationship definition. If new relationships are added, similar configuration might be needed.
+
+### 3. ResourceOrm Persistence Issue
+
+*   **Description**: `ResourceOrm` has a known issue where `resource_definition_accession_id` (a mandatory foreign key) may not persist correctly to the database in certain test scenarios due to complex inheritance and `MappedAsDataclass` behavior.
+*   **Workaround**: For now, unit tests involving `ResourceOrm` persistence might be limited or require careful setup. This is a known limitation of the current ORM architecture for this specific model.
