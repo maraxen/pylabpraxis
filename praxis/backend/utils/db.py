@@ -35,7 +35,10 @@ config_parser = ConfigParser()
 config_parser.read(CONFIG_FILE_PATH)
 
 if "PYTEST_CURRENT_TEST" in os.environ:
-    praxis_database_url = "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db"
+    praxis_database_url = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
+    )
 else:
     praxis_database_url = os.getenv("PRAXIS_DB_DSN")
 

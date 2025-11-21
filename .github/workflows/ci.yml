@@ -114,6 +114,7 @@ jobs:
     - name: Run tests
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/praxis_test
+        TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test
         REDIS_URL: redis://localhost:6379
       run: |
         source $HOME/.cargo/env

@@ -12,6 +12,7 @@ readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
     "typing_extensions",
+    "inflection",
     "pylabrobot @ git+https://github.com/pylabrobot/pylabrobot.git@main",
     "pydantic>=2.0.0",
     "sqlalchemy[asyncio]",
