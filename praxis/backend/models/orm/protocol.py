@@ -716,7 +716,7 @@ class FunctionCallLogOrm(Base):
     comment="Foreign key to the function protocol definition that this call executes.",
     kw_only=True,
   )
-  parent_function_call_log_accession_id: Mapped[UUID | None] = mapped_column(
+  parent_function_call_log_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("function_call_logs.accession_id"),
     nullable=True,
@@ -784,7 +784,6 @@ class FunctionCallLogOrm(Base):
     back_populates="child_calls",
     foreign_keys=[parent_function_call_log_accession_id],
     remote_side="FunctionCallLogOrm.accession_id",
-    default=None,
     init=False,
   )
   child_calls: Mapped[list["FunctionCallLogOrm"]] = relationship(

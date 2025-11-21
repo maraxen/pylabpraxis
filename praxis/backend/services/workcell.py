@@ -144,12 +144,12 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
 
   async def read_workcell_state(
     self,
-    db_session: AsyncSession,
+    db: AsyncSession,
     workcell_accession_id: uuid.UUID,
   ) -> dict[str, Any] | None:
     """Retrieve the latest JSON-serialized state of a workcell from the database."""
     try:
-      workcell_orm = await db_session.get(self.model, workcell_accession_id)
+      workcell_orm = await db.get(self.model, workcell_accession_id)
       if workcell_orm and workcell_orm.latest_state_json:
         logger.debug(
           "Retrieved workcell state from DB for ID %s.",
@@ -172,12 +172,12 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
   @handle_db_transaction
   async def update_workcell_state(
     self,
-    db_session: AsyncSession,
+    db: AsyncSession,
     workcell_accession_id: uuid.UUID,
     state_json: dict[str, Any],
   ) -> WorkcellOrm:
     """Update the latest_state_json for a specific WorkcellOrm entry."""
-    workcell_orm = await db_session.get(self.model, workcell_accession_id)
+    workcell_orm = await db.get(self.model, workcell_accession_id)
     if not workcell_orm:
       msg = f"WorkcellOrm with ID {workcell_accession_id} not found for state update."
       raise ValueError(
@@ -188,8 +188,8 @@ class WorkcellService(CRUDBase[WorkcellOrm, WorkcellCreate, WorkcellUpdate]):
     workcell_orm.last_state_update_time = datetime.datetime.now(
       datetime.timezone.utc,
     )
-    await db_session.merge(workcell_orm)
-    await db_session.flush()
+    await db.merge(workcell_orm)
+    await db.flush()
     logger.debug(
       "Workcell state for ID %s updated in DB.",
       workcell_accession_id,

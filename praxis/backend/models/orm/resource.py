@@ -209,7 +209,6 @@ class ResourceOrm(AssetOrm):
   resource_definition: Mapped["ResourceDefinitionOrm"] = relationship(
     "ResourceDefinitionOrm",
     back_populates="resource_list",
-    default=None,
     uselist=False,
     foreign_keys=[resource_definition_accession_id],
     init=False,
@@ -229,7 +228,6 @@ class ResourceOrm(AssetOrm):
     back_populates="children",
     foreign_keys=[parent_accession_id],
     uselist=False,
-    default=None,
     init=False,
   )
 
@@ -277,7 +275,6 @@ class ResourceOrm(AssetOrm):
   machine_counterpart: Mapped["MachineOrm | None"] = relationship(
     "MachineOrm",
     back_populates="resource_counterpart",
-    default=None,
     uselist=False,
     primaryjoin="ResourceOrm.accession_id == foreign(MachineOrm.accession_id)",
     viewonly=True,
@@ -286,7 +283,6 @@ class ResourceOrm(AssetOrm):
   deck_counterpart: Mapped["DeckOrm | None"] = relationship(
     "DeckOrm",
     back_populates="resource_counterpart",
-    default=None,
     uselist=False,
     foreign_keys=[accession_id],
     init=False,
@@ -317,7 +313,6 @@ class ResourceOrm(AssetOrm):
     "MachineOrm",
     back_populates="located_resource",
     uselist=False,
-    default=None,
     foreign_keys=[machine_location_accession_id],
     init=False,
   )
@@ -349,7 +344,6 @@ class ResourceOrm(AssetOrm):
     uselist=False,
     foreign_keys=[workcell_accession_id],
     init=False,
-    default=None,
   )
 
   deck: Mapped["DeckOrm | None"] = relationship(
@@ -358,7 +352,6 @@ class ResourceOrm(AssetOrm):
     uselist=False,
     foreign_keys=[deck_accession_id],
     init=False,
-    default=None,
   )
 
   def __repr__(self) -> str:
