@@ -386,7 +386,7 @@ class TestHandlePreExecutionChecks:
 
         mock_db_session = AsyncMock()
 
-        with patch("praxis.backend.core.orchestrator.get_control_command", return_value=None):
+        with patch("praxis.backend.core.orchestrator.execution.get_control_command", return_value=None):
             # Should complete without error
             await orchestrator._handle_pre_execution_checks(
                 mock_protocol_run,
@@ -409,9 +409,9 @@ class TestHandlePreExecutionChecks:
 
         mock_db_session = AsyncMock()
 
-        with patch("praxis.backend.core.orchestrator.get_control_command", AsyncMock(return_value="CANCEL")):
-            with patch("praxis.backend.core.orchestrator.clear_control_command", AsyncMock()):
-                with patch("praxis.backend.core.orchestrator.svc.update_protocol_run_status", AsyncMock()):
+        with patch("praxis.backend.core.orchestrator.execution.get_control_command", AsyncMock(return_value="CANCEL")):
+            with patch("praxis.backend.core.orchestrator.execution.clear_control_command", AsyncMock()):
+                with patch("praxis.backend.core.orchestrator.execution.svc.update_protocol_run_status", AsyncMock()):
                     with pytest.raises(ProtocolCancelledError):
                         await orchestrator._handle_pre_execution_checks(
                             mock_protocol_run,
@@ -442,7 +442,7 @@ class TestInitializeRunContext:
         orchestrator.workcell_runtime.get_state_snapshot = Mock(return_value={"snapshot": "data"})
 
         # Mock PraxisState to avoid Redis
-        with patch("praxis.backend.core.orchestrator.PraxisState") as mock_state_class:
+        with patch("praxis.backend.core.orchestrator.protocol_preparation.PraxisState") as mock_state_class:
             mock_state = Mock()
             mock_state.update = Mock()
             mock_state.set = AsyncMock()
@@ -476,7 +476,7 @@ class TestGetProtocolDefinitionOrmFromDb:
         mock_db_session = AsyncMock()
 
         with patch(
-            "praxis.backend.core.orchestrator.svc.read_protocol_definition_by_name",
+            "praxis.backend.core.orchestrator.protocol_preparation.svc.read_protocol_definition_by_name",
             AsyncMock(return_value=mock_protocol_def),
         ):
             result = await orchestrator._get_protocol_definition_orm_from_db(
