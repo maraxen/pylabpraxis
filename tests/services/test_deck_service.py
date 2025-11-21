@@ -153,6 +153,11 @@ async def test_remove_deck(db_session: AsyncSession) -> None:
     retrieved = await deck_service.get(db=db_session, accession_id=created.accession_id)
     assert retrieved is None
 
+    # 3. Call the service
+    # We use the real DeckOrm model, so no need to mock the class.
+    # We will inspect the object passed to db.add() to verify the fields were set correctly.
+
+    await deck_service.create(db=mock_db, obj_in=mock_deck_create)
 @pytest.mark.asyncio
 async def test_read_decks_by_machine_id(db_session: AsyncSession) -> None:
     """Test reading decks for a given machine."""
@@ -182,6 +187,14 @@ async def test_get_all_decks(db_session: AsyncSession) -> None:
     res_def = await create_resource_definition(db_session, "All Decks Res Def")
     deck_def = await create_deck_definition(db_session, "All Decks Type Def")
 
+    # Get the object passed to add
+    args, _ = mock_db.add.call_args
+    added_deck = args[0]
+
+    # Check that the remapping was successful
+    # Note: DeckOrm uses parent_machine_accession_id, not machine_id
+    assert added_deck.parent_machine_accession_id == test_machine_id
+    assert added_deck.name == "test_deck"
     await deck_service.create(db=db_session, obj_in=DeckCreate(
         name="Deck A",
         asset_type=AssetType.DECK,
