@@ -50,13 +50,13 @@ class ExecutionMixin:
     db_session: AsyncSession,
   ) -> None:
     """Handle pause/cancel commands before main execution starts."""
-    run_accession_id = protocol_run_orm.run_accession_id
+    run_accession_id = protocol_run_orm.accession_id
     command = await get_control_command(run_accession_id)
 
     if command == "PAUSE":
       logger.info("ORCH: Run %s PAUSED before execution.", run_accession_id)
       await clear_control_command(run_accession_id)
-      await svc.update_protocol_run_status(
+      await svc.update_run_status(
         db_session,
         protocol_run_orm.accession_id,
         ProtocolRunStatusEnum.PAUSED,
@@ -68,7 +68,7 @@ class ExecutionMixin:
         if new_command == "RESUME":
           logger.info("ORCH: Run %s RESUMING.", run_accession_id)
           await clear_control_command(run_accession_id)
-          await svc.update_protocol_run_status(
+          await svc.update_run_status(
             db_session,
             protocol_run_orm.accession_id,
             ProtocolRunStatusEnum.RUNNING,
@@ -78,7 +78,7 @@ class ExecutionMixin:
         if new_command == "CANCEL":
           logger.info("ORCH: Run %s CANCELLED during pause.", run_accession_id)
           await clear_control_command(run_accession_id)
-          await svc.update_protocol_run_status(
+          await svc.update_run_status(
             db_session,
             protocol_run_orm.accession_id,
             ProtocolRunStatusEnum.CANCELLED,
@@ -90,7 +90,7 @@ class ExecutionMixin:
     elif command == "CANCEL":
       logger.info("ORCH: Run %s CANCELLED before execution.", run_accession_id)
       await clear_control_command(run_accession_id)
-      await svc.update_protocol_run_status(
+      await svc.update_run_status(
         db_session,
         protocol_run_orm.accession_id,
         ProtocolRunStatusEnum.CANCELLED,
@@ -110,7 +110,7 @@ class ExecutionMixin:
     db_session: AsyncSession,
   ) -> tuple[Any, dict[uuid.UUID, Any]]:  # Return result and acquired_assets_info
     """Execute the core protocol logic, including asset acquisition and function call."""
-    run_accession_id = protocol_run_orm.run_accession_id
+    run_accession_id = protocol_run_orm.accession_id
 
     callable_protocol_func, protocol_pydantic_def = await self._prepare_protocol_code(
       protocol_def_orm,
@@ -244,7 +244,7 @@ class ExecutionMixin:
       # Update status to RUNNING if not already cancelled/paused
       await db_session.refresh(protocol_run_db_obj)
       if protocol_run_db_obj.status == ProtocolRunStatusEnum.PREPARING:
-        await svc.update_protocol_run_status(
+        await svc.update_run_status(
           db_session,
           protocol_run_db_obj.accession_id,
           ProtocolRunStatusEnum.RUNNING,
@@ -263,7 +263,7 @@ class ExecutionMixin:
           run_context,
           db_session,
         )
-        await svc.update_protocol_run_status(
+        await svc.update_run_status(
           db_session,
           protocol_run_db_obj.accession_id,
           ProtocolRunStatusEnum.COMPLETED,
@@ -332,7 +332,7 @@ class ExecutionMixin:
       if not protocol_run_orm.top_level_protocol_definition:
         error_msg = f"Protocol definition not found for run {run_accession_id}"
         logger.error(error_msg)
-        await svc.update_protocol_run_status(
+        await svc.update_run_status(
           db_session,
           run_accession_id,
           ProtocolRunStatusEnum.FAILED,
@@ -365,7 +365,7 @@ class ExecutionMixin:
         ProtocolRunStatusEnum.PREPARING,
         ProtocolRunStatusEnum.QUEUED,
       ]:
-        await svc.update_protocol_run_status(
+        await svc.update_run_status(
           db_session,
           protocol_run_orm.accession_id,
           ProtocolRunStatusEnum.RUNNING,
@@ -384,7 +384,7 @@ class ExecutionMixin:
           run_context,
           db_session,
         )
-        await svc.update_protocol_run_status(
+        await svc.update_run_status(
           db_session,
           protocol_run_orm.accession_id,
           ProtocolRunStatusEnum.COMPLETED,

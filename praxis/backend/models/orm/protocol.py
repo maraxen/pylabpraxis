@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 if TYPE_CHECKING:
   from . import (
+    AssetReservationOrm,
     DeckDefinitionOrm,
     FunctionCallLogOrm,
     FunctionDataOutputOrm,
@@ -284,13 +285,13 @@ class FunctionProtocolDefinitionOrm(Base):
     cascade="all, delete-orphan",
     default_factory=list,
   )
-  source_repository: Mapped["ProtocolSourceRepositoryOrm"] = relationship(
+  source_repository: Mapped["ProtocolSourceRepositoryOrm | None"] = relationship(
     "ProtocolSourceRepositoryOrm",
     back_populates="function_protocol_definitions",
     foreign_keys=[source_repository_accession_id],
     kw_only=True,
   )
-  file_system_source: Mapped["FileSystemProtocolSourceOrm"] = relationship(
+  file_system_source: Mapped["FileSystemProtocolSourceOrm | None"] = relationship(
     "FileSystemProtocolSourceOrm",
     back_populates="function_protocol_definitions",
     foreign_keys=[file_system_source_accession_id],
@@ -734,6 +735,13 @@ class FunctionCallLogOrm(Base):
     DateTime(timezone=True),
     nullable=True,
     comment="The end time of the function call, automatically set when the call is completed.",
+    default=None,
+    init=False,
+  )
+  duration_ms: Mapped[int | None] = mapped_column(
+    Integer,
+    nullable=True,
+    comment="Duration of the function call in milliseconds.",
     default=None,
     init=False,
   )

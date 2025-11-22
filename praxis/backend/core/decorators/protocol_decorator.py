@@ -7,7 +7,7 @@ import time
 import traceback
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel as PydanticBaseModel
 from pylabrobot.resources import Deck, Resource
@@ -113,6 +113,10 @@ async def _process_wrapper_arguments(
   _func: Callable,
 ) -> tuple[uuid.UUID, PraxisRunContext, contextvars.Token]:
   this_function_def_db_accession_id = current_meta.db_accession_id
+  if this_function_def_db_accession_id is None:
+    msg = "Function definition DB accession ID is missing."
+    raise ValueError(msg)
+
   state_details = current_meta.found_state_param_details
 
   if state_details:
@@ -209,7 +213,7 @@ def protocol_function(
         top_level_name_format=top_level_name_format,
       ),
     )
-    func._protocol_definition = protocol_definition
+    cast("Any", func)._protocol_definition = protocol_definition
 
     # TODO: The protocol registration should be handled by a discovery service.
     # _register_protocol(protocol_definition, func, found_state_param_details)
@@ -221,7 +225,7 @@ def protocol_function(
       function_ref=func,
       found_state_param_details=found_state_param_details,
     )
-    func._protocol_runtime_info = protocol_runtime_info
+    cast("Any", func)._protocol_runtime_info = protocol_runtime_info
 
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -367,7 +371,7 @@ async def _handle_pause_state(
     if command == "INTERVENE":
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING during pause.", run_accession_id)
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.INTERVENING,
@@ -413,13 +417,13 @@ async def _handle_control_commands(
     if command == "PAUSE":
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s PAUSING.", run_accession_id)
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.PAUSING,
       )
       await db_session.commit()
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.PAUSED,
@@ -431,13 +435,13 @@ async def _handle_control_commands(
       if next_command == "RESUME":
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s RESUMING.", run_accession_id)
-        await protocol_run_service.update_protocol_run_status(
+        await protocol_run_service.update_run_status(
           db_session,
           run_accession_id,
           ProtocolRunStatusEnum.RESUMING,
         )
         await db_session.commit()
-        await protocol_run_service.update_protocol_run_status(
+        await protocol_run_service.update_run_status(
           db_session,
           run_accession_id,
           ProtocolRunStatusEnum.RUNNING,
@@ -448,13 +452,13 @@ async def _handle_control_commands(
       if next_command == "CANCEL":
         await clear_control_command(run_accession_id)
         logger.info("Protocol run %s CANCELLING after pause.", run_accession_id)
-        await protocol_run_service.update_protocol_run_status(
+        await protocol_run_service.update_run_status(
           db_session,
           run_accession_id,
           ProtocolRunStatusEnum.CANCELING,
         )
         await db_session.commit()
-        await protocol_run_service.update_protocol_run_status(
+        await protocol_run_service.update_run_status(
           db_session,
           run_accession_id,
           ProtocolRunStatusEnum.CANCELLED,
@@ -467,13 +471,13 @@ async def _handle_control_commands(
     elif command == "CANCEL":
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s CANCELLING.", run_accession_id)
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.CANCELING,
       )
       await db_session.commit()
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.CANCELLED,
@@ -486,7 +490,7 @@ async def _handle_control_commands(
     elif command == "INTERVENE":
       await clear_control_command(run_accession_id)
       logger.info("Protocol run %s INTERVENING.", run_accession_id)
-      await protocol_run_service.update_protocol_run_status(
+      await protocol_run_service.update_run_status(
         db_session,
         run_accession_id,
         ProtocolRunStatusEnum.INTERVENING,

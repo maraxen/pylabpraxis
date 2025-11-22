@@ -88,7 +88,7 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     # Convert enum string values back to enum members for SQLAlchemy
     for attr_name, column in sa_inspect(self.model).columns.items():
       if attr_name in filtered_data and hasattr(column.type, "enum_class"):
-        enum_class = column.type.enum_class
+        enum_class = getattr(column.type, "enum_class", None)
         if enum_class and issubclass(enum_class, enum.Enum):
           value = filtered_data[attr_name]
           if isinstance(value, str):

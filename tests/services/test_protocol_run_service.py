@@ -416,8 +416,8 @@ async def test_protocol_run_service_update_status_to_completed(
     assert updated.end_time is not None
     assert updated.start_time == start_time
     # Duration should be calculated
-    assert updated.completed_duration_ms is not None
-    assert updated.completed_duration_ms > 0
+    assert updated.duration_ms is not None
+    assert updated.duration_ms > 0
     # Output data should be stored
     assert updated.output_data_json == output_data
     assert updated.final_state_json == final_state
@@ -622,7 +622,7 @@ async def test_log_function_call_end_success(
     assert completed_call.status == FunctionCallStatusEnum.SUCCESS
     assert completed_call.end_time is not None
     assert completed_call.return_value_json == return_value
-    assert completed_call.completed_duration_ms == 150
+    assert completed_call.duration_ms == 150
 
 
 @pytest.mark.asyncio
@@ -775,8 +775,8 @@ async def test_protocol_run_service_full_lifecycle(
     assert run.start_time == start_time
     assert run.end_time is not None
     assert run.end_time > run.start_time
-    assert run.completed_duration_ms is not None
-    assert run.completed_duration_ms > 0
+    assert run.duration_ms is not None
+    assert run.duration_ms > 0
     assert run.input_parameters_json == {"volume": 100}
     assert run.output_data_json == {"success": True, "total_transferred": 98.5}
     assert run.initial_state_json == {"tip_count": 96}

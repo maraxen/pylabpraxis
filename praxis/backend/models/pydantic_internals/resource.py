@@ -62,7 +62,10 @@ class ResourceUpdate(ResourceBase, AssetUpdate):
   """Model for updating a resource instance."""
 
   # Override asset_type to make it optional for updates (shouldn't change during update)
-  asset_type: AssetType | None = Field(None, description="The type of the asset.")
+  asset_type: AssetType | None = Field(default=None, description="The type of the asset.")
+  current_protocol_run_accession_id: UUID7 | None = Field(default=None)
+  machine_location_accession_id: UUID7 | None = Field(default=None)
+  current_deck_position_name: str | None = Field(default=None)
 
 
 class ResourceResponse(AssetResponse, ResourceBase):

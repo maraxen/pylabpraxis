@@ -4,7 +4,7 @@
 
 import importlib
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pylabrobot.resources import Deck
 
@@ -22,6 +22,7 @@ from praxis.backend.utils.logging import get_logger
 if TYPE_CHECKING:
   from sqlalchemy.ext.asyncio import AsyncSession
 
+  from praxis.backend.core.asset_manager.location_handler import LocationHandlerMixin
   from praxis.backend.core.protocols.workcell_runtime import IWorkcellRuntime
   from praxis.backend.services.resource import ResourceService
   from praxis.backend.services.resource_type_definition import (
@@ -225,7 +226,7 @@ class ResourceManagerMixin:
       target_deck_resource_accession_id,
       target_position_name,
       final_status_details,
-    ) = await self._handle_location_constraints(
+    ) = await cast("LocationHandlerMixin", self)._handle_location_constraints(
       is_acquiring_a_deck_resource,
       resource_data.location_constraints,
       resource_to_acquire,

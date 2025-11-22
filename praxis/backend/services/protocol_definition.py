@@ -1,5 +1,7 @@
 """Service layer for Protocol Definition management."""
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -131,7 +133,9 @@ class ProtocolDefinitionCRUDService(
     )
     return protocol_def
 
-  async def get(self, db: AsyncSession, *, accession_id) -> FunctionProtocolDefinitionOrm | None:
+  async def get(
+    self, db: AsyncSession, accession_id: uuid.UUID,
+  ) -> FunctionProtocolDefinitionOrm | None:
     """Get a single protocol definition by ID with eager loaded relationships."""
     stmt = (
       select(self.model)
@@ -209,8 +213,8 @@ class ProtocolDefinitionCRUDService(
     stmt = select(self.model).filter(self.model.name == name)
     if version:
       stmt = stmt.filter(self.model.version == version)
-    if source_name:
-      stmt = stmt.filter(self.model.source_name == source_name)
+    # if source_name:
+    #   stmt = stmt.filter(self.model.source_name == source_name)
     if commit_hash:
       stmt = stmt.filter(self.model.commit_hash == commit_hash)
     result = await db.execute(stmt)

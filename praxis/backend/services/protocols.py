@@ -77,7 +77,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     # Convert enum string values back to enum members for SQLAlchemy
     for attr_name, column in sa_inspect(self.model).columns.items():
       if attr_name in filtered_data and hasattr(column.type, "enum_class"):
-        enum_class = column.type.enum_class
+        enum_class = getattr(column.type, "enum_class", None)
         if enum_class and issubclass(enum_class, enum.Enum):
           value = filtered_data[attr_name]
           if isinstance(value, str):
@@ -234,11 +234,11 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
         )
         if db_protocol_run.start_time is not None and db_protocol_run.end_time is not None:
           duration = db_protocol_run.end_time - db_protocol_run.start_time  # type: ignore[optional]
-          db_protocol_run.completed_duration_ms = int(duration.total_seconds() * 1000)
+          db_protocol_run.duration_ms = int(duration.total_seconds() * 1000)
           logger.debug(
             "Protocol run ID %s duration: %d ms.",
             protocol_run_accession_id,
-            db_protocol_run.completed_duration_ms,
+            db_protocol_run.duration_ms,
           )
         if output_data_json is not None:
           db_protocol_run.output_data_json = json.loads(output_data_json)
@@ -328,7 +328,7 @@ async def log_function_call_end(
     db_obj.error_message_text = error_message
     db_obj.error_traceback_text = error_traceback
     if duration_ms:
-      db_obj.completed_duration_ms = int(duration_ms)
+      db_obj.duration_ms = int(duration_ms)
     await db.flush()
     await db.refresh(db_obj)
   return db_obj
