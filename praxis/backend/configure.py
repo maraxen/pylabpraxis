@@ -165,6 +165,7 @@ class PraxisConfiguration:
     """Return the log file path."""
     return self._logging_section.get("logfile", "/var/log/praxis/praxis.log")
 
+  @property
   def _output_directories_section(self) -> dict[str, str]:
     """Return the 'output_directories' section as a dictionary."""
     return self._get_section_dict("output_directories")

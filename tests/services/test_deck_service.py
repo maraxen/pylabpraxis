@@ -1,18 +1,18 @@
 """Unit tests for DeckService."""
-import pytest
-import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from praxis.backend.services.deck import deck_service
-from praxis.backend.services.machine import machine_service
-from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
-from praxis.backend.models.pydantic_internals.machine import MachineCreate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from praxis.backend.models.enums.asset import AssetType
 from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
-from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
+from praxis.backend.models.orm.deck import DeckDefinitionOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.machine import MachineCreate
+from praxis.backend.services.deck import deck_service
+from praxis.backend.services.machine import machine_service
+
 
 async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinitionOrm:
     """Helper to create a resource definition."""
@@ -20,7 +20,7 @@ async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDef
         name=name,
         fqn="com.example.Resource",
         resource_type="Generic",
-        is_consumable=False
+        is_consumable=False,
     )
     db.add(definition)
     await db.flush()
@@ -32,7 +32,7 @@ async def create_deck_definition(db: AsyncSession, name: str) -> DeckDefinitionO
     definition = DeckDefinitionOrm(
         name=name,
         fqn="pylabrobot.decks.Deck",
-        plr_category="Deck"
+        plr_category="Deck",
     )
     db.add(definition)
     await db.flush()
@@ -75,7 +75,7 @@ async def test_get_deck(db_session: AsyncSession) -> None:
         name="Get Deck",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     )
     created = await deck_service.create(db=db_session, obj_in=deck_in)
 
@@ -94,13 +94,13 @@ async def test_get_multi_decks(db_session: AsyncSession) -> None:
         name="Deck 1",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     ))
     await deck_service.create(db=db_session, obj_in=DeckCreate(
         name="Deck 2",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     ))
 
     filters = SearchFilters()
@@ -120,7 +120,7 @@ async def test_update_deck(db_session: AsyncSession) -> None:
         name="Update Deck",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     )
     created = await deck_service.create(db=db_session, obj_in=deck_in)
 
@@ -143,7 +143,7 @@ async def test_remove_deck(db_session: AsyncSession) -> None:
         name="Remove Deck",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     )
     created = await deck_service.create(db=db_session, obj_in=deck_in)
 
@@ -153,11 +153,6 @@ async def test_remove_deck(db_session: AsyncSession) -> None:
     retrieved = await deck_service.get(db=db_session, accession_id=created.accession_id)
     assert retrieved is None
 
-    # 3. Call the service
-    # We use the real DeckOrm model, so no need to mock the class.
-    # We will inspect the object passed to db.add() to verify the fields were set correctly.
-
-    await deck_service.create(db=mock_db, obj_in=mock_deck_create)
 @pytest.mark.asyncio
 async def test_read_decks_by_machine_id(db_session: AsyncSession) -> None:
     """Test reading decks for a given machine."""
@@ -172,7 +167,7 @@ async def test_read_decks_by_machine_id(db_session: AsyncSession) -> None:
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
         deck_type_id=deck_def.accession_id,
-        machine_id=machine.accession_id
+        machine_id=machine.accession_id,
     )
     await deck_service.create(db=db_session, obj_in=deck_in)
 
@@ -187,19 +182,11 @@ async def test_get_all_decks(db_session: AsyncSession) -> None:
     res_def = await create_resource_definition(db_session, "All Decks Res Def")
     deck_def = await create_deck_definition(db_session, "All Decks Type Def")
 
-    # Get the object passed to add
-    args, _ = mock_db.add.call_args
-    added_deck = args[0]
-
-    # Check that the remapping was successful
-    # Note: DeckOrm uses parent_machine_accession_id, not machine_id
-    assert added_deck.parent_machine_accession_id == test_machine_id
-    assert added_deck.name == "test_deck"
     await deck_service.create(db=db_session, obj_in=DeckCreate(
         name="Deck A",
         asset_type=AssetType.DECK,
         resource_definition_accession_id=res_def.accession_id,
-        deck_type_id=deck_def.accession_id
+        deck_type_id=deck_def.accession_id,
     ))
 
     decks = await deck_service.get_all_decks(db=db_session)

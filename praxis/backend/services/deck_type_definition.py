@@ -3,12 +3,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckPositionDefinitionOrm
-from praxis.backend.models.pydantic_internals.deck import DeckTypeDefinitionCreate
+from praxis.backend.models.pydantic_internals.deck import (
+  DeckTypeDefinitionCreate,
+  DeckTypeDefinitionUpdate,
+)
 from praxis.backend.services.utils.crud_base import CRUDBase
 
 
 class DeckTypeDefinitionService(
-  CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCreate, DeckTypeDefinitionCreate],
+  CRUDBase[DeckDefinitionOrm, DeckTypeDefinitionCreate, DeckTypeDefinitionUpdate],
 ):
 
   """Service for managing deck type definitions."""

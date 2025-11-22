@@ -30,6 +30,13 @@ A baseline assessment was conducted on the codebase using `ruff` and `pyright`.
 -   `pyright` runs successfully with configuration in `pyproject.toml`.
 -   `ruff` clean check shows significant reduction in issues (from 62k to <6k).
 
+### 4. High-Priority Type Safety Fixes (Phase 2)
+Addressed key type safety issues that were blocking or high-risk.
+-   **Generic Variance in `CRUDBase`**: Fixed in `praxis/backend/services/deck_type_definition.py` by correctly specifying the `UpdateSchemaType`.
+-   **Abstract Class Instantiation**: Fixed in `praxis/backend/api/global_dependencies.py` and `praxis/backend/core/asset_lock_manager.py` by fully implementing `AssetLockManager` and correctly injecting dependencies.
+-   **Attribute Access**: Fixed in `praxis/backend/configure.py` by adding `@property` decorator.
+-   **Outcome**: Resolved critical type errors and instantiation bugs preventing proper application startup and testing.
+
 ## Remaining Strategy
 
 ### Category 2: Remaining Lint Issues
@@ -39,9 +46,6 @@ A baseline assessment was conducted on the codebase using `ruff` and `pyright`.
 -   **Action**: Address these incrementally during feature development.
 
 ### Category 3: Type Safety Fixes
-181 type errors remain.
--   **Key Examples**:
-    1.  **Generic Variance in `CRUDBase`**: `praxis/backend/api/decks.py`.
-    2.  **Abstract Class Instantiation**: `praxis/backend/api/global_dependencies.py`.
-    3.  **Attribute Access**: `praxis/backend/configure.py`.
--   **Action**: Fix these as high-priority technical debt.
+Remaining type errors (reduced from 181).
+-   **Focus**: Remaining errors involve method overrides, optional parameter mismatches, and potential attribute access issues in other modules.
+-   **Action**: Address remaining type errors incrementally.
