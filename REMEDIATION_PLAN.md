@@ -37,6 +37,17 @@ Addressed key type safety issues that were blocking or high-risk.
 -   **Attribute Access**: Fixed in `praxis/backend/configure.py` by adding `@property` decorator.
 -   **Outcome**: Resolved critical type errors and instantiation bugs preventing proper application startup and testing.
 
+### 5. Test Coverage & Stability Improvements (Phase 3)
+Focused on fixing critical test failures and increasing coverage for core services.
+- **Test Stability**: Fixed `UniqueViolationError` handling in `tests/services/test_user_service.py` and `tests/services/test_resource_service.py` by catching `asyncpg.exceptions.UniqueViolationError`. This resolved flaky failures caused by inconsistent exception wrapping.
+- **ORM Constraints**: Addressed `CircularDependencyError` in `DeckOrm` by adding `ondelete="CASCADE"` and `passive_deletes=True`. Note: The associated test remains marked as `xfail` as a full fix requires architectural changes, but the configuration is now correct for cascade deletes.
+- **Workcell Coverage**: Increased `WorkcellService` coverage to 100% by adding tests for exception handling in `read_workcell_state`.
+- **Machine Service Fixes**:
+    -   Fixed `sqlalchemy.exc.MissingGreenlet` errors by eagerly loading `resource_counterpart` during create and update.
+    -   Fixed `MachineService.update` logic which previously failed to trigger resource counterpart creation/linking.
+    -   Fixed `praxis/backend/services/entity_linking.py` to correctly generate unique `accession_id`s and suffixed names (e.g., `_resource`) for counterparts, preventing Primary Key and Unique Constraint violations in the `assets` table.
+- **Outcome**: `test_user_service.py`, `test_resource_service.py`, `test_workcell_service.py`, and `test_machine_service.py` are fully passing.
+
 ## Remaining Strategy
 
 ### Category 2: Remaining Lint Issues
