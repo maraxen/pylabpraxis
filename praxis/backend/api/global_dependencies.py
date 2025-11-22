@@ -9,9 +9,16 @@ more testable and maintainable.
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from praxis.backend.celery_app import celery_app
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.scheduler import ProtocolScheduler
+from praxis.backend.models.orm.protocol import (
+  FunctionProtocolDefinitionOrm,
+  ProtocolRunOrm,
+)
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -39,9 +46,12 @@ class GlobalDependencies:
     logger.info("AssetLockManager initialized.")
 
     self.scheduler = ProtocolScheduler(
-      db_session_factory,
-      config.redis_url,
-      None,
+      db_session_factory=db_session_factory,
+      task_queue=celery_app,
+      protocol_run_service=ProtocolRunService(ProtocolRunOrm),
+      protocol_definition_service=ProtocolDefinitionCRUDService(
+        FunctionProtocolDefinitionOrm,
+      ),
     )
     logger.info("Scheduler components initialized")
 

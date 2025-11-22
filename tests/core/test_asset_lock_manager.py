@@ -1,7 +1,5 @@
 """Tests for core/asset_lock_manager.py."""
 
-import uuid
-from unittest.mock import Mock
 
 import pytest
 
@@ -11,6 +9,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestAssetLockManagerInit:
+
     """Tests for AssetLockManager initialization."""
 
     def test_init_creates_empty_locks_dict(self) -> None:
@@ -27,6 +26,7 @@ class TestAssetLockManagerInit:
 
 
 class TestAcquireAssetLock:
+
     """Tests for AssetLockManager.acquire_asset_lock()."""
 
     @pytest.mark.asyncio
@@ -124,6 +124,7 @@ class TestAcquireAssetLock:
 
 
 class TestReleaseAssetLock:
+
     """Tests for AssetLockManager.release_asset_lock()."""
 
     @pytest.mark.asyncio
@@ -144,7 +145,7 @@ class TestReleaseAssetLock:
 
         # Then release it
         result = await manager.release_asset_lock(
-            "MACHINE", "machine1", protocol_run_id, reservation_id
+            "MACHINE", "machine1", reservation_id, protocol_run_id,
         )
         assert result is True
 
@@ -167,7 +168,7 @@ class TestReleaseAssetLock:
 
         # Release the lock
         await manager.release_asset_lock(
-            "RESOURCE", "resource1", protocol_run_id, reservation_id
+            "RESOURCE", "resource1", reservation_id, protocol_run_id,
         )
         assert len(manager._locks) == 0
         assert "RESOURCE:resource1" not in manager._locks
@@ -180,7 +181,7 @@ class TestReleaseAssetLock:
         reservation_id = uuid7()
 
         result = await manager.release_asset_lock(
-            "MACHINE", "nonexistent", protocol_run_id, reservation_id
+            "MACHINE", "nonexistent", reservation_id, protocol_run_id,
         )
         assert result is False
 
@@ -202,13 +203,14 @@ class TestReleaseAssetLock:
 
         # Release using same composite key
         result = await manager.release_asset_lock(
-            "DECK", "deck1", protocol_run_id, reservation_id
+            "DECK", "deck1", reservation_id, protocol_run_id,
         )
         assert result is True
         assert "DECK:deck1" not in manager._locks
 
 
 class TestGetLockStatus:
+
     """Tests for AssetLockManager.get_lock_status()."""
 
     @pytest.mark.asyncio
@@ -269,7 +271,7 @@ class TestGetLockStatus:
 
         # Release lock
         await manager.release_asset_lock(
-            "MACHINE", "machine1", protocol_run_id, reservation_id
+            "MACHINE", "machine1", reservation_id, protocol_run_id,
         )
 
         # Get status should return None
@@ -278,6 +280,7 @@ class TestGetLockStatus:
 
 
 class TestAssetLockManagerIntegration:
+
     """Integration tests for AssetLockManager."""
 
     @pytest.mark.asyncio
@@ -308,7 +311,7 @@ class TestAssetLockManagerIntegration:
 
         # Release lock
         release_result = await manager.release_asset_lock(
-            "MACHINE", "machine1", protocol_run_id, reservation_id
+            "MACHINE", "machine1", reservation_id, protocol_run_id,
         )
         assert release_result is True
 
@@ -354,8 +357,8 @@ class TestAssetLockManagerIntegration:
         await manager.release_asset_lock(
             "RESOURCE",
             "resource1",
-            lock_data2.protocol_run_id,
             lock_data2.reservation_id,
+            lock_data2.protocol_run_id,
         )
 
         # Others should still be locked
@@ -384,7 +387,7 @@ class TestAssetLockManagerIntegration:
 
         # Release
         await manager.release_asset_lock(
-            "MACHINE", "machine1", protocol_run_id1, reservation_id1
+            "MACHINE", "machine1", reservation_id1, protocol_run_id1,
         )
 
         # Second acquisition (different protocol run)

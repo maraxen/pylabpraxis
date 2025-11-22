@@ -119,7 +119,10 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
     db.add(deck_orm)
     await db.flush()
     # Refresh the object to eager-load relationships required for the response model.
-    await db.refresh(deck_orm, ["deck_type", "parent_machine"])
+    await db.refresh(
+      deck_orm,
+      ["deck_type", "parent_machine", "children", "resource_definition", "parent"],
+    )
     logger.info(
       "Successfully created deck '%s' with ID %s.",
       deck_orm.name,

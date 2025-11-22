@@ -105,6 +105,11 @@ class DeckOrm(ResourceOrm):
     default=None,
   )
 
+  @property
+  def machine_id(self) -> uuid.UUID | None:
+    """Alias for parent_machine_accession_id."""
+    return self.parent_machine_accession_id
+
   deck_type_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),

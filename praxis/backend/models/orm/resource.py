@@ -363,6 +363,11 @@ class ResourceOrm(AssetOrm):
     )
 
   @property
+  def child_accession_ids(self) -> list[uuid.UUID]:
+    """Return a list of accession IDs for child resources."""
+    return [child.accession_id for child in self.children]
+
+  @property
   def is_machine(self) -> bool:
     """Return True if the asset is also a machine."""
     return self.machine_counterpart_accession_id is not None
