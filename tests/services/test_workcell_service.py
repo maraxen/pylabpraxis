@@ -1,5 +1,6 @@
 import pytest
 import uuid
+from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.services.workcell import workcell_service
@@ -130,4 +131,16 @@ async def test_update_workcell_state_not_found(db_session: AsyncSession):
             db=db_session,
             workcell_accession_id=non_existent_id,
             state_json={"a": 1}
+        )
+
+@pytest.mark.asyncio
+async def test_read_workcell_state_exception():
+    """Test exception handling in read_workcell_state."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    mock_session.get.side_effect = Exception("DB Error")
+
+    with pytest.raises(Exception, match="DB Error"):
+        await workcell_service.read_workcell_state(
+            db=mock_session,
+            workcell_accession_id=uuid.uuid4()
         )

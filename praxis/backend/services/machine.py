@@ -72,7 +72,7 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       )
 
     await db.flush()
-    await db.refresh(machine_orm)
+    await db.refresh(machine_orm, attribute_names=["resource_counterpart"])
     if machine_orm.resource_counterpart:
       await db.refresh(machine_orm.resource_counterpart)
     logger.info("%s Successfully committed new machine.", log_prefix)
@@ -111,7 +111,11 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
     updated_machine = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
 
     logger.info("%s Initialized machine for update.", log_prefix)
-    if updated_machine.resource_counterpart is not None:
+    if (
+      updated_machine.resource_counterpart is not None
+      or update_data.get("resource_counterpart_accession_id")
+      or update_data.get("resource_def_name")
+    ):
       await _create_or_link_resource_counterpart_for_machine(
         db=db,
         machine_orm=updated_machine,
@@ -124,7 +128,7 @@ class MachineService(CRUDBase[MachineOrm, MachineCreate, MachineUpdate]):
       )
 
       await db.flush()
-      await db.refresh(updated_machine)
+      await db.refresh(updated_machine, attribute_names=["resource_counterpart"])
       if updated_machine.resource_counterpart:
         await db.refresh(updated_machine.resource_counterpart)
       logger.info("%s Successfully committed updated machine.", log_prefix)

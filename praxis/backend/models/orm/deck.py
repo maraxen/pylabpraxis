@@ -144,6 +144,7 @@ class DeckOrm(ResourceOrm):
     "ResourceOrm",
     back_populates="deck",
     cascade="all, delete-orphan",
+    passive_deletes=True,
     default_factory=list,
     foreign_keys="[ResourceOrm.deck_accession_id]",
   )

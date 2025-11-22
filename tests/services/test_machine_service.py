@@ -4,10 +4,24 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.services.machine import machine_service
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.enums.machine import MachineStatusEnum
 from praxis.backend.models.enums.asset import AssetType
+
+async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinitionOrm:
+    """Helper to create a resource definition."""
+    definition = ResourceDefinitionOrm(
+        name=name,
+        fqn="com.example.Resource",
+        resource_type="Generic",
+        is_consumable=False,
+    )
+    db.add(definition)
+    await db.flush()
+    await db.refresh(definition)
+    return definition
 
 @pytest.mark.asyncio
 async def test_machine_service_create_machine(db_session: AsyncSession) -> None:
@@ -163,3 +177,37 @@ async def test_machine_service_update_status_not_found(db_session: AsyncSession)
         new_status=MachineStatusEnum.ERROR
     )
     assert result is None
+
+@pytest.mark.asyncio
+async def test_machine_service_create_with_resource_counterpart(db_session: AsyncSession) -> None:
+    """Test creating a machine with a resource counterpart."""
+    res_def_name = "test_machine_res_def"
+    await create_resource_definition(db_session, res_def_name)
+
+    machine_in = MachineCreate(
+        name="Resource Machine",
+        asset_type=AssetType.MACHINE,
+        resource_def_name=res_def_name
+    )
+
+    machine = await machine_service.create(db=db_session, obj_in=machine_in)
+
+    assert machine.resource_counterpart is not None
+
+@pytest.mark.asyncio
+async def test_machine_service_update_with_resource_counterpart(db_session: AsyncSession) -> None:
+    """Test updating machine with resource counterpart."""
+    machine_in = MachineCreate(name="Update Resource Machine", asset_type=AssetType.MACHINE)
+    machine = await machine_service.create(db=db_session, obj_in=machine_in)
+
+    res_def_name = "update_machine_res_def"
+    await create_resource_definition(db_session, res_def_name)
+
+    update_data = MachineUpdate(
+        asset_type=AssetType.MACHINE,
+        resource_def_name=res_def_name
+    )
+
+    updated = await machine_service.update(db=db_session, db_obj=machine, obj_in=update_data)
+
+    assert updated.resource_counterpart is not None
