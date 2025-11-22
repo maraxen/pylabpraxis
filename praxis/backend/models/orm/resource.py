@@ -36,6 +36,7 @@ from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 
 if TYPE_CHECKING:
   from . import (
+    AssetRequirementOrm,
     DeckDefinitionOrm,
     DeckOrm,
     FunctionDataOutputOrm,

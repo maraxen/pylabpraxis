@@ -2,17 +2,14 @@
 
 from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
+from typing import Any, TypeVar, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-P = ParamSpec("P")
-R = TypeVar("R")
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
-def handle_db_transaction(
-  func: Callable[P, Awaitable[R]],
-) -> Callable[P, Awaitable[R]]:
+def handle_db_transaction(func: F) -> F:
   """Decorator to manage database transactions in service layer methods.
 
   This decorator wraps an async function that takes a SQLAlchemy `AsyncSession`
@@ -32,7 +29,7 @@ def handle_db_transaction(
   """
 
   @wraps(func)
-  async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+  async def wrapper(*args: Any, **kwargs: Any) -> Any:
     """Wrap the function with transaction handling.
 
     Args:
@@ -67,4 +64,4 @@ def handle_db_transaction(
       await db.rollback()
       raise
 
-  return wrapper
+  return cast("F", wrapper)

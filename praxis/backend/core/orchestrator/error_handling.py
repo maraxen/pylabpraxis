@@ -113,7 +113,7 @@ class ErrorHandlingMixin:
         },
       )
 
-    await svc.update_protocol_run_status(
+    await svc.update_run_status(
       db_session,
       run_accession_id,
       final_run_status,
@@ -128,7 +128,7 @@ class ErrorHandlingMixin:
     db_session: AsyncSession,
   ) -> None:
     """Finalize the protocol run, update timestamps, state, and release assets."""
-    run_accession_id = protocol_run_orm.run_accession_id
+    run_accession_id = protocol_run_orm.accession_id
     logger.info("ORCH: Finalizing protocol run %s.", run_accession_id)
 
     protocol_run_orm.final_state_json = praxis_state.to_dict()

@@ -67,13 +67,13 @@ class ProtocolPreparationMixin:
     db_session: AsyncSession,
   ) -> PraxisRunContext:
     """Initialize PraxisState and PraxisRunContext for a protocol run."""
-    praxis_state = PraxisState(run_accession_id=protocol_run_orm.run_accession_id)
+    praxis_state = PraxisState(run_accession_id=protocol_run_orm.accession_id)
     if initial_state_data:
       praxis_state.update(initial_state_data)
 
     logger.debug(
       "Initializing PraxisState for run %s with initial data: %s",
-      protocol_run_orm.run_accession_id,
+      protocol_run_orm.accession_id,
       initial_state_data,
     )
 
@@ -89,11 +89,11 @@ class ProtocolPreparationMixin:
     )
     logger.debug(
       "Workcell state snapshot captured and stored in PraxisState for run %s.",
-      protocol_run_orm.run_accession_id,
+      protocol_run_orm.accession_id,
     )
 
     return PraxisRunContext(
-      run_accession_id=protocol_run_orm.run_accession_id,
+      run_accession_id=protocol_run_orm.accession_id,
       canonical_state=praxis_state,
       current_db_session=db_session,
       current_call_log_db_accession_id=None,
