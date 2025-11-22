@@ -3,6 +3,7 @@
 Tests cover all CRUD operations, authentication, and user-specific functionality.
 """
 import pytest
+from asyncpg.exceptions import UniqueViolationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -73,7 +74,7 @@ async def test_user_service_create_duplicate_username(db_session: AsyncSession) 
         password="password456",
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises((IntegrityError, UniqueViolationError)):
         await user_service.create(db_session, obj_in=user_data2)
 
 
@@ -94,7 +95,7 @@ async def test_user_service_create_duplicate_email(db_session: AsyncSession) -> 
         password="password456",
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises((IntegrityError, UniqueViolationError)):
         await user_service.create(db_session, obj_in=user_data2)
 
 

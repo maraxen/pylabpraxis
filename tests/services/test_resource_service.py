@@ -3,6 +3,7 @@
 Tests cover all CRUD operations and resource-specific functionality.
 """
 import pytest
+from asyncpg.exceptions import UniqueViolationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -69,7 +70,7 @@ async def test_resource_service_create_duplicate_name(db_session: AsyncSession) 
         asset_type=AssetType.RESOURCE,
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises((IntegrityError, UniqueViolationError)):
         await resource_service.create(db_session, obj_in=resource_data2)
 
 

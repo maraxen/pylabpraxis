@@ -319,7 +319,7 @@ class ResourceOrm(AssetOrm):
 
   deck_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
-    ForeignKey("decks.accession_id", use_alter=True, name="fk_resource_deck"),
+    ForeignKey("decks.accession_id", use_alter=True, name="fk_resource_deck", ondelete="CASCADE"),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this resource is located on, if applicable.",

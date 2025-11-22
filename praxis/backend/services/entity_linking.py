@@ -9,6 +9,8 @@ import uuid
 from functools import partial
 from typing import TYPE_CHECKING, Any, Optional
 
+from praxis.backend.utils.uuid import uuid7
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -151,9 +153,9 @@ async def _create_or_link_resource_counterpart_for_machine(
   definition = await _read_resource_definition_for_linking(db, resource_definition_name)
 
   new_resource = ResourceOrm(
-    accession_id=machine_orm.accession_id,
+    accession_id=uuid7(),
     fqn=machine_orm.fqn,
-    name=machine_orm.name,
+    name=f"{machine_orm.name}_resource",
     asset_type=AssetType.RESOURCE,
     resource_definition_accession_id=definition.accession_id,
     properties_json=resource_properties_json or {},
@@ -277,8 +279,8 @@ async def _create_or_link_machine_counterpart_for_resource(
 
   logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
   new_machine_counterpart = MachineOrm(
-    accession_id=resource_orm.accession_id,
-    name=resource_orm.name,
+    accession_id=uuid7(),
+    name=f"{resource_orm.name}_machine",
     fqn=machine_fqn,
     asset_type=AssetType.MACHINE_RESOURCE,
     properties_json=machine_properties_json or {},
@@ -307,15 +309,16 @@ async def synchronize_machine_resource_names(
 
   name_to_sync = new_machine_name or machine_orm.name
   resource = machine_orm.resource_counterpart
+  target_name = f"{name_to_sync}_resource"
 
-  if resource.name != name_to_sync:
+  if resource.name != target_name:
     logger.info(
       "Synchronizing resource name from '%s' to '%s' for Machine ID %s",
       resource.name,
-      name_to_sync,
+      target_name,
       machine_orm.accession_id,
     )
-    resource.name = name_to_sync
+    resource.name = target_name
     db.add(resource)
 
 
@@ -334,15 +337,16 @@ async def synchronize_resource_machine_names(
 
   name_to_sync = new_resource_name or resource_orm.name
   machine = resource_orm.machine_counterpart
+  target_name = f"{name_to_sync}_machine"
 
-  if machine.name != name_to_sync:
+  if machine.name != target_name:
     logger.info(
       "Synchronizing machine name from '%s' to '%s' for Resource ID %s",
       machine.name,
-      name_to_sync,
+      target_name,
       resource_orm.accession_id,
     )
-    machine.name = name_to_sync
+    machine.name = target_name
     db.add(machine)
 
 
@@ -361,15 +365,16 @@ async def synchronize_deck_resource_names(
 
   name_to_sync = new_deck_name or deck_orm.name
   resource = deck_orm.resource_counterpart
+  target_name = f"{name_to_sync}_resource"
 
-  if resource.name != name_to_sync:
+  if resource.name != target_name:
     logger.info(
       "Synchronizing resource name from '%s' to '%s' for Deck ID %s",
       resource.name,
-      name_to_sync,
+      target_name,
       deck_orm.accession_id,
     )
-    resource.name = name_to_sync
+    resource.name = target_name
     db.add(resource)
 
 
@@ -400,13 +405,14 @@ async def synchronize_resource_deck_names(
 
   name_to_sync = new_resource_name or resource_orm.name
   deck = resource_orm.deck_counterpart
+  target_name = f"{name_to_sync}_deck"
 
-  if deck.name != name_to_sync:
+  if deck.name != target_name:
     logger.info(
       "Synchronizing deck name from '%s' to '%s' for Resource ID %s",
       deck.name,
-      name_to_sync,
+      target_name,
       resource_orm.accession_id,
     )
-    deck.name = name_to_sync
+    deck.name = target_name
     db.add(deck)
