@@ -266,6 +266,7 @@ class DiscoveryService:
 
                   inferred_model = FunctionProtocolDefinitionCreate(  # TODO: ensure that if a reinspection happens it is assigned the already existing
                     name=func_obj.__name__,
+                    fqn=f"{func_obj.__module__}.{func_obj.__name__}",
                     version="0.0.0-inferred",
                     description=inspect.getdoc(func_obj) or "Inferred from code.",
                     source_file_path=inspect.getfile(func_obj),

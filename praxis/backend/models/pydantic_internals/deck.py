@@ -139,6 +139,7 @@ class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
 
   name: str
   positioning_config: PositioningConfig
+  position_definitions: list[DeckPositionDefinitionCreate] | None = None
 
 
 class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):

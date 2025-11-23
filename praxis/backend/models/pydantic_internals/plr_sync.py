@@ -28,6 +28,10 @@ class PLRTypeDefinitionCreate(PLRTypeDefinitionBase):
   """Model for creating a new PyLabRobot type definition."""
 
 
-class PLRTypeDefinitionUpdate(PLRTypeDefinitionBase):
+class PLRTypeDefinitionUpdate(PraxisBaseModel):
 
   """Model for updating a PyLabRobot type definition."""
+
+  fqn: str | None = None
+  description: str | None = None
+  plr_category: str | None = None
