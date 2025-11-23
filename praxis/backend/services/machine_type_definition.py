@@ -66,7 +66,16 @@ class MachineTypeDefinitionService(
           fqn=fqn,
           description=inspect.getdoc(plr_class_obj),
         )
-        new_machine_def = MachineDefinitionOrm(**create_data.model_dump())
+        obj_in_data = create_data.model_dump()
+        # Remove fields that are not accepted by ORM init
+        obj_in_data.pop("accession_id", None)
+        obj_in_data.pop("created_at", None)
+        obj_in_data.pop("updated_at", None)
+        obj_in_data.pop("nominal_volume_ul", None)
+        obj_in_data.pop("ordering", None)
+        obj_in_data.pop("has_deck", None)
+
+        new_machine_def = MachineDefinitionOrm(**obj_in_data)
         self.db.add(new_machine_def)
         logger.debug("Added new machine definition: %s", fqn)
         synced_definitions.append(new_machine_def)

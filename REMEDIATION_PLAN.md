@@ -60,3 +60,12 @@ Focused on fixing critical test failures and increasing coverage for core servic
 Remaining type errors (reduced from 181).
 -   **Focus**: Remaining errors involve method overrides, optional parameter mismatches, and potential attribute access issues in other modules.
 -   **Action**: Address remaining type errors incrementally.
+
+### 6. Type Definition Services Coverage (Phase 4)
+Addressed 0% coverage in Type Definition services and Discovery service.
+- **DeckTypeDefinitionService**: Fixed bug where positions were not persisted due to missing `position_accession_id` mapping and Pydantic model mismatch. Added full CRUD tests (100% coverage).
+- **ResourceTypeDefinitionService**: Added tests for CRUD and helper methods.
+- **MachineTypeDefinitionService**: Fixed Pydantic/ORM mismatch (`nominal_volume_ul`, `has_deck` fields). Added sync tests.
+- **ProtocolDefinitionService**: Added full CRUD tests.
+- **DiscoveryService**: Fixed bug where inferred protocol definitions missed `fqn`. Added logic and integration tests.
+- **StateService**: Added unit tests for Redis state management (100% coverage).
