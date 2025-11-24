@@ -12,6 +12,9 @@ PyLabPraxis is a comprehensive Python-based platform designed to automate and ma
 
    installation
    quickstart
+   architecture
+   state_management
+   testing
    api/modules
    contributing
 

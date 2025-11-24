@@ -5,37 +5,33 @@ managing data outputs from protocol function calls, with support for resource
 attribution, spatial context, and data visualization.
 """
 
-from typing import Dict, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import (
-  ResourceDefinitionCatalogOrm,
-)
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 
 
 async def read_plate_dimensions(
-  db: AsyncSession, plate_resource_instance_accession_id: UUID
-) -> Optional[Dict[str, int]]:
+  db: AsyncSession,
+  plate_resource_accession_id: UUID,
+) -> dict[str, int] | None:
   """Get plate dimensions from the resource definition.
 
   Args:
     db: Database session
-    plate_resource_instance_accession_id: Plate resource instance ID
+    plate_resource_accession_id: Plate resource instance ID
 
   Returns:
     Dictionary with 'rows' and 'columns' keys, or None if not found
 
   """
-  from praxis.backend.models.resource_orm import ResourceInstanceOrm
-
   # Get the resource instance and its definition
   result = await db.execute(
-    select(ResourceDefinitionCatalogOrm)
-    .join(ResourceInstanceOrm)
-    .filter(ResourceInstanceOrm.accession_id == plate_resource_instance_accession_id)
+    select(ResourceDefinitionOrm)
+    .join(ResourceOrm)
+    .filter(ResourceOrm.accession_id == plate_resource_accession_id),
   )
 
   resource_def = result.scalar_one_or_none()
@@ -78,20 +74,20 @@ async def read_plate_dimensions(
   # Common plate formats
   if "96" in resource_name:
     return {"rows": 8, "columns": 12}
-  elif "384" in resource_name:
+  if "384" in resource_name:
     return {"rows": 16, "columns": 24}
-  elif "1536" in resource_name:
+  if "1536" in resource_name:
     return {"rows": 32, "columns": 48}
-  elif "24" in resource_name:
+  if "24" in resource_name:
     return {"rows": 4, "columns": 6}
-  elif "48" in resource_name:
+  if "48" in resource_name:
     return {"rows": 6, "columns": 8}
 
   # Default fallback
   return None
 
 
-def parse_well_name(well_name: str) -> Tuple[int, int]:
+def parse_well_name(well_name: str) -> tuple[int, int]:
   """Parse well name (e.g., 'A1') to row/column indices.
 
   Args:
@@ -105,12 +101,14 @@ def parse_well_name(well_name: str) -> Tuple[int, int]:
 
   """
   if not well_name or len(well_name) < 2:
-    raise ValueError(f"Invalid well name: {well_name}")
+    msg = f"Invalid well name: {well_name}"
+    raise ValueError(msg)
 
   # Parse row (letter)
   row_letter = well_name[0].upper()
   if not row_letter.isalpha():
-    raise ValueError(f"Invalid row letter in well name: {well_name}")
+    msg = f"Invalid row letter in well name: {well_name}"
+    raise ValueError(msg)
 
   row_idx = ord(row_letter) - ord("A")
 
@@ -118,8 +116,9 @@ def parse_well_name(well_name: str) -> Tuple[int, int]:
   try:
     col_num = int(well_name[1:])
     col_idx = col_num - 1  # Convert to 0-based
-  except ValueError:
-    raise ValueError(f"Invalid column number in well name: {well_name}")
+  except ValueError as e:
+    msg = f"Invalid column number in well name: {well_name}"
+    raise ValueError(msg) from e
 
   return row_idx, col_idx
 

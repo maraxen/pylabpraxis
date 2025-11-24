@@ -34,7 +34,7 @@ void main() {
         // Or AssetManagementInitial() if UI doesn't depend on data for tabs
         machines: [],
         resourceDefinitions: [],
-        resourceInstances: [],
+        resources: [],
         deckLayouts: [],
       ),
     );
@@ -47,7 +47,7 @@ void main() {
           // Keep it consistent with .state
           machines: [],
           resourceDefinitions: [],
-          resourceInstances: [],
+          resources: [],
           deckLayouts: [],
         ),
       ),
@@ -75,14 +75,14 @@ void main() {
 
     // Verify Tab texts
     expect(find.text('Instruments'), findsOneWidget);
-    expect(find.text('Resource Instances'), findsOneWidget);
+    expect(find.text('Resource s'), findsOneWidget);
     expect(find.text('Resource Definitions'), findsOneWidget);
 
     // Verify initial tab content (Placeholder texts)
     // This assumes the first tab ('Instruments') is active by default.
     expect(find.text('Instruments Tab Content'), findsOneWidget);
     expect(
-      find.text('Resource Instances Tab Content'),
+      find.text('Resource s Tab Content'),
       findsNothing,
     ); // Not visible initially
     expect(
@@ -90,12 +90,12 @@ void main() {
       findsNothing,
     ); // Not visible initially
 
-    // Simulate tapping the 'Resource Instances' tab
-    await tester.tap(find.text('Resource Instances'));
+    // Simulate tapping the 'Resource s' tab
+    await tester.tap(find.text('Resource s'));
     await tester.pumpAndSettle(); // Let animations and transitions finish
 
     expect(find.text('Instruments Tab Content'), findsNothing);
-    expect(find.text('Resource Instances Tab Content'), findsOneWidget);
+    expect(find.text('Resource s Tab Content'), findsOneWidget);
     expect(find.text('Resource Definitions Tab Content'), findsNothing);
 
     // Simulate tapping the 'Resource Definitions' tab
@@ -103,7 +103,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Instruments Tab Content'), findsNothing);
-    expect(find.text('Resource Instances Tab Content'), findsNothing);
+    expect(find.text('Resource s Tab Content'), findsNothing);
     expect(find.text('Resource Definitions Tab Content'), findsOneWidget);
   });
 }

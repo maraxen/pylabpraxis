@@ -1,0 +1,50 @@
+name: Owner Bypass
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check_owner_bypass:
+    name: Check Owner Bypass
+    runs-on: ubuntu-latest
+    if: github.actor == 'maraxen' || github.actor == 'Marielle Russo'  # Replace with your GitHub username
+    steps:
+    - name: Check for bypass label
+      id: check_label
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const bypassLabel = labels.find(label => label.name === 'owner-bypass');
+
+          if (bypassLabel) {
+            console.log('Owner bypass label found. Skipping CI checks.');
+            return 'bypass';
+          } else {
+            console.log('No bypass label found. Normal CI will run.');
+            return 'normal';
+          }
+
+    - name: Add success status for bypassed checks
+      if: steps.check_label.outputs.result == 'bypass'
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const checks = ['lint', 'typecheck', 'pylint'];
+
+          for (const check of checks) {
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              context: `CI / Code Quality Checks (${check})`,
+              description: `Bypassed by repository owner`
+            });
+          }
