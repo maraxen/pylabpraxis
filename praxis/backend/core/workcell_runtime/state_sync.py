@@ -3,9 +3,13 @@
 import asyncio
 import contextlib
 import datetime
+import uuid
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate
+from praxis.backend.services.workcell import WorkcellService
 from praxis.backend.utils.errors import WorkcellRuntimeError
 from praxis.backend.utils.logging import get_logger
 
@@ -18,6 +22,12 @@ logger = get_logger(__name__)
 class StateSyncMixin:
 
   """Mixin providing state synchronization capabilities for WorkcellRuntime."""
+
+  db_session_factory: async_sessionmaker[AsyncSession]
+  workcell_svc: WorkcellService
+  _main_workcell: "IWorkcell"
+  _workcell_db_accession_id: uuid.UUID | None
+  _state_sync_task: asyncio.Task[None] | None
 
   async def _link_workcell_to_db(self) -> None:
     """Links the in-memory Workcell to its persistent DB entry."""

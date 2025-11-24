@@ -34,7 +34,7 @@ class TestFunctionDataOutputCRUDService:
             function_call_log_accession_id=uuid7(),
             data_key="test_key",
             data_type=DataOutputTypeEnum.GENERIC_MEASUREMENT,
-            data_value=123.45,
+            data_value_numeric=123.45,
             spatial_context=SpatialContextEnum.GLOBAL,
         )
 
