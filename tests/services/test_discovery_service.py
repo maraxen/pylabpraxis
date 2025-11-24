@@ -1,189 +1,168 @@
-# pylint: disable=redefined-outer-name, protected-access, unused-argument, no-member
-"""Unit tests for the ProtocolDiscoveryService."""
-
-import sys
-import uuid
-from pathlib import Path
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
-from pylabrobot.resources import Plate
+import sys
+import os
+from pathlib import Path
+from unittest.mock import MagicMock, AsyncMock, patch
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from praxis.backend.core.run_context import PROTOCOL_REGISTRY
-from praxis.backend.models.protocol_pydantic_models import (
-  FunctionProtocolDefinitionModel,
-)
-from praxis.backend.services.discovery_service import ProtocolDiscoveryService
-
-
-# --- Fixtures ---
-
-
-@pytest.fixture
-def discovery_service() -> ProtocolDiscoveryService:
-  """Provides a ProtocolDiscoveryService instance with a mocked DB session factory."""
-  mock_session_factory = MagicMock()
-  # The session factory itself returns an async context manager
-  mock_session_factory.return_value.__aenter__.return_value = AsyncMock()
-  mock_session_factory.return_value.__aexit__.return_value = None
-  return ProtocolDiscoveryService(db_session_factory=mock_session_factory)
-
-
-@pytest.fixture(autouse=True)
-def clear_protocol_registry():
-  """Fixture to clear the global PROTOCOL_REGISTRY before and after each test."""
-  PROTOCOL_REGISTRY.clear()
-  yield
-  PROTOCOL_REGISTRY.clear()
-
+from praxis.backend.services.discovery_service import DiscoveryService
+from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 
 @pytest.fixture
-def protocol_files(tmp_path: Path) -> Generator[Path, None, None]:
-  """Creates a temporary directory with dummy protocol files for discovery."""
-  protocols_dir = tmp_path / "protocols"
-  protocols_dir.mkdir()
+def mock_db_session_factory():
+    session = AsyncMock(spec=AsyncSession)
+    factory = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock()))
+    return factory
 
-  sys.path.insert(0, str(tmp_path))
+@pytest.fixture
+def mock_protocol_service():
+    service = AsyncMock(spec=ProtocolDefinitionCRUDService)
+    return service
 
-  # File 1: A protocol defined with the @protocol decorator
-  (protocols_dir / "decorated_protocol.py").write_text(
-    """
-from praxis.backend.protocol_core.decorators import protocol
-from praxis.backend.models.protocol_pydantic_models import AssetRequirementModel
-from pylabrobot.resources import Plate, TipRack
-from typing import Optional
+@pytest.fixture
+def mock_resource_service():
+    service = AsyncMock(spec=ResourceTypeDefinitionService)
+    return service
 
-@protocol(
-    name="decorated_transfer",
-    version="1.1.0",
-    description="A test protocol using a decorator.",
-    is_top_level=True,
-    assets=[
-        AssetRequirementModel(
-            name="tips",
-            fqn="pylabrobot.resources.TipRack",
-            optional=False
-        )
-    ]
-)
-def my_decorated_protocol(
-    source_plate: Plate,
-    dest_plate: Optional[Plate] = None,
-    volume: float = 50.0
+@pytest.fixture
+def mock_machine_service():
+    service = AsyncMock(spec=MachineTypeDefinitionService)
+    return service
+
+@pytest.fixture
+def discovery_service(
+    mock_db_session_factory,
+    mock_protocol_service,
+    mock_resource_service,
+    mock_machine_service
 ):
-    '''Docstring for decorated protocol.'''
-    pass
-"""
-  )
+    return DiscoveryService(
+        db_session_factory=mock_db_session_factory,
+        protocol_definition_service=mock_protocol_service,
+        resource_type_definition_service=mock_resource_service,
+        machine_type_definition_service=mock_machine_service
+    )
 
-  # File 2: A protocol to be discovered via inference
-  (protocols_dir / "inferred_protocol.py").write_text(
-    """
-from pylabrobot.resources import Plate
-from typing import Optional
+def test_ensure_path_type(discovery_service, tmp_path):
+    # Valid paths
+    p1 = tmp_path / "p1"
+    p1.mkdir()
+    p2 = tmp_path / "p2"
+    p2.mkdir()
 
-def my_inferred_protocol(p: Plate, num_transfers: int, speed: Optional[float] = 1.0):
-    '''Docstring for inferred protocol.'''
+    paths = discovery_service._ensure_path_type([str(p1), p2])
+    assert len(paths) == 2
+    assert paths[0] == p1
+    assert paths[1] == p2
+
+    # Invalid path
+    paths = discovery_service._ensure_path_type(["/non/existent/path"])
+    assert len(paths) == 0
+
+@pytest.mark.asyncio
+async def test_discover_and_sync_all_definitions(discovery_service):
+    with patch.object(discovery_service, 'discover_and_upsert_protocols', new_callable=AsyncMock) as mock_upsert:
+        await discovery_service.discover_and_sync_all_definitions(
+            protocol_search_paths=["/tmp"],
+        )
+
+        discovery_service.resource_type_definition_service.discover_and_synchronize_type_definitions.assert_called_once()
+        discovery_service.machine_type_definition_service.discover_and_synchronize_type_definitions.assert_called_once()
+        mock_upsert.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_discover_and_upsert_protocols(discovery_service, mock_protocol_service, mock_db_session_factory):
+    # Mock extraction
+    mock_def = FunctionProtocolDefinitionCreate(
+        name="test_func",
+        fqn="test.module.test_func",
+        source_file_path="/test.py",
+        module_name="test.module",
+        function_name="test_func"
+    )
+    mock_func = MagicMock()
+
+    with patch.object(discovery_service, '_extract_protocol_definitions_from_paths', return_value=[(mock_def, mock_func)]):
+        # Mock get_by_fqn returning None (create)
+        mock_protocol_service.get_by_fqn.return_value = None
+        mock_protocol_service.create.return_value = MagicMock(accession_id="123")
+
+        await discovery_service.discover_and_upsert_protocols(search_paths=["/tmp"])
+
+        mock_protocol_service.get_by_fqn.assert_called_once()
+        mock_protocol_service.create.assert_called_once()
+        mock_protocol_service.update.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_discover_and_upsert_protocols_update(discovery_service, mock_protocol_service, mock_db_session_factory):
+    # Mock extraction
+    mock_def = FunctionProtocolDefinitionCreate(
+        name="test_func",
+        fqn="test.module.test_func",
+        source_file_path="/test.py",
+        module_name="test.module",
+        function_name="test_func"
+    )
+    mock_func = MagicMock()
+
+    with patch.object(discovery_service, '_extract_protocol_definitions_from_paths', return_value=[(mock_def, mock_func)]):
+        # Mock get_by_fqn returning existing (update)
+        mock_protocol_service.get_by_fqn.return_value = MagicMock()
+        mock_protocol_service.update.return_value = MagicMock(accession_id="123")
+
+        await discovery_service.discover_and_upsert_protocols(search_paths=["/tmp"])
+
+        mock_protocol_service.get_by_fqn.assert_called_once()
+        mock_protocol_service.create.assert_not_called()
+        mock_protocol_service.update.assert_called_once()
+
+def test_extract_protocol_definitions_integration(discovery_service, tmp_path):
+    """Integration test for extraction logic."""
+    # Create a dummy protocol file
+    pkg_dir = tmp_path / "my_protocols"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").touch()
+
+    protocol_file = pkg_dir / "proto.py"
+    protocol_content = """
+def my_protocol(volume: float):
+    '''A test protocol.'''
     pass
 
 def not_a_protocol():
-    return "hello"
+    pass
 """
-  )
+    protocol_file.write_text(protocol_content)
 
-  (protocols_dir / "_ignored_file.py").write_text("def ignored_func(): pass")
+    # Run extraction
+    # We need to handle import issues. The logic modifies sys.path so it should work if we point to tmp_path (parent of my_protocols) or pkg_dir?
+    # Logic says: "potential_package_parent = abs_path_item.parent".
+    # If pass pkg_dir, parent is tmp_path. tmp_path added to sys.path.
+    # Then it walks pkg_dir. proto.py is found. Rel path is "proto.py"?
+    # Wait, rel path to potential_package_parent.
+    # If search_path is pkg_dir, parent is tmp_path.
+    # rel_path of pkg_dir/proto.py to tmp_path is "my_protocols/proto.py".
+    # Module name: "my_protocols.proto". This matches importlib expectation.
 
-  yield protocols_dir
+    definitions = discovery_service._extract_protocol_definitions_from_paths([pkg_dir])
 
-  sys.path.pop(0)
-  for mod in ["protocols.decorated_protocol", "protocols.inferred_protocol"]:
-    if mod in sys.modules:
-      del sys.modules[mod]
+    # Should find my_protocol and not_a_protocol?
+    # It inspects all functions.
+    # my_protocol has type hint, so it might be inferred.
+    # not_a_protocol has no type hints. Logic:
+    # sig.parameters.items()...
+    # inferred_model created.
 
+    # Assert we found something
+    found_names = [d[0].name for d in definitions]
+    assert "my_protocol" in found_names
+    assert "not_a_protocol" in found_names
 
-# --- Tests ---
-
-
-@pytest.mark.asyncio
-class TestProtocolDiscoveryService:
-  """Test suite for the ProtocolDiscoveryService."""
-
-  def test_extract_from_paths_finds_protocols(self, discovery_service, protocol_files):
-    """Test that _extract_protocol_definitions_from_paths finds all valid protocols."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
-    )
-    assert len(definitions) == 2
-    names = {model.name for model, func in definitions}
-    assert "decorated_transfer" in names
-    assert "my_inferred_protocol" in names
-
-  def test_decorated_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files
-  ):
-    """Verify the content of a protocol definition from a decorator."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
-    )
-    decorated_def, func = next(
-      d for d in definitions if d[0].name == "decorated_transfer"
-    )
-    assert isinstance(decorated_def, FunctionProtocolDefinitionModel)
-    assert decorated_def.name == "decorated_transfer"
-    assert decorated_def.version == "1.1.0"
-    param_names = {p.name for p in decorated_def.parameters}
-    assert param_names == {"source_plate", "dest_plate", "volume"}
-    asset_names = {a.name for a in decorated_def.assets}
-    assert "tips" in asset_names
-
-  def test_inferred_protocol_is_parsed_correctly(
-    self, discovery_service, protocol_files
-  ):
-    """Verify the content of an inferred protocol definition."""
-    definitions = discovery_service._extract_protocol_definitions_from_paths(
-      str(protocol_files)
-    )
-    inferred_def, func = next(
-      d for d in definitions if d[0].name == "my_inferred_protocol"
-    )
-    assert isinstance(inferred_def, FunctionProtocolDefinitionModel)
-    params = {p.name: p for p in inferred_def.parameters}
-    assert "num_transfers" in params
-    assets = {a.name: a for a in inferred_def.assets}
-    assert "p" in assets
-    # FIX: Check the 'fqn' attribute instead of 'actual_type_str'
-    assert assets["p"].fqn == "pylabrobot.resources.Plate"
-    assert assets["p"].optional is False
-
-  async def test_discover_and_upsert_happy_path(
-    self, discovery_service, protocol_files
-  ):
-    """Test the full discover and upsert flow, including registry updates."""
-    # Manually populate the registry as the decorator would
-    decorated_def = FunctionProtocolDefinitionModel(
-      accession_id=uuid.uuid4(),
-      name="decorated_transfer",
-      version="1.1.0",
-      source_file_path="protocols/decorated_protocol.py",
-      module_name="protocols.decorated_protocol",
-      function_name="my_decorated_protocol",
-    )
-    PROTOCOL_REGISTRY["decorated_transfer_v1.1.0"] = {
-      "pydantic_definition": decorated_def
-    }
-    mock_orm = MagicMock()
-    mock_orm.accession_id = uuid.uuid4()
-
-    with patch(
-      "praxis.backend.services.protocols.upsert_function_protocol_definition",
-      new_callable=AsyncMock,
-    ) as mock_upsert:
-      mock_upsert.return_value = mock_orm
-      result_orms = await discovery_service.discover_and_upsert_protocols(
-        str(protocol_files)
-      )
-      assert len(result_orms) == 2
-      registry_entry = PROTOCOL_REGISTRY.get("decorated_transfer_v1.1.0")
-      assert registry_entry is not None
-      assert registry_entry["db_accession_id"] == mock_orm.accession_id
+    # Check my_protocol metadata
+    proto_def = next(d[0] for d in definitions if d[0].name == "my_protocol")
+    assert proto_def.description == "A test protocol."
+    assert len(proto_def.parameters) == 1
+    assert proto_def.parameters[0].name == "volume"

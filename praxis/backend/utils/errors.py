@@ -2,6 +2,7 @@
 
 
 class PraxisError(Exception):
+
   """Base exception for all custom Praxis backend errors.
 
   Attributes:
@@ -9,7 +10,7 @@ class PraxisError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the PraxisError.
 
     Args:
@@ -25,6 +26,7 @@ class PraxisError(Exception):
 
 
 class OrchestratorError(Exception):
+
   """Exception raised for errors in the orchestrator service.
 
   Attributes:
@@ -32,7 +34,7 @@ class OrchestratorError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the OrchestratorError.
 
     Args:
@@ -48,6 +50,7 @@ class OrchestratorError(Exception):
 
 
 class DataError(Exception):
+
   """Exception raised for errors during data operations (e.g., database interactions).
 
   Attributes:
@@ -55,7 +58,7 @@ class DataError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the DataError.
 
     Args:
@@ -71,6 +74,7 @@ class DataError(Exception):
 
 
 class ModelError(Exception):
+
   """Exception raised for data models errors (e.g., validation, serialization).
 
   Attributes:
@@ -78,7 +82,7 @@ class ModelError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the ModelError.
 
     Args:
@@ -94,6 +98,7 @@ class ModelError(Exception):
 
 
 class AssetAcquisitionError(RuntimeError):
+
   """Exception raised when there is an issue acquiring or assigning assets.
 
   Attributes:
@@ -101,7 +106,7 @@ class AssetAcquisitionError(RuntimeError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the AssetAcquisitionError.
 
     Args:
@@ -117,6 +122,7 @@ class AssetAcquisitionError(RuntimeError):
 
 
 class AssetReleaseError(RuntimeError):
+
   """Exception raised when there is an issue releasing or returning assets.
 
   Attributes:
@@ -124,7 +130,7 @@ class AssetReleaseError(RuntimeError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the AssetReleaseError.
 
     Args:
@@ -140,6 +146,7 @@ class AssetReleaseError(RuntimeError):
 
 
 class ProtocolCancelledError(Exception):
+
   """Exception raised when a protocol run is explicitly cancelled.
 
   Attributes:
@@ -147,7 +154,7 @@ class ProtocolCancelledError(Exception):
 
   """
 
-  def __init__(self, message: str = "Protocol run was cancelled."):
+  def __init__(self, message: str = "Protocol run was cancelled.") -> None:
     """Initialize a new instance of the ProtocolCancelledError.
 
     Args:
@@ -164,6 +171,7 @@ class ProtocolCancelledError(Exception):
 
 
 class WorkcellRuntimeError(Exception):
+
   """Exception raised for errors specific to the WorkcellRuntime.
 
   Attributes:
@@ -171,7 +179,7 @@ class WorkcellRuntimeError(Exception):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the WorkcellRuntimeError.
 
     Args:
@@ -187,9 +195,10 @@ class WorkcellRuntimeError(Exception):
 
 
 class PylabRobotError(PraxisError):
+
   """Base exception for PyLabRobot-related errors within Praxis."""
 
-  def __init__(self, message: str, original_plr_exception: Exception | None = None):
+  def __init__(self, message: str, original_plr_exception: Exception | None = None) -> None:
     """Initialize a new instance of the PylabRobotError.
 
     Args:
@@ -203,6 +212,7 @@ class PylabRobotError(PraxisError):
 
 
 class PyLabRobotVolumeError(PylabRobotError):
+
   """Specific error for PyLabRobot 'TooLittleLiquidError' scenarios."""
 
   def __init__(
@@ -210,7 +220,7 @@ class PyLabRobotVolumeError(PylabRobotError):
     message="Too little liquid for transfer.",
     details=None,
     original_plr_exception: Exception | None = None,
-  ):
+  ) -> None:
     """Initialize a new instance of the PyLabRobotVolumeRelatedError.
 
     Args:
@@ -225,18 +235,20 @@ class PyLabRobotVolumeError(PylabRobotError):
 
 
 class PyLabRobotGenericError(PylabRobotError):
+
   """Generic placeholder for other PyLabRobot errors."""
 
   def __init__(
     self,
     message="A PyLabRobot operation failed.",
     original_plr_exception: Exception | None = None,
-  ):
+  ) -> None:
     """Initialize a new instance of the PyLabRobotGenericError."""
     super().__init__(message, original_plr_exception)
 
 
 class PraxisAPIError(PraxisError):
+
   """Base exception for errors in the Praxis API.
 
   Attributes:
@@ -244,7 +256,7 @@ class PraxisAPIError(PraxisError):
 
   """
 
-  def __init__(self, message: str):
+  def __init__(self, message: str) -> None:
     """Initialize a new instance of the PraxisAPIError.
 
     Args:

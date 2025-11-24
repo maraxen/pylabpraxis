@@ -1,2 +1,186 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
+name = "praxis"
+version = "0.0.1"
+description = "A hardware agnostic platform for lab automation"
+authors = [{name = "Marielle Russo"}]
 requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+dependencies = [
+    "typing_extensions",
+    "inflection",
+    "pylabrobot @ git+https://github.com/pylabrobot/pylabrobot.git@main",
+    "pydantic>=2.0.0",
+    "sqlalchemy[asyncio]",
+    "asyncpg>=0.27.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "uuid-utils>=0.11.0",
+    "dependency-injector",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt<6.0.0",
+]
+
+[project.optional-dependencies]
+fw = [
+    "pyusb",
+]
+http = [
+    "requests",
+    "types-requests",
+]
+plate_reading = [
+    "pylibftdi",
+]
+websockets = [
+    "websockets",
+]
+visualizer = [
+    "websockets",
+]
+opentrons = [
+    "opentrons-http-api-client",
+    "opentrons-shared-data",
+]
+server = [
+    "flask[async]",
+]
+inheco = [
+    "hid",
+]
+agrow = [
+    "pymodbus",
+]
+email = [
+    "boto3",
+]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.3.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout",
+    "factory-boy>=3.2.0",
+    "httpx>=0.24.0",
+    "locust>=2.15.0",
+    "responses",
+    "freezegun",
+    "fakeredis",
+    "celery",
+    "aiosqlite",
+    "alembic",
+    "psycopg2-binary",
+]
+dev = [
+    "praxis[fw,http,plate_reading,websockets,opentrons,server,inheco,agrow,email,test]",
+    "sphinx_book_theme",
+    "myst_nb",
+    "sphinx_copybutton",
+    "ruff",
+]
+all = [
+    "praxis[dev]",
+]
+
+[project.urls]
+Repository = "https://github.com/maraxen/pylabpraxis.git"
+Homepage = "https://github.com/maraxen/pylabpraxis.git"
+
+[tool.setuptools]
+packages = ["praxis"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=praxis",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+    "--timeout=300",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow running tests",
+    "hardware: Tests requiring hardware",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["praxis"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/*_test.py",
+    "*/conftest.py",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Ruff configuration for linting and formatting
+[tool.ruff]
+line-length = 100
+indent-width = 2
+fix = true
+target-version = "py310"
+exclude = ["praxis/backend/commons", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D211", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+indent-style = "space"
+exclude = ["D211", "D213"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+# Pyright configuration
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+include = ["praxis"]
+exclude = ["**/__pycache__", "**/node_modules", "praxis/backend/commons"]
+stubPath = "typings"
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
+
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]

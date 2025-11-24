@@ -1,1 +1,3 @@
-from .configure import *
+"""Praxis Backend Package."""
+
+from . import configure

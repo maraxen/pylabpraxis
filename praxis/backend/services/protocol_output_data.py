@@ -11,12 +11,10 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models import (
-  ProtocolRunDataSummary,
-)
-from praxis.backend.models.function_data_output_orm import (
+from praxis.backend.models.orm.outputs import (
   FunctionDataOutputOrm,
 )
+from praxis.backend.models.pydantic_internals.outputs import ProtocolRunDataSummary
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
 
 logger = get_logger(__name__)
@@ -31,7 +29,8 @@ log_data_output_errors = partial(
 
 
 async def read_protocol_run_data_summary(
-  db: AsyncSession, protocol_run_accession_id: UUID
+  db: AsyncSession,
+  protocol_run_accession_id: UUID,
 ) -> ProtocolRunDataSummary:
   """Get a summary of all data outputs for a protocol run.
 
@@ -43,43 +42,40 @@ async def read_protocol_run_data_summary(
     Protocol run data summary
 
   """
-  # Count total data outputs
   total_count_result = await db.execute(
     select(func.count(FunctionDataOutputOrm.accession_id)).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
-    )
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    ),
   )
   total_data_outputs = total_count_result.scalar()
 
-  # Get unique data types
   data_types_result = await db.execute(
     select(FunctionDataOutputOrm.data_type.distinct()).filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
-    )
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
+    ),
   )
   data_types = [dt.value for dt in data_types_result.scalars().all()]
 
-  # Get unique machines
   machines_result = await db.execute(
     select(FunctionDataOutputOrm.machine_accession_id.distinct()).filter(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
         FunctionDataOutputOrm.machine_accession_id.is_not(None),
-      )
-    )
+      ),
+    ),
   )
-  machines_used = list(machines_result.scalars().all())
+  machines_used = list(machines_result.scalars().all())  # type: ignore[assignment]
 
   # Get unique resource
   resource_result = await db.execute(
-    select(FunctionDataOutputOrm.resource_instance_accession_id.distinct()).filter(
+    select(FunctionDataOutputOrm.resource_accession_id.distinct()).filter(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
-        FunctionDataOutputOrm.resource_instance_accession_id.is_not(None),
-      )
-    )
+        FunctionDataOutputOrm.resource_accession_id.is_not(None),
+      ),
+    ),
   )
-  resource_with_data = list(resource_result.scalars().all())
+  resource_with_data = list(resource_result.scalars().all())  # type: ignore[assignment]
 
   # Get timeline of data capture (simplified)
   timeline_result = await db.execute(
@@ -89,12 +85,13 @@ async def read_protocol_run_data_summary(
       func.count(FunctionDataOutputOrm.accession_id),
     )
     .filter(
-      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id
+      FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
     )
     .group_by(
-      FunctionDataOutputOrm.measurement_timestamp, FunctionDataOutputOrm.data_type
+      FunctionDataOutputOrm.measurement_timestamp,
+      FunctionDataOutputOrm.data_type,
     )
-    .order_by(FunctionDataOutputOrm.measurement_timestamp)
+    .order_by(FunctionDataOutputOrm.measurement_timestamp),
   )
 
   data_timeline = [
@@ -112,8 +109,8 @@ async def read_protocol_run_data_summary(
       and_(
         FunctionDataOutputOrm.protocol_run_accession_id == protocol_run_accession_id,
         FunctionDataOutputOrm.file_path.is_not(None),
-      )
-    )
+      ),
+    ),
   )
 
   file_attachments = [
@@ -121,15 +118,15 @@ async def read_protocol_run_data_summary(
     for row in files_result.all()
   ]
 
-  machines_used = [m for m in machines_used if m is not None]
-  resource_with_data = [r for r in resource_with_data if r is not None]
+  machines_used: list[UUID] = [m for m in machines_used if m is not None]
+  resource_with_data: list[UUID] = [r for r in resource_with_data if r is not None]
 
   return ProtocolRunDataSummary(
     protocol_run_accession_id=protocol_run_accession_id,
     total_data_outputs=total_data_outputs or 0,
     data_types=data_types,
-    machines_used=machines_used,  # type: ignore
-    resource_with_data=resource_with_data,  # type: ignore
+    machines_used=machines_used,
+    resource_with_data=resource_with_data,
     data_timeline=data_timeline,
     file_attachments=file_attachments,
   )

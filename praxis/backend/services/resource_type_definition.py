@@ -1,437 +1,236 @@
-# pylint: disable=too-many-arguments, broad-except, fixme, unused-argument, too-many-lines
-"""Manage resource-related database interactions.
+"""Service layer for Resource Type Definition Management."""
 
-praxis/db_services/resource_data_service.py
+import importlib
+import inspect
+import pkgutil
+from typing import Any
 
-Service layer for interacting with resource-related data in the database.
-This includes Resource Definitions, Resource Instances, and their management.
-
-"""
-
-import datetime
-from functools import partial
-from typing import Any, Dict, List, Optional
-
-import uuid
-from sqlalchemy import delete, select, update
-from sqlalchemy.exc import IntegrityError
+import pylabrobot.resources
+from pylabrobot.resources import (
+  Carrier,
+  Container,
+  Deck,
+  ItemizedResource,
+  Lid,
+  PlateAdapter,
+  PlateHolder,
+  Resource,
+  ResourceHolder,
+  ResourceStack,
+  TipSpot,
+  Well,
+)
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
-from sqlalchemy.orm.attributes import flag_modified
 
-from praxis.backend.models import (
-  ResourceDefinitionCatalogOrm,
-  ResourceInstanceOrm,
-  ResourceInstanceStatusEnum,
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.pydantic_internals.resource import (
+  ResourceDefinitionCreate,
+  ResourceDefinitionUpdate,
 )
-from praxis.backend.services.entity_linking import (
-  _create_or_link_machine_counterpart_for_resource,
-)
-from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
+from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
+from praxis.backend.services.utils.crud_base import CRUDBase
+from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-log_resource_data_service_errors = partial(
-  log_async_runtime_errors,
-  logger_instance=logger,
-  exception_type=ValueError,
-  raises=True,
-  raises_exception=ValueError,
-)
+class ResourceTypeDefinitionService(
+  CRUDBase[
+    ResourceDefinitionOrm,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
+  ],
+  DiscoverableTypeServiceBase[
+    ResourceDefinitionOrm,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
+  ],
+):
 
+  """Service for discovering and syncing resource type definitions."""
 
-@log_resource_data_service_errors(
-  prefix="Resource Definition Error: Creating resource definition - ",
-  suffix=" Please ensure the parameters are correct and the resource definition does "
-  "not already exist.",
-)
-async def create_resource_definition(
-  db: AsyncSession,
-  name: str,
-  python_fqn: str,
-  resource_type: Optional[str] = None,
-  description: Optional[str] = None,
-  is_consumable: bool = True,
-  nominal_volume_ul: Optional[float] = None,
-  material: Optional[str] = None,
-  manufacturer: Optional[str] = None,
-  plr_definition_details_json: Optional[Dict[str, Any]] = None,
-) -> ResourceDefinitionCatalogOrm:
-  """Add a new resource definition to the catalog.
-
-  This function creates a new `ResourceDefinitionCatalogOrm`.
-
-  Args:
-      db (AsyncSession): The database session.
-      name (str): The unique PyLabRobot definition name
-          for the resource (e.g., "tip_rack_1000ul").
-      python_fqn (str): The fully qualified Python name of the resource class.
-      resource_type (Optional[str], optional): A human-readable
-          name for the resource type. Defaults to None.
-      description (Optional[str], optional): A description of the resource.
-          Defaults to None.
-      is_consumable (bool, optional): Indicates if the resource is consumable.
-          Defaults to True.
-      nominal_volume_ul (Optional[float], optional): The nominal volume in
-          microliters, if applicable. Defaults to None.
-      material (Optional[str], optional): The material of the resource.
-          Defaults to None.
-      manufacturer (Optional[str], optional): The manufacturer of the resource.
-          Defaults to None.
-      plr_definition_details_json (Optional[Dict[str, Any]], optional):
-          Additional PyLabRobot specific definition details as a JSON-serializable
-          dictionary. Defaults to None.
-
-  Returns:
-      ResourceDefinitionCatalogOrm: The created resource definition object.
-
-  Raises:
-      ValueError: If a resource definition with the same `name` already exists.
-      Exception: For any other unexpected errors during the process.
-
-  """
-  log_prefix = f"Resource Definition (Name: '{name}', creating new):"
-  logger.info("%s Attempting to create new resource definition.", log_prefix)
-
-  # Check if a resource definition with this name already exists
-  result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
+  EXCLUDED_BASE_CLASSES: tuple[type[Resource], ...] = (
+    Carrier,
+    Container,
+    Deck,
+    ItemizedResource,
+    Lid,
+    PlateAdapter,
+    PlateHolder,
+    Resource,
+    ResourceHolder,
+    ResourceStack,
+    TipSpot,
+    Well,
   )
-  if result.scalar_one_or_none():
-    error_message = (
-      f"{log_prefix} A resource definition with name "
-      f"'{name}' already exists. Use the update function for existing definitions."
-    )
-    logger.error(error_message)
-    raise ValueError(error_message)
 
-  # Create a new ResourceDefinitionCatalogOrm
-  def_orm = ResourceDefinitionCatalogOrm(
-    name=name,
-    python_fqn=python_fqn,
-    resource_type=resource_type,
-    description=description,
-    is_consumable=is_consumable,
-    nominal_volume_ul=nominal_volume_ul,
-    material=material,
-    manufacturer=manufacturer,
-    plr_definition_details_json=plr_definition_details_json,
-  )
-  db.add(def_orm)
-  logger.info("%s Initialized new resource definition for creation.", log_prefix)
+  def __init__(self, db: AsyncSession) -> None:
+    """Initialize the ResourceTypeDefinitionService."""
+    super().__init__(ResourceDefinitionOrm)
+    self.db = db
 
-  try:
-    await db.commit()
-    await db.refresh(def_orm)
-    logger.info("%s Successfully committed new resource definition.", log_prefix)
-  except IntegrityError as e:
-    await db.rollback()
-    if "uq_resource_definitions_name" in str(
-      e.orig
-    ):  # Placeholder for actual constraint name
-      error_message = (
-        f"{log_prefix} A resource definition with name "
-        f"'{name}' already exists (integrity check failed). Details: {e}"
-      )
-      logger.error(error_message, exc_info=True)
-      raise ValueError(error_message) from e
-    error_message = (
-      f"{log_prefix} Database integrity error during creation. Details: {e}"
-    )
-    logger.error(error_message, exc_info=True)
-    raise ValueError(error_message) from e
-  except Exception as e:
-    await db.rollback()
-    logger.exception("%s Unexpected error during creation. Rolling back.", log_prefix)
-    raise e
+  @property
+  def _orm_model(self) -> type[ResourceDefinitionOrm]:
+    """The SQLAlchemy ORM model for the type definition."""
+    return ResourceDefinitionOrm
 
-  logger.info("%s Creation operation completed.", log_prefix)
-  return def_orm
+  def _can_catalog_resource(self, plr_class: type[Any]) -> bool:
+    """Determine if a PyLabRobot class represents a resource definition to catalog."""
+    if not inspect.isclass(plr_class) or not issubclass(plr_class, Resource):
+      return False
+    if inspect.isabstract(plr_class):
+      return False
+    if plr_class in self.EXCLUDED_BASE_CLASSES:
+      return False
+    return plr_class.__module__.startswith("pylabrobot.resources")
 
+  def _get_category_from_plr_class(self, plr_class: type[Any]) -> str | None:
+    """Extract the category from a PyLabRobot class."""
+    if hasattr(plr_class, "category"):
+      return plr_class.category
+    return None
 
-@log_resource_data_service_errors(
-  prefix="Resource Definition Error: Updating resource definition - ",
-  suffix=" Please ensure the parameters are correct and the resource definition exists.",
-)
-async def update_resource_definition(
-  db: AsyncSession,
-  name: str,  # Identifier for the resource definition to update
-  python_fqn: Optional[str] = None,
-  resource_type: Optional[str] = None,
-  description: Optional[str] = None,
-  is_consumable: Optional[bool] = None,
-  nominal_volume_ul: Optional[float] = None,
-  material: Optional[str] = None,
-  manufacturer: Optional[str] = None,
-  plr_definition_details_json: Optional[Dict[str, Any]] = None,
-) -> ResourceDefinitionCatalogOrm:
-  """Update an existing resource definition in the catalog.
+  def _extract_ordering_from_plr_class(self, plr_class: type[Any]) -> str | None:
+    """Extract ordering information from a PyLabRobot class."""
+    if hasattr(plr_class, "ordering") and isinstance(plr_class.ordering, list):
+      return ",".join(plr_class.ordering)
+    return None
 
-  Args:
-      db (AsyncSession): The database session.
-      name (str): The unique PyLabRobot definition name
-          for the resource to update (e.g., "tip_rack_1000ul").
-      python_fqn (Optional[str], optional): The fully qualified Python name of the resource class.
-          Defaults to None.
-      resource_type (Optional[str], optional): A human-readable
-          name for the resource type. Defaults to None.
-      description (Optional[str], optional): A description of the resource.
-          Defaults to None.
-      is_consumable (Optional[bool], optional): Indicates if the resource is consumable.
-          Defaults to None.
-      nominal_volume_ul (Optional[float], optional): The nominal volume in
-          microliters, if applicable. Defaults to None.
-      material (Optional[str], optional): The material of the resource.
-          Defaults to None.
-      manufacturer (Optional[str], optional): The manufacturer of the resource.
-          Defaults to None.
-      plr_definition_details_json (Optional[Dict[str, Any]], optional):
-          Additional PyLabRobot specific definition details as a JSON-serializable
-          dictionary. Defaults to None.
+  def _get_short_name_from_plr_class(self, plr_class: type[Any]) -> str:
+    """Extract the short name from a PyLabRobot class."""
+    return plr_class.__name__
 
-  Returns:
-      ResourceDefinitionCatalogOrm: The updated resource definition object.
+  def _get_description_from_plr_class(self, plr_class: type[Any]) -> str | None:
+    """Extract the description from a PyLabRobot class."""
+    return inspect.getdoc(plr_class)
 
-  Raises:
-      ValueError: If the resource definition with the provided `name` is not found,
-                  or if an integrity error occurs (e.g., duplicate FQN if `python_fqn` is changed).
-      Exception: For any other unexpected errors during the process.
+  def _get_size_x_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+    """Extract the size_x_mm from a PyLabRobot class."""
+    if hasattr(plr_class, "size_x"):
+      return plr_class.size_x
+    return None
 
-  """
-  log_prefix = f"Resource Definition (Name: '{name}', updating):"
-  logger.info("%s Attempting to update.", log_prefix)
+  def _get_size_y_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+    """Extract the size_y_mm from a PyLabRobot class."""
+    if hasattr(plr_class, "size_y"):
+      return plr_class.size_y
+    return None
 
-  # Fetch the existing resource definition
-  result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
-  )
-  def_orm = result.scalar_one_or_none()
+  def _get_size_z_mm_from_plr_class(self, plr_class: type[Any]) -> float | None:
+    """Extract the size_z_mm from a PyLabRobot class."""
+    if hasattr(plr_class, "size_z"):
+      return plr_class.size_z
+    return None
 
-  if not def_orm:
-    error_message = f"{log_prefix} ResourceDefinitionCatalogOrm with name '{name}' not found for update."
-    logger.error(error_message)
-    raise ValueError(error_message)
-  logger.info("%s Found existing definition for update.", log_prefix)
+  def _get_nominal_volume_ul_from_plr_class(self, plr_class: type[Any]) -> float | None:
+    """Extract the nominal_volume_ul from a PyLabRobot class."""
+    if hasattr(plr_class, "nominal_volume"):
+      return plr_class.nominal_volume
+    return None
 
-  # Update attributes if provided
-  if python_fqn is not None:
-    def_orm.python_fqn = python_fqn
-  if resource_type is not None:
-    def_orm.resource_type = resource_type
-  if description is not None:
-    def_orm.description = description
-  if is_consumable is not None:
-    def_orm.is_consumable = is_consumable
-  if nominal_volume_ul is not None:
-    def_orm.nominal_volume_ul = nominal_volume_ul
-  if material is not None:
-    def_orm.material = material
-  if manufacturer is not None:
-    def_orm.manufacturer = manufacturer
-  if plr_definition_details_json is not None:
-    def_orm.plr_definition_details_json = plr_definition_details_json
-    flag_modified(def_orm, "plr_definition_details_json")  # Flag as modified
-
-  try:
-    await db.commit()
-    await db.refresh(def_orm)
-    logger.info("%s Successfully committed update.", log_prefix)
-  except IntegrityError as e:
-    await db.rollback()
-    error_message = (
-      f"{log_prefix} Integrity error during update. "
-      f"This might occur if a unique constraint is violated (e.g., duplicate FQN). Details: {e}"
-    )
-    logger.error(error_message, exc_info=True)
-    raise ValueError(error_message) from e
-  except Exception as e:
-    await db.rollback()
-    logger.exception("%s Unexpected error during update. Rolling back.", log_prefix)
-    raise e
-
-  logger.info("%s Update operation completed.", log_prefix)
-  return def_orm
-
-
-async def read_resource_definition(
-  db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
-  """Retrieve a resource definition by its PyLabRobot definition name.
-
-  Args:
-      db (AsyncSession): The database session.
-      name (str): The PyLabRobot definition name of the
-          resource to retrieve.
-
-  Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
-      if found, otherwise None.
-
-  """
-  logger.info(
-    "Retrieving resource definition by PyLabRobot name: '%s'.",
-    name,
-  )
-  result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.name == name
-    )
-  )
-  resource_def = result.scalar_one_or_none()
-  if resource_def:
-    logger.info("Found resource definition '%s'.", name)
-  else:
-    logger.info("Resource definition '%s' not found.", name)
-  return resource_def
-
-
-async def list_resource_definitions(
-  db: AsyncSession,
-  manufacturer: Optional[str] = None,
-  is_consumable: Optional[bool] = None,
-  limit: int = 100,
-  offset: int = 0,
-) -> List[ResourceDefinitionCatalogOrm]:
-  """List resource definitions with optional filtering and pagination.
-
-  Args:
-      db (AsyncSession): The database session.
-      manufacturer (Optional[str], optional): Filter definitions by manufacturer
-          (case-insensitive partial match). Defaults to None.
-      is_consumable (Optional[bool], optional): Filter definitions by whether
-          they are consumable. Defaults to None.
-      limit (int): The maximum number of results to return. Defaults to 100.
-      offset (int): The number of results to skip before returning. Defaults to 0.
-
-  Returns:
-      List[ResourceDefinitionCatalogOrm]: A list of resource definition objects
-      matching the criteria.
-
-  """
-  logger.info(
-    "Listing resource definitions with filters: manufacturer='%s', "
-    "is_consumable=%s, limit=%d, offset=%d.",
-    manufacturer,
-    is_consumable,
-    limit,
-    offset,
-  )
-  stmt = select(ResourceDefinitionCatalogOrm)
-  if manufacturer:
-    stmt = stmt.filter(
-      ResourceDefinitionCatalogOrm.manufacturer.ilike(f"%{manufacturer}%")
-    )
-    logger.debug("Filtering by manufacturer: '%s'.", manufacturer)
-  if is_consumable is not None:
-    stmt = stmt.filter(ResourceDefinitionCatalogOrm.is_consumable == is_consumable)
-    logger.debug("Filtering by is_consumable: %s.", is_consumable)
-  stmt = stmt.order_by(ResourceDefinitionCatalogOrm.name).limit(limit).offset(offset)
-  result = await db.execute(stmt)
-  resource_defs = list(result.scalars().all())
-  logger.info("Found %d resource definitions.", len(resource_defs))
-  return resource_defs
-
-
-async def read_resource_definition_by_name(
-  db: AsyncSession, name: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
-  """Retrieve a resource definition by its PyLabRobot definition name.
-
-  This is an alias for `read_resource_definition`.
-
-  Args:
-      db (AsyncSession): The database session.
-      name (str): The PyLabRobot definition name of the
-          resource to retrieve.
-
-  Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
-      if found, otherwise None.
-
-  """
-  return await read_resource_definition(db, name)
-
-
-async def read_resource_definition_by_fqn(
-  db: AsyncSession, python_fqn: str
-) -> Optional[ResourceDefinitionCatalogOrm]:
-  """Retrieve a resource definition by its Python fully qualified name (FQN).
-
-  Args:
-      db (AsyncSession): The database session.
-      python_fqn (str): The Python FQN of the resource to retrieve.
-
-  Returns:
-      Optional[ResourceDefinitionCatalogOrm]: The resource definition object
-      if found, otherwise None.
-
-  """
-  logger.info("Retrieving resource definition by Python FQN: '%s'.", python_fqn)
-  result = await db.execute(
-    select(ResourceDefinitionCatalogOrm).filter(
-      ResourceDefinitionCatalogOrm.python_fqn == python_fqn
-    )
-  )
-  resource_def = result.scalar_one_or_none()
-  if resource_def:
-    logger.info("Found resource definition by FQN '%s'.", python_fqn)
-  else:
-    logger.info("Resource definition with FQN '%s' not found.", python_fqn)
-  return resource_def
-
-
-async def delete_resource_definition(db: AsyncSession, name: str) -> bool:
-  """Delete a specific resource definition from the catalog.
-
-  Args:
-      db (AsyncSession): The database session.
-      name (str): The PyLabRobot definition name of the
-          resource to delete.
-
-  Returns:
-      bool: True if the deletion was successful, False if the definition was
-      not found.
-
-  Raises:
-      ValueError: If the definition cannot be deleted due to existing foreign
-          key references (IntegrityError).
-      Exception: For any other unexpected errors during deletion.
-
-  """
-  logger.info("Attempting to delete resource definition: '%s'.", name)
-  def_orm = await read_resource_definition(db, name)
-  if not def_orm:
-    logger.warning(
-      "Resource definition '%s' not found for deletion.",
-      name,
-    )
-    return False
-
-  try:
-    await db.delete(def_orm)
-    await db.commit()
+  async def discover_and_synchronize_type_definitions(
+    self,
+    plr_resources_package: type[Any] = pylabrobot,
+  ) -> list[ResourceDefinitionOrm]:
+    """Discover all pylabrobot resource type definitions and synchronize them with the database."""
     logger.info(
-      "Successfully deleted resource definition '%s'.",
-      name,
+      "Starting PyLabRobot resource definition sync from package: %s",
+      plr_resources_package.__name__,
     )
-    return True
-  except IntegrityError as e:
-    await db.rollback()
-    error_message = (
-      f"Cannot delete resource definition '{name}' "
-      f"due to existing references (e.g., resource instances). Details: {e}"
-    )
-    logger.error(error_message, exc_info=True)
-    raise ValueError(error_message) from e
-  except Exception as e:
-    await db.rollback()
-    logger.exception(
-      "Unexpected error deleting resource definition '%s'. Rolling back.",
-      name,
-    )
-    raise e
+    synced_definitions = []
+    processed_fqns: set[str] = set()
+
+    for _, modname, _ in pkgutil.walk_packages(
+      path=plr_resources_package.__path__,
+      prefix=plr_resources_package.__name__ + ".",
+      onerror=lambda x: logger.error("Error walking package %s", x),
+    ):
+      try:
+        module = importlib.import_module(modname)
+      except ImportError as e:
+        logger.warning("Could not import module %s during sync: %s", modname, e)
+        continue
+
+      for class_name, plr_class_obj in inspect.getmembers(module, inspect.isclass):
+        fqn = f"{modname}.{class_name}"
+        if fqn in processed_fqns:
+          continue
+        processed_fqns.add(fqn)
+
+        if not self._can_catalog_resource(plr_class_obj):
+          continue
+
+        # Extract metadata
+        category = self._get_category_from_plr_class(plr_class_obj)
+        ordering = self._extract_ordering_from_plr_class(plr_class_obj)
+        short_name = self._get_short_name_from_plr_class(plr_class_obj)
+        description = self._get_description_from_plr_class(plr_class_obj)
+        size_x_mm = self._get_size_x_mm_from_plr_class(plr_class_obj)
+        size_y_mm = self._get_size_y_mm_from_plr_class(plr_class_obj)
+        size_z_mm = self._get_size_z_mm_from_plr_class(plr_class_obj)
+        nominal_volume_ul = self._get_nominal_volume_ul_from_plr_class(plr_class_obj)
+
+        existing_resource_def_result = await self.db.execute(
+          select(ResourceDefinitionOrm).filter(ResourceDefinitionOrm.fqn == fqn),
+        )
+        existing_resource_def = existing_resource_def_result.scalar_one_or_none()
+
+        if existing_resource_def:
+          update_data = ResourceDefinitionUpdate(
+            name=short_name,
+            fqn=fqn,
+            description=description,
+            plr_category=category,
+            ordering=ordering,
+            size_x_mm=size_x_mm,
+            size_y_mm=size_y_mm,
+            size_z_mm=size_z_mm,
+            nominal_volume_ul=nominal_volume_ul,
+          )
+          for key, value in update_data.model_dump(exclude_unset=True).items():
+            setattr(existing_resource_def, key, value)
+          self.db.add(existing_resource_def)
+          logger.debug("Updated resource definition: %s", fqn)
+          synced_definitions.append(existing_resource_def)
+        else:
+          new_resource_def = ResourceDefinitionOrm(
+            name=short_name,
+            fqn=fqn,
+            description=description,
+            plr_category=category,
+            ordering=ordering,
+            size_x_mm=size_x_mm,
+            size_y_mm=size_y_mm,
+            size_z_mm=size_z_mm,
+            nominal_volume_ul=nominal_volume_ul,
+          )
+          self.db.add(new_resource_def)
+          logger.debug("Added new resource definition: %s", fqn)
+          synced_definitions.append(new_resource_def)
+
+    await self.db.commit()
+    logger.info("Synchronized %d resource definitions.", len(synced_definitions))
+    return synced_definitions
+
+
+class ResourceTypeDefinitionCRUDService(
+  CRUDBase[
+    ResourceDefinitionOrm,
+    ResourceDefinitionCreate,
+    ResourceDefinitionUpdate,
+  ],
+):
+
+  """CRUD service for resource type definitions."""
+
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: ResourceDefinitionOrm,
+    obj_in: ResourceDefinitionUpdate | dict[str, Any],
+  ) -> ResourceDefinitionOrm:
+    """Update an existing resource definition."""
+    obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
+    return await super().update(db=db, db_obj=db_obj, obj_in=obj_in_model)

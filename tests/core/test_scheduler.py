@@ -1,267 +1,600 @@
-"""Unit tests for the ProtocolScheduler."""
+"""Tests for core/scheduler.py."""
 
-import uuid
-from datetime import datetime, timezone
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from celery import Celery
 
 from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry
-from praxis.backend.models import (
-  AssetDefinitionOrm,
-  FunctionProtocolDefinitionOrm,
-  ProtocolRunOrm,
-  ProtocolRunStatusEnum,
-  RuntimeAssetRequirement,
+from praxis.backend.models import ProtocolRunStatusEnum
+from praxis.backend.models.pydantic_internals.protocol import (
+    AssetConstraintsModel,
+    AssetRequirementModel,
+    LocationConstraintsModel,
 )
+from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
+from praxis.backend.utils.uuid import uuid7
 
 
-@pytest.fixture
-def mock_db_session():
-  """Fixture for a mock async database session."""
-  session = AsyncMock()
-  session.commit = AsyncMock()
-  return session
+class TestScheduleEntry:
+    """Tests for ScheduleEntry class."""
+
+    def test_schedule_entry_initialization(self) -> None:
+        """Test that ScheduleEntry initializes correctly."""
+        protocol_run_id = uuid7()
+        protocol_name = "test_protocol"
+        required_assets = []
+
+        entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name=protocol_name,
+            required_assets=required_assets,
+        )
+
+        assert entry.protocol_run_id == protocol_run_id
+        assert entry.protocol_name == protocol_name
+        assert entry.required_assets == required_assets
+        assert entry.estimated_duration_ms is None
+        assert entry.priority == 1
+        assert entry.status == "QUEUED"
+        assert entry.celery_task_id is None
+
+    def test_schedule_entry_with_custom_values(self) -> None:
+        """Test ScheduleEntry with custom parameters."""
+        protocol_run_id = uuid7()
+        required_assets = []
+
+        entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name="custom_protocol",
+            required_assets=required_assets,
+            estimated_duration_ms=5000,
+            priority=5,
+        )
+
+        assert entry.estimated_duration_ms == 5000
+        assert entry.priority == 5
+
+    def test_schedule_entry_has_scheduled_at_timestamp(self) -> None:
+        """Test that ScheduleEntry sets scheduled_at timestamp."""
+        entry = ScheduleEntry(
+            protocol_run_id=uuid7(),
+            protocol_name="test",
+            required_assets=[],
+        )
+
+        assert isinstance(entry.scheduled_at, datetime)
 
 
-@pytest.fixture
-def db_session_factory(mock_db_session):
-  """Fixture for a mock async session factory."""
-  factory = MagicMock()
-  # When the factory is called, it should return an async context manager
-  # that yields the mock session.
-  factory.return_value.__aenter__.return_value = mock_db_session
-  return factory
+class TestProtocolSchedulerInit:
+    """Tests for ProtocolScheduler initialization."""
+
+    def test_protocol_scheduler_initialization(self) -> None:
+        """Test that ProtocolScheduler initializes correctly."""
+        mock_session_factory = Mock()
+        mock_task_queue = Mock()
+        mock_protocol_run_service = Mock()
+        mock_protocol_definition_service = Mock()
+
+        scheduler = ProtocolScheduler(
+            db_session_factory=mock_session_factory,
+            task_queue=mock_task_queue,
+            protocol_run_service=mock_protocol_run_service,
+            protocol_definition_service=mock_protocol_definition_service,
+        )
+
+        assert scheduler.db_session_factory is mock_session_factory
+        assert scheduler.task_queue is mock_task_queue
+        assert scheduler.protocol_run_service is mock_protocol_run_service
+        assert scheduler.protocol_definition_service is mock_protocol_definition_service
+
+    def test_protocol_scheduler_initializes_empty_schedules(self) -> None:
+        """Test that ProtocolScheduler initializes with empty schedules."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        assert isinstance(scheduler._active_schedules, dict)
+        assert len(scheduler._active_schedules) == 0
+
+    def test_protocol_scheduler_initializes_empty_reservations(self) -> None:
+        """Test that ProtocolScheduler initializes with empty reservations."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        assert isinstance(scheduler._asset_reservations, dict)
+        assert len(scheduler._asset_reservations) == 0
 
 
-@pytest.fixture
-def mock_celery_app():
-  """Fixture for a mock Celery app instance."""
-  return MagicMock(spec=Celery)
+class TestAnalyzeProtocolRequirements:
+    """Tests for analyze_protocol_requirements method."""
+
+    @pytest.mark.asyncio
+    async def test_analyze_protocol_requirements_basic(self) -> None:
+        """Test basic protocol requirements analysis."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        # Create mock protocol definition with no assets
+        mock_protocol_def = Mock()
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        requirements = await scheduler.analyze_protocol_requirements(
+            mock_protocol_def, {}
+        )
+
+        assert isinstance(requirements, list)
+        assert len(requirements) == 0
+
+    @pytest.mark.asyncio
+    async def test_analyze_protocol_requirements_returns_list(self) -> None:
+        """Test that analyze_protocol_requirements returns a list."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        mock_protocol_def = Mock()
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+
+        requirements = await scheduler.analyze_protocol_requirements(
+            mock_protocol_def, {}
+        )
+
+        assert isinstance(requirements, list)
 
 
-@pytest.fixture
-def scheduler(db_session_factory, mock_celery_app):
-  """Fixture for a ProtocolScheduler instance."""
-  with patch("praxis.backend.core.scheduler.get_logger"):
-    return ProtocolScheduler(
-      db_session_factory=db_session_factory,
-      redis_url="redis://localhost:6379/0",
-      celery_app_instance=mock_celery_app,
-    )
+class TestReserveAssets:
+    """Tests for reserve_assets method."""
+
+    @pytest.mark.asyncio
+    async def test_reserve_assets_empty_list_succeeds(self) -> None:
+        """Test that reserving empty asset list succeeds."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        protocol_run_id = uuid7()
+        result = await scheduler.reserve_assets([], protocol_run_id)
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_reserve_assets_single_asset_succeeds(self) -> None:
+        """Test that reserving a single available asset succeeds."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        asset_requirement = AssetRequirementModel(
+            accession_id=uuid7(),
+            name="test_asset",
+            fqn="test.Asset",
+            type_hint_str="Asset",
+        )
+        runtime_requirement = RuntimeAssetRequirement(
+            asset_definition=asset_requirement,
+            asset_type="asset",
+            estimated_duration_ms=None,
+            priority=1,
+        )
+
+        protocol_run_id = uuid7()
+        result = await scheduler.reserve_assets([runtime_requirement], protocol_run_id)
+
+        assert result is True
+        assert runtime_requirement.reservation_id is not None
+
+    @pytest.mark.asyncio
+    async def test_reserve_assets_already_reserved_fails(self) -> None:
+        """Test that reserving an already-reserved asset fails."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        asset_requirement = AssetRequirementModel(
+            accession_id=uuid7(),
+            name="test_asset",
+            fqn="test.Asset",
+            type_hint_str="Asset",
+        )
+        runtime_requirement = RuntimeAssetRequirement(
+            asset_definition=asset_requirement,
+            asset_type="asset",
+            estimated_duration_ms=None,
+            priority=1,
+        )
+
+        # Reserve for first run
+        first_run_id = uuid7()
+        result1 = await scheduler.reserve_assets([runtime_requirement], first_run_id)
+        assert result1 is True
+
+        # Try to reserve for second run - should fail
+        second_run_id = uuid7()
+        result2 = await scheduler.reserve_assets([runtime_requirement], second_run_id)
+        assert result2 is False
+
+    @pytest.mark.asyncio
+    async def test_reserve_assets_multiple_assets_succeeds(self) -> None:
+        """Test that reserving multiple available assets succeeds."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        requirements = [
+            RuntimeAssetRequirement(
+                asset_definition=AssetRequirementModel(
+                    accession_id=uuid7(),
+                    name=f"asset{i}",
+                    fqn="test.Asset",
+                    type_hint_str="Asset",
+                ),
+                asset_type="asset",
+                estimated_duration_ms=None,
+                priority=1,
+            )
+            for i in range(3)
+        ]
+
+        protocol_run_id = uuid7()
+        result = await scheduler.reserve_assets(requirements, protocol_run_id)
+
+        assert result is True
+        for req in requirements:
+            assert req.reservation_id is not None
 
 
-@pytest.fixture
-def protocol_def_orm():
-  """Fixture for a mock FunctionProtocolDefinitionOrm."""
-  asset_def = MagicMock(spec=AssetDefinitionOrm)
-  asset_def.name = "test_asset"
-  asset_def.actual_type_str = "pylabrobot.resources.Resource"
-  asset_def.accession_id = uuid.uuid4()
-  asset_def.constraints = {}
-  asset_def.location_constraints = {}
-  asset_def.optional = False
+class TestCancelScheduledRun:
+    """Tests for cancel_scheduled_run method."""
 
-  proto_def = MagicMock(spec=FunctionProtocolDefinitionOrm)
-  proto_def.name = "test_protocol"
-  proto_def.version = "1.0"
-  proto_def.assets = [asset_def]
-  proto_def.preconfigure_deck = True
-  proto_def.deck_param_name = "deck"
-  proto_def.accession_id = uuid.uuid4()
-  return proto_def
+    @pytest.mark.asyncio
+    async def test_cancel_nonexistent_run_returns_false(self) -> None:
+        """Test that canceling nonexistent run returns False."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
+        nonexistent_id = uuid7()
+        result = await scheduler.cancel_scheduled_run(nonexistent_id)
 
-@pytest.fixture
-def protocol_run_orm(protocol_def_orm):
-  """Fixture for a mock ProtocolRunOrm."""
-  run = MagicMock(spec=ProtocolRunOrm)
-  run.accession_id = uuid.uuid4()
-  run.top_level_protocol_definition = protocol_def_orm
-  run.top_level_protocol_definition_accession_id = protocol_def_orm.accession_id
-  return run
+        assert result is False
 
+    @pytest.mark.asyncio
+    async def test_cancel_scheduled_run_removes_from_active(self) -> None:
+        """Test that canceling a run removes it from active schedules."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
-@pytest.fixture
-def runtime_asset_requirement():
-  """Fixture for a mock RuntimeAssetRequirement."""
-  req = MagicMock(spec=RuntimeAssetRequirement)
-  req.asset_type = "asset"
-  req.asset_name = "test_asset"
-  return req
+        protocol_run_id = uuid7()
+        schedule_entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name="test",
+            required_assets=[],
+        )
+        scheduler._active_schedules[protocol_run_id] = schedule_entry
 
+        result = await scheduler.cancel_scheduled_run(protocol_run_id)
 
-def test_schedule_entry_init(runtime_asset_requirement):
-  """Test ScheduleEntry initialization."""
-  run_id = uuid.uuid4()
-  assets = [runtime_asset_requirement]
-  entry = ScheduleEntry(
-    protocol_run_id=run_id,
-    protocol_name="test_proto",
-    required_assets=assets,
-    estimated_duration_ms=1000,
-    priority=5,
-  )
-  assert entry.protocol_run_id == run_id
-  assert entry.protocol_name == "test_proto"
-  assert entry.required_assets == assets
-  assert entry.estimated_duration_ms == 1000
-  assert entry.priority == 5
-  assert entry.status == "QUEUED"
-  assert isinstance(entry.scheduled_at, datetime)
-  assert entry.celery_task_id is None
+        assert result is True
+        assert protocol_run_id not in scheduler._active_schedules
 
+    @pytest.mark.asyncio
+    async def test_cancel_scheduled_run_releases_assets(self) -> None:
+        """Test that canceling a run releases asset reservations."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
-@pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.uuid7", return_value=uuid.uuid4())
-async def test_analyze_protocol_requirements(mock_uuid7, scheduler, protocol_def_orm):
-  """Test asset requirement analysis."""
-  requirements = await scheduler.analyze_protocol_requirements(protocol_def_orm, {})
+        # Create and reserve an asset
+        asset_requirement = AssetRequirementModel(
+            accession_id=uuid7(),
+            name="test_asset",
+            fqn="test.Asset",
+            type_hint_str="Asset",
+        )
+        runtime_requirement = RuntimeAssetRequirement(
+            asset_definition=asset_requirement,
+            asset_type="asset",
+            estimated_duration_ms=None,
+            priority=1,
+        )
 
-  assert len(requirements) == 2
-  asset_req = requirements[0]
-  assert asset_req.asset_name == "test_asset"
-  assert asset_req.asset_type == "asset"
+        protocol_run_id = uuid7()
+        await scheduler.reserve_assets([runtime_requirement], protocol_run_id)
 
-  deck_req = requirements[1]
-  assert deck_req.asset_name == "deck"
-  assert deck_req.asset_type == "deck"
-  assert deck_req.asset_definition.fqn == "pylabrobot.resources.Deck"
+        # Create schedule entry
+        schedule_entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name="test",
+            required_assets=[runtime_requirement],
+        )
+        scheduler._active_schedules[protocol_run_id] = schedule_entry
 
+        # Cancel should release reservations
+        result = await scheduler.cancel_scheduled_run(protocol_run_id)
 
-@pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.uuid7", return_value=uuid.uuid4())
-async def test_reserve_assets_success(mock_uuid7, scheduler):
-  """Test successful asset reservation."""
-  run_id = uuid.uuid4()
-  req = MagicMock(spec=RuntimeAssetRequirement)
-  req.asset_type = "asset"
-  req.asset_name = "test_asset"
-  requirements = [req]
-
-  success = await scheduler.reserve_assets(requirements, run_id)
-
-  assert success is True
-  assert scheduler._asset_reservations["asset:test_asset"] == {run_id}
-  assert req.reservation_id is not None
+        assert result is True
+        asset_key = "asset:test_asset"
+        assert asset_key not in scheduler._asset_reservations
 
 
-@pytest.mark.asyncio
-async def test_reserve_assets_failure_and_rollback(scheduler):
-  """Test failed asset reservation and rollback."""
-  run_id_1 = uuid.uuid4()
-  run_id_2 = uuid.uuid4()
-  req = MagicMock(spec=RuntimeAssetRequirement)
-  req.asset_type = "asset"
-  req.asset_name = "test_asset"
-  requirements = [req]
+class TestGetScheduleStatus:
+    """Tests for get_schedule_status method."""
 
-  # Pre-reserve the asset
-  scheduler._asset_reservations["asset:test_asset"] = {run_id_1}
+    @pytest.mark.asyncio
+    async def test_get_schedule_status_nonexistent_returns_none(self) -> None:
+        """Test that getting status for nonexistent run returns None."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
-  success = await scheduler.reserve_assets(requirements, run_id_2)
+        nonexistent_id = uuid7()
+        result = await scheduler.get_schedule_status(nonexistent_id)
 
-  assert success is False
-  assert scheduler._asset_reservations["asset:test_asset"] == {run_id_1}
+        assert result is None
 
+    @pytest.mark.asyncio
+    async def test_get_schedule_status_returns_dict(self) -> None:
+        """Test that get_schedule_status returns status dictionary."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
-@pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.execute_protocol_run_task")
-@patch("praxis.backend.core.scheduler.svc")
-async def test_schedule_protocol_execution_success(
-  mock_svc, mock_celery_task, scheduler, protocol_run_orm, mock_db_session
-):
-  """Test successful scheduling of a protocol."""
-  mock_celery_task.delay.return_value = MagicMock(id="test_task_id")
-  scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
-  scheduler.reserve_assets = AsyncMock(return_value=True)
+        protocol_run_id = uuid7()
+        schedule_entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name="test_protocol",
+            required_assets=[],
+            estimated_duration_ms=5000,
+            priority=3,
+        )
+        scheduler._active_schedules[protocol_run_id] = schedule_entry
 
-  success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
+        result = await scheduler.get_schedule_status(protocol_run_id)
 
-  assert success is True
-  mock_svc.update_protocol_run_status.assert_called_with(
-    mock_db_session,
-    protocol_run_orm.accession_id,
-    ProtocolRunStatusEnum.QUEUED,
-    output_data_json=ANY,
-  )
-  mock_db_session.commit.assert_called_once()
-  mock_celery_task.delay.assert_called_once()
-  assert protocol_run_orm.accession_id in scheduler._active_schedules
-
-
-@pytest.mark.asyncio
-@patch("praxis.backend.core.scheduler.svc")
-async def test_schedule_protocol_asset_failure(
-  mock_svc, scheduler, protocol_run_orm, mock_db_session
-):
-  """Test scheduling failure due to asset reservation."""
-  scheduler.analyze_protocol_requirements = AsyncMock(return_value=[])
-  scheduler.reserve_assets = AsyncMock(return_value=False)
-
-  success = await scheduler.schedule_protocol_execution(protocol_run_orm, {}, None)
-
-  assert success is False
-  mock_svc.update_protocol_run_status.assert_called_with(
-    mock_db_session,
-    protocol_run_orm.accession_id,
-    ProtocolRunStatusEnum.FAILED,
-    output_data_json=ANY,
-  )
-  assert protocol_run_orm.accession_id not in scheduler._active_schedules
+        assert result is not None
+        assert result["protocol_run_id"] == str(protocol_run_id)
+        assert result["protocol_name"] == "test_protocol"
+        assert result["status"] == "QUEUED"
+        assert result["asset_count"] == 0
+        assert result["estimated_duration_ms"] == 5000
+        assert result["priority"] == 3
+        assert "scheduled_at" in result
 
 
-@pytest.mark.asyncio
-async def test_cancel_scheduled_run(scheduler):
-  """Test cancelling a scheduled run."""
-  run_id = uuid.uuid4()
-  req = MagicMock(spec=RuntimeAssetRequirement)
-  req.asset_type = "asset"
-  req.asset_name = "cancellable_asset"
-  entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[req]
-  )
-  scheduler._active_schedules[run_id] = entry
-  scheduler._asset_reservations["asset:cancellable_asset"] = {run_id}
+class TestListActiveSchedules:
+    """Tests for list_active_schedules method."""
 
-  success = await scheduler.cancel_scheduled_run(run_id)
+    @pytest.mark.asyncio
+    async def test_list_active_schedules_empty(self) -> None:
+        """Test that list_active_schedules returns empty list initially."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
 
-  assert success is True
-  assert run_id not in scheduler._active_schedules
-  assert "asset:cancellable_asset" not in scheduler._asset_reservations
+        result = await scheduler.list_active_schedules()
+
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    @pytest.mark.asyncio
+    async def test_list_active_schedules_returns_all_schedules(self) -> None:
+        """Test that list_active_schedules returns all active schedules."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        # Add multiple schedule entries
+        for i in range(3):
+            protocol_run_id = uuid7()
+            schedule_entry = ScheduleEntry(
+                protocol_run_id=protocol_run_id,
+                protocol_name=f"protocol_{i}",
+                required_assets=[],
+            )
+            scheduler._active_schedules[protocol_run_id] = schedule_entry
+
+        result = await scheduler.list_active_schedules()
+
+        assert len(result) == 3
+        assert all(isinstance(item, dict) for item in result)
+
+    @pytest.mark.asyncio
+    async def test_list_active_schedules_sorted_by_time(self) -> None:
+        """Test that list_active_schedules returns schedules sorted by time."""
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=Mock(),
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        # Add schedule entries
+        for i in range(3):
+            protocol_run_id = uuid7()
+            schedule_entry = ScheduleEntry(
+                protocol_run_id=protocol_run_id,
+                protocol_name=f"protocol_{i}",
+                required_assets=[],
+            )
+            scheduler._active_schedules[protocol_run_id] = schedule_entry
+
+        result = await scheduler.list_active_schedules()
+
+        # Verify sorted by scheduled_at
+        for i in range(len(result) - 1):
+            assert result[i]["scheduled_at"] <= result[i + 1]["scheduled_at"]
 
 
-@pytest.mark.asyncio
-async def test_get_schedule_status(scheduler):
-  """Test getting schedule status."""
-  run_id = uuid.uuid4()
-  entry = ScheduleEntry(
-    protocol_run_id=run_id, protocol_name="test", required_assets=[]
-  )
-  scheduler._active_schedules[run_id] = entry
+class TestQueueExecutionTask:
+    """Tests for _queue_execution_task method."""
 
-  status = await scheduler.get_schedule_status(run_id)
-  assert status is not None
-  assert status["protocol_run_id"] == str(run_id)
+    @pytest.mark.asyncio
+    async def test_queue_execution_task_success(self) -> None:
+        """Test successful queueing of execution task."""
+        mock_task_result = Mock()
+        mock_task_result.id = "celery_task_123"
 
-  non_existent_status = await scheduler.get_schedule_status(uuid.uuid4())
-  assert non_existent_status is None
+        mock_task_queue = Mock()
+        mock_task_queue.send_task = Mock(return_value=mock_task_result)
+
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=mock_task_queue,
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        protocol_run_id = uuid7()
+        result = await scheduler._queue_execution_task(
+            protocol_run_id, {"param": "value"}, None
+        )
+
+        assert result is True
+        mock_task_queue.send_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_queue_execution_task_sets_celery_id_in_schedule(self) -> None:
+        """Test that queueing sets celery_task_id in schedule entry."""
+        mock_task_result = Mock()
+        mock_task_result.id = "celery_task_456"
+
+        mock_task_queue = Mock()
+        mock_task_queue.send_task = Mock(return_value=mock_task_result)
+
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=mock_task_queue,
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        protocol_run_id = uuid7()
+        schedule_entry = ScheduleEntry(
+            protocol_run_id=protocol_run_id,
+            protocol_name="test",
+            required_assets=[],
+        )
+        scheduler._active_schedules[protocol_run_id] = schedule_entry
+
+        result = await scheduler._queue_execution_task(protocol_run_id, {}, None)
+
+        assert result is True
+        assert schedule_entry.celery_task_id == "celery_task_456"
+
+    @pytest.mark.asyncio
+    async def test_queue_execution_task_handles_exception(self) -> None:
+        """Test that queueing handles exceptions gracefully."""
+        mock_task_queue = Mock()
+        mock_task_queue.send_task = Mock(side_effect=Exception("Queue error"))
+
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=mock_task_queue,
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        protocol_run_id = uuid7()
+        result = await scheduler._queue_execution_task(protocol_run_id, {}, None)
+
+        assert result is False
 
 
-@pytest.mark.asyncio
-async def test_list_active_schedules(scheduler):
-  """Test listing active schedules."""
-  run_id1 = uuid.uuid4()
-  run_id2 = uuid.uuid4()
-  scheduler._active_schedules[run_id1] = ScheduleEntry(
-    protocol_run_id=run_id1, protocol_name="p1", required_assets=[]
-  )
-  scheduler._active_schedules[run_id2] = ScheduleEntry(
-    protocol_run_id=run_id2, protocol_name="p2", required_assets=[]
-  )
+class TestProtocolSchedulerIntegration:
+    """Integration tests for ProtocolScheduler."""
 
-  schedules = await scheduler.list_active_schedules()
-  assert len(schedules) == 2
-  run_ids = {uuid.UUID(s["protocol_run_id"]) for s in schedules}
-  assert {run_id1, run_id2} == run_ids
+    @pytest.mark.asyncio
+    async def test_complete_scheduling_workflow(self) -> None:
+        """Test complete workflow: analyze, reserve, schedule."""
+        mock_task_result = Mock()
+        mock_task_result.id = "task_id"
+
+        mock_task_queue = Mock()
+        mock_task_queue.send_task = Mock(return_value=mock_task_result)
+
+        scheduler = ProtocolScheduler(
+            db_session_factory=Mock(),
+            task_queue=mock_task_queue,
+            protocol_run_service=Mock(),
+            protocol_definition_service=Mock(),
+        )
+
+        # Create mock protocol definition
+        mock_protocol_def = Mock()
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        # Analyze requirements
+        requirements = await scheduler.analyze_protocol_requirements(
+            mock_protocol_def, {}
+        )
+
+        # Reserve assets
+        protocol_run_id = uuid7()
+        reserve_result = await scheduler.reserve_assets(requirements, protocol_run_id)
+        assert reserve_result is True
+
+        # Queue execution
+        queue_result = await scheduler._queue_execution_task(
+            protocol_run_id, {}, None
+        )
+        assert queue_result is True

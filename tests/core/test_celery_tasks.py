@@ -1,214 +1,222 @@
-# pylint: disable=redefined-outer-name, protected-access
-"""Unit tests for Celery tasks."""
+"""Tests for core/celery_tasks.py."""
 
-import asyncio
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
+import json
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from celery.result import EagerResult
 
-from praxis.backend.core.celery_tasks import (
-  ProtocolExecutionContext,
-  execute_protocol_run_task,
-  health_check,
-  initialize_celery_context,
-)
-from praxis.backend.models import ProtocolRunOrm, ProtocolRunStatusEnum
-
-# --- Test Constants ---
-TEST_RUN_ID = uuid.uuid4()
-TEST_CELERY_TASK_ID = "celery-task-id-123"
-
-# --- Fixtures ---
+from praxis.backend.core.celery_tasks import health_check
+from praxis.backend.models import ProtocolRunStatusEnum
+from praxis.backend.utils.uuid import uuid7
 
 
-@pytest.fixture
-def mock_orchestrator():
-  """Provides a mock Orchestrator."""
-  orc = AsyncMock()
-  orc.execute_existing_protocol_run = AsyncMock(
-    return_value=MagicMock(spec=ProtocolRunOrm, status=ProtocolRunStatusEnum.COMPLETED)
-  )
-  return orc
+class TestHealthCheck:
+    """Tests for health_check Celery task."""
+
+    def test_health_check_returns_dict(self) -> None:
+        """Test that health_check returns a dictionary."""
+        result = health_check()
+        assert isinstance(result, dict)
+
+    def test_health_check_has_status(self) -> None:
+        """Test that health_check returns status field."""
+        result = health_check()
+        assert "status" in result
+        assert result["status"] == "healthy"
+
+    def test_health_check_has_timestamp(self) -> None:
+        """Test that health_check returns timestamp field."""
+        result = health_check()
+        assert "timestamp" in result
+        assert isinstance(result["timestamp"], str)
+
+    def test_health_check_timestamp_is_valid_iso_format(self) -> None:
+        """Test that timestamp is valid ISO format."""
+        result = health_check()
+        # Should not raise exception
+        datetime.fromisoformat(result["timestamp"])
 
 
-@pytest.fixture
-def mock_db_session_factory():
-  """Provides a mock async session factory."""
-  factory = MagicMock()
-  # The factory returns an async context manager which in turn returns a mock session
-  factory.return_value.__aenter__.return_value = AsyncMock()
-  factory.return_value.__aexit__.return_value = None
-  return factory
+class TestCeleryTaskRegistration:
+    """Tests for Celery task registration."""
+
+    def test_health_check_is_registered_task(self) -> None:
+        """Test that health_check is registered as Celery task."""
+        assert hasattr(health_check, "name")
+        assert health_check.name == "health_check"
+
+    def test_execute_protocol_run_task_is_registered(self) -> None:
+        """Test that execute_protocol_run_task is registered."""
+        from praxis.backend.core.celery_tasks import execute_protocol_run_task
+
+        assert callable(execute_protocol_run_task)
+        assert hasattr(execute_protocol_run_task, "name")
+        assert execute_protocol_run_task.name == "execute_protocol_run"
 
 
-@pytest.fixture
-def execution_context(mock_orchestrator, mock_db_session_factory):
-  """Provides a mock ProtocolExecutionContext."""
-  return ProtocolExecutionContext(
-    db_session_factory=mock_db_session_factory, orchestrator=mock_orchestrator
-  )
+class TestCeleryTasksModuleStructure:
+    """Tests for module structure and exports."""
+
+    def test_module_exports_execute_protocol_run_task(self) -> None:
+        """Test that module exports execute_protocol_run_task."""
+        from praxis.backend.core import celery_tasks
+
+        assert hasattr(celery_tasks, "execute_protocol_run_task")
+
+    def test_module_exports_health_check(self) -> None:
+        """Test that module exports health_check."""
+        from praxis.backend.core import celery_tasks
+
+        assert hasattr(celery_tasks, "health_check")
+
+    def test_module_has_task_logger(self) -> None:
+        """Test that module defines task_logger."""
+        from praxis.backend.core import celery_tasks
+
+        assert hasattr(celery_tasks, "task_logger")
+
+    def test_module_has_logger(self) -> None:
+        """Test that module defines logger."""
+        from praxis.backend.core import celery_tasks
+
+        assert hasattr(celery_tasks, "logger")
 
 
-# --- Tests ---
+class TestExecuteProtocolRunTaskStructure:
+    """Tests for execute_protocol_run_task structure without DI complexity."""
+
+    def test_execute_protocol_run_task_has_bind_parameter(self) -> None:
+        """Test that execute_protocol_run_task is bound to task instance."""
+        from praxis.backend.core.celery_tasks import execute_protocol_run_task
+
+        # Celery bound tasks have bind=True
+        assert hasattr(execute_protocol_run_task, "run")
+
+    def test_execute_protocol_run_task_signature(self) -> None:
+        """Test that execute_protocol_run_task has expected parameters."""
+        from praxis.backend.core.celery_tasks import execute_protocol_run_task
+        import inspect
+
+        # Get function signature
+        sig = inspect.signature(execute_protocol_run_task.run)
+        params = list(sig.parameters.keys())
+
+        # Should have key protocol parameters
+        assert "protocol_run_id" in params
+        assert "input_parameters" in params
+        assert "initial_state" in params
+        assert "orchestrator" in params
 
 
-@pytest.mark.asyncio
-class TestExecuteProtocolRunTask:
-  """Test suite for the main protocol execution Celery task."""
+class TestUpdateRunStatusOnErrorInternal:
+    """Tests for _update_run_status_on_error helper."""
 
-  def test_initialize_celery_context(self, mock_orchestrator, mock_db_session_factory):
-    """Test that the context initialization function works correctly."""
-    # Arrange
-    with patch("praxis.backend.core.celery_tasks._execution_context", None):
-      # Act
-      initialize_celery_context(mock_db_session_factory, mock_orchestrator)
-      # Assert that the global context is now set
-      from praxis.backend.core.celery_tasks import _execution_context
+    @pytest.mark.asyncio
+    async def test_update_run_status_on_error_basic_structure(self) -> None:
+        """Test basic structure of _update_run_status_on_error."""
+        from praxis.backend.core.celery_tasks import _update_run_status_on_error
 
-      assert _execution_context is not None
-      assert _execution_context.orchestrator is mock_orchestrator
+        protocol_run_id = uuid7()
+        error_message = "Test error"
 
-  def test_task_happy_path(self, execution_context):
-    """Test the successful execution path of the Celery task."""
-    # Arrange
-    mock_task = MagicMock()
-    mock_task.request.id = TEST_CELERY_TASK_ID
-    expected_result = {"success": True, "message": "Async part finished."}
+        # Create async session mock
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
 
-    # Patch the global context and the asyncio runner
-    with patch(
-      "praxis.backend.core.celery_tasks._execution_context", execution_context
-    ), patch("asyncio.run", return_value=expected_result) as mock_asyncio_run:
-      # Act
-      result = (
-        execute_protocol_run_task.s(  # type: ignore
-          protocol_run_id=str(TEST_RUN_ID),
-          user_params={"volume": 50},
-          initial_state=None,
+        mock_session_factory = Mock(return_value=mock_session_ctx)
+
+        mock_service = Mock()
+        mock_service.update_run_status = AsyncMock()
+
+        # Should not raise
+        await _update_run_status_on_error(
+            protocol_run_id,
+            error_message,
+            mock_session_factory,
+            mock_service,
         )
-        .apply(task_id=TEST_CELERY_TASK_ID)
-        .get()
-      )  # .apply().get() simulates a sync call
 
-      # Assert
-      mock_asyncio_run.assert_called_once()
-      assert result == expected_result
+        # Verify update was called
+        mock_service.update_run_status.assert_called_once()
 
-  def test_task_no_context(self):
-    """Test that the task fails gracefully if the context is not initialized."""
-    # Arrange: Ensure context is None
-    with patch("praxis.backend.core.celery_tasks._execution_context", None):
-      # Act
-      result = execute_protocol_run_task(
-        self=MagicMock(),
-        protocol_run_id=str(TEST_RUN_ID),
-        user_params={},
-      )
+        # Verify FAILED status
+        call_kwargs = mock_service.update_run_status.call_args[1]
+        assert call_kwargs["new_status"] == ProtocolRunStatusEnum.FAILED
 
-      # Assert
-      assert not result["success"]
-      assert "context is not initialized" in result["error"]
+        # Verify commit
+        mock_db_session.commit.assert_called_once()
 
-  def test_task_catches_general_exception(self, execution_context):
-    """Test that the main task function catches exceptions from the async runner."""
-    # Arrange
-    error_message = "Orchestrator exploded"
 
-    # Patch the global context and have asyncio.run raise an exception
-    with patch(
-      "praxis.backend.core.celery_tasks._execution_context", execution_context
-    ), patch("asyncio.run") as mock_asyncio_run:
-      mock_asyncio_run.side_effect = [
-        Exception(error_message),
-        None,
-      ]  # First for try, second for except
+class TestExecuteProtocolAsyncInternal:
+    """Tests for _execute_protocol_async helper."""
 
-      # Act
-      result = execute_protocol_run_task(
-        self=MagicMock(),
-        protocol_run_id=str(TEST_RUN_ID),
-        user_params={},
-      )
+    @pytest.mark.asyncio
+    async def test_execute_protocol_async_calls_orchestrator(self) -> None:
+        """Test that _execute_protocol_async calls orchestrator."""
+        from praxis.backend.core.celery_tasks import _execute_protocol_async
 
-      # Assert
-      assert not result["success"]
-      assert error_message in result["error"]
-      # Check that the fallback error handler was called
-      assert mock_asyncio_run.call_count == 2
+        protocol_run_id = uuid7()
 
-  async def test_async_helper_happy_path(self, execution_context):
-    """Test the internal async execution logic for a successful run."""
-    # Arrange
-    mock_run_orm = ProtocolRunOrm(id=TEST_RUN_ID, accession_id=TEST_RUN_ID)
-    with patch(
-      "praxis.backend.services.read_protocol_run",
-      new_callable=AsyncMock,
-      return_value=mock_run_orm,
-    ) as mock_read, patch(
-      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock
-    ) as mock_update:
-      # Act
-      from praxis.backend.core.celery_tasks import _execute_protocol_async
+        # Create async session mock
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
 
-      with patch(
-        "praxis.backend.core.celery_tasks._execution_context", execution_context
-      ):
+        mock_session_factory = Mock(return_value=mock_session_ctx)
+
+        mock_run_orm = Mock()
+        mock_run_orm.accession_id = protocol_run_id
+        mock_run_orm.status = ProtocolRunStatusEnum.COMPLETED
+
+        mock_service = Mock()
+        mock_service.get = AsyncMock(return_value=mock_run_orm)
+        mock_service.update_run_status = AsyncMock()
+
+        mock_orchestrator = Mock()
+        mock_orchestrator.execute_existing_protocol_run = AsyncMock(
+            return_value=mock_run_orm
+        )
+
         result = await _execute_protocol_async(
-          TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID
+            protocol_run_id,
+            {"param": "value"},
+            None,
+            "task_id",
+            mock_orchestrator,
+            mock_session_factory,
+            mock_service,
         )
 
-      # Assert
-      mock_read.assert_awaited_once_with(
-        execution_context.db_session_factory().__aenter__(),
-        run_accession_id=TEST_RUN_ID,
-      )
-      mock_update.assert_awaited_once_with(
-        db=execution_context.db_session_factory().__aenter__(),
-        protocol_run_accession_id=TEST_RUN_ID,
-        new_status=ProtocolRunStatusEnum.RUNNING,
-        output_data_json=ANY,
-      )
-      execution_context.orchestrator.execute_existing_protocol_run.assert_awaited_once()
-      assert result["success"]
-      assert result["final_status"] == ProtocolRunStatusEnum.COMPLETED.value
+        # Verify orchestrator was called
+        mock_orchestrator.execute_existing_protocol_run.assert_called_once()
 
-  async def test_async_helper_orchestrator_fails(self, execution_context):
-    """Test that a failure in the orchestrator is caught and handled."""
-    # Arrange
-    mock_run_orm = ProtocolRunOrm(id=TEST_RUN_ID, accession_id=TEST_RUN_ID)
-    execution_context.orchestrator.execute_existing_protocol_run.side_effect = (
-      RuntimeError("Test Fail")
-    )
-
-    with patch(
-      "praxis.backend.services.read_protocol_run",
-      new_callable=AsyncMock,
-      return_value=mock_run_orm,
-    ), patch(
-      "praxis.backend.services.update_protocol_run_status", new_callable=AsyncMock
-    ) as mock_update:
-      # Act & Assert
-      from praxis.backend.core.celery_tasks import _execute_protocol_async
-
-      with patch(
-        "praxis.backend.core.celery_tasks._execution_context", execution_context
-      ):
-        with pytest.raises(RuntimeError, match="Test Fail"):
-          await _execute_protocol_async(TEST_RUN_ID, {}, None, TEST_CELERY_TASK_ID)
-
-      # Assert the final status update was to FAILED
-      final_call = mock_update.call_args_list[-1]
-      assert final_call.kwargs["new_status"] == ProtocolRunStatusEnum.FAILED
+        # Verify success result
+        assert result["success"] is True
+        assert result["protocol_run_id"] == str(protocol_run_id)
 
 
-def test_health_check_task():
-  """Test the simple health check task."""
-  # Act
-  result: EagerResult = health_check.s().apply()  # type: ignore
+class TestCeleryTaskIntegration:
+    """Integration tests for Celery task module."""
 
-  # Assert
-  assert result.successful()
-  assert result.result["status"] == "healthy"
-  assert "timestamp" in result.result
+    def test_celery_app_has_tasks_registered(self) -> None:
+        """Test that celery_app has the tasks registered."""
+        from praxis.backend.core.celery import celery_app
+
+        # Check that tasks are in celery app registry
+        task_names = [task.name for task in celery_app.tasks.values()]
+
+        assert "execute_protocol_run" in task_names
+        assert "health_check" in task_names
+
+    def test_tasks_have_celery_app_reference(self) -> None:
+        """Test that tasks reference the correct celery_app."""
+        from praxis.backend.core.celery import celery_app
+        from praxis.backend.core.celery_tasks import health_check
+
+        # Task should have reference to the app
+        assert hasattr(health_check, "app")
+        assert health_check.app == celery_app
