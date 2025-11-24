@@ -28,12 +28,12 @@ class WorkcellBase(PraxisBaseModel):
 
   name: str = Field(description="The unique name of the workcell.")
   fqn: str | None = Field(
-    None,
+    default=None,
     description="The fully qualified name for the workcell. Defaults to name if not provided.",
   )
-  description: str | None = Field(None, description="A description of the workcell.")
+  description: str | None = Field(default=None, description="A description of the workcell.")
   physical_location: str | None = Field(
-    None,
+    default=None,
     description="The physical location of the workcell (e.g., 'Lab 2, Room 301').",
   )
   status: WorkcellStatusEnum = Field(
@@ -41,11 +41,11 @@ class WorkcellBase(PraxisBaseModel):
     description="The current status of the workcell.",
   )
   latest_state_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="The latest state of the workcell as a JSON object.",
   )
   last_state_update_time: datetime | None = Field(
-    None,
+    default=None,
     description="The timestamp of the last state update.",
   )
 
