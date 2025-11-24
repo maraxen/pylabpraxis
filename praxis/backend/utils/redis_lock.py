@@ -46,7 +46,7 @@ def acquire_lock(
     raise
   finally:
     # Only release the lock if it was acquired and the identifier matches
-    val = cast(bytes | None, redis_client.get(lock_name))
+    val = cast("bytes | None", redis_client.get(lock_name))
     if acquired and val and val.decode("utf-8") == identifier:
       try:
         redis_client.delete(lock_name)

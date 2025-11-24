@@ -249,3 +249,23 @@ Create end-to-end tests:
 - CI/CD integration
 - Coverage reporting
 - Test additional services as needed
+
+## Appendix: Detailed Test Execution History (Prior to Env Fix)
+
+*This section records the status of tests before the PostgreSQL environment was fully configured.*
+
+### ✅ Passing Tests (Unit Tests with Mocks)
+
+#### 1. Discovery Service Tests
+`praxis/backend/services/tests/test_discovery_service.py` - ✅ ALL PASSING
+
+#### 2. Outputs Service Tests
+`praxis/backend/tests/services/test_outputs.py` - ✅ ALL PASSING
+
+#### 3. Deck Service Tests
+`tests/services/test_deck_service.py` - ✅ PASSING (1 test: `test_create_deck_remaps_machine_id`)
+
+### ❌ Failing Tests (Require DB)
+
+#### API Tests
+`tests/api/test_decks.py`, `tests/api/test_deck_type_definitions.py`, `tests/api/test_smoke.py` - ❌ ALL FAILING due to ConnectionRefusedError.

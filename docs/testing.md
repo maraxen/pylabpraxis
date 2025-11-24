@@ -267,3 +267,10 @@ The following configuration issues have been identified during initial testing a
 
 *   **Description**: `ResourceOrm` has a known issue where `resource_definition_accession_id` (a mandatory foreign key) may not persist correctly to the database in certain test scenarios due to complex inheritance and `MappedAsDataclass` behavior.
 *   **Workaround**: For now, unit tests involving `ResourceOrm` persistence might be limited or require careful setup. This is a known limitation of the current ORM architecture for this specific model.
+
+### 4. SQLAlchemy Inheritance Warning
+
+*   **Description**: `SAWarning: Implicitly combining column assets.accession_id with column decks.accession_id under attribute 'accession_id'`.
+*   **Impact**: Low. This is an ORM inheritance warning.
+*   **Action**: Should be addressed but doesn't affect test functionality.
+*   **Location**: `praxis/backend/models/orm/deck.py:58`.

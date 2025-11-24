@@ -56,7 +56,7 @@ async def get_accession_id_from_accession(
     obj = await get_by_name_func(db, accession)
     if obj and hasattr(obj, "accession_id"):
       # The object was found by name, return its ID.
-      return getattr(obj, "accession_id")
+      return obj.accession_id
   else:
     # This case should not be hit if using FastAPI's type hints correctly,
     # but it's good practice to handle it.

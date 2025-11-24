@@ -21,8 +21,8 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "uuid-utils>=0.11.0",
     "dependency-injector",
-    "passlib[bcrypt]>=1.7.4",
-    "bcrypt<6.0.0",
+    "pwdlib[bcrypt]>=0.2.0",
+    "bcrypt",
 ]
 
 [project.optional-dependencies]
@@ -82,6 +82,7 @@ dev = [
     "myst_nb",
     "sphinx_copybutton",
     "ruff",
+    "pyright",
 ]
 all = [
     "praxis[dev]",
@@ -99,6 +100,7 @@ packages = ["praxis"]
 
 # Pytest configuration
 [tool.pytest.ini_options]
+asyncio_mode = "strict"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]

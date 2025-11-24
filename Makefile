@@ -1,27 +1,30 @@
-ifeq ($(shell test -e ./env/ && echo yes),yes)
-	BIN=env/bin/
-	$(info Using virtualenv in env)
-endif
-
-.PHONY: docs lint format test
+.PHONY: docs lint format test db-test db-test-down check clear-pyc
 
 docs:
-	sphinx-build -b html docs docs/build/ -j 1 -W
+	uv run sphinx-build -b html docs docs/build/ -j 1 -W
 
 clean-docs:
 	rm -rf docs/build
 	rm -rf docs/_autosummary
 
-# The lint target now uses 'ruff check'
 lint:
-	$(BIN)ruff check .
+	uv run ruff check .
 
-# It's common to add a 'format' target when using ruff
 format:
-	$(BIN)ruff format .
+	uv run ruff check . --fix
+	uv run ruff format .
+
+check: lint
+	uv run pyright
 
 test:
-	$(BIN)python -m pytest -s -v
+	uv run pytest
+
+db-test:
+	docker compose -f docker-compose.test.yml up -d
+
+db-test-down:
+	docker compose -f docker-compose.test.yml down
 
 clear-pyc:
 	find . -name "*.pyc" | xargs rm
