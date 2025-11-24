@@ -54,9 +54,9 @@ async def get_accession_id_from_accession(
   elif isinstance(accession, str):
     # If it's a string, we fetch the object to get its ID.
     obj = await get_by_name_func(db, accession)
-    if obj and hasattr(obj, "id"):
+    if obj and hasattr(obj, "accession_id"):
       # The object was found by name, return its ID.
-      return obj.id  # Ensure we get the ID attribute safely
+      return getattr(obj, "accession_id")
   else:
     # This case should not be hit if using FastAPI's type hints correctly,
     # but it's good practice to handle it.

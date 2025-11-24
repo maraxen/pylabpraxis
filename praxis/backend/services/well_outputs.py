@@ -6,9 +6,11 @@ attribution, spatial context, and data visualization.
 """
 
 from functools import partial
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -188,7 +190,7 @@ class WellDataOutputCRUDService(
       self.model.accession_id == accession_id,
     )
     result = await db.execute(delete_stmt)
-    deleted_count = result.rowcount
+    deleted_count = cast(CursorResult, result).rowcount
     logger.info(
       "%s Successfully deleted well data output (affected rows: %d).",
       log_prefix,
