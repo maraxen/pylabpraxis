@@ -13,7 +13,7 @@ class MockEntity:
     """Mock entity for testing."""
 
     def __init__(self, entity_id: UUID) -> None:
-        self.id = entity_id
+        self.accession_id = entity_id
 
 
 class MockEntityWithoutId:

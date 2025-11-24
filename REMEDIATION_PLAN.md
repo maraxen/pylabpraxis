@@ -69,3 +69,13 @@ Addressed 0% coverage in Type Definition services and Discovery service.
 - **ProtocolDefinitionService**: Added full CRUD tests.
 - **DiscoveryService**: Fixed bug where inferred protocol definitions missed `fqn`. Added logic and integration tests.
 - **StateService**: Added unit tests for Redis state management (100% coverage).
+
+### 7. Type Safety Improvements (Phase 5)
+Addressed ~33 high-priority type errors (errors reduced to ~67).
+- **StateSyncMixin**: Added type hints for expected attributes to fix `reportAttributeAccessIssue`.
+- **ResourceOrm**: Fixed `is_machine` property to use valid relationship attribute.
+- **WellDataOutputCRUDService**: Fixed `rowcount` access on `Result` object using cast.
+- **Redis Lock**: Fixed potential `AttributeError` and typing issues in `redis_lock.py`.
+- **Accession Resolver**: Fixed invalid access to `id` attribute (changed to `accession_id`).
+- **Update Models**: Refactored `FunctionProtocolDefinitionUpdate`, `FunctionDataOutputUpdate`, and `WellDataOutputUpdate` to inherit from `BaseModel` instead of `PraxisBaseModel`, resolving field override conflicts.
+- **Pydantic Models**: Updated optional fields to use `default=None` for better static analysis compatibility.

@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import UUID7, ConfigDict, Field, field_validator
+from pydantic import UUID7, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from praxis.backend.models.enums import (
   DataOutputTypeEnum,
@@ -37,30 +37,30 @@ class FunctionDataOutputBase(PraxisBaseModel):
   )
 
   spatial_coordinates_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="Spatial coordinates within resource",
   )
 
   data_units: str | None = Field(
-    None,
+    default=None,
     max_length=50,
     description="Units of measurement",
   )
 
   data_quality_score: float | None = Field(
-    None,
+    default=None,
     ge=0.0,
     le=1.0,
     description="Quality score (0.0-1.0)",
   )
 
   measurement_conditions_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="Measurement conditions",
   )
 
   sequence_in_function: int | None = Field(
-    None,
+    default=None,
     description="Sequence number within the function call",
   )
 
@@ -82,59 +82,53 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
   protocol_run_accession_id: UUID7 = Field(..., description="ID of the protocol run")
 
   resource_accession_id: UUID7 | None = Field(
-    None,
+    default=None,
     description="ID of associated resource",
   )
 
   machine_accession_id: UUID7 | None = Field(
-    None,
+    default=None,
     description="ID of associated machine/device",
   )
 
   deck_accession_id: UUID7 | None = Field(
-    None,
+    default=None,
     description="ID of associated deck position",
   )
 
   # Data content (only one should be provided)
-  data_value_numeric: float | None = Field(None, description="Numeric data value")
+  data_value_numeric: float | None = Field(default=None, description="Numeric data value")
 
-  data_value_json: dict[str, Any] | None = Field(None, description="Structured data")
+  data_value_json: dict[str, Any] | None = Field(default=None, description="Structured data")
 
-  data_value_text: str | None = Field(None, description="Text data")
+  data_value_text: str | None = Field(default=None, description="Text data")
 
   file_path: str | None = Field(
-    None,
+    default=None,
     max_length=500,
     description="Path to external file",
   )
 
-  file_size_bytes: int | None = Field(None, description="File size in bytes")
+  file_size_bytes: int | None = Field(default=None, description="File size in bytes")
 
   measurement_timestamp: datetime | None = Field(
-    None,
+    default=None,
     description="When the measurement was captured",
   )
 
   derived_from_data_output_accession_id: UUID7 | None = Field(
-    None,
+    default=None,
     description="ID of source data if this is derived",
   )
 
-  @field_validator(
-    "data_value_numeric",
-    "data_value_json",
-    "data_value_text",
-    "file_path",
-  )
-  @classmethod
-  def validate_data_content(cls, v, values):
+  @model_validator(mode='after')
+  def validate_data_content(self):
     """Ensure at least one data field is provided."""
     data_fields = [
-      values.get("data_value_numeric"),
-      values.get("data_value_json"),
-      values.get("data_value_text"),
-      values.get("file_path"),
+      self.data_value_numeric,
+      self.data_value_json,
+      self.data_value_text,
+      self.file_path,
     ]
 
     # Count non-None values
@@ -144,27 +138,27 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
       msg = "At least one data field must be provided"
       raise ValueError(msg)
 
-    return v
+    return self
 
 
-class FunctionDataOutputUpdate(PraxisBaseModel):
+class FunctionDataOutputUpdate(BaseModel):
 
   """Model for updating function data outputs."""
 
   data_quality_score: float | None = Field(
-    None,
+    default=None,
     ge=0.0,
     le=1.0,
     description="Updated quality score",
   )
 
   measurement_conditions_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="Updated measurement conditions",
   )
 
   processing_metadata_json: dict[str, Any] | None = Field(
-    None,
+    default=None,
     description="Updated processing metadata",
   )
 
@@ -278,7 +272,7 @@ class WellDataOutputResponse(WellDataOutputBase):
   created_at: datetime = Field(..., description="Creation timestamp")
 
 
-class WellDataOutputUpdate(PraxisBaseModel):
+class WellDataOutputUpdate(BaseModel):
 
   """Model for updating well data outputs."""
 
