@@ -1,0 +1,1221 @@
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/main.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/main.py:12:46 - error: "initialize_scheduler_components" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:21:58 - error: "deck_type_definition_service" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:86:13 - error: Arguments missing for parameters "sort_by", "search_filters", "date_range_start", "date_range_end", "property_filters", "protocol_run_accession_id", "machine_accession_id", "resource_accession_id", "parent_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:215:12 - error: Type "DeckOrm" is not assignable to return type "DeckResponse"
+    "DeckOrm" is not assignable to "DeckResponse" (reportReturnType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:233:10 - error: Type "list[DeckOrm]" is not assignable to return type "list[DeckResponse]"
+    "list[DeckOrm]" is not assignable to "list[DeckResponse]"
+      Type parameter "_T@list" is invariant, but "DeckOrm" is not the same as "DeckResponse"
+      Consider switching from "list" to "Sequence" which is covariant (reportReturnType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:252:16 - error: Argument missing for parameter "accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:252:37 - error: No parameter named "id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:276:18 - error: Argument missing for parameter "accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:276:39 - error: No parameter named "id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:280:12 - error: Type "DeckOrm | None" is not assignable to return type "DeckResponse"
+    Type "DeckOrm | None" is not assignable to type "DeckResponse"
+      "DeckOrm" is not assignable to "DeckResponse" (reportReturnType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:306:16 - error: Argument missing for parameter "accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/decks.py:306:40 - error: No parameter named "id" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:87:9 - error: No parameter named "data_types" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:88:9 - error: No parameter named "spatial_contexts" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:89:9 - error: No parameter named "has_numeric_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:90:9 - error: No parameter named "has_file_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:91:9 - error: No parameter named "min_quality_score" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:185:24 - error: "create_well_data_output" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:204:24 - error: "read_well_data_outputs" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:233:24 - error: "read_well_data_output" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:258:24 - error: "update_well_data_output" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/function_data_outputs.py:282:25 - error: "delete_well_data_output" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/global_dependencies.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/global_dependencies.py:33:52 - error: No parameter named "config" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/global_dependencies.py:39:13 - error: No parameter named "asset_lock_manager" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/global_dependencies.py:40:13 - error: No parameter named "config" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/machines.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/machines.py:36:26 - error: "partial" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/machines.py:40:30 - error: "partial" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/machines.py:171:38 - error: "UUID" is not defined (reportUndefinedVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/protocols.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/protocols.py:29:3 - error: "protocol_definition_service" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/protocols.py:225:18 - error: Argument missing for parameter "accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/protocols.py:225:47 - error: No parameter named "id" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:26:5 - error: "resource_definition_service" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:37:27 - error: "partial" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:43:30 - error: "partial" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:121:17 - error: Arguments missing for parameters "sort_by", "search_filters", "date_range_start", "date_range_end", "property_filters", "protocol_run_accession_id", "machine_accession_id", "resource_accession_id", "parent_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:267:22 - error: "UUID" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:295:22 - error: "UUID" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/resources.py:330:22 - error: "UUID" is not defined (reportUndefinedVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/scheduler_api.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/scheduler_api.py:59:39 - error: "read_protocol_run" is not a known attribute of module ".protocols" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/scheduler_api.py:125:39 - error: "read_protocol_run" is not a known attribute of module ".protocols" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/workcell_api.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/workcell_api.py:33:27 - error: "partial" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/api/workcell_api.py:37:31 - error: "partial" is not defined (reportUndefinedVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:6:6 - error: Import "praxis.utils.errors" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:7:6 - error: Import "praxis.utils.sanitation" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:108:26 - error: "float" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:227:5 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:227:26 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:227:47 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:329:43 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:329:43 - error: Object of type "None" is not subscriptable (reportOptionalSubscript)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:330:45 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:331:45 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:331:45 - error: Object of type "None" is not subscriptable (reportOptionalSubscript)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:331:65 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:356:14 - error: Cannot assign to attribute "variable_accession_id" for class "Well"
+    Attribute "variable_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:357:14 - error: Cannot assign to attribute "dilution_factor" for class "Well"
+    Attribute "dilution_factor" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:375:12 - error: Cannot assign to attribute "variable_accession_id" for class "Well"
+    Attribute "variable_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:376:12 - error: Cannot assign to attribute "dilution_factor" for class "Well"
+    Attribute "dilution_factor" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:415:14 - error: Cannot assign to attribute "variable_accession_id" for class "Well"
+    Attribute "variable_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:416:14 - error: Cannot assign to attribute "dilution_factor" for class "Well"
+    Attribute "dilution_factor" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:431:23 - error: "wells_to" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:437:32 - error: "wells_to" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:438:12 - error: Cannot assign to attribute "variable_accession_id" for class "Well"
+    Attribute "variable_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:439:12 - error: Cannot assign to attribute "dilution_factor" for class "Well"
+    Attribute "dilution_factor" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:440:18 - error: "wells_to" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:9 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:9 - error: "__getitem__" method not defined on type "int" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:30 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:30 - error: "__getitem__" method not defined on type "int" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:51 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:467:51 - error: "__getitem__" method not defined on type "int" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:478:11 - error: Arguments missing for parameters "buffer_transfer_volumes", "buffer_wells" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:483:7 - error: No parameter named "buffer_volumes" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:495:5 - error: No parameter named "n_replicates" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:521:8 - error: No overloads for "sum" match the provided arguments (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:521:12 - error: Argument of type "float | list[float]" cannot be assigned to parameter "iterable" of type "Iterable[_SupportsSumNoDefaultT@sum]" in function "sum"
+    Type "float | list[float]" is not assignable to type "Iterable[_SupportsSumNoDefaultT@sum]"
+      "float" is incompatible with protocol "Iterable[_SupportsSumNoDefaultT@sum]"
+        "__iter__" is not present (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:522:13 - error: "Value" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:524:15 - error: Argument of type "int | str | list[int] | list[str] | list[Well]" cannot be assigned to parameter "identifier" of type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range" in function "__getitem__"
+    Type "int | str | list[int] | list[str] | list[Well]" is not assignable to type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range"
+      Type "list[Well]" is not assignable to type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range"
+        "list[Well]" is not assignable to "str"
+        "list[Well]" is not assignable to "int"
+        "list[Well]" is not assignable to "Sequence[int]"
+          Type parameter "_T_co@Sequence" is covariant, but "Well" is not a subtype of "int"
+            "Well" is not assignable to "int"
+        "list[Well]" is not assignable to "Sequence[str]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:524:52 - error: "buffer_volumes" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:526:33 - error: Argument of type "int | str | list[int] | list[str] | list[Well]" cannot be assigned to parameter "identifier" of type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range" in function "__getitem__"
+    Type "int | str | list[int] | list[str] | list[Well]" is not assignable to type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range"
+      Type "list[Well]" is not assignable to type "str | int | Sequence[int] | Sequence[str] | slice[Any, Any, Any] | range"
+        "list[Well]" is not assignable to "str"
+        "list[Well]" is not assignable to "int"
+        "list[Well]" is not assignable to "Sequence[int]"
+          Type parameter "_T_co@Sequence" is covariant, but "Well" is not a subtype of "int"
+            "Well" is not assignable to "int"
+        "list[Well]" is not assignable to "Sequence[str]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:526:66 - error: "buffer_volumes" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:543:5 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:544:11 - error: Arguments missing for parameters "source", "targets" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:549:27 - error: Cannot access attribute "well_volume" for class "Plate"
+    Attribute "well_volume" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:551:5 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:580:70 - error: "n_replicates" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:583:41 - error: "n_replicates" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:584:66 - error: "n_replicates" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:592:6 - error: "n_replicates" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:605:18 - error: "n_replicates" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:608:23 - error: "__getitem__" method not defined on type "int" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:610:36 - error: Cannot access attribute "well_volume" for class "Plate"
+    Attribute "well_volume" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:614:41 - error: "__getitem__" method not defined on type "float" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:614:41 - error: "__getitem__" method not defined on type "int" (reportIndexIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:628:19 - error: "transfer_volume" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/dilution.py:631:55 - error: "j" is possibly unbound (reportPossiblyUnboundVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:15:6 - error: Import "praxis.utils" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:37:18 - error: Argument of type "Container" cannot be assigned to parameter "iterable" of type "Iterable[_T@list]" in function "__init__"
+    "Container" is incompatible with protocol "Iterable[_T@list]"
+      "__iter__" is not present (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:39:23 - error: "parse_well_name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:39:61 - error: "wells" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:41:35 - error: "columns" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:41:44 - error: "wells" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:42:24 - error: "columns" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:147:23 - error: Argument of type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" cannot be assigned to parameter "obj" of type "Sized" in function "len"
+    Type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" is not assignable to type "Sized"
+      "TipRack" is incompatible with protocol "Sized"
+        "__len__" is not present (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:154:47 - error: Argument of type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" cannot be assigned to parameter "tip_spots" of type "List[TipSpot]"
+    Type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" is not assignable to type "List[TipSpot]"
+      "TipRack" is not assignable to "List[TipSpot]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:156:15 - error: Argument of type "Unknown | Container | list[Container]" cannot be assigned to parameter "resources" of type "Sequence[Container]"
+    Type "Unknown | Container | list[Container]" is not assignable to type "Sequence[Container]"
+      "Container" is not assignable to "Sequence[Container]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:156:29 - error: Argument of type "Unknown | float | list[float]" cannot be assigned to parameter "vols" of type "List[float]"
+    Type "Unknown | float | list[float]" is not assignable to type "List[float]"
+      "float" is not assignable to "List[float]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:159:15 - error: Argument of type "Unknown | Container | list[Container]" cannot be assigned to parameter "resources" of type "Sequence[Container]"
+    Type "Unknown | Container | list[Container]" is not assignable to type "Sequence[Container]"
+      "Container" is not assignable to "Sequence[Container]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:159:29 - error: Argument of type "Unknown | float | list[float]" cannot be assigned to parameter "vols" of type "List[float]"
+    Type "Unknown | float | list[float]" is not assignable to type "List[float]"
+      "float" is not assignable to "List[float]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:162:46 - error: Argument of type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" cannot be assigned to parameter "tip_spots" of type "Sequence[TipSpot | Trash]"
+    Type "Unknown | TipSpot | TipRack | list[TipSpot] | list[TipRack]" is not assignable to type "Sequence[TipSpot | Trash]"
+      "TipRack" is not assignable to "Sequence[TipSpot | Trash]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:229:9 - error: Arguments missing for parameters "resources", "vols" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/liquid_handling.py:231:46 - error: Argument of type "TipRack" cannot be assigned to parameter "tip_spots" of type "Sequence[TipSpot | Trash]"
+    "TipRack" is not assignable to "Sequence[TipSpot | Trash]" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/overrides.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/overrides.py:50:12 - error: Cannot assign to attribute "name" for class "Machine"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/overrides.py:53:12 - error: Cannot assign to attribute "name" for class "Machine"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/overrides.py:62:31 - error: Cannot access attribute "serialize" for class "object"
+    Attribute "serialize" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_reading.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_reading.py:3:6 - error: Import "praxis.protocol.standalone_task" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_reading.py:58:11 - error: "asyncio" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_reading.py:73:11 - error: "json" is not defined (reportUndefinedVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:7:34 - error: "CarrierSite" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:10:6 - error: Import "praxis.utils.errors" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:11:6 - error: Import "praxis.utils.sanitation" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:158:23 - error: Cannot assign to attribute "replicate" for class "Well"
+    Attribute "replicate" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:228:77 - error: No parameter named "report" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/plate_staging.py:236:5 - error: Argument of type "Unknown | Coordinate | None" cannot be assigned to parameter "to" of type "ResourceStack | ResourceHolder | Resource | Coordinate" in function "move_plate"
+    Type "Unknown | Coordinate | None" is not assignable to type "ResourceStack | ResourceHolder | Resource | Coordinate"
+      Type "None" is not assignable to type "ResourceStack | ResourceHolder | Resource | Coordinate"
+        "None" is not assignable to "ResourceStack"
+        "None" is not assignable to "ResourceHolder"
+        "None" is not assignable to "Resource"
+        "None" is not assignable to "Coordinate" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/tip_staging.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/commons/tip_staging.py:4:6 - error: Import "praxis.utils.sanitation" could not be resolved (reportMissingImports)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/configure.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/configure.py:172:45 - error: Cannot access attribute "get" for class "MethodType"
+    Attribute "get" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:160:17 - error: "int" is not awaitable
+    "int" is incompatible with protocol "Awaitable[_T_co@Awaitable]"
+      "__await__" is not present (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:196:8 - error: Function with declared return type "bool" must return value on all code paths
+    "None" is not assignable to "bool" (reportReturnType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:225:22 - error: "str" is not awaitable
+    "str" is incompatible with protocol "Awaitable[_T_co@Awaitable]"
+      "__await__" is not present (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:235:17 - error: "int" is not awaitable
+    "int" is incompatible with protocol "Awaitable[_T_co@Awaitable]"
+      "__await__" is not present (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:250:18 - error: "exceptions" is not a known attribute of module "redis.asyncio" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:271:25 - error: "Set[Unknown]" is not awaitable
+    "Set[Unknown]" is incompatible with protocol "Awaitable[_T_co@Awaitable]"
+      "__await__" is not present (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:295:48 - error: "get" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:311:36 - error: "delete" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:313:18 - error: "exceptions" is not a known attribute of module "redis.asyncio" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:421:39 - error: "exists" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:424:45 - error: "get" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:431:57 - error: "get" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:442:40 - error: "delete" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:443:40 - error: "delete" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:451:42 - error: "ttl" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:453:38 - error: "delete" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:458:34 - error: "delete" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_lock_manager.py:462:18 - error: "exceptions" is not a known attribute of module "redis.asyncio" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:41:6 - error: Import "praxis.backend.models.protocol_models" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:42:6 - error: Import "praxis.backend.models.resource_definition_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:46:6 - error: Import "praxis.backend.models.resource_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:47:56 - error: "PraxisORMService" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:51:3 - error: "log_async_runtime_errors" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:52:3 - error: "log_runtime_errors" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:325:23 - error: Cannot access attribute "_get_category_from_plr_class" for class "AssetManager*"
+    Attribute "_get_category_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:326:23 - error: Cannot access attribute "_extract_ordering_from_plr_class" for class "AssetManager*"
+    Attribute "_extract_ordering_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:327:25 - error: Cannot access attribute "_get_short_name_from_plr_class" for class "AssetManager*"
+    Attribute "_get_short_name_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:328:26 - error: Cannot access attribute "_get_description_from_plr_class" for class "AssetManager*"
+    Attribute "_get_description_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:329:24 - error: Cannot access attribute "_get_size_x_mm_from_plr_class" for class "AssetManager*"
+    Attribute "_get_size_x_mm_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:330:24 - error: Cannot access attribute "_get_size_y_mm_from_plr_class" for class "AssetManager*"
+    Attribute "_get_size_y_mm_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:331:24 - error: Cannot access attribute "_get_size_z_mm_from_plr_class" for class "AssetManager*"
+    Attribute "_get_size_z_mm_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:332:32 - error: Cannot access attribute "_get_nominal_volume_ul_from_plr_class" for class "AssetManager*"
+    Attribute "_get_nominal_volume_ul_from_plr_class" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:335:42 - error: Cannot access attribute "praxis_orm_service" for class "AssetManager*"
+    Attribute "praxis_orm_service" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:349:20 - error: Cannot access attribute "praxis_orm_service" for class "AssetManager*"
+    Attribute "praxis_orm_service" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:367:20 - error: Cannot access attribute "praxis_orm_service" for class "AssetManager*"
+    Attribute "praxis_orm_service" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:388:12 - error: Type "tuple[Unknown, Unknown, Unknown]" is not assignable to return type "tuple[Any, Any]"
+    "tuple[Unknown, Unknown, Unknown]" is not assignable to "tuple[Any, Any]"
+      Tuple size mismatch; expected 2 but received 3 (reportReturnType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:416:5 - error: Expression with type "tuple[Any, Any]" cannot be assigned to target tuple
+    Type "tuple[Any, Any]" is incompatible with target tuple
+      Tuple size mismatch; expected 3 but received 2 (reportAssignmentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:643:32 - error: "name" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:644:32 - error: "accession_id" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:671:28 - error: Cannot access attribute "status" for class "MachineOrm"
+    Attribute "status" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:689:28 - error: "name" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:692:51 - error: "accession_id" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:763:20 - error: "AcquireResource" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:861:49 - error: Cannot access attribute "_update_resource_acquisition_status" for class "AssetManager*"
+    Attribute "_update_resource_acquisition_status" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:917:18 - error: Argument of type "Unknown | UUID | None" cannot be assigned to parameter "target" of type "UUID" in function "assign_resource_to_deck"
+    Type "Unknown | UUID | None" is not assignable to type "UUID"
+      "None" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:945:13 - error: Method declaration "_handle_resource_release_location" is obscured by a declaration of the same name (reportRedeclaration)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:981:13 - error: Method declaration "_handle_resource_release_location" is obscured by a declaration of the same name (reportRedeclaration)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/asset_manager.py:1218:23 - error: "AcquireResource" is not defined (reportUndefinedVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/celery_tasks.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/celery_tasks.py:157:36 - error: "read_protocol_run" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/celery_tasks.py:164:17 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/celery_tasks.py:202:17 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/celery_tasks.py:227:17 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:43:70 - error: "CreateProtocolDefinitionData" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:44:85 - error: "ProtocolFunctionData" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:46:3 - error: "log_function_call_end" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:47:3 - error: "log_function_call_start" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:48:3 - error: "update_protocol_run_status" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:143:87 - error: "self" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:339:27 - error: "param_metadata" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:340:17 - error: "tags" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:346:14 - error: "name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:347:17 - error: "version" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:348:21 - error: "description" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:349:14 - error: "solo" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:350:22 - error: "is_top_level" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:351:27 - error: "preconfigure_deck" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:352:25 - error: "deck_param_name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:353:27 - error: "deck_construction" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:354:26 - error: "state_param_name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:356:18 - error: "category" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:358:31 - error: "top_level_name_format" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:361:10 - error: Cannot assign to attribute "_protocol_definition" for class "FunctionType"
+    Attribute "_protocol_definition" is unknown (reportFunctionMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:363:5 - error: "_register_protocol" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:366:46 - error: "protocol_runtime_info" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:389:11 - error: "state_param_name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:405:11 - error: "state_param_name" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/decorators.py:511:24 - error: Argument of type "UUID | None" cannot be assigned to parameter "function_def_db_id" of type "UUID" in function "_log_call_start"
+    Type "UUID | None" is not assignable to type "UUID"
+      "None" is not assignable to "UUID" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:111:22 - error: "read_protocol_definition_by_name" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:152:11 - error: "None" is not awaitable
+    "None" is incompatible with protocol "Awaitable[_T_co@Awaitable]"
+      "__await__" is not present (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:180:17 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:192:21 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:202:21 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:214:17 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:345:46 - error: Cannot access attribute "actual_type_str" for class "ParameterMetadataModel"
+    Attribute "actual_type_str" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:351:41 - error: Cannot access attribute "actual_type_str" for class "ParameterMetadataModel"
+    Attribute "actual_type_str" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:473:39 - error: "read_deck_by_name" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:536:7 - error: Expected 4 positional arguments (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:571:12 - error: Cannot access attribute "_validate_praxis_state" for class "Orchestrator*"
+    Attribute "_validate_praxis_state" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:627:15 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:756:39 - error: "create_protocol_run" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:781:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:800:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:870:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:903:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/orchestrator.py:922:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/protocol_execution_service.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/protocol_execution_service.py:151:36 - error: "read_protocol_definition_by_name" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/protocol_execution_service.py:168:36 - error: "create_protocol_run" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/protocol_execution_service.py:211:36 - error: "read_protocol_run" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/protocol_execution_service.py:268:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/scheduler.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/scheduler.py:292:36 - error: "read_protocol_definition" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/scheduler.py:316:21 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/scheduler.py:342:19 - error: "update_protocol_run_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:89:24 - error: Cannot access attribute "workcell_state_file" for class "PraxisConfiguration"
+    Attribute "workcell_state_file" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:101:34 - error: "create_workcell" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:114:30 - error: "read_workcell_state" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:142:21 - error: "update_workcell_state" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:221:21 - error: "update_workcell_state" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:313:56 - error: Cannot access attribute "nominal_x_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_x_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:313:92 - error: Cannot access attribute "nominal_y_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_y_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:315:36 - error: Cannot access attribute "nominal_x_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_x_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:316:36 - error: Cannot access attribute "nominal_y_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_y_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:317:36 - error: Cannot access attribute "nominal_z_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_z_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:317:71 - error: Cannot access attribute "nominal_z_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_z_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:427:44 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:428:44 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:459:43 - error: Argument of type "str | None" cannot be assigned to parameter "class_fqn" of type "str" in function "_get_class_from_fqn"
+    Type "str | None" is not assignable to type "str"
+      "None" is not assignable to "str" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:526:21 - error: "update_machine_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:546:44 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:547:44 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:574:24 - error: Cannot access attribute "deck" for class "<subclass of Machine and Resource>"
+    Attribute "deck" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:574:24 - error: Cannot access attribute "deck" for class "Machine"
+    Attribute "deck" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:577:45 - error: Cannot access attribute "deck" for class "<subclass of Machine and Resource>"
+    Attribute "deck" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:577:45 - error: Cannot access attribute "deck" for class "Machine"
+    Attribute "deck" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:585:36 - error: "read_decks_by_machine_id" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:613:17 - error: "update_machine_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:663:20 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:712:25 - error: "update_resource_location_and_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:739:20 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:931:21 - error: "update_machine_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:944:21 - error: "update_machine_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:967:19 - error: "update_machine_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1043:28 - error: "read_deck" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1096:19 - error: "update_resource_location_and_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1163:19 - error: "update_resource_location_and_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1274:28 - error: "read_deck" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1283:56 - error: "read_resources" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1289:24 - error: Cannot access attribute "current_deck_position_name" for class "ResourceOrm"
+    Attribute "current_deck_position_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1306:50 - error: Cannot access attribute "value" for class "str"
+    Attribute "value" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1315:33 - error: Cannot access attribute "current_deck_position_name" for class "ResourceOrm"
+    Attribute "current_deck_position_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/core/workcell_runtime.py:1386:17 - error: "update_resource_location_and_status" is not a known attribute of module "praxis.backend.services" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/function_data_output_orm.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/function_data_output_orm.py:246:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:92:3 - error: "created_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:95:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:125:3 - error: "created_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:128:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:179:3 - error: "created_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:182:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:351:3 - error: "created_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/protocol_definitions_orm.py:354:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/user_management_orm.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/user_management_orm.py:44:3 - error: "created_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/user_management_orm.py:47:3 - error: "updated_at" overrides symbol of same name in class "Base"
+    Variable is mutable so its type is invariant
+      Override type "Mapped[datetime | None]" is not the same as base type "Mapped[datetime]" (reportIncompatibleVariableOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/workcell_pydantic_models.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/models/workcell_pydantic_models.py:16:56 - error: "DeckStateResponse" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py:77:15 - error: Method "get" overrides class "CRUDBase" in an incompatible manner
+    Parameter 3 type mismatch: base parameter is type "str | UUID", override parameter is type "UUID"
+      Type "str | UUID" is not assignable to type "UUID"
+        "str" is not assignable to "UUID" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py:125:57 - error: Argument of type "type[DeckOrm]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_specific_id_filters"
+    Type "type[DeckOrm]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py:126:56 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py:158:15 - error: Method "update" overrides class "CRUDBase" in an incompatible manner
+    Keyword parameter "obj_in" type mismatch: base parameter is type "DeckUpdate | dict[str, Any]", override parameter is type "DeckUpdate"
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, DeckOrm]", override returns type "CoroutineType[Any, Any, DeckOrm | None]"
+      Type "DeckUpdate | dict[str, Any]" is not assignable to type "DeckUpdate"
+        "dict[str, Any]" is not assignable to "DeckUpdate"
+      "CoroutineType[Any, Any, DeckOrm | None]" is not assignable to "CoroutineType[Any, Any, DeckOrm]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "DeckOrm | None" is not a subtype of "DeckOrm"
+          Type "DeckOrm | None" is not assignable to type "DeckOrm"
+            "None" is not assignable to "DeckOrm" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck.py:194:15 - error: Method "remove" overrides class "CRUDBase" in an incompatible manner
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, DeckOrm | None]", override returns type "CoroutineType[Any, Any, bool]"
+      "CoroutineType[Any, Any, bool]" is not assignable to "CoroutineType[Any, Any, DeckOrm | None]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "bool" is not a subtype of "DeckOrm | None"
+          Type "bool" is not assignable to type "DeckOrm | None"
+            "bool" is not assignable to "DeckOrm"
+            "bool" is not assignable to "None" (reportIncompatibleMethodOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:12:3 - error: "DeckPositionResourceOrm" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:332:82 - error: Cannot access attribute "name" for class "DeckPositionDefinitionOrm"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:568:39 - error: Cannot access attribute "name" for class "type[DeckPositionDefinitionOrm]"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:583:18 - error: Cannot assign to attribute "nominal_x_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_x_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:585:18 - error: Cannot assign to attribute "nominal_y_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_y_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:587:18 - error: Cannot assign to attribute "nominal_z_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_z_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:589:18 - error: Cannot assign to attribute "accepted_resource_categories_json" for class "DeckPositionDefinitionOrm"
+    Attribute "accepted_resource_categories_json" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:594:43 - error: Cannot access attribute "position_specific_details_json" for class "DeckPositionDefinitionOrm"
+    Attribute "position_specific_details_json" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:610:18 - error: Cannot assign to attribute "position_specific_details_json" for class "DeckPositionDefinitionOrm"
+    Attribute "position_specific_details_json" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:665:39 - error: Cannot access attribute "name" for class "type[DeckPositionDefinitionOrm]"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/deck_position.py:727:33 - error: Cannot access attribute "name" for class "type[DeckPositionDefinitionOrm]"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/discovery_service.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/discovery_service.py:38:3 - error: "upsert_function_protocol_definition" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/discovery_service.py:309:37 - error: "db_accession_id" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/discovery_service.py:321:42 - error: Cannot assign to attribute "db_accession_id" for class "FunctionProtocolDefinitionModel"
+    Attribute "db_accession_id" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/entity_linking.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/entity_linking.py:364:19 - error: Cannot access attribute "resource_counterpart" for class "DeckOrm"
+    Attribute "resource_counterpart" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/entity_linking.py:368:32 - error: Cannot access attribute "resource_counterpart" for class "DeckOrm"
+    Attribute "resource_counterpart" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:169:14 - error: Cannot access attribute "data_types" for class "SearchFilters"
+    Attribute "data_types" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:170:67 - error: Cannot access attribute "data_types" for class "SearchFilters"
+    Attribute "data_types" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:172:14 - error: Cannot access attribute "spatial_contexts" for class "SearchFilters"
+    Attribute "spatial_contexts" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:174:57 - error: Cannot access attribute "spatial_contexts" for class "SearchFilters"
+    Attribute "spatial_contexts" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:177:14 - error: Cannot access attribute "has_numeric_data" for class "SearchFilters"
+    Attribute "has_numeric_data" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:178:16 - error: Cannot access attribute "has_numeric_data" for class "SearchFilters"
+    Attribute "has_numeric_data" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:183:14 - error: Cannot access attribute "has_file_data" for class "SearchFilters"
+    Attribute "has_file_data" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:184:16 - error: Cannot access attribute "has_file_data" for class "SearchFilters"
+    Attribute "has_file_data" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:189:14 - error: Cannot access attribute "min_quality_score" for class "SearchFilters"
+    Attribute "min_quality_score" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:191:59 - error: Cannot access attribute "min_quality_score" for class "SearchFilters"
+    Attribute "min_quality_score" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:198:53 - error: Argument of type "type[FunctionDataOutputOrm]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_specific_id_filters"
+    Type "type[FunctionDataOutputOrm]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/function_output_data.py:199:52 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:54:6 - error: "machine_data_service_log" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:139:6 - error: "machine_data_service_log" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:143:15 - error: Method "update" overrides class "CRUDBase" in an incompatible manner
+    Keyword parameter "obj_in" type mismatch: base parameter is type "MachineUpdate | dict[str, Any]", override parameter is type "MachineUpdate"
+      Type "MachineUpdate | dict[str, Any]" is not assignable to type "MachineUpdate"
+        "dict[str, Any]" is not assignable to "MachineUpdate" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:267:57 - error: Argument of type "type[MachineOrm]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_specific_id_filters"
+    Type "type[MachineOrm]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:268:56 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/machine.py:309:21 - error: Cannot assign to attribute "status_details" for class "MachineOrm"
+    Attribute "status_details" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/protocols.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/protocols.py:25:3 - error: "ProtocolRunCreate" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/protocols.py:28:3 - error: "ProtocolRunUpdate" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/protocols.py:138:56 - error: Argument of type "InstrumentedAttribute[datetime | None]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime | None]" is not assignable to "Column[Unknown]" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:49:6 - error: "log_resource_data_service_errors" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:98:15 - error: Method "get" overrides class "CRUDBase" in an incompatible manner
+    Parameter 3 name mismatch: base parameter is named "accession_id", override parameter is named "id" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:158:57 - error: Argument of type "type[ResourceOrm]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_specific_id_filters"
+    Type "type[ResourceOrm]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:159:56 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:192:15 - error: Method "update" overrides class "CRUDBase" in an incompatible manner
+    Keyword parameter "obj_in" type mismatch: base parameter is type "ResourceUpdate | dict[str, Any]", override parameter is type "ResourceUpdate"
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, ResourceOrm]", override returns type "CoroutineType[Any, Any, ResourceOrm | None]"
+      Type "ResourceUpdate | dict[str, Any]" is not assignable to type "ResourceUpdate"
+        "dict[str, Any]" is not assignable to "ResourceUpdate"
+      "CoroutineType[Any, Any, ResourceOrm | None]" is not assignable to "CoroutineType[Any, Any, ResourceOrm]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "ResourceOrm | None" is not a subtype of "ResourceOrm"
+          Type "ResourceOrm | None" is not assignable to type "ResourceOrm"
+            "None" is not assignable to "ResourceOrm" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/resource.py:234:15 - error: Method "remove" overrides class "CRUDBase" in an incompatible manner
+    Parameter "accession_id" is missing in override
+    Parameter "id" is missing in base
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, ResourceOrm | None]", override returns type "CoroutineType[Any, Any, bool]"
+      "CoroutineType[Any, Any, bool]" is not assignable to "CoroutineType[Any, Any, ResourceOrm | None]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "bool" is not a subtype of "ResourceOrm | None"
+          Type "bool" is not assignable to type "ResourceOrm | None"
+            "bool" is not assignable to "ResourceOrm"
+            "bool" is not assignable to "None" (reportIncompatibleMethodOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:275:14 - error: Cannot access attribute "priority_min" for class "SearchFilters"
+    Attribute "priority_min" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:276:61 - error: Cannot access attribute "priority_min" for class "SearchFilters"
+    Attribute "priority_min" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:278:14 - error: Cannot access attribute "priority_max" for class "SearchFilters"
+    Attribute "priority_max" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:279:61 - error: Cannot access attribute "priority_max" for class "SearchFilters"
+    Attribute "priority_max" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:282:50 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/scheduler.py:623:50 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py:64:51 - error: Argument of type "type[ModelType@CRUDBase]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_search_filters"
+    Type "type[ModelType@CRUDBase]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py:65:64 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py:66:62 - error: Argument of type "InstrumentedAttribute[dict[Unknown, Unknown] | None]" cannot be assigned to parameter "orm_model_properties_field" of type "Column[JSONB]" in function "apply_property_filters"
+    "InstrumentedAttribute[dict[Unknown, Unknown] | None]" is not assignable to "Column[JSONB]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py:68:44 - error: Argument of type "type[ModelType@CRUDBase]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_sorting"
+    Type "type[ModelType@CRUDBase]" is not assignable to type "Base" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/utils/crud_base.py:69:63 - error: Argument of type "type[ModelType@CRUDBase]" cannot be assigned to parameter "orm_model" of type "Base" in function "apply_specific_id_filters"
+    Type "type[ModelType@CRUDBase]" is not assignable to type "Base" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py:47:38 - error: Cannot access attribute "initial_state" for class "WorkcellCreate"
+    Attribute "initial_state" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py:73:15 - error: Method "get" overrides class "CRUDBase" in an incompatible manner
+    Parameter 3 name mismatch: base parameter is named "accession_id", override parameter is named "id" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py:119:56 - error: Argument of type "InstrumentedAttribute[datetime]" cannot be assigned to parameter "orm_model_timestamp_field" of type "Column[Unknown]" in function "apply_date_range_filters"
+    "InstrumentedAttribute[datetime]" is not assignable to "Column[Unknown]" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py:127:15 - error: Method "update" overrides class "CRUDBase" in an incompatible manner
+    Keyword parameter "obj_in" type mismatch: base parameter is type "WorkcellUpdate | dict[str, Any]", override parameter is type "WorkcellUpdate"
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, WorkcellOrm]", override returns type "CoroutineType[Any, Any, WorkcellOrm | None]"
+      Type "WorkcellUpdate | dict[str, Any]" is not assignable to type "WorkcellUpdate"
+        "dict[str, Any]" is not assignable to "WorkcellUpdate"
+      "CoroutineType[Any, Any, WorkcellOrm | None]" is not assignable to "CoroutineType[Any, Any, WorkcellOrm]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "WorkcellOrm | None" is not a subtype of "WorkcellOrm"
+          Type "WorkcellOrm | None" is not assignable to type "WorkcellOrm"
+            "None" is not assignable to "WorkcellOrm" (reportIncompatibleMethodOverride)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/services/workcell.py:172:15 - error: Method "remove" overrides class "CRUDBase" in an incompatible manner
+    Parameter "accession_id" is missing in override
+    Parameter "id" is missing in base
+    Return type mismatch: base method returns type "CoroutineType[Any, Any, WorkcellOrm | None]", override returns type "CoroutineType[Any, Any, bool]"
+      "CoroutineType[Any, Any, bool]" is not assignable to "CoroutineType[Any, Any, WorkcellOrm | None]"
+        Type parameter "_ReturnT_co@CoroutineType" is covariant, but "bool" is not a subtype of "WorkcellOrm | None"
+          Type "bool" is not assignable to type "WorkcellOrm | None"
+            "bool" is not assignable to "WorkcellOrm"
+            "bool" is not assignable to "None" (reportIncompatibleMethodOverride)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/__init__.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/__init__.py:8:6 - error: Import ".schemas" could not be resolved (reportMissingImports)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/accession_resolver.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/accession_resolver.py:59:18 - error: Cannot access attribute "id" for class "object*"
+    Attribute "id" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/notify.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/notify.py:96:31 - error: Object of type "dict[str, Any]" is not callable
+    Attribute "__call__" is unknown (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/redis_lock.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/redis_lock.py:49:49 - error: Cannot access attribute "decode" for class "Awaitable[Any]"
+    Attribute "decode" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/run_control.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/run_control.py:8:38 - error: "get_settings" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/sanitation.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/sanitation.py:153:36 - error: "length" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/praxis/backend/utils/sanitation.py:167:38 - error: "length" is possibly unbound (reportPossiblyUnboundVariable)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/assets_api_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/assets_api_tests.py:10:3 - error: "ResourceInventoryDataIn" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/assets_api_tests.py:11:3 - error: "ResourceInventoryDataOut" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/assets_api_tests.py:18:6 - error: Import "praxis.backend.database_models.asset_management_orm" could not be resolved (reportMissingImports)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/conftest.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/conftest.py:7:6 - error: Import "praxis.backend.main" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/conftest.py:8:37 - error: "SessionLocal" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/conftest.py:8:51 - error: "create_tables_if_not_exist" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/conftest.py:8:79 - error: "engine" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/decks_api_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/decks_api_tests.py:7:6 - error: Import "praxis.backend.api.models.workcell_models" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/decks_api_tests.py:14:6 - error: Import "praxis.backend.database_models.asset_management_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/decks_api_tests.py:313:44 - error: No parameter named "timeout" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/test_global_dependencies.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/api/test_global_dependencies.py:5:52 - error: "router" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:11:6 - error: Import "praxis.backend.database_models.asset_management_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:22:6 - error: Import "praxis.protocol_core.definitions" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:385:52 - error: "CoroutineType[Any, Any, tuple[Any, UUID, str]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:386:39 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "acquire_machine"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:411:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:411:43 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "acquire_machine"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:422:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:422:43 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "acquire_machine"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:434:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:434:43 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "acquire_machine"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:458:52 - error: Argument missing for parameter "resource_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:459:13 - error: No parameter named "protocol_run_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:460:13 - error: No parameter named "requested_asset_name_in_protocol" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:461:13 - error: No parameter named "name_constraint" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:492:9 - error: Argument missing for parameter "resource_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:493:13 - error: No parameter named "protocol_run_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:494:13 - error: No parameter named "requested_asset_name_in_protocol" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:495:13 - error: No parameter named "name_constraint" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:496:13 - error: No parameter named "location_constraints" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:541:54 - error: Expected 1 positional argument (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:551:9 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:551:64 - error: Argument of type "Literal[1]" cannot be assigned to parameter "machine_orm_accession_id" of type "UUID" in function "release_machine"
+    "Literal[1]" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:563:9 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:564:39 - error: Argument of type "Literal[1]" cannot be assigned to parameter "resource_orm_accession_id" of type "UUID" in function "release_resource"
+    "Literal[1]" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:585:13 - error: No parameter named "clear_from_deck_machine_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:586:13 - error: No parameter named "clear_from_slot_name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:699:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:751:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:797:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:842:49 - error: Cannot access attribute "EXCLUDED_CLASS_NAMES" for class "AssetManager"
+    Attribute "EXCLUDED_CLASS_NAMES" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:891:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:895:23 - error: Cannot assign to attribute "EXCLUDED_CLASS_NAMES" for class "AssetManager"
+    Attribute "EXCLUDED_CLASS_NAMES" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:934:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:983:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1018:26 - error: "CoroutineType[Any, Any, tuple[int, int]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1086:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1086:47 - error: Argument of type "Literal['NonExistentLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['NonExistentLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1086:68 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1092:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1092:47 - error: Argument of type "Literal['TestDeckLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['TestDeckLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1092:65 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1108:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1108:47 - error: Argument of type "Literal['TestDeckLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['TestDeckLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1108:65 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1121:59 - error: Argument of type "Literal['TestDeckLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['TestDeckLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1121:77 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1147:9 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1147:80 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1187:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1187:47 - error: Argument of type "Literal['TestDeckLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['TestDeckLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1187:65 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1204:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1204:47 - error: Argument of type "Literal['TestDeckLayout']" cannot be assigned to parameter "deck_orm_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['TestDeckLayout']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1204:65 - error: Argument of type "Literal['run123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "apply_deck"
+    "Literal['run123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1230:13 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1231:43 - error: Argument of type "Literal['log_run_123']" cannot be assigned to parameter "protocol_run_accession_id" of type "UUID" in function "acquire_asset"
+    "Literal['log_run_123']" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1249:9 - error: Result of async function call is not used; use "await" or assign result to variable (reportUnusedCoroutine)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/asset_manager_tests.py:1250:39 - error: Argument of type "Literal[555]" cannot be assigned to parameter "resource_orm_accession_id" of type "UUID" in function "release_resource"
+    "Literal[555]" is not assignable to "UUID" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:90:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:91:7 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:92:7 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:93:7 - error: No parameter named "is_top_level" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:94:7 - error: No parameter named "description" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:95:7 - error: No parameter named "param_metadata" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:150:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:150:41 - error: No parameter named "is_top_level" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:162:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:162:41 - error: No parameter named "preconfigure_deck" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:172:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:172:41 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:172:63 - error: No parameter named "is_top_level" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:192:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:193:7 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:193:32 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:193:47 - error: No parameter named "is_top_level" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:206:23 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:207:7 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:207:29 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_decorators.py:207:44 - error: No parameter named "is_top_level" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_protocol_code_manager.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_protocol_code_manager.py:94:14 - error: Cannot assign to attribute "_protocol_definition" for class "FunctionType"
+    Attribute "_protocol_definition" is unknown (reportFunctionMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_protocol_code_manager.py:122:14 - error: Cannot assign to attribute "_protocol_definition" for class "FunctionType"
+    Attribute "_protocol_definition" is unknown (reportFunctionMemberAccess)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_scheduler.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_scheduler.py:12:3 - error: "AssetDefinitionOrm" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_workcell_runtime.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_workcell_runtime.py:49:13 - error: Argument missing for parameter "config" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_workcell_runtime.py:51:5 - error: No parameter named "workcell_name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/core/test_workcell_runtime.py:52:5 - error: No parameter named "workcell_save_file" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:15:6 - error: Import "praxis.backend.database_models.protocol_definitions_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:23:6 - error: Import "praxis.backend.protocol_core.protocol_definition_models" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:184:54 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:188:45 - error: Argument of type "Literal[1]" cannot be assigned to parameter "file_system_source_accession_id" of type "UUID | None" in function "discover_and_upsert_protocols"
+    Type "Literal[1]" is not assignable to type "UUID | None"
+      "Literal[1]" is not assignable to "UUID"
+      "Literal[1]" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:192:20 - error: Argument of type "CoroutineType[Any, Any, list[Any]]" cannot be assigned to parameter "obj" of type "Sized" in function "len"
+    "CoroutineType[Any, Any, list[Any]]" is incompatible with protocol "Sized"
+      "__len__" is not present (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:194:48 - error: "CoroutineType[Any, Any, list[Any]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:195:50 - error: "CoroutineType[Any, Any, list[Any]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:206:16 - error: Import "integration_test_protocols.protocol_module" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:217:14 - error: Import "praxis.backend.protocol_core.definitions" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:224:24 - error: Arguments missing for parameters "db_session_factory", "asset_manager", "workcell_runtime" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:224:37 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:227:37 - error: "uuid" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:237:13 - error: No parameter named "file_system_source_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:238:13 - error: No parameter named "user_input_params" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:308:54 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:310:88 - error: Argument of type "Literal[1]" cannot be assigned to parameter "file_system_source_accession_id" of type "UUID | None" in function "discover_and_upsert_protocols"
+    Type "Literal[1]" is not assignable to type "UUID | None"
+      "Literal[1]" is not assignable to "UUID"
+      "Literal[1]" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:312:59 - error: "CoroutineType[Any, Any, list[Any]]" is not iterable
+    "__iter__" method not defined (reportGeneralTypeIssues)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:319:16 - error: Import "integration_test_protocols.protocol_module" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:326:24 - error: Arguments missing for parameters "db_session_factory", "asset_manager", "workcell_runtime" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:326:37 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:335:17 - error: No parameter named "file_system_source_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/integration_discovery_execution_tests.py:336:17 - error: No parameter named "user_input_params" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:12:6 - error: Import "praxis.backend.database_models.protocol_definitions_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:19:6 - error: Import "praxis.backend.protocol_core.protocol_definition_models" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:117:30 - error: "uuid" is not defined (reportUndefinedVariable)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:156:12 - error: Arguments missing for parameters "db_session_factory", "asset_manager", "workcell_runtime" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:156:25 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:722:36 - error: Argument of type "Literal['test_run']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run']" is not assignable to type "UUID | None"
+      "Literal['test_run']" is not assignable to "UUID"
+      "Literal['test_run']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:764:36 - error: Argument of type "Literal['test_run_plr']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_plr']" is not assignable to type "UUID | None"
+      "Literal['test_run_plr']" is not assignable to "UUID"
+      "Literal['test_run_plr']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:804:38 - error: Argument of type "Literal['test_run_m']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_m']" is not assignable to type "UUID | None"
+      "Literal['test_run_m']" is not assignable to "UUID"
+      "Literal['test_run_m']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:835:36 - error: Argument of type "Literal['test_run_o']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_o']" is not assignable to type "UUID | None"
+      "Literal['test_run_o']" is not assignable to "UUID"
+      "Literal['test_run_o']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:875:38 - error: Argument of type "Literal['test_run_f']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_f']" is not assignable to type "UUID | None"
+      "Literal['test_run_f']" is not assignable to "UUID"
+      "Literal['test_run_f']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:907:36 - error: Argument of type "Literal['test_run_nc']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_nc']" is not assignable to type "UUID | None"
+      "Literal['test_run_nc']" is not assignable to "UUID"
+      "Literal['test_run_nc']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:970:36 - error: Argument of type "Literal['infer_lw']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['infer_lw']" is not assignable to type "UUID | None"
+      "Literal['infer_lw']" is not assignable to "UUID"
+      "Literal['infer_lw']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:1017:36 - error: Argument of type "Literal['infer_dev']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['infer_dev']" is not assignable to type "UUID | None"
+      "Literal['infer_dev']" is not assignable to "UUID"
+      "Literal['infer_dev']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:1066:36 - error: Argument of type "Literal['infer_opt_fail']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['infer_opt_fail']" is not assignable to type "UUID | None"
+      "Literal['infer_opt_fail']" is not assignable to "UUID"
+      "Literal['infer_opt_fail']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:1101:36 - error: Argument of type "Literal['infer_ignore']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['infer_ignore']" is not assignable to type "UUID | None"
+      "Literal['infer_ignore']" is not assignable to "UUID"
+      "Literal['infer_ignore']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/orchestrator_tests.py:1156:36 - error: Argument of type "Literal['infer_override']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['infer_override']" is not assignable to type "UUID | None"
+      "Literal['infer_override']" is not assignable to "UUID"
+      "Literal['infer_override']" is not assignable to "None" (reportArgumentType)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:37:42 - error: Argument of type "Literal['test_run_123']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_123']" is not assignable to type "UUID | None"
+      "Literal['test_run_123']" is not assignable to "UUID"
+      "Literal['test_run_123']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:51:42 - error: Argument of type "Literal['test_run_new']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_new']" is not assignable to type "UUID | None"
+      "Literal['test_run_new']" is not assignable to "UUID"
+      "Literal['test_run_new']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:60:48 - error: "exceptions" is not a known attribute of module "redis" (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:68:36 - error: Argument of type "Literal['test_run_conn_error']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_conn_error']" is not assignable to type "UUID | None"
+      "Literal['test_run_conn_error']" is not assignable to "UUID"
+      "Literal['test_run_conn_error']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:73:42 - error: Argument of type "Literal['test_run_json_error']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_json_error']" is not assignable to type "UUID | None"
+      "Literal['test_run_json_error']" is not assignable to "UUID"
+      "Literal['test_run_json_error']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:81:42 - error: Argument of type "Literal['test_run_set']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_set']" is not assignable to type "UUID | None"
+      "Literal['test_run_set']" is not assignable to "UUID"
+      "Literal['test_run_set']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:102:42 - error: Argument of type "Literal['test_run_get']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_get']" is not assignable to type "UUID | None"
+      "Literal['test_run_get']" is not assignable to "UUID"
+      "Literal['test_run_get']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:111:42 - error: Argument of type "Literal['test_run_del']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_del']" is not assignable to type "UUID | None"
+      "Literal['test_run_del']" is not assignable to "UUID"
+      "Literal['test_run_del']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:123:42 - error: Argument of type "Literal['test_run_get_method']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_get_method']" is not assignable to type "UUID | None"
+      "Literal['test_run_get_method']" is not assignable to "UUID"
+      "Literal['test_run_get_method']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:133:42 - error: Argument of type "Literal['test_run_update']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_update']" is not assignable to type "UUID | None"
+      "Literal['test_run_update']" is not assignable to "UUID"
+      "Literal['test_run_update']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:146:42 - error: Argument of type "Literal['test_run_to_dict']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_to_dict']" is not assignable to type "UUID | None"
+      "Literal['test_run_to_dict']" is not assignable to "UUID"
+      "Literal['test_run_to_dict']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:156:42 - error: Argument of type "Literal['test_run_clear']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_clear']" is not assignable to type "UUID | None"
+      "Literal['test_run_clear']" is not assignable to "UUID"
+      "Literal['test_run_clear']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:167:42 - error: Argument of type "Literal['test_run_attr']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_attr']" is not assignable to type "UUID | None"
+      "Literal['test_run_attr']" is not assignable to "UUID"
+      "Literal['test_run_attr']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:180:42 - error: Argument of type "Literal['test_run_attr_get_fail']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_attr_get_fail']" is not assignable to type "UUID | None"
+      "Literal['test_run_attr_get_fail']" is not assignable to "UUID"
+      "Literal['test_run_attr_get_fail']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:186:42 - error: Argument of type "Literal['test_run_internal_attr']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test_run_internal_attr']" is not assignable to type "UUID | None"
+      "Literal['test_run_internal_attr']" is not assignable to "UUID"
+      "Literal['test_run_internal_attr']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/praxis_state_tests.py:189:30 - error: Cannot assign to attribute "run_accession_id" for class "PraxisState"
+    "Literal['new_accession_id']" is not assignable to "UUID" (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:6:6 - error: Import "praxis.backend.protocol_core.protocol_definition_models" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:30:4 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:30:22 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:30:42 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:39:4 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:40:5 - error: No parameter named "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:41:5 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:42:5 - error: No parameter named "description" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:43:5 - error: No parameter named "is_top_level" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:44:5 - error: No parameter named "category" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:45:5 - error: No parameter named "tags" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:46:5 - error: No parameter named "param_metadata" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:134:6 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:134:24 - error: No parameter named "version" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:138:34 - error: Cannot access attribute "_protocol_definition" for class "FunctionType"
+    Attribute "_protocol_definition" is unknown (reportFunctionMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:142:6 - error: Argument missing for parameter "data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:146:34 - error: Cannot access attribute "_protocol_definition" for class "FunctionType"
+    Attribute "_protocol_definition" is unknown (reportFunctionMemberAccess)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:172:47 - error: Argument of type "Literal['test-run-accession_id-ctx']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test-run-accession_id-ctx']" is not assignable to type "UUID | None"
+      "Literal['test-run-accession_id-ctx']" is not assignable to "UUID"
+      "Literal['test-run-accession_id-ctx']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:176:7 - error: No parameter named "protocol_run_db_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:182:20 - error: Cannot access attribute "protocol_run_db_accession_id" for class "PraxisRunContext"
+    Attribute "protocol_run_db_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:191:7 - error: Argument of type "Literal[1]" cannot be assigned to parameter "run_accession_id" of type "UUID" in function "__init__"
+    "Literal[1]" is not assignable to "UUID" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:192:7 - error: Argument of type "Literal['accession_id-seq']" cannot be assigned to parameter "canonical_state" of type "PraxisState" in function "__init__"
+    "Literal['accession_id-seq']" is not assignable to "PraxisState" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:193:7 - error: Argument of type "PraxisState" cannot be assigned to parameter "current_db_session" of type "AsyncSession" in function "__init__"
+    "PraxisState" is not assignable to "AsyncSession" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:193:36 - error: Argument of type "Literal['accession_id-seq']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['accession_id-seq']" is not assignable to type "UUID | None"
+      "Literal['accession_id-seq']" is not assignable to "UUID"
+      "Literal['accession_id-seq']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:194:7 - error: Argument of type "object" cannot be assigned to parameter "current_call_log_db_accession_id" of type "UUID | None" in function "__init__"
+    Type "object" is not assignable to type "UUID | None"
+      "object" is not assignable to "UUID"
+      "object" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:195:7 - error: Argument of type "None" cannot be assigned to parameter "_call_sequence_next_val" of type "int" in function "__init__"
+    "None" is not assignable to "int" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:202:47 - error: Argument of type "Literal['test-run-accession_id-parent']" cannot be assigned to parameter "run_accession_id" of type "UUID | None" in function "__init__"
+    Type "Literal['test-run-accession_id-parent']" is not assignable to type "UUID | None"
+      "Literal['test-run-accession_id-parent']" is not assignable to "UUID"
+      "Literal['test-run-accession_id-parent']" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:206:7 - error: No parameter named "protocol_run_db_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:217:43 - error: Argument of type "Literal[100]" cannot be assigned to parameter "new_parent_call_log_db_accession_id" of type "UUID | None" in function "create_context_for_nested_call"
+    Type "Literal[100]" is not assignable to type "UUID | None"
+      "Literal[100]" is not assignable to "UUID"
+      "Literal[100]" is not assignable to "None" (reportArgumentType)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:221:22 - error: Cannot access attribute "protocol_run_db_accession_id" for class "PraxisRunContext"
+    Attribute "protocol_run_db_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/protocol_core_tests.py:222:25 - error: Cannot access attribute "protocol_run_db_accession_id" for class "PraxisRunContext"
+    Attribute "protocol_run_db_accession_id" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck.py:9:3 - error: "DeckPositionResourceOrm" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck.py:14:6 - error: Import "praxis.backend.services.deck" could not be resolved (reportMissingImports)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:223:28 - error: Cannot access attribute "name" for class "DeckPositionDefinitionOrm"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:224:28 - error: Cannot access attribute "nominal_x_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_x_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:225:28 - error: Cannot access attribute "name" for class "DeckPositionDefinitionOrm"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:226:28 - error: Cannot access attribute "accepted_resource_categories_json" for class "DeckPositionDefinitionOrm"
+    Attribute "accepted_resource_categories_json" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:257:15 - error: Cannot access attribute "name" for class "DeckPositionDefinitionOrm"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:281:24 - error: Cannot access attribute "name" for class "DeckPositionDefinitionOrm"
+    Attribute "name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:282:24 - error: Cannot access attribute "nominal_z_mm" for class "DeckPositionDefinitionOrm"
+    Attribute "nominal_z_mm" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:283:24 - error: Cannot access attribute "position_specific_details_json" for class "DeckPositionDefinitionOrm"
+    Attribute "position_specific_details_json" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_position.py:284:24 - error: Cannot access attribute "position_specific_details_json" for class "DeckPositionDefinitionOrm"
+    Attribute "position_specific_details_json" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:11:3 - error: "list_deck_type_definitions" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:13:3 - error: "read_deck_type_definition_by_fqn" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:56:31 - error: Argument missing for parameter "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:59:7 - error: No parameter named "deck_type" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:95:34 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:97:47 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:109:13 - error: Argument missing for parameter "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:111:32 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:112:9 - error: No parameter named "deck_type" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:124:22 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:124:57 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:134:26 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:137:64 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:153:33 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:161:25 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:178:11 - error: Argument missing for parameter "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:181:30 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:182:7 - error: No parameter named "deck_type" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:182:36 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:183:7 - error: No parameter named "position_definitions_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:192:31 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:194:27 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:201:11 - error: Argument missing for parameter "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:204:30 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:205:7 - error: No parameter named "deck_type" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:205:36 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:206:7 - error: No parameter named "position_definitions_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:212:27 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:214:40 - error: Cannot access attribute "position_definitions" for class "DeckTypeDefinitionOrm"
+    Attribute "position_definitions" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:233:13 - error: Argument missing for parameter "name" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:236:19 - error: Cannot access attribute "pylabrobot_deck_fqn" for class "DeckTypeDefinitionOrm"
+    Attribute "pylabrobot_deck_fqn" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:237:9 - error: No parameter named "deck_type" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_deck_type_definition.py:237:25 - error: Cannot access attribute "display_name" for class "DeckTypeDefinitionOrm"
+    Attribute "display_name" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:125:21 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:126:21 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:150:22 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:151:22 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:164:15 - error: Cannot assign to attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:182:22 - error: Cannot access attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:206:22 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:231:22 - error: Cannot access attribute "machine_counterpart_accession_id" for class "ResourceOrm"
+    Attribute "machine_counterpart_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:267:15 - error: Cannot assign to attribute "is_machine" for class "ResourceOrm"
+    Attribute "is_machine" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_entity_linking.py:287:11 - error: Cannot assign to attribute "resource_counterpart" for class "DeckOrm"
+    Attribute "resource_counterpart" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:256:15 - error: Arguments missing for parameters "limit", "offset", "sort_by", "search_filters", "property_filters", "resource_accession_id", "parent_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:258:7 - error: No parameter named "function_call_log_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:259:7 - error: No parameter named "data_types" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:260:7 - error: No parameter named "spatial_contexts" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:262:7 - error: No parameter named "resource_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:265:7 - error: No parameter named "has_numeric_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:266:7 - error: No parameter named "has_file_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:267:7 - error: No parameter named "min_quality_score" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:274:15 - error: Arguments missing for parameters "limit", "offset", "sort_by", "search_filters", "property_filters", "resource_accession_id", "parent_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:276:7 - error: No parameter named "function_call_log_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:277:7 - error: No parameter named "data_types" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:278:7 - error: No parameter named "spatial_contexts" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:280:7 - error: No parameter named "resource_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:283:7 - error: No parameter named "has_numeric_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:284:7 - error: No parameter named "has_file_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:285:7 - error: No parameter named "min_quality_score" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:291:15 - error: Arguments missing for parameters "limit", "offset", "sort_by", "search_filters", "property_filters", "resource_accession_id", "parent_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:293:7 - error: No parameter named "function_call_log_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:294:7 - error: No parameter named "data_types" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:295:7 - error: No parameter named "spatial_contexts" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:297:7 - error: No parameter named "resource_accession_id" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:300:7 - error: No parameter named "has_numeric_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:301:7 - error: No parameter named "has_file_data" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_function_output_data.py:302:7 - error: No parameter named "min_quality_score" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:18:3 - error: "create_machine" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:19:3 - error: "delete_machine" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:20:3 - error: "list_machines" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:21:3 - error: "read_machine" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:22:3 - error: "read_machine_by_name" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:23:3 - error: "update_machine" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:24:3 - error: "update_machine_status" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_machine.py:253:29 - error: Cannot access attribute "status" for class "MachineOrm"
+    Attribute "status" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:22:3 - error: "create_file_system_protocol_source" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:23:3 - error: "create_protocol_run" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:24:3 - error: "create_protocol_source_repository" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:25:3 - error: "list_protocol_runs" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:26:3 - error: "list_protocol_source_repositories" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:27:3 - error: "log_function_call_end" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:28:3 - error: "log_function_call_start" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:29:3 - error: "read_function_call_logs_for_run" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:30:3 - error: "read_protocol_run" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:31:3 - error: "read_protocol_source_repository" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:32:3 - error: "update_protocol_run_status" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:33:3 - error: "update_protocol_source_repository" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:34:3 - error: "upsert_function_protocol_definition" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:68:7 - error: Arguments missing for parameters "type_hint", "fqn" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:70:9 - error: No parameter named "type_hint_str" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:71:9 - error: No parameter named "actual_type_str" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:197:7 - error: Arguments missing for parameters "type_hint", "fqn" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:198:24 - error: No parameter named "type_hint_str" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_protocols.py:198:45 - error: No parameter named "actual_type_str" (reportCallIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:17:3 - error: "create_resource" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:18:3 - error: "delete_resource" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:19:3 - error: "read_resource" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:20:3 - error: "read_resource_by_name" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:21:3 - error: "read_resources" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:22:3 - error: "update_resource" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource.py:23:3 - error: "update_resource_location_and_status" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource_type_definition.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource_type_definition.py:14:3 - error: "create_resource" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_resource_type_definition.py:18:3 - error: "read_resources_definitions" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:95:70 - error: Cannot access attribute "RUNNING" for class "type[ScheduleStatusEnum]"
+    Attribute "RUNNING" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:98:55 - error: Cannot access attribute "RUNNING" for class "type[ScheduleStatusEnum]"
+    Attribute "RUNNING" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:111:31 - error: Argument missing for parameter "filters" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:116:34 - error: Argument missing for parameter "filters" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:192:26 - error: Argument missing for parameter "filters" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:193:68 - error: No parameter named "limit" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_scheduler.py:234:59 - error: Cannot access attribute "DISPATCHED" for class "type[ScheduleStatusEnum]"
+    Attribute "DISPATCHED" is unknown (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:21:3 - error: "create_well_data_output" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:22:3 - error: "create_well_data_outputs" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:23:3 - error: "create_well_data_outputs_from_flat_array" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:24:3 - error: "delete_well_data_output" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:25:3 - error: "read_well_data_output" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:26:3 - error: "read_well_data_outputs" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_well_data_output.py:27:3 - error: "update_well_data_output" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:14:3 - error: "create_workcell" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:15:3 - error: "delete_workcell" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:16:3 - error: "list_workcells" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:17:3 - error: "read_workcell" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:18:3 - error: "read_workcell_by_name" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:19:3 - error: "read_workcell_state" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:20:3 - error: "update_workcell" is unknown import symbol (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/services/test_workcell.py:21:3 - error: "update_workcell_state" is unknown import symbol (reportAttributeAccessIssue)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/state_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/state_tests.py:9:6 - error: Import "praxis.utils.state" could not be resolved (reportMissingImports)
+/Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:13:6 - error: Import "praxis.backend.database_models.asset_management_orm" could not be resolved (reportMissingImports)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:76:12 - error: Arguments missing for parameters "db_session_factory", "config" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:76:28 - error: No parameter named "db_session" (reportCallIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:88:45 - error: Cannot access attribute "initialize_machine_backend" for class "WorkcellRuntime"
+    Attribute "initialize_machine_backend" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:98:33 - error: Cannot access attribute "_active_machine_backends" for class "WorkcellRuntime"
+    Attribute "_active_machine_backends" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:100:30 - error: Cannot access attribute "db_session" for class "WorkcellRuntime"
+    Attribute "db_session" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:128:49 - error: Cannot access attribute "initialize_machine_backend" for class "WorkcellRuntime"
+    Attribute "initialize_machine_backend" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:130:37 - error: Cannot access attribute "_main_deck_plr_object" for class "WorkcellRuntime"
+    Attribute "_main_deck_plr_object" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:131:37 - error: Cannot access attribute "_main_deck_machine_orm_accession_id" for class "WorkcellRuntime"
+    Attribute "_main_deck_machine_orm_accession_id" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:141:45 - error: Cannot access attribute "initialize_machine_backend" for class "WorkcellRuntime"
+    Attribute "initialize_machine_backend" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:144:42 - error: Cannot access attribute "_active_machine_backends" for class "WorkcellRuntime"
+    Attribute "_active_machine_backends" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:146:30 - error: Cannot access attribute "db_session" for class "WorkcellRuntime"
+    Attribute "db_session" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:152:26 - error: Cannot access attribute "_active_machine_backends" for class "WorkcellRuntime"
+    Attribute "_active_machine_backends" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:154:26 - error: Cannot access attribute "shutdown_machine_backend" for class "WorkcellRuntime"
+    Attribute "shutdown_machine_backend" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:156:42 - error: Cannot access attribute "_active_machine_backends" for class "WorkcellRuntime"
+    Attribute "_active_machine_backends" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:159:30 - error: Cannot access attribute "db_session" for class "WorkcellRuntime"
+    Attribute "db_session" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:172:39 - error: Cannot access attribute "create_or_get_resource_plr_object" for class "WorkcellRuntime"
+    Attribute "create_or_get_resource_plr_object" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:177:33 - error: Cannot access attribute "_active_plr_resource_objects" for class "WorkcellRuntime"
+    Attribute "_active_plr_resource_objects" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:186:39 - error: Cannot access attribute "create_or_get_resource_plr_object" for class "WorkcellRuntime"
+    Attribute "create_or_get_resource_plr_object" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:189:42 - error: Cannot access attribute "_active_plr_resource_objects" for class "WorkcellRuntime"
+    Attribute "_active_plr_resource_objects" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:192:33 - error: Cannot access attribute "db_session" for class "WorkcellRuntime"
+    Attribute "db_session" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:209:26 - error: Cannot access attribute "_active_machine_backends" for class "WorkcellRuntime"
+    Attribute "_active_machine_backends" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:211:65 - error: Cannot access attribute "Resource" for class "WorkcellRuntime"
+    Attribute "Resource" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:214:26 - error: Cannot access attribute "assign_resource_to_deck_slot" for class "WorkcellRuntime"
+    Attribute "assign_resource_to_deck_slot" is unknown (reportAttributeAccessIssue)
+  /Users/mar/MIT Dropbox/Marielle Russo/PLR_workspace/pylabpraxis/tests/workcell_runtime_tests.py:218:30 - error: Cannot access attribute "db_session" for class "WorkcellRuntime"
+    Attribute "db_session" is unknown (reportAttributeAccessIssue)
+692 errors, 0 warnings, 0 informations

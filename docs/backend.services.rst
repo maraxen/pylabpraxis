@@ -7,7 +7,7 @@ Submodules
 backend.services.deck\_instance module
 --------------------------------------
 
-.. automodule:: backend.services.deck_instance
+.. automodule:: backend.services.deck
    :members:
    :undoc-members:
    :show-inheritance:
@@ -103,7 +103,7 @@ backend.services.protocols module
 backend.services.resource\_instance module
 ------------------------------------------
 
-.. automodule:: backend.services.resource_instance
+.. automodule:: backend.services.resource
    :members:
    :undoc-members:
    :show-inheritance:

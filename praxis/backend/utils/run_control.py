@@ -1,23 +1,23 @@
 """Run control utilities for orchestrator."""
 
-from typing import List, Optional
+import uuid
 
 import redis
-import uuid
 from redis.exceptions import RedisError
 
-from praxis.backend.configure import get_settings  # To access Redis config
+from praxis.backend.configure import PraxisConfiguration
 
-ALLOWED_COMMANDS: List[str] = ["PAUSE", "RESUME", "CANCEL"]
+SETTINGS = PraxisConfiguration()
+
+ALLOWED_COMMANDS: list[str] = ["PAUSE", "RESUME", "CANCEL"]
 COMMAND_KEY_PREFIX = "orchestrator:control"
 
 
 def _get_redis_client() -> redis.Redis:
-  settings = get_settings()
   # Assuming settings.redis_host and settings.redis_port are available
   # If settings.redis_url is directly available, that would be preferred:
   # redis_url = settings.redis_url
-  redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/0"
+  redis_url = f"redis://{SETTINGS.redis_host}:{SETTINGS.redis_port}/0"
   return redis.Redis.from_url(redis_url, decode_responses=True)
 
 
@@ -26,7 +26,9 @@ def _get_command_key(run_accession_id: uuid.UUID) -> str:
 
 
 async def send_control_command(
-  run_accession_id: uuid.UUID, command: str, ttl_seconds: int = 3600
+  run_accession_id: uuid.UUID,
+  command: str,
+  ttl_seconds: int = 3600,
 ) -> bool:
   """Send a control command to the orchestrator for a specific run.
 
@@ -38,21 +40,21 @@ async def send_control_command(
 
   """
   if command not in ALLOWED_COMMANDS:
+    msg = f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}"
     raise ValueError(
-      f"Invalid command: {command}. Allowed commands are: {ALLOWED_COMMANDS}"
+      msg,
     )
   try:
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
     await r.set(key, command, ex=ttl_seconds)
     return True
-  except RedisError as e:
+  except RedisError:
     # In a real application, use a proper logger
-    print(f"RedisError sending control command for run {run_accession_id}: {e}")
     return False
 
 
-async def get_control_command(run_accession_id: uuid.UUID) -> Optional[str]:
+async def get_control_command(run_accession_id: uuid.UUID) -> str | None:
   """Get the control command for a specific run.
 
   Args:
@@ -65,10 +67,8 @@ async def get_control_command(run_accession_id: uuid.UUID) -> Optional[str]:
   try:
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
-    command = await r.get(key)
-    return command  # Returns None if key doesn't exist
-  except RedisError as e:
-    print(f"RedisError getting control command for run {run_accession_id}: {e}")
+    return await r.get(key)
+  except RedisError:
     return None
 
 
@@ -87,6 +87,5 @@ async def clear_control_command(run_accession_id: uuid.UUID) -> bool:
     key = _get_command_key(run_accession_id)
     deleted_count = await r.delete(key)
     return deleted_count > 0
-  except RedisError as e:
-    print(f"RedisError clearing control command for run {run_accession_id}: {e}")
+  except RedisError:
     return False
