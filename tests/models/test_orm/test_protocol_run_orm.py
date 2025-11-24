@@ -1,5 +1,6 @@
 """Unit tests for ProtocolRunOrm model."""
 import pytest
+import pytest_asyncio
 from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,13 +12,10 @@ from praxis.backend.models.orm.protocol import (
 from praxis.backend.models.enums import ProtocolRunStatusEnum
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -34,18 +32,14 @@ async def test_protocol_run_orm_creation_minimal(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating ProtocolRunOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
-
-    run_id = uuid7()
     run = ProtocolRunOrm(
-        accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     db_session.add(run)
     await db_session.flush()
 
     # Verify creation with defaults
-    assert run.accession_id == run_id
+    assert run.accession_id is not None
     assert run.top_level_protocol_definition_accession_id == protocol_definition.accession_id
     assert run.status == ProtocolRunStatusEnum.PENDING  # Default
     assert run.start_time is None
@@ -67,9 +61,6 @@ async def test_protocol_run_orm_creation_with_all_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating ProtocolRunOrm with all fields populated."""
-    from praxis.backend.utils.uuid import uuid7
-
-    run_id = uuid7()
     now = datetime.now(timezone.utc)
     input_params = {"volume": 50, "temperature": 37}
     resolved_assets = {"plate": "plate_123", "machine": "star_001"}
@@ -79,7 +70,6 @@ async def test_protocol_run_orm_creation_with_all_fields(
     user_info = {"user_id": "user123", "username": "testuser"}
 
     run = ProtocolRunOrm(
-        accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
         start_time=now,
@@ -96,7 +86,7 @@ async def test_protocol_run_orm_creation_with_all_fields(
     await db_session.flush()
 
     # Verify all fields
-    assert run.accession_id == run_id
+    assert run.accession_id is not None
     assert run.status == ProtocolRunStatusEnum.RUNNING
     assert run.start_time == now
     assert run.input_parameters_json == input_params
@@ -115,17 +105,15 @@ async def test_protocol_run_orm_persist_to_database(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test full persistence cycle for ProtocolRunOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
-    run_id = uuid7()
     run = ProtocolRunOrm(
-        accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
         input_parameters_json={"test": "value"},
     )
     db_session.add(run)
     await db_session.flush()
+
+    run_id = run.accession_id
 
     # Query back
     result = await db_session.execute(
@@ -160,7 +148,6 @@ async def test_protocol_run_orm_status_transitions(
 
     for status, name in statuses:
         run = ProtocolRunOrm(
-            accession_id=uuid7(),
             name=name,
             top_level_protocol_definition_accession_id=protocol_definition.accession_id,
             status=status,
@@ -193,7 +180,6 @@ async def test_protocol_run_orm_timing_fields(
     )
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
         start_time=start,
@@ -214,8 +200,6 @@ async def test_protocol_run_orm_input_parameters_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB input_parameters_json field."""
-    from praxis.backend.utils.uuid import uuid7
-
     input_params = {
         "volume_ul": 100,
         "temperature_c": 37.5,
@@ -226,7 +210,6 @@ async def test_protocol_run_orm_input_parameters_jsonb(
     }
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         input_parameters_json=input_params,
     )
@@ -246,8 +229,6 @@ async def test_protocol_run_orm_resolved_assets_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB resolved_assets_json field."""
-    from praxis.backend.utils.uuid import uuid7
-
     resolved_assets = {
         "liquid_handler": {"id": "star_001", "type": "HAMILTON_STAR"},
         "source_plate": {"id": "plate_123", "type": "96_wellplate"},
@@ -255,7 +236,6 @@ async def test_protocol_run_orm_resolved_assets_jsonb(
     }
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         resolved_assets_json=resolved_assets,
     )
@@ -273,8 +253,6 @@ async def test_protocol_run_orm_output_data_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB output_data_json field."""
-    from praxis.backend.utils.uuid import uuid7
-
     output_data = {
         "status": "success",
         "measurements": [1.2, 3.4, 5.6, 7.8],
@@ -282,7 +260,6 @@ async def test_protocol_run_orm_output_data_jsonb(
     }
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         output_data_json=output_data,
     )
@@ -300,8 +277,6 @@ async def test_protocol_run_orm_state_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB initial_state_json and final_state_json fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     initial_state = {
         "deck_layout": "config_a",
         "tip_count": 96,
@@ -315,7 +290,6 @@ async def test_protocol_run_orm_state_jsonb(
     }
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         initial_state_json=initial_state,
         final_state_json=final_state,
@@ -336,10 +310,7 @@ async def test_protocol_run_orm_data_directory_path(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test data_directory_path field for output storage."""
-    from praxis.backend.utils.uuid import uuid7
-
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         data_directory_path="/data/protocol_runs/2024/11/run_abc123",
     )
@@ -355,8 +326,6 @@ async def test_protocol_run_orm_created_by_user_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB created_by_user field."""
-    from praxis.backend.utils.uuid import uuid7
-
     user_info = {
         "user_id": "user_789",
         "username": "scientist_alice",
@@ -365,7 +334,6 @@ async def test_protocol_run_orm_created_by_user_jsonb(
     }
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         created_by_user=user_info,
     )
@@ -383,22 +351,17 @@ async def test_protocol_run_orm_continuation_chain(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test previous_accession_id for protocol run continuations."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create first run
-    run1_id = uuid7()
     run1 = ProtocolRunOrm(
-        accession_id=run1_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
     )
     db_session.add(run1)
     await db_session.flush()
+    run1_id = run1.accession_id
 
     # Create continuation run
-    run2_id = uuid7()
     run2 = ProtocolRunOrm(
-        accession_id=run2_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
         previous_accession_id=run1_id,
@@ -417,17 +380,13 @@ async def test_protocol_run_orm_query_by_status(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying protocol runs by status."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create runs with different statuses
     running_run = ProtocolRunOrm(
-        accession_id=uuid7(),
         name="running_query_test",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
     )
     completed_run = ProtocolRunOrm(
-        accession_id=uuid7(),
         name="completed_query_test",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
@@ -455,16 +414,12 @@ async def test_protocol_run_orm_query_by_protocol(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying all runs for a specific protocol."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create multiple runs for the same protocol
     run1 = ProtocolRunOrm(
-        accession_id=uuid7(),
         name="protocol_query_run1",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     run2 = ProtocolRunOrm(
-        accession_id=uuid7(),
         name="protocol_query_run2",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
@@ -494,14 +449,13 @@ async def test_protocol_run_orm_repr(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test string representation of ProtocolRunOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
-    run_id = uuid7()
     run = ProtocolRunOrm(
-        accession_id=run_id,
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
     )
+    db_session.add(run)
+    await db_session.flush()
+    run_id = run.accession_id
 
     repr_str = repr(run)
     assert "ProtocolRunOrm" in repr_str

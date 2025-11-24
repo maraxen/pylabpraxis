@@ -9,7 +9,8 @@ import logging
 import uuid
 from typing import Any
 
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ from praxis.backend.utils.db_decorator import handle_db_transaction
 logger = logging.getLogger(__name__)
 
 # Password hashing context using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_hash = PasswordHash((BcryptHasher(),))
 
 
 class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
@@ -46,7 +47,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         Hashed password suitable for storage
 
     """
-    return pwd_context.hash(password)
+    return password_hash.hash(password)
 
   def verify_password(self, plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password.
@@ -59,7 +60,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
         True if password matches, False otherwise
 
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    return password_hash.verify(plain_password, hashed_password)
 
   @handle_db_transaction
   async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> UserOrm:

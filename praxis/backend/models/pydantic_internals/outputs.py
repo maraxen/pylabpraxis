@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import UUID7, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import UUID7, BaseModel, ConfigDict, Field, model_validator
 
 from praxis.backend.models.enums import (
   DataOutputTypeEnum,
@@ -121,7 +121,7 @@ class FunctionDataOutputCreate(FunctionDataOutputBase):
     description="ID of source data if this is derived",
   )
 
-  @model_validator(mode='after')
+  @model_validator(mode="after")
   def validate_data_content(self):
     """Ensure at least one data field is provided."""
     data_fields = [

@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   test_db:
-    image: postgres:18-alpine
+    image: postgres:18-trixie
     environment:
       POSTGRES_DB: test_db
       POSTGRES_USER: test_user

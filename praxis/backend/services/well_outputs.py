@@ -190,7 +190,7 @@ class WellDataOutputCRUDService(
       self.model.accession_id == accession_id,
     )
     result = await db.execute(delete_stmt)
-    deleted_count = cast(CursorResult, result).rowcount
+    deleted_count = cast("CursorResult", result).rowcount
     logger.info(
       "%s Successfully deleted well data output (affected rows: %d).",
       log_prefix,
