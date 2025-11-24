@@ -22,7 +22,7 @@ Models included:
 from datetime import datetime
 from typing import Any
 
-from pydantic import UUID7, ConfigDict
+from pydantic import UUID7, BaseModel, ConfigDict
 from pydantic.fields import Field
 
 from praxis.backend.models.enums import FunctionCallStatusEnum, ProtocolRunStatusEnum
@@ -226,7 +226,7 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   assets: list[AssetRequirementModel] = Field(default_factory=list)
 
 
-class FunctionProtocolDefinitionUpdate(PraxisBaseModel):
+class FunctionProtocolDefinitionUpdate(BaseModel):
 
   """Model for updating a function protocol definition."""
 

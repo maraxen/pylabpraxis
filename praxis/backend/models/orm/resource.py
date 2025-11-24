@@ -371,7 +371,7 @@ class ResourceOrm(AssetOrm):
   @property
   def is_machine(self) -> bool:
     """Return True if the asset is also a machine."""
-    return self.machine_counterpart_accession_id is not None
+    return self.machine_counterpart is not None
 
   @property
   def is_resource(self) -> bool:
