@@ -43,13 +43,17 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 - **Pattern Examples**: `tests/TESTING_PATTERNS.md`
 
 ### 4.1. Running the Test Suite
--   **Command**: To run the entire test suite, use:
+-   **Command**: To run the test suite with automated database setup, use the provided script. This script will automatically start the test database if it's not already running.
     ```bash
-    uv run pytest
+    ./scripts/run_tests.sh
     ```
--   **Coverage**: To run tests and generate a coverage report, use:
+-   **Running Specific Tests**: You can pass arguments directly to `pytest` through the script:
     ```bash
-    uv run pytest --cov=praxis/backend --cov-report=html --cov-report=term-missing
+    ./scripts/run_tests.sh tests/services/test_deck_service.py
+    ```
+-   **Coverage**: To generate a coverage report, pass the necessary `pytest` arguments:
+    ```bash
+    ./scripts/run_tests.sh --cov=praxis/backend --cov-report=html --cov-report=term-missing
     ```
 -   **Target**: We aim for **>90% line and branch coverage** for all new and refactored code.
 
@@ -59,36 +63,17 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 
 -   **Technology**: PostgreSQL 18 (Debian Trixie)
 
-#### Environment-Specific Setup
+#### Automated and Manual Setup
 
-**For Jules (Pre-configured in your environment)**:
--   **Setup**: ✅ **Database is already running and ready to use!**
-    - Host: localhost, Port: 5433
-    - Database: test_db, User: test_user
-    - All tables created and initialized
--   **No setup needed**: Just run your tests with `pytest`
--   **Verification**: If you want to check the database:
+The `scripts/run_tests.sh` script automates the database setup. However, if you need to manage the database container manually, you can use the following commands:
+
+-   **Start Database**:
     ```bash
-    psql -h localhost -p 5433 -U test_user -d test_db -c "SELECT version();"
+    sudo docker-compose -f docker-compose.test.yml up -d
     ```
-
-**For Claude Code (Manual PostgreSQL)**:
--   **Setup**: Install and configure PostgreSQL directly:
+-   **Stop Database**:
     ```bash
-    # Install PostgreSQL 18
-    apt-get update && apt-get install -y postgresql-18 postgresql-contrib-18
-
-    # Start PostgreSQL service
-    service postgresql start
-
-    # Create test database and user
-    sudo -u postgres psql -c "CREATE DATABASE test_db;"
-    sudo -u postgres psql -c "CREATE USER test_user WITH PASSWORD 'test_password';"
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO test_user;"
-    sudo -u postgres psql -d test_db -c "GRANT ALL ON SCHEMA public TO test_user;"
-
-    # Set environment variable
-    export TEST_DATABASE_URL="postgresql+asyncpg://test_user:test_password@localhost:5432/test_db"
+    sudo docker-compose -f docker-compose.test.yml down
     ```
 
 -   **Isolation**: Each test runs in an isolated transaction that is rolled back upon completion, ensuring tests are fully independent.
