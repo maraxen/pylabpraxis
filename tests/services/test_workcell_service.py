@@ -52,25 +52,33 @@ async def test_get_multi_workcells(db_session: AsyncSession):
     assert "Workcell B" in names
 
 @pytest.mark.asyncio
-async def test_update_workcell(db_session: AsyncSession):
-    """Test updating a workcell."""
-    workcell_in = WorkcellCreate(name="Update Workcell", status=WorkcellStatusEnum.AVAILABLE)
+async def test_update_workcell_partial(db_session: AsyncSession):
+    """Test partially updating a workcell."""
+    workcell_in = WorkcellCreate(
+        name="Partial Update",
+        description="Initial Description",
+        status=WorkcellStatusEnum.AVAILABLE
+    )
     created_workcell = await workcell_service.create(db=db_session, obj_in=workcell_in)
 
-    update_data = WorkcellUpdate(name="Updated Name", status=WorkcellStatusEnum.ERROR)
+    # Partially update only the name
+    update_data = WorkcellUpdate(name="Partially Updated Name")
     updated_workcell = await workcell_service.update(
         db=db_session,
         db_obj=created_workcell,
-        obj_in=update_data,
+        obj_in=update_data.model_dump(exclude_unset=True)
     )
 
-    assert updated_workcell.name == "Updated Name"
-    assert updated_workcell.status == WorkcellStatusEnum.ERROR.value
+    assert updated_workcell.name == "Partially Updated Name"
+    # Ensure other fields remain unchanged
+    assert updated_workcell.description == "Initial Description"
+    assert updated_workcell.status == WorkcellStatusEnum.AVAILABLE.value
 
     # Verify persistence
     refetched = await workcell_service.get(db=db_session, accession_id=created_workcell.accession_id)
-    assert refetched.name == "Updated Name"
-    assert refetched.status == WorkcellStatusEnum.ERROR.value
+    assert refetched.name == "Partially Updated Name"
+    assert refetched.description == "Initial Description"
+    assert refetched.status == WorkcellStatusEnum.AVAILABLE.value
 
 @pytest.mark.asyncio
 async def test_remove_workcell(db_session: AsyncSession):
