@@ -6,22 +6,23 @@ async tests.
 """
 
 from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum, ProtocolRunStatusEnum
-from praxis.backend.models.orm.workcell import WorkcellOrm
+from praxis.backend.models.enums import AssetType, ProtocolRunStatusEnum, ResourceStatusEnum
+from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.deck import DeckOrm, DeckDefinitionOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
-from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
+from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm, ProtocolRunOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.utils.uuid import uuid7
 
 
 async def create_workcell(
     db_session: AsyncSession,
     name: str = "test_workcell",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> WorkcellOrm:
     """Create a workcell for testing.
 
@@ -32,9 +33,10 @@ async def create_workcell(
 
     Returns:
         WorkcellOrm instance with generated accession_id
+
     """
-    if 'accession_id' not in kwargs:
-        kwargs['accession_id'] = uuid7()
+    if "accession_id" not in kwargs:
+        kwargs["accession_id"] = uuid7()
 
     workcell = WorkcellOrm(name=name, **kwargs)
     db_session.add(workcell)
@@ -47,7 +49,7 @@ async def create_machine(
     workcell: WorkcellOrm | None = None,
     name: str | None = None,
     fqn: str = "test.machine",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> MachineOrm:
     """Create a machine for testing.
 
@@ -60,28 +62,29 @@ async def create_machine(
 
     Returns:
         MachineOrm instance with generated accession_id
+
     """
     if workcell is None:
         # Generate unique workcell name to avoid constraint violations
         unique_suffix = str(uuid7())
         workcell = await create_workcell(db_session, name=f"test_workcell_{unique_suffix}")
 
-    if 'accession_id' not in kwargs:
-        kwargs['accession_id'] = uuid7()
+    if "accession_id" not in kwargs:
+        kwargs["accession_id"] = uuid7()
 
     # Generate unique machine name if not provided
     if name is None:
-        name = f"test_machine_{str(uuid7())}"
+        name = f"test_machine_{uuid7()!s}"
 
     # Set asset_type if not provided
-    if 'asset_type' not in kwargs:
-        kwargs['asset_type'] = AssetType.MACHINE
+    if "asset_type" not in kwargs:
+        kwargs["asset_type"] = AssetType.MACHINE
 
     machine = MachineOrm(
         name=name,
         fqn=fqn,
         workcell_accession_id=workcell.accession_id,
-        **kwargs
+        **kwargs,
     )
     db_session.add(machine)
     await db_session.flush()
@@ -92,7 +95,7 @@ async def create_resource_definition(
     db_session: AsyncSession,
     name: str = "test_resource_definition",
     fqn: str = "test.resource.definition",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> ResourceDefinitionOrm:
     """Create a resource definition for testing.
 
@@ -104,11 +107,12 @@ async def create_resource_definition(
 
     Returns:
         ResourceDefinitionOrm instance
+
     """
     resource_def = ResourceDefinitionOrm(
         name=name,
         fqn=fqn,
-        **kwargs
+        **kwargs,
     )
     db_session.add(resource_def)
     await db_session.flush()
@@ -119,7 +123,7 @@ async def create_resource(
     db_session: AsyncSession,
     name: str | None = None,
     resource_definition: ResourceDefinitionOrm | None = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> ResourceOrm:
     """Create a resource for testing.
 
@@ -131,24 +135,25 @@ async def create_resource(
 
     Returns:
         ResourceOrm instance
+
     """
     # Generate unique name if not provided
     if name is None:
-        name = f"test_resource_{str(uuid7())}"
+        name = f"test_resource_{uuid7()!s}"
 
     # Create resource definition if not provided
     if resource_definition is None:
         resource_definition = await create_resource_definition(
             db_session,
             name=f"def_{name}",
-            fqn=f"test.resource.def.{str(uuid7())}"
+            fqn=f"test.resource.def.{uuid7()!s}",
         )
 
     # Set defaults
     defaults = {
         "accession_id": uuid7(),
         "name": name,
-        "fqn": f"test.resource.{str(uuid7())}",
+        "fqn": f"test.resource.{uuid7()!s}",
         "asset_type": AssetType.RESOURCE,
         "status": ResourceStatusEnum.AVAILABLE_IN_STORAGE,
         "resource_definition_accession_id": resource_definition.accession_id,
@@ -166,7 +171,7 @@ async def create_deck_definition(
     resource_definition: ResourceDefinitionOrm | None = None,
     name: str = "test_deck_definition",
     fqn: str = "test.deck.definition",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> DeckDefinitionOrm:
     """Create a deck definition for testing.
 
@@ -179,6 +184,7 @@ async def create_deck_definition(
 
     Returns:
         DeckDefinitionOrm instance with generated accession_id
+
     """
     if resource_definition is None:
         resource_definition = await create_resource_definition(db_session)
@@ -187,7 +193,7 @@ async def create_deck_definition(
         name=name,
         fqn=fqn,
         resource_definition=resource_definition,
-        **kwargs
+        **kwargs,
     )
     db_session.add(deck_def)
     await db_session.flush()
@@ -199,7 +205,7 @@ async def create_deck(
     machine: MachineOrm | None = None,
     deck_definition: DeckDefinitionOrm | None = None,
     name: str = "test_deck",
-    **kwargs: Any
+    **kwargs: Any,
 ) -> DeckOrm:
     """Create a deck for testing.
 
@@ -212,6 +218,7 @@ async def create_deck(
 
     Returns:
         DeckOrm instance with generated accession_id
+
     """
     from praxis.backend.utils.uuid import uuid7
 
@@ -224,8 +231,8 @@ async def create_deck(
     deck_id = uuid7()
 
     # Set asset_type if not provided
-    if 'asset_type' not in kwargs:
-        kwargs['asset_type'] = AssetType.DECK
+    if "asset_type" not in kwargs:
+        kwargs["asset_type"] = AssetType.DECK
 
     deck = DeckOrm(
         accession_id=deck_id,
@@ -233,7 +240,7 @@ async def create_deck(
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
         resource_definition_accession_id=deck_definition.resource_definition.accession_id,
-        **kwargs
+        **kwargs,
     )
     db_session.add(deck)
     await db_session.flush()
@@ -245,7 +252,7 @@ async def create_deck(
 async def create_protocol_definition(
     db_session: AsyncSession,
     name: str | None = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing.
 
@@ -256,6 +263,7 @@ async def create_protocol_definition(
 
     Returns:
         FunctionProtocolDefinitionOrm instance
+
     """
     from praxis.backend.models.orm.protocol import (
         FileSystemProtocolSourceOrm,
@@ -264,27 +272,27 @@ async def create_protocol_definition(
 
     # Generate unique name if not provided
     if name is None:
-        name = f"test_protocol_{str(uuid7())}"
+        name = f"test_protocol_{uuid7()!s}"
 
     # Create a file system source if not provided
-    if 'file_system_source' not in kwargs:
+    if "file_system_source" not in kwargs:
         fs_source = FileSystemProtocolSourceOrm(
-            name=f"test_fs_source_{str(uuid7())}",
-            base_path="/test/protocols"
+            name=f"test_fs_source_{uuid7()!s}",
+            base_path="/test/protocols",
         )
         db_session.add(fs_source)
         await db_session.flush()
-        kwargs['file_system_source'] = fs_source
+        kwargs["file_system_source"] = fs_source
 
     # Create source repository if not provided (required kw_only arg)
-    if 'source_repository' not in kwargs:
+    if "source_repository" not in kwargs:
         repo = ProtocolSourceRepositoryOrm(
-            name=f"test_repo_{str(uuid7())}",
-            git_url="https://github.com/test/test.git"
+            name=f"test_repo_{uuid7()!s}",
+            git_url="https://github.com/test/test.git",
         )
         db_session.add(repo)
         await db_session.flush()
-        kwargs['source_repository'] = repo
+        kwargs["source_repository"] = repo
 
     # Set required defaults
     defaults = {
@@ -306,7 +314,7 @@ async def create_protocol_definition(
 async def create_protocol_run(
     db_session: AsyncSession,
     protocol_definition: FunctionProtocolDefinitionOrm | None = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> ProtocolRunOrm:
     """Create a protocol run for testing.
 
@@ -317,6 +325,7 @@ async def create_protocol_run(
 
     Returns:
         ProtocolRunOrm instance
+
     """
     # Create protocol definition if not provided
     if protocol_definition is None:
@@ -348,7 +357,7 @@ async def create_protocol_run(
 async def create_function_data_output(
     db_session: AsyncSession,
     protocol_run: ProtocolRunOrm | None = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> FunctionDataOutputOrm:
     """Create a function data output for testing.
 
@@ -359,8 +368,9 @@ async def create_function_data_output(
 
     Returns:
         FunctionDataOutputOrm instance
+
     """
-    from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
+    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
     from praxis.backend.models.orm.protocol import FunctionCallLogOrm
 
     # Create protocol run if not provided
@@ -370,12 +380,12 @@ async def create_function_data_output(
     # Create a function call log (required FK)
     protocol_def = await create_protocol_definition(
         db_session,
-        name=f"test_protocol_for_fcl_{str(uuid7())}"
+        name=f"test_protocol_for_fcl_{uuid7()!s}",
     )
 
     function_call_log = FunctionCallLogOrm(
         accession_id=uuid7(),
-        name=f"test_function_call_log_{str(uuid7())}",
+        name=f"test_function_call_log_{uuid7()!s}",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_def.accession_id,
@@ -385,8 +395,8 @@ async def create_function_data_output(
 
     # Set defaults
     defaults = {
-        "name": f"test_data_output_{str(uuid7())}",
-        "data_key": f"test_output_{str(uuid7())}",
+        "name": f"test_data_output_{uuid7()!s}",
+        "data_key": f"test_output_{uuid7()!s}",
         "data_type": DataOutputTypeEnum.GENERIC_MEASUREMENT,
         "data_value_json": {"value": 42},
     }
@@ -410,7 +420,7 @@ async def create_well_data_output(
     db_session: AsyncSession,
     plate_resource: ResourceOrm | None = None,
     function_data_output: FunctionDataOutputOrm | None = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> WellDataOutputOrm:
     """Create a well data output for testing.
 
@@ -422,10 +432,11 @@ async def create_well_data_output(
 
     Returns:
         WellDataOutputOrm instance
+
     """
     # Create plate resource if not provided
     if plate_resource is None:
-        plate_resource = await create_resource(db_session, name=f"test_plate_{str(uuid7())}")
+        plate_resource = await create_resource(db_session, name=f"test_plate_{uuid7()!s}")
 
     # Create function data output if not provided
     if function_data_output is None:
@@ -433,7 +444,7 @@ async def create_well_data_output(
 
     # Set defaults
     defaults = {
-        "name": f"test_well_output_{str(uuid7())}",
+        "name": f"test_well_output_{uuid7()!s}",
         "well_name": "A1",
         "well_row": 0,
         "well_column": 0,

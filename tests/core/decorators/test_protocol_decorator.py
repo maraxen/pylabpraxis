@@ -1,9 +1,9 @@
 """Tests for core/decorators/protocol_decorator.py."""
 
-import contextvars
 from unittest.mock import Mock
 
 import pytest
+
 from praxis.backend.core.decorators import (
     ProtocolRuntimeInfo,
     _prepare_function_arguments,
@@ -17,6 +17,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestPrepareFunctionArguments:
+
     """Tests for _prepare_function_arguments function."""
 
     @pytest.mark.asyncio
@@ -95,6 +96,7 @@ class TestPrepareFunctionArguments:
 
 
 class TestProtocolFunctionDecorator:
+
     """Tests for protocol_function decorator."""
 
     def test_protocol_function_basic_decoration(self) -> None:
@@ -144,7 +146,7 @@ class TestProtocolFunctionDecorator:
         @protocol_function(
             param_metadata={
                 "volume": {"description": "Volume in microliters"},
-            }
+            },
         )
         def my_protocol(volume: int):
             pass
@@ -164,6 +166,7 @@ class TestProtocolFunctionDecorator:
 
 
 class TestProtocolFunctionDecoratorErrors:
+
     """Tests for protocol_function decorator error cases."""
 
     def test_protocol_function_top_level_without_state_raises_error(self) -> None:
@@ -192,6 +195,7 @@ class TestProtocolFunctionDecoratorErrors:
 
 
 class TestDecoratorIntegration:
+
     """Integration tests for decorator functionality."""
 
     def test_decorated_function_retains_original_attributes(self) -> None:
@@ -200,7 +204,6 @@ class TestDecoratorIntegration:
         @protocol_function()
         def my_protocol():
             """My protocol docstring."""
-            pass
 
         # Should retain name and docstring
         assert my_protocol.__name__ == "my_protocol"
@@ -236,6 +239,7 @@ class TestDecoratorIntegration:
 
 
 class TestDecoratorsPackageStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_exports_protocol_function(self) -> None:

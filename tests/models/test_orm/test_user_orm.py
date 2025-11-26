@@ -1,8 +1,8 @@
 """Unit tests for UserOrm model."""
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.user import UserOrm
 
@@ -81,7 +81,7 @@ async def test_user_orm_persist_to_database(db_session: AsyncSession) -> None:
 
     # Query back
     result = await db_session.execute(
-        select(UserOrm).where(UserOrm.accession_id == user_id)
+        select(UserOrm).where(UserOrm.accession_id == user_id),
     )
     retrieved = result.scalars().first()
 
@@ -200,7 +200,7 @@ async def test_user_orm_phone_fields(db_session: AsyncSession) -> None:
 
     # Query back
     result = await db_session.execute(
-        select(UserOrm).where(UserOrm.username == "phoneuser")
+        select(UserOrm).where(UserOrm.username == "phoneuser"),
     )
     retrieved = result.scalars().first()
 
@@ -246,7 +246,7 @@ async def test_user_orm_query_by_username(db_session: AsyncSession) -> None:
 
     # Query by username
     result = await db_session.execute(
-        select(UserOrm).where(UserOrm.username == "queryuser")
+        select(UserOrm).where(UserOrm.username == "queryuser"),
     )
     retrieved = result.scalars().first()
 
@@ -271,7 +271,7 @@ async def test_user_orm_query_by_email(db_session: AsyncSession) -> None:
 
     # Query by email
     result = await db_session.execute(
-        select(UserOrm).where(UserOrm.email == "emailquery@example.com")
+        select(UserOrm).where(UserOrm.email == "emailquery@example.com"),
     )
     retrieved = result.scalars().first()
 

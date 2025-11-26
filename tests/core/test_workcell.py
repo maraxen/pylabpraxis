@@ -2,11 +2,11 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from pylabrobot.machines.machine import Machine
-from pylabrobot.resources import Deck, Plate, Resource
+from pylabrobot.resources import Deck, Resource
 
 from praxis.backend.core.filesystem import FileSystem
 from praxis.backend.core.workcell import Workcell, WorkcellView
@@ -15,6 +15,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestWorkcellInit:
+
     """Tests for Workcell initialization."""
 
     def test_workcell_init_with_valid_json_file(self, tmp_path: Path) -> None:
@@ -91,6 +92,7 @@ class TestWorkcellInit:
 
 
 class TestWorkcellDynamicAttributes:
+
     """Tests for Workcell dynamic attribute creation."""
 
     def test_workcell_creates_machine_category_attributes(self, tmp_path: Path) -> None:
@@ -142,6 +144,7 @@ class TestWorkcellDynamicAttributes:
 
 
 class TestWorkcellAllMachines:
+
     """Tests for Workcell.all_machines property."""
 
     def test_all_machines_returns_empty_dict_initially(self, tmp_path: Path) -> None:
@@ -176,6 +179,7 @@ class TestWorkcellAllMachines:
 
 
 class TestWorkcellAssetKeys:
+
     """Tests for Workcell.asset_keys property."""
 
     def test_asset_keys_returns_empty_list_initially(self, tmp_path: Path) -> None:
@@ -208,6 +212,7 @@ class TestWorkcellAssetKeys:
 
 
 class TestWorkcellAddAsset:
+
     """Tests for Workcell.add_asset() method."""
 
     def test_add_asset_appends_to_children(self, tmp_path: Path) -> None:
@@ -256,6 +261,7 @@ class TestWorkcellAddAsset:
 
 
 class TestWorkcellGetAllChildren:
+
     """Tests for Workcell.get_all_children() method."""
 
     def test_get_all_children_returns_empty_list_initially(self, tmp_path: Path) -> None:
@@ -282,7 +288,7 @@ class TestWorkcellGetAllChildren:
         assert mock_asset in result
 
     def test_get_all_children_recursively_gets_resource_children(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         """Test that get_all_children recursively gets children of Resources."""
         save_file = str(tmp_path / "state.json")
@@ -303,6 +309,7 @@ class TestWorkcellGetAllChildren:
 
 
 class TestWorkcellSpecifyDeck:
+
     """Tests for Workcell.specify_deck() method."""
 
     def test_specify_deck_assigns_deck_to_liquid_handler(self, tmp_path: Path) -> None:
@@ -333,6 +340,7 @@ class TestWorkcellSpecifyDeck:
 
 
 class TestWorkcellStateSerialization:
+
     """Tests for Workcell state serialization methods."""
 
     def test_serialize_all_state_returns_empty_dict_initially(self, tmp_path: Path) -> None:
@@ -400,6 +408,7 @@ class TestWorkcellStateSerialization:
 
 
 class TestWorkcellStateFiles:
+
     """Tests for Workcell file save/load methods."""
 
     def test_save_state_to_file_writes_json(self, tmp_path: Path) -> None:
@@ -450,6 +459,7 @@ class TestWorkcellStateFiles:
 
 
 class TestWorkcellSpecialMethods:
+
     """Tests for Workcell special methods."""
 
     def test_contains_returns_true_for_existing_asset(self, tmp_path: Path) -> None:
@@ -492,6 +502,7 @@ class TestWorkcellSpecialMethods:
 
 
 class TestWorkcellViewInit:
+
     """Tests for WorkcellView initialization."""
 
     def test_workcell_view_init(self, tmp_path: Path) -> None:
@@ -534,7 +545,7 @@ class TestWorkcellViewInit:
                 name="test_asset",
                 fqn="test.test_asset",
                 type_hint_str="Plate",
-            )
+            ),
         ]
 
         view = WorkcellView(workcell, "protocol", required_assets)
@@ -544,6 +555,7 @@ class TestWorkcellViewInit:
 
 
 class TestWorkcellViewContains:
+
     """Tests for WorkcellView.__contains__() method."""
 
     def test_contains_returns_true_for_required_asset(self, tmp_path: Path) -> None:
@@ -558,7 +570,7 @@ class TestWorkcellViewContains:
                 name="asset1",
                 fqn="test.asset1",
                 type_hint_str="Plate",
-            )
+            ),
         ]
         view = WorkcellView(workcell, "protocol", required_assets)
 
@@ -576,7 +588,7 @@ class TestWorkcellViewContains:
                 name="asset1",
                 fqn="test.asset1",
                 type_hint_str="Plate",
-            )
+            ),
         ]
         view = WorkcellView(workcell, "protocol", required_assets)
 
@@ -584,6 +596,7 @@ class TestWorkcellViewContains:
 
 
 class TestWorkcellViewGetAttr:
+
     """Tests for WorkcellView.__getattr__() method."""
 
     def test_getattr_allows_access_to_required_asset(self, tmp_path: Path) -> None:
@@ -601,7 +614,7 @@ class TestWorkcellViewGetAttr:
                 name="test_asset",
                 fqn="test.test_asset",
                 type_hint_str="Plate",
-            )
+            ),
         ]
         view = WorkcellView(workcell, "protocol", required_assets)
 
@@ -609,7 +622,7 @@ class TestWorkcellViewGetAttr:
         assert result is mock_asset
 
     def test_getattr_raises_attributeerror_for_non_required_asset(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         """Test that __getattr__ raises AttributeError for non-required assets."""
         save_file = str(tmp_path / "state.json")
@@ -622,7 +635,7 @@ class TestWorkcellViewGetAttr:
                 name="asset1",
                 fqn="test.asset1",
                 type_hint_str="Plate",
-            )
+            ),
         ]
         view = WorkcellView(workcell, "protocol", required_assets)
 
@@ -647,6 +660,7 @@ class TestWorkcellViewGetAttr:
 
 
 class TestWorkcellIntegration:
+
     """Integration tests for Workcell and WorkcellView."""
 
     def test_complete_workcell_workflow(self, tmp_path: Path) -> None:
@@ -701,7 +715,7 @@ class TestWorkcellIntegration:
                 name="allowed_asset",
                 fqn="test.allowed_asset",
                 type_hint_str="Plate",
-            )
+            ),
         ]
         view = WorkcellView(workcell, "secure_protocol", required_assets)
 

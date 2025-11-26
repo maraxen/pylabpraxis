@@ -4,13 +4,13 @@ Tests cover all CRUD operations, authentication, and user-specific functionality
 """
 import pytest
 from asyncpg.exceptions import UniqueViolationError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.user import UserOrm
-from praxis.backend.models.pydantic_internals.user import UserCreate, UserUpdate
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.services.user import user_service, UserService
+from praxis.backend.models.pydantic_internals.user import UserCreate, UserUpdate
+from praxis.backend.services.user import UserService, user_service
 
 
 @pytest.mark.asyncio

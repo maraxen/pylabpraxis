@@ -10,11 +10,14 @@ protocol run instances, and function call logs.
 """
 
 import datetime
+import enum
+import inspect
 import json
 import logging
 import uuid
 
 from sqlalchemy import desc, select
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -65,12 +68,7 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     accession_id = data.pop("accession_id", None)
 
     # Filter to only valid constructor parameters
-    import enum
-    import inspect as py_inspect
-
-    from sqlalchemy import inspect as sa_inspect
-
-    init_signature = py_inspect.signature(self.model.__init__)
+    init_signature = inspect.signature(self.model.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
     filtered_data = {key: value for key, value in data.items() if key in valid_params}
 

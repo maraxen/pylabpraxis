@@ -2,12 +2,11 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
 
 
 class TestAssetType:
+
     """Tests for AssetType enum."""
 
     def test_asset_type_is_enum(self) -> None:
@@ -64,6 +63,7 @@ class TestAssetType:
 
 
 class TestAssetReservationStatusEnum:
+
     """Tests for AssetReservationStatusEnum."""
 
     def test_asset_reservation_status_is_enum(self) -> None:
@@ -127,6 +127,7 @@ class TestAssetReservationStatusEnum:
 
 
 class TestAssetEnumsIntegration:
+
     """Integration tests for asset enums."""
 
     def test_asset_type_and_reservation_status_are_independent(self) -> None:

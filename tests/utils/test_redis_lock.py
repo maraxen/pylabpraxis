@@ -9,6 +9,7 @@ from praxis.backend.utils.redis_lock import acquire_lock
 
 
 class TestAcquireLock:
+
     """Tests for acquire_lock context manager."""
 
     @patch("praxis.backend.utils.redis_lock.time.time")
@@ -28,7 +29,7 @@ class TestAcquireLock:
 
     @patch("praxis.backend.utils.redis_lock.time.time")
     def test_acquire_lock_formats_lock_name_correctly(
-        self, mock_time: MagicMock
+        self, mock_time: MagicMock,
     ) -> None:
         """Test that lock name is formatted with lock: prefix."""
         mock_time.return_value = 1234567890.0
@@ -79,7 +80,7 @@ class TestAcquireLock:
         mock_redis.set.return_value = False  # Lock not available
 
         with acquire_lock(
-            mock_redis, "test_resource", acquire_timeout=0.2
+            mock_redis, "test_resource", acquire_timeout=0.2,
         ) as acquired:
             assert acquired is False
 
@@ -89,7 +90,7 @@ class TestAcquireLock:
     @patch("praxis.backend.utils.redis_lock.time.time")
     @patch("praxis.backend.utils.redis_lock.time.sleep")
     def test_acquire_lock_retries_with_sleep(
-        self, mock_sleep: MagicMock, mock_time: MagicMock
+        self, mock_sleep: MagicMock, mock_time: MagicMock,
     ) -> None:
         """Test that lock acquisition retries with sleep between attempts."""
         mock_time.return_value = 1234567890.0
@@ -123,7 +124,7 @@ class TestAcquireLock:
         mock_redis.set.return_value = False  # Always fails
 
         with acquire_lock(
-            mock_redis, "test_resource", acquire_timeout=0.1
+            mock_redis, "test_resource", acquire_timeout=0.1,
         ) as acquired:
             assert acquired is False
 
@@ -154,7 +155,7 @@ class TestAcquireLock:
 
     @patch("praxis.backend.utils.redis_lock.time.time")
     def test_acquire_lock_releases_even_on_exception_in_context(
-        self, mock_time: MagicMock
+        self, mock_time: MagicMock,
     ) -> None:
         """Test that lock is released even if exception occurs in with block."""
         mock_time.return_value = 1234567890.0
@@ -162,9 +163,8 @@ class TestAcquireLock:
         mock_redis.set.return_value = True
         mock_redis.get.return_value = b"1234567890"
 
-        with pytest.raises(ValueError):
-            with acquire_lock(mock_redis, "test_resource"):
-                raise ValueError("Error in protected code")
+        with pytest.raises(ValueError), acquire_lock(mock_redis, "test_resource"):
+            raise ValueError("Error in protected code")
 
         # Lock should still be released
         mock_redis.delete.assert_called_once()
@@ -176,7 +176,7 @@ class TestAcquireLock:
 
         start_time = time.time()
         with acquire_lock(
-            mock_redis, "test_resource", acquire_timeout=0.3
+            mock_redis, "test_resource", acquire_timeout=0.3,
         ) as acquired:
             elapsed = time.time() - start_time
 
@@ -249,6 +249,7 @@ class TestAcquireLock:
 
 
 class TestAcquireLockEdgeCases:
+
     """Edge case tests for acquire_lock."""
 
     def test_acquire_lock_with_zero_acquire_timeout(self) -> None:
@@ -257,14 +258,14 @@ class TestAcquireLockEdgeCases:
         mock_redis.set.return_value = False
 
         with acquire_lock(
-            mock_redis, "test_resource", acquire_timeout=0.0
+            mock_redis, "test_resource", acquire_timeout=0.0,
         ) as acquired:
             # Should immediately timeout
             assert acquired is False
 
     @patch("praxis.backend.utils.redis_lock.time.time")
     def test_acquire_lock_exception_in_finally_block(
-        self, mock_time: MagicMock
+        self, mock_time: MagicMock,
     ) -> None:
         """Test that exception in finally block is propagated."""
         mock_time.return_value = 1234567890.0
@@ -279,7 +280,7 @@ class TestAcquireLockEdgeCases:
 
     @patch("praxis.backend.utils.redis_lock.time.time")
     def test_acquire_lock_with_very_long_resource_name(
-        self, mock_time: MagicMock
+        self, mock_time: MagicMock,
     ) -> None:
         """Test that lock works with very long resource names."""
         mock_time.return_value = 1234567890.0

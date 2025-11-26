@@ -1,24 +1,25 @@
 """Unit tests for AssetReservationOrm model.
 """
+from collections.abc import Callable
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Callable
 
-from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-)
-from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.enums import (
     AssetReservationStatusEnum,
     AssetType,
 )
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -215,8 +216,8 @@ async def test_asset_reservation_orm_persist_to_database(
 
     result = await db_session.execute(
         select(AssetReservationOrm).where(
-            AssetReservationOrm.accession_id == reservation.accession_id
-        )
+            AssetReservationOrm.accession_id == reservation.accession_id,
+        ),
     )
     retrieved_reservation = result.scalar_one()
 
@@ -252,7 +253,7 @@ async def test_asset_reservation_orm_status_transitions(
 
     for status in AssetReservationStatusEnum:
         result = await db_session.execute(
-            select(AssetReservationOrm).where(AssetReservationOrm.status == status)
+            select(AssetReservationOrm).where(AssetReservationOrm.status == status),
         )
         reservation = result.scalar_one_or_none()
         assert reservation is not None
@@ -343,8 +344,8 @@ async def test_asset_reservation_orm_asset_type_field(
     for asset_type in list(AssetType):
         result = await db_session.execute(
             select(AssetReservationOrm).where(
-                AssetReservationOrm.asset_type == asset_type
-            )
+                AssetReservationOrm.asset_type == asset_type,
+            ),
         )
         reservation = result.scalars().first()
         assert reservation is not None
@@ -469,16 +470,16 @@ async def test_asset_reservation_orm_query_by_status(
 
     result = await db_session.execute(
         select(AssetReservationOrm).where(
-            AssetReservationOrm.status == AssetReservationStatusEnum.PENDING
-        )
+            AssetReservationOrm.status == AssetReservationStatusEnum.PENDING,
+        ),
     )
     pending_reservations = result.scalars().all()
     assert len(pending_reservations) == 2
 
     result = await db_session.execute(
         select(AssetReservationOrm).where(
-            AssetReservationOrm.status == AssetReservationStatusEnum.RESERVED
-        )
+            AssetReservationOrm.status == AssetReservationStatusEnum.RESERVED,
+        ),
     )
     reserved_reservations = result.scalars().all()
     assert len(reserved_reservations) == 1
@@ -519,9 +520,9 @@ async def test_asset_reservation_orm_query_active_reservations(
                 [
                     AssetReservationStatusEnum.ACTIVE,
                     AssetReservationStatusEnum.RESERVED,
-                ]
-            )
-        )
+                ],
+            ),
+        ),
     )
     active_reservations = result.scalars().all()
     assert len(active_reservations) == 2
@@ -552,8 +553,8 @@ async def test_asset_reservation_orm_query_by_asset(
 
     result = await db_session.execute(
         select(AssetReservationOrm).where(
-            AssetReservationOrm.asset_accession_id == machine_asset.accession_id
-        )
+            AssetReservationOrm.asset_accession_id == machine_asset.accession_id,
+        ),
     )
     reservations = result.scalars().all()
     assert len(reservations) == 3
@@ -605,8 +606,8 @@ async def test_multiple_reservations_for_same_run(
 
     result = await db_session.execute(
         select(AssetReservationOrm).where(
-            AssetReservationOrm.protocol_run_accession_id == protocol_run.accession_id
-        )
+            AssetReservationOrm.protocol_run_accession_id == protocol_run.accession_id,
+        ),
     )
     reservations = result.scalars().all()
     assert len(reservations) == 2

@@ -1,7 +1,5 @@
 """Tests for core/protocol_execution_service.py."""
 
-import json
-import uuid
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -12,6 +10,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestProtocolExecutionServiceInit:
+
     """Tests for ProtocolExecutionService initialization."""
 
     def test_protocol_execution_service_initialization(self) -> None:
@@ -44,6 +43,7 @@ class TestProtocolExecutionServiceInit:
 
 
 class TestExecuteProtocolImmediately:
+
     """Tests for execute_protocol_immediately method."""
 
     @pytest.mark.asyncio
@@ -112,6 +112,7 @@ class TestExecuteProtocolImmediately:
 
 
 class TestScheduleProtocolExecution:
+
     """Tests for schedule_protocol_execution method."""
 
     @pytest.mark.asyncio
@@ -218,6 +219,7 @@ class TestScheduleProtocolExecution:
 
 
 class TestGetProtocolRunStatus:
+
     """Tests for get_protocol_run_status method."""
 
     @pytest.mark.asyncio
@@ -336,6 +338,7 @@ class TestGetProtocolRunStatus:
 
 
 class TestCancelProtocolRun:
+
     """Tests for cancel_protocol_run method."""
 
     @pytest.mark.asyncio
@@ -426,6 +429,7 @@ class TestCancelProtocolRun:
 
 
 class TestModuleStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_has_protocol_execution_service_class(self) -> None:

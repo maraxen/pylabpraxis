@@ -5,8 +5,8 @@ Based on test_decks.py (5/5 passing) and API_TEST_PATTERN.md
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from tests.helpers import create_resource_definition
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
 
 @pytest.mark.asyncio
@@ -40,7 +40,7 @@ async def test_get_resource_definition(client: AsyncClient, db_session: AsyncSes
     resource_def = await create_resource_definition(
         db_session,
         name="test_resource_def_get",
-        fqn="test.resource.def.get"
+        fqn="test.resource.def.get",
     )
 
     # 2. ACT: Retrieve via API
@@ -78,7 +78,7 @@ async def test_update_resource_definition(client: AsyncClient, db_session: Async
     resource_def = await create_resource_definition(
         db_session,
         name="original_resource_def_name",
-        fqn="test.resource.def.original"
+        fqn="test.resource.def.original",
     )
 
     # 2. ACT: Update via API
@@ -111,7 +111,7 @@ async def test_delete_resource_definition(client: AsyncClient, db_session: Async
     resource_def = await create_resource_definition(
         db_session,
         name="resource_def_to_delete",
-        fqn="test.resource.def.to.delete"
+        fqn="test.resource.def.to.delete",
     )
     resource_def_id = resource_def.accession_id
 
@@ -122,8 +122,8 @@ async def test_delete_resource_definition(client: AsyncClient, db_session: Async
     async def mock_flush():
         pass
 
-    with patch.object(db_session, 'delete', new=mock_delete), \
-         patch.object(db_session, 'flush', new=mock_flush):
+    with patch.object(db_session, "delete", new=mock_delete), \
+         patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API
         response = await client.delete(f"/api/v1/assets/definitions/{resource_def_id}")

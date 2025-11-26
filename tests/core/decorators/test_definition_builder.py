@@ -1,6 +1,7 @@
 """Tests for core/decorators/definition_builder.py."""
 
 import pytest
+
 from praxis.backend.core.decorators import (
     CreateProtocolDefinitionData,
     _create_protocol_definition,
@@ -8,6 +9,7 @@ from praxis.backend.core.decorators import (
 
 
 class TestCreateProtocolDefinition:
+
     """Tests for _create_protocol_definition function."""
 
     def test_create_protocol_definition_basic(self) -> None:
@@ -15,7 +17,6 @@ class TestCreateProtocolDefinition:
 
         def test_protocol():
             """Test protocol docstring."""
-            pass
 
         data = CreateProtocolDefinitionData(
             func=test_protocol,

@@ -1,7 +1,6 @@
 """Tests for core/decorators/parameter_processor.py."""
 
 import inspect
-from typing import Optional
 
 from praxis.backend.core.decorators import (
     CreateProtocolDefinitionData,
@@ -10,6 +9,7 @@ from praxis.backend.core.decorators import (
 
 
 class TestProcessParameter:
+
     """Tests for _process_parameter function."""
 
     def test_process_parameter_basic(self) -> None:
@@ -58,7 +58,7 @@ class TestProcessParameter:
     def test_process_parameter_optional(self) -> None:
         """Test processing an optional parameter."""
 
-        def test_func(volume: Optional[int] = None):
+        def test_func(volume: int | None = None):
             pass
 
         sig = inspect.signature(test_func)

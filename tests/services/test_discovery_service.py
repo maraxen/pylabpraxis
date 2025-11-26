@@ -1,15 +1,14 @@
-import pytest
-import sys
-import os
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from praxis.backend.services.discovery_service import DiscoveryService
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+from praxis.backend.services.discovery_service import DiscoveryService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
-from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+
 
 @pytest.fixture
 def mock_db_session_factory():
@@ -37,13 +36,13 @@ def discovery_service(
     mock_db_session_factory,
     mock_protocol_service,
     mock_resource_service,
-    mock_machine_service
+    mock_machine_service,
 ):
     return DiscoveryService(
         db_session_factory=mock_db_session_factory,
         protocol_definition_service=mock_protocol_service,
         resource_type_definition_service=mock_resource_service,
-        machine_type_definition_service=mock_machine_service
+        machine_type_definition_service=mock_machine_service,
     )
 
 def test_ensure_path_type(discovery_service, tmp_path):
@@ -64,7 +63,7 @@ def test_ensure_path_type(discovery_service, tmp_path):
 
 @pytest.mark.asyncio
 async def test_discover_and_sync_all_definitions(discovery_service):
-    with patch.object(discovery_service, 'discover_and_upsert_protocols', new_callable=AsyncMock) as mock_upsert:
+    with patch.object(discovery_service, "discover_and_upsert_protocols", new_callable=AsyncMock) as mock_upsert:
         await discovery_service.discover_and_sync_all_definitions(
             protocol_search_paths=["/tmp"],
         )
@@ -81,11 +80,11 @@ async def test_discover_and_upsert_protocols(discovery_service, mock_protocol_se
         fqn="test.module.test_func",
         source_file_path="/test.py",
         module_name="test.module",
-        function_name="test_func"
+        function_name="test_func",
     )
     mock_func = MagicMock()
 
-    with patch.object(discovery_service, '_extract_protocol_definitions_from_paths', return_value=[(mock_def, mock_func)]):
+    with patch.object(discovery_service, "_extract_protocol_definitions_from_paths", return_value=[(mock_def, mock_func)]):
         # Mock get_by_fqn returning None (create)
         mock_protocol_service.get_by_fqn.return_value = None
         mock_protocol_service.create.return_value = MagicMock(accession_id="123")
@@ -104,11 +103,11 @@ async def test_discover_and_upsert_protocols_update(discovery_service, mock_prot
         fqn="test.module.test_func",
         source_file_path="/test.py",
         module_name="test.module",
-        function_name="test_func"
+        function_name="test_func",
     )
     mock_func = MagicMock()
 
-    with patch.object(discovery_service, '_extract_protocol_definitions_from_paths', return_value=[(mock_def, mock_func)]):
+    with patch.object(discovery_service, "_extract_protocol_definitions_from_paths", return_value=[(mock_def, mock_func)]):
         # Mock get_by_fqn returning existing (update)
         mock_protocol_service.get_by_fqn.return_value = MagicMock()
         mock_protocol_service.update.return_value = MagicMock(accession_id="123")

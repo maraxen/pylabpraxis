@@ -14,36 +14,34 @@ These tests serve as examples for testing complex services with:
 - Error handling and validation
 - Integration with other models
 """
-import pytest
-import pytest_asyncio
 import json
 from datetime import datetime, timezone
+
+import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
     FunctionCallLogOrm,
+    FunctionProtocolDefinitionOrm,
 )
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import (
     ProtocolRunCreate,
     ProtocolRunStatusEnum,
 )
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.services.protocols import (
-    protocol_run_service,
-    log_function_call_start,
     log_function_call_end,
+    log_function_call_start,
+    protocol_run_service,
 )
 
 
 @pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a protocol definition for testing."""
-    from praxis.backend.utils.uuid import uuid7
-    import inspect as py_inspect
-
     # Create protocol definition with required relationship arguments as None
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
@@ -785,8 +783,8 @@ async def test_protocol_run_service_full_lifecycle(
     # 6. Verify function calls were logged
     result = await db_session.execute(
         select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.protocol_run_accession_id == run.accession_id
-        ).order_by(FunctionCallLogOrm.sequence_in_run)
+            FunctionCallLogOrm.protocol_run_accession_id == run.accession_id,
+        ).order_by(FunctionCallLogOrm.sequence_in_run),
     )
     calls = result.scalars().all()
     assert len(calls) == 2

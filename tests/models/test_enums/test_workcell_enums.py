@@ -2,12 +2,11 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 
 
 class TestWorkcellStatusEnum:
+
     """Tests for WorkcellStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -69,6 +68,7 @@ class TestWorkcellStatusEnum:
 
 
 class TestWorkcellStatusEnumChoices:
+
     """Tests for WorkcellStatusEnum.choices() classmethod."""
 
     def test_choices_classmethod_exists(self) -> None:
@@ -123,6 +123,7 @@ class TestWorkcellStatusEnumChoices:
 
 
 class TestWorkcellStatusEnumIntegration:
+
     """Integration tests for WorkcellStatusEnum."""
 
     def test_operational_statuses(self) -> None:

@@ -5,14 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.deck import (
-    DeckOrm,
     DeckDefinitionOrm,
+    DeckOrm,
     DeckPositionDefinitionOrm,
 )
-from praxis.backend.models.orm.resource import ResourceOrm, ResourceDefinitionOrm
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 
 
 @pytest_asyncio.fixture
@@ -66,8 +66,6 @@ async def deck(
 @pytest.mark.asyncio
 async def test_deck_definition_orm_creation(db_session: AsyncSession) -> None:
     """Test creating a DeckDefinitionOrm with minimal fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create deck definition
     deck_def = DeckDefinitionOrm(
         name="test_deck_definition",
@@ -91,13 +89,13 @@ async def test_deck_definition_orm_with_jsonb_fields(db_session: AsyncSession) -
     positioning_config = {
         "method_name": "slot_to_location",
         "arg_name": "slot",
-        "arg_type": "str"
+        "arg_type": "str",
     }
 
     constructor_args = {
         "rails": 54,
         "size_x": 1360.0,
-        "size_y": 653.0
+        "size_y": 653.0,
     }
 
     deck_def = DeckDefinitionOrm(
@@ -122,8 +120,6 @@ async def test_deck_definition_orm_with_jsonb_fields(db_session: AsyncSession) -
 @pytest.mark.asyncio
 async def test_deck_position_definition_orm_creation(db_session: AsyncSession) -> None:
     """Test creating a DeckPositionDefinitionOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create deck definition first
     deck_def = DeckDefinitionOrm(
         name="test_deck_for_positions",
@@ -160,7 +156,6 @@ async def test_deck_position_definition_orm_creation(db_session: AsyncSession) -
 @pytest.mark.asyncio
 async def test_deck_position_definition_orm_unique_constraint(db_session: AsyncSession) -> None:
     """Test unique constraint on (deck_type_id, position_accession_id)."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
 
     # Create deck definition
@@ -290,7 +285,7 @@ async def test_deck_orm_persist_to_database(db_session: AsyncSession) -> None:
 
     # Query back
     result = await db_session.execute(
-        select(DeckOrm).where(DeckOrm.accession_id == deck_id)
+        select(DeckOrm).where(DeckOrm.accession_id == deck_id),
     )
     retrieved = result.scalars().first()
 
@@ -306,8 +301,9 @@ async def test_deck_orm_persist_to_database(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_deck_orm_unique_name_constraint(db_session: AsyncSession) -> None:
     """Test that deck names must be unique (inherited from Asset)."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -358,8 +354,8 @@ async def test_deck_orm_unique_name_constraint(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
     """Test DeckOrm with parent machine relationship."""
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.machine import MachineOrm
+    from praxis.backend.utils.uuid import uuid7
 
     # Create machine
     machine_id = uuid7()
@@ -406,7 +402,7 @@ async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
 
     # Query back and verify
     result = await db_session.execute(
-        select(DeckOrm).where(DeckOrm.accession_id == deck_id)
+        select(DeckOrm).where(DeckOrm.accession_id == deck_id),
     )
     retrieved = result.scalars().first()
 
@@ -417,8 +413,8 @@ async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
     """Test DeckOrm with resources placed on it."""
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.resource import ResourceOrm
+    from praxis.backend.utils.uuid import uuid7
 
     # Create deck resource definition
     deck_resource_def = ResourceDefinitionOrm(
@@ -474,7 +470,7 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
 
     # Query back and verify relationship
     result = await db_session.execute(
-        select(DeckOrm).where(DeckOrm.accession_id == deck_id)
+        select(DeckOrm).where(DeckOrm.accession_id == deck_id),
     )
     retrieved_deck = result.scalars().first()
 
@@ -484,7 +480,7 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
 
     # Query the resource to verify deck relationship
     resource_result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id)
+        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id),
     )
     retrieved_resource = resource_result.scalars().first()
 
@@ -495,12 +491,12 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_deck_orm_is_resource_and_asset(
-    db_session: AsyncSession, deck: DeckOrm
+    db_session: AsyncSession, deck: DeckOrm,
 ) -> None:
     """Verify that a DeckOrm is also a ResourceOrm and AssetOrm."""
     # Query as Asset
     asset_result = await db_session.execute(
-        select(AssetOrm).where(AssetOrm.accession_id == deck.accession_id)
+        select(AssetOrm).where(AssetOrm.accession_id == deck.accession_id),
     )
     asset = asset_result.scalars().first()
     assert asset is not None
@@ -510,7 +506,7 @@ async def test_deck_orm_is_resource_and_asset(
 
     # Query as Resource
     resource_result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == deck.accession_id)
+        select(ResourceOrm).where(ResourceOrm.accession_id == deck.accession_id),
     )
     resource = resource_result.scalars().first()
     assert resource is not None
@@ -534,7 +530,7 @@ async def test_deck_orm_relationships(
             selectinload(DeckOrm.deck_type),
             selectinload(DeckOrm.resource_definition),
             selectinload(DeckOrm.resources),
-        )
+        ),
     )
     retrieved_deck = result.scalars().first()
 
@@ -552,7 +548,7 @@ async def test_deck_orm_relationships(
     result_def = await db_session.execute(
         select(DeckDefinitionOrm)
         .where(DeckDefinitionOrm.accession_id == deck_definition.accession_id)
-        .options(selectinload(DeckDefinitionOrm.deck))
+        .options(selectinload(DeckDefinitionOrm.deck)),
     )
     retrieved_def = result_def.scalars().first()
     assert retrieved_def is not None

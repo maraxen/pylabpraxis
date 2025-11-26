@@ -2,14 +2,14 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums import MachineCategoryEnum
+from praxis.backend.models.orm.machine import MachineDefinitionOrm
 from praxis.backend.models.pydantic_internals.machine import (
     MachineDefinitionBase,
     MachineDefinitionCreate,
-    MachineDefinitionUpdate,
     MachineDefinitionResponse,
+    MachineDefinitionUpdate,
 )
-from praxis.backend.models.orm.machine import MachineDefinitionOrm
-from praxis.backend.models.enums import MachineCategoryEnum
 
 
 def test_machine_definition_base_minimal() -> None:
@@ -293,7 +293,7 @@ def test_machine_definition_jsonb_validation() -> None:
     }
     setup_method = {
         "method_name": "setup_with_config",
-        "config_file": "robot_config.yaml"
+        "config_file": "robot_config.yaml",
     }
 
     machine_def = MachineDefinitionCreate(

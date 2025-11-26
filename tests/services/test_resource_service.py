@@ -4,8 +4,8 @@ Tests cover all CRUD operations and resource-specific functionality.
 """
 import pytest
 from asyncpg.exceptions import UniqueViolationError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.orm.resource import ResourceOrm
@@ -243,7 +243,6 @@ async def test_resource_service_with_resource_definition(db_session: AsyncSessio
     Note: This test is simplified since ResourceDefinition creation
     is complex. We'll just test that the field can be set.
     """
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
     # Create a real resource definition

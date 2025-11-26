@@ -8,6 +8,7 @@ from praxis.backend.utils.notify import CELLPHONE_CARRIER_GATEWAYS, Notifier
 
 
 class TestCellphoneCarrierGateways:
+
     """Tests for CELLPHONE_CARRIER_GATEWAYS constant."""
 
     def test_carrier_gateways_is_dict(self) -> None:
@@ -33,6 +34,7 @@ class TestCellphoneCarrierGateways:
 
 
 class TestNotifierInit:
+
     """Tests for Notifier initialization."""
 
     def test_can_instantiate_notifier(self) -> None:
@@ -60,6 +62,7 @@ class TestNotifierInit:
 
 
 class TestNotifierSendEmail:
+
     """Tests for Notifier.send_email method."""
 
     @patch("praxis.backend.utils.notify.smtplib.SMTP")
@@ -127,7 +130,7 @@ class TestNotifierSendEmail:
 
     @patch("praxis.backend.utils.notify.smtplib.SMTP")
     def test_send_email_constructs_message_correctly(
-        self, mock_smtp: MagicMock
+        self, mock_smtp: MagicMock,
     ) -> None:
         """Test that email message is constructed with correct fields."""
         mock_server = MagicMock()
@@ -177,6 +180,7 @@ class TestNotifierSendEmail:
 
 
 class TestNotifierSendText:
+
     """Tests for Notifier.send_text method."""
 
     @patch.object(Notifier, "send_email")
@@ -201,7 +205,7 @@ class TestNotifierSendText:
 
     @patch.object(Notifier, "send_email")
     def test_send_text_constructs_carrier_email(
-        self, mock_send_email: MagicMock
+        self, mock_send_email: MagicMock,
     ) -> None:
         """Test that send_text constructs correct carrier email address."""
         notifier = Notifier(
@@ -227,7 +231,7 @@ class TestNotifierSendText:
 
     @patch.object(Notifier, "send_email")
     def test_send_text_with_different_carriers(
-        self, mock_send_email: MagicMock
+        self, mock_send_email: MagicMock,
     ) -> None:
         """Test send_text with different carrier gateways."""
         notifier = Notifier(
@@ -260,7 +264,7 @@ class TestNotifierSendText:
 
     @patch.object(Notifier, "send_email")
     def test_send_text_forwards_all_parameters(
-        self, mock_send_email: MagicMock
+        self, mock_send_email: MagicMock,
     ) -> None:
         """Test that send_text forwards all parameters to send_email."""
         notifier = Notifier(
@@ -305,6 +309,7 @@ class TestNotifierSendText:
 
 
 class TestDefaultNotifier:
+
     """Tests for DEFAULT_NOTIFIER instance."""
 
     @patch("praxis.backend.utils.notify.PraxisConfiguration")

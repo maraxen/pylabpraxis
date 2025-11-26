@@ -1,13 +1,12 @@
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
 from praxis.backend.models.pydantic_internals.outputs import FunctionDataOutputCreate
 from praxis.backend.services.outputs import FunctionDataOutputCRUDService
-from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -19,6 +18,7 @@ def mock_db_session():
 
 @pytest.mark.asyncio
 class TestFunctionDataOutputCRUDService:
+
     """Test suite for the FunctionDataOutputCRUDService."""
 
     @pytest.fixture

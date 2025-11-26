@@ -1,8 +1,7 @@
 """Tests for core/celery_tasks.py."""
 
-import json
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -12,6 +11,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestHealthCheck:
+
     """Tests for health_check Celery task."""
 
     def test_health_check_returns_dict(self) -> None:
@@ -39,6 +39,7 @@ class TestHealthCheck:
 
 
 class TestCeleryTaskRegistration:
+
     """Tests for Celery task registration."""
 
     def test_health_check_is_registered_task(self) -> None:
@@ -56,6 +57,7 @@ class TestCeleryTaskRegistration:
 
 
 class TestCeleryTasksModuleStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_exports_execute_protocol_run_task(self) -> None:
@@ -84,6 +86,7 @@ class TestCeleryTasksModuleStructure:
 
 
 class TestExecuteProtocolRunTaskStructure:
+
     """Tests for execute_protocol_run_task structure without DI complexity."""
 
     def test_execute_protocol_run_task_has_bind_parameter(self) -> None:
@@ -95,8 +98,9 @@ class TestExecuteProtocolRunTaskStructure:
 
     def test_execute_protocol_run_task_signature(self) -> None:
         """Test that execute_protocol_run_task has expected parameters."""
-        from praxis.backend.core.celery_tasks import execute_protocol_run_task
         import inspect
+
+        from praxis.backend.core.celery_tasks import execute_protocol_run_task
 
         # Get function signature
         sig = inspect.signature(execute_protocol_run_task.run)
@@ -110,6 +114,7 @@ class TestExecuteProtocolRunTaskStructure:
 
 
 class TestUpdateRunStatusOnErrorInternal:
+
     """Tests for _update_run_status_on_error helper."""
 
     @pytest.mark.asyncio
@@ -151,6 +156,7 @@ class TestUpdateRunStatusOnErrorInternal:
 
 
 class TestExecuteProtocolAsyncInternal:
+
     """Tests for _execute_protocol_async helper."""
 
     @pytest.mark.asyncio
@@ -178,7 +184,7 @@ class TestExecuteProtocolAsyncInternal:
 
         mock_orchestrator = Mock()
         mock_orchestrator.execute_existing_protocol_run = AsyncMock(
-            return_value=mock_run_orm
+            return_value=mock_run_orm,
         )
 
         result = await _execute_protocol_async(
@@ -200,6 +206,7 @@ class TestExecuteProtocolAsyncInternal:
 
 
 class TestCeleryTaskIntegration:
+
     """Integration tests for Celery task module."""
 
     def test_celery_app_has_tasks_registered(self) -> None:

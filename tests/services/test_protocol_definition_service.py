@@ -1,17 +1,17 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolSourceRepositoryOrm,
+)
 from praxis.backend.models.pydantic_internals.protocol import (
     FunctionProtocolDefinitionCreate,
     FunctionProtocolDefinitionUpdate,
 )
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm
-)
+from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
+
 
 @pytest.fixture
 def protocol_definition_service() -> ProtocolDefinitionCRUDService:
@@ -20,7 +20,7 @@ def protocol_definition_service() -> ProtocolDefinitionCRUDService:
 @pytest.mark.asyncio
 async def test_create_protocol_definition_defaults(
     db_session: AsyncSession,
-    protocol_definition_service: ProtocolDefinitionCRUDService
+    protocol_definition_service: ProtocolDefinitionCRUDService,
 ) -> None:
     """Test creating protocol definition with default sources."""
     create_data = FunctionProtocolDefinitionCreate(
@@ -28,7 +28,7 @@ async def test_create_protocol_definition_defaults(
         fqn="test.protocol.run",
         source_file_path="/test/path/run.py",
         module_name="test.protocol",
-        function_name="run"
+        function_name="run",
     )
 
     created_def = await protocol_definition_service.create(db_session, obj_in=create_data)
@@ -43,17 +43,17 @@ async def test_create_protocol_definition_defaults(
 @pytest.mark.asyncio
 async def test_create_protocol_definition_with_existing_sources(
     db_session: AsyncSession,
-    protocol_definition_service: ProtocolDefinitionCRUDService
+    protocol_definition_service: ProtocolDefinitionCRUDService,
 ) -> None:
     """Test creating protocol definition with existing sources."""
     # Create sources first
     repo = ProtocolSourceRepositoryOrm(
         name="existing_repo",
-        git_url="https://github.com/existing.git"
+        git_url="https://github.com/existing.git",
     )
     fs_source = FileSystemProtocolSourceOrm(
         name="existing_fs",
-        base_path="/existing"
+        base_path="/existing",
     )
     db_session.add(repo)
     db_session.add(fs_source)
@@ -66,7 +66,7 @@ async def test_create_protocol_definition_with_existing_sources(
         module_name="test.protocol.existing",
         function_name="run",
         source_repository_name="existing_repo",
-        file_system_source_name="existing_fs"
+        file_system_source_name="existing_fs",
     )
 
     created_def = await protocol_definition_service.create(db_session, obj_in=create_data)
@@ -77,7 +77,7 @@ async def test_create_protocol_definition_with_existing_sources(
 @pytest.mark.asyncio
 async def test_create_protocol_definition_creates_missing_sources(
     db_session: AsyncSession,
-    protocol_definition_service: ProtocolDefinitionCRUDService
+    protocol_definition_service: ProtocolDefinitionCRUDService,
 ) -> None:
     """Test creating protocol definition creates missing sources if named."""
     create_data = FunctionProtocolDefinitionCreate(
@@ -87,7 +87,7 @@ async def test_create_protocol_definition_creates_missing_sources(
         module_name="test.protocol.missing",
         function_name="run",
         source_repository_name="missing_repo",
-        file_system_source_name="missing_fs"
+        file_system_source_name="missing_fs",
     )
 
     created_def = await protocol_definition_service.create(db_session, obj_in=create_data)
@@ -98,7 +98,7 @@ async def test_create_protocol_definition_creates_missing_sources(
 @pytest.mark.asyncio
 async def test_get_protocol_definition(
     db_session: AsyncSession,
-    protocol_definition_service: ProtocolDefinitionCRUDService
+    protocol_definition_service: ProtocolDefinitionCRUDService,
 ) -> None:
     """Test retrieving protocol definition."""
     create_data = FunctionProtocolDefinitionCreate(
@@ -106,7 +106,7 @@ async def test_get_protocol_definition(
         fqn="test.protocol.get",
         source_file_path="/get/run.py",
         module_name="test.protocol.get",
-        function_name="run"
+        function_name="run",
     )
     created_def = await protocol_definition_service.create(db_session, obj_in=create_data)
 
@@ -127,7 +127,7 @@ async def test_get_protocol_definition(
 @pytest.mark.asyncio
 async def test_update_protocol_definition(
     db_session: AsyncSession,
-    protocol_definition_service: ProtocolDefinitionCRUDService
+    protocol_definition_service: ProtocolDefinitionCRUDService,
 ) -> None:
     """Test updating protocol definition."""
     create_data = FunctionProtocolDefinitionCreate(
@@ -135,16 +135,16 @@ async def test_update_protocol_definition(
         fqn="test.protocol.update",
         source_file_path="/update/run.py",
         module_name="test.protocol.update",
-        function_name="run"
+        function_name="run",
     )
     created_def = await protocol_definition_service.create(db_session, obj_in=create_data)
 
     update_data = FunctionProtocolDefinitionUpdate(
-        description="Updated description"
+        description="Updated description",
     )
 
     updated_def = await protocol_definition_service.update(
-        db_session, db_obj=created_def, obj_in=update_data
+        db_session, db_obj=created_def, obj_in=update_data,
     )
 
     assert updated_def.description == "Updated description"

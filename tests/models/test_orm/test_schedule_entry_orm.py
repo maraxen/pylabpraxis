@@ -1,20 +1,21 @@
 """Unit tests for ScheduleEntryOrm model.
 """
+from collections.abc import Callable
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Callable
 
-from praxis.backend.models.orm.schedule import ScheduleEntryOrm
+from praxis.backend.models.enums import ScheduleStatusEnum
 from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
     ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
 )
-from praxis.backend.models.enums import ScheduleStatusEnum
+from praxis.backend.models.orm.schedule import ScheduleEntryOrm
 
 
 @pytest_asyncio.fixture
@@ -195,7 +196,7 @@ async def test_schedule_entry_orm_persist_to_database(
     await db_session.commit()
 
     result = await db_session.execute(
-        select(ScheduleEntryOrm).where(ScheduleEntryOrm.accession_id == entry.accession_id)
+        select(ScheduleEntryOrm).where(ScheduleEntryOrm.accession_id == entry.accession_id),
     )
     retrieved_entry = result.scalar_one()
 
@@ -229,7 +230,7 @@ async def test_schedule_entry_orm_status_transitions(
 
     for status in ScheduleStatusEnum:
         result = await db_session.execute(
-            select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == status)
+            select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == status),
         )
         entry = result.scalar_one_or_none()
         assert entry is not None
@@ -260,7 +261,7 @@ async def test_schedule_entry_orm_priority_ordering(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(ScheduleEntryOrm).order_by(ScheduleEntryOrm.priority.desc())
+        select(ScheduleEntryOrm).order_by(ScheduleEntryOrm.priority.desc()),
     )
     entries = result.scalars().all()
 
@@ -449,13 +450,13 @@ async def test_schedule_entry_orm_query_by_status(
     await db_session.flush()
 
     result = await db_session.execute(
-        select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == ScheduleStatusEnum.QUEUED)
+        select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == ScheduleStatusEnum.QUEUED),
     )
     queued_entries = result.scalars().all()
     assert len(queued_entries) == 2
 
     result = await db_session.execute(
-        select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == ScheduleStatusEnum.READY_TO_EXECUTE)
+        select(ScheduleEntryOrm).where(ScheduleEntryOrm.status == ScheduleStatusEnum.READY_TO_EXECUTE),
     )
     ready_entries = result.scalars().all()
     assert len(ready_entries) == 1
@@ -491,7 +492,7 @@ async def test_schedule_entry_orm_query_ready_entries(
     result = await db_session.execute(
         select(ScheduleEntryOrm)
         .where(ScheduleEntryOrm.status == ScheduleStatusEnum.READY_TO_EXECUTE)
-        .order_by(ScheduleEntryOrm.priority.desc())
+        .order_by(ScheduleEntryOrm.priority.desc()),
     )
     ready_entries = result.scalars().all()
 

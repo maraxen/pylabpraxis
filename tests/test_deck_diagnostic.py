@@ -1,10 +1,12 @@
 """Diagnostic test for deck retrieval issue."""
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
-from tests.helpers import create_deck
-from praxis.backend.services.deck import deck_service, DeckService
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from praxis.backend.models import DeckOrm
+from praxis.backend.services.deck import DeckService, deck_service
+from tests.helpers import create_deck
+
 
 @pytest.mark.asyncio
 async def test_deck_service_direct(db_session: AsyncSession):
@@ -18,7 +20,7 @@ async def test_deck_service_direct(db_session: AsyncSession):
     # Check if deck exists in database using raw query
     result = await db_session.execute(
         text("SELECT accession_id, name FROM decks WHERE accession_id = :id"),
-        {"id": str(deck.accession_id)}
+        {"id": str(deck.accession_id)},
     )
     row = result.first()
     print(f"Raw SQL query result: {row}")

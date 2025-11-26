@@ -1,17 +1,18 @@
 """Unit tests for Workcell Pydantic models."""
 import json
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.pydantic_internals.workcell import (
     WorkcellBase,
     WorkcellCreate,
-    WorkcellUpdate,
     WorkcellResponse,
+    WorkcellUpdate,
 )
-from praxis.backend.models.enums.workcell import WorkcellStatusEnum
-from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.utils.uuid import uuid7
 
 

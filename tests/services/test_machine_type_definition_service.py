@@ -1,29 +1,31 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from unittest.mock import patch
 
-from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from praxis.backend.models.orm.machine import MachineDefinitionOrm
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
+
 
 @pytest.fixture
 def machine_type_definition_service(db_session: AsyncSession) -> MachineTypeDefinitionService:
     return MachineTypeDefinitionService(db_session)
 
 class MockMachineClass:
+
     """Mock Machine Class."""
-    pass
+
 
 @pytest.mark.asyncio
 async def test_discover_and_synchronize_machine_types(
     db_session: AsyncSession,
-    machine_type_definition_service: MachineTypeDefinitionService
+    machine_type_definition_service: MachineTypeDefinitionService,
 ) -> None:
     """Test synchronization of machine types."""
-
     # Setup mock
     mock_classes = {
-        "test.machine.MockMachine": MockMachineClass
+        "test.machine.MockMachine": MockMachineClass,
     }
 
     with patch("praxis.backend.services.machine_type_definition.get_machine_classes", return_value=mock_classes):

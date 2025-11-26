@@ -1,7 +1,7 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from main import app  # Import your main FastAPI application
@@ -10,8 +10,8 @@ from tests.factories import (
     DeckDefinitionFactory,
     DeckFactory,
     MachineFactory,
-    WorkcellFactory,
     ResourceDefinitionFactory,
+    WorkcellFactory,
 )
 
 
@@ -19,8 +19,7 @@ from tests.factories import (
 async def client(
     db_session: AsyncSession,
 ) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Creates the FastAPI test client.
+    """Creates the FastAPI test client.
 
     Crucially, it overrides the app's `get_db` dependency
     to use the *exact same session* as the test function and

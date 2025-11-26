@@ -1,9 +1,6 @@
 """Tests for core/filesystem.py."""
 
-import os
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
@@ -11,6 +8,7 @@ from praxis.backend.core.filesystem import FileSystem
 
 
 class TestFileSystemOpen:
+
     """Tests for FileSystem.open() method."""
 
     def test_open_file_for_reading(self, tmp_path: Path) -> None:
@@ -58,6 +56,7 @@ class TestFileSystemOpen:
 
 
 class TestFileSystemExists:
+
     """Tests for FileSystem.exists() method."""
 
     def test_exists_returns_true_for_existing_file(self, tmp_path: Path) -> None:
@@ -82,6 +81,7 @@ class TestFileSystemExists:
 
 
 class TestFileSystemIsdir:
+
     """Tests for FileSystem.isdir() method."""
 
     def test_isdir_returns_true_for_directory(self, tmp_path: Path) -> None:
@@ -106,6 +106,7 @@ class TestFileSystemIsdir:
 
 
 class TestFileSystemListdir:
+
     """Tests for FileSystem.listdir() method."""
 
     def test_listdir_returns_directory_contents(self, tmp_path: Path) -> None:
@@ -135,6 +136,7 @@ class TestFileSystemListdir:
 
 
 class TestFileSystemMkdir:
+
     """Tests for FileSystem.mkdir() method."""
 
     def test_mkdir_creates_directory(self, tmp_path: Path) -> None:
@@ -165,6 +167,7 @@ class TestFileSystemMkdir:
 
 
 class TestFileSystemMakedirs:
+
     """Tests for FileSystem.makedirs() method."""
 
     def test_makedirs_creates_nested_directories(self, tmp_path: Path) -> None:
@@ -197,6 +200,7 @@ class TestFileSystemMakedirs:
 
 
 class TestFileSystemRemove:
+
     """Tests for FileSystem.remove() method."""
 
     def test_remove_deletes_file(self, tmp_path: Path) -> None:
@@ -227,6 +231,7 @@ class TestFileSystemRemove:
 
 
 class TestFileSystemRmdir:
+
     """Tests for FileSystem.rmdir() method."""
 
     def test_rmdir_deletes_empty_directory(self, tmp_path: Path) -> None:
@@ -258,6 +263,7 @@ class TestFileSystemRmdir:
 
 
 class TestFileSystemIntegration:
+
     """Integration tests for FileSystem."""
 
     def test_create_write_read_delete_workflow(self, tmp_path: Path) -> None:

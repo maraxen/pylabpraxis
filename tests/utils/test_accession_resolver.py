@@ -10,6 +10,7 @@ from praxis.backend.utils.accession_resolver import get_accession_id_from_access
 
 
 class MockEntity:
+
     """Mock entity for testing."""
 
     def __init__(self, entity_id: UUID) -> None:
@@ -17,6 +18,7 @@ class MockEntity:
 
 
 class MockEntityWithoutId:
+
     """Mock entity without id attribute for testing edge case."""
 
     def __init__(self) -> None:
@@ -24,6 +26,7 @@ class MockEntityWithoutId:
 
 
 class TestGetAccessionIdFromAccession:
+
     """Tests for get_accession_id_from_accession function."""
 
     @pytest.mark.asyncio
@@ -80,7 +83,7 @@ class TestGetAccessionIdFromAccession:
         mock_get_by_name_func = AsyncMock()
 
         with pytest.raises(
-            ValueError, match=f"Resource with accession '{entity_id}' not found"
+            ValueError, match=f"Resource with accession '{entity_id}' not found",
         ):
             await get_accession_id_from_accession(
                 accession=entity_id,
@@ -98,7 +101,7 @@ class TestGetAccessionIdFromAccession:
         mock_get_by_name_func = AsyncMock(return_value=None)
 
         with pytest.raises(
-            ValueError, match="Resource with accession 'nonexistent' not found"
+            ValueError, match="Resource with accession 'nonexistent' not found",
         ):
             await get_accession_id_from_accession(
                 accession="nonexistent",

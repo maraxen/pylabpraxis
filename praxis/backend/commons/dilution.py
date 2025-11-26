@@ -1,8 +1,5 @@
 from typing import Literal
 
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.resources import Plate, TipRack, Well
-
 from praxis.utils.errors import ExperimentError
 from praxis.utils.sanitation import (
   check_list_length,
@@ -11,6 +8,8 @@ from praxis.utils.sanitation import (
   parse_well_name,
   tip_mapping,
 )
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.resources import Plate, TipRack, Well
 
 
 async def dilution_checks(

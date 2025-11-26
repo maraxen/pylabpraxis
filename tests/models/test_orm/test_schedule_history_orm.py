@@ -2,27 +2,28 @@
 
 Tests for the audit trail model tracking schedule status changes and events.
 """
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Callable
 
-from praxis.backend.models.orm.schedule import (
-    ScheduleHistoryOrm,
-    ScheduleEntryOrm,
-)
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-)
 from praxis.backend.models.enums import (
     ScheduleHistoryEventEnum,
     ScheduleHistoryEventTriggerEnum,
     ScheduleStatusEnum,
+)
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.orm.schedule import (
+    ScheduleEntryOrm,
+    ScheduleHistoryOrm,
 )
 from praxis.backend.utils.uuid import uuid7
 
@@ -217,8 +218,8 @@ async def test_schedule_history_orm_persist_to_database(
     # Query back from database
     result = await db_session.execute(
         select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.accession_id == history.accession_id
-        )
+            ScheduleHistoryOrm.accession_id == history.accession_id,
+        ),
     )
     retrieved_history = result.scalar_one()
 
@@ -264,8 +265,8 @@ async def test_schedule_history_orm_all_event_types(
     for event_type in ScheduleHistoryEventEnum:
         result = await db_session.execute(
             select(ScheduleHistoryOrm).where(
-                ScheduleHistoryOrm.event_type == event_type
-            )
+                ScheduleHistoryOrm.event_type == event_type,
+            ),
         )
         history = result.scalar_one_or_none()
         assert history is not None
@@ -311,7 +312,7 @@ async def test_schedule_history_orm_status_transitions(
     result = await db_session.execute(
         select(ScheduleHistoryOrm)
         .where(ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry.accession_id)
-        .order_by(ScheduleHistoryOrm.event_start)
+        .order_by(ScheduleHistoryOrm.event_start),
     )
     history_entries = result.scalars().all()
 
@@ -462,8 +463,8 @@ async def test_schedule_history_orm_all_trigger_types(
     for trigger in ScheduleHistoryEventTriggerEnum:
         result = await db_session.execute(
             select(ScheduleHistoryOrm).where(
-                ScheduleHistoryOrm.triggered_by == trigger
-            )
+                ScheduleHistoryOrm.triggered_by == trigger,
+            ),
         )
         history = result.scalar_one_or_none()
         assert history is not None
@@ -494,7 +495,7 @@ async def test_schedule_history_orm_asset_count_tracking(
 
     # Query by asset count
     result = await db_session.execute(
-        select(ScheduleHistoryOrm).where(ScheduleHistoryOrm.asset_count >= 5)
+        select(ScheduleHistoryOrm).where(ScheduleHistoryOrm.asset_count >= 5),
     )
     high_count_entries = result.scalars().all()
 
@@ -562,8 +563,8 @@ async def test_schedule_history_orm_query_by_event_type(
     # Query STATUS_CHANGED events
     result = await db_session.execute(
         select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED
-        )
+            ScheduleHistoryOrm.event_type == ScheduleHistoryEventEnum.STATUS_CHANGED,
+        ),
     )
     status_changes = result.scalars().all()
 
@@ -597,7 +598,7 @@ async def test_schedule_history_orm_query_by_time_range(
         select(ScheduleHistoryOrm)
         .where(ScheduleHistoryOrm.schedule_entry_accession_id == schedule_entry.accession_id)
         .where(ScheduleHistoryOrm.event_start <= now)
-        .order_by(ScheduleHistoryOrm.event_start)
+        .order_by(ScheduleHistoryOrm.event_start),
     )
     recent_events = result.scalars().all()
 
@@ -635,8 +636,8 @@ async def test_schedule_history_orm_cascade_delete(
     # Verify history entries were cascade deleted
     result = await db_session.execute(
         select(ScheduleHistoryOrm).where(
-            ScheduleHistoryOrm.schedule_entry_accession_id == entry_id
-        )
+            ScheduleHistoryOrm.schedule_entry_accession_id == entry_id,
+        ),
     )
     remaining_history = result.scalars().all()
 

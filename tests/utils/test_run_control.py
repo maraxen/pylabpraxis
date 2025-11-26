@@ -17,6 +17,7 @@ from praxis.backend.utils.run_control import (
 
 
 class TestConstants:
+
     """Tests for module constants."""
 
     def test_allowed_commands_contains_standard_commands(self) -> None:
@@ -35,6 +36,7 @@ class TestConstants:
 
 
 class TestGetCommandKey:
+
     """Tests for _get_command_key helper function."""
 
     def test_get_command_key_formats_correctly(self) -> None:
@@ -57,12 +59,13 @@ class TestGetCommandKey:
 
 
 class TestSendControlCommand:
+
     """Tests for send_control_command function."""
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_sets_redis_key(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command sets value in Redis."""
         mock_redis = MagicMock()
@@ -78,7 +81,7 @@ class TestSendControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_uses_correct_key(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command uses correctly formatted key."""
         mock_redis = MagicMock()
@@ -95,7 +98,7 @@ class TestSendControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_sets_correct_value(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command sets correct command value."""
         mock_redis = MagicMock()
@@ -112,7 +115,7 @@ class TestSendControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_sets_ttl(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command sets TTL expiration."""
         mock_redis = MagicMock()
@@ -129,7 +132,7 @@ class TestSendControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_default_ttl(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command uses default TTL of 3600 seconds."""
         mock_redis = MagicMock()
@@ -154,7 +157,7 @@ class TestSendControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_control_command_handles_redis_error(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that send_control_command returns False on Redis error."""
         mock_redis = MagicMock()
@@ -168,12 +171,13 @@ class TestSendControlCommand:
 
 
 class TestGetControlCommand:
+
     """Tests for get_control_command function."""
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_get_control_command_retrieves_from_redis(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that get_control_command retrieves value from Redis."""
         mock_redis = MagicMock()
@@ -189,7 +193,7 @@ class TestGetControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_get_control_command_uses_correct_key(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that get_control_command uses correctly formatted key."""
         mock_redis = MagicMock()
@@ -206,7 +210,7 @@ class TestGetControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_get_control_command_returns_none_when_not_found(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that get_control_command returns None when key doesn't exist."""
         mock_redis = MagicMock()
@@ -221,7 +225,7 @@ class TestGetControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_get_control_command_handles_redis_error(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that get_control_command returns None on Redis error."""
         mock_redis = MagicMock()
@@ -235,12 +239,13 @@ class TestGetControlCommand:
 
 
 class TestClearControlCommand:
+
     """Tests for clear_control_command function."""
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_clear_control_command_deletes_from_redis(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that clear_control_command deletes key from Redis."""
         mock_redis = MagicMock()
@@ -256,7 +261,7 @@ class TestClearControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_clear_control_command_uses_correct_key(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that clear_control_command uses correctly formatted key."""
         mock_redis = MagicMock()
@@ -273,7 +278,7 @@ class TestClearControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_clear_control_command_returns_false_when_not_found(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that clear_control_command returns False when key doesn't exist."""
         mock_redis = MagicMock()
@@ -288,7 +293,7 @@ class TestClearControlCommand:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_clear_control_command_handles_redis_error(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that clear_control_command returns False on Redis error."""
         mock_redis = MagicMock()
@@ -302,12 +307,13 @@ class TestClearControlCommand:
 
 
 class TestRunControlIntegration:
+
     """Integration tests for run control utilities."""
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_all_allowed_commands_work(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test that all allowed commands can be sent successfully."""
         mock_redis = MagicMock()
@@ -323,7 +329,7 @@ class TestRunControlIntegration:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.run_control._get_redis_client")
     async def test_send_and_retrieve_command_flow(
-        self, mock_get_redis: MagicMock
+        self, mock_get_redis: MagicMock,
     ) -> None:
         """Test the flow of sending and retrieving a command."""
         mock_redis = MagicMock()

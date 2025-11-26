@@ -3,13 +3,13 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.orm.user import UserOrm
 from praxis.backend.models.pydantic_internals.user import (
     UserBase,
     UserCreate,
-    UserUpdate,
     UserResponse,
+    UserUpdate,
 )
-from praxis.backend.models.orm.user import UserOrm
 
 
 def test_user_base_minimal() -> None:
