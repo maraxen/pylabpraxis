@@ -11,14 +11,15 @@ from praxis.backend.utils.errors import (
     PraxisAPIError,
     PraxisError,
     ProtocolCancelledError,
+    PylabRobotError,
     PyLabRobotGenericError,
     PyLabRobotVolumeError,
-    PylabRobotError,
     WorkcellRuntimeError,
 )
 
 
 class TestPraxisError:
+
     """Tests for PraxisError base exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -43,6 +44,7 @@ class TestPraxisError:
 
 
 class TestOrchestratorError:
+
     """Tests for OrchestratorError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -67,6 +69,7 @@ class TestOrchestratorError:
 
 
 class TestDataError:
+
     """Tests for DataError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -86,6 +89,7 @@ class TestDataError:
 
 
 class TestModelError:
+
     """Tests for ModelError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -105,6 +109,7 @@ class TestModelError:
 
 
 class TestAssetAcquisitionError:
+
     """Tests for AssetAcquisitionError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -129,6 +134,7 @@ class TestAssetAcquisitionError:
 
 
 class TestAssetReleaseError:
+
     """Tests for AssetReleaseError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -153,6 +159,7 @@ class TestAssetReleaseError:
 
 
 class TestProtocolCancelledError:
+
     """Tests for ProtocolCancelledError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -177,6 +184,7 @@ class TestProtocolCancelledError:
 
 
 class TestWorkcellRuntimeError:
+
     """Tests for WorkcellRuntimeError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -196,6 +204,7 @@ class TestWorkcellRuntimeError:
 
 
 class TestPylabRobotError:
+
     """Tests for PylabRobotError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -226,6 +235,7 @@ class TestPylabRobotError:
 
 
 class TestPyLabRobotVolumeError:
+
     """Tests for PyLabRobotVolumeError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -267,6 +277,7 @@ class TestPyLabRobotVolumeError:
 
 
 class TestPyLabRobotGenericError:
+
     """Tests for PyLabRobotGenericError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -297,6 +308,7 @@ class TestPyLabRobotGenericError:
 
 
 class TestPraxisAPIError:
+
     """Tests for PraxisAPIError exception."""
 
     def test_can_raise_and_catch(self) -> None:
@@ -321,6 +333,7 @@ class TestPraxisAPIError:
 
 
 class TestExceptionHierarchy:
+
     """Tests for exception inheritance hierarchy."""
 
     def test_pylabrobot_errors_inherit_from_praxis_error(self) -> None:

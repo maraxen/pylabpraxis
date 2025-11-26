@@ -1,17 +1,14 @@
 """Tests for the decks API, covering the full CRUD lifecycle."""
-import uuid
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from praxis.backend.models import DeckOrm
 from tests.helpers import (
-    create_workcell,
+    create_deck,
+    create_deck_definition,
     create_machine,
     create_resource_definition,
-    create_deck_definition,
-    create_deck,
+    create_workcell,
 )
 
 
@@ -33,7 +30,7 @@ async def test_create_deck(client: AsyncClient, db_session: AsyncSession) -> Non
             "deck_type_id": str(deck_type.accession_id),
             "parent_accession_id": str(machine.accession_id),
             "resource_definition_accession_id": str(
-                resource_definition.accession_id
+                resource_definition.accession_id,
             ),
         },
     )
@@ -66,7 +63,7 @@ async def test_get_deck(client: AsyncClient, db_session: AsyncSession) -> None:
 async def test_get_multi_decks(client: AsyncClient, db_session: AsyncSession) -> None:
     """Test retrieving multiple decks."""
     # 1. SETUP: Create shared resources once to avoid constraint violations
-    from tests.helpers import create_machine, create_deck_definition
+    from tests.helpers import create_deck_definition, create_machine
     machine = await create_machine(db_session, name="shared_machine")
     deck_def = await create_deck_definition(db_session)
 
@@ -121,7 +118,7 @@ async def test_delete_deck(client: AsyncClient, db_session: AsyncSession) -> Non
     that occurs due to ResourceOrm's self-referential cascade relationships during test
     transaction rollback. The delete operation itself works correctly in production.
     """
-    from unittest.mock import AsyncMock, patch
+    from unittest.mock import patch
 
     # 1. SETUP: Create a real deck in the database (so get() works)
     deck = await create_deck(db_session, name="deck_to_delete")
@@ -130,15 +127,13 @@ async def test_delete_deck(client: AsyncClient, db_session: AsyncSession) -> Non
     # 2. Mock only the db.delete() call to avoid circular dependency during flush
     async def mock_delete(obj):
         """Mock delete that does nothing."""
-        pass
 
     async def mock_flush():
         """Mock flush that does nothing."""
-        pass
 
     # Patch the session's delete and flush methods
-    with patch.object(db_session, 'delete', new=mock_delete), \
-         patch.object(db_session, 'flush', new=mock_flush):
+    with patch.object(db_session, "delete", new=mock_delete), \
+         patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API to delete the deck
         response = await client.delete(f"/api/v1/decks/{deck_id}")

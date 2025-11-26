@@ -1,19 +1,20 @@
 """Unit tests for Resource Pydantic models."""
 import json
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.pydantic_internals.resource import (
-    ResourceBase,
-    ResourceCreate,
-    ResourceUpdate,
-    ResourceResponse,
-)
 from praxis.backend.models.enums import (
     AssetType,
     ResourceStatusEnum,
 )
-from praxis.backend.models.orm.resource import ResourceOrm, ResourceDefinitionOrm
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.models.pydantic_internals.resource import (
+    ResourceBase,
+    ResourceCreate,
+    ResourceResponse,
+    ResourceUpdate,
+)
 
 
 def test_resource_base_minimal() -> None:

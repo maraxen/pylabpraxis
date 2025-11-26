@@ -1,6 +1,5 @@
 """Tests for core/workcell_runtime."""
 
-import uuid
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -13,6 +12,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestGetClassFromFqn:
+
     """Tests for get_class_from_fqn helper function."""
 
     def test_get_class_from_fqn_success(self) -> None:
@@ -39,6 +39,7 @@ class TestGetClassFromFqn:
 
 
 class TestWorkcellRuntimeInit:
+
     """Tests for WorkcellRuntime initialization."""
 
     def test_workcell_runtime_initialization(self) -> None:
@@ -75,6 +76,7 @@ class TestWorkcellRuntimeInit:
 
 
 class TestGetMainWorkcell:
+
     """Tests for get_main_workcell method."""
 
     def test_get_main_workcell_success(self) -> None:
@@ -115,6 +117,7 @@ class TestGetMainWorkcell:
 
 
 class TestStateManagement:
+
     """Tests for state snapshot and restoration methods."""
 
     def test_get_state_snapshot(self) -> None:
@@ -160,6 +163,7 @@ class TestStateManagement:
 
 
 class TestLinkWorkcellToDb:
+
     """Tests for _link_workcell_to_db method."""
 
     @pytest.mark.asyncio
@@ -224,6 +228,7 @@ class TestLinkWorkcellToDb:
 
 
 class TestStartStopWorkcellStateSync:
+
     """Tests for start/stop workcell state sync methods."""
 
     @pytest.mark.asyncio
@@ -307,6 +312,7 @@ class TestStartStopWorkcellStateSync:
 
 
 class TestGetCalculatedLocation:
+
     """Tests for _get_calculated_location method."""
 
     @pytest.mark.asyncio
@@ -444,6 +450,7 @@ class TestGetCalculatedLocation:
 
 
 class TestModuleStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_has_workcell_runtime_class(self) -> None:

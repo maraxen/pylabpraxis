@@ -2,13 +2,13 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.resource import (
     ResourceDefinitionBase,
     ResourceDefinitionCreate,
-    ResourceDefinitionUpdate,
     ResourceDefinitionResponse,
+    ResourceDefinitionUpdate,
 )
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
 
 def test_resource_definition_base_minimal() -> None:

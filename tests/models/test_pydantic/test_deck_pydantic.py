@@ -2,21 +2,21 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
+from praxis.backend.models.orm.deck import (
+    DeckDefinitionOrm,
+    DeckOrm,
+)
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.deck import (
     DeckBase,
     DeckCreate,
-    DeckUpdate,
-    DeckResponse,
     DeckPositionDefinitionCreate,
     DeckPositionDefinitionResponse,
+    DeckResponse,
+    DeckUpdate,
     PositioningConfig,
 )
-from praxis.backend.models.orm.deck import (
-    DeckOrm,
-    DeckDefinitionOrm,
-)
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 
 
 def test_deck_base_minimal() -> None:
@@ -299,7 +299,7 @@ def test_positioning_config_model() -> None:
         method_name="slot_to_location",
         arg_name="slot",
         arg_type="str",
-        params={"offset_x": 10.0, "offset_y": 5.0}
+        params={"offset_x": 10.0, "offset_y": 5.0},
     )
 
     assert config.method_name == "slot_to_location"
@@ -317,7 +317,7 @@ def test_deck_position_definition_create() -> None:
         pylabrobot_position_type_name="Slot",
         accepts_plates=True,
         accepts_tips=False,
-        notes="Position A1 for 96-well plates"
+        notes="Position A1 for 96-well plates",
     )
 
     assert position.nominal_x_mm == 100.0
@@ -352,7 +352,7 @@ def test_deck_position_definition_with_compatible_resources() -> None:
     """Test DeckPositionDefinitionCreate with compatible_resource_fqns."""
     compatible_resources = {
         "plates": ["corning_96_wellplate", "greiner_96_wellplate"],
-        "tips": []
+        "tips": [],
     }
 
     position = DeckPositionDefinitionCreate(

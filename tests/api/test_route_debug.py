@@ -2,6 +2,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 @pytest.mark.asyncio
 async def test_list_routes(client: AsyncClient):
     """List all registered routes in the app."""
@@ -9,7 +10,7 @@ async def test_list_routes(client: AsyncClient):
 
     print("\n=== Registered Routes ===")
     for route in app.routes:
-        if hasattr(route, 'methods'):
+        if hasattr(route, "methods"):
             print(f"{route.methods} {route.path}")
         else:
             print(f"MOUNT {route.path}")

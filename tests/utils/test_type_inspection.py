@@ -3,7 +3,6 @@
 import inspect
 from typing import Any, Optional, Union
 
-import pytest
 from pylabrobot.resources import Carrier, Plate, Resource
 
 from praxis.backend.utils.type_inspection import (
@@ -14,6 +13,7 @@ from praxis.backend.utils.type_inspection import (
 
 
 class TestIsPylabrobotResource:
+
     """Tests for is_pylabrobot_resource function."""
 
     def test_returns_true_for_resource_class(self) -> None:
@@ -71,6 +71,7 @@ class TestIsPylabrobotResource:
 
 
 class TestFqnFromHint:
+
     """Tests for fqn_from_hint function."""
 
     def test_returns_any_for_parameter_empty(self) -> None:
@@ -146,6 +147,7 @@ class TestFqnFromHint:
 
 
 class TestSerializeTypeHint:
+
     """Tests for serialize_type_hint function."""
 
     def test_returns_any_for_parameter_empty(self) -> None:
@@ -185,9 +187,7 @@ class TestSerializeTypeHint:
 
     def test_serializes_list_type(self) -> None:
         """Test that generic list type is serialized."""
-        from typing import List
-
-        result = serialize_type_hint(List[int])
+        result = serialize_type_hint(list[int])
         assert isinstance(result, str)
         # Should contain indication of list and int
         assert isinstance(result, str)
@@ -211,6 +211,7 @@ class TestSerializeTypeHint:
 
 
 class TestTypeInspectionEdgeCases:
+
     """Tests for edge cases in type inspection utilities."""
 
     def test_is_pylabrobot_resource_with_string(self) -> None:
@@ -225,9 +226,7 @@ class TestTypeInspectionEdgeCases:
 
     def test_serialize_with_complex_nested_types(self) -> None:
         """Test serialize_type_hint with complex nested generics."""
-        from typing import Dict, List
-
-        complex_type = Dict[str, List[Optional[int]]]
+        complex_type = dict[str, list[int | None]]
         result = serialize_type_hint(complex_type)
         assert isinstance(result, str)
         assert len(result) > 0

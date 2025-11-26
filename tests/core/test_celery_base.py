@@ -1,14 +1,14 @@
 """Tests for core/celery_base.py."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
-import pytest
 from celery import Task
 
 from praxis.backend.core.celery_base import PraxisTask
 
 
 class TestPraxisTask:
+
     """Tests for PraxisTask class."""
 
     def test_praxis_task_inherits_from_task(self) -> None:
@@ -37,6 +37,7 @@ class TestPraxisTask:
 
 
 class TestPraxisTaskContainerProperty:
+
     """Tests for PraxisTask.container property."""
 
     def test_container_property_accesses_app_container(self) -> None:
@@ -69,6 +70,7 @@ class TestPraxisTaskContainerProperty:
 
 
 class TestPraxisTaskCall:
+
     """Tests for PraxisTask.__call__() method."""
 
     def test_call_method_exists(self) -> None:
@@ -90,6 +92,7 @@ class TestPraxisTaskCall:
 
 
 class TestPraxisTaskIntegration:
+
     """Integration tests for PraxisTask."""
 
     def test_praxis_task_class_structure(self) -> None:
@@ -137,6 +140,7 @@ class TestPraxisTaskIntegration:
 
 
 class TestPraxisTaskDocumentation:
+
     """Tests for PraxisTask documentation and structure."""
 
     def test_praxis_task_has_docstring(self) -> None:

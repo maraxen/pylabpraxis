@@ -2,8 +2,6 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.resource import (
     ResourceCategoryEnum,
     ResourceStatusEnum,
@@ -11,6 +9,7 @@ from praxis.backend.models.enums.resource import (
 
 
 class TestResourceStatusEnum:
+
     """Tests for ResourceStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -55,6 +54,7 @@ class TestResourceStatusEnum:
 
 
 class TestResourceCategoryEnum:
+
     """Tests for ResourceCategoryEnum."""
 
     def test_is_enum(self) -> None:
@@ -213,6 +213,7 @@ class TestResourceCategoryEnum:
 
 
 class TestResourceEnumsIntegration:
+
     """Integration tests for resource enums."""
 
     def test_status_and_category_are_independent(self) -> None:

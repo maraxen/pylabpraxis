@@ -23,7 +23,7 @@ from praxis.backend.utils.uuid import uuid7
 async def source_repository(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
     """Fixture for a protocol source repository."""
     repo = ProtocolSourceRepositoryOrm(
-        name="test-repo", git_url="https://github.com/test/repo.git"
+        name="test-repo", git_url="https://github.com/test/repo.git",
     )
     db_session.add(repo)
     await db_session.commit()
@@ -59,7 +59,7 @@ async def protocol_definition(
 
 @pytest_asyncio.fixture
 async def protocol_run(
-    db_session: AsyncSession, protocol_definition: FunctionProtocolDefinitionOrm
+    db_session: AsyncSession, protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> ProtocolRunOrm:
     """Fixture for a protocol run."""
     protocol_run = ProtocolRunOrm(
@@ -118,7 +118,7 @@ async def plate_resource(db_session: AsyncSession) -> ResourceOrm:
 
 @pytest_asyncio.fixture
 async def function_data_output(
-    db_session: AsyncSession, function_call_log: FunctionCallLogOrm, protocol_run: ProtocolRunOrm
+    db_session: AsyncSession, function_call_log: FunctionCallLogOrm, protocol_run: ProtocolRunOrm,
 ) -> FunctionDataOutputOrm:
     """Fixture for a function data output."""
     data_output = FunctionDataOutputOrm(
@@ -203,8 +203,8 @@ async def test_well_data_output_orm_persistence(
 
     result = await db_session.execute(
         select(WellDataOutputOrm).where(
-            WellDataOutputOrm.accession_id == well_data.accession_id
-        )
+            WellDataOutputOrm.accession_id == well_data.accession_id,
+        ),
     )
     retrieved_well_data = result.scalar_one()
 

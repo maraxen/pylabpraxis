@@ -3,8 +3,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import ProtocolSourceRepositoryOrm
 from praxis.backend.models.enums import ProtocolSourceStatusEnum
+from praxis.backend.models.orm.protocol import ProtocolSourceRepositoryOrm
 
 
 @pytest.mark.asyncio
@@ -86,8 +86,8 @@ async def test_protocol_source_repository_orm_persist_to_database(
     # Query back
     result = await db_session.execute(
         select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo_id
-        )
+            ProtocolSourceRepositoryOrm.accession_id == repo_id,
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -105,8 +105,9 @@ async def test_protocol_source_repository_orm_unique_name_constraint(
     db_session: AsyncSession,
 ) -> None:
     """Test that name must be unique."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create first repository
     repo1 = ProtocolSourceRepositoryOrm(
@@ -206,8 +207,8 @@ async def test_protocol_source_repository_orm_query_by_name(
     # Query by name
     result = await db_session.execute(
         select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.name == "queryable_repo"
-        )
+            ProtocolSourceRepositoryOrm.name == "queryable_repo",
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -243,8 +244,8 @@ async def test_protocol_source_repository_orm_update_commit_hash(
     # Query back and verify update
     result = await db_session.execute(
         select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo_id
-        )
+            ProtocolSourceRepositoryOrm.accession_id == repo_id,
+        ),
     )
     retrieved = result.scalars().first()
     assert retrieved.last_synced_commit == "new_commit_abc123"

@@ -1,12 +1,12 @@
 """Unit tests for ParameterDefinitionOrm model."""
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.protocol import (
-    ParameterDefinitionOrm,
     FunctionProtocolDefinitionOrm,
+    ParameterDefinitionOrm,
 )
 
 
@@ -128,8 +128,8 @@ async def test_parameter_definition_orm_persist_to_database(
     # Query back
     result = await db_session.execute(
         select(ParameterDefinitionOrm).where(
-            ParameterDefinitionOrm.accession_id == param_id
-        )
+            ParameterDefinitionOrm.accession_id == param_id,
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -354,8 +354,8 @@ async def test_parameter_definition_orm_relationship_to_protocol(
     # Query protocol and check parameters relationship
     result = await db_session.execute(
         select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.accession_id == protocol_definition.accession_id
-        )
+            FunctionProtocolDefinitionOrm.accession_id == protocol_definition.accession_id,
+        ),
     )
     protocol = result.scalars().first()
 
@@ -401,8 +401,8 @@ async def test_parameter_definition_orm_query_by_protocol(
     result = await db_session.execute(
         select(ParameterDefinitionOrm).where(
             ParameterDefinitionOrm.protocol_definition_accession_id
-            == protocol_definition.accession_id
-        )
+            == protocol_definition.accession_id,
+        ),
     )
     parameters = result.scalars().all()
 

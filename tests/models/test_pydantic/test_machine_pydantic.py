@@ -1,19 +1,20 @@
 """Unit tests for Machine Pydantic models."""
 import json
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.pydantic_internals.machine import (
-    MachineBase,
-    MachineCreate,
-    MachineUpdate,
-    MachineResponse,
-)
 from praxis.backend.models.enums import (
     AssetType,
     MachineStatusEnum,
 )
 from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.pydantic_internals.machine import (
+    MachineBase,
+    MachineCreate,
+    MachineResponse,
+    MachineUpdate,
+)
 
 
 def test_machine_base_minimal() -> None:
@@ -97,7 +98,7 @@ def test_machine_update_all_fields_optional() -> None:
     update_partial = MachineUpdate(
         asset_type=AssetType.MACHINE,
         name="new_name",
-        status=MachineStatusEnum.MAINTENANCE
+        status=MachineStatusEnum.MAINTENANCE,
     )
     assert update_partial.asset_type == "MACHINE"
     assert update_partial.name == "new_name"

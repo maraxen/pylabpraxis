@@ -1,6 +1,5 @@
 """Tests for core/asset_manager.py."""
 
-import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -16,6 +15,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestAssetManagerInit:
+
     """Tests for AssetManager initialization."""
 
     def test_asset_manager_initialization(self) -> None:
@@ -48,6 +48,7 @@ class TestAssetManagerInit:
 
 
 class TestGetAndValidateDeckOrms:
+
     """Tests for _get_and_validate_deck_orms method."""
 
     @pytest.mark.asyncio
@@ -133,6 +134,7 @@ class TestGetAndValidateDeckOrms:
 
 
 class TestAcquireMachine:
+
     """Tests for acquire_machine method."""
 
     @pytest.mark.asyncio
@@ -231,6 +233,7 @@ class TestAcquireMachine:
 
 
 class TestAcquireResource:
+
     """Tests for acquire_resource method."""
 
     @pytest.mark.asyncio
@@ -310,6 +313,7 @@ class TestAcquireResource:
 
 
 class TestReleaseMachine:
+
     """Tests for release_machine method."""
 
     @pytest.mark.asyncio
@@ -392,6 +396,7 @@ class TestReleaseMachine:
 
 
 class TestReleaseResource:
+
     """Tests for release_resource method."""
 
     @pytest.mark.asyncio
@@ -488,6 +493,7 @@ class TestReleaseResource:
 
 
 class TestAcquireAsset:
+
     """Tests for acquire_asset dispatcher method."""
 
     @pytest.mark.asyncio
@@ -555,6 +561,7 @@ class TestAcquireAsset:
 
 
 class TestLockUnlockAsset:
+
     """Tests for lock_asset and unlock_asset methods."""
 
     @pytest.mark.asyncio
@@ -615,6 +622,7 @@ class TestLockUnlockAsset:
 
 
 class TestIsDeckResource:
+
     """Tests for _is_deck_resource method."""
 
     def test_is_deck_resource_with_deck_type(self) -> None:
@@ -681,6 +689,7 @@ class TestIsDeckResource:
 
 
 class TestFindResourceToAcquire:
+
     """Tests for _find_resource_to_acquire method."""
 
     @pytest.mark.asyncio
@@ -778,6 +787,7 @@ class TestFindResourceToAcquire:
 
 
 class TestModuleStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_has_asset_manager_class(self) -> None:

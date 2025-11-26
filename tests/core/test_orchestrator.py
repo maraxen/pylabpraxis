@@ -1,19 +1,17 @@
 """Tests for core/orchestrator.py."""
 
-import json
-import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from praxis.backend.core.orchestrator import Orchestrator
-from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
 from praxis.backend.utils.uuid import uuid7
 
 
 class TestOrchestratorInit:
+
     """Tests for Orchestrator initialization."""
 
     def test_orchestrator_initialization(self) -> None:
@@ -48,6 +46,7 @@ class TestOrchestratorInit:
 
 
 class TestProcessInputParameters:
+
     """Tests for _process_input_parameters method."""
 
     def test_process_input_parameters_with_all_params(self) -> None:
@@ -166,6 +165,7 @@ class TestProcessInputParameters:
 
 
 class TestInjectPraxisState:
+
     """Tests for _inject_praxis_state method."""
 
     def test_inject_praxis_state_as_object(self) -> None:
@@ -254,6 +254,7 @@ class TestInjectPraxisState:
 
 
 class TestAcquireAssets:
+
     """Tests for _acquire_assets method."""
 
     @pytest.mark.asyncio
@@ -278,7 +279,7 @@ class TestAcquireAssets:
 
         mock_live_obj = Mock()
         orchestrator.asset_manager.acquire_asset = AsyncMock(
-            return_value=(mock_live_obj, asset_id, "resource")
+            return_value=(mock_live_obj, asset_id, "resource"),
         )
 
         final_args = {}
@@ -316,7 +317,7 @@ class TestAcquireAssets:
         run_id = uuid7()
 
         orchestrator.asset_manager.acquire_asset = AsyncMock(
-            side_effect=AssetAcquisitionError("Asset not available")
+            side_effect=AssetAcquisitionError("Asset not available"),
         )
 
         final_args = {}
@@ -353,7 +354,7 @@ class TestAcquireAssets:
         run_id = uuid7()
 
         orchestrator.asset_manager.acquire_asset = AsyncMock(
-            side_effect=AssetAcquisitionError("Asset not available")
+            side_effect=AssetAcquisitionError("Asset not available"),
         )
 
         final_args = {}
@@ -369,6 +370,7 @@ class TestAcquireAssets:
 
 
 class TestHandlePreExecutionChecks:
+
     """Tests for _handle_pre_execution_checks method."""
 
     @pytest.mark.asyncio
@@ -420,6 +422,7 @@ class TestHandlePreExecutionChecks:
 
 
 class TestInitializeRunContext:
+
     """Tests for _initialize_run_context method."""
 
     @pytest.mark.asyncio
@@ -460,6 +463,7 @@ class TestInitializeRunContext:
 
 
 class TestGetProtocolDefinitionOrmFromDb:
+
     """Tests for _get_protocol_definition_orm_from_db method."""
 
     @pytest.mark.skip(reason="Complex service integration - svc.read_protocol_definition_by_name not directly patchable")
@@ -488,6 +492,7 @@ class TestGetProtocolDefinitionOrmFromDb:
 
 
 class TestPrepareProtocolCode:
+
     """Tests for _prepare_protocol_code method."""
 
     @pytest.mark.asyncio
@@ -495,7 +500,7 @@ class TestPrepareProtocolCode:
         """Test protocol code preparation."""
         mock_protocol_code_manager = Mock()
         mock_protocol_code_manager.prepare_protocol_code = AsyncMock(
-            return_value=(Mock(), Mock())
+            return_value=(Mock(), Mock()),
         )
 
         orchestrator = Orchestrator(
@@ -512,11 +517,12 @@ class TestPrepareProtocolCode:
         assert func is not None
         assert pydantic_def is not None
         mock_protocol_code_manager.prepare_protocol_code.assert_called_once_with(
-            mock_protocol_def_orm
+            mock_protocol_def_orm,
         )
 
 
 class TestHandleProtocolExecutionError:
+
     """Tests for _handle_protocol_execution_error method."""
 
     @pytest.mark.skip(reason="Complex service integration - svc.update_protocol_run_status not directly patchable")
@@ -555,6 +561,7 @@ class TestHandleProtocolExecutionError:
 
 
 class TestModuleStructure:
+
     """Tests for module structure and exports."""
 
     def test_module_has_orchestrator_class(self) -> None:

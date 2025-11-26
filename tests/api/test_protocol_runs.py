@@ -5,9 +5,10 @@ Based on test_decks.py (5/5 passing) and API_TEST_PATTERN.md
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.helpers import create_protocol_run, create_protocol_definition
+
 from praxis.backend.models.enums import ProtocolRunStatusEnum
 from praxis.backend.utils.uuid import uuid7
+from tests.helpers import create_protocol_definition, create_protocol_run
 
 
 @pytest.mark.asyncio
@@ -108,8 +109,8 @@ async def test_delete_protocol_run(client: AsyncClient, db_session: AsyncSession
     async def mock_flush():
         pass
 
-    with patch.object(db_session, 'delete', new=mock_delete), \
-         patch.object(db_session, 'flush', new=mock_flush):
+    with patch.object(db_session, "delete", new=mock_delete), \
+         patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API
         response = await client.delete(f"/api/v1/protocols/runs/{protocol_run_id}")

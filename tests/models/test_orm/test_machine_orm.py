@@ -3,8 +3,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.enums import AssetType, MachineCategoryEnum, MachineStatusEnum
+from praxis.backend.models.orm.machine import MachineOrm
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_machine_orm_persist_to_database(db_session: AsyncSession) -> None
 
     # Query back from database
     result = await db_session.execute(
-        select(MachineOrm).where(MachineOrm.accession_id == machine_id)
+        select(MachineOrm).where(MachineOrm.accession_id == machine_id),
     )
     retrieved = result.scalars().first()
 
@@ -79,8 +79,9 @@ async def test_machine_orm_persist_to_database(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_machine_orm_unique_name_constraint(db_session: AsyncSession) -> None:
     """Test that machine names must be unique."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create first machine
     machine1 = MachineOrm(
@@ -109,8 +110,9 @@ async def test_machine_orm_unique_name_constraint(db_session: AsyncSession) -> N
 @pytest.mark.asyncio
 async def test_machine_orm_unique_serial_number(db_session: AsyncSession) -> None:
     """Test that machine serial numbers must be unique."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create first machine with serial number
     machine1 = MachineOrm(
@@ -150,8 +152,8 @@ async def test_machine_orm_with_workcell_relationship(db_session: AsyncSession) 
 
     Needs investigation of MachineOrm field configuration.
     """
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.workcell import WorkcellOrm
+    from praxis.backend.utils.uuid import uuid7
 
     # Create a workcell first
     workcell_id = uuid7()
@@ -178,7 +180,7 @@ async def test_machine_orm_with_workcell_relationship(db_session: AsyncSession) 
 
     # Query back and verify relationship
     result = await db_session.execute(
-        select(MachineOrm).where(MachineOrm.accession_id == machine_id)
+        select(MachineOrm).where(MachineOrm.accession_id == machine_id),
     )
     retrieved_machine = result.scalars().first()
 

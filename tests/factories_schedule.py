@@ -11,26 +11,27 @@ Usage:
         reservation = await create_asset_reservation(db_session)
 """
 from datetime import datetime, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.schedule import ScheduleEntryOrm, AssetReservationOrm
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    FunctionCallLogOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-)
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
 from praxis.backend.models.enums import (
-    ScheduleStatusEnum,
     AssetReservationStatusEnum,
     AssetType,
     DataOutputTypeEnum,
+    ScheduleStatusEnum,
     SpatialContextEnum,
 )
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionCallLogOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -38,7 +39,7 @@ async def create_protocol_definition(
     db_session: AsyncSession,
     source_repository: ProtocolSourceRepositoryOrm | None = None,
     file_system_source: FileSystemProtocolSourceOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> FunctionProtocolDefinitionOrm:
     """Factory for creating FunctionProtocolDefinitionOrm."""
     # Create source_repository if not provided
@@ -80,7 +81,7 @@ async def create_protocol_definition(
 async def create_protocol_run(
     db_session: AsyncSession,
     protocol_definition: FunctionProtocolDefinitionOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> ProtocolRunOrm:
     """Factory for creating ProtocolRunOrm."""
     if not protocol_definition:
@@ -103,7 +104,7 @@ async def create_protocol_run(
 async def create_schedule_entry(
     db_session: AsyncSession,
     protocol_run: ProtocolRunOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> ScheduleEntryOrm:
     """Factory for creating ScheduleEntryOrm.
 
@@ -116,30 +117,31 @@ async def create_schedule_entry(
 
     Returns:
         Created and persisted ScheduleEntryOrm
+
     """
     if not protocol_run:
         protocol_run = await create_protocol_run(db_session)
 
     # Build entry with all kw_only fields as keyword args
     entry = ScheduleEntryOrm(
-        status=kwargs.get('status', ScheduleStatusEnum.QUEUED),
-        priority=kwargs.get('priority', 1),
-        name=kwargs.get('name', f"test_schedule_entry_{uuid7()}"),
+        status=kwargs.get("status", ScheduleStatusEnum.QUEUED),
+        priority=kwargs.get("priority", 1),
+        name=kwargs.get("name", f"test_schedule_entry_{uuid7()}"),
         protocol_run=protocol_run,
-        scheduled_at=kwargs.get('scheduled_at', datetime.now(timezone.utc)),
-        asset_analysis_completed_at=kwargs.get('asset_analysis_completed_at', None),
-        assets_reserved_at=kwargs.get('assets_reserved_at', None),
-        execution_started_at=kwargs.get('execution_started_at', None),
-        execution_completed_at=kwargs.get('execution_completed_at', None),
+        scheduled_at=kwargs.get("scheduled_at", datetime.now(timezone.utc)),
+        asset_analysis_completed_at=kwargs.get("asset_analysis_completed_at"),
+        assets_reserved_at=kwargs.get("assets_reserved_at"),
+        execution_started_at=kwargs.get("execution_started_at"),
+        execution_completed_at=kwargs.get("execution_completed_at"),
     )
 
     # Set optional JSONB fields if provided
-    if 'asset_requirements_json' in kwargs:
-        entry.asset_requirements_json = kwargs['asset_requirements_json']
-    if 'user_params_json' in kwargs:
-        entry.user_params_json = kwargs['user_params_json']
-    if 'initial_state_json' in kwargs:
-        entry.initial_state_json = kwargs['initial_state_json']
+    if "asset_requirements_json" in kwargs:
+        entry.asset_requirements_json = kwargs["asset_requirements_json"]
+    if "user_params_json" in kwargs:
+        entry.user_params_json = kwargs["user_params_json"]
+    if "initial_state_json" in kwargs:
+        entry.initial_state_json = kwargs["initial_state_json"]
 
     db_session.add(entry)
     await db_session.flush()
@@ -150,7 +152,7 @@ async def create_schedule_entry(
 
 async def create_machine(
     db_session: AsyncSession,
-    **kwargs
+    **kwargs,
 ) -> MachineOrm:
     """Factory for creating MachineOrm."""
     defaults = {
@@ -171,7 +173,7 @@ async def create_machine(
 
 async def create_resource(
     db_session: AsyncSession,
-    **kwargs
+    **kwargs,
 ) -> ResourceOrm:
     """Factory for creating ResourceOrm."""
     defaults = {
@@ -195,7 +197,7 @@ async def create_asset_reservation(
     protocol_run: ProtocolRunOrm | None = None,
     schedule_entry: ScheduleEntryOrm | None = None,
     asset: MachineOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> AssetReservationOrm:
     """Factory for creating AssetReservationOrm.
 
@@ -213,6 +215,7 @@ async def create_asset_reservation(
 
     Returns:
         Created and persisted AssetReservationOrm
+
     """
     # Create dependencies if not provided
     if not protocol_run:
@@ -228,21 +231,21 @@ async def create_asset_reservation(
         schedule_entry_accession_id=schedule_entry.accession_id,
         asset_accession_id=asset.accession_id,
         asset_name=asset.name,
-        redis_lock_key=kwargs.get('redis_lock_key', f"lock:asset:{asset.accession_id}"),
-        lock_timeout_seconds=kwargs.get('lock_timeout_seconds', 3600),
-        status=kwargs.get('status', AssetReservationStatusEnum.PENDING),
-        asset_type=kwargs.get('asset_type', AssetType.ASSET),
+        redis_lock_key=kwargs.get("redis_lock_key", f"lock:asset:{asset.accession_id}"),
+        lock_timeout_seconds=kwargs.get("lock_timeout_seconds", 3600),
+        status=kwargs.get("status", AssetReservationStatusEnum.PENDING),
+        asset_type=kwargs.get("asset_type", AssetType.ASSET),
     )
 
     # Set optional fields if provided
-    if 'redis_lock_value' in kwargs:
-        reservation.redis_lock_value = kwargs['redis_lock_value']
-    if 'released_at' in kwargs:
-        reservation.released_at = kwargs['released_at']
-    if 'expires_at' in kwargs:
-        reservation.expires_at = kwargs['expires_at']
-    if 'required_capabilities_json' in kwargs:
-        reservation.required_capabilities_json = kwargs['required_capabilities_json']
+    if "redis_lock_value" in kwargs:
+        reservation.redis_lock_value = kwargs["redis_lock_value"]
+    if "released_at" in kwargs:
+        reservation.released_at = kwargs["released_at"]
+    if "expires_at" in kwargs:
+        reservation.expires_at = kwargs["expires_at"]
+    if "required_capabilities_json" in kwargs:
+        reservation.required_capabilities_json = kwargs["required_capabilities_json"]
 
     # Set relationships (have init=False)
     reservation.protocol_run = protocol_run
@@ -260,7 +263,7 @@ async def create_function_call_log(
     db_session: AsyncSession,
     protocol_run: ProtocolRunOrm | None = None,
     protocol_definition: FunctionProtocolDefinitionOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> FunctionCallLogOrm:
     """Factory for creating FunctionCallLogOrm."""
     if not protocol_run:
@@ -273,13 +276,12 @@ async def create_function_call_log(
     defaults = {
         "protocol_run_accession_id": protocol_run.accession_id,
         "function_protocol_definition_accession_id": protocol_definition.accession_id,
-        "sequence_in_run": kwargs.get('sequence_in_run', 0),
-        "start_time": kwargs.get('start_time', datetime.now(timezone.utc)),
+        "sequence_in_run": kwargs.get("sequence_in_run", 0),
+        "start_time": kwargs.get("start_time", datetime.now(timezone.utc)),
     }
     # Don't let kwargs override the required fields
-    for key in ['protocol_run_accession_id', 'function_protocol_definition_accession_id']:
-        if key in kwargs:
-            del kwargs[key]
+    for key in ["protocol_run_accession_id", "function_protocol_definition_accession_id"]:
+        kwargs.pop(key, None)
     defaults.update(kwargs)
 
     call_log = FunctionCallLogOrm(**defaults)
@@ -299,7 +301,7 @@ async def create_function_data_output(
     db_session: AsyncSession,
     protocol_run: ProtocolRunOrm | None = None,
     function_call_log: FunctionCallLogOrm | None = None,
-    **kwargs
+    **kwargs,
 ) -> FunctionDataOutputOrm:
     """Factory for creating FunctionDataOutputOrm.
 
@@ -325,6 +327,7 @@ async def create_function_data_output(
 
     Returns:
         Created and persisted FunctionDataOutputOrm
+
     """
     # Create dependencies if not provided
     if not function_call_log:
@@ -336,42 +339,42 @@ async def create_function_data_output(
     output = FunctionDataOutputOrm(
         protocol_run_accession_id=protocol_run.accession_id,
         function_call_log_accession_id=function_call_log.accession_id,
-        data_type=kwargs.get('data_type', DataOutputTypeEnum.UNKNOWN),
-        data_key=kwargs.get('data_key', ""),
-        spatial_context=kwargs.get('spatial_context', SpatialContextEnum.GLOBAL),
+        data_type=kwargs.get("data_type", DataOutputTypeEnum.UNKNOWN),
+        data_key=kwargs.get("data_key", ""),
+        spatial_context=kwargs.get("spatial_context", SpatialContextEnum.GLOBAL),
     )
 
     # Set optional numeric data
-    if 'data_value_numeric' in kwargs:
-        output.data_value_numeric = kwargs['data_value_numeric']
+    if "data_value_numeric" in kwargs:
+        output.data_value_numeric = kwargs["data_value_numeric"]
 
     # Set optional JSONB data
-    if 'data_value_json' in kwargs:
-        output.data_value_json = kwargs['data_value_json']
-    if 'spatial_coordinates_json' in kwargs:
-        output.spatial_coordinates_json = kwargs['spatial_coordinates_json']
-    if 'measurement_conditions_json' in kwargs:
-        output.measurement_conditions_json = kwargs['measurement_conditions_json']
+    if "data_value_json" in kwargs:
+        output.data_value_json = kwargs["data_value_json"]
+    if "spatial_coordinates_json" in kwargs:
+        output.spatial_coordinates_json = kwargs["spatial_coordinates_json"]
+    if "measurement_conditions_json" in kwargs:
+        output.measurement_conditions_json = kwargs["measurement_conditions_json"]
 
     # Set optional text/binary data
-    if 'data_value_text' in kwargs:
-        output.data_value_text = kwargs['data_value_text']
-    if 'data_value_binary' in kwargs:
-        output.data_value_binary = kwargs['data_value_binary']
+    if "data_value_text" in kwargs:
+        output.data_value_text = kwargs["data_value_text"]
+    if "data_value_binary" in kwargs:
+        output.data_value_binary = kwargs["data_value_binary"]
 
     # Set optional file info
-    if 'file_path' in kwargs:
-        output.file_path = kwargs['file_path']
-    if 'file_size_bytes' in kwargs:
-        output.file_size_bytes = kwargs['file_size_bytes']
+    if "file_path" in kwargs:
+        output.file_path = kwargs["file_path"]
+    if "file_size_bytes" in kwargs:
+        output.file_size_bytes = kwargs["file_size_bytes"]
 
     # Set optional FK relationships
-    if 'resource_accession_id' in kwargs:
-        output.resource_accession_id = kwargs['resource_accession_id']
-    if 'machine_accession_id' in kwargs:
-        output.machine_accession_id = kwargs['machine_accession_id']
-    if 'deck_accession_id' in kwargs:
-        output.deck_accession_id = kwargs['deck_accession_id']
+    if "resource_accession_id" in kwargs:
+        output.resource_accession_id = kwargs["resource_accession_id"]
+    if "machine_accession_id" in kwargs:
+        output.machine_accession_id = kwargs["machine_accession_id"]
+    if "deck_accession_id" in kwargs:
+        output.deck_accession_id = kwargs["deck_accession_id"]
 
     # Set relationships
     output.protocol_run = protocol_run

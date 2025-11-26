@@ -17,6 +17,7 @@ from praxis.backend.utils.sanitation import (
 
 
 class TestLiquidHandlerSetupCheck:
+
     """Tests for liquid_handler_setup_check decorator."""
 
     @pytest.mark.asyncio
@@ -71,6 +72,7 @@ class TestLiquidHandlerSetupCheck:
 
 
 class TestCoerceToList:
+
     """Tests for coerce_to_list function."""
 
     @pytest.mark.asyncio
@@ -111,6 +113,7 @@ class TestCoerceToList:
 
 
 class TestFillInDefault:
+
     """Tests for fill_in_default function."""
 
     @pytest.mark.asyncio
@@ -145,13 +148,14 @@ class TestFillInDefault:
 
 
 class TestFillInDefaults:
+
     """Tests for fill_in_defaults function."""
 
     @pytest.mark.asyncio
     async def test_fill_in_defaults_processes_multiple_items(self) -> None:
         """Test that fill_in_defaults processes multiple items."""
         result = await fill_in_defaults(
-            [None, 5, [7, 8]], [[1, 2], [3, 4], [5, 6]]
+            [None, 5, [7, 8]], [[1, 2], [3, 4], [5, 6]],
         )
         assert result == [[1, 2], [5, 5], [7, 8]]
 
@@ -163,6 +167,7 @@ class TestFillInDefaults:
 
 
 class TestTypeCheck:
+
     """Tests for type_check function."""
 
     @pytest.mark.asyncio
@@ -188,6 +193,7 @@ class TestTypeCheck:
 
 
 class TestCheckListLength:
+
     """Tests for check_list_length function."""
 
     @pytest.mark.asyncio
@@ -218,6 +224,7 @@ class TestCheckListLength:
 
 
 class TestParseWellName:
+
     """Tests for parse_well_name function."""
 
     @pytest.mark.asyncio
@@ -252,6 +259,7 @@ class TestParseWellName:
 
 
 class TestBooleanSlice:
+
     """Tests for boolean_slice function."""
 
     def test_boolean_slice_finds_matching_key_value(self) -> None:
@@ -294,6 +302,7 @@ class TestBooleanSlice:
 
 
 class TestSanitationIntegration:
+
     """Integration tests for sanitation utilities."""
 
     @pytest.mark.asyncio

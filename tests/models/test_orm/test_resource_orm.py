@@ -3,8 +3,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.resource import ResourceOrm, ResourceDefinitionOrm
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 
 
 @pytest.mark.asyncio
@@ -72,7 +72,7 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
 
     # Query back from database
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id)
+        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id),
     )
     retrieved = result.scalars().first()
 
@@ -88,8 +88,9 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
 @pytest.mark.asyncio
 async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> None:
     """Test that resource names must be unique."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -202,7 +203,7 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
 
     # Query back and verify relationship
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == child_id)
+        select(ResourceOrm).where(ResourceOrm.accession_id == child_id),
     )
     retrieved_child = result.scalars().first()
 
@@ -213,8 +214,8 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
 @pytest.mark.asyncio
 async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession) -> None:
     """Test creating a resource with a workcell relationship."""
-    from praxis.backend.utils.uuid import uuid7
     from praxis.backend.models.orm.workcell import WorkcellOrm
+    from praxis.backend.utils.uuid import uuid7
 
     # Create workcell
     workcell_id = uuid7()
@@ -248,7 +249,7 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
 
     # Query back and verify
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id)
+        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id),
     )
     retrieved = result.scalars().first()
 

@@ -2,8 +2,6 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.protocol import (
     FunctionCallStatusEnum,
     ProtocolRunStatusEnum,
@@ -12,6 +10,7 @@ from praxis.backend.models.enums.protocol import (
 
 
 class TestProtocolSourceStatusEnum:
+
     """Tests for ProtocolSourceStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -40,6 +39,7 @@ class TestProtocolSourceStatusEnum:
 
 
 class TestProtocolRunStatusEnum:
+
     """Tests for ProtocolRunStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -121,6 +121,7 @@ class TestProtocolRunStatusEnum:
 
 
 class TestFunctionCallStatusEnum:
+
     """Tests for FunctionCallStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -161,6 +162,7 @@ class TestFunctionCallStatusEnum:
 
 
 class TestProtocolEnumsIntegration:
+
     """Integration tests for protocol enums."""
 
     def test_all_enums_are_independent(self) -> None:

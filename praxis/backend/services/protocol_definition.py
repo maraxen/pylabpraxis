@@ -11,6 +11,7 @@ from praxis.backend.models.orm.protocol import (
   FunctionProtocolDefinitionOrm,
   ProtocolSourceRepositoryOrm,
 )
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import (
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
@@ -149,11 +150,12 @@ class ProtocolDefinitionCRUDService(
     return result.scalar_one_or_none()
 
   async def get_multi(
-    self, db: AsyncSession, *, filters=None,
+    self,
+    db: AsyncSession,
+    *,
+    filters: SearchFilters | None = None,
   ) -> list[FunctionProtocolDefinitionOrm]:
     """Get multiple protocol definitions with eager loaded relationships."""
-    from praxis.backend.models.pydantic_internals.filters import SearchFilters
-
     # Get results from parent class (which handles filters)
     if filters is None:
       filters = SearchFilters()
@@ -206,15 +208,12 @@ class ProtocolDefinitionCRUDService(
     db: AsyncSession,
     name: str,
     version: str | None = None,
-    source_name: str | None = None,
     commit_hash: str | None = None,
   ) -> FunctionProtocolDefinitionOrm | None:
     """Retrieve a protocol definition by name and other optional criteria."""
     stmt = select(self.model).filter(self.model.name == name)
     if version:
       stmt = stmt.filter(self.model.version == version)
-    # if source_name:
-    #   stmt = stmt.filter(self.model.source_name == source_name)
     if commit_hash:
       stmt = stmt.filter(self.model.commit_hash == commit_hash)
     result = await db.execute(stmt)

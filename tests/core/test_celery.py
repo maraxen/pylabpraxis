@@ -6,6 +6,7 @@ from praxis.backend.core.celery import celery_app, configure_celery_app
 
 
 class TestCeleryApp:
+
     """Tests for the global celery_app instance."""
 
     def test_celery_app_exists(self) -> None:
@@ -22,6 +23,7 @@ class TestCeleryApp:
 
 
 class TestConfigureCeleryApp:
+
     """Tests for configure_celery_app function."""
 
     def test_configure_celery_app_sets_broker(self) -> None:
@@ -166,6 +168,7 @@ class TestConfigureCeleryApp:
 
 
 class TestConfigureCeleryAppIntegration:
+
     """Integration tests for configure_celery_app."""
 
     def test_configure_celery_app_with_different_urls(self) -> None:

@@ -1,9 +1,11 @@
 """Test Pydantic serialization of DeckOrm to DeckResponse."""
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.helpers import create_deck
+
 from praxis.backend.models.pydantic_internals.deck import DeckResponse
 from praxis.backend.services.deck import deck_service
+from tests.helpers import create_deck
+
 
 @pytest.mark.asyncio
 async def test_deck_serialization(db_session: AsyncSession):
@@ -19,7 +21,7 @@ async def test_deck_serialization(db_session: AsyncSession):
     # Try to convert to Pydantic model
     try:
         deck_response = DeckResponse.model_validate(deck)
-        print(f"SUCCESS: Serialization worked!")
+        print("SUCCESS: Serialization worked!")
         print(f"Response type: {type(deck_response)}")
 
         # Try to dump to dict

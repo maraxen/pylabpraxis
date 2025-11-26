@@ -1,22 +1,20 @@
 """Tests for core/scheduler.py."""
 
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from praxis.backend.core.scheduler import ProtocolScheduler, ScheduleEntry
-from praxis.backend.models import ProtocolRunStatusEnum
 from praxis.backend.models.pydantic_internals.protocol import (
-    AssetConstraintsModel,
     AssetRequirementModel,
-    LocationConstraintsModel,
 )
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.utils.uuid import uuid7
 
 
 class TestScheduleEntry:
+
     """Tests for ScheduleEntry class."""
 
     def test_schedule_entry_initialization(self) -> None:
@@ -67,6 +65,7 @@ class TestScheduleEntry:
 
 
 class TestProtocolSchedulerInit:
+
     """Tests for ProtocolScheduler initialization."""
 
     def test_protocol_scheduler_initialization(self) -> None:
@@ -114,6 +113,7 @@ class TestProtocolSchedulerInit:
 
 
 class TestAnalyzeProtocolRequirements:
+
     """Tests for analyze_protocol_requirements method."""
 
     @pytest.mark.asyncio
@@ -135,7 +135,7 @@ class TestAnalyzeProtocolRequirements:
         mock_protocol_def.deck_param_name = None
 
         requirements = await scheduler.analyze_protocol_requirements(
-            mock_protocol_def, {}
+            mock_protocol_def, {},
         )
 
         assert isinstance(requirements, list)
@@ -158,13 +158,14 @@ class TestAnalyzeProtocolRequirements:
         mock_protocol_def.preconfigure_deck = False
 
         requirements = await scheduler.analyze_protocol_requirements(
-            mock_protocol_def, {}
+            mock_protocol_def, {},
         )
 
         assert isinstance(requirements, list)
 
 
 class TestReserveAssets:
+
     """Tests for reserve_assets method."""
 
     @pytest.mark.asyncio
@@ -278,6 +279,7 @@ class TestReserveAssets:
 
 
 class TestCancelScheduledRun:
+
     """Tests for cancel_scheduled_run method."""
 
     @pytest.mark.asyncio
@@ -362,6 +364,7 @@ class TestCancelScheduledRun:
 
 
 class TestGetScheduleStatus:
+
     """Tests for get_schedule_status method."""
 
     @pytest.mark.asyncio
@@ -412,6 +415,7 @@ class TestGetScheduleStatus:
 
 
 class TestListActiveSchedules:
+
     """Tests for list_active_schedules method."""
 
     @pytest.mark.asyncio
@@ -482,6 +486,7 @@ class TestListActiveSchedules:
 
 
 class TestQueueExecutionTask:
+
     """Tests for _queue_execution_task method."""
 
     @pytest.mark.asyncio
@@ -502,7 +507,7 @@ class TestQueueExecutionTask:
 
         protocol_run_id = uuid7()
         result = await scheduler._queue_execution_task(
-            protocol_run_id, {"param": "value"}, None
+            protocol_run_id, {"param": "value"}, None,
         )
 
         assert result is True
@@ -557,6 +562,7 @@ class TestQueueExecutionTask:
 
 
 class TestProtocolSchedulerIntegration:
+
     """Integration tests for ProtocolScheduler."""
 
     @pytest.mark.asyncio
@@ -585,7 +591,7 @@ class TestProtocolSchedulerIntegration:
 
         # Analyze requirements
         requirements = await scheduler.analyze_protocol_requirements(
-            mock_protocol_def, {}
+            mock_protocol_def, {},
         )
 
         # Reserve assets
@@ -595,6 +601,6 @@ class TestProtocolSchedulerIntegration:
 
         # Queue execution
         queue_result = await scheduler._queue_execution_task(
-            protocol_run_id, {}, None
+            protocol_run_id, {}, None,
         )
         assert queue_result is True

@@ -5,6 +5,7 @@ including creation, retrieval, updates, and deletion. It includes password hashi
 for secure credential storage.
 """
 
+import inspect
 import logging
 import uuid
 from typing import Any
@@ -84,9 +85,7 @@ class UserService(CRUDBase[UserOrm, UserCreate, UserUpdate]):
     user_data["hashed_password"] = self._hash_password(obj_in.password)
 
     # Filter to only valid constructor parameters
-    import inspect as py_inspect
-
-    init_signature = py_inspect.signature(UserOrm.__init__)
+    init_signature = inspect.signature(UserOrm.__init__)
     valid_params = {p.name for p in init_signature.parameters.values()}
     filtered_data = {key: value for key, value in user_data.items() if key in valid_params}
 

@@ -2,8 +2,6 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.schedule import (
     ScheduleHistoryEventEnum,
     ScheduleHistoryEventTriggerEnum,
@@ -12,6 +10,7 @@ from praxis.backend.models.enums.schedule import (
 
 
 class TestScheduleStatusEnum:
+
     """Tests for ScheduleStatusEnum."""
 
     def test_is_enum(self) -> None:
@@ -71,6 +70,7 @@ class TestScheduleStatusEnum:
 
 
 class TestScheduleHistoryEventEnum:
+
     """Tests for ScheduleHistoryEventEnum."""
 
     def test_is_enum(self) -> None:
@@ -144,6 +144,7 @@ class TestScheduleHistoryEventEnum:
 
 
 class TestScheduleHistoryEventTriggerEnum:
+
     """Tests for ScheduleHistoryEventTriggerEnum."""
 
     def test_is_enum(self) -> None:
@@ -176,6 +177,7 @@ class TestScheduleHistoryEventTriggerEnum:
 
 
 class TestScheduleEnumsIntegration:
+
     """Integration tests for schedule enums."""
 
     def test_all_enums_are_independent(self) -> None:

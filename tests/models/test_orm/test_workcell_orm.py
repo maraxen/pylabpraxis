@@ -3,8 +3,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.orm.workcell import WorkcellOrm
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_workcell_orm_creation_with_defaults(db_session: AsyncSession) -> 
     workcell_id = uuid7()
     workcell = WorkcellOrm(
         accession_id=workcell_id,
-        name="test_workcell"
+        name="test_workcell",
     )
 
     # Verify defaults are set
@@ -38,7 +38,7 @@ async def test_workcell_orm_persist_to_database(db_session: AsyncSession) -> Non
         accession_id=workcell_id,
         name="test_persistence",
         description="A test workcell",
-        physical_location="Lab 1"
+        physical_location="Lab 1",
     )
 
     # Add to session and flush
@@ -47,7 +47,7 @@ async def test_workcell_orm_persist_to_database(db_session: AsyncSession) -> Non
 
     # Query back from database
     result = await db_session.execute(
-        select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell_id)
+        select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell_id),
     )
     retrieved = result.scalars().first()
 
@@ -62,13 +62,14 @@ async def test_workcell_orm_persist_to_database(db_session: AsyncSession) -> Non
 @pytest.mark.asyncio
 async def test_workcell_orm_unique_name_constraint(db_session: AsyncSession) -> None:
     """Test that workcell names must be unique."""
-    from praxis.backend.utils.uuid import uuid7
     from sqlalchemy.exc import IntegrityError
+
+    from praxis.backend.utils.uuid import uuid7
 
     # Create first workcell
     workcell1 = WorkcellOrm(
         accession_id=uuid7(),
-        name="unique_workcell"
+        name="unique_workcell",
     )
     db_session.add(workcell1)
     await db_session.flush()
@@ -76,7 +77,7 @@ async def test_workcell_orm_unique_name_constraint(db_session: AsyncSession) -> 
     # Try to create another with same name
     workcell2 = WorkcellOrm(
         accession_id=uuid7(),
-        name="unique_workcell"  # Duplicate name
+        name="unique_workcell",  # Duplicate name
     )
     db_session.add(workcell2)
 
@@ -92,7 +93,7 @@ async def test_workcell_orm_relationships_empty_by_default(db_session: AsyncSess
 
     workcell = WorkcellOrm(
         accession_id=uuid7(),
-        name="test_relationships"
+        name="test_relationships",
     )
 
     # Relationships should be empty lists
@@ -109,7 +110,7 @@ async def test_workcell_orm_with_custom_status(db_session: AsyncSession) -> None
     workcell = WorkcellOrm(
         accession_id=uuid7(),
         name="test_status",
-        status=WorkcellStatusEnum.MAINTENANCE.value
+        status=WorkcellStatusEnum.MAINTENANCE.value,
     )
 
     db_session.add(workcell)

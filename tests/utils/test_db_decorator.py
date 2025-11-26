@@ -9,6 +9,7 @@ from praxis.backend.utils.db_decorator import handle_db_transaction
 
 
 class TestHandleDbTransaction:
+
     """Tests for handle_db_transaction decorator."""
 
     @pytest.mark.asyncio
@@ -135,7 +136,7 @@ class TestHandleDbTransaction:
 
         @handle_db_transaction
         async def test_func(
-            db: AsyncSession, name: str, age: int, active: bool = True
+            db: AsyncSession, name: str, age: int, active: bool = True,
         ) -> dict:
             return {"name": name, "age": age, "active": active}
 

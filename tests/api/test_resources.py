@@ -5,8 +5,8 @@ Based on test_decks.py (5/5 passing) and API_TEST_PATTERN.md
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from tests.helpers import create_resource, create_resource_definition
-from praxis.backend.models.orm.resource import ResourceOrm
 
 
 @pytest.mark.asyncio
@@ -16,7 +16,7 @@ async def test_create_resource(client: AsyncClient, db_session: AsyncSession) ->
     resource_def = await create_resource_definition(
         db_session,
         name="test_resource_def_api",
-        fqn="test.resource.def.api"
+        fqn="test.resource.def.api",
     )
 
     # 2. SETUP: Prepare payload
@@ -61,7 +61,7 @@ async def test_get_multi_resources(client: AsyncClient, db_session: AsyncSession
     resource_def = await create_resource_definition(
         db_session,
         name="shared_resource_def_multi",
-        fqn="test.resource.def.shared.multi"
+        fqn="test.resource.def.shared.multi",
     )
 
     # 2. SETUP: Create multiple resources sharing definition
@@ -121,8 +121,8 @@ async def test_delete_resource(client: AsyncClient, db_session: AsyncSession) ->
     async def mock_flush():
         pass
 
-    with patch.object(db_session, 'delete', new=mock_delete), \
-         patch.object(db_session, 'flush', new=mock_flush):
+    with patch.object(db_session, "delete", new=mock_delete), \
+         patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API
         response = await client.delete(f"/api/v1/assets/{resource_id}")

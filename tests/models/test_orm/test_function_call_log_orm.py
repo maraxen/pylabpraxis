@@ -1,15 +1,16 @@
 """Unit tests for FunctionCallLogOrm model."""
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.models.orm.protocol import (
     FunctionCallLogOrm,
     FunctionProtocolDefinitionOrm,
     ProtocolRunOrm,
 )
-from praxis.backend.models.enums import FunctionCallStatusEnum
 
 
 @pytest.fixture
@@ -160,7 +161,7 @@ async def test_function_call_log_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(FunctionCallLogOrm.accession_id == call_id)
+        select(FunctionCallLogOrm).where(FunctionCallLogOrm.accession_id == call_id),
     )
     retrieved = result.scalars().first()
 
@@ -201,7 +202,7 @@ async def test_function_call_log_orm_sequence_ordering(
     result = await db_session.execute(
         select(FunctionCallLogOrm)
         .where(FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id)
-        .order_by(FunctionCallLogOrm.sequence_in_run)
+        .order_by(FunctionCallLogOrm.sequence_in_run),
     )
     calls = result.scalars().all()
 
@@ -250,7 +251,7 @@ async def test_function_call_log_orm_status_values(
     result = await db_session.execute(
         select(FunctionCallLogOrm)
         .where(FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id)
-        .order_by(FunctionCallLogOrm.sequence_in_run)
+        .order_by(FunctionCallLogOrm.sequence_in_run),
     )
     calls = result.scalars().all()
 
@@ -488,8 +489,8 @@ async def test_function_call_log_orm_query_by_protocol_run(
     # Query all calls for this run
     result = await db_session.execute(
         select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id
-        )
+            FunctionCallLogOrm.protocol_run_accession_id == protocol_run.accession_id,
+        ),
     )
     calls = result.scalars().all()
 
@@ -538,8 +539,8 @@ async def test_function_call_log_orm_query_by_status(
     # Query only failed calls
     result = await db_session.execute(
         select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.status == FunctionCallStatusEnum.FAILED
-        )
+            FunctionCallLogOrm.status == FunctionCallStatusEnum.FAILED,
+        ),
     )
     failed_calls = result.scalars().all()
 

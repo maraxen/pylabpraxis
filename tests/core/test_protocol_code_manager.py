@@ -1,9 +1,7 @@
 """Tests for core/protocol_code_manager.py."""
 
-import os
 import subprocess
 import sys
-from collections.abc import Callable
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -19,6 +17,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestTemporarySysPath:
+
     """Tests for temporary_sys_path context manager."""
 
     def test_temporary_sys_path_adds_path(self) -> None:
@@ -68,16 +67,16 @@ class TestTemporarySysPath:
         test_path = "/tmp/test_path_exception_99999"
         original_sys_path = list(sys.path)
 
-        with pytest.raises(ValueError):
-            with temporary_sys_path(test_path):
-                assert test_path in sys.path
-                raise ValueError("Test exception")
+        with pytest.raises(ValueError), temporary_sys_path(test_path):
+            assert test_path in sys.path
+            raise ValueError("Test exception")
 
         assert test_path not in sys.path
         assert sys.path == original_sys_path
 
 
 class TestProtocolCodeManagerInit:
+
     """Tests for ProtocolCodeManager initialization."""
 
     def test_protocol_code_manager_initialization(self) -> None:
@@ -87,6 +86,7 @@ class TestProtocolCodeManagerInit:
 
 
 class TestRunGitCommand:
+
     """Tests for _run_git_command method."""
 
     @pytest.mark.asyncio
@@ -182,6 +182,7 @@ class TestRunGitCommand:
 
 
 class TestEnsureGitRepoAndFetch:
+
     """Tests for _ensure_git_repo_and_fetch method."""
 
     @pytest.mark.asyncio
@@ -243,13 +244,12 @@ class TestEnsureGitRepoAndFetch:
 
         manager._run_git_command = mock_run_git_command
 
-        with patch("os.path.exists", return_value=False):
-            with patch("os.makedirs"):
-                await manager._ensure_git_repo_and_fetch(
-                    "https://github.com/test/repo.git",
-                    "/tmp/new_repo",
-                    "new_repo",
-                )
+        with patch("os.path.exists", return_value=False), patch("os.makedirs"):
+            await manager._ensure_git_repo_and_fetch(
+                "https://github.com/test/repo.git",
+                "/tmp/new_repo",
+                "new_repo",
+            )
 
         # Should call git clone
         assert any("clone" in cmd for cmd in git_commands_called)
@@ -277,6 +277,7 @@ class TestEnsureGitRepoAndFetch:
 
 
 class TestCheckoutSpecificCommit:
+
     """Tests for _checkout_specific_commit method."""
 
     @pytest.mark.asyncio
@@ -330,6 +331,7 @@ class TestCheckoutSpecificCommit:
 
 
 class TestLoadProtocolFunction:
+
     """Tests for _load_protocol_function method."""
 
     def test_load_protocol_function_success(self) -> None:
@@ -462,6 +464,7 @@ class TestLoadProtocolFunction:
 
 
 class TestLoadCallableFromFqn:
+
     """Tests for _load_callable_from_fqn method."""
 
     def test_load_callable_from_fqn_success(self) -> None:
@@ -504,6 +507,7 @@ class TestLoadCallableFromFqn:
 
 
 class TestPrepareProtocolCode:
+
     """Tests for prepare_protocol_code method."""
 
     @pytest.mark.asyncio
@@ -696,6 +700,7 @@ class TestPrepareProtocolCode:
 
 
 class TestProtocolCodeManagerIntegration:
+
     """Integration tests for ProtocolCodeManager."""
 
     def test_module_has_logger(self) -> None:
