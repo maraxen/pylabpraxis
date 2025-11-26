@@ -12,6 +12,16 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.pool import NullPool
 
 from praxis.backend.utils.db import Base
+from tests.factories import (
+    FunctionCallLogFactory,
+    FunctionDataOutputFactory,
+    FunctionProtocolDefinitionFactory,
+    ProtocolRunFactory,
+    ResourceDefinitionFactory,
+    ResourceFactory,
+    WellDataOutputFactory,
+    WorkcellFactory,
+)
 
 # Use PostgreSQL test database - NO SQLITE FALLBACK
 # The application uses PostgreSQL-specific features (JSONB) that SQLite doesn't support.
@@ -72,6 +82,16 @@ async def db_session(
                 session.expunge_all()
             except Exception:
                 pass
+
+            # Set up factories to use this session
+            WorkcellFactory._meta.sqlalchemy_session = session
+            ResourceDefinitionFactory._meta.sqlalchemy_session = session
+            ResourceFactory._meta.sqlalchemy_session = session
+            FunctionProtocolDefinitionFactory._meta.sqlalchemy_session = session
+            ProtocolRunFactory._meta.sqlalchemy_session = session
+            FunctionCallLogFactory._meta.sqlalchemy_session = session
+            FunctionDataOutputFactory._meta.sqlalchemy_session = session
+            WellDataOutputFactory._meta.sqlalchemy_session = session
 
             try:
                 await session.close()
