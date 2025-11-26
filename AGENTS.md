@@ -61,34 +61,37 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 
 #### Environment-Specific Setup
 
-**For Jules (Pre-configured in your environment)**:
--   **Setup**: ✅ **Database is already running and ready to use!**
-    - Host: localhost, Port: 5433
-    - Database: test_db, User: test_user
-    - All tables created and initialized
--   **No setup needed**: Just run your tests with `pytest`
+Before running the tests, assess if the test database needs to be set up with `sudo docker ps`. If not, please follow the instructions below.
+
+**Docker Compose (Recommended)**:
+-   **Setup**: Use the provided Docker Compose file to run the test database.
+    ```bash
+    sudo docker-compose -f docker-compose.test.yml up -d
+    ```
+-   **Verification**: Check if the container is running.
+    ```bash
+    sudo docker ps
+    ```
+-   **Stopping the database**:
+    ```bash
+    sudo docker-compose -f docker-compose.test.yml down
+    ```
+
+**Manual Docker**:
+-   **Setup**: Run the PostgreSQL container manually.
+    ```bash
+    sudo docker run \
+      -d \
+      --name test_db \
+      -p 5433:5432 \
+      -e POSTGRES_DB=test_db \
+      -e POSTGRES_USER=test_user \
+      -e POSTGRES_PASSWORD=test_password \
+      postgres:18-alpine
+    ```
 -   **Verification**: If you want to check the database:
     ```bash
     psql -h localhost -p 5433 -U test_user -d test_db -c "SELECT version();"
-    ```
-
-**For Claude Code (Manual PostgreSQL)**:
--   **Setup**: Install and configure PostgreSQL directly:
-    ```bash
-    # Install PostgreSQL 18
-    apt-get update && apt-get install -y postgresql-18 postgresql-contrib-18
-
-    # Start PostgreSQL service
-    service postgresql start
-
-    # Create test database and user
-    sudo -u postgres psql -c "CREATE DATABASE test_db;"
-    sudo -u postgres psql -c "CREATE USER test_user WITH PASSWORD 'test_password';"
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO test_user;"
-    sudo -u postgres psql -d test_db -c "GRANT ALL ON SCHEMA public TO test_user;"
-
-    # Set environment variable
-    export TEST_DATABASE_URL="postgresql+asyncpg://test_user:test_password@localhost:5432/test_db"
     ```
 
 -   **Isolation**: Each test runs in an isolated transaction that is rolled back upon completion, ensuring tests are fully independent.
