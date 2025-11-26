@@ -7,7 +7,13 @@ from factory.alchemy import SQLAlchemyModelFactory
 
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.orm.outputs import FunctionDataOutputOrm, WellDataOutputOrm
+from praxis.backend.models.orm.protocol import (
+    FunctionCallLogOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+)
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
 from praxis.backend.models.orm.workcell import WorkcellOrm
 
 
@@ -123,3 +129,86 @@ class DeckFactory(SQLAlchemyModelFactory):
     resource_definition_accession_id = factory.LazyAttribute(
         lambda o: o.deck_type_def.resource_definition.accession_id
     )
+
+
+class ResourceFactory(SQLAlchemyModelFactory):
+    """Factory for ResourceOrm."""
+
+    class Meta:
+        """Meta class for ResourceFactory."""
+
+        model = ResourceOrm
+
+    name = factory.Faker("word")
+    resource_definition = factory.SubFactory(ResourceDefinitionFactory)
+
+
+class FunctionProtocolDefinitionFactory(SQLAlchemyModelFactory):
+    """Factory for FunctionProtocolDefinitionOrm."""
+
+    class Meta:
+        """Meta class for FunctionProtocolDefinitionFactory."""
+
+        model = FunctionProtocolDefinitionOrm
+
+    name = "test_protocol"
+    fqn = "test_protocol"
+
+
+class ProtocolRunFactory(SQLAlchemyModelFactory):
+    """Factory for ProtocolRunOrm."""
+
+    class Meta:
+        """Meta class for ProtocolRunFactory."""
+
+        model = ProtocolRunOrm
+
+    top_level_protocol_definition = factory.SubFactory(FunctionProtocolDefinitionFactory)
+
+
+class FunctionCallLogFactory(SQLAlchemyModelFactory):
+    """Factory for FunctionCallLogOrm."""
+
+    class Meta:
+        """Meta class for FunctionCallLogFactory."""
+
+        model = FunctionCallLogOrm
+
+    protocol_run = factory.SubFactory(ProtocolRunFactory)
+    sequence_in_run = 0
+    executed_function_definition = factory.SubFactory(FunctionProtocolDefinitionFactory)
+
+
+class FunctionDataOutputFactory(SQLAlchemyModelFactory):
+    """Factory for FunctionDataOutputOrm."""
+
+    class Meta:
+        """Meta class for FunctionDataOutputFactory."""
+
+        model = FunctionDataOutputOrm
+
+    class Params:
+        # Create a transient protocol_run that can be shared.
+        pr = factory.SubFactory(ProtocolRunFactory)
+
+    # Create the function_call_log using the transient protocol_run.
+    function_call_log = factory.SubFactory(
+        FunctionCallLogFactory, protocol_run=factory.SelfAttribute("..pr")
+    )
+
+
+class WellDataOutputFactory(SQLAlchemyModelFactory):
+    """Factory for WellDataOutputOrm."""
+
+    class Meta:
+        """Meta class for WellDataOutputFactory."""
+
+        model = WellDataOutputOrm
+
+    function_data_output = factory.SubFactory(FunctionDataOutputFactory)
+    plate_resource = factory.SubFactory(ResourceFactory)
+    well_name = "A1"
+    well_row = 0
+    well_column = 0
+    well_index = 0
+    data_value = factory.Faker("pyfloat")
