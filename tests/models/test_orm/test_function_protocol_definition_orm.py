@@ -1,13 +1,13 @@
 """Unit tests for FunctionProtocolDefinitionOrm model."""
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
     FunctionProtocolDefinitionOrm,
     ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
 )
 
 
@@ -157,8 +157,8 @@ async def test_function_protocol_definition_orm_persist_to_database(
     # Query back
     result = await db_session.execute(
         select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.accession_id == protocol_id
-        )
+            FunctionProtocolDefinitionOrm.accession_id == protocol_id,
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -430,8 +430,8 @@ async def test_function_protocol_definition_orm_query_by_fqn(
     # Query by FQN
     result = await db_session.execute(
         select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.fqn == "protocols.queryable.test_protocol"
-        )
+            FunctionProtocolDefinitionOrm.fqn == "protocols.queryable.test_protocol",
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -474,8 +474,8 @@ async def test_function_protocol_definition_orm_query_top_level(
     # Query only top-level protocols
     result = await db_session.execute(
         select(FunctionProtocolDefinitionOrm).where(
-            FunctionProtocolDefinitionOrm.is_top_level == True  # noqa: E712
-        )
+            FunctionProtocolDefinitionOrm.is_top_level == True,  # noqa: E712
+        ),
     )
     top_level_protocols = result.scalars().all()
 

@@ -1,8 +1,8 @@
 """Unit tests for ResourceDefinitionOrm."""
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 
@@ -92,8 +92,8 @@ async def test_resource_definition_orm_persist_to_database(db_session: AsyncSess
     # Query back
     result = await db_session.execute(
         select(ResourceDefinitionOrm).where(
-            ResourceDefinitionOrm.accession_id == resource_def_id
-        )
+            ResourceDefinitionOrm.accession_id == resource_def_id,
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -176,8 +176,8 @@ async def test_resource_definition_orm_jsonb_fields(db_session: AsyncSession) ->
     # Query back to verify JSONB storage
     result = await db_session.execute(
         select(ResourceDefinitionOrm).where(
-            ResourceDefinitionOrm.name == "jsonb_test_plate"
-        )
+            ResourceDefinitionOrm.name == "jsonb_test_plate",
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -232,8 +232,8 @@ async def test_resource_definition_orm_dimensions(db_session: AsyncSession) -> N
     # Query back
     result = await db_session.execute(
         select(ResourceDefinitionOrm).where(
-            ResourceDefinitionOrm.name == "dimensioned_plate"
-        )
+            ResourceDefinitionOrm.name == "dimensioned_plate",
+        ),
     )
     retrieved = result.scalars().first()
 

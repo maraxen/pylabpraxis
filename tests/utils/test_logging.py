@@ -13,6 +13,7 @@ from praxis.backend.utils.logging import (
 
 
 class TestGetLogger:
+
     """Tests for get_logger function."""
 
     def test_returns_logger_instance(self) -> None:
@@ -47,6 +48,7 @@ class TestGetLogger:
 
 
 class TestLogRuntimeErrors:
+
     """Tests for log_runtime_errors decorator."""
 
     def test_decorator_allows_normal_execution(self) -> None:
@@ -77,7 +79,7 @@ class TestLogRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_runtime_errors(
-            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError
+            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         def test_func() -> None:
             raise ValueError("Test error")
@@ -90,7 +92,7 @@ class TestLogRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_runtime_errors(
-            logger_instance=mock_logger, raises=False, prefix="PREFIX: "
+            logger_instance=mock_logger, raises=False, prefix="PREFIX: ",
         )
         def test_func() -> None:
             raise ValueError("Test error")
@@ -105,7 +107,7 @@ class TestLogRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_runtime_errors(
-            logger_instance=mock_logger, raises=False, suffix=" :SUFFIX"
+            logger_instance=mock_logger, raises=False, suffix=" :SUFFIX",
         )
         def test_func() -> None:
             raise ValueError("Test error")
@@ -119,7 +121,7 @@ class TestLogRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_runtime_errors(
-            logger_instance=mock_logger, raises=False, return_="default_value"
+            logger_instance=mock_logger, raises=False, return_="default_value",
         )
         def test_func() -> str:
             raise ValueError("Test error")
@@ -179,6 +181,7 @@ class TestLogRuntimeErrors:
 
 
 class TestLogAsyncRuntimeErrors:
+
     """Tests for log_async_runtime_errors decorator."""
 
     @pytest.mark.asyncio
@@ -212,7 +215,7 @@ class TestLogAsyncRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_async_runtime_errors(
-            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError
+            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         async def test_func() -> None:
             raise ValueError("Async test error")
@@ -226,7 +229,7 @@ class TestLogAsyncRuntimeErrors:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_async_runtime_errors(
-            logger_instance=mock_logger, raises=False, prefix="ASYNC PREFIX: "
+            logger_instance=mock_logger, raises=False, prefix="ASYNC PREFIX: ",
         )
         async def test_func() -> None:
             raise ValueError("Test error")
@@ -290,6 +293,7 @@ class TestLogAsyncRuntimeErrors:
 
 
 class TestLogRuntimeErrorsIntegration:
+
     """Integration tests for logging decorators."""
 
     def test_sync_and_async_decorators_work_consistently(self) -> None:
@@ -313,7 +317,7 @@ class TestLogRuntimeErrorsIntegration:
         mock_logger = MagicMock(spec=logging.Logger)
 
         @log_runtime_errors(
-            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError
+            logger_instance=mock_logger, raises=True, raises_exception=RuntimeError,
         )
         def test_func() -> None:
             raise ValueError("Original error")

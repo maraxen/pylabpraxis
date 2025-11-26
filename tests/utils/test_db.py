@@ -17,6 +17,7 @@ from praxis.backend.utils.db import (
 
 
 class TestBase:
+
     """Tests for Base ORM class."""
 
     def test_base_has_accession_id_field(self) -> None:
@@ -46,6 +47,7 @@ class TestBase:
 
 
 class TestGetAsyncDbSession:
+
     """Tests for get_async_db_session function."""
 
     @pytest.mark.asyncio
@@ -76,7 +78,7 @@ class TestGetAsyncDbSession:
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.db.AsyncSessionLocal")
     async def test_get_async_db_session_always_closes(
-        self, mock_session_maker: MagicMock
+        self, mock_session_maker: MagicMock,
     ) -> None:
         """Test that session is always closed, even without exception."""
         mock_session = AsyncMock()
@@ -90,12 +92,13 @@ class TestGetAsyncDbSession:
 
 
 class TestInitPraxisDbSchema:
+
     """Tests for init_praxis_db_schema function."""
 
     @pytest.mark.asyncio
     @patch("praxis.backend.utils.db.create_async_engine")
     async def test_init_praxis_db_schema_uses_default_engine(
-        self, mock_create_engine: MagicMock
+        self, mock_create_engine: MagicMock,
     ) -> None:
         """Test that function creates engine when none provided."""
         mock_engine = AsyncMock()
@@ -163,6 +166,7 @@ class TestInitPraxisDbSchema:
 
 
 class TestCreateMaterializedView:
+
     """Tests for CreateMaterializedView DDL element."""
 
     def test_create_materialized_view_initialization(self) -> None:
@@ -189,6 +193,7 @@ class TestCreateMaterializedView:
 
 
 class TestDropMaterializedView:
+
     """Tests for DropMaterializedView DDL element."""
 
     def test_drop_materialized_view_initialization(self) -> None:
@@ -205,6 +210,7 @@ class TestDropMaterializedView:
 
 
 class TestCompileCreateMaterializedView:
+
     """Tests for compile_create_materialized_view function."""
 
     def test_compile_create_materialized_view_returns_sql(self) -> None:
@@ -247,12 +253,13 @@ class TestCompileCreateMaterializedView:
         result = compile_create_materialized_view(element, mock_compiler)
 
         mock_compiler.sql_compiler.process.assert_called_once_with(
-            mock_select, literal_binds=True
+            mock_select, literal_binds=True,
         )
         assert "SELECT * FROM base" in result
 
 
 class TestCompileDropMaterializedView:
+
     """Tests for compile_drop_materialized_view function."""
 
     def test_compile_drop_materialized_view_returns_sql(self) -> None:
@@ -286,6 +293,7 @@ class TestCompileDropMaterializedView:
 
 
 class TestDbIntegration:
+
     """Integration tests for database utilities."""
 
     @pytest.mark.asyncio

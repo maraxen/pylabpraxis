@@ -2,12 +2,11 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.machine import MachineCategoryEnum, MachineStatusEnum
 
 
 class TestMachineStatusEnum:
+
     """Tests for MachineStatusEnum."""
 
     def test_machine_status_is_enum(self) -> None:
@@ -44,6 +43,7 @@ class TestMachineStatusEnum:
 
 
 class TestMachineCategoryEnum:
+
     """Tests for MachineCategoryEnum."""
 
     def test_machine_category_is_enum(self) -> None:
@@ -138,6 +138,7 @@ class TestMachineCategoryEnum:
 
 
 class TestMachineEnumsIntegration:
+
     """Integration tests for machine enums."""
 
     def test_status_and_category_are_independent(self) -> None:

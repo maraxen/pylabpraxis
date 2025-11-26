@@ -1,11 +1,12 @@
-import pytest
 import json
-import uuid
 from unittest.mock import MagicMock, patch
+
+import pytest
 from redis.exceptions import ConnectionError, RedisError
 
-from praxis.backend.services.state import PraxisState
 from praxis.backend.configure import PraxisConfiguration
+from praxis.backend.services.state import PraxisState
+
 
 @pytest.fixture
 def mock_redis():

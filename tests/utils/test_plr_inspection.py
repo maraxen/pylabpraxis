@@ -3,7 +3,6 @@
 import inspect
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Plate, Resource, ResourceHolder
 from pylabrobot.resources.carrier import Carrier, PlateCarrier, TipCarrier, TroughCarrier
@@ -41,6 +40,7 @@ from praxis.backend.utils.plr_inspection import (
 
 
 class TestGetClassFqn:
+
     """Tests for get_class_fqn function."""
 
     def test_get_class_fqn_returns_fully_qualified_name(self) -> None:
@@ -63,6 +63,7 @@ class TestGetClassFqn:
 
 
 class TestGetModuleClasses:
+
     """Tests for get_module_classes function."""
 
     def test_get_module_classes_returns_dict(self) -> None:
@@ -86,7 +87,7 @@ class TestGetModuleClasses:
         import pylabrobot.resources
 
         result = get_module_classes(
-            pylabrobot.resources, parent_class=Resource, concrete_only=True
+            pylabrobot.resources, parent_class=Resource, concrete_only=True,
         )
         # None should be abstract
         for klass in result.values():
@@ -110,6 +111,7 @@ class TestGetModuleClasses:
 
 
 class TestGetConstructorParamsWithDefaults:
+
     """Tests for get_constructor_params_with_defaults function."""
 
     def test_get_constructor_params_returns_dict(self) -> None:
@@ -167,6 +169,7 @@ class TestGetConstructorParamsWithDefaults:
 
 
 class TestIsResourceSubclass:
+
     """Tests for is_resource_subclass function."""
 
     def test_is_resource_subclass_returns_true_for_plate(self) -> None:
@@ -191,6 +194,7 @@ class TestIsResourceSubclass:
 
 
 class TestIsMachineSubclass:
+
     """Tests for is_machine_subclass function."""
 
     def test_is_machine_subclass_returns_false_for_machine(self) -> None:
@@ -207,6 +211,7 @@ class TestIsMachineSubclass:
 
 
 class TestIsDeckSubclass:
+
     """Tests for is_deck_subclass function."""
 
     def test_is_deck_subclass_returns_false_for_deck(self) -> None:
@@ -223,13 +228,14 @@ class TestIsDeckSubclass:
 
 
 class TestDiscoverClassesInModuleRecursive:
+
     """Tests for _discover_classes_in_module_recursive function."""
 
     def test_discover_classes_returns_dict(self) -> None:
         """Test that function returns a dictionary."""
         visited = set()
         result = _discover_classes_in_module_recursive(
-            "pylabrobot.resources", None, False, visited
+            "pylabrobot.resources", None, False, visited,
         )
         assert isinstance(result, dict)
 
@@ -237,7 +243,7 @@ class TestDiscoverClassesInModuleRecursive:
         """Test that parent_class filter is applied."""
         visited = set()
         result = _discover_classes_in_module_recursive(
-            "pylabrobot.resources", Resource, True, visited
+            "pylabrobot.resources", Resource, True, visited,
         )
         # All should be Resource subclasses
         for klass in result.values():
@@ -247,7 +253,7 @@ class TestDiscoverClassesInModuleRecursive:
         """Test that visited modules are skipped."""
         visited = {"pylabrobot.resources"}
         result = _discover_classes_in_module_recursive(
-            "pylabrobot.resources", None, False, visited
+            "pylabrobot.resources", None, False, visited,
         )
         assert result == {}
 
@@ -255,12 +261,13 @@ class TestDiscoverClassesInModuleRecursive:
         """Test that ImportError is handled gracefully."""
         visited = set()
         result = _discover_classes_in_module_recursive(
-            "nonexistent.module", None, False, visited
+            "nonexistent.module", None, False, visited,
         )
         assert result == {}
 
 
 class TestGetAllClasses:
+
     """Tests for get_all_classes function."""
 
     def test_get_all_classes_returns_dict(self) -> None:
@@ -271,14 +278,14 @@ class TestGetAllClasses:
     def test_get_all_classes_accepts_list(self) -> None:
         """Test that function accepts list of module names."""
         result = get_all_classes(
-            ["pylabrobot.resources"], parent_class=Resource, concrete_only=True
+            ["pylabrobot.resources"], parent_class=Resource, concrete_only=True,
         )
         assert isinstance(result, dict)
 
     def test_get_all_classes_filters_by_parent(self) -> None:
         """Test that parent_class filter works."""
         result = get_all_classes(
-            "pylabrobot.resources", parent_class=Resource, concrete_only=True
+            "pylabrobot.resources", parent_class=Resource, concrete_only=True,
         )
         for klass in result.values():
             assert issubclass(klass, Resource)
@@ -286,13 +293,14 @@ class TestGetAllClasses:
     def test_get_all_classes_concrete_only(self) -> None:
         """Test that concrete_only excludes abstract classes."""
         result = get_all_classes(
-            "pylabrobot.resources", parent_class=Resource, concrete_only=True
+            "pylabrobot.resources", parent_class=Resource, concrete_only=True,
         )
         for klass in result.values():
             assert not inspect.isabstract(klass)
 
 
 class TestGetResourceClasses:
+
     """Tests for get_resource_classes function."""
 
     def test_get_resource_classes_returns_dict(self) -> None:
@@ -315,6 +323,7 @@ class TestGetResourceClasses:
 
 
 class TestGetMachineClasses:
+
     """Tests for get_machine_classes function."""
 
     def test_get_machine_classes_returns_dict(self) -> None:
@@ -330,6 +339,7 @@ class TestGetMachineClasses:
 
 
 class TestGetDeckClasses:
+
     """Tests for get_deck_classes function."""
 
     def test_get_deck_classes_returns_dict(self) -> None:
@@ -345,6 +355,7 @@ class TestGetDeckClasses:
 
 
 class TestDiscoverDeckClasses:
+
     """Tests for discover_deck_classes function."""
 
     def test_discover_deck_classes_returns_dict(self) -> None:
@@ -365,6 +376,7 @@ class TestDiscoverDeckClasses:
 
 
 class TestGetAcceptedCategoriesForResourceHolder:
+
     """Tests for _get_accepted_categories_for_resource_holder function."""
 
     def test_accepts_plate_for_plate_carrier(self) -> None:
@@ -420,6 +432,7 @@ class TestGetAcceptedCategoriesForResourceHolder:
 
 
 class TestGetResourceHolderClasses:
+
     """Tests for get_resource_holder_classes function."""
 
     def test_get_resource_holder_classes_returns_dict(self) -> None:
@@ -435,6 +448,7 @@ class TestGetResourceHolderClasses:
 
 
 class TestGetCarrierClasses:
+
     """Tests for get_carrier_classes function."""
 
     def test_get_carrier_classes_returns_dict(self) -> None:
@@ -450,6 +464,7 @@ class TestGetCarrierClasses:
 
 
 class TestGetPlateCarrierClasses:
+
     """Tests for get_plate_carrier_classes function."""
 
     def test_get_plate_carrier_classes_returns_dict(self) -> None:
@@ -465,6 +480,7 @@ class TestGetPlateCarrierClasses:
 
 
 class TestGetTipCarrierClasses:
+
     """Tests for get_tip_carrier_classes function."""
 
     def test_get_tip_carrier_classes_returns_dict(self) -> None:
@@ -480,6 +496,7 @@ class TestGetTipCarrierClasses:
 
 
 class TestGetTroughCarrierClasses:
+
     """Tests for get_trough_carrier_classes function."""
 
     def test_get_trough_carrier_classes_returns_dict(self) -> None:
@@ -495,6 +512,7 @@ class TestGetTroughCarrierClasses:
 
 
 class TestGetAllCarrierClasses:
+
     """Tests for get_all_carrier_classes function."""
 
     def test_get_all_carrier_classes_returns_dict(self) -> None:
@@ -510,6 +528,7 @@ class TestGetAllCarrierClasses:
 
 
 class TestGetAllDeckAndCarrierClasses:
+
     """Tests for get_all_deck_and_carrier_classes function."""
 
     def test_get_all_deck_and_carrier_classes_returns_dict(self) -> None:
@@ -526,6 +545,7 @@ class TestGetAllDeckAndCarrierClasses:
 
 
 class TestGetAllResourceClasses:
+
     """Tests for get_all_resource_classes function."""
 
     def test_get_all_resource_classes_returns_dict(self) -> None:
@@ -542,6 +562,7 @@ class TestGetAllResourceClasses:
 
 
 class TestGetAllMachineAndDeckClasses:
+
     """Tests for get_all_machine_and_deck_classes function."""
 
     def test_get_all_machine_and_deck_classes_returns_dict(self) -> None:
@@ -558,6 +579,7 @@ class TestGetAllMachineAndDeckClasses:
 
 
 class TestGetAllClassesWithInspection:
+
     """Tests for get_all_classes_with_inspection function."""
 
     def test_get_all_classes_with_inspection_returns_dict(self) -> None:
@@ -568,13 +590,14 @@ class TestGetAllClassesWithInspection:
     def test_get_all_classes_with_inspection_concrete_only(self) -> None:
         """Test that concrete_only filters abstract classes."""
         result = get_all_classes_with_inspection(
-            "pylabrobot.resources", parent_class=Resource, concrete_only=True
+            "pylabrobot.resources", parent_class=Resource, concrete_only=True,
         )
         for klass in result.values():
             assert not inspect.isabstract(klass)
 
 
 class TestGetAllResourceAndMachineClasses:
+
     """Tests for get_all_resource_and_machine_classes function."""
 
     def test_get_all_resource_and_machine_classes_returns_dict(self) -> None:
@@ -591,6 +614,7 @@ class TestGetAllResourceAndMachineClasses:
 
 
 class TestGetDeckAndCarrierClasses:
+
     """Tests for get_deck_and_carrier_classes function."""
 
     def test_get_deck_and_carrier_classes_returns_dict(self) -> None:
@@ -606,6 +630,7 @@ class TestGetDeckAndCarrierClasses:
 
 
 class TestGetAllResourceAndMachineClassesEnhanced:
+
     """Tests for get_all_resource_and_machine_classes_enhanced function."""
 
     def test_get_all_resource_and_machine_classes_enhanced_returns_dict(self) -> None:
@@ -623,6 +648,7 @@ class TestGetAllResourceAndMachineClassesEnhanced:
 
 
 class TestGetDeckDetails:
+
     """Tests for get_deck_details function."""
 
     def test_get_deck_details_returns_dict(self) -> None:
@@ -660,6 +686,7 @@ class TestGetDeckDetails:
 
 
 class TestPlrInspectionIntegration:
+
     """Integration tests for PLR inspection utilities."""
 
     def test_resource_classes_are_subset_of_all_classes(self) -> None:

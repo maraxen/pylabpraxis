@@ -1,7 +1,6 @@
+from praxis.utils.sanitation import parse_well_name
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Well
-
-from praxis.utils.sanitation import parse_well_name
 
 
 async def wash_tips96(

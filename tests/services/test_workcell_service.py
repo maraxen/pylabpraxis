@@ -1,12 +1,14 @@
-import pytest
 import uuid
 from unittest.mock import AsyncMock
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.services.workcell import workcell_service
-from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate, WorkcellUpdate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.workcell import WorkcellCreate, WorkcellUpdate
+from praxis.backend.services.workcell import workcell_service
+
 
 @pytest.mark.asyncio
 async def test_create_workcell(db_session: AsyncSession):
@@ -15,7 +17,7 @@ async def test_create_workcell(db_session: AsyncSession):
         name="Test Workcell",
         description="A test workcell",
         physical_location="Lab 1",
-        status=WorkcellStatusEnum.AVAILABLE
+        status=WorkcellStatusEnum.AVAILABLE,
     )
     workcell = await workcell_service.create(db=db_session, obj_in=workcell_in)
 
@@ -109,7 +111,7 @@ async def test_workcell_state_operations(db_session: AsyncSession):
     # but let's check read_workcell_state behavior
     initial_state = await workcell_service.read_workcell_state(
         db=db_session,
-        workcell_accession_id=created_workcell.accession_id
+        workcell_accession_id=created_workcell.accession_id,
     )
     assert initial_state is None
 
@@ -118,7 +120,7 @@ async def test_workcell_state_operations(db_session: AsyncSession):
     updated = await workcell_service.update_workcell_state(
         db=db_session,
         workcell_accession_id=created_workcell.accession_id,
-        state_json=new_state
+        state_json=new_state,
     )
     assert updated.latest_state_json == new_state
     assert updated.last_state_update_time is not None
@@ -126,7 +128,7 @@ async def test_workcell_state_operations(db_session: AsyncSession):
     # Read state again
     read_state = await workcell_service.read_workcell_state(
         db=db_session,
-        workcell_accession_id=created_workcell.accession_id
+        workcell_accession_id=created_workcell.accession_id,
     )
     assert read_state == new_state
 
@@ -138,7 +140,7 @@ async def test_update_workcell_state_not_found(db_session: AsyncSession):
         await workcell_service.update_workcell_state(
             db=db_session,
             workcell_accession_id=non_existent_id,
-            state_json={"a": 1}
+            state_json={"a": 1},
         )
 
 @pytest.mark.asyncio
@@ -150,5 +152,5 @@ async def test_read_workcell_state_exception():
     with pytest.raises(Exception, match="DB Error"):
         await workcell_service.read_workcell_state(
             db=mock_session,
-            workcell_accession_id=uuid.uuid4()
+            workcell_accession_id=uuid.uuid4(),
         )

@@ -1,6 +1,13 @@
 import warnings
 from typing import Literal
 
+from praxis.utils import (
+  check_list_length,
+  coerce_to_list,
+  liquid_handler_setup_check,
+  tip_mapping,
+  type_check,
+)
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import (
   Container,
@@ -10,14 +17,6 @@ from pylabrobot.resources import (
   TipRack,
   TipSpot,
   Well,
-)
-
-from praxis.utils import (
-  check_list_length,
-  coerce_to_list,
-  liquid_handler_setup_check,
-  tip_mapping,
-  type_check,
 )
 
 
@@ -205,7 +204,7 @@ async def transfer_with_mixing96(
   """
   if mix_proportion is not None and mix_volume is not None:
     warnings.warn(
-      "Mix proportion and volume are not currently supported for 96 head transfers.       Ignoring.", stacklevel=2
+      "Mix proportion and volume are not currently supported for 96 head transfers.       Ignoring.", stacklevel=2,
     )
   # mix_proportion, mix_volume = await inspect_mix_parameters(mix_proportion, mix_volume)
   if any(isinstance(i, list) for i in [volume, transfer_tips, mix_cycles, mix_volume]):

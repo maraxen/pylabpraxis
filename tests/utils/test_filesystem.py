@@ -9,6 +9,7 @@ from praxis.backend.utils.filesystem import RealFileSystem
 
 
 class TestRealFileSystem:
+
     """Tests for RealFileSystem class."""
 
     def test_can_instantiate(self) -> None:
@@ -43,7 +44,7 @@ class TestRealFileSystem:
                 f.write("new content\n")
 
             # Verify content was written
-            with open(tmp_path, "r") as f:
+            with open(tmp_path) as f:
                 content = f.read()
             assert content == "new content\n"
         finally:
@@ -131,7 +132,7 @@ class TestRealFileSystem:
                 f.write("appended\n")
 
             # Verify both lines are present
-            with open(tmp_path, "r") as f:
+            with open(tmp_path) as f:
                 content = f.read()
             assert content == "initial\nappended\n"
         finally:

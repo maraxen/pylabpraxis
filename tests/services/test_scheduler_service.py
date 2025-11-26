@@ -17,41 +17,41 @@ These tests serve as examples for testing complex scheduling services with:
 - Time-based operations
 - Complex filtering and aggregation
 """
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-)
-from praxis.backend.models.orm.machine import MachineOrm
-from praxis.backend.models.pydantic_internals.scheduler import (
-    ScheduleEntryCreate,
-)
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.enums import (
-    ScheduleStatusEnum,
     AssetReservationStatusEnum,
     AssetType,
     ScheduleHistoryEventEnum,
+    ScheduleStatusEnum,
+)
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.scheduler import (
+    ScheduleEntryCreate,
 )
 from praxis.backend.services.scheduler import (
-    schedule_entry_service,
-    create_asset_reservation,
-    read_asset_reservation,
-    list_asset_reservations,
-    update_asset_reservation_status,
     cleanup_expired_reservations,
-    log_schedule_event,
+    create_asset_reservation,
     get_schedule_history,
     get_scheduling_metrics,
+    list_asset_reservations,
+    log_schedule_event,
+    read_asset_reservation,
+    schedule_entry_service,
+    update_asset_reservation_status,
 )
 from praxis.backend.utils.uuid import uuid7
-
 
 # ============================================================================
 # Fixtures
@@ -498,7 +498,7 @@ async def test_list_asset_reservations_with_filters(
     - Filter by status
     - active_only flag
     """
-    from tests.factories_schedule import create_protocol_run, create_schedule_entry, create_machine
+    from tests.factories_schedule import create_machine, create_protocol_run, create_schedule_entry
 
     # Create two different schedule entries with reservations
     run1 = await create_protocol_run(db_session)
@@ -556,7 +556,7 @@ async def test_list_asset_reservations_active_only(
     - active_only filter
     - Multiple status values considered active
     """
-    from tests.factories_schedule import create_protocol_run, create_schedule_entry, create_machine
+    from tests.factories_schedule import create_machine, create_protocol_run, create_schedule_entry
 
     # Create PENDING reservation
     run1 = await create_protocol_run(db_session)
@@ -668,7 +668,7 @@ async def test_cleanup_expired_reservations(
     - Status transition to EXPIRED
     - Selective cleanup (only active reservations)
     """
-    from tests.factories_schedule import create_protocol_run, create_schedule_entry, create_machine
+    from tests.factories_schedule import create_machine, create_protocol_run, create_schedule_entry
 
     current_time = datetime.now(timezone.utc)
     past_time = current_time - timedelta(hours=2)

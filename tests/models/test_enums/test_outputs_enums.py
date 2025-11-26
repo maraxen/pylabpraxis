@@ -2,12 +2,11 @@
 
 import enum
 
-import pytest
-
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
 
 
 class TestDataOutputTypeEnum:
+
     """Tests for DataOutputTypeEnum."""
 
     def test_is_enum(self) -> None:
@@ -92,6 +91,7 @@ class TestDataOutputTypeEnum:
 
 
 class TestSpatialContextEnum:
+
     """Tests for SpatialContextEnum."""
 
     def test_is_enum(self) -> None:
@@ -138,6 +138,7 @@ class TestSpatialContextEnum:
 
 
 class TestOutputEnumsIntegration:
+
     """Integration tests for output enums."""
 
     def test_enums_are_independent(self) -> None:

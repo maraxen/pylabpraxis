@@ -1,16 +1,15 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+from praxis.backend.models.orm.deck import DeckDefinitionOrm
 from praxis.backend.models.pydantic_internals.deck import (
+    DeckPositionDefinitionCreate,
     DeckTypeDefinitionCreate,
     DeckTypeDefinitionUpdate,
     PositioningConfig,
-    DeckPositionDefinitionCreate,
 )
-from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckPositionDefinitionOrm
-from praxis.backend.utils.uuid import uuid7
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
+
 
 @pytest.fixture
 def deck_type_definition_service() -> DeckTypeDefinitionService:
@@ -19,14 +18,13 @@ def deck_type_definition_service() -> DeckTypeDefinitionService:
 @pytest.mark.asyncio
 async def test_create_deck_type_definition_with_positions(
     db_session: AsyncSession,
-    deck_type_definition_service: DeckTypeDefinitionService
+    deck_type_definition_service: DeckTypeDefinitionService,
 ) -> None:
     """Test creating a deck type definition with positions."""
-
     pos_config = PositioningConfig(
         method_name="slot_to_location",
         arg_name="slot",
-        arg_type="str"
+        arg_type="str",
     )
 
     pos_def = DeckPositionDefinitionCreate(
@@ -43,7 +41,7 @@ async def test_create_deck_type_definition_with_positions(
         fqn="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
         version="1.0.0",
         positioning_config=pos_config,
-        position_definitions=[pos_def]
+        position_definitions=[pos_def],
     )
 
     # This might fail if logic is missing
@@ -61,18 +59,18 @@ async def test_create_deck_type_definition_with_positions(
 @pytest.mark.asyncio
 async def test_get_deck_type_definition(
     db_session: AsyncSession,
-    deck_type_definition_service: DeckTypeDefinitionService
+    deck_type_definition_service: DeckTypeDefinitionService,
 ) -> None:
     """Test retrieving a deck type definition."""
     pos_config = PositioningConfig(
-        method_name="test", arg_name="test", arg_type="str"
+        method_name="test", arg_name="test", arg_type="str",
     )
     deck_def_create = DeckTypeDefinitionCreate(
         name="Test Deck",
         fqn="test.deck",
         version="1.0.0",
         positioning_config=pos_config,
-        position_definitions=[]
+        position_definitions=[],
     )
     created_def = await deck_type_definition_service.create(db_session, obj_in=deck_def_create)
 
@@ -84,27 +82,27 @@ async def test_get_deck_type_definition(
 @pytest.mark.asyncio
 async def test_update_deck_type_definition(
     db_session: AsyncSession,
-    deck_type_definition_service: DeckTypeDefinitionService
+    deck_type_definition_service: DeckTypeDefinitionService,
 ) -> None:
     """Test updating a deck type definition."""
     pos_config = PositioningConfig(
-        method_name="test", arg_name="test", arg_type="str"
+        method_name="test", arg_name="test", arg_type="str",
     )
     deck_def_create = DeckTypeDefinitionCreate(
         name="Update Deck",
         fqn="update.deck",
         version="1.0.0",
         positioning_config=pos_config,
-        position_definitions=[]
+        position_definitions=[],
     )
     created_def = await deck_type_definition_service.create(db_session, obj_in=deck_def_create)
 
     update_data = DeckTypeDefinitionUpdate(
-        description="Updated description"
+        description="Updated description",
     )
 
     updated_def = await deck_type_definition_service.update(
-        db_session, db_obj=created_def, obj_in=update_data
+        db_session, db_obj=created_def, obj_in=update_data,
     )
 
     assert updated_def.description == "Updated description"
@@ -112,17 +110,17 @@ async def test_update_deck_type_definition(
 @pytest.mark.asyncio
 async def test_delete_deck_type_definition(
     db_session: AsyncSession,
-    deck_type_definition_service: DeckTypeDefinitionService
+    deck_type_definition_service: DeckTypeDefinitionService,
 ) -> None:
     """Test deleting a deck type definition."""
     pos_config = PositioningConfig(
-        method_name="test", arg_name="test", arg_type="str"
+        method_name="test", arg_name="test", arg_type="str",
     )
     deck_def_create = DeckTypeDefinitionCreate(
         name="Delete Deck",
         fqn="delete.deck",
         version="1.0.0",
-        positioning_config=pos_config
+        positioning_config=pos_config,
     )
     created_def = await deck_type_definition_service.create(db_session, obj_in=deck_def_create)
 

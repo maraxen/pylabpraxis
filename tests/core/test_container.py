@@ -1,13 +1,12 @@
 """Tests for core/container.py."""
 
-from celery import Celery
 from dependency_injector import containers, providers
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from praxis.backend.core.container import Container
 
 
 class TestContainerStructure:
+
     """Tests for Container class structure."""
 
     def test_container_is_declarative_container(self) -> None:
@@ -35,6 +34,7 @@ class TestContainerStructure:
 
 
 class TestContainerConfigProvider:
+
     """Tests for Container configuration provider."""
 
     def test_container_has_config_provider(self) -> None:
@@ -53,6 +53,7 @@ class TestContainerConfigProvider:
 
 
 class TestContainerRedisProvider:
+
     """Tests for Container Redis provider."""
 
     def test_container_has_redis_client_provider(self) -> None:
@@ -65,6 +66,7 @@ class TestContainerRedisProvider:
 
 
 class TestContainerCeleryProvider:
+
     """Tests for Container Celery provider."""
 
     def test_container_has_celery_app_provider(self) -> None:
@@ -77,6 +79,7 @@ class TestContainerCeleryProvider:
 
 
 class TestContainerDatabaseProviders:
+
     """Tests for Container database providers."""
 
     def test_container_has_db_session_factory(self) -> None:
@@ -97,6 +100,7 @@ class TestContainerDatabaseProviders:
 
 
 class TestContainerServiceProviders:
+
     """Tests for Container service providers."""
 
     def test_container_has_asset_lock_manager(self) -> None:
@@ -221,6 +225,7 @@ class TestContainerServiceProviders:
 
 
 class TestContainerInstantiation:
+
     """Tests for Container instantiation."""
 
     def test_container_can_be_instantiated(self) -> None:
@@ -252,6 +257,7 @@ class TestContainerInstantiation:
 
 
 class TestContainerProviderOverriding:
+
     """Tests for Container provider overriding."""
 
     def test_container_can_override_singleton_provider(self) -> None:
@@ -283,6 +289,7 @@ class TestContainerProviderOverriding:
 
 
 class TestContainerIntegration:
+
     """Integration tests for Container."""
 
     def test_container_providers_chain(self) -> None:

@@ -1,28 +1,29 @@
 """Unit tests for FunctionDataOutputOrm model.
 """
+from collections.abc import Callable
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Callable
 
-from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
-from praxis.backend.models.orm.protocol import (
-    FunctionProtocolDefinitionOrm,
-    ProtocolRunOrm,
-    FunctionCallLogOrm,
-    ProtocolSourceRepositoryOrm,
-    FileSystemProtocolSourceOrm,
-)
-from praxis.backend.models.orm.resource import ResourceOrm
-from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.enums import (
+    AssetType,
     DataOutputTypeEnum,
     SpatialContextEnum,
-    AssetType,
 )
+from praxis.backend.models.orm.machine import MachineOrm
+from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
+from praxis.backend.models.orm.protocol import (
+    FileSystemProtocolSourceOrm,
+    FunctionCallLogOrm,
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+    ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.utils.uuid import uuid7
-from datetime import datetime, timezone
 
 
 @pytest_asyncio.fixture
@@ -238,8 +239,8 @@ async def test_function_data_output_orm_persist_to_database(
 
     result = await db_session.execute(
         select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.accession_id == output.accession_id
-        )
+            FunctionDataOutputOrm.accession_id == output.accession_id,
+        ),
     )
     retrieved_output = result.scalar_one()
 
@@ -269,8 +270,8 @@ async def test_function_data_output_orm_data_type_values(
     for data_type in DataOutputTypeEnum:
         result = await db_session.execute(
             select(FunctionDataOutputOrm).where(
-                FunctionDataOutputOrm.data_type == data_type
-            )
+                FunctionDataOutputOrm.data_type == data_type,
+            ),
         )
         output = result.scalars().first()
         assert output is not None
@@ -299,8 +300,8 @@ async def test_function_data_output_orm_spatial_context_values(
     for spatial_context in SpatialContextEnum:
         result = await db_session.execute(
             select(FunctionDataOutputOrm).where(
-                FunctionDataOutputOrm.spatial_context == spatial_context
-            )
+                FunctionDataOutputOrm.spatial_context == spatial_context,
+            ),
         )
         output = result.scalars().first()
         assert output is not None
@@ -562,8 +563,8 @@ async def test_function_data_output_orm_query_by_data_type(
 
     result = await db_session.execute(
         select(FunctionDataOutputOrm).where(
-            FunctionDataOutputOrm.data_type == DataOutputTypeEnum.GENERIC_MEASUREMENT
-        )
+            FunctionDataOutputOrm.data_type == DataOutputTypeEnum.GENERIC_MEASUREMENT,
+        ),
     )
     outputs = result.scalars().all()
     assert len(outputs) == 1
@@ -590,8 +591,8 @@ async def test_function_data_output_orm_query_by_protocol_run(
     result = await db_session.execute(
         select(FunctionDataOutputOrm).where(
             FunctionDataOutputOrm.protocol_run_accession_id
-            == function_call_log.protocol_run_accession_id
-        )
+            == function_call_log.protocol_run_accession_id,
+        ),
     )
     outputs = result.scalars().all()
     assert len(outputs) == 3
@@ -620,8 +621,8 @@ async def test_function_data_output_orm_query_by_resource(
     result = await db_session.execute(
         select(FunctionDataOutputOrm).where(
             FunctionDataOutputOrm.resource_accession_id
-            == resource_asset.accession_id
-        )
+            == resource_asset.accession_id,
+        ),
     )
     outputs = result.scalars().all()
     assert len(outputs) == 2

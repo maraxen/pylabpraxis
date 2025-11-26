@@ -1,14 +1,16 @@
 """Unit tests for MachineService."""
-import pytest
 import uuid
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.services.machine import machine_service
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
-from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
-from praxis.backend.models.pydantic_internals.filters import SearchFilters
-from praxis.backend.models.enums.machine import MachineStatusEnum
 from praxis.backend.models.enums.asset import AssetType
+from praxis.backend.models.enums.machine import MachineStatusEnum
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.machine import MachineCreate, MachineUpdate
+from praxis.backend.services.machine import machine_service
+
 
 async def create_resource_definition(db: AsyncSession, name: str) -> ResourceDefinitionOrm:
     """Helper to create a resource definition."""
@@ -30,7 +32,7 @@ async def test_machine_service_create_machine(db_session: AsyncSession) -> None:
         name="Test Machine",
         fqn="com.example.Machine",
         asset_type=AssetType.MACHINE,
-        status=MachineStatusEnum.OFFLINE
+        status=MachineStatusEnum.OFFLINE,
     )
     machine = await machine_service.create(db=db_session, obj_in=machine_in)
 
@@ -45,7 +47,7 @@ async def test_machine_service_create_machine_minimal(db_session: AsyncSession) 
     """Test creating machine with only required fields."""
     machine_in = MachineCreate(
         name="Minimal Machine",
-        asset_type=AssetType.MACHINE
+        asset_type=AssetType.MACHINE,
     )
     machine = await machine_service.create(db=db_session, obj_in=machine_in)
 
@@ -108,7 +110,7 @@ async def test_machine_service_update_machine(db_session: AsyncSession) -> None:
     update_data = MachineUpdate(
         name="Updated Name",
         status=MachineStatusEnum.AVAILABLE,
-        asset_type=AssetType.MACHINE
+        asset_type=AssetType.MACHINE,
     )
     updated = await machine_service.update(db=db_session, db_obj=created, obj_in=update_data)
 
@@ -158,7 +160,7 @@ async def test_machine_service_update_status(db_session: AsyncSession) -> None:
         db=db_session,
         machine_accession_id=created.accession_id,
         new_status=MachineStatusEnum.IN_USE,
-        status_details="Running protocol"
+        status_details="Running protocol",
     )
 
     assert updated.status == MachineStatusEnum.IN_USE
@@ -174,7 +176,7 @@ async def test_machine_service_update_status_not_found(db_session: AsyncSession)
     result = await machine_service.update_machine_status(
         db=db_session,
         machine_accession_id=uuid.uuid4(),
-        new_status=MachineStatusEnum.ERROR
+        new_status=MachineStatusEnum.ERROR,
     )
     assert result is None
 
@@ -187,7 +189,7 @@ async def test_machine_service_create_with_resource_counterpart(db_session: Asyn
     machine_in = MachineCreate(
         name="Resource Machine",
         asset_type=AssetType.MACHINE,
-        resource_def_name=res_def_name
+        resource_def_name=res_def_name,
     )
 
     machine = await machine_service.create(db=db_session, obj_in=machine_in)
@@ -205,7 +207,7 @@ async def test_machine_service_update_with_resource_counterpart(db_session: Asyn
 
     update_data = MachineUpdate(
         asset_type=AssetType.MACHINE,
-        resource_def_name=res_def_name
+        resource_def_name=res_def_name,
     )
 
     updated = await machine_service.update(db=db_session, db_obj=machine, obj_in=update_data)

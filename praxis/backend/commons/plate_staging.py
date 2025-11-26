@@ -1,14 +1,13 @@
 from typing import Literal
 
 import numpy as np
+from praxis.utils.errors import ExperimentError
+from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.liquid_handling.standard import GripDirection
 from pylabrobot.plate_reading import PlateReader
 from pylabrobot.resources import CarrierSite, Coordinate, Plate, TipRack, Well
 from pylabrobot.resources.errors import ResourceNotFoundError
-
-from praxis.utils.errors import ExperimentError
-from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
 
 # take advantage of traverse and snake
 

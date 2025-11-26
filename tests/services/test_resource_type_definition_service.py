@@ -1,17 +1,18 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
-from pylabrobot.resources import Resource
 
-from praxis.backend.services.resource_type_definition import (
-    ResourceTypeDefinitionCRUDService,
-    ResourceTypeDefinitionService,
-)
+import pytest
+from pylabrobot.resources import Resource
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.resource import (
     ResourceDefinitionCreate,
     ResourceDefinitionUpdate,
 )
-from praxis.backend.models.orm.resource import ResourceDefinitionOrm
+from praxis.backend.services.resource_type_definition import (
+    ResourceTypeDefinitionCRUDService,
+    ResourceTypeDefinitionService,
+)
+
 
 @pytest.fixture
 def resource_type_definition_crud_service() -> ResourceTypeDefinitionCRUDService:
@@ -24,10 +25,9 @@ def resource_type_definition_service(db_session: AsyncSession) -> ResourceTypeDe
 @pytest.mark.asyncio
 async def test_crud_resource_type_definition(
     db_session: AsyncSession,
-    resource_type_definition_crud_service: ResourceTypeDefinitionCRUDService
+    resource_type_definition_crud_service: ResourceTypeDefinitionCRUDService,
 ) -> None:
     """Test CRUD operations for resource type definition."""
-
     # Create
     create_data = ResourceDefinitionCreate(
         name="Test Resource",
@@ -36,10 +36,10 @@ async def test_crud_resource_type_definition(
         description="A test resource",
         size_x_mm=100.0,
         size_y_mm=80.0,
-        size_z_mm=15.0
+        size_z_mm=15.0,
     )
     created_def = await resource_type_definition_crud_service.create(
-        db_session, obj_in=create_data
+        db_session, obj_in=create_data,
     )
 
     assert created_def.accession_id is not None
@@ -48,31 +48,33 @@ async def test_crud_resource_type_definition(
 
     # Read
     fetched_def = await resource_type_definition_crud_service.get(
-        db_session, created_def.accession_id
+        db_session, created_def.accession_id,
     )
     assert fetched_def is not None
     assert fetched_def.accession_id == created_def.accession_id
 
     # Update
     update_data = ResourceDefinitionUpdate(
-        description="Updated description"
+        description="Updated description",
     )
     updated_def = await resource_type_definition_crud_service.update(
-        db_session, db_obj=created_def, obj_in=update_data
+        db_session, db_obj=created_def, obj_in=update_data,
     )
     assert updated_def.description == "Updated description"
 
     # Delete
     await resource_type_definition_crud_service.remove(
-        db_session, accession_id=created_def.accession_id
+        db_session, accession_id=created_def.accession_id,
     )
     fetched_def = await resource_type_definition_crud_service.get(
-        db_session, created_def.accession_id
+        db_session, created_def.accession_id,
     )
     assert fetched_def is None
 
 class MockResourceClass(Resource):
+
     """Mock PyLabRobot resource class."""
+
     __module__ = "pylabrobot.resources.plate"
     category = "plate"
     ordering = ["A1", "A2"]
@@ -86,10 +88,9 @@ class MockResourceClass(Resource):
 
 @pytest.mark.asyncio
 async def test_discovery_service_helpers(
-    resource_type_definition_service: ResourceTypeDefinitionService
+    resource_type_definition_service: ResourceTypeDefinitionService,
 ) -> None:
     """Test helper methods of ResourceTypeDefinitionService."""
-
     # Mock inspect.isabstract to return False (MockResourceClass is concrete)
     # No need to patch isclass or issubclass as we inherit from Resource
     assert resource_type_definition_service._can_catalog_resource(MockResourceClass) is True

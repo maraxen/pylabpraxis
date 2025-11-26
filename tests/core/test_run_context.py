@@ -1,18 +1,17 @@
 """Tests for core/run_context.py."""
 
 import json
-import uuid
 from unittest.mock import Mock, patch
 
-import pytest
 from pydantic import BaseModel
-from pylabrobot.resources import Deck, Plate
+from pylabrobot.resources import Plate
 
 from praxis.backend.core.run_context import PraxisRunContext, serialize_arguments
 from praxis.backend.utils.uuid import uuid7
 
 
 class TestPraxisRunContext:
+
     """Tests for PraxisRunContext dataclass."""
 
     def test_praxis_run_context_initialization(self) -> None:
@@ -57,6 +56,7 @@ class TestPraxisRunContext:
 
 
 class TestGetAndIncrementSequenceVal:
+
     """Tests for PraxisRunContext.get_and_increment_sequence_val()."""
 
     def test_get_and_increment_returns_initial_value(self) -> None:
@@ -110,6 +110,7 @@ class TestGetAndIncrementSequenceVal:
 
 
 class TestCreateContextForNestedCall:
+
     """Tests for PraxisRunContext.create_context_for_nested_call()."""
 
     def test_create_nested_context_returns_new_instance(self) -> None:
@@ -216,6 +217,7 @@ class TestCreateContextForNestedCall:
 
 
 class TestSerializeArguments:
+
     """Tests for serialize_arguments function."""
 
     def test_serialize_simple_args(self) -> None:
@@ -246,7 +248,7 @@ class TestSerializeArguments:
         """Test that __praxis_run_context__ is filtered from kwargs."""
         mock_context = Mock()
         result = serialize_arguments(
-            (), {"regular_arg": "value", "__praxis_run_context__": mock_context}
+            (), {"regular_arg": "value", "__praxis_run_context__": mock_context},
         )
         data = json.loads(result)
 
@@ -297,7 +299,7 @@ class TestSerializeArguments:
         from collections import OrderedDict
 
         plate = Plate(
-            "test_plate", size_x=127.76, size_y=85.48, size_z=14.0, ordering=OrderedDict()
+            "test_plate", size_x=127.76, size_y=85.48, size_z=14.0, ordering=OrderedDict(),
         )
         result = serialize_arguments((plate,), {})
         data = json.loads(result)
@@ -333,6 +335,7 @@ class TestSerializeArguments:
 
 
 class TestRunContextIntegration:
+
     """Integration tests for PraxisRunContext."""
 
     def test_complete_nested_call_workflow(self) -> None:
@@ -383,6 +386,7 @@ class TestRunContextIntegration:
 
 
 class TestSerializeArgumentsEdgeCases:
+
     """Edge case tests for serialize_arguments function."""
 
     def test_serialize_with_none_values(self) -> None:

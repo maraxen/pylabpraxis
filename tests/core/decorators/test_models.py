@@ -1,6 +1,7 @@
 """Tests for core/decorators/models.py."""
 
 import contextvars
+
 from praxis.backend.core.decorators import (
     CreateProtocolDefinitionData,
     ProtocolRuntimeInfo,
@@ -14,6 +15,7 @@ from praxis.backend.utils.uuid import uuid7
 
 
 class TestCreateProtocolDefinitionData:
+
     """Tests for CreateProtocolDefinitionData dataclass."""
 
     def test_create_protocol_definition_data_initialization(self) -> None:
@@ -45,6 +47,7 @@ class TestCreateProtocolDefinitionData:
 
 
 class TestProtocolRuntimeInfo:
+
     """Tests for ProtocolRuntimeInfo class."""
 
     def test_protocol_runtime_info_initialization(self) -> None:
@@ -111,6 +114,7 @@ class TestProtocolRuntimeInfo:
 
 
 class TestGetCallableFqn:
+
     """Tests for get_callable_fqn function."""
 
     def test_get_callable_fqn_with_function(self) -> None:
@@ -141,6 +145,7 @@ class TestGetCallableFqn:
 
 
 class TestProtocolContextVar:
+
     """Tests for praxis_run_context_cv context variable."""
 
     def test_context_var_is_context_var(self) -> None:

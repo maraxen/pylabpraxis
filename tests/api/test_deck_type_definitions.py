@@ -2,6 +2,7 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from tests.helpers import create_workcell
 
 
@@ -9,6 +10,7 @@ from tests.helpers import create_workcell
 async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) -> None:
     """Test creating a workcell."""
     from sqlalchemy import select
+
     from praxis.backend.models.orm.workcell import WorkcellOrm
 
     workcell = await create_workcell(db_session, name="test_workcell")
@@ -24,14 +26,14 @@ async def test_create_workcell(client: AsyncClient, db_session: AsyncSession) ->
     from main import app as main_app
     print("DEBUG: Available routes:")
     for route in main_app.routes:
-        if hasattr(route, 'path') and 'workcell' in route.path.lower():
+        if hasattr(route, "path") and "workcell" in route.path.lower():
             print(f"  {route.path} - {route.methods if hasattr(route, 'methods') else 'N/A'}")
 
     # For now, just verify the workcell can be retrieved from the session
     # The Pydantic serialization issue with nested models needs separate investigation
     from sqlalchemy import select
     verify_result = await db_session.execute(
-        select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell.accession_id)
+        select(WorkcellOrm).where(WorkcellOrm.accession_id == workcell.accession_id),
     )
     verified_workcell = verify_result.scalars().first()
     assert verified_workcell is not None

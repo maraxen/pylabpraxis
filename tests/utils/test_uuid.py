@@ -6,14 +6,12 @@ including UUID4, UUID7, and name generation utilities.
 
 import re
 import uuid
-from typing import Set
-
-import pytest
 
 from praxis.backend.utils.uuid import generate_name, uuid4, uuid7
 
 
 class TestUUID7:
+
     """Tests for UUID7 generation."""
 
     def test_uuid7_returns_uuid_object(self) -> None:
@@ -28,7 +26,7 @@ class TestUUID7:
 
     def test_uuid7_generates_unique_values(self) -> None:
         """Test that consecutive uuid7() calls return unique values."""
-        uuids: Set[uuid.UUID] = {uuid7() for _ in range(100)}
+        uuids: set[uuid.UUID] = {uuid7() for _ in range(100)}
         assert len(uuids) == 100, "All generated UUID7s should be unique"
 
     def test_uuid7_is_monotonically_increasing(self) -> None:
@@ -65,6 +63,7 @@ class TestUUID7:
 
 
 class TestUUID4:
+
     """Tests for UUID4 generation."""
 
     def test_uuid4_returns_uuid_object(self) -> None:
@@ -79,7 +78,7 @@ class TestUUID4:
 
     def test_uuid4_generates_unique_values(self) -> None:
         """Test that consecutive uuid4() calls return unique values."""
-        uuids: Set[uuid.UUID] = {uuid4() for _ in range(100)}
+        uuids: set[uuid.UUID] = {uuid4() for _ in range(100)}
         assert len(uuids) == 100, "All generated UUID4s should be unique"
 
     def test_uuid4_string_representation(self) -> None:
@@ -95,6 +94,7 @@ class TestUUID4:
 
 
 class TestGenerateName:
+
     """Tests for generate_name() function."""
 
     def test_generate_name_returns_string(self) -> None:
@@ -138,7 +138,7 @@ class TestGenerateName:
         may produce some duplicates. We test that at least some unique values
         are generated, not that all are unique.
         """
-        names: Set[str] = {generate_name("test") for _ in range(100)}
+        names: set[str] = {generate_name("test") for _ in range(100)}
         # At least 1 unique name should be generated (could be same if very fast)
         # In practice, should get at least a few unique names
         assert len(names) >= 1, "Should generate at least one name"

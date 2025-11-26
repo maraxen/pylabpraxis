@@ -1,15 +1,16 @@
 """Unit tests for ProtocolRunOrm model."""
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.protocol import (
-    ProtocolRunOrm,
-    FunctionProtocolDefinitionOrm,
-)
 from praxis.backend.models.enums import ProtocolRunStatusEnum
+from praxis.backend.models.orm.protocol import (
+    FunctionProtocolDefinitionOrm,
+    ProtocolRunOrm,
+)
 
 
 @pytest_asyncio.fixture
@@ -117,7 +118,7 @@ async def test_protocol_run_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(ProtocolRunOrm).where(ProtocolRunOrm.accession_id == run_id)
+        select(ProtocolRunOrm).where(ProtocolRunOrm.accession_id == run_id),
     )
     retrieved = result.scalars().first()
 
@@ -134,8 +135,6 @@ async def test_protocol_run_orm_status_transitions(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test different status values for protocol runs."""
-    from praxis.backend.utils.uuid import uuid7
-
     statuses = [
         (ProtocolRunStatusEnum.PENDING, "pending_run"),
         (ProtocolRunStatusEnum.QUEUED, "queued_run"),
@@ -165,8 +164,6 @@ async def test_protocol_run_orm_timing_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test start_time, end_time, and duration_ms fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     start = datetime.now(timezone.utc)
     # Simulate 30 second execution
     end = datetime(
@@ -398,8 +395,8 @@ async def test_protocol_run_orm_query_by_status(
     # Query for running protocols
     result = await db_session.execute(
         select(ProtocolRunOrm).where(
-            ProtocolRunOrm.status == ProtocolRunStatusEnum.RUNNING
-        )
+            ProtocolRunOrm.status == ProtocolRunStatusEnum.RUNNING,
+        ),
     )
     running_runs = result.scalars().all()
 
@@ -431,8 +428,8 @@ async def test_protocol_run_orm_query_by_protocol(
     result = await db_session.execute(
         select(ProtocolRunOrm).where(
             ProtocolRunOrm.top_level_protocol_definition_accession_id
-            == protocol_definition.accession_id
-        )
+            == protocol_definition.accession_id,
+        ),
     )
     protocol_runs = result.scalars().all()
 

@@ -5,6 +5,7 @@ Based on test_decks.py (5/5 passing) and API_TEST_PATTERN.md
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from tests.helpers import create_protocol_definition
 
 
@@ -72,7 +73,7 @@ async def test_update_protocol_definition(client: AsyncClient, db_session: Async
     # 1. SETUP: Create protocol definition to update
     protocol_def = await create_protocol_definition(
         db_session,
-        name="original_protocol_name"
+        name="original_protocol_name",
     )
 
     # 2. ACT: Update via API
@@ -104,7 +105,7 @@ async def test_delete_protocol_definition(client: AsyncClient, db_session: Async
     # 1. SETUP: Create protocol definition to delete
     protocol_def = await create_protocol_definition(
         db_session,
-        name="protocol_def_to_delete"
+        name="protocol_def_to_delete",
     )
     protocol_def_id = protocol_def.accession_id
 
@@ -115,8 +116,8 @@ async def test_delete_protocol_definition(client: AsyncClient, db_session: Async
     async def mock_flush():
         pass
 
-    with patch.object(db_session, 'delete', new=mock_delete), \
-         patch.object(db_session, 'flush', new=mock_flush):
+    with patch.object(db_session, "delete", new=mock_delete), \
+         patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API
         response = await client.delete(f"/api/v1/protocols/definitions/{protocol_def_id}")

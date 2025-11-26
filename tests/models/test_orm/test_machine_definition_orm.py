@@ -1,11 +1,11 @@
 """Unit tests for MachineDefinitionOrm."""
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.orm.machine import MachineDefinitionOrm
 from praxis.backend.models.enums import MachineCategoryEnum
+from praxis.backend.models.orm.machine import MachineDefinitionOrm
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_machine_definition_orm_with_all_fields(db_session: AsyncSession) 
     rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 0}
     setup_method = {
         "method_name": "setup",
-        "params": {"simulate": True}
+        "params": {"simulate": True},
     }
 
     machine_def = MachineDefinitionOrm(
@@ -95,8 +95,8 @@ async def test_machine_definition_orm_persist_to_database(db_session: AsyncSessi
     # Query back
     result = await db_session.execute(
         select(MachineDefinitionOrm).where(
-            MachineDefinitionOrm.accession_id == machine_def_id
-        )
+            MachineDefinitionOrm.accession_id == machine_def_id,
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -191,7 +191,7 @@ async def test_machine_definition_orm_jsonb_fields(db_session: AsyncSession) -> 
     rotation = {"x_deg": 0, "y_deg": 90, "z_deg": 180}
     setup_method = {
         "method": "setup_with_robot_config",
-        "config_path": "/path/to/config.yaml"
+        "config_path": "/path/to/config.yaml",
     }
 
     machine_def = MachineDefinitionOrm(
@@ -207,8 +207,8 @@ async def test_machine_definition_orm_jsonb_fields(db_session: AsyncSession) -> 
     # Query back to verify JSONB storage
     result = await db_session.execute(
         select(MachineDefinitionOrm).where(
-            MachineDefinitionOrm.name == "jsonb_test_machine"
-        )
+            MachineDefinitionOrm.name == "jsonb_test_machine",
+        ),
     )
     retrieved = result.scalars().first()
 
@@ -237,8 +237,8 @@ async def test_machine_definition_orm_dimensions(db_session: AsyncSession) -> No
     # Query back
     result = await db_session.execute(
         select(MachineDefinitionOrm).where(
-            MachineDefinitionOrm.name == "dimensioned_machine"
-        )
+            MachineDefinitionOrm.name == "dimensioned_machine",
+        ),
     )
     retrieved = result.scalars().first()
 

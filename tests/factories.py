@@ -1,15 +1,15 @@
 """Factories for creating test data."""
-import factory
-import time
 import random
+import time
 import uuid
+
+import factory
 from factory.alchemy import SQLAlchemyModelFactory
 
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.orm.workcell import WorkcellOrm
-
 
 _last_v7_timestamp = None
 
@@ -21,7 +21,8 @@ def uuid7():
     another are guaranteed to have sub-second precision of either the
     generator or the parser, whichever is less. Additionally, the system
     parsing the UUIDv7 value does not need to know which precision was
-    used during encoding in order to function correctly."""
+    used during encoding in order to function correctly.
+    """
     global _last_v7_timestamp
     nanoseconds = time.time_ns()
     if _last_v7_timestamp is not None and nanoseconds <= _last_v7_timestamp:
@@ -39,9 +40,11 @@ def uuid7():
 
 
 class WorkcellFactory(SQLAlchemyModelFactory):
+
     """Factory for WorkcellOrm."""
 
     class Meta:
+
         """Meta class for WorkcellFactory."""
 
         model = WorkcellOrm
@@ -51,9 +54,11 @@ class WorkcellFactory(SQLAlchemyModelFactory):
 
 
 class MachineFactory(SQLAlchemyModelFactory):
+
     """Factory for MachineOrm."""
 
     class Meta:
+
         """Meta class for MachineFactory."""
 
         model = MachineOrm
@@ -69,9 +74,11 @@ class MachineFactory(SQLAlchemyModelFactory):
 
 
 class ResourceDefinitionFactory(SQLAlchemyModelFactory):
+
     """Factory for ResourceDefinitionOrm."""
 
     class Meta:
+
         """Meta class for ResourceDefinitionOrm."""
 
         model = ResourceDefinitionOrm
@@ -81,9 +88,11 @@ class ResourceDefinitionFactory(SQLAlchemyModelFactory):
 
 
 class DeckDefinitionFactory(SQLAlchemyModelFactory):
+
     """Factory for DeckDefinitionOrm."""
 
     class Meta:
+
         """Meta class for DeckDefinitionOrm."""
 
         model = DeckDefinitionOrm
@@ -103,10 +112,13 @@ class DeckDefinitionFactory(SQLAlchemyModelFactory):
 
 
 class DeckFactory(SQLAlchemyModelFactory):
+
     """Factory for DeckOrm."""
 
     class Meta:
+
         """Meta class for DeckOrm."""
+
         model = DeckOrm
 
     class Params:
@@ -121,5 +133,5 @@ class DeckFactory(SQLAlchemyModelFactory):
     deck_type_id = factory.LazyAttribute(lambda o: o.deck_type_def.accession_id)
     parent_machine_accession_id = factory.LazyAttribute(lambda o: o.machine_def.accession_id)
     resource_definition_accession_id = factory.LazyAttribute(
-        lambda o: o.deck_type_def.resource_definition.accession_id
+        lambda o: o.deck_type_def.resource_definition.accession_id,
     )

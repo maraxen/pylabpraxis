@@ -1,8 +1,6 @@
 """Smoke test to ensure the API can start and respond."""
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
