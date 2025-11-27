@@ -7,22 +7,6 @@ from typing import Any, Union, get_args, get_origin
 from pylabrobot.resources import Resource
 
 
-def is_pylabrobot_resource(obj_type: Any) -> bool:
-  """Check if the given type is a Pylabrobot Resource or Union of Resources."""
-  if obj_type is inspect.Parameter.empty:
-    return False
-  origin = get_origin(obj_type)
-  args = get_args(obj_type)
-  if origin is Union:
-    return any(is_pylabrobot_resource(arg) for arg in args if arg is not type(None))
-  try:
-    if inspect.isclass(obj_type):
-      return issubclass(obj_type, Resource)
-  except TypeError:  # pragma: no cover
-    pass
-  return False
-
-
 def fqn_from_hint(type_hint: Any) -> str:
   """Get the fully qualified name of a type hint.
 
@@ -44,6 +28,7 @@ def fqn_from_hint(type_hint: Any) -> str:
     elif len(non_none_args) > 1:
       # Handle Union[ResourceType, OtherType] by prioritizing the resource.
       # This is a heuristic. A more robust solution might require more context.
+      from praxis.common.type_inspection import is_pylabrobot_resource
       resource_types = [t for t in non_none_args if is_pylabrobot_resource(t)]
       if resource_types:
         actual_type = resource_types[0]
@@ -64,10 +49,3 @@ def fqn_from_hint(type_hint: Any) -> str:
       )
     return actual_type.__name__
   return str(actual_type)
-
-
-def serialize_type_hint(type_hint: Any) -> str:
-  """Serialize a type hint to a string representation."""
-  if type_hint == inspect.Parameter.empty:
-    return "Any"
-  return str(type_hint)
