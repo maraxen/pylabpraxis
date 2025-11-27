@@ -40,7 +40,7 @@ if "PYTEST_CURRENT_TEST" in os.environ:
     "postgresql+asyncpg://test_user:test_password@localhost:5433/test_db",
   )
 else:
-  praxis_database_url = os.getenv("PRAXIS_DB_DSN")
+  praxis_database_url = os.getenv("PRAXIS_DB_DSN") or os.getenv("DATABASE_URL")
 
   if not praxis_database_url:
     try:
