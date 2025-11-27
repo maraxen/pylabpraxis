@@ -57,7 +57,7 @@ A robust testing strategy is critical to our project's success. Comprehensive do
 
 ⚠️ **CRITICAL**: The application uses PostgreSQL-specific features (JSONB, UUID extensions). **SQLite is NOT supported** for testing. Tests must run against a real PostgreSQL database to ensure production parity.
 
--   **Technology**: PostgreSQL 18 (Debian Trixie)
+-   **Technology**: PostgreSQL 18 (Debian Trixie). Note: `postgres:18-alpine` is considered a stable release for this project.
 
 #### Environment-Specific Setup
 

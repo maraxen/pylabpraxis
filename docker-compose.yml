@@ -1,5 +1,38 @@
+version: '3.8'
 
 services:
+  backend:
+    build: .
+    container_name: praxis_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount local code to container for hot-reloading
+      - ./praxis:/app/praxis
+      - ./tests:/app/tests
+    environment:
+      # Use the service name 'praxis-db' as the host
+      - DATABASE_URL=postgresql://praxis:praxis@praxis-db:5432/praxis_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      praxis-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Override the command for development to enable reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   keycloak-postgres:
     image: postgres:18-alpine
@@ -8,21 +41,15 @@ services:
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloak
       PGDATA: /var/lib/postgresql/data/keycloak_data
-      # WAL-G Environment Variables (for backups)
-      #WALG_S3_PREFIX: s3://your-s3-bucket/praxis/backups  # Replace with your S3 bucket and path
-      #AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}          # Use Docker secrets or .env for these
-      #AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      #AWS_ENDPOINT: ${AWS_ENDPOINT}                    # If not using standard S3 endpoint, define here
-      #AWS_REGION: us-east-1                              # If not using standard S3 endpoint, adjust region
-      #WALG_COMPRESSION: bzip2                         # Set compression algorithm (e.g., none, gzip, bzip2, lz4, zstd)
-      #WALE_LOG_DESTINATION: stderr                     # Control logging
-      #WALE_FILE_PREFIX: file:///var/lib/postgresql/data/praxis/backups/data/  # Adjust path as needed
     volumes:
       - pgdata:/var/lib/postgresql/keycloak_data
-      #- ./backups:/backups
-
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.4
@@ -40,9 +67,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - keycloak-postgres
-
-
+      keycloak-postgres:
+        condition: service_healthy
 
   praxis-db:
     image: postgres:18-alpine
@@ -52,45 +78,15 @@ services:
       POSTGRES_USER: praxis
       POSTGRES_PASSWORD: praxis
       PGDATA: /var/lib/postgresql/data/praxis_data
-      # WAL-G Environment Variables (for backups)
-      #WALG_S3_PREFIX: s3://your-s3-bucket/praxis/backups  # Replace with your S3 bucket and path
-      #AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}          # Use Docker secrets or .env for these
-      #AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      #AWS_ENDPOINT: ${AWS_ENDPOINT}                    # If not using standard S3 endpoint, define here
-      #AWS_REGION: us-east-1                              # If not using standard S3 endpoint, adjust region
-      #WALG_COMPRESSION: bzip2                         # Set compression algorithm (e.g., none, gzip, bzip2, lz4, zstd)
-      #WALE_LOG_DESTINATION: stderr                     # Control logging
-      #WALE_FILE_PREFIX: file:///var/lib/postgresql/data/praxis/backups/data/  # Adjust path as needed
     volumes:
       - pgdata:/var/lib/postgresql/praxis_data
     ports:
       - "5433:5432"
-      #- ./backups:/backups
-
-  # smtp server
-
-  #backup:
-    #image: walg/walg-pg:2.1  # Use a specific version tag
-    #restart: always
-    #environment:
-      # Same WAL-G environment variables as in the 'postgres' service
-      #WALG_S3_PREFIX: s3://your-s3-bucket/praxis/backups/ # Replace with your S3 bucket and path
-      #AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      #AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      #AWS_ENDPOINT: ${AWS_ENDPOINT}
-      #AWS_REGION: us-east-1
-      #WALG_COMPRESSION: bzip2
-      #WALE_LOG_DESTINATION: stderr
-      #WALE_FILE_PREFIX: file:///var/lib/postgresql/data/praxis/backups/data/  # Adjust path as needed
-      #PGHOST: postgres # Hostname of the 'postgres' service
-      #PGUSER: postgres
-      #PGPASSWORD: postgres
-      #PGPORT: 5432
-    #depends_on:
-    #  - postgres
-    #volumes:
-    #  - pgdata:/var/lib/postgresql/data
-    #  - ./backups:/backups # Optional, for local backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U praxis -d praxis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
