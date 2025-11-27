@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+.git
+.env
+venv
+.venv
+.vscode
+coverage
+htmlcov
+.pytest_cache
+*.egg-info
+build
+dist
+alembic_old
