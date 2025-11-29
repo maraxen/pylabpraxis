@@ -102,7 +102,7 @@ def test_machine_update_all_fields_optional() -> None:
     )
     assert update_partial.asset_type == "MACHINE"
     assert update_partial.name == "new_name"
-    assert update_partial.status == "maintenance"
+    assert update_partial.status == "MAINTENANCE"
     assert update_partial.description is None
 
 
@@ -123,7 +123,7 @@ def test_machine_response_serialization_to_dict() -> None:
     assert data["fqn"] == "test.serialize.Machine"
     assert data["asset_type"] == "MACHINE"  # Enum to string
     assert data["description"] == "Testing serialization"
-    assert data["status"] == "maintenance"  # Enum to string
+    assert data["status"] == "MAINTENANCE"  # Enum to string
 
 
 def test_machine_response_serialization_to_json() -> None:
@@ -142,7 +142,7 @@ def test_machine_response_serialization_to_json() -> None:
     assert data["name"] == "json_test"
     assert data["fqn"] == "test.json.Machine"
     assert data["asset_type"] == "MACHINE"
-    assert data["status"] == "error"
+    assert data["status"] == "ERROR"
 
 
 def test_machine_response_deserialization_from_dict() -> None:
@@ -152,7 +152,7 @@ def test_machine_response_deserialization_from_dict() -> None:
         "fqn": "test.deserialize.Machine",
         "asset_type": "MACHINE",
         "description": "From dict",
-        "status": "available",
+        "status": "AVAILABLE",
         "manufacturer": "Test Manufacturer",
         "model": "Model Y",
         "connection_info": {"backend": "tecan"},
@@ -167,7 +167,7 @@ def test_machine_response_deserialization_from_dict() -> None:
     assert machine.fqn == "test.deserialize.Machine"
     assert machine.asset_type == "MACHINE"
     assert machine.description == "From dict"
-    assert machine.status == "available"
+    assert machine.status == "AVAILABLE"
     assert machine.manufacturer == "Test Manufacturer"
     assert machine.model == "Model Y"
     assert machine.connection_info == {"backend": "tecan"}
@@ -180,9 +180,9 @@ def test_machine_response_status_enum_validation() -> None:
         name="enum_test_1",
         fqn="test.enum.1",
         asset_type=AssetType.MACHINE,
-        status="available",
+        status="AVAILABLE",
     )
-    assert machine1.status == "available"
+    assert machine1.status == "AVAILABLE"
 
     # Valid enum value as enum
     machine2 = MachineResponse(
@@ -191,7 +191,7 @@ def test_machine_response_status_enum_validation() -> None:
         asset_type=AssetType.MACHINE,
         status=MachineStatusEnum.IN_USE,
     )
-    assert machine2.status == "in_use"
+    assert machine2.status == "IN_USE"
 
     # Invalid enum value should raise error
     with pytest.raises(ValueError):
@@ -268,7 +268,7 @@ async def test_machine_response_from_orm(db_session: AsyncSession) -> None:
     assert response.description == "Testing ORM to Pydantic conversion"
     assert response.manufacturer == "Test Manufacturer"
     assert response.model == "Model Z"
-    assert response.status == "available"  # Enum converted to string value
+    assert response.status == "AVAILABLE"  # Enum converted to string value
     assert response.connection_info == {"backend": "hamilton", "port": 8080}
 
 
@@ -297,7 +297,7 @@ async def test_machine_response_from_orm_minimal(db_session: AsyncSession) -> No
     assert response.name == "minimal_machine"
     assert response.fqn == "test.minimal.Machine"
     assert response.asset_type == "MACHINE"
-    assert response.status == "offline"  # Default status
+    assert response.status == "OFFLINE"  # Default status
 
     # Verify optional fields are None or default
     assert response.description is None

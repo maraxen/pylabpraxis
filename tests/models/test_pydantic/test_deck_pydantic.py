@@ -1,6 +1,8 @@
 """Unit tests for Deck Pydantic models."""
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.orm.deck import (
@@ -234,6 +236,15 @@ async def test_deck_response_from_orm(db_session: AsyncSession) -> None:
     db_session.add(orm_deck)
     await db_session.flush()
 
+    # Refresh with eager loading for Pydantic
+    stmt = (
+        select(DeckOrm)
+        .where(DeckOrm.accession_id == deck_id)
+        .options(selectinload(DeckOrm.parent), selectinload(DeckOrm.children))
+    )
+    result = await db_session.execute(stmt)
+    orm_deck = result.scalar_one()
+
     # Convert to Pydantic
     response = DeckResponse.model_validate(orm_deck)
 
@@ -282,6 +293,15 @@ async def test_deck_response_from_orm_minimal(db_session: AsyncSession) -> None:
 
     db_session.add(orm_deck)
     await db_session.flush()
+
+    # Refresh with eager loading for Pydantic
+    stmt = (
+        select(DeckOrm)
+        .where(DeckOrm.accession_id == deck_id)
+        .options(selectinload(DeckOrm.parent), selectinload(DeckOrm.children))
+    )
+    result = await db_session.execute(stmt)
+    orm_deck = result.scalar_one()
 
     # Convert to Pydantic
     response = DeckResponse.model_validate(orm_deck)

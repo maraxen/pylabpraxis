@@ -178,6 +178,7 @@ async def test_user_response_from_orm(db_session: AsyncSession) -> None:
     user_id = uuid7()
     orm_user = UserOrm(
         accession_id=user_id,
+        name="orm_test_user",
         username="orm_test_user",
         email="orm@example.com",
         hashed_password="hashed_password_123",
@@ -208,6 +209,7 @@ async def test_user_response_from_orm_minimal(db_session: AsyncSession) -> None:
     user_id = uuid7()
     orm_user = UserOrm(
         accession_id=user_id,
+        name="minimal_user",
         username="minimal_user",
         email="minimal@example.com",
         hashed_password="hashed_password_456",
