@@ -204,9 +204,7 @@ async def test_resource_definition_response_from_orm(db_session: AsyncSession) -
     rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 0}
 
     # Create ORM instance
-    resource_id = uuid7()
     orm_resource_def = ResourceDefinitionOrm(
-        accession_id=resource_id,
         name="orm_test_plate",
         fqn="test.orm.Plate",
         resource_type="plate",
@@ -231,7 +229,7 @@ async def test_resource_definition_response_from_orm(db_session: AsyncSession) -
     response = ResourceDefinitionResponse.model_validate(orm_resource_def)
 
     # Verify conversion
-    assert response.accession_id == resource_id
+    assert response.accession_id == orm_resource_def.accession_id
     assert response.name == "orm_test_plate"
     assert response.fqn == "test.orm.Plate"
     assert response.resource_type == "plate"
@@ -254,9 +252,7 @@ async def test_resource_definition_response_from_orm_minimal(db_session: AsyncSe
     """Test ORM-to-Pydantic conversion with minimal fields."""
     from praxis.backend.utils.uuid import uuid7
 
-    resource_id = uuid7()
     orm_resource_def = ResourceDefinitionOrm(
-        accession_id=resource_id,
         name="minimal_plate",
         fqn="test.minimal.Plate",
     )
@@ -268,7 +264,7 @@ async def test_resource_definition_response_from_orm_minimal(db_session: AsyncSe
     response = ResourceDefinitionResponse.model_validate(orm_resource_def)
 
     # Verify
-    assert response.accession_id == resource_id
+    assert response.accession_id == orm_resource_def.accession_id
     assert response.name == "minimal_plate"
     assert response.fqn == "test.minimal.Plate"
     assert response.resource_type is None

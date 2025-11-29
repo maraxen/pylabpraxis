@@ -2,7 +2,9 @@
 import json
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.enums import (
     AssetType,
@@ -248,6 +250,15 @@ async def test_resource_response_from_orm(db_session: AsyncSession) -> None:
     db_session.add(orm_resource)
     await db_session.flush()
 
+    # Refresh with eager loading for Pydantic
+    stmt = (
+        select(ResourceOrm)
+        .where(ResourceOrm.accession_id == resource_id)
+        .options(selectinload(ResourceOrm.parent), selectinload(ResourceOrm.children))
+    )
+    result = await db_session.execute(stmt)
+    orm_resource = result.scalar_one()
+
     # Convert ORM to Pydantic using model_validate with from_attributes=True
     response = ResourceResponse.model_validate(orm_resource)
 
@@ -285,6 +296,15 @@ async def test_resource_response_from_orm_minimal(db_session: AsyncSession) -> N
 
     db_session.add(orm_resource)
     await db_session.flush()
+
+    # Refresh with eager loading for Pydantic
+    stmt = (
+        select(ResourceOrm)
+        .where(ResourceOrm.accession_id == resource_id)
+        .options(selectinload(ResourceOrm.parent), selectinload(ResourceOrm.children))
+    )
+    result = await db_session.execute(stmt)
+    orm_resource = result.scalar_one()
 
     # Convert to Pydantic
     response = ResourceResponse.model_validate(orm_resource)
