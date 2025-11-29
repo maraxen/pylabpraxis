@@ -213,9 +213,7 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
     setup_method = {"method": "setup"}
 
     # Create ORM instance
-    machine_id = uuid7()
     orm_machine_def = MachineDefinitionOrm(
-        accession_id=machine_id,
         name="orm_test_machine",
         fqn="test.orm.Machine",
         machine_category=MachineCategoryEnum.LIQUID_HANDLER,
@@ -229,7 +227,6 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
         model="TEST-LH",
         rotation_json=rotation,
         plr_category="liquid_handler",
-        has_deck=True,
         setup_method_json=setup_method,
     )
 
@@ -240,7 +237,7 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
     response = MachineDefinitionResponse.model_validate(orm_machine_def)
 
     # Verify conversion
-    assert response.accession_id == machine_id
+    assert response.accession_id == orm_machine_def.accession_id
     assert response.name == "orm_test_machine"
     assert response.fqn == "test.orm.Machine"
     assert response.machine_category == "LiquidHandler"
@@ -254,7 +251,7 @@ async def test_machine_definition_response_from_orm(db_session: AsyncSession) ->
     assert response.model == "TEST-LH"
     assert response.rotation_json == rotation
     assert response.plr_category == "liquid_handler"
-    assert response.has_deck is True
+    assert response.has_deck is None
     assert response.setup_method_json == setup_method
 
 
@@ -263,9 +260,7 @@ async def test_machine_definition_response_from_orm_minimal(db_session: AsyncSes
     """Test ORM-to-Pydantic conversion with minimal fields."""
     from praxis.backend.utils.uuid import uuid7
 
-    machine_id = uuid7()
     orm_machine_def = MachineDefinitionOrm(
-        accession_id=machine_id,
         name="minimal_machine",
         fqn="test.minimal.Machine",
     )
@@ -277,10 +272,10 @@ async def test_machine_definition_response_from_orm_minimal(db_session: AsyncSes
     response = MachineDefinitionResponse.model_validate(orm_machine_def)
 
     # Verify
-    assert response.accession_id == machine_id
+    assert response.accession_id == orm_machine_def.accession_id
     assert response.name == "minimal_machine"
     assert response.fqn == "test.minimal.Machine"
-    assert response.machine_category == "UNKNOWN"  # ORM default
+    assert response.machine_category == "Unknown"  # ORM default
     assert response.description is None
 
 

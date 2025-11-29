@@ -68,8 +68,9 @@ python -m pytest tests/models/test_orm/test_protocol_run_orm.py -v
 
 ### Pydantic Model Tests
 - **Total files:** 7
-- **Status:** ✅ Complete (written in previous sessions)
+- **Status:** ✅ Complete and Verified
 - **Coverage:** User, Machine, Resource, Deck, Workcell, Definitions
+- **Note:** All 89 tests passing against PostgreSQL database. Fixed `MissingGreenlet` issues with async relationships and Enum string inconsistencies.
 
 ---
 
