@@ -15,7 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.utils.db import Base
-from praxis.backend.utils.uuid import generate_name
+from praxis.backend.utils.uuid import generate_name, uuid7
 
 if TYPE_CHECKING:
   from . import DeckOrm, MachineOrm, ResourceOrm
@@ -31,7 +31,13 @@ class WorkcellOrm(Base):
 
   __tablename__ = "workcells"
 
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
+  accession_id: Mapped[uuid.UUID] = mapped_column(
+    UUID,
+    primary_key=True,
+    index=True,
+    init=False,
+    default_factory=uuid7,
+  )
   name: Mapped[str] = mapped_column(
     String,
     unique=True,

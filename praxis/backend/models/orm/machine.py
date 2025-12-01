@@ -46,6 +46,7 @@ from praxis.backend.models.enums import (
   MachineStatusEnum,
 )
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
+from praxis.backend.utils.uuid import uuid7
 
 from .asset import AssetOrm
 
@@ -199,6 +200,8 @@ class MachineOrm(AssetOrm):
     ForeignKey("assets.accession_id"),
     primary_key=True,
     comment="Unique identifier for the machine, derived from the Asset base class.",
+    init=False,
+    default_factory=uuid7,
   )
 
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(

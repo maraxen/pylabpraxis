@@ -12,18 +12,15 @@ async def test_protocol_source_repository_orm_creation_minimal(
     db_session: AsyncSession,
 ) -> None:
     """Test creating ProtocolSourceRepositoryOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
 
-    repo_id = uuid7()
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=repo_id,
         name="test_repo",
     )
     db_session.add(repo)
     await db_session.flush()
 
     # Verify creation
-    assert repo.accession_id == repo_id
+    assert repo.accession_id is not None
     assert repo.name == "test_repo"
     assert repo.git_url == ""  # Default
     assert repo.default_ref == "main"  # Default
@@ -38,11 +35,8 @@ async def test_protocol_source_repository_orm_creation_with_all_fields(
     db_session: AsyncSession,
 ) -> None:
     """Test creating ProtocolSourceRepositoryOrm with all fields populated."""
-    from praxis.backend.utils.uuid import uuid7
 
-    repo_id = uuid7()
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=repo_id,
         name="full_repo",
         git_url="https://github.com/example/protocols.git",
         default_ref="develop",
@@ -55,7 +49,7 @@ async def test_protocol_source_repository_orm_creation_with_all_fields(
     await db_session.flush()
 
     # Verify all fields
-    assert repo.accession_id == repo_id
+    assert repo.accession_id is not None
     assert repo.name == "full_repo"
     assert repo.git_url == "https://github.com/example/protocols.git"
     assert repo.default_ref == "develop"
@@ -70,11 +64,8 @@ async def test_protocol_source_repository_orm_persist_to_database(
     db_session: AsyncSession,
 ) -> None:
     """Test full persistence cycle for ProtocolSourceRepositoryOrm."""
-    from praxis.backend.utils.uuid import uuid7
 
-    repo_id = uuid7()
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=repo_id,
         name="persistence_test_repo",
         git_url="https://github.com/test/persistence.git",
         default_ref="main",
@@ -86,14 +77,14 @@ async def test_protocol_source_repository_orm_persist_to_database(
     # Query back
     result = await db_session.execute(
         select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo_id,
+            ProtocolSourceRepositoryOrm.accession_id == repo.accession_id,
         ),
     )
     retrieved = result.scalars().first()
 
     # Verify persistence
     assert retrieved is not None
-    assert retrieved.accession_id == repo_id
+    assert retrieved.accession_id == repo.accession_id
     assert retrieved.name == "persistence_test_repo"
     assert retrieved.git_url == "https://github.com/test/persistence.git"
     assert retrieved.default_ref == "main"
@@ -107,11 +98,8 @@ async def test_protocol_source_repository_orm_unique_name_constraint(
     """Test that name must be unique."""
     from sqlalchemy.exc import IntegrityError
 
-    from praxis.backend.utils.uuid import uuid7
-
     # Create first repository
     repo1 = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="unique_repo_name",
         git_url="https://github.com/example/repo1.git",
     )
@@ -120,7 +108,6 @@ async def test_protocol_source_repository_orm_unique_name_constraint(
 
     # Try to create another with same name
     repo2 = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="unique_repo_name",  # Duplicate name
         git_url="https://github.com/example/repo2.git",
     )
@@ -136,18 +123,16 @@ async def test_protocol_source_repository_orm_status_transitions(
     db_session: AsyncSession,
 ) -> None:
     """Test different status values for protocol source repository."""
-    from praxis.backend.utils.uuid import uuid7
 
     statuses = [
         (ProtocolSourceStatusEnum.ACTIVE, "active_repo"),
         (ProtocolSourceStatusEnum.SYNCING, "syncing_repo"),
-        (ProtocolSourceStatusEnum.ERROR, "error_repo"),
+        (ProtocolSourceStatusEnum.SYNC_ERROR, "error_repo"),
         (ProtocolSourceStatusEnum.INACTIVE, "inactive_repo"),
     ]
 
     for status, name in statuses:
         repo = ProtocolSourceRepositoryOrm(
-            accession_id=uuid7(),
             name=name,
             git_url=f"https://github.com/example/{name}.git",
             status=status,
@@ -164,11 +149,9 @@ async def test_protocol_source_repository_orm_auto_sync_flag(
     db_session: AsyncSession,
 ) -> None:
     """Test auto_sync_enabled flag."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Repository with auto-sync enabled (default)
     repo_enabled = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="auto_sync_enabled_repo",
         git_url="https://github.com/example/enabled.git",
         auto_sync_enabled=True,
@@ -179,7 +162,6 @@ async def test_protocol_source_repository_orm_auto_sync_flag(
 
     # Repository with auto-sync disabled
     repo_disabled = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="auto_sync_disabled_repo",
         git_url="https://github.com/example/disabled.git",
         auto_sync_enabled=False,
@@ -194,10 +176,8 @@ async def test_protocol_source_repository_orm_query_by_name(
     db_session: AsyncSession,
 ) -> None:
     """Test querying repositories by name."""
-    from praxis.backend.utils.uuid import uuid7
 
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="queryable_repo",
         git_url="https://github.com/example/queryable.git",
     )
@@ -222,11 +202,8 @@ async def test_protocol_source_repository_orm_update_commit_hash(
     db_session: AsyncSession,
 ) -> None:
     """Test updating last_synced_commit field."""
-    from praxis.backend.utils.uuid import uuid7
 
-    repo_id = uuid7()
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=repo_id,
         name="sync_test_repo",
         git_url="https://github.com/example/sync.git",
         last_synced_commit=None,
@@ -244,7 +221,7 @@ async def test_protocol_source_repository_orm_update_commit_hash(
     # Query back and verify update
     result = await db_session.execute(
         select(ProtocolSourceRepositoryOrm).where(
-            ProtocolSourceRepositoryOrm.accession_id == repo_id,
+            ProtocolSourceRepositoryOrm.accession_id == repo.accession_id,
         ),
     )
     retrieved = result.scalars().first()
@@ -254,17 +231,14 @@ async def test_protocol_source_repository_orm_update_commit_hash(
 @pytest.mark.asyncio
 async def test_protocol_source_repository_orm_repr(db_session: AsyncSession) -> None:
     """Test string representation of ProtocolSourceRepositoryOrm."""
-    from praxis.backend.utils.uuid import uuid7
 
-    repo_id = uuid7()
     repo = ProtocolSourceRepositoryOrm(
-        accession_id=repo_id,
         name="repr_repo",
         git_url="https://github.com/example/repr.git",
     )
 
     repr_str = repr(repo)
     assert "ProtocolSourceRepositoryOrm" in repr_str
-    assert str(repo_id) in repr_str
+    assert str(repo.accession_id) in repr_str
     assert "repr_repo" in repr_str
     assert "https://github.com/example/repr.git" in repr_str

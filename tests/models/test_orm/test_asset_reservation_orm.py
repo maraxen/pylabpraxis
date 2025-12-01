@@ -113,7 +113,6 @@ def schedule_entry_factory(
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a MachineOrm asset for reservation testing."""
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_reservation",
         fqn="test.machines.TestMachine",
         asset_type=AssetType.MACHINE,
@@ -584,7 +583,6 @@ async def test_multiple_reservations_for_same_run(
 
     # Create another asset to reserve
     machine2 = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_reservation_2",
         fqn="test.machines.TestMachine2",
         asset_type=AssetType.MACHINE,
