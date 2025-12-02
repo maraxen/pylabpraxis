@@ -55,7 +55,6 @@ class WorkcellFactory(SQLAlchemyModelFactory):
 
         model = WorkcellOrm
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
 
 
@@ -69,7 +68,6 @@ class MachineFactory(SQLAlchemyModelFactory):
 
         model = MachineOrm
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
     fqn = factory.Faker("word")
     workcell_accession_id = factory.SelfAttribute("workcell.accession_id")
@@ -132,7 +130,6 @@ class DeckFactory(SQLAlchemyModelFactory):
         deck_type_def = factory.SubFactory(DeckDefinitionFactory)
         machine_def = factory.SubFactory(MachineFactory)
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
 
     # Use the transient parameters to correctly populate the model's foreign key fields.

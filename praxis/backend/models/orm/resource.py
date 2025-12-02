@@ -33,6 +33,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
+from praxis.backend.utils.uuid import uuid7
 
 if TYPE_CHECKING:
   from . import (
@@ -194,6 +195,8 @@ class ResourceOrm(AssetOrm):
     primary_key=True,
     index=True,
     comment="Unique identifier for the resource, derived from the Asset base class.",
+    init=False,
+    default_factory=uuid7,
   )
 
   # Definition

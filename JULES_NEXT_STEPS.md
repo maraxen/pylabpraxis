@@ -1,19 +1,12 @@
-# ORM Test Failures Analysis
+# Next Steps
 
-## Import/Circular Dependency Errors
-*   **Missing Enum Attributes**: `AttributeError: type object 'ProtocolSourceStatusEnum' has no attribute 'SYNCING'` and `INACTIVE`. This indicates that the `ProtocolSourceStatusEnum` definition in `praxis/backend/models/enums.py` (or where it is defined) is missing these members, which are expected by the tests or ORM models.
+## 1. Verify Broader Test Suite
+*   **Run Service Tests**: Execute `uv run pytest tests/services/` to identify any failures in the service layer. Now that ORM models are stable, service tests should be verifiable.
+*   **Run Core Tests**: Execute `uv run pytest tests/core/` to verify core logic.
 
-## Database Schema/Constraint Errors
-*   **None Observed (Masked)**: No explicit `IntegrityError`, `UniqueViolationError`, or `ForeignKeyViolationError` were found in the logs. However, this is likely because the tests fail at the object instantiation stage (before database persistence) due to the initialization errors below.
+## 2. Refactoring Tasks (High Priority)
+*   **Refactor `workcell_runtime.py`**: The module `praxis/backend/core/workcell_runtime/core.py` (or related files) is identified as a large module needing refactoring into submodules.
+*   **Refactor `asset_manager.py`**: The module `praxis/backend/core/asset_manager.py` (or package) is also identified for refactoring.
 
-## Pydantic/Validation Errors
-*   **ORM Initialization Mismatches (MappedAsDataclass Strictness)**: The majority of failures are `TypeError`s during ORM object instantiation. This is due to `MappedAsDataclass` enforcing strict `__init__` signatures that do not match the arguments provided in tests.
-    *   **Unexpected `accession_id`**: `TypeError: __init__() got an unexpected keyword argument 'accession_id'`. The `accession_id` field is likely marked as `init=False` in the model (or handled by a default factory), but tests are explicitly passing it.
-    *   **Missing Required Arguments**:
-        *   `TypeError: __init__() missing 1 required keyword-only argument: 'name'`. The `name` field (inherited from `AssetOrm` or similar) is required but not provided.
-        *   `TypeError: __init__() missing 2 required keyword-only arguments: 'source_repository' and 'file_system_source'`.
-    *   **Unexpected Relationship Arguments**:
-        *   `TypeError: __init__() got an unexpected keyword argument 'protocol_run'`.
-        *   `TypeError: __init__() got an unexpected keyword argument 'has_deck'`.
-        *   `TypeError: __init__() got an unexpected keyword argument 'created_by'`.
-    *   **Field Mismatches**: Tests are treating ORM models like Pydantic models or standard classes, but the `MappedAsDataclass` configuration requires specific argument patterns (e.g., `kw_only=True` for fields following defaults, no `init=False` fields in constructor).
+## 3. API Testing
+*   **Run API Tests**: Execute `uv run pytest tests/api/` to ensure the REST API endpoints are functioning correctly with the fixed ORM layer.
