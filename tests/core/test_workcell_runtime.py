@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pylabrobot.resources import Coordinate, Deck
+from pylabrobot.resources import Coordinate, Deck, Resource
 
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
 from praxis.backend.core.workcell_runtime.utils import get_class_from_fqn
@@ -458,3 +458,62 @@ class TestModuleStructure:
         from praxis.backend.core import workcell_runtime
 
         assert hasattr(workcell_runtime, "WorkcellRuntime")
+
+
+class TestAssignResourceToDeck:
+
+    """Tests for assign_resource_to_deck method."""
+
+    @pytest.mark.asyncio
+    async def test_assign_resource_to_occupied_position_raises_error(self) -> None:
+        """Test that assigning a resource to an occupied position raises an error."""
+        mock_workcell = Mock()
+        mock_workcell.name = "test_workcell"
+
+        mock_db_session = AsyncMock()
+        mock_session_ctx = AsyncMock()
+        mock_session_ctx.__aenter__.return_value = mock_db_session
+        mock_session_ctx.__aexit__.return_value = None
+        mock_db_session_factory = Mock(return_value=mock_session_ctx)
+
+        runtime = WorkcellRuntime(
+            db_session_factory=mock_db_session_factory,
+            workcell=mock_workcell,
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            deck_type_definition_service=Mock(),
+            workcell_service=Mock(),
+        )
+
+        deck_id = uuid7()
+        mock_deck = Mock(spec=Deck)
+        runtime._active_decks[deck_id] = mock_deck
+
+        resource_id = uuid7()
+        mock_resource = Mock(spec=Resource)
+        mock_resource.name = "new_resource"
+        runtime._active_resources[resource_id] = mock_resource
+
+        # Simulate existing resource in DB at the position
+        mock_existing_resource = Mock()
+        mock_existing_resource.name = "existing_resource"
+        runtime.resource_svc.get_multi = AsyncMock(return_value=[mock_existing_resource])
+
+        mock_deck_orm = Mock()
+        mock_deck_orm.accession_id = deck_id
+        mock_deck_orm.deck_type_id = uuid7()
+        runtime.deck_svc.get = AsyncMock(return_value=mock_deck_orm)
+
+        mock_deck_def = Mock()
+        mock_deck_def.positioning_config_json = {}
+        runtime.deck_type_definition_svc.get = AsyncMock(return_value=mock_deck_def)
+
+        runtime._get_calculated_location = AsyncMock(return_value=Coordinate(0, 0, 0))
+
+        with pytest.raises(WorkcellRuntimeError, match="occupied"):
+            await runtime.assign_resource_to_deck(
+                resource_orm_accession_id=resource_id,
+                target=deck_id,
+                position_accession_id="A1",
+            )
