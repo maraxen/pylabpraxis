@@ -1,5 +1,6 @@
 """Unit tests for ParameterDefinitionOrm model."""
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,14 +11,15 @@ from praxis.backend.models.orm.protocol import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
+        source_repository=None,
+        file_system_source=None,
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         source_file_path="protocols/test_protocol.py",
@@ -37,17 +39,15 @@ async def test_parameter_definition_orm_creation_minimal(
     """Test creating ParameterDefinitionOrm with minimal required fields."""
     from praxis.backend.utils.uuid import uuid7
 
-    param_id = uuid7()
     param = ParameterDefinitionOrm(
-        accession_id=param_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
     )
-    param.protocol_definition = protocol_definition
     db_session.add(param)
     await db_session.flush()
 
     # Verify creation with defaults
-    assert param.accession_id == param_id
+    assert param.accession_id is not None
     assert param.protocol_definition_accession_id == protocol_definition.accession_id
     assert param.name == ""  # Default
     assert param.type_hint == ""  # Default
@@ -68,13 +68,12 @@ async def test_parameter_definition_orm_creation_with_all_fields(
     """Test creating ParameterDefinitionOrm with all fields populated."""
     from praxis.backend.utils.uuid import uuid7
 
-    param_id = uuid7()
     constraints = {"min_value": 0, "max_value": 100}
     ui_hint = {"widget_type": "slider"}
 
     param = ParameterDefinitionOrm(
-        accession_id=param_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="volume",
         type_hint="int",
         fqn="test.protocols.test_protocol.volume",
@@ -85,12 +84,11 @@ async def test_parameter_definition_orm_creation_with_all_fields(
         constraints_json=constraints,
         ui_hint_json=ui_hint,
     )
-    param.protocol_definition = protocol_definition
     db_session.add(param)
     await db_session.flush()
 
     # Verify all fields
-    assert param.accession_id == param_id
+    assert param.accession_id is not None
     assert param.protocol_definition_accession_id == protocol_definition.accession_id
     assert param.name == "volume"
     assert param.type_hint == "int"
@@ -111,31 +109,29 @@ async def test_parameter_definition_orm_persist_to_database(
     """Test full persistence cycle for ParameterDefinitionOrm."""
     from praxis.backend.utils.uuid import uuid7
 
-    param_id = uuid7()
     param = ParameterDefinitionOrm(
-        accession_id=param_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="temperature",
         type_hint="float",
         fqn="test.protocols.test_protocol.temperature",
         optional=False,
         description="Temperature in Celsius",
     )
-    param.protocol_definition = protocol_definition
     db_session.add(param)
     await db_session.flush()
 
     # Query back
     result = await db_session.execute(
         select(ParameterDefinitionOrm).where(
-            ParameterDefinitionOrm.accession_id == param_id,
+            ParameterDefinitionOrm.accession_id == param.accession_id,
         ),
     )
     retrieved = result.scalars().first()
 
     # Verify persistence
     assert retrieved is not None
-    assert retrieved.accession_id == param_id
+    assert retrieved.accession_id == param.accession_id
     assert retrieved.name == "temperature"
     assert retrieved.type_hint == "float"
     assert retrieved.fqn == "test.protocols.test_protocol.temperature"
@@ -153,25 +149,23 @@ async def test_parameter_definition_orm_unique_constraint(
 
     # Create first parameter
     param1 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="unique_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.unique_param",
     )
-    param1.protocol_definition = protocol_definition
     db_session.add(param1)
     await db_session.flush()
 
     # Try to create another with same protocol and name
     param2 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="unique_param",  # Duplicate name for same protocol
         type_hint="int",
         fqn="test.protocols.test_protocol.unique_param_2",
     )
-    param2.protocol_definition = protocol_definition
     db_session.add(param2)
 
     # Should raise IntegrityError
@@ -189,28 +183,26 @@ async def test_parameter_definition_orm_deck_param_flag(
 
     # Regular parameter (not deck)
     regular_param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="regular_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.regular_param",
         is_deck_param=False,
     )
-    regular_param.protocol_definition = protocol_definition
     db_session.add(regular_param)
     await db_session.flush()
     assert regular_param.is_deck_param is False
 
     # Deck parameter
     deck_param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="deck",
         type_hint="Deck",
         fqn="test.protocols.test_protocol.deck",
         is_deck_param=True,
     )
-    deck_param.protocol_definition = protocol_definition
     db_session.add(deck_param)
     await db_session.flush()
     assert deck_param.is_deck_param is True
@@ -226,29 +218,27 @@ async def test_parameter_definition_orm_optional_flag(
 
     # Required parameter
     required_param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="required_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.required_param",
         optional=False,
     )
-    required_param.protocol_definition = protocol_definition
     db_session.add(required_param)
     await db_session.flush()
     assert required_param.optional is False
 
     # Optional parameter with default
     optional_param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="optional_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.optional_param",
         optional=True,
         default_value_repr="'default_value'",
     )
-    optional_param.protocol_definition = protocol_definition
     db_session.add(optional_param)
     await db_session.flush()
     assert optional_param.optional is True
@@ -271,14 +261,13 @@ async def test_parameter_definition_orm_jsonb_constraints(
     }
 
     param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="constrained_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.constrained_param",
         constraints_json=constraints,
     )
-    param.protocol_definition = protocol_definition
     db_session.add(param)
     await db_session.flush()
 
@@ -303,14 +292,13 @@ async def test_parameter_definition_orm_jsonb_ui_hint(
     }
 
     param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="ui_param",
         type_hint="int",
         fqn="test.protocols.test_protocol.ui_param",
         ui_hint_json=ui_hint,
     )
-    param.protocol_definition = protocol_definition
     db_session.add(param)
     await db_session.flush()
 
@@ -330,22 +318,20 @@ async def test_parameter_definition_orm_relationship_to_protocol(
 
     # Create multiple parameters for the same protocol
     param1 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="param1",
         type_hint="str",
         fqn="test.protocols.test_protocol.param1",
     )
-    param1.protocol_definition = protocol_definition
 
     param2 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="param2",
         type_hint="int",
         fqn="test.protocols.test_protocol.param2",
     )
-    param2.protocol_definition = protocol_definition
 
     db_session.add(param1)
     db_session.add(param2)
@@ -376,22 +362,20 @@ async def test_parameter_definition_orm_query_by_protocol(
 
     # Create parameters for this protocol
     param1 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="query_param1",
         type_hint="str",
         fqn="test.protocols.test_protocol.query_param1",
     )
-    param1.protocol_definition = protocol_definition
 
     param2 = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="query_param2",
         type_hint="int",
         fqn="test.protocols.test_protocol.query_param2",
     )
-    param2.protocol_definition = protocol_definition
 
     db_session.add(param1)
     db_session.add(param2)
@@ -422,8 +406,8 @@ async def test_parameter_definition_orm_repr(
     from praxis.backend.utils.uuid import uuid7
 
     param = ParameterDefinitionOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="repr_param",
         type_hint="str",
         fqn="test.protocols.test_protocol.repr_param",
