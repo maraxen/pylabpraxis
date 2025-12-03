@@ -152,7 +152,6 @@ async def _create_or_link_resource_counterpart_for_machine(
   definition = await _read_resource_definition_for_linking(db, resource_definition_name)
 
   new_resource = ResourceOrm(
-    accession_id=uuid7(),
     fqn=machine_orm.fqn,
     name=f"{machine_orm.name}_resource",
     asset_type=AssetType.RESOURCE,
@@ -278,7 +277,6 @@ async def _create_or_link_machine_counterpart_for_resource(
 
   logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
   new_machine_counterpart = MachineOrm(
-    accession_id=uuid7(),
     name=f"{resource_orm.name}_machine",
     fqn=machine_fqn,
     asset_type=AssetType.MACHINE_RESOURCE,

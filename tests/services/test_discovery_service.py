@@ -1,4 +1,9 @@
-from unittest.mock import AsyncMock, MagicMock
+"""Tests for the DiscoveryService."""
+
+import uuid
+from pathlib import Path
+from textwrap import dedent
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,25 +16,34 @@ from praxis.backend.services.resource_type_definition import ResourceTypeDefinit
 
 @pytest.fixture
 def mock_db_session_factory():
+    """Mock database session factory."""
     session = AsyncMock(spec=AsyncSession)
+    # The factory returns an async context manager that yields the session
     factory = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock()))
     return factory
 
 
 @pytest.fixture
 def mock_protocol_service():
+    """Mock protocol definition service."""
     service = AsyncMock(spec=ProtocolDefinitionCRUDService)
+    # Explicitly set return values for common methods to avoid await issues if auto-mocking fails
+    service.get_by_fqn.return_value = None
+    service.create.return_value = MagicMock(accession_id=uuid.uuid4(), id=1)
+    service.update.return_value = MagicMock(accession_id=uuid.uuid4(), id=1)
     return service
 
 
 @pytest.fixture
 def mock_resource_service():
+    """Mock resource type definition service."""
     service = AsyncMock(spec=ResourceTypeDefinitionService)
     return service
 
 
 @pytest.fixture
 def mock_machine_service():
+    """Mock machine type definition service."""
     service = AsyncMock(spec=MachineTypeDefinitionService)
     return service
 
@@ -41,6 +55,7 @@ def discovery_service(
     mock_resource_service,
     mock_machine_service,
 ):
+    """Return a DiscoveryService instance with mocked dependencies."""
     return DiscoveryService(
         db_session_factory=mock_db_session_factory,
         protocol_definition_service=mock_protocol_service,
@@ -56,11 +71,11 @@ def test_extract_protocol_definitions_from_paths(discovery_service, tmp_path):
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
-    protocol_content = """
-def my_protocol(volume: float):
-    '''A test protocol.'''
-    pass
-"""
+    protocol_content = dedent("""
+        def my_protocol(volume: float):
+            '''A test protocol.'''
+            pass
+    """)
     protocol_file.write_text(protocol_content)
 
     definitions = discovery_service._extract_protocol_definitions_from_paths([protocol_dir])
@@ -79,15 +94,15 @@ def test_extract_protocol_definitions_with_complex_signature(discovery_service, 
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
-    protocol_content = """
-from typing import Optional
-def my_protocol(
-    a: int,
-    b: str = "hello",
-    c: Optional[float] = None,
-):
-    pass
-"""
+    protocol_content = dedent("""
+        from typing import Optional
+        def my_protocol(
+            a: int,
+            b: str = "hello",
+            c: Optional[float] = None,
+        ):
+            pass
+    """)
     protocol_file.write_text(protocol_content)
 
     definitions = discovery_service._extract_protocol_definitions_from_paths([protocol_dir])
@@ -115,11 +130,11 @@ def test_extract_protocol_definitions_with_pylabrobot_resource(discovery_service
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
-    protocol_content = """
-from pylabrobot.resources import Plate
-def my_protocol(plate: Plate):
-    pass
-"""
+    protocol_content = dedent("""
+        from pylabrobot.resources import Plate
+        def my_protocol(plate: Plate):
+            pass
+    """)
     protocol_file.write_text(protocol_content)
 
     definitions = discovery_service._extract_protocol_definitions_from_paths([protocol_dir])
@@ -138,11 +153,122 @@ def test_extract_protocol_definitions_with_invalid_syntax(discovery_service, tmp
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
-    protocol_content = """
-def my_protocol()
-    pass
-"""
+    protocol_content = dedent("""
+        def my_protocol()
+            pass
+    """)
     protocol_file.write_text(protocol_content)
 
     definitions = discovery_service._extract_protocol_definitions_from_paths([protocol_dir])
     assert len(definitions) == 0
+
+
+@pytest.mark.asyncio
+@patch("praxis.backend.utils.uuid.uuid7")
+async def test_discover_and_upsert_protocols_successfully(
+  mock_uuid7: MagicMock,
+  discovery_service: DiscoveryService,
+  tmp_path: Path,
+  mock_protocol_service: MagicMock,
+):
+  """Test that protocols are discovered and upserted successfully."""
+  mock_uuid7.return_value = uuid.UUID("00000000-0000-0000-0000-000000000001")
+  protocol_dir = tmp_path / "protocols"
+  protocol_dir.mkdir()
+  protocol_file = protocol_dir / "protocol.py"
+  protocol_file.write_text(dedent("""
+        from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+
+        def mock_protocol_func():
+            pass
+
+        protocol_def = FunctionProtocolDefinitionCreate(
+            name="mock_protocol_func",
+            version="1.0",
+            description="A mock protocol function.",
+            source_file_path=__file__,
+            module_name="protocol",
+            function_name="mock_protocol_func",
+            parameters=[],
+            assets=[],
+            is_top_level=True,
+        )
+        setattr(mock_protocol_func, "_protocol_definition", protocol_def)
+    """).strip())
+
+  result = await discovery_service.discover_and_upsert_protocols([str(protocol_dir)])
+
+  assert len(result) == 1
+  mock_protocol_service.create.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("praxis.backend.utils.uuid.uuid7")
+async def test_discover_and_upsert_protocols_inferred(
+  mock_uuid7: MagicMock,
+  discovery_service: DiscoveryService,
+  tmp_path: Path,
+  mock_protocol_service: MagicMock,
+):
+  """Test that a protocol definition is inferred and upserted."""
+  mock_uuid7.return_value = uuid.UUID("00000000-0000-0000-0000-000000000002")
+  protocol_dir = tmp_path / "protocols"
+  protocol_dir.mkdir()
+  protocol_file = protocol_dir / "inferred_protocol.py"
+  protocol_file.write_text(dedent("""
+        def another_mock_func(param1: int, param2: str = "default"):
+            \"\"\"A docstring for description.\"\"\"
+            pass
+    """).strip())
+
+  # Mock return for create
+  mock_protocol_service.create.return_value = MagicMock(accession_id=uuid.uuid4(), id=2)
+
+  result = await discovery_service.discover_and_upsert_protocols([str(protocol_dir)])
+
+  assert len(result) == 1
+  mock_protocol_service.create.assert_called_once()
+  created_def = mock_protocol_service.create.call_args[1]["obj_in"]
+  assert created_def.name == "another_mock_func"
+
+
+@pytest.mark.asyncio
+async def test_discover_and_upsert_protocols_no_protocols_found(
+  discovery_service: DiscoveryService, tmp_path: Path,
+):
+  """Test that nothing is upserted when no protocols are found."""
+  protocol_dir = tmp_path / "protocols"
+  protocol_dir.mkdir()
+  (protocol_dir / "empty.txt").touch()
+
+  result = await discovery_service.discover_and_upsert_protocols([str(protocol_dir)])
+  assert len(result) == 0
+
+
+@pytest.mark.asyncio
+async def test_discover_and_upsert_protocols_directory_not_exist(
+  discovery_service: DiscoveryService,
+):
+  """Test that nothing is upserted for a non-existent directory."""
+  result = await discovery_service.discover_and_upsert_protocols(["/non_existent_dir"])
+  assert len(result) == 0
+
+
+@pytest.mark.asyncio
+@patch("praxis.backend.utils.uuid.uuid7")
+async def test_discover_and_upsert_protocols_import_error(
+  mock_uuid7: MagicMock,
+  discovery_service: DiscoveryService,
+  tmp_path: Path,
+  mock_protocol_service: MagicMock,
+):
+  """Test that an import error is handled gracefully."""
+  mock_uuid7.return_value = uuid.UUID("00000000-0000-0000-0000-000000000003")
+  protocol_dir = tmp_path / "protocols"
+  protocol_dir.mkdir()
+  protocol_file = protocol_dir / "importerror_protocol.py"
+  protocol_file.write_text("import non_existent_module")
+
+  result = await discovery_service.discover_and_upsert_protocols([str(protocol_dir)])
+  assert len(result) == 0
+  mock_protocol_service.create.assert_not_called()
