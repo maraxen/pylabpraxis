@@ -113,6 +113,26 @@ class DeckManagerMixin:
       if deck_orm is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
+
+      # Check for occupancy if assigning to a named position
+      if position_accession_id is not None:
+        existing_resources = await self.resource_svc.get_multi(
+          db=db_session,
+          filters=SearchFilters(
+            search_filters={
+              "location_machine_accession_id": deck_orm.accession_id,
+              "current_deck_position_name": str(position_accession_id),
+            },
+          ),
+        )
+        for res in existing_resources:
+          if res.accession_id != resource_orm_accession_id:
+            msg = (
+              f"Position '{position_accession_id}' on deck ID {deck_orm.accession_id} "
+              f"is already occupied by resource '{res.name}' (ID: {res.accession_id})."
+            )
+            raise WorkcellRuntimeError(msg)
+
       deck_orm_type_definition_accession_id = deck_orm.deck_type_id
 
       if deck_orm_type_definition_accession_id is None:
