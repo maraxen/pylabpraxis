@@ -1,6 +1,13 @@
 """Tests for core/celery.py."""
 
+import json
+import uuid
+from typing import Any
+
+import pytest
 from celery import Celery
+from kombu.serialization import registry
+from pydantic import BaseModel
 
 from praxis.backend.core.celery import celery_app, configure_celery_app
 
@@ -223,3 +230,52 @@ class TestConfigureCeleryAppIntegration:
 
         for key, value in expected_settings.items():
             assert getattr(app.conf, key) == value, f"Setting {key} not configured correctly"
+
+
+class TestCelerySerialization:
+
+    """Tests for Celery task serialization."""
+
+    def test_verify_kombu_json_serialization_handles_uuid(self) -> None:
+        """Test that Kombu JSON serializer handles UUIDs correctly."""
+        data = {"id": uuid.uuid4()}
+
+        # Serialize
+        content_type, content_encoding, dumps = registry.dumps(data, serializer="json")
+        assert isinstance(dumps, str)
+
+        # Deserialize
+        loads = registry.loads(dumps, content_type, content_encoding)
+        assert isinstance(loads["id"], uuid.UUID)
+        assert loads["id"] == data["id"]
+
+    def test_verify_kombu_serialization_fails_for_pydantic(self) -> None:
+        """Test that Kombu JSON serializer fails for Pydantic models (without to_dict).
+
+        This confirms we must convert Pydantic models to dicts before passing them to tasks.
+        """
+        class TestModel(BaseModel):
+            foo: str
+
+        data = TestModel(foo="bar")
+
+        # Should raise TypeError or similar because TestModel is not JSON serializable
+        with pytest.raises(Exception):
+             registry.dumps(data, serializer="json")
+
+    def test_verify_task_args_serialization(self) -> None:
+        """Simulate passing args to a task to verify compatibility."""
+        # Mimic execute_protocol_run_task args
+        protocol_run_id = uuid.uuid4()
+        input_parameters = {"param1": "value1", "param2": 100}
+        initial_state = {"state1": "foo"}
+
+        args = (protocol_run_id, input_parameters, initial_state)
+
+        content_type, content_encoding, dumps = registry.dumps(args, serializer="json")
+
+        loads = registry.loads(dumps, content_type, content_encoding)
+
+        assert loads[0] == protocol_run_id
+        assert loads[1] == input_parameters
+        assert loads[2] == initial_state

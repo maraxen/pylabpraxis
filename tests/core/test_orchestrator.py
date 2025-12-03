@@ -8,6 +8,7 @@ from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.services.state import PraxisState
 from praxis.backend.utils.errors import AssetAcquisitionError, ProtocolCancelledError
 from praxis.backend.utils.uuid import uuid7
+from praxis.backend.models import ProtocolRunStatusEnum
 
 
 class TestOrchestratorInit:
@@ -436,6 +437,8 @@ class TestInitializeRunContext:
 
         run_id = uuid7()
         mock_protocol_run = Mock()
+        # FIX: Ensure accession_id is set correctly for both old and new code paths usage
+        mock_protocol_run.accession_id = run_id
         mock_protocol_run.run_accession_id = run_id
 
         mock_db_session = AsyncMock()
@@ -448,6 +451,7 @@ class TestInitializeRunContext:
         with patch("praxis.backend.core.orchestrator.protocol_preparation.PraxisState") as mock_state_class:
             mock_state = Mock()
             mock_state.update = Mock()
+            # FIX: set must be async
             mock_state.set = AsyncMock()
             mock_state_class.return_value = mock_state
 
@@ -575,3 +579,125 @@ class TestModuleStructure:
         from praxis.backend.core import orchestrator
 
         assert hasattr(orchestrator, "logger")
+
+
+class TestOrchestratorExecutionFlow:
+    """Integration-like tests for Orchestrator execution flow."""
+
+    @pytest.mark.asyncio
+    async def test_full_protocol_lifecycle(self) -> None:
+        """Test a full protocol lifecycle: Initialize -> Prepare -> Run -> Complete."""
+
+        # 1. Setup Mocks
+        mock_db_session = AsyncMock()
+        mock_db_session.commit = AsyncMock()
+        mock_db_session.rollback = AsyncMock()
+
+        mock_db_session_factory = Mock()
+        # Configure return value to be an async context manager yielding the session
+        mock_db_session_factory.return_value.__aenter__ = AsyncMock(return_value=mock_db_session)
+        mock_db_session_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        mock_asset_manager = Mock()
+        mock_workcell_runtime = Mock()
+        mock_workcell_runtime.get_main_workcell.return_value = Mock()
+        mock_protocol_code_manager = Mock()
+
+        orchestrator = Orchestrator(
+            db_session_factory=mock_db_session_factory,
+            asset_manager=mock_asset_manager,
+            workcell_runtime=mock_workcell_runtime,
+            protocol_code_manager=mock_protocol_code_manager,
+        )
+
+        # 2. Mock Protocol Definition
+        mock_lh = AsyncMock()
+        mock_lh.aspirate = AsyncMock(return_value="aspirated")
+
+        async def dummy_protocol(liquid_handler, **kwargs):
+            await liquid_handler.aspirate()
+            return {"result": "success"}
+
+        # Protocol Def ORM
+        mock_protocol_def_orm = Mock()
+        mock_protocol_def_orm.name = "test_protocol"
+        mock_protocol_def_orm.accession_id = uuid7()
+        mock_protocol_def_orm.version = "1.0.0"
+
+        # Protocol Pydantic Def
+        mock_pydantic_def = Mock()
+        mock_pydantic_def.name = "test_protocol"
+        mock_pydantic_def.parameters = []
+        mock_pydantic_def.assets = []
+        mock_pydantic_def.state_param_name = None
+        mock_pydantic_def.preconfigure_deck = False
+        mock_pydantic_def.deck_construction_function_fqn = None
+        mock_pydantic_def.deck_param_name = None
+
+        # Add an asset requirement for liquid_handler
+        mock_asset_req = Mock()
+        mock_asset_req.name = "liquid_handler"
+        mock_asset_req.optional = False
+        mock_pydantic_def.assets = [mock_asset_req]
+
+        # Mock Protocol Code Manager
+        # Important: must be AsyncMock as it is awaited
+        mock_protocol_code_manager.prepare_protocol_code = AsyncMock(
+            return_value=(dummy_protocol, mock_pydantic_def)
+        )
+
+        # Mock Asset Acquisition
+        mock_asset_manager.acquire_asset = AsyncMock(return_value=(mock_lh, uuid7(), "liquid_handler"))
+
+        # Mock Service calls
+        mock_run_orm = Mock()
+        mock_run_orm.accession_id = uuid7()
+        mock_run_orm.status = ProtocolRunStatusEnum.PREPARING
+
+        # We need to simulate the state updates for status assertions
+        run_status = ProtocolRunStatusEnum.PREPARING
+
+        with patch("praxis.backend.core.orchestrator.execution.svc") as mock_svc_exec:
+             with patch("praxis.backend.core.orchestrator.protocol_preparation.svc") as mock_svc_prep:
+                 with patch("praxis.backend.core.orchestrator.execution.get_control_command", AsyncMock(return_value=None)):
+                    with patch("praxis.backend.core.orchestrator.protocol_preparation.PraxisState") as mock_praxis_state_cls:
+                        # Setup PraxisState mock instance
+                        mock_state_instance = mock_praxis_state_cls.return_value
+                        mock_state_instance.set = AsyncMock()
+                        mock_state_instance.update = Mock()
+
+                        # Setup returns
+                        mock_svc_prep.read_protocol_definition_by_name = AsyncMock(return_value=mock_protocol_def_orm)
+                        mock_svc_exec.create_protocol_run = AsyncMock(return_value=mock_run_orm)
+
+                        # Mock run status updates
+                        async def side_effect_update(db, protocol_run_accession_id, new_status, **kwargs):
+                            nonlocal run_status
+                            run_status = new_status
+                            mock_run_orm.status = new_status
+                            return mock_run_orm
+
+                        mock_svc_exec.update_run_status.side_effect = side_effect_update
+
+                        # 3. Execute Protocol
+                        await orchestrator.execute_protocol(
+                            protocol_name="test_protocol",
+                            input_parameters={},
+                        )
+
+                        # 4. Verification
+
+                        # Verify Protocol Code Preparation
+                        mock_protocol_code_manager.prepare_protocol_code.assert_called_once()
+
+                        # Verify Asset Acquisition
+                        mock_asset_manager.acquire_asset.assert_called()
+
+                        # Verify "Hardware" Execution
+                        mock_lh.aspirate.assert_awaited_once()
+
+                        # Verify Status Transitions
+                        assert run_status == ProtocolRunStatusEnum.COMPLETED
+
+                        # Verify DB commit was called
+                        assert mock_db_session.commit.called
