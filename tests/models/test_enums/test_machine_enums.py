@@ -15,27 +15,27 @@ class TestMachineStatusEnum:
 
     def test_has_available_status(self) -> None:
         """Test that enum has AVAILABLE status."""
-        assert MachineStatusEnum.AVAILABLE.value == "available"
+        assert MachineStatusEnum.AVAILABLE.value == "AVAILABLE"
 
     def test_has_in_use_status(self) -> None:
         """Test that enum has IN_USE status."""
-        assert MachineStatusEnum.IN_USE.value == "in_use"
+        assert MachineStatusEnum.IN_USE.value == "IN_USE"
 
     def test_has_error_status(self) -> None:
         """Test that enum has ERROR status."""
-        assert MachineStatusEnum.ERROR.value == "error"
+        assert MachineStatusEnum.ERROR.value == "ERROR"
 
     def test_has_offline_status(self) -> None:
         """Test that enum has OFFLINE status."""
-        assert MachineStatusEnum.OFFLINE.value == "offline"
+        assert MachineStatusEnum.OFFLINE.value == "OFFLINE"
 
     def test_has_initializing_status(self) -> None:
         """Test that enum has INITIALIZING status."""
-        assert MachineStatusEnum.INITIALIZING.value == "initializing"
+        assert MachineStatusEnum.INITIALIZING.value == "INITIALIZING"
 
     def test_has_maintenance_status(self) -> None:
         """Test that enum has MAINTENANCE status."""
-        assert MachineStatusEnum.MAINTENANCE.value == "maintenance"
+        assert MachineStatusEnum.MAINTENANCE.value == "MAINTENANCE"
 
     def test_all_members_count(self) -> None:
         """Test that enum has exactly 6 members."""
