@@ -35,10 +35,10 @@ async def create_workcell(
         WorkcellOrm instance with generated accession_id
 
     """
-    if "accession_id" not in kwargs:
-        kwargs["accession_id"] = uuid7()
-
+    accession_id = kwargs.pop("accession_id", None)
     workcell = WorkcellOrm(name=name, **kwargs)
+    if accession_id:
+        workcell.accession_id = accession_id
     db_session.add(workcell)
     await db_session.flush()
     return workcell
@@ -69,8 +69,7 @@ async def create_machine(
         unique_suffix = str(uuid7())
         workcell = await create_workcell(db_session, name=f"test_workcell_{unique_suffix}")
 
-    if "accession_id" not in kwargs:
-        kwargs["accession_id"] = uuid7()
+    accession_id = kwargs.pop("accession_id", None)
 
     # Generate unique machine name if not provided
     if name is None:
@@ -86,6 +85,8 @@ async def create_machine(
         workcell_accession_id=workcell.accession_id,
         **kwargs,
     )
+    if accession_id:
+        machine.accession_id = accession_id
     db_session.add(machine)
     await db_session.flush()
     return machine
@@ -151,7 +152,6 @@ async def create_resource(
 
     # Set defaults
     defaults = {
-        "accession_id": uuid7(),
         "name": name,
         "fqn": f"test.resource.{uuid7()!s}",
         "asset_type": AssetType.RESOURCE,
@@ -160,7 +160,10 @@ async def create_resource(
     }
     defaults.update(kwargs)
 
+    accession_id = defaults.pop("accession_id", None)
     resource = ResourceOrm(**defaults)
+    if accession_id:
+        resource.accession_id = accession_id
     db_session.add(resource)
     await db_session.flush()
     return resource
@@ -228,24 +231,24 @@ async def create_deck(
     if deck_definition is None:
         deck_definition = await create_deck_definition(db_session)
 
-    deck_id = uuid7()
-
     # Set asset_type if not provided
     if "asset_type" not in kwargs:
         kwargs["asset_type"] = AssetType.DECK
 
+    accession_id = kwargs.pop("accession_id", None)
     deck = DeckOrm(
-        accession_id=deck_id,
         name=name,
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
         resource_definition_accession_id=deck_definition.resource_definition.accession_id,
         **kwargs,
     )
+    if accession_id:
+        deck.accession_id = accession_id
+
     db_session.add(deck)
     await db_session.flush()
     await db_session.refresh(deck)  # Ensure the deck is fully loaded
-    print(f"DEBUG helper created deck ID: {deck.accession_id}, name: {deck.name}")
     return deck
 
 

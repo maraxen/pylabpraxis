@@ -55,6 +55,7 @@ class ProtocolVisitor(ast.NodeVisitor):
 
             common_args = {
                 "name": arg.arg,
+                "fqn": f"{self.module_name}.{node.name}.{arg.arg}",
                 "type_hint": annotation,
                 "optional": default is not None,
                 "default_value_repr": default,
