@@ -156,7 +156,6 @@ async def create_machine(
 ) -> MachineOrm:
     """Factory for creating MachineOrm."""
     defaults = {
-        "accession_id": uuid7(),
         "name": f"test_machine_{uuid7()}",
         "fqn": f"test.machines.TestMachine_{uuid7()}",
         "asset_type": AssetType.MACHINE,
@@ -177,7 +176,6 @@ async def create_resource(
 ) -> ResourceOrm:
     """Factory for creating ResourceOrm."""
     defaults = {
-        "accession_id": uuid7(),
         "name": f"test_resource_{uuid7()}",
         "fqn": f"test.resources.TestResource_{uuid7()}",
         "asset_type": AssetType.RESOURCE,

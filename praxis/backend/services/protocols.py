@@ -39,6 +39,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_pagination,
 )
 from praxis.backend.utils.db_decorator import handle_db_transaction
+from praxis.backend.utils.errors import AssetAcquisitionError, OrchestratorError
 from praxis.backend.utils.uuid import uuid7
 
 logger = logging.getLogger(__name__)
@@ -200,8 +201,12 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       protocol_run_accession_id,
       new_status.name,
     )
-    stmt = select(self.model).filter(
-      self.model.accession_id == protocol_run_accession_id,
+    stmt = (
+      select(self.model)
+      .options(joinedload(self.model.top_level_protocol_definition))
+      .filter(
+        self.model.accession_id == protocol_run_accession_id,
+      )
     )
     result = await db.execute(stmt)
     db_protocol_run = result.scalar_one_or_none()
@@ -211,6 +216,53 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
       utc_now = datetime.datetime.now(datetime.timezone.utc)
 
       if new_status == ProtocolRunStatusEnum.RUNNING and not db_protocol_run.start_time:
+        # Connect to Core: specific handling for starting a run
+        try:
+          # Import here to avoid circular dependency
+          from praxis.backend.api.global_dependencies import get_scheduler
+
+          scheduler = None
+          try:
+            scheduler = get_scheduler()
+          except (ImportError, RuntimeError) as e:
+            # Global dependencies not available or initialized (e.g. in tests)
+            logger.warning("Scheduler not initialized, skipping Core integration. Error: %s", e)
+
+          if scheduler:
+            # 1. Get Protocol Definition
+            protocol_def = db_protocol_run.top_level_protocol_definition
+
+            # 2. Analyze requirements
+            # Use input params from DB
+            input_params = (
+              db_protocol_run.input_parameters_json
+              if isinstance(db_protocol_run.input_parameters_json, dict)
+              else {}
+            )
+            requirements = await scheduler.analyze_protocol_requirements(
+              protocol_def,
+              input_params,
+            )
+
+            # 3. Reserve assets
+            # This will raise AssetAcquisitionError if failing
+            await scheduler.reserve_assets(requirements, db_protocol_run.accession_id)
+
+        except (AssetAcquisitionError, OrchestratorError) as e:
+          # Log error
+          logger.error("Core exception caught in service: %s", e)
+
+          # Update to FAILED
+          db_protocol_run.status = ProtocolRunStatusEnum.FAILED
+          db_protocol_run.end_time = utc_now
+          db_protocol_run.output_data_json = {
+            "error": "Protocol execution failed to start",
+            "details": str(e),
+          }
+          await db.flush()
+          await db.refresh(db_protocol_run)
+          return db_protocol_run
+
         db_protocol_run.start_time = utc_now
         logger.debug(
           "Protocol run ID %s started at %s.",
