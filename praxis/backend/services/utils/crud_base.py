@@ -124,6 +124,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
   ) -> ModelType:
     """Update an existing object."""
     update_data = obj_in.model_dump(exclude_unset=True)
+
+    # Convert enum string values back to enum members for SQLAlchemy
+    import enum
+
+    for attr_name, column in inspect(self.model).columns.items():
+      if attr_name in update_data and hasattr(column.type, "enum_class"):
+        enum_class = getattr(column.type, "enum_class", None)
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = update_data[attr_name]
+          if isinstance(value, str):
+            # Find the enum member with this value
+            for member in enum_class:
+              if member.value == value:
+                update_data[attr_name] = member
+                break
+
     for field, value in update_data.items():
       setattr(db_obj, field, value)
     db.add(db_obj)
