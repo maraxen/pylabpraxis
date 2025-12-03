@@ -4,7 +4,7 @@
 import inspect
 from typing import Any, Union, get_args, get_origin
 
-from praxis.common.type_inspection import is_pylabrobot_resource
+from praxis.common.type_inspection import is_pylabrobot_resource, serialize_type_hint
 
 
 def fqn_from_hint(type_hint: Any) -> str:
