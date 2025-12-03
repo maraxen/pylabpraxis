@@ -2,6 +2,7 @@
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,7 +13,9 @@ from praxis.backend.models.orm.deck import (
     DeckOrm,
     DeckPositionDefinitionOrm,
 )
+from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOrm
+from praxis.backend.utils.uuid import uuid7
 
 
 @pytest_asyncio.fixture
@@ -46,16 +49,15 @@ async def deck(
     resource_definition: ResourceDefinitionOrm,
 ) -> DeckOrm:
     """Create a complete DeckOrm instance for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
+    deck_id = uuid7()
     deck = DeckOrm(
-        accession_id=uuid7(),
         name="test_deck_fixture",
         fqn="test.deck.Fixture",
         asset_type=AssetType.DECK,
         deck_type_id=deck_definition.accession_id,
         resource_definition_accession_id=resource_definition.accession_id,
     )
+    deck.accession_id = deck_id
     deck.deck_type = deck_definition
     deck.resource_definition = resource_definition
     db_session.add(deck)
@@ -156,8 +158,6 @@ async def test_deck_position_definition_orm_creation(db_session: AsyncSession) -
 @pytest.mark.asyncio
 async def test_deck_position_definition_orm_unique_constraint(db_session: AsyncSession) -> None:
     """Test unique constraint on (deck_type_id, position_accession_id)."""
-    from sqlalchemy.exc import IntegrityError
-
     # Create deck definition
     deck_def = DeckDefinitionOrm(
         name="unique_constraint_deck",
@@ -199,8 +199,6 @@ async def test_deck_position_definition_orm_unique_constraint(db_session: AsyncS
 @pytest.mark.asyncio
 async def test_deck_orm_creation_with_defaults(db_session: AsyncSession) -> None:
     """Test creating a DeckOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create resource definition for deck
     resource_def = ResourceDefinitionOrm(
         name="deck_resource_def",
@@ -220,12 +218,12 @@ async def test_deck_orm_creation_with_defaults(db_session: AsyncSession) -> None
     # Create deck with required fields
     deck_id = uuid7()
     deck = DeckOrm(
-        accession_id=deck_id,
         name="test_deck",
         fqn="test.deck.Instance",
         asset_type=AssetType.DECK,
         deck_type_id=deck_def.accession_id,  # Required kw_only FK
     )
+    deck.accession_id = deck_id
     # Set FKs via relationships (workaround for MappedAsDataclass FK issue)
     deck.resource_definition = resource_def
     deck.deck_type = deck_def
@@ -247,8 +245,6 @@ async def test_deck_orm_creation_with_defaults(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_deck_orm_persist_to_database(db_session: AsyncSession) -> None:
     """Test full persistence cycle for DeckOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="persist_deck_resource_def",
@@ -270,13 +266,13 @@ async def test_deck_orm_persist_to_database(db_session: AsyncSession) -> None:
     # Create deck
     deck_id = uuid7()
     deck = DeckOrm(
-        accession_id=deck_id,
         name="test_persistence_deck",
         fqn="test.deck.Persistence",
         asset_type=AssetType.DECK,
         status=ResourceStatusEnum.AVAILABLE_ON_DECK,
         deck_type_id=deck_def.accession_id,
     )
+    deck.accession_id = deck_id
     deck.resource_definition = resource_def
     deck.deck_type = deck_def
 
@@ -301,10 +297,6 @@ async def test_deck_orm_persist_to_database(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_deck_orm_unique_name_constraint(db_session: AsyncSession) -> None:
     """Test that deck names must be unique (inherited from Asset)."""
-    from sqlalchemy.exc import IntegrityError
-
-    from praxis.backend.utils.uuid import uuid7
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="unique_deck_resource_def",
@@ -322,26 +314,28 @@ async def test_deck_orm_unique_name_constraint(db_session: AsyncSession) -> None
     await db_session.flush()
 
     # Create first deck
+    deck1_id = uuid7()
     deck1 = DeckOrm(
-        accession_id=uuid7(),
         name="unique_deck",
         fqn="test.deck.1",
         asset_type=AssetType.DECK,
         deck_type_id=deck_def.accession_id,
     )
+    deck1.accession_id = deck1_id
     deck1.resource_definition = resource_def
     deck1.deck_type = deck_def
     db_session.add(deck1)
     await db_session.flush()
 
     # Try to create another with same name
+    deck2_id = uuid7()
     deck2 = DeckOrm(
-        accession_id=uuid7(),
         name="unique_deck",  # Duplicate
         fqn="test.deck.2",
         asset_type=AssetType.DECK,
         deck_type_id=deck_def.accession_id,
     )
+    deck2.accession_id = deck2_id
     deck2.resource_definition = resource_def
     deck2.deck_type = deck_def
     db_session.add(deck2)
@@ -354,17 +348,14 @@ async def test_deck_orm_unique_name_constraint(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
     """Test DeckOrm with parent machine relationship."""
-    from praxis.backend.models.orm.machine import MachineOrm
-    from praxis.backend.utils.uuid import uuid7
-
     # Create machine
     machine_id = uuid7()
     machine = MachineOrm(
-        accession_id=machine_id,
         name="test_machine_for_deck",
         fqn="test.machine.ForDeck",
         asset_type=AssetType.MACHINE,
     )
+    machine.accession_id = machine_id
     db_session.add(machine)
     await db_session.flush()
 
@@ -387,12 +378,12 @@ async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
     # Create deck with parent machine
     deck_id = uuid7()
     deck = DeckOrm(
-        accession_id=deck_id,
         name="deck_on_machine",
         fqn="test.deck.OnMachine",
         asset_type=AssetType.DECK,
         deck_type_id=deck_def.accession_id,
     )
+    deck.accession_id = deck_id
     deck.resource_definition = resource_def
     deck.deck_type = deck_def
     deck.parent_machine = machine
@@ -413,9 +404,6 @@ async def test_deck_orm_with_parent_machine(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
     """Test DeckOrm with resources placed on it."""
-    from praxis.backend.models.orm.resource import ResourceOrm
-    from praxis.backend.utils.uuid import uuid7
-
     # Create deck resource definition
     deck_resource_def = ResourceDefinitionOrm(
         name="deck_with_resources_def",
@@ -435,12 +423,12 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
     # Create deck
     deck_id = uuid7()
     deck = DeckOrm(
-        accession_id=deck_id,
         name="deck_with_resources",
         fqn="test.deck.WithResources",
         asset_type=AssetType.DECK,
         deck_type_id=deck_def.accession_id,
     )
+    deck.accession_id = deck_id
     deck.resource_definition = deck_resource_def
     deck.deck_type = deck_def
     db_session.add(deck)
@@ -457,12 +445,12 @@ async def test_deck_orm_with_resources(db_session: AsyncSession) -> None:
     # Create resource on deck
     resource_id = uuid7()
     resource = ResourceOrm(
-        accession_id=resource_id,
         name="plate_on_deck",
         fqn="test.resource.PlateOnDeck",
         asset_type=AssetType.DECK,
         current_deck_position_name="A1",
     )
+    resource.accession_id = resource_id
     resource.resource_definition = plate_def
     resource.deck = deck
     db_session.add(resource)
