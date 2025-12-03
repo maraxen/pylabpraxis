@@ -1,0 +1,53 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.1, pluggy-1.6.0
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /app
+configfile: pyproject.toml
+plugins: locust-2.42.6, benchmark-5.2.3, xdist-3.8.0, Faker-38.2.0, timeout-2.4.0, anyio-4.12.0, cov-7.0.0, asyncio-1.3.0
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 700 items
+
+tests/services/test_deck_service.py ....x..                              [  1%]
+tests/services/test_deck_type_definition_service.py ....                 [  1%]
+tests/services/test_discovery_service.py .........                       [  2%]
+tests/services/test_entity_linking.py ..F.F.                             [  3%]
+tests/services/test_machine_service.py ..............                    [  5%]
+tests/services/test_machine_type_definition_service.py .                 [  5%]
+tests/services/test_plate_parsing.py .......                             [  6%]
+tests/services/test_plate_viz.py ..                                      [  7%]
+tests/services/test_protocol_definition_service.py .....                 [  7%]
+tests/services/test_protocol_run_service.py ..................           [ 10%]
+tests/services/test_resource_service.py ............F..                  [ 12%]
+tests/services/test_resource_type_definition_service.py ..               [ 12%]
+tests/services/test_scheduler_service.py .................               [ 15%]
+tests/services/test_state_service.py ........                            [ 16%]
+tests/services/test_user_service.py ........................             [ 19%]
+tests/services/test_well_outputs.py FFFFFFFFF                            [ 21%]
+tests/services/test_workcell_service.py .........                        [ 22%]
+tests/api/test_deck_type_definitions.py ..                               [ 22%]
+tests/api/test_decks.py .....                                            [ 23%]
+tests/api/test_e2e_flow.py .                                             [ 23%]
+tests/api/test_function_data_outputs.py s....                            [ 24%]
+tests/api/test_protocol_definitions.py .....                             [ 25%]
+tests/api/test_protocol_runs.py .....                                    [ 25%]
+tests/api/test_resource_definitions.py .....                             [ 26%]
+tests/api/test_resources.py .....                                        [ 27%]
+tests/api/test_route_debug.py .                                          [ 27%]
+tests/api/test_smoke.py .                                                [ 27%]
+tests/api/test_well_data_outputs.py s....                                [ 28%]
+tests/api/test_workcells.py .....                                        [ 28%]
+tests/models/test_enums/test_asset_enums.py .........................    [ 32%]
+tests/models/test_enums/test_machine_enums.py .FFFFFF................    [ 35%]
+tests/models/test_enums/test_outputs_enums.py ........................   [ 39%]
+tests/models/test_enums/test_protocol_enums.py .....F................... [ 42%]
+......F..                                                                [ 44%]
+tests/models/test_enums/test_resource_enums.py ......................... [ 47%]
+.......                                                                  [ 48%]
+tests/models/test_enums/test_schedule_enums.py ......................... [ 52%]
+...............                                                          [ 54%]
+tests/models/test_enums/test_workcell_enums.py ........................  [ 57%]
+tests/models/test_orm/test_asset_requirement_orm.py ...........          [ 59%]
+tests/models/test_orm/test_asset_reservation_orm.py ......

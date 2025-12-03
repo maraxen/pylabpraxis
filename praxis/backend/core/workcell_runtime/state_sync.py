@@ -71,7 +71,7 @@ class StateSyncMixin:
     )
     last_disk_backup_time = datetime.datetime.now(datetime.timezone.utc)
 
-    while True:  # ruff: noqa: PERF203
+    while True:
       try:
         current_state_json = self._main_workcell.serialize_all_state()
 

@@ -12,8 +12,9 @@ import ast
 import logging
 import os
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -26,12 +27,13 @@ from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDSe
 from praxis.backend.services.resource_type_definition import (
     ResourceTypeDefinitionService,
 )
-from praxis.common.type_inspection import is_pylabrobot_resource, serialize_type_hint
+from praxis.common.type_inspection import is_pylabrobot_resource
 
 logger = logging.getLogger(__name__)
 
 
 class ProtocolVisitor(ast.NodeVisitor):
+
     """AST visitor to find protocol functions."""
 
     def __init__(self, module_name: str, file_path: str):
@@ -81,6 +83,7 @@ class ProtocolVisitor(ast.NodeVisitor):
 
 
 class DiscoveryService:
+
     """Service for discovering and managing protocol functions and PLR type definitions."""
 
     def __init__(
@@ -143,21 +146,21 @@ class DiscoveryService:
                         module_name = ".".join(
                             module_file_path.relative_to(abs_path_item.parent)
                             .with_suffix("")
-                            .parts
+                            .parts,
                         )
 
-                        with open(module_file_path, "r", encoding="utf-8") as f:
+                        with open(module_file_path, encoding="utf-8") as f:
                             source = f.read()
                             try:
                                 tree = ast.parse(source, filename=str(module_file_path))
                                 visitor = ProtocolVisitor(
-                                    module_name, str(module_file_path)
+                                    module_name, str(module_file_path),
                                 )
                                 visitor.visit(tree)
                                 extracted_definitions.extend(visitor.definitions)
                             except SyntaxError as e:
                                 logger.warning(
-                                    f"Could not parse {module_file_path}: {e}"
+                                    f"Could not parse {module_file_path}: {e}",
                                 )
         return extracted_definitions
 
@@ -180,7 +183,7 @@ class DiscoveryService:
             search_paths,
         )
         extracted_definitions = self._extract_protocol_definitions_from_paths(
-            search_paths
+            search_paths,
         )
 
         if not extracted_definitions:
@@ -201,7 +204,7 @@ class DiscoveryService:
         async with self.db_session_factory() as session:
             for protocol_data in extracted_definitions:
                 protocol_pydantic_model = FunctionProtocolDefinitionCreate(
-                    **protocol_data
+                    **protocol_data,
                 )
                 protocol_name_for_error = protocol_pydantic_model.name
                 protocol_version_for_error = protocol_pydantic_model.version
@@ -213,7 +216,7 @@ class DiscoveryService:
 
                     if existing_def:
                         update_data = FunctionProtocolDefinitionUpdate(
-                            **protocol_pydantic_model.model_dump()
+                            **protocol_pydantic_model.model_dump(),
                         )
                         def_orm = await self.protocol_definition_service.update(
                             db=session,
