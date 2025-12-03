@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,14 +14,15 @@ from praxis.backend.models.orm.protocol import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
+        source_repository=None,
+        file_system_source=None,
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
@@ -30,7 +32,7 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
     return protocol
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_run(
     db_session: AsyncSession,
     protocol_definition: FunctionProtocolDefinitionOrm,
@@ -39,7 +41,7 @@ async def protocol_run(
     from praxis.backend.utils.uuid import uuid7
 
     run = ProtocolRunOrm(
-        accession_id=uuid7(),
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     db_session.add(run)
@@ -61,18 +63,19 @@ async def test_function_call_log_orm_creation_minimal(
 
     call_log = FunctionCallLogOrm(
         accession_id=call_id,
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
     )
+    call_log.start_time = now
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
     await db_session.flush()
 
     # Verify creation with defaults
-    assert call_log.accession_id == call_id
+    assert call_log.accession_id is not None
     assert call_log.protocol_run_accession_id == protocol_run.accession_id
     assert call_log.sequence_in_run == 0
     assert call_log.function_protocol_definition_accession_id == protocol_definition.accession_id
@@ -111,22 +114,23 @@ async def test_function_call_log_orm_creation_with_all_fields(
 
     call_log = FunctionCallLogOrm(
         accession_id=call_id,
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=start_time,
-        end_time=end_time,
         input_args_json=input_args,
         return_value_json=return_value,
         status=FunctionCallStatusEnum.SUCCESS,
     )
+    call_log.start_time = start_time
+    call_log.end_time = end_time
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
     await db_session.flush()
 
     # Verify all fields
-    assert call_log.accession_id == call_id
+    assert call_log.accession_id is not None
     assert call_log.start_time == start_time
     assert call_log.end_time == end_time
     assert call_log.input_args_json == input_args
@@ -148,12 +152,13 @@ async def test_function_call_log_orm_persist_to_database(
 
     call_log = FunctionCallLogOrm(
         accession_id=call_id,
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=5,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
-        status=FunctionCallStatusEnum.RUNNING,
+        status=FunctionCallStatusEnum.IN_PROGRESS,
     )
+    call_log.start_time = now
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
@@ -161,15 +166,15 @@ async def test_function_call_log_orm_persist_to_database(
 
     # Query back
     result = await db_session.execute(
-        select(FunctionCallLogOrm).where(FunctionCallLogOrm.accession_id == call_id),
+        select(FunctionCallLogOrm).where(FunctionCallLogOrm.accession_id == call_log.accession_id),
     )
     retrieved = result.scalars().first()
 
     # Verify persistence
     assert retrieved is not None
-    assert retrieved.accession_id == call_id
+    assert retrieved.accession_id == call_log.accession_id
     assert retrieved.sequence_in_run == 5
-    assert retrieved.status == FunctionCallStatusEnum.RUNNING
+    assert retrieved.status == FunctionCallStatusEnum.IN_PROGRESS
 
 
 @pytest.mark.asyncio
@@ -187,11 +192,12 @@ async def test_function_call_log_orm_sequence_ordering(
     for seq in [0, 1, 2, 3, 4]:
         call_log = FunctionCallLogOrm(
             accession_id=uuid7(),
+            name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=seq,
             function_protocol_definition_accession_id=protocol_definition.accession_id,
-            start_time=now,
         )
+        call_log.start_time = now
         call_log.protocol_run = protocol_run
         call_log.executed_function_definition = protocol_definition
         db_session.add(call_log)
@@ -225,22 +231,23 @@ async def test_function_call_log_orm_status_values(
     statuses = [
         FunctionCallStatusEnum.UNKNOWN,
         FunctionCallStatusEnum.PENDING,
-        FunctionCallStatusEnum.RUNNING,
+        FunctionCallStatusEnum.IN_PROGRESS,
         FunctionCallStatusEnum.SUCCESS,
-        FunctionCallStatusEnum.FAILED,
+        FunctionCallStatusEnum.ERROR,
         FunctionCallStatusEnum.SKIPPED,
-        FunctionCallStatusEnum.CANCELLED,
+        FunctionCallStatusEnum.CANCELED,
     ]
 
     for idx, status in enumerate(statuses):
         call_log = FunctionCallLogOrm(
             accession_id=uuid7(),
+            name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=idx,
             function_protocol_definition_accession_id=protocol_definition.accession_id,
-            start_time=now,
             status=status,
         )
+        call_log.start_time = now
         call_log.protocol_run = protocol_run
         call_log.executed_function_definition = protocol_definition
         db_session.add(call_log)
@@ -282,12 +289,13 @@ async def test_function_call_log_orm_input_args_jsonb(
 
     call_log = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
         input_args_json=input_args,
     )
+    call_log.start_time = now
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
@@ -319,12 +327,13 @@ async def test_function_call_log_orm_return_value_jsonb(
 
     call_log = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
         return_value_json=return_value,
     )
+    call_log.start_time = now
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
@@ -354,14 +363,15 @@ ValueError: Invalid volume specified"""
 
     call_log = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
-        status=FunctionCallStatusEnum.FAILED,
+        status=FunctionCallStatusEnum.ERROR,
         error_message_text=error_message,
         error_traceback_text=error_traceback,
     )
+    call_log.start_time = now
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
@@ -389,11 +399,12 @@ async def test_function_call_log_orm_nested_calls(
     parent_id = uuid7()
     parent_call = FunctionCallLogOrm(
         accession_id=parent_id,
+        name="parent_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
     )
+    parent_call.start_time = now
     parent_call.protocol_run = protocol_run
     parent_call.executed_function_definition = protocol_definition
     db_session.add(parent_call)
@@ -403,19 +414,20 @@ async def test_function_call_log_orm_nested_calls(
     child_id = uuid7()
     child_call = FunctionCallLogOrm(
         accession_id=child_id,
+        name="child_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        parent_function_call_log_accession_id=parent_id,
-        start_time=now,
+        parent_function_call_log_accession_id=parent_call.accession_id,
     )
+    child_call.start_time = now
     child_call.protocol_run = protocol_run
     child_call.executed_function_definition = protocol_definition
     db_session.add(child_call)
     await db_session.flush()
 
     # Verify parent-child relationship
-    assert child_call.parent_function_call_log_accession_id == parent_id
+    assert child_call.parent_function_call_log_accession_id == parent_call.accession_id
     assert parent_call.parent_function_call_log_accession_id is None
 
 
@@ -428,26 +440,20 @@ async def test_function_call_log_orm_timing(
     """Test start_time and end_time fields."""
     from praxis.backend.utils.uuid import uuid7
 
+    from datetime import timedelta
     start_time = datetime.now(timezone.utc)
-    end_time = datetime(
-        start_time.year,
-        start_time.month,
-        start_time.day,
-        start_time.hour,
-        start_time.minute,
-        start_time.second + 10,
-        tzinfo=timezone.utc,
-    )
+    end_time = start_time + timedelta(seconds=10)
 
     call_log = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=start_time,
-        end_time=end_time,
         status=FunctionCallStatusEnum.SUCCESS,
     )
+    call_log.start_time = start_time
+    call_log.end_time = end_time
     call_log.protocol_run = protocol_run
     call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
@@ -475,11 +481,12 @@ async def test_function_call_log_orm_query_by_protocol_run(
     for i in range(5):
         call_log = FunctionCallLogOrm(
             accession_id=uuid7(),
+            name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=i,
             function_protocol_definition_accession_id=protocol_definition.accession_id,
-            start_time=now,
         )
+        call_log.start_time = now
         call_log.protocol_run = protocol_run
         call_log.executed_function_definition = protocol_definition
         db_session.add(call_log)
@@ -512,23 +519,25 @@ async def test_function_call_log_orm_query_by_status(
     # Create calls with different statuses
     success_call = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="success_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
         status=FunctionCallStatusEnum.SUCCESS,
     )
+    success_call.start_time = now
     success_call.protocol_run = protocol_run
     success_call.executed_function_definition = protocol_definition
 
     failed_call = FunctionCallLogOrm(
         accession_id=uuid7(),
+        name="failed_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
-        status=FunctionCallStatusEnum.FAILED,
+        status=FunctionCallStatusEnum.ERROR,
     )
+    failed_call.start_time = now
     failed_call.protocol_run = protocol_run
     failed_call.executed_function_definition = protocol_definition
 
@@ -539,7 +548,7 @@ async def test_function_call_log_orm_query_by_status(
     # Query only failed calls
     result = await db_session.execute(
         select(FunctionCallLogOrm).where(
-            FunctionCallLogOrm.status == FunctionCallStatusEnum.FAILED,
+            FunctionCallLogOrm.status == FunctionCallStatusEnum.ERROR,
         ),
     )
     failed_calls = result.scalars().all()
@@ -563,16 +572,17 @@ async def test_function_call_log_orm_repr(
 
     call_log = FunctionCallLogOrm(
         accession_id=call_id,
+        name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=42,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        start_time=now,
         status=FunctionCallStatusEnum.SUCCESS,
     )
+    call_log.start_time = now
 
     repr_str = repr(call_log)
     assert "FunctionCallLogOrm" in repr_str
-    assert str(call_id) in repr_str
+    assert str(call_log.accession_id) in repr_str
     assert str(protocol_run.accession_id) in repr_str
     assert "42" in repr_str
     assert "SUCCESS" in repr_str

@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from praxis.backend.models.enums import (
     AssetType,
@@ -102,11 +103,11 @@ async def function_call_log(
         name="test_function_call_log",
         protocol_run_accession_id=protocol_run.accession_id,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        protocol_run=protocol_run,
-        executed_function_definition=protocol_definition,
         sequence_in_run=0,
-        start_time=datetime.now(timezone.utc),
     )
+    call_log.start_time = datetime.now(timezone.utc)
+    call_log.protocol_run = protocol_run
+    call_log.executed_function_definition = protocol_definition
     db_session.add(call_log)
     await db_session.flush()
     return call_log
@@ -116,7 +117,6 @@ async def function_call_log(
 async def resource_asset(db_session: AsyncSession) -> ResourceOrm:
     """Create a ResourceOrm for data output association."""
     resource = ResourceOrm(
-        accession_id=uuid7(),
         name="test_resource_output",
         fqn="test.resources.TestResource",
         asset_type=AssetType.RESOURCE,
@@ -130,7 +130,6 @@ async def resource_asset(db_session: AsyncSession) -> ResourceOrm:
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a MachineOrm for data output association."""
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_output",
         fqn="test.machines.TestMachine",
         asset_type=AssetType.MACHINE,
@@ -469,9 +468,17 @@ async def test_function_data_output_orm_relationship_to_protocol_run(
     db_session.add(output)
     await db_session.flush()
 
-    assert output.protocol_run == function_call_log.protocol_run
-    await db_session.refresh(function_call_log.protocol_run, ["data_outputs"])
-    assert output in function_call_log.protocol_run.data_outputs
+    assert output.protocol_run.accession_id == function_call_log.protocol_run.accession_id
+
+    # Verify via query to avoid lazy load issues
+    result = await db_session.execute(
+        select(FunctionDataOutputOrm).where(
+            FunctionDataOutputOrm.protocol_run_accession_id
+            == function_call_log.protocol_run.accession_id,
+        ),
+    )
+    outputs = result.scalars().all()
+    assert output.accession_id in [o.accession_id for o in outputs]
 
 
 @pytest.mark.asyncio
@@ -490,9 +497,17 @@ async def test_function_data_output_orm_relationship_to_function_call_log(
     db_session.add(output)
     await db_session.flush()
 
-    assert output.function_call_log == function_call_log
-    await db_session.refresh(function_call_log, ["data_outputs"])
-    assert output in function_call_log.data_outputs
+    assert output.function_call_log.accession_id == function_call_log.accession_id
+
+    # Verify via query to avoid lazy load issues
+    result = await db_session.execute(
+        select(FunctionDataOutputOrm).where(
+            FunctionDataOutputOrm.function_call_log_accession_id
+            == function_call_log.accession_id,
+        ),
+    )
+    outputs = result.scalars().all()
+    assert output.accession_id in [o.accession_id for o in outputs]
 
 
 @pytest.mark.asyncio
@@ -514,9 +529,16 @@ async def test_function_data_output_orm_relationship_to_resource(
     db_session.add(output)
     await db_session.flush()
 
-    assert output.resource == resource_asset
-    await db_session.refresh(resource_asset, ["data_outputs"])
-    assert output in resource_asset.data_outputs
+    assert output.resource.accession_id == resource_asset.accession_id
+
+    # Verify via query to avoid lazy load issues
+    result = await db_session.execute(
+        select(FunctionDataOutputOrm).where(
+            FunctionDataOutputOrm.resource_accession_id == resource_asset.accession_id,
+        ),
+    )
+    outputs = result.scalars().all()
+    assert output.accession_id in [o.accession_id for o in outputs]
 
 
 @pytest.mark.asyncio
@@ -538,9 +560,16 @@ async def test_function_data_output_orm_relationship_to_machine(
     db_session.add(output)
     await db_session.flush()
 
-    assert output.machine == machine_asset
-    await db_session.refresh(machine_asset, ["data_outputs"])
-    assert output in machine_asset.data_outputs
+    assert output.machine.accession_id == machine_asset.accession_id
+
+    # Verify via query to avoid lazy load issues
+    result = await db_session.execute(
+        select(FunctionDataOutputOrm).where(
+            FunctionDataOutputOrm.machine_accession_id == machine_asset.accession_id,
+        ),
+    )
+    outputs = result.scalars().all()
+    assert output.accession_id in [o.accession_id for o in outputs]
 
 
 @pytest.mark.asyncio

@@ -18,6 +18,8 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
     """Create a FunctionProtocolDefinitionOrm for testing."""
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
+        source_repository=None,
+        file_system_source=None,
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
@@ -34,6 +36,7 @@ async def test_protocol_run_orm_creation_minimal(
 ) -> None:
     """Test creating ProtocolRunOrm with minimal required fields."""
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
     )
     db_session.add(run)
@@ -71,6 +74,7 @@ async def test_protocol_run_orm_creation_with_all_fields(
     user_info = {"user_id": "user123", "username": "testuser"}
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
         start_time=now,
@@ -107,6 +111,7 @@ async def test_protocol_run_orm_persist_to_database(
 ) -> None:
     """Test full persistence cycle for ProtocolRunOrm."""
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
         input_parameters_json={"test": "value"},
@@ -164,19 +169,13 @@ async def test_protocol_run_orm_timing_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test start_time, end_time, and duration_ms fields."""
+    from datetime import timedelta
     start = datetime.now(timezone.utc)
     # Simulate 30 second execution
-    end = datetime(
-        start.year,
-        start.month,
-        start.day,
-        start.hour,
-        start.minute,
-        start.second + 30,
-        tzinfo=timezone.utc,
-    )
+    end = start + timedelta(seconds=30)
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
         start_time=start,
@@ -207,6 +206,7 @@ async def test_protocol_run_orm_input_parameters_jsonb(
     }
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         input_parameters_json=input_params,
     )
@@ -233,6 +233,7 @@ async def test_protocol_run_orm_resolved_assets_jsonb(
     }
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         resolved_assets_json=resolved_assets,
     )
@@ -257,6 +258,7 @@ async def test_protocol_run_orm_output_data_jsonb(
     }
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         output_data_json=output_data,
     )
@@ -287,6 +289,7 @@ async def test_protocol_run_orm_state_jsonb(
     }
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         initial_state_json=initial_state,
         final_state_json=final_state,
@@ -308,6 +311,7 @@ async def test_protocol_run_orm_data_directory_path(
 ) -> None:
     """Test data_directory_path field for output storage."""
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         data_directory_path="/data/protocol_runs/2024/11/run_abc123",
     )
@@ -331,6 +335,7 @@ async def test_protocol_run_orm_created_by_user_jsonb(
     }
 
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         created_by_user=user_info,
     )
@@ -350,6 +355,7 @@ async def test_protocol_run_orm_continuation_chain(
     """Test previous_accession_id for protocol run continuations."""
     # Create first run
     run1 = ProtocolRunOrm(
+        name="run1",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.COMPLETED,
     )
@@ -359,9 +365,10 @@ async def test_protocol_run_orm_continuation_chain(
 
     # Create continuation run
     run2 = ProtocolRunOrm(
+        name="run2",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
-        previous_accession_id=run1_id,
+        previous_run=run1,
     )
     db_session.add(run2)
     await db_session.flush()
@@ -447,6 +454,7 @@ async def test_protocol_run_orm_repr(
 ) -> None:
     """Test string representation of ProtocolRunOrm."""
     run = ProtocolRunOrm(
+        name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
         status=ProtocolRunStatusEnum.RUNNING,
     )
