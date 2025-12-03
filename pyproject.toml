@@ -131,6 +131,7 @@ omit = [
     "*/*_test.py",
     "*/conftest.py",
     "setup.py",
+    "praxis/backend/commons/*",
 ]
 
 [tool.coverage.report]
