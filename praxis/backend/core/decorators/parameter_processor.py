@@ -45,7 +45,7 @@ def _process_parameter(
     if len(non_none_args) == 1:
       type_for_plr_check = non_none_args[0]
 
-  if is_pylabrobot_resource(type_for_plr_check):
+  if is_pylabrobot_resource(serialize_type_hint(type_for_plr_check)):
     asset_args = {
       "accession_id": uuid7(),
       "name": param_name_sig,
