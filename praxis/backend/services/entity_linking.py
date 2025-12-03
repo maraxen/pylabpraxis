@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from praxis.backend.models.enums import AssetType
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
-from praxis.backend.utils.uuid import uuid7
 
 logger = get_logger(__name__)
 

@@ -33,7 +33,7 @@ class ResourceManagerMixin:
     self,
     resource_orm: ResourceOrm,
     resource_definition_fqn: str,
-  ) -> Resource:  # ruff: noqa: C901, PLR0912
+  ) -> Resource:
     """Create or retrieve a live PyLabRobot resource object."""
     self = cast("WorkcellRuntime", self)
     if not hasattr(resource_orm, "id") or resource_orm.accession_id is None:

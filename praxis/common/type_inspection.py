@@ -4,8 +4,6 @@
 import inspect
 from typing import Any, Union, get_args, get_origin
 
-from pylabrobot.resources import Resource
-
 
 def is_pylabrobot_resource(type_str: str) -> bool:
     """Check if the given type string is a Pylabrobot Resource."""
