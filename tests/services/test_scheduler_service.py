@@ -123,7 +123,6 @@ async def protocol_run(
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a machine asset for reservation testing."""
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_scheduler",
         fqn="test.machines.SchedulerTestMachine",
         asset_type=AssetType.MACHINE,
