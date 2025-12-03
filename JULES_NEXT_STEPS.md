@@ -1,12 +1,38 @@
 # Next Steps
 
-## 1. Verify Broader Test Suite
-*   **Run Service Tests**: Execute `uv run pytest tests/services/` to identify any failures in the service layer. Now that ORM models are stable, service tests should be verifiable.
-*   **Run Core Tests**: Execute `uv run pytest tests/core/` to verify core logic.
+The work has been divided into parallel chunks to increase testing coverage and stability.
 
-## 2. Refactoring Tasks (High Priority)
-*   **Refactor `workcell_runtime.py`**: The module `praxis/backend/core/workcell_runtime/core.py` (or related files) is identified as a large module needing refactoring into submodules.
-*   **Refactor `asset_manager.py`**: The module `praxis/backend/core/asset_manager.py` (or package) is also identified for refactoring.
+## Chunk A: Backend Commons Logic
+**Goal**: Create unit tests for the commons utility modules.
+**Files to Create/Update**:
+*   `tests/commons/test_dilution.py` (for `praxis/backend/commons/dilution.py`)
+*   `tests/commons/test_liquid_handling.py` (for `praxis/backend/commons/liquid_handling.py`)
+*   `tests/commons/test_plate_reading.py` (for `praxis/backend/commons/plate_reading.py`)
+*   `tests/commons/test_plate_staging.py` (for `praxis/backend/commons/plate_staging.py`)
+*   `tests/commons/test_tip_staging.py` (for `praxis/backend/commons/tip_staging.py`)
 
-## 3. API Testing
-*   **Run API Tests**: Execute `uv run pytest tests/api/` to ensure the REST API endpoints are functioning correctly with the fixed ORM layer.
+## Chunk B: Missing Service Tests
+**Goal**: Create service tests for untested services.
+**Files to Create/Update**:
+*   `tests/services/test_entity_linking.py` (for `praxis/backend/services/entity_linking.py`)
+*   `tests/services/test_plate_parsing.py` (for `praxis/backend/services/plate_parsing.py`)
+*   `tests/services/test_plate_viz.py` (for `praxis/backend/services/plate_viz.py`)
+*   **Task**: Consolidate `praxis/backend/services/tests/test_discovery_service.py` into `tests/services/test_discovery_service.py`.
+
+## Chunk C: Fix ORM Model Tests
+**Goal**: Fix the currently failing/erroring ORM tests to establish a solid data layer foundation.
+**Files to Fix**:
+*   `tests/models/test_orm/test_asset_requirement_orm.py`
+*   `tests/models/test_orm/test_function_call_log_orm.py`
+*   `tests/models/test_orm/test_function_data_output_orm.py`
+*   `tests/models/test_orm/test_parameter_definition_orm.py`
+*   `tests/models/test_orm/test_protocol_run_orm.py`
+*   `tests/models/test_orm/test_schedule_entry_orm.py`
+
+## Chunk D: Fix API Tests
+**Goal**: Fix the failing API tests.
+**Files to Fix**:
+*   `tests/api/test_decks.py`
+*   `tests/api/test_resources.py`
+*   `tests/api/test_workcells.py`
+*   `tests/api/test_well_data_outputs.py`
