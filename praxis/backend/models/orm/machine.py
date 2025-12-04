@@ -145,6 +145,13 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     init=False,
   )
 
+  has_deck: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    nullable=False,
+    comment="Flag indicating if this machine has a deck.",
+  )
+
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("deck_definition_catalog.accession_id"),
@@ -181,6 +188,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     uselist=False,
     default=None,
     foreign_keys=[asset_requirement_accession_id],
+    init=False,
   )
 
 
@@ -274,11 +282,13 @@ class MachineOrm(AssetOrm):
     index=True,
     comment="Foreign key to the workcell this machine belongs to, if applicable.",
     default=None,
+    init=False,
   )
   workcell: Mapped["WorkcellOrm | None"] = relationship(
     "WorkcellOrm",
     back_populates="machines",
     default=None,
+    init=False,
   )
   resource_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -311,6 +321,7 @@ class MachineOrm(AssetOrm):
     index=True,
     comment="Foreign key to the deck this machine has, if applicable.",
     default=None,
+    init=False,
   )
 
   deck_child_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -320,6 +331,7 @@ class MachineOrm(AssetOrm):
     index=True,
     comment="Foreign key to the deck definition this machine uses, if applicable.",
     default=None,
+    init=False,
   )
 
   # If this machine has a deck (e.g., a liquid handler)
@@ -328,6 +340,7 @@ class MachineOrm(AssetOrm):
     uselist=False,
     default=None,
     foreign_keys=[deck_child_definition_accession_id],
+    init=False,
   )
 
   # Resources located on/in this machine
@@ -337,6 +350,7 @@ class MachineOrm(AssetOrm):
     default=None,
     uselist=False,
     foreign_keys="ResourceOrm.machine_location_accession_id",
+    init=False,
   )
 
   # Additional fields for machine state tracking
