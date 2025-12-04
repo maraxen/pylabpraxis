@@ -94,7 +94,7 @@ def log_async_runtime_errors(
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
       try:
         return await func(*args, **kwargs)
-      except Exception as e:  # noqa: BLE001
+      except Exception as e:
         _process_exception(
           logger_instance=logger_instance,
           exception=e,
@@ -157,7 +157,7 @@ def log_runtime_errors(
     def wrapper(*args: Any, **kwargs: Any) -> Any:
       try:
         return func(*args, **kwargs)
-      except Exception as e:  # noqa: BLE001
+      except Exception as e:
         _process_exception(
           logger_instance=logger_instance,
           exception=e,

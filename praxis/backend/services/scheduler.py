@@ -30,7 +30,6 @@ from praxis.backend.models.orm.schedule import (
   AssetReservationStatusEnum,
   ScheduleEntryOrm,
   ScheduleHistoryOrm,
-  ScheduleStatusEnum,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.scheduler import (

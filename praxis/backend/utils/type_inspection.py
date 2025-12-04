@@ -9,7 +9,7 @@ from praxis.common.type_inspection import is_pylabrobot_resource, serialize_type
 __all__ = ["fqn_from_hint", "is_pylabrobot_resource", "serialize_type_hint"]
 
 
-def fqn_from_hint(type_hint: Any) -> str:  # noqa: ANN401
+def fqn_from_hint(type_hint: Any) -> str:
   """Get the fully qualified name of a type hint.
 
   For built-in types, this returns just the type name (e.g., "int"), not "builtins.int".

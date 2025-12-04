@@ -126,7 +126,7 @@ class PraxisState:
       serialized_state = self.redis_client.get(self.redis_key)
       if serialized_state and isinstance(serialized_state, bytes):
         return json.loads(serialized_state.decode("utf-8"))
-      return {}  # noqa: TRY300
+      return {}
     except json.JSONDecodeError:
       if serialized_state is None:
         logger.warning(
@@ -164,7 +164,7 @@ class PraxisState:
       )
       raise
 
-  def __getitem__(self, key: str) -> Any:  # noqa: ANN401
+  def __getitem__(self, key: str) -> Any:
     """Retrieve a value from the state data using the given key."""
     if key not in self._data:
       msg = f"Key '{key}' not found in state data for run {self.run_accession_id}."
@@ -176,7 +176,7 @@ class PraxisState:
     )
     return self._data[key]
 
-  def __setitem__(self, key: str, value: Any) -> None:  # noqa: ANN401
+  def __setitem__(self, key: str, value: Any) -> None:
     """Set a value in the state data using the given key."""
     if not key:
       msg = "Key cannot be an empty string."
@@ -197,7 +197,7 @@ class PraxisState:
     del self._data[key]
     self._save_to_redis()
 
-  def set(self, key: str, value: Any) -> None:  # noqa: ANN401
+  def set(self, key: str, value: Any) -> None:
     """Set a value in the state data. Alias for state[key] = value."""
     self.__setitem__(key, value)
 
@@ -250,7 +250,7 @@ class PraxisState:
     """Return the items (key-value pairs) of the state data."""
     return self._data.items()
 
-  def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+  def __getattr__(self, name: str) -> Any:
     """Access state data as attributes."""
     if name == "_data":
       if "_data" in self.__dict__:
@@ -266,7 +266,7 @@ class PraxisState:
     )
     raise AttributeError(msg)
 
-  def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
+  def __setattr__(self, name: str, value: Any) -> None:
     """Set state data as attributes."""
     if name in ["run_accession_id", "redis_key", "redis_client", "_data"]:
       super().__setattr__(name, value)

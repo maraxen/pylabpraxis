@@ -68,7 +68,9 @@ class AssetLockManager(IAssetLockManager):
     return None
 
   async def get_lock_status(
-    self, asset_type: str, asset_name: str,
+    self,
+    asset_type: str,
+    asset_name: str,
   ) -> AcquireAssetLock | None:
     """Get the lock status of an asset."""
     lock_key = f"{asset_type}:{asset_name}"

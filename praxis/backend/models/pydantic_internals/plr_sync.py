@@ -1,6 +1,5 @@
 """Pydantic models for PyLabRobot type definitions."""
 
-
 from .pydantic_base import PraxisBaseModel
 
 

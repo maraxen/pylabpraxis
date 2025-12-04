@@ -40,4 +40,3 @@ class UserUpdate(PraxisBaseModel):
 class UserResponse(UserBase):
 
   """Represents a user for API responses."""
-

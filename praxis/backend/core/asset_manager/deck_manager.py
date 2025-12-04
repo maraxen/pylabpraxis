@@ -1,5 +1,5 @@
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,logging-fstring-interpolation
-# ruff: noqa: G004, S101, ANN401
+# ruff: noqa: S101
 """Deck management logic for AssetManager."""
 
 import uuid
