@@ -33,9 +33,17 @@ class TestProtocolSourceStatusEnum:
         """Test that enum has PENDING_DELETION status."""
         assert ProtocolSourceStatusEnum.PENDING_DELETION.value == "pending_deletion"
 
+    def test_has_syncing(self) -> None:
+        """Test that enum has SYNCING status."""
+        assert ProtocolSourceStatusEnum.SYNCING.value == "syncing"
+
+    def test_has_inactive(self) -> None:
+        """Test that enum has INACTIVE status."""
+        assert ProtocolSourceStatusEnum.INACTIVE.value == "inactive"
+
     def test_member_count(self) -> None:
-        """Test that enum has exactly 4 members."""
-        assert len(ProtocolSourceStatusEnum) == 4
+        """Test that enum has exactly 6 members."""
+        assert len(ProtocolSourceStatusEnum) == 6
 
 
 class TestProtocolRunStatusEnum:
@@ -173,7 +181,7 @@ class TestProtocolEnumsIntegration:
 
         # Some overlap is expected (PENDING appears in both run and call)
         # but they should be mostly independent
-        assert len(source_names) == 4
+        assert len(source_names) == 6
         assert len(run_names) == 13
         assert len(call_names) == 7
 
