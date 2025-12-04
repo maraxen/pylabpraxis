@@ -49,7 +49,7 @@ else:
         "database",
         "password",
         fallback="password",
-      )  # TODO(mar): Use a secure method for production # noqa: TD003
+      )  # TODO(mar): Use a secure method for production
       praxis_db_host = config_parser.get("database", "host", fallback="localhost")
       praxis_db_port = config_parser.get("database", "port", fallback="5432")
       praxis_db_name = config_parser.get("database", "dbname", fallback="praxis_db")
@@ -58,7 +58,7 @@ else:
       praxis_db_password = os.getenv(
         "POSTGRES_PASSWORD",
         praxis_db_password,
-      )  # TODO(mar): Use a secure method for production # noqa: TD003
+      )  # TODO(mar): Use a secure method for production
       praxis_db_host = os.getenv("POSTGRES_HOST", praxis_db_host)
       praxis_db_port = os.getenv("POSTGRES_PORT", praxis_db_port)
       praxis_db_name = os.getenv("POSTGRES_DB", praxis_db_name)
@@ -249,7 +249,7 @@ class DropMaterializedView(DDLElement):
 def compile_create_materialized_view(
   element: CreateMaterializedView,
   compiler: SQLCompiler,
-  **kw: Any,  # noqa: ARG001, ANN401
+  **kw: Any,  # noqa: ARG001
 ) -> str:
   """Compiler for the CreateMaterializedView DDL element.
 
@@ -270,7 +270,7 @@ def compile_create_materialized_view(
 def compile_drop_materialized_view(
   element: DropMaterializedView,
   compiler: SQLCompiler,  # noqa: ARG001
-  **kw: Any,  # noqa: ARG001, ANN401
+  **kw: Any,  # noqa: ARG001
 ) -> str:
   """Compiler for the DropMaterializedView DDL element.
 

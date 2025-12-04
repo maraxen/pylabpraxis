@@ -35,8 +35,12 @@ class SearchFilters(BaseModel):
     default=None,
     description="Filter by associated protocol run ID.",
   )
-  machine_accession_id: UUID7 | None = Field(default=None, description="Filter by associated machine ID.")
-  resource_accession_id: UUID7 | None = Field(default=None, description="Filter by associated resource ID.")
+  machine_accession_id: UUID7 | None = Field(
+    default=None, description="Filter by associated machine ID.",
+  )
+  resource_accession_id: UUID7 | None = Field(
+    default=None, description="Filter by associated resource ID.",
+  )
   parent_accession_id: UUID7 | None = Field(default=None, description="Filter by parent asset ID.")
 
   model_config = ConfigDict(

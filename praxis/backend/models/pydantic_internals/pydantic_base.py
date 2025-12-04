@@ -41,7 +41,7 @@ class PraxisBaseModel(BaseModel):
     description="Arbitrary metadata associated with the record.",
   )
 
-  def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+  def model_post_init(self, __context: Any) -> None:
     """Set the updated_at field to the current time after model initialization."""
     self.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 

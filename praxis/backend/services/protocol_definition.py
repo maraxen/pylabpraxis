@@ -58,7 +58,8 @@ class ProtocolDefinitionCRUDService(
 
       if not source_repository:
         logger.warning(
-          "Source repository '%s' not found, creating default", obj_in.source_repository_name,
+          "Source repository '%s' not found, creating default",
+          obj_in.source_repository_name,
         )
         source_repository = ProtocolSourceRepositoryOrm(
           name=obj_in.source_repository_name,
@@ -78,10 +79,12 @@ class ProtocolDefinitionCRUDService(
 
       if not file_system_source:
         logger.warning(
-          "File system source '%s' not found, creating default", obj_in.file_system_source_name,
+          "File system source '%s' not found, creating default",
+          obj_in.file_system_source_name,
         )
         file_system_source = FileSystemProtocolSourceOrm(
-          name=obj_in.file_system_source_name, base_path="/default/protocols",
+          name=obj_in.file_system_source_name,
+          base_path="/default/protocols",
         )
         db.add(file_system_source)
         await db.flush()
@@ -90,10 +93,12 @@ class ProtocolDefinitionCRUDService(
     if not source_repository and not file_system_source:
       logger.info("No sources provided, creating defaults for testing")
       source_repository = ProtocolSourceRepositoryOrm(
-        name="default_test_repo", git_url="https://github.com/test/default.git",
+        name="default_test_repo",
+        git_url="https://github.com/test/default.git",
       )
       file_system_source = FileSystemProtocolSourceOrm(
-        name="default_test_fs", base_path="/test/protocols",
+        name="default_test_fs",
+        base_path="/test/protocols",
       )
       db.add(source_repository)
       db.add(file_system_source)
@@ -135,7 +140,9 @@ class ProtocolDefinitionCRUDService(
     return protocol_def
 
   async def get(
-    self, db: AsyncSession, accession_id: uuid.UUID,
+    self,
+    db: AsyncSession,
+    accession_id: uuid.UUID,
   ) -> FunctionProtocolDefinitionOrm | None:
     """Get a single protocol definition by ID with eager loaded relationships."""
     stmt = (

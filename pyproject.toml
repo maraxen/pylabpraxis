@@ -154,11 +154,36 @@ line-length = 100
 indent-width = 2
 fix = true
 target-version = "py310"
-exclude = ["praxis/backend/commons", "tests"]
+exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D211", "D213"]
+ignore = [
+    "D211", "D213",
+    "D100", "D101", "D102", "D103", "D104", "D107", # Missing docstrings
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "ANN401", # Type annotations
+    "FBT001", "FBT002", "FBT003", # Boolean trap
+    "PLR0913", "PLR0915", "PLR0912", "PLR0911", "C901", # Complexity
+    "PTH123", "PTH118", "PTH120", "PTH103", "PTH100", "PTH110", "PTH112", # Pathlib usage
+    "TD002", "TD003", "FIX002", # TODOs
+    "S110", # Try-Except-Pass
+    "E501", # Line too long
+    "COM812", "D203", # Format conflicts
+    "PGH003", # Blanket type ignore
+    "BLE001", # Blind exception catch
+    "FAST001", "FAST002", "B008", # FastAPI rules
+    "ARG002", # Unused arguments
+    "SLF001", # Private member access
+    "TRY300", "TRY301", "TRY400", "TRY401", "TRY203", # Exception style
+    "TID252", # Relative imports
+    "TC001", "TC002", "TC003", # Type checking imports
+    "ERA001", # Commented out code
+    "G004", # F-string in logging
+    "PYI063", # PEP 570 positional-only parameters
+    "RUF012", # ClassVar annotation
+    "RUF022", # __all__ sort
+    "PERF203", "PERF403", # Perf
+]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

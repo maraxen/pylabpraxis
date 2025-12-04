@@ -271,7 +271,7 @@ class ExecutionMixin:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
+      except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,
@@ -392,7 +392,7 @@ class ExecutionMixin:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
+      except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,

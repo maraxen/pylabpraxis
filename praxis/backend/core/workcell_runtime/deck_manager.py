@@ -327,7 +327,7 @@ class DeckManagerMixin:
             deck_orm_accession_id,
             deck_size_tuple,
           )
-        except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001
+        except Exception as e:  # pylint: disable=broad-except
           logger.warning(
             "Could not get size from live deck object for ID %s: %s",
             deck_orm_accession_id,
@@ -373,7 +373,8 @@ class DeckManagerMixin:
       if isinstance(position_accession_id, str | int | uuid.UUID):
         async with self.db_session_factory() as db_session:
           deck_type_definition = await self.deck_type_definition_svc.get(
-            db=db_session, accession_id=deck_type_id,
+            db=db_session,
+            accession_id=deck_type_id,
           )
           if not deck_type_definition:
             raise WorkcellRuntimeError(f"Deck type definition with ID {deck_type_id} not found.")

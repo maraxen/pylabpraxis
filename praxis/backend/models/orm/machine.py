@@ -121,13 +121,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=None,
   )
 
-  # resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
-  #   "ResourceOrm",
-  #   back_populates="resource_definition",
-  #   cascade="all, delete-orphan",
-  #   default_factory=list,
-  # )
-
   resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resource_definition_catalog.accession_id"),
@@ -305,7 +298,10 @@ class MachineOrm(AssetOrm):
   deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey(
-      "decks.accession_id", ondelete="SET NULL", use_alter=True, name="fk_machine_deck_child",
+      "decks.accession_id",
+      ondelete="SET NULL",
+      use_alter=True,
+      name="fk_machine_deck_child",
     ),
     nullable=True,
     index=True,
