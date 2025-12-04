@@ -83,12 +83,12 @@ async def test_machine_definition_orm_persist_to_database(db_session: AsyncSessi
 
     machine_def_id = uuid7()
     machine_def = MachineDefinitionOrm(
-        accession_id=machine_def_id,
         name="persistence_test_machine",
         fqn="test.persistence.Machine",
         machine_category=MachineCategoryEnum.PLATE_READER,
         manufacturer="Test Corp",
     )
+    machine_def.accession_id = machine_def_id
     db_session.add(machine_def)
     await db_session.flush()
 
