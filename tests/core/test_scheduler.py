@@ -10,6 +10,7 @@ from praxis.backend.models.pydantic_internals.protocol import (
     AssetRequirementModel,
 )
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
+from praxis.backend.utils.errors import AssetAcquisitionError
 from praxis.backend.utils.uuid import uuid7
 
 
@@ -240,10 +241,10 @@ class TestReserveAssets:
         result1 = await scheduler.reserve_assets([runtime_requirement], first_run_id)
         assert result1 is True
 
-        # Try to reserve for second run - should fail
+        # Try to reserve for second run - should raise AssetAcquisitionError
         second_run_id = uuid7()
-        result2 = await scheduler.reserve_assets([runtime_requirement], second_run_id)
-        assert result2 is False
+        with pytest.raises(AssetAcquisitionError):
+            await scheduler.reserve_assets([runtime_requirement], second_run_id)
 
     @pytest.mark.asyncio
     async def test_reserve_assets_multiple_assets_succeeds(self) -> None:
