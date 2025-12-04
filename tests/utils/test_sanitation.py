@@ -142,8 +142,8 @@ class TestFillInDefault:
 
     @pytest.mark.asyncio
     async def test_fill_in_default_raises_on_wrong_type(self) -> None:
-        """Test that ValueError raised for wrong type."""
-        with pytest.raises(ValueError, match="Value must be a list of"):
+        """Test that TypeError raised for wrong type."""
+        with pytest.raises(TypeError, match="Value must be a list of"):
             await fill_in_default(["a", "b", "c"], [1, 2, 3])
 
 
@@ -178,8 +178,8 @@ class TestTypeCheck:
 
     @pytest.mark.asyncio
     async def test_type_check_raises_for_wrong_type(self) -> None:
-        """Test that type_check raises ValueError for wrong type."""
-        with pytest.raises(ValueError, match="Expected .* but got"):
+        """Test that type_check raises TypeError for wrong type."""
+        with pytest.raises(TypeError, match="Expected .* but got"):
             await type_check([1, 2, 3], [int, str, int])
 
     @pytest.mark.asyncio
@@ -188,7 +188,7 @@ class TestTypeCheck:
         # When in_list=True, it checks that all items in each element are of the type
         # AND that the element itself is of the type (both checks run)
         # This makes it hard to use, but we test the actual behavior
-        with pytest.raises(ValueError, match="Expected .* but got"):
+        with pytest.raises(TypeError, match="Expected .* but got"):
             await type_check([[1, "not int"]], [int], in_list=True)
 
 
@@ -218,8 +218,8 @@ class TestCheckListLength:
 
     @pytest.mark.asyncio
     async def test_check_list_length_raises_for_non_list_items(self) -> None:
-        """Test that ValueError raised for non-list items."""
-        with pytest.raises(ValueError, match="Expected list but got"):
+        """Test that TypeError raised for non-list items."""
+        with pytest.raises(TypeError, match="Expected list but got"):
             await check_list_length([1, 2], target_length=2)
 
 

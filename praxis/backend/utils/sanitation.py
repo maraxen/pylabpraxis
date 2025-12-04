@@ -1,3 +1,6 @@
+# pylint: disable=too-many-branches
+"""Sanitation and validation utilities for input data."""
+
 import warnings
 from functools import wraps
 from typing import Any, Literal, TypeVar
@@ -8,13 +11,22 @@ T = TypeVar("T")
 
 
 async def well_to_int(well: Well, plate: Plate) -> int:
+  """Convert a well object to its integer index on the plate.
+
+  Args:
+    well: The well object.
+    plate: The plate object.
+
+  Returns:
+    The integer index of the well.
+
+  """
   column, row = await parse_well_name(well)
   return int((column * plate.num_items_y) + row)
 
 
-def liquid_handler_setup_check(func):
-  """A decorator function that checks if a liquid handler is set up before executing the decorated
-  function.
+def liquid_handler_setup_check(func: Any) -> Any:  # noqa: ANN401
+  """Check if a liquid handler is set up before executing the decorated function.
 
   Args:
     func: The function to be decorated.
@@ -29,7 +41,7 @@ def liquid_handler_setup_check(func):
   """
 
   @wraps(func)
-  async def wrapper(*args, **kwargs):
+  async def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
     if len(args) == 0 and "liquid_handler" not in kwargs:
       msg = "No liquid handler provided"
       raise ValueError(msg)
@@ -47,6 +59,7 @@ async def coerce_to_list(items: list | tuple, target_length: int | None) -> list
 
   Args:
     items (list | tuple): The items to be coerced into a list.
+    target_length (int | None): The expected length of the list.
 
   Returns:
     list: The coerced list.
@@ -91,7 +104,7 @@ async def fill_in_default(val: list[T] | None, default: list[T]) -> list[T]:
   # if the val is a list of the correct length, the values must be of the right type.
   if not all(isinstance(v, t) for v in val):
     msg = f"Value must be a list of {t}, but is {val}"
-    raise ValueError(msg)
+    raise TypeError(msg)
   # the value is ready to be used.
   return val
 
@@ -106,7 +119,7 @@ async def fill_in_defaults(
   ]
 
 
-async def type_check(items: list, types: list, in_list: bool = False) -> None:
+async def type_check(items: list, types: list, *, in_list: bool = False) -> None:
   """Check the types of items in a list against a given list of types.
 
   Args:
@@ -116,21 +129,37 @@ async def type_check(items: list, types: list, in_list: bool = False) -> None:
       Defaults to False.
 
   Raises:
-    ValueError: If the type of any item in the list does not match the corresponding type in the
+    TypeError: If the type of any item in the list does not match the corresponding type in the
     types list.
 
   """
   for item, item_type in zip(items, types, strict=False):
     if in_list and not all(isinstance(i, item_type) for i in item):
       msg = f"Expected {item_type} but got {type(item)}"
-      raise ValueError(msg)
+      raise TypeError(msg)
     if not isinstance(item, item_type):
       msg = f"Expected {item_type} but got {type(item)}"
+      raise TypeError(msg)
+
+
+def _check_coercion(
+  items: list | Any,  # noqa: ANN401
+  *,
+  coerce_length: bool,
+  target_length: int | None,
+) -> list | None:
+  """Check if items can be coerced to the target length."""
+  if len(items) == 1 and coerce_length:
+    if target_length is None:
+      msg = "Expected target length to be provided"
       raise ValueError(msg)
+    return items * target_length
+  return None
 
 
 async def check_list_length(
   items: list[Any] | list[list[Any]],
+  *,
   coerce_length: bool = False,
   target_length: int | None = None,
 ) -> list[list[Any]]:
@@ -138,41 +167,49 @@ async def check_list_length(
 
   Args:
     items (list): The list or list of lists to check.
-    length (Optional[int], optional): The expected length of the list(s). If not provided, the
-    length of the first item in the list will be used. Defaults to None.
+    coerce_length (bool, optional): Whether to coerce single items to lists of the target length.
+      Defaults to False.
+    target_length (Optional[int], optional): The expected length of the list(s). If not provided,
+      the length of the first item in the list will be used. Defaults to None.
 
   Raises:
     ValueError: If the length of any item in the list(s) does not match the expected length.
+    TypeError: If items are not lists.
 
   Returns:
     items list[list[Any]]: The list of items.
 
   """
-  if target_length is None:
-    length = len(items[0])
-  if not isinstance(items[0], list) and len(items) != target_length:
-    if len(items) == 1 and coerce_length:
-      assert target_length is not None, "Expected target length to be provided"
-      return items * target_length
+  length = len(items[0]) if target_length is None else target_length
+
+  if not isinstance(items[0], list) and len(items) != length:
+    coerced = _check_coercion(
+      items, coerce_length=coerce_length, target_length=target_length,
+    )
+    if coerced:
+      return coerced
     msg = f"Expected list of length {length} but got list of length {len(items)}"
     raise ValueError(
       msg,
     )
+
   new_items = []
   for item in items:
     if not isinstance(item, list):
       msg = f"Expected list but got {type(item)}"
-      raise ValueError(msg)
-    if len(item) != target_length:
-      if len(item) == 1 and coerce_length:
-        assert target_length is not None, "Expected target length to be provided"  # mypy assert
-        new_items.append(item * target_length)
+      raise TypeError(msg)
+    if len(item) != length:
+      coerced = _check_coercion(
+        item, coerce_length=coerce_length, target_length=target_length,
+      )
+      if coerced:
+        new_items.append(coerced)
       else:
         msg = f"Expected list of length {length} but got list of length {len(item)}"
         raise ValueError(
           msg,
         )
-  if all(len(item) == target_length for item in items):
+  if all(len(item) == length for item in items):
     return items
   return new_items
 
@@ -181,7 +218,7 @@ async def parse_well_name(well: Well) -> tuple:
   """Parse the name of a well into a tuple of the row and column.
 
   Args:
-    well_name (str): The name of the well.
+    well (Well): The well object.
 
   Returns:
     tuple: A tuple of the row and column of the well.
@@ -197,7 +234,8 @@ async def parse_well_str_accession_id(well: str, plate: Plate) -> list[Well]:
   """Parse the name of a well into a tuple of the row and column.
 
   Args:
-    well_name (str): The name of the well.
+    well (str): The name of the well.
+    plate (Plate): The plate object.
 
   Returns:
     tuple: A tuple of the row and column of the well.
@@ -206,27 +244,65 @@ async def parse_well_str_accession_id(well: str, plate: Plate) -> list[Well]:
   return plate[well]
 
 
+def _validate_tips(tips: Any) -> list[TipSpot]:  # noqa: ANN401
+  if isinstance(tips, list):
+    if all(isinstance(tip, TipSpot) for tip in tips):
+      return [tip for tip in tips if isinstance(tip, TipSpot)]
+    msg = "Invalid type for tip. Must be a list of TipSpot objects or TipRack."
+    raise TypeError(msg)
+  if isinstance(tips, TipRack):
+    # This branch is just for type checking, logic for TipRack is handled in caller
+    return []
+  msg = "Invalid type for tip. Must be a list of TipSpot objects or single TipRack."
+  raise TypeError(msg)
+
+
+async def _get_tips_from_rack(
+  tips: TipRack, map_onto: list[Well], source_plate: Plate,
+) -> list[TipSpot]:
+  output_tips = []
+  if not all(isinstance(item, Well) for item in map_onto):
+    msg = "Cannot map between source or target containers and tip rack. Specify \
+      tips as list[TipSpot]."
+    raise ValueError(msg)
+  for well in map_onto:
+    if not isinstance(well, Well):
+      msg = "Expected Well object"
+      raise TypeError(msg)
+    well_number = await well_to_int(well, source_plate)
+    if not tips[well_number][0].has_tip():
+      msg = "Tip rack does not have tip at specified location."
+      raise ValueError(msg)
+    output_tips.append(tips[well_number][0])
+  return output_tips
+
+
 async def tip_mapping(
   tips: TipRack | list[TipSpot],
   sources: list[Well],
   source_plate: Plate,
-  target_plate: Plate | None = None,
+  _target_plate: Plate | None = None,
   targets: list[Well] | None = None,
   map_tips: Literal["source", "target"] | None = None,
 ) -> list[TipSpot]:
-  """Check if tips can be mapped between either source or destination containers based on if they
-  are wells, and that the number of tips is sufficient for the number of sources and targets.
+  """Check if tips can be mapped between either source or destination containers.
+
+  This is based on if they are wells, and that the number of tips is sufficient for the number of
+  sources and targets.
 
   Args:
     tips (TipRack | list[TipSpot]): The list of tips to be mapped.
     sources (list[Well]): The list of source containers.
+    source_plate (Plate): The source plate.
+    _target_plate (Plate | None): The target plate (unused).
     targets (list[Well]): The list of destination containers.
+    map_tips (Literal["source", "target"] | None): Which containers to map tips to.
 
   Raises:
     ValueError: If the tips cannot be mapped between either the source and target containers.
     NotImplementedError: If multiple tip racks are used to map between source or target containers.
     ValueError: If the tip rack does not have a tip at the specified location.
-    ValueError: If the type of the tip is not a list of Tip objects or a single TipRack.
+    TypeError: If the type of the tip is not a list of Tip objects or a single TipRack.
     ValueError: If the value of map_tips is not "source" or "target".
     ValueError: If the number of tips is insufficient for the number of sources or targets.
 
@@ -236,12 +312,8 @@ async def tip_mapping(
 
   """
   if isinstance(tips, list):
-    if all(isinstance(tip, TipSpot) for tip in tips):
-      return [tip for tip in tips if isinstance(tip, TipSpot)]  # mypy compatible return
-    msg = "Invalid type for tip. Must be a list of TipSpot objects or TipRack."
-    raise ValueError(
-      msg,
-    )
+    return _validate_tips(tips)
+
   if map_tips is None:
     map_tips = "source"
   if map_tips not in ["source", "target"]:
@@ -255,40 +327,26 @@ async def tip_mapping(
     )
     targets = sources
   map_onto = sources if map_tips == "source" else targets
-  assert map_onto is not None, "Expected map_onto to be provided"  # mypy assert
-  if isinstance(tips, TipRack):
-    tip_number = tips.num_items
-  else:
+  if map_onto is None:
+    msg = "Expected map_onto to be provided"
+    raise ValueError(msg)
+
+  if not isinstance(tips, TipRack):
     msg = "Invalid type for tip. Must be a list of TipSpot objects or single TipRack."
-    raise ValueError(
-      msg,
-    )
+    raise TypeError(msg)
+
+  tip_number = tips.num_items
   if tip_number < len(map_onto):
     msg = "Insufficient number of tips for the number of sources or targets."
-    raise ValueError(
-      msg,
-    )
-  if isinstance(tips, TipRack):
-    output_tips = []
-    if not all(isinstance(item, Well) for item in map_onto):
-      msg = "Cannot map between source or target containers and tip rack. Specify \
-        tips as list[TipSpot]."
-      raise ValueError(
-        msg,
-      )
-    for well in map_onto:
-      assert isinstance(well, Well), "Expected Well object"  # mypy compatible assert
-      well_number = await well_to_int(well, source_plate)
-      if not tips[well_number][0].has_tip():
-        msg = "Tip rack does not have tip at specified location."
-        raise ValueError(msg)
-      output_tips.append(tips[well_number][0])
-  return output_tips
+    raise ValueError(msg)
+
+  return await _get_tips_from_rack(tips, map_onto, source_plate)
 
 
-def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:
-  """Returns a new dictionary containing only the key-value pairs from the nested dictionary where \
-    the key matches the given key and the value matches the given value.
+def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:  # noqa: ANN401
+  """Return a new dictionary containing only the key-value pairs from the nested dictionary.
+
+  This filters where the key matches the given key and the value matches the given value.
 
   Args:
     nested_dict (dict): The nested dictionary to be sliced.

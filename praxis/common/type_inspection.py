@@ -5,11 +5,23 @@ import inspect
 from typing import Any, Union, get_args, get_origin
 
 
-def is_pylabrobot_resource(type_str: str) -> bool:
-    """Check if the given type string is a Pylabrobot Resource."""
-    # This is a simplified check. A more robust implementation would involve
-    # more sophisticated parsing of the type string.
-    return "Plate" in type_str or "TipRack" in type_str or "Container" in type_str
+def is_pylabrobot_resource(type_or_str: Any) -> bool:
+    """Check if the given type or string is a Pylabrobot Resource."""
+    if isinstance(type_or_str, str):
+        return "Plate" in type_or_str or "TipRack" in type_or_str or "Container" in type_or_str or "Resource" in type_or_str
+
+    origin = get_origin(type_or_str)
+    if origin is Union:
+        args = get_args(type_or_str)
+        # Return True if ANY arg is a resource
+        return any(is_pylabrobot_resource(arg) for arg in args if arg is not type(None))
+
+    if hasattr(type_or_str, "__module__") and "pylabrobot" in getattr(type_or_str, "__module__", ""):
+        return True
+
+    # Also check if the type name is one of the resource types (fallback if module check fails or for some mocks)
+    name = getattr(type_or_str, "__name__", str(type_or_str))
+    return name in ["Plate", "TipRack", "Container", "Resource", "Carrier", "Deck", "Spot", "Well"]
 
 
 def serialize_type_hint(type_hint: Any) -> str:
