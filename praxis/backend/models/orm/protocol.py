@@ -290,12 +290,14 @@ class FunctionProtocolDefinitionOrm(Base):
     back_populates="function_protocol_definitions",
     foreign_keys=[source_repository_accession_id],
     kw_only=True,
+    init=False,
   )
   file_system_source: Mapped["FileSystemProtocolSourceOrm | None"] = relationship(
     "FileSystemProtocolSourceOrm",
     back_populates="function_protocol_definitions",
     foreign_keys=[file_system_source_accession_id],
     kw_only=True,
+    init=False,
   )
   protocol_runs: Mapped[list["ProtocolRunOrm"]] = relationship(
     "ProtocolRunOrm",
