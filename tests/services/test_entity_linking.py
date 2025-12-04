@@ -1,14 +1,12 @@
 """Tests for entity linking service."""
 
 import uuid
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models import (
-    DeckOrm,
     MachineOrm,
     MachineStatusEnum,
     ResourceDefinitionOrm,
@@ -20,28 +18,24 @@ from praxis.backend.services.entity_linking import (
     _create_or_link_machine_counterpart_for_resource,
     _create_or_link_resource_counterpart_for_machine,
     _read_resource_definition_for_linking,
-    synchronize_deck_resource_names,
     synchronize_machine_resource_names,
-    synchronize_resource_deck_names,
-    synchronize_resource_machine_names,
 )
 
 
 @pytest.fixture
 def mock_db_session() -> AsyncMock:
     """Mock database session."""
-    session = AsyncMock(spec=AsyncSession)
-    return session
+    return AsyncMock(spec=AsyncSession)
 
 
 @pytest.fixture
 def resource_definition() -> ResourceDefinitionOrm:
-    obj = ResourceDefinitionOrm(
+    """Create a resource definition for testing."""
+    # Set ID manually for testing stability if needed, though usually auto-generated
+    return ResourceDefinitionOrm(
         name="test_resource_def",
         fqn="test.fqn",
     )
-    # Set ID manually for testing stability if needed, though usually auto-generated
-    return obj
 
 
 @pytest.mark.asyncio
@@ -56,7 +50,7 @@ async def test_read_resource_definition_for_linking(
     mock_db_session.execute.return_value = mock_result
 
     result = await _read_resource_definition_for_linking(
-        mock_db_session, "test_resource_def"
+        mock_db_session, "test_resource_def",
     )
     assert result == resource_definition
     mock_db_session.execute.assert_called_once()
@@ -76,16 +70,13 @@ async def test_read_resource_definition_for_linking_not_found(
 
 
 @pytest.mark.asyncio
-@patch("praxis.backend.services.entity_linking.uuid7")
 @patch("praxis.backend.services.entity_linking._read_resource_definition_for_linking")
 async def test_create_or_link_resource_counterpart_new(
     mock_read_def: AsyncMock,
-    mock_uuid7: MagicMock,
     mock_db_session: AsyncMock,
     resource_definition: ResourceDefinitionOrm,
 ) -> None:
     """Test creating a new resource counterpart for a machine."""
-    mock_uuid7.return_value = uuid.UUID("00000000-0000-0000-0000-000000000001")
     mock_read_def.return_value = resource_definition
 
     machine = MachineOrm(
@@ -150,14 +141,10 @@ async def test_create_or_link_resource_counterpart_existing_link(
 
 
 @pytest.mark.asyncio
-@patch("praxis.backend.services.entity_linking.uuid7")
 async def test_create_or_link_machine_counterpart_new(
-    mock_uuid7: MagicMock,
     mock_db_session: AsyncMock,
 ) -> None:
     """Test creating a new machine counterpart for a resource."""
-    mock_uuid7.return_value = uuid.UUID("00000000-0000-0000-0000-000000000002")
-
     resource = ResourceOrm(
         name="test_resource",
         fqn="resource.fqn",

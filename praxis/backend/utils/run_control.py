@@ -14,9 +14,6 @@ COMMAND_KEY_PREFIX = "orchestrator:control"
 
 
 def _get_redis_client() -> redis.Redis:
-  # Assuming settings.redis_host and settings.redis_port are available
-  # If settings.redis_url is directly available, that would be preferred:
-  # redis_url = settings.redis_url
   redis_url = f"redis://{SETTINGS.redis_host}:{SETTINGS.redis_port}/0"
   return redis.Redis.from_url(redis_url, decode_responses=True)
 
@@ -48,10 +45,11 @@ async def send_control_command(
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
     await r.set(key, command, ex=ttl_seconds)
-    return True
   except RedisError:
     # In a real application, use a proper logger
     return False
+  else:
+    return True
 
 
 async def get_control_command(run_accession_id: uuid.UUID) -> str | None:
@@ -86,6 +84,7 @@ async def clear_control_command(run_accession_id: uuid.UUID) -> bool:
     r = _get_redis_client()
     key = _get_command_key(run_accession_id)
     deleted_count = await r.delete(key)
-    return deleted_count > 0
   except RedisError:
     return False
+  else:
+    return deleted_count > 0

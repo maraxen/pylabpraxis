@@ -33,7 +33,7 @@ class MachineManagerMixin:
     prefix="WorkcellRuntime: Error initializing machine",
     suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
   )
-  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:  # noqa: C901, PLR0912, PLR0915
+  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:
     """Initialize and connects to a machine's PyLabRobot machine/resource."""
     # We assume self is WorkcellRuntime
     self = cast("WorkcellRuntime", self)
@@ -370,7 +370,7 @@ class MachineManagerMixin:
     machine_orm_accession_id: uuid.UUID,
     action_name: str,
     params: dict[str, Any] | None = None,
-  ) -> Any:  # noqa: ANN401
+  ) -> Any:
     """Execute a method/action on a live PyLabRobot machine instance."""
     # self = cast("WorkcellRuntime", self) # Not needed for this method strictly speaking if get_active_machine is available
     machine = self.get_active_machine(machine_orm_accession_id)

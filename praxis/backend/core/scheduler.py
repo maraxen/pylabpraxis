@@ -162,7 +162,9 @@ class ProtocolScheduler:
           self._asset_reservations[asset_key] = set()
 
         if self._asset_reservations[asset_key]:
-          error_msg = f"Asset {asset_key} is already reserved by runs: {self._asset_reservations[asset_key]}"
+          error_msg = (
+            f"Asset {asset_key} is already reserved by runs: {self._asset_reservations[asset_key]}"
+          )
           logger.warning(error_msg)
           await self._release_reservations(reserved_assets, protocol_run_id)
           raise AssetAcquisitionError(error_msg)

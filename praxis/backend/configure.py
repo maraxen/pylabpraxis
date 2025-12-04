@@ -146,14 +146,16 @@ class PraxisConfiguration:
   def celery_broker_url(self) -> str:
     """Return the Celery broker URL."""
     return os.getenv("CELERY_BROKER_URL") or self._celery_section.get(
-      "broker", "redis://127.0.0.1:6379/0",
+      "broker",
+      "redis://127.0.0.1:6379/0",
     )
 
   @property
   def celery_result_backend(self) -> str:
     """Return the Celery result backend URL."""
     return os.getenv("CELERY_RESULT_BACKEND") or self._celery_section.get(
-      "backend", "redis://127.0.0.1:6379/0",
+      "backend",
+      "redis://127.0.0.1:6379/0",
     )
 
   @property

@@ -1,5 +1,4 @@
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,logging-fstring-interpolation
-# ruff: noqa: E501, FBT001
 """Location constraint handling logic for AssetManager."""
 
 import importlib

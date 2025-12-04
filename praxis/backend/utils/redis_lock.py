@@ -42,13 +42,8 @@ def acquire_lock(
       time.sleep(0.1)  # Wait for a short time before retrying
     # Timeout
     yield False
-  except Exception:
-    raise
   finally:
     # Only release the lock if it was acquired and the identifier matches
     val = cast("bytes | None", redis_client.get(lock_name))
     if acquired and val and val.decode("utf-8") == identifier:
-      try:
-        redis_client.delete(lock_name)
-      except Exception:
-        raise
+      redis_client.delete(lock_name)

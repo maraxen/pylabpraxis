@@ -25,7 +25,7 @@ async def well_to_int(well: Well, plate: Plate) -> int:
   return int((column * plate.num_items_y) + row)
 
 
-def liquid_handler_setup_check(func: Any) -> Any:  # noqa: ANN401
+def liquid_handler_setup_check(func: Any) -> Any:
   """Check if a liquid handler is set up before executing the decorated function.
 
   Args:
@@ -41,7 +41,7 @@ def liquid_handler_setup_check(func: Any) -> Any:  # noqa: ANN401
   """
 
   @wraps(func)
-  async def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+  async def wrapper(*args: Any, **kwargs: Any) -> Any:
     if len(args) == 0 and "liquid_handler" not in kwargs:
       msg = "No liquid handler provided"
       raise ValueError(msg)
@@ -143,7 +143,7 @@ async def type_check(items: list, types: list, *, in_list: bool = False) -> None
 
 
 def _check_coercion(
-  items: list | Any,  # noqa: ANN401
+  items: list | Any,
   *,
   coerce_length: bool,
   target_length: int | None,
@@ -184,7 +184,9 @@ async def check_list_length(
 
   if not isinstance(items[0], list) and len(items) != length:
     coerced = _check_coercion(
-      items, coerce_length=coerce_length, target_length=target_length,
+      items,
+      coerce_length=coerce_length,
+      target_length=target_length,
     )
     if coerced:
       return coerced
@@ -200,7 +202,9 @@ async def check_list_length(
       raise TypeError(msg)
     if len(item) != length:
       coerced = _check_coercion(
-        item, coerce_length=coerce_length, target_length=target_length,
+        item,
+        coerce_length=coerce_length,
+        target_length=target_length,
       )
       if coerced:
         new_items.append(coerced)
@@ -244,7 +248,7 @@ async def parse_well_str_accession_id(well: str, plate: Plate) -> list[Well]:
   return plate[well]
 
 
-def _validate_tips(tips: Any) -> list[TipSpot]:  # noqa: ANN401
+def _validate_tips(tips: Any) -> list[TipSpot]:
   if isinstance(tips, list):
     if all(isinstance(tip, TipSpot) for tip in tips):
       return [tip for tip in tips if isinstance(tip, TipSpot)]
@@ -258,7 +262,9 @@ def _validate_tips(tips: Any) -> list[TipSpot]:  # noqa: ANN401
 
 
 async def _get_tips_from_rack(
-  tips: TipRack, map_onto: list[Well], source_plate: Plate,
+  tips: TipRack,
+  map_onto: list[Well],
+  source_plate: Plate,
 ) -> list[TipSpot]:
   output_tips = []
   if not all(isinstance(item, Well) for item in map_onto):
@@ -343,7 +349,7 @@ async def tip_mapping(
   return await _get_tips_from_rack(tips, map_onto, source_plate)
 
 
-def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:  # noqa: ANN401
+def boolean_slice(nested_dict: dict, key: Any, value: Any) -> dict:
   """Return a new dictionary containing only the key-value pairs from the nested dictionary.
 
   This filters where the key matches the given key and the value matches the given value.

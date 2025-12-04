@@ -116,15 +116,6 @@ class Container(containers.DeclarativeContainer):
   # --- Celery ---
   celery_app: providers.Object[Celery] = providers.Object(celery_app)
 
-  # --- Core Services (Example of different lifetimes) ---
-
-  # Singleton provider: one instance for the entire app lifecycle.
-  # discovery_service = providers.Singleton(DiscoveryService)
-
-  # Factory provider: a new instance is created on each injection.
-  # e.g. for a service that holds request-specific state.
-  # transient_service = providers.Factory(MyTransientService)
-
   # --- Database ---
   # The db_session_factory creates the sessionmaker. It's a singleton.
   db_session_factory: providers.Singleton[async_sessionmaker[AsyncSession]] = providers.Singleton(
@@ -199,17 +190,6 @@ class Container(containers.DeclarativeContainer):
     celery_app=celery_app,
     protocol_run_service=protocol_run_service,
     protocol_definition_service=protocol_definition_service,
-  )
-
-  asset_manager: providers.Factory[IAssetManager] = providers.Factory(
-    AssetManager,
-    db_session=db_session,
-    workcell_runtime=workcell_runtime,
-    deck_service=deck_service,
-    machine_service=machine_service,
-    resource_service=resource_service,
-    resource_type_definition_service=resource_type_definition_service,
-    asset_lock_manager=asset_lock_manager,
   )
 
   asset_manager: providers.Factory[IAssetManager] = providers.Factory(

@@ -397,7 +397,7 @@ class ParameterDefinitionOrm(Base):
     nullable=True,
     comment="JSONB representation of any constraints on the parameter, such as allowed values or \
       ranges.",
-    default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
+    default=None,  # TODO(mar): consider using a more structured type for constraints
   )
   ui_hint_json: Mapped[dict | None] = mapped_column(
     "ui_hint",
@@ -494,7 +494,7 @@ class AssetRequirementOrm(Base):
     nullable=True,
     comment="JSONB representation of any constraints on the asset requirement, such as allowed \
       values or ranges.",
-    default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
+    default=None,  # TODO(mar): consider using a more structured type for constraints
   )
   location_constraints_json: Mapped[dict | None] = mapped_column(
     "location_constraints",
