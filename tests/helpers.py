@@ -319,6 +319,14 @@ async def create_protocol_definition(
         defaults["source_repository_accession_id"] = repo.accession_id
 
     protocol_def = FunctionProtocolDefinitionOrm(**defaults)
+
+    if source_repository:
+        protocol_def.source_repository = source_repository
+    if file_system_source:
+        protocol_def.file_system_source = file_system_source
+    if accession_id:
+        protocol_def.accession_id = accession_id
+
     db_session.add(protocol_def)
     await db_session.flush()
     return protocol_def
