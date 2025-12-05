@@ -219,7 +219,9 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
         # Connect to Core: specific handling for starting a run
         try:
           # Import here to avoid circular dependency
-          from praxis.backend.api.global_dependencies import get_scheduler
+          from praxis.backend.api.global_dependencies import (  # noqa: PLC0415
+            get_scheduler,
+          )
 
           scheduler = None
           try:

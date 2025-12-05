@@ -14,6 +14,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from praxis.backend.models.enums.outputs import DataOutputTypeEnum
 from praxis.backend.models.orm.outputs import FunctionDataOutputOrm
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.outputs import (
@@ -58,8 +59,6 @@ class FunctionDataOutputCRUDService(
     obj_in: FunctionDataOutputCreate,
   ) -> FunctionDataOutputOrm:
     """Create a new function data output record."""
-    from praxis.backend.models.enums.outputs import DataOutputTypeEnum
-
     data_type_enum = DataOutputTypeEnum(obj_in.data_type)
     log_prefix = f"Data Output (Type: {data_type_enum.value}, Key: '{obj_in.data_key}'):"
     logger.info("%s Creating new function data output.", log_prefix)

@@ -50,7 +50,7 @@ class ProtocolVisitor(ast.NodeVisitor):
     num_defaults = len(node.args.defaults)
     defaults = [None] * (num_args - num_defaults) + [ast.unparse(d) for d in node.args.defaults]
 
-    for arg, default in zip(node.args.args, defaults):
+    for arg, default in zip(node.args.args, defaults, strict=True):
       annotation = ast.unparse(arg.annotation) if arg.annotation else "Any"
 
       common_args = {

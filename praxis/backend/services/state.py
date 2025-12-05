@@ -6,7 +6,7 @@ from collections.abc import ItemsView, KeysView, ValuesView
 from typing import Any, TypeVar
 
 import redis
-from redis.exceptions import ConnectionError
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.utils.logging import get_logger
@@ -99,7 +99,7 @@ class PraxisState:
         decode_responses=False,
       )
       self.redis_client.ping()
-    except ConnectionError as e:
+    except RedisConnectionError as e:
       logger.exception(
         "Failed to connect to Redis for PraxisState (run_accession_id: %s) at %s:%s/%s",
         self.run_accession_id,
@@ -108,7 +108,7 @@ class PraxisState:
         _redis_db,
       )
       msg = f"PraxisState: Failed to connect to Redis - {e}"
-      raise ConnectionError(msg) from e
+      raise RedisConnectionError(msg) from e
     else:
       logger.info(
         "Redis client connected for PraxisState (run_accession_id: %s) at %s:%s/%s",

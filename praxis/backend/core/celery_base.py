@@ -19,6 +19,6 @@ class PraxisTask(Task):
     return self.app.container
 
   def __call__(self, *args, **kwargs):
-    """Overrides the default `__call__` method to provide a DI container scope for each task execution."""
+    """Override the default call method to provide a DI container scope."""
     with self.container.db_session.override(self.container.db_session_factory()):
       return super().__call__(*args, **kwargs)
