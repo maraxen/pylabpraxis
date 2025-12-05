@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import UUID7, Field
+from pydantic import UUID7, BaseModel, ConfigDict, Field
 
 from praxis.backend.models.enums import AssetType
 
@@ -35,9 +35,11 @@ class AssetResponse(AssetBase, PraxisBaseModel):
   )
 
 
-class AssetUpdate(PraxisBaseModel):
+class AssetUpdate(BaseModel):
 
   """Define the properties for updating an asset."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str | None = Field(None, description="The unique name of the asset.")
   fqn: str | None = Field(

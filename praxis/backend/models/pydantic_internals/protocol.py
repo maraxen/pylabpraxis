@@ -30,13 +30,15 @@ from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseModel
 
 
-class ProtocolStartRequest(PraxisBaseModel):
+class ProtocolStartRequest(BaseModel):
 
   """Represents a request to start a protocol run.
 
   This includes details about the protocol to be run, its parameters,
   asset assignments, and configuration data.
   """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   protocol_class: str
   description: str | None = None
@@ -49,22 +51,24 @@ class ProtocolStartRequest(PraxisBaseModel):
   kwargs: dict[str, Any] | None = None
 
 
-class ProtocolStatus(PraxisBaseModel):
+class ProtocolStatus(BaseModel):
 
   """Provides a simple status update for a protocol."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str
   status: str
 
 
-class ProtocolDirectories(PraxisBaseModel):
+class ProtocolDirectories(BaseModel):
 
   """Lists directories associated with protocols."""
 
   directories: list[str]
 
 
-class ProtocolPrepareRequest(PraxisBaseModel):
+class ProtocolPrepareRequest(BaseModel):
 
   """Represents a request to prepare a protocol for execution.
 
@@ -72,18 +76,22 @@ class ProtocolPrepareRequest(PraxisBaseModel):
   parameters and asset assignments.
   """
 
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+
   protocol_path: str
   parameters: dict[str, Any] | None = None
   asset_assignments: dict[str, str] | None = None
 
 
-class ProtocolInfo(PraxisBaseModel):
+class ProtocolInfo(BaseModel):
 
   """Provides essential information about a protocol.
 
   This includes its name, source path, description, and whether it has
   parameters or assets, along with version and database ID.
   """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str
   path: str
@@ -94,14 +102,16 @@ class ProtocolInfo(PraxisBaseModel):
   protocol_definition_accession_id: UUID7 | None = None
 
 
-class UIHint(PraxisBaseModel):
+class UIHint(BaseModel):
 
   """Provides hints for parameter/asset rendering in a user interface."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   widget_type: str | None = None
 
 
-class ParameterConstraintsModel(PraxisBaseModel):
+class ParameterConstraintsModel(BaseModel):
 
   """Defines validation constraints for a protocol parameter."""
 
@@ -118,13 +128,15 @@ class ParameterConstraintsModel(PraxisBaseModel):
   )
 
 
-class ParameterMetadataModel(PraxisBaseModel):
+class ParameterMetadataModel(BaseModel):
 
   """Provides comprehensive metadata for a protocol parameter.
 
   This includes its name, type information, default value, description,
   constraints, and UI rendering hints.
   """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str
   type_hint: str
@@ -139,7 +151,7 @@ class ParameterMetadataModel(PraxisBaseModel):
   ui_hint: UIHint | None = None
 
 
-class LocationConstraintsModel(PraxisBaseModel):
+class LocationConstraintsModel(BaseModel):
 
   """Defines constraints for the location of an asset in a protocol.
 
@@ -159,9 +171,11 @@ class LocationConstraintsModel(PraxisBaseModel):
   )
 
 
-class AssetConstraintsModel(PraxisBaseModel):
+class AssetConstraintsModel(BaseModel):
 
   """Defines constraints for an asset required by a protocol."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   required_methods: list[str] = Field(default_factory=list)
   required_attributes: list[str] = Field(default_factory=list)
@@ -169,13 +183,15 @@ class AssetConstraintsModel(PraxisBaseModel):
   required_method_args: dict[str, list[str]] = Field(default_factory=dict)
 
 
-class AssetRequirementModel(PraxisBaseModel):
+class AssetRequirementModel(BaseModel):
 
   """Describes a single asset required by a protocol.
 
   This includes its name, type information, optionality, default value,
   description, and specific constraints.
   """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   accession_id: UUID7
   name: str
@@ -190,13 +206,11 @@ class AssetRequirementModel(PraxisBaseModel):
   )
 
 
-class FunctionProtocolDefinitionCreate(PraxisBaseModel):
+class FunctionProtocolDefinitionBase(BaseModel):
 
-  """Represents a detailed definition of a function-based protocol.
+  """Base model for a function protocol definition."""
 
-  This model encapsulates core definition details, source information,
-  execution behavior, categorization, and inferred parameters and assets.
-  """
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str
   fqn: str
@@ -219,11 +233,22 @@ class FunctionProtocolDefinitionCreate(PraxisBaseModel):
   state_param_name: str | None = "state"
 
   category: str | None = None
-  tags: list[str] = Field(default_factory=list)
+  tags: Any = Field(default_factory=list)
   deprecated: bool = False
 
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
+
+
+class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
+
+  """Represents a detailed definition of a function-based protocol.
+
+  This model encapsulates core definition details, source information,
+  execution behavior, categorization, and inferred parameters and assets.
+  """
+
+  tags: list[str] = Field(default_factory=list)
 
 
 class FunctionProtocolDefinitionUpdate(BaseModel):
@@ -252,21 +277,14 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   assets: list[AssetRequirementModel] | None = None
 
 
-class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionCreate):
+class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisBaseModel):
 
   """Model for API responses for a function protocol definition."""
-
-  # Override fields to match ORM structure
-  # ORM has JSONB for tags which can store list or dict
-  tags: list[str] | dict | None = None
-  # Parameters and assets are relationships - will be eagerly loaded by service
-  parameters: list[ParameterMetadataModel] = Field(default_factory=list)
-  assets: list[AssetRequirementModel] = Field(default_factory=list)
 
   model_config = ConfigDict(from_attributes=True)
 
 
-class ProtocolParameters(PraxisBaseModel):
+class ProtocolParameters(BaseModel):
 
   """Represents the parameters for a protocol run.
 
@@ -275,16 +293,16 @@ class ProtocolParameters(PraxisBaseModel):
   used internally for logging or tracking.
   """
 
-  user_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
-  system_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
-
   model_config = ConfigDict(
     from_attributes=True,
     validate_assignment=True,
   )
 
+  user_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
+  system_parameters: dict[str, ParameterMetadataModel] = Field(default_factory=dict)
 
-class ProtocolDefinitionFilters(PraxisBaseModel):
+
+class ProtocolDefinitionFilters(BaseModel):
 
   """Model for filtering protocol definitions."""
 
@@ -296,9 +314,11 @@ class ProtocolDefinitionFilters(PraxisBaseModel):
   include_deprecated: bool = False
 
 
-class ProtocolRunBase(PraxisBaseModel):
+class ProtocolRunBase(BaseModel):
 
   """Base model for a protocol run."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   status: ProtocolRunStatusEnum | None = None
   start_time: datetime | None = None
@@ -326,16 +346,18 @@ class ProtocolRunUpdate(ProtocolRunBase):
   """Model for updating a protocol run."""
 
 
-class ProtocolRunResponse(ProtocolRunBase):
+class ProtocolRunResponse(ProtocolRunBase, PraxisBaseModel):
 
   """Model for API responses for a protocol run."""
 
   model_config = PraxisBaseModel.model_config
 
 
-class FunctionCallLogBase(PraxisBaseModel):
+class FunctionCallLogBase(BaseModel):
 
   """Base model for a function call log."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   end_time: datetime | None = None
   input_args_json: dict[str, Any] | None = None

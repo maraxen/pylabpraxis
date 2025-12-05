@@ -167,8 +167,6 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
 
   """Model for function data output responses."""
 
-  accession_id: UUID7 = Field(..., description="Unique identifier")
-
   function_call_log_accession_id: UUID7 = Field(
     ...,
     description="ID of the function call",
@@ -210,9 +208,6 @@ class FunctionDataOutputResponse(FunctionDataOutputBase):
     None,
     description="ID of source data if derived",
   )
-
-  created_at: datetime = Field(..., description="Creation timestamp")
-  updated_at: datetime | None = Field(None, description="Last update timestamp")
 
 
 class WellDataOutputBase(PraxisBaseModel):
@@ -257,8 +252,6 @@ class WellDataOutputResponse(WellDataOutputBase):
 
   """Model for well data output responses."""
 
-  accession_id: UUID7 = Field(..., description="Unique identifier")
-
   function_data_output_accession_id: UUID7 = Field(
     ...,
     description="ID of the parent function data output",
@@ -268,8 +261,6 @@ class WellDataOutputResponse(WellDataOutputBase):
     ...,
     description="ID of the plate resource",
   )
-
-  created_at: datetime = Field(..., description="Creation timestamp")
 
 
 class WellDataOutputUpdate(BaseModel):

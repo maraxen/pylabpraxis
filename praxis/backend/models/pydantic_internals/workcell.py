@@ -13,7 +13,7 @@ Models included:
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.models.pydantic_internals.deck import DeckResponse
@@ -22,9 +22,11 @@ from praxis.backend.models.pydantic_internals.pydantic_base import PraxisBaseMod
 from praxis.backend.models.pydantic_internals.resource import ResourceResponse
 
 
-class WorkcellBase(PraxisBaseModel):
+class WorkcellBase(BaseModel):
 
   """Defines the base properties for a workcell."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str = Field(description="The unique name of the workcell.")
   fqn: str | None = Field(
@@ -59,13 +61,15 @@ class WorkcellCreate(WorkcellBase):
   """
 
 
-class WorkcellUpdate(PraxisBaseModel):
+class WorkcellUpdate(BaseModel):
 
   """Specifies the fields that can be updated for an existing workcell.
 
   All fields are optional, allowing for partial updates to a workcell's
   attributes.
   """
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str | None = Field(None, description="The new unique name of the workcell.")
   description: str | None = Field(
@@ -86,7 +90,7 @@ class WorkcellUpdate(PraxisBaseModel):
   )
 
 
-class WorkcellResponse(WorkcellBase):
+class WorkcellResponse(WorkcellBase, PraxisBaseModel):
 
   """Represents a workcell for API responses.
 

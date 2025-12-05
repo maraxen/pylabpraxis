@@ -72,7 +72,7 @@ class MachineCreate(MachineBase):
   )
 
 
-class MachineUpdate(MachineBase, AssetUpdate):
+class MachineUpdate(AssetUpdate):
 
   """Represents a machine for update requests."""
 
@@ -80,6 +80,18 @@ class MachineUpdate(MachineBase, AssetUpdate):
   status_details: str | None = None
   workcell_id: UUID7 | None = None
   resource_counterpart_accession_id: UUID7 | None = None
+  has_deck_child: bool | None = None
+  has_resource_child: bool | None = None
+  description: str | None = None
+  manufacturer: str | None = None
+  model: str | None = None
+  serial_number: str | None = None
+  installation_date: Any | None = None
+  connection_info: dict[str, Any] | None = None
+  is_simulation_override: bool | None = None
+  last_seen_online: Any | None = None
+  current_protocol_run_accession_id: UUID7 | None = None
+
   resource_def_name: str | None = None
   resource_properties_json: dict[str, Any] | None = None
   resource_initial_status: ResourceStatusEnum | None = None
@@ -149,9 +161,24 @@ class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
   """Represents a machine definition for creation requests."""
 
 
-class MachineDefinitionUpdate(MachineDefinitionBase, PLRTypeDefinitionUpdate):
+class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
 
   """Specifies the fields that can be updated for an existing machine definition."""
+
+  machine_category: MachineCategoryEnum | None = None
+  nominal_volume_ul: float | None = None
+  material: str | None = None
+  manufacturer: str | None = None
+  plr_definition_details_json: dict[str, Any] | None = None
+  size_x_mm: float | None = None
+  size_y_mm: float | None = None
+  size_z_mm: float | None = None
+  model: str | None = None
+  rotation_json: dict[str, Any] | None = None
+  resource_definition_accession_id: UUID7 | None = None
+  has_deck: bool | None = None
+  deck_definition_accession_id: UUID7 | None = None
+  setup_method_json: dict[str, Any] | None = None
 
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):

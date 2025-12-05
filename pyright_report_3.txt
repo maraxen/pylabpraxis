@@ -1,0 +1,7 @@
+/app/praxis/backend/models/pydantic_internals/deck.py
+  /app/praxis/backend/models/pydantic_internals/deck.py:38:3 - error: "resource_definition_accession_id" overrides a field of the same name but is missing a default value (reportGeneralTypeIssues)
+  /app/praxis/backend/models/pydantic_internals/deck.py:38:3 - error: "resource_definition_accession_id" overrides symbol of same name in class "ResourceBase"
+    Variable is mutable so its type is invariant
+      Override type "UUID7" is not the same as base type "UUID7 | None" (reportIncompatibleVariableOverride)
+  /app/praxis/backend/models/pydantic_internals/deck.py:145:34 - error: "PLRTypeDefinitionResponse" is not defined (reportUndefinedVariable)
+3 errors, 0 warnings, 0 informations
