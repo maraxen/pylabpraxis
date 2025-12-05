@@ -1,11 +1,14 @@
 """Unit tests for DeckService."""
 
+import uuid
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.enums.asset import AssetType
 from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.orm.deck import DeckDefinitionOrm
+from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.resource import ResourceDefinitionOrm
 from praxis.backend.models.pydantic_internals.deck import DeckCreate, DeckUpdate
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
@@ -66,6 +69,23 @@ async def test_create_deck(db_session: AsyncSession) -> None:
     assert deck.deck_type_id == deck_def.accession_id
 
 @pytest.mark.asyncio
+async def test_create_deck_with_plr_state(db_session: AsyncSession) -> None:
+    """Test creating a deck with PLR state."""
+    res_def = await create_resource_definition(db_session, "PLR State Deck Res Def")
+    deck_def = await create_deck_definition(db_session, "PLR State Deck Type Def")
+
+    deck_in = DeckCreate(
+        name="PLR State Deck",
+        asset_type=AssetType.DECK,
+        resource_definition_accession_id=res_def.accession_id,
+        deck_type_id=deck_def.accession_id,
+        plr_state={"some": "state"},
+    )
+
+    deck = await deck_service.create(db=db_session, obj_in=deck_in)
+    assert deck.plr_state == {"some": "state"}
+
+@pytest.mark.asyncio
 async def test_get_deck(db_session: AsyncSession) -> None:
     """Test retrieving a deck by ID."""
     res_def = await create_resource_definition(db_session, "Get Deck Res Def")
@@ -83,6 +103,13 @@ async def test_get_deck(db_session: AsyncSession) -> None:
     assert retrieved is not None
     assert retrieved.accession_id == created.accession_id
     assert retrieved.name == "Get Deck"
+
+@pytest.mark.asyncio
+async def test_get_deck_not_found(db_session: AsyncSession) -> None:
+    """Test retrieving a non-existent deck."""
+    random_id = uuid.uuid4()
+    deck = await deck_service.get(db=db_session, accession_id=random_id)
+    assert deck is None
 
 @pytest.mark.asyncio
 async def test_get_multi_decks(db_session: AsyncSession) -> None:
@@ -111,6 +138,38 @@ async def test_get_multi_decks(db_session: AsyncSession) -> None:
     assert "Deck 2" in names
 
 @pytest.mark.asyncio
+async def test_get_multi_decks_filter_parent(db_session: AsyncSession) -> None:
+    """Test listing decks filtered by parent ID."""
+    res_def = await create_resource_definition(db_session, "Filter Deck Res Def")
+    deck_def = await create_deck_definition(db_session, "Filter Deck Type Def")
+
+    machine_in = MachineCreate(name="Filter Machine", asset_type=AssetType.MACHINE, status=MachineStatusEnum.OFFLINE)
+    machine = await machine_service.create(db=db_session, obj_in=machine_in)
+
+    # Deck 1 with parent
+    await deck_service.create(db=db_session, obj_in=DeckCreate(
+        name="Deck Child",
+        asset_type=AssetType.DECK,
+        resource_definition_accession_id=res_def.accession_id,
+        deck_type_id=deck_def.accession_id,
+        machine_id=machine.accession_id,
+    ))
+
+    # Deck 2 without parent (or different parent)
+    await deck_service.create(db=db_session, obj_in=DeckCreate(
+        name="Deck Orphan",
+        asset_type=AssetType.DECK,
+        resource_definition_accession_id=res_def.accession_id,
+        deck_type_id=deck_def.accession_id,
+    ))
+
+    filters = SearchFilters(parent_accession_id=machine.accession_id)
+    decks = await deck_service.get_multi(db=db_session, filters=filters)
+
+    assert len(decks) == 1
+    assert decks[0].name == "Deck Child"
+
+@pytest.mark.asyncio
 async def test_update_deck(db_session: AsyncSession) -> None:
     """Test updating deck information."""
     res_def = await create_resource_definition(db_session, "Update Deck Res Def")
@@ -133,6 +192,25 @@ async def test_update_deck(db_session: AsyncSession) -> None:
     assert refetched.name == "Updated Deck Name"
 
 @pytest.mark.asyncio
+async def test_update_deck_plr_state(db_session: AsyncSession) -> None:
+    """Test updating deck PLR state."""
+    res_def = await create_resource_definition(db_session, "Update PLR Res Def")
+    deck_def = await create_deck_definition(db_session, "Update PLR Type Def")
+
+    deck_in = DeckCreate(
+        name="Update PLR Deck",
+        asset_type=AssetType.DECK,
+        resource_definition_accession_id=res_def.accession_id,
+        deck_type_id=deck_def.accession_id,
+    )
+    created = await deck_service.create(db=db_session, obj_in=deck_in)
+
+    update_data = DeckUpdate(plr_state={"new": "state"}, asset_type=AssetType.DECK)
+    updated = await deck_service.update(db=db_session, db_obj=created, obj_in=update_data)
+
+    assert updated.plr_state == {"new": "state"}
+
+@pytest.mark.asyncio
 @pytest.mark.xfail(reason="Circular dependency on cascade delete for DeckOrm")
 async def test_remove_deck(db_session: AsyncSession) -> None:
     """Test deleting a deck."""
@@ -152,6 +230,36 @@ async def test_remove_deck(db_session: AsyncSession) -> None:
 
     retrieved = await deck_service.get(db=db_session, accession_id=created.accession_id)
     assert retrieved is None
+
+@pytest.mark.asyncio
+async def test_remove_deck_mocked() -> None:
+    """Test removing a deck with mocked DB to avoid circular dependency issue."""
+    mock_db = AsyncMock(spec=AsyncSession)
+
+    # Mock get result
+    mock_deck = MagicMock(spec=DeckOrm)
+    mock_deck.accession_id = uuid.uuid4()
+    mock_deck.name = "Mock Deck"
+
+    # Setup execute result for get()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_deck
+    mock_db.execute.return_value = mock_result
+
+    # Call remove
+    removed = await deck_service.remove(db=mock_db, accession_id=mock_deck.accession_id)
+
+    # Verify
+    assert removed == mock_deck
+    mock_db.delete.assert_called_once_with(mock_deck)
+    mock_db.flush.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_remove_deck_not_found(db_session: AsyncSession) -> None:
+    """Test removing a non-existent deck."""
+    random_id = uuid.uuid4()
+    result = await deck_service.remove(db=db_session, accession_id=random_id)
+    assert result is None
 
 @pytest.mark.asyncio
 async def test_read_decks_by_machine_id(db_session: AsyncSession) -> None:

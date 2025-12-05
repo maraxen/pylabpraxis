@@ -18,8 +18,6 @@ async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefin
     """Create a FunctionProtocolDefinitionOrm for testing."""
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
-        source_repository=None,
-        file_system_source=None,
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
