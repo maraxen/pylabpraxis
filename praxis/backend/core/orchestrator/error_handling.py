@@ -35,7 +35,8 @@ class ErrorHandlingMixin:
   def _validate_praxis_state(self, praxis_state: PraxisState) -> None:
     """Validate the PraxisState object."""
     if praxis_state is None:
-      raise ValueError("PraxisState is None")
+      msg = "PraxisState is None"
+      raise ValueError(msg)
 
   async def _handle_protocol_execution_error(
     self,
@@ -46,12 +47,10 @@ class ErrorHandlingMixin:
     db_session: AsyncSession,
   ) -> None:
     """Handle errors during protocol execution, including rollback and status update."""
-    logger.error(
-      "ORCH: ERROR during protocol execution for run %s ('%s'): %s",
+    logger.exception(
+      "ORCH: ERROR during protocol execution for run %s ('%s')",
       run_accession_id,
       protocol_def_name,
-      e,
-      exc_info=True,
     )
     error_info = {
       "error_type": type(e).__name__,
@@ -171,13 +170,11 @@ class ErrorHandlingMixin:
             asset_type,
             asset_orm_accession_id,
           )
-        except Exception as release_err:  # pylint: disable=broad-except
-          logger.error(
-            "ORCH-RELEASE: Failed to release asset '%s' (ORM ID: %s): %s",
+        except Exception:  # pylint: disable=broad-except
+          logger.exception(
+            "ORCH-RELEASE: Failed to release asset '%s' (ORM ID: %s)",
             asset_info.get("name_in_protocol", "UnknownAsset"),
             asset_info.get("orm_accession_id"),
-            release_err,
-            exc_info=True,
           )
 
     await db_session.merge(protocol_run_orm)

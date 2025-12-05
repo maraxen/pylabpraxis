@@ -3,6 +3,7 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,12 +23,14 @@ from praxis.backend.models.orm.workcell import WorkcellOrm
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.discovery_service import DiscoveryService
 from praxis.backend.services.machine_type_definition import MachineTypeDefinitionService
-from praxis.backend.services.praxis_orm_service import PraxisDBService
 from praxis.backend.services.resource_type_definition import ResourceTypeDefinitionService
 from praxis.backend.utils.db import (
   AsyncSessionLocal,
   init_praxis_db_schema,
 )
+
+if TYPE_CHECKING:
+  from praxis.backend.services.praxis_orm_service import PraxisDBService
 from praxis.backend.utils.db import (
   async_engine as praxis_async_engine,
 )
@@ -81,24 +84,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_praxis_db_schema(engine=engine)
     logger.info("Praxis database schema initialization complete.")
 
-    # logger.info("Initializing PraxisDBService...")
-    # assert KEYCLOAK_DSN_FROM_CONFIG, "Keycloak DSN must be configured in praxis.ini"
-    # db_service_instance = await PraxisDBService.initialize(
-    #   keycloak_dsn=KEYCLOAK_DSN_FROM_CONFIG,
-    # )
-    # logger.info("PraxisDBService initialized successfully.")
-
     # Initialize AssetManager and WorkcellRuntime
     logger.info("Initializing AssetManager and WorkcellRuntime...")
-    from praxis.backend.core.filesystem import FileSystem
-    from praxis.backend.core.workcell import Workcell
-    from praxis.backend.services.deck import DeckService
-    from praxis.backend.services.machine import MachineService
-    from praxis.backend.services.resource import ResourceService
-    from praxis.backend.services.workcell import WorkcellService
+    from praxis.backend.core.filesystem import FileSystem  # noqa: PLC0415
+    from praxis.backend.core.workcell import Workcell  # noqa: PLC0415
+    from praxis.backend.services.deck import DeckService  # noqa: PLC0415
+    from praxis.backend.services.machine import MachineService  # noqa: PLC0415
+    from praxis.backend.services.resource import ResourceService  # noqa: PLC0415
+    from praxis.backend.services.workcell import WorkcellService  # noqa: PLC0415
 
     workcell = Workcell(
-      name="test_workcell", save_file="test_workcell.json", file_system=FileSystem(),
+      name="test_workcell",
+      save_file="test_workcell.json",
+      file_system=FileSystem(),
     )
     async with AsyncSessionLocal() as db_session:
       deck_service = DeckService(DeckOrm)
@@ -143,13 +141,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       )
       logger.info("DiscoveryService initialized.")
 
-      # Run initial discovery and synchronization
-      # logger.info("Running initial discovery and synchronization...")
-      # await discovery_service.discover_and_sync_all_definitions(
-      #   protocol_search_paths=praxis_config.all_protocol_source_paths,
-      # )
-      # logger.info("Initial discovery and synchronization complete.")
-
       # Instantiate and initialize the Orchestrator with its dependencies
       logger.info("Initializing orchestrator...")
       orchestrator = Orchestrator(
@@ -176,8 +167,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
       yield  # The application is now running
 
-  except Exception as e:
-    logger.exception("Error during application startup: %s", str(e))
+  except Exception:
+    logger.exception("Error during application startup")
     # In a production scenario, you might want to exit or handle this more gracefully
     raise
   finally:
@@ -195,8 +186,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       logger.info("Praxis SQLAlchemy engine disposed.")
 
       logger.info("Application shutdown complete.")
-    except Exception as e:
-      logger.exception("Error during application shutdown: %s", str(e))
+    except Exception:
+      logger.exception("Error during application shutdown")
 
 
 app = FastAPI(
@@ -236,7 +227,7 @@ app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discover
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next) -> Response:
+async def log_requests(request: Request, call_next) -> Response:  # type: ignore
   """Middleware to log incoming requests and their response status codes."""
   logger.info("Request: %s %s", request.method, request.url.path)
   response: Response = await call_next(request)
@@ -250,6 +241,6 @@ async def log_requests(request: Request, call_next) -> Response:
 
 
 @app.get("/", include_in_schema=False)
-async def root_redirect():
+async def root_redirect() -> RedirectResponse:
   """Redirects the root URL to the static index page."""
   return RedirectResponse(url="/docs")

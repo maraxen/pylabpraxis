@@ -286,9 +286,12 @@ async def test_resource_service_parent_child_relationship(db_session: AsyncSessi
     child = await resource_service.create(db_session, obj_in=child_data)
 
     # Retrieve parent with children loaded
-    parent_retrieved = await resource_service.get(db_session, parent.accession_id)
+    # Expire session to ensure relationship is re-fetched
+    parent_id = parent.accession_id
+    db_session.expire_all()
+    parent_retrieved = await resource_service.get(db_session, parent_id)
 
-    assert child.parent_accession_id == parent.accession_id
+    assert child.parent_accession_id == parent_id
     assert parent_retrieved is not None
     # Children relationship is loaded via selectinload in service.get()
     assert len(parent_retrieved.children) == 1

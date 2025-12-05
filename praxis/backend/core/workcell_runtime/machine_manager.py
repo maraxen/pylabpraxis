@@ -33,10 +33,10 @@ class MachineManagerMixin:
     prefix="WorkcellRuntime: Error initializing machine",
     suffix=" - Ensure the machine ORM is valid, the class, and machine is connected.",
   )
-  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:  # ruff: noqa: C901, PLR0912, PLR0915
+  async def initialize_machine(self, machine_orm: MachineOrm) -> Machine:
     """Initialize and connects to a machine's PyLabRobot machine/resource."""
     # We assume self is WorkcellRuntime
-    self = cast("WorkcellRuntime", self)
+    runtime = cast("WorkcellRuntime", self)
 
     if not hasattr(machine_orm, "id") or machine_orm.accession_id is None:
       msg = "Invalid machine_orm object passed to initialize_machine (no id)."
@@ -44,13 +44,13 @@ class MachineManagerMixin:
         msg,
       )
 
-    if machine_orm.accession_id in self._active_machines:
+    if machine_orm.accession_id in runtime._active_machines:
       logger.info(
         "WorkcellRuntime: Machine '%s' (ID: %s) already active. Returning existing instance.",
         machine_orm.name,
         machine_orm.accession_id,
       )
-      return self._active_machines[machine_orm.accession_id]
+      return runtime._active_machines[machine_orm.accession_id]
 
     shared_plr_instance: Machine | Resource | None = None
     if (
@@ -61,8 +61,8 @@ class MachineManagerMixin:
       == machine_orm.accession_id
     ):
       resource_orm = machine_orm.resource_counterpart
-      if resource_orm.accession_id in self._active_resources:
-        shared_plr_instance = self._active_resources[resource_orm.accession_id]
+      if resource_orm.accession_id in runtime._active_resources:
+        shared_plr_instance = runtime._active_resources[resource_orm.accession_id]
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) is linked to active Resource "
           " '%s' (ID: %s). Reusing existing PLR object as the machine instance.",
@@ -163,8 +163,8 @@ class MachineManagerMixin:
                 '{machine_orm.name}'\
                 (ID: {machine_orm.accession_id}) using class '{machine_orm.fqn}': \
                 {str(e)[:250]}"
-        async with self.db_session_factory() as db_session:
-          await self.machine_svc.update_machine_status(
+        async with runtime.db_session_factory() as db_session:
+          await runtime.machine_svc.update_machine_status(
             db_session,
             machine_orm.accession_id,
             MachineStatusEnum.ERROR,
@@ -173,8 +173,8 @@ class MachineManagerMixin:
           await db_session.commit()
         raise WorkcellRuntimeError(error_message) from e
 
-    self._active_machines[machine_orm.accession_id] = machine_instance
-    self._main_workcell.add_asset(machine_instance)
+    runtime._active_machines[machine_orm.accession_id] = machine_instance
+    runtime._main_workcell.add_asset(machine_instance)
     logger.info(
       "WorkcellRuntime: Machine '%s' (ID: %s) added to main Workcell container.",
       machine_orm.name,
@@ -190,7 +190,7 @@ class MachineManagerMixin:
     ):
       resource_orm = machine_orm.resource_counterpart
       if isinstance(machine_instance, Resource):
-        self._active_resources[resource_orm.accession_id] = cast("Resource", machine_instance)
+        runtime._active_resources[resource_orm.accession_id] = cast("Resource", machine_instance)
         logger.info(
           "WorkcellRuntime: Machine '%s' (ID: %s) also registered as Resource "
           "'%s' (ID: %s) in _active_resources, sharing the same PLR object.",
@@ -220,16 +220,16 @@ class MachineManagerMixin:
           msg,
         )
 
-      async with self.db_session_factory() as db_session:
-        deck_orm_entry = await self.deck_svc.read_decks_by_machine_id(
+      async with runtime.db_session_factory() as db_session:
+        deck_orm_entry = await runtime.deck_svc.read_decks_by_machine_id(
           db_session,
           machine_orm.accession_id,
         )
 
         if deck_orm_entry and deck_orm_entry.accession_id is not None:
-          self._active_decks[deck_orm_entry.accession_id] = machine_deck
-          self._last_initialized_deck_object = machine_deck
-          self._last_initialized_deck_orm_accession_id = deck_orm_entry.accession_id
+          runtime._active_decks[deck_orm_entry.accession_id] = machine_deck
+          runtime._last_initialized_deck_object = machine_deck
+          runtime._last_initialized_deck_orm_accession_id = deck_orm_entry.accession_id
           logger.info(
             "Registered deck (DeckOrm ID: %s, PLR name: '%s') from machine '%s' \
             (ID: %s) to active decks.",
@@ -248,8 +248,8 @@ class MachineManagerMixin:
             machine_orm.accession_id,
           )
 
-    async with self.db_session_factory() as db_session:
-      await self.machine_svc.update_machine_status(
+    async with runtime.db_session_factory() as db_session:
+      await runtime.machine_svc.update_machine_status(
         db_session,
         machine_orm.accession_id,
         MachineStatusEnum.AVAILABLE,
@@ -260,8 +260,8 @@ class MachineManagerMixin:
 
   def get_active_machine(self, machine_orm_accession_id: uuid.UUID) -> Machine:
     """Retrieve an active PyLabRobot machine instance by its ORM ID."""
-    self = cast("WorkcellRuntime", self)
-    machine = self._active_machines.get(machine_orm_accession_id)
+    runtime = cast("WorkcellRuntime", self)
+    machine = runtime._active_machines.get(machine_orm_accession_id)
     if machine is None:
       msg = f"Machine with ORM ID {machine_orm_accession_id} not found in active machines."
       raise WorkcellRuntimeError(
@@ -277,8 +277,8 @@ class MachineManagerMixin:
 
   def get_active_machine_accession_id(self, machine: Machine) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot machine instance."""
-    self = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_machine in self._active_machines.items():
+    runtime = cast("WorkcellRuntime", self)
+    for orm_accession_id, active_machine in runtime._active_machines.items():
       if active_machine is machine:
         return orm_accession_id
     msg = f"Machine instance {machine} not found in active machines."
@@ -292,8 +292,8 @@ class MachineManagerMixin:
   )
   async def shutdown_machine(self, machine_orm_accession_id: uuid.UUID) -> None:
     """Shut down and removes a live PyLabRobot machine instance."""
-    self = cast("WorkcellRuntime", self)
-    machine_instance = self._active_machines.pop(machine_orm_accession_id, None)
+    runtime = cast("WorkcellRuntime", self)
+    machine_instance = runtime._active_machines.pop(machine_orm_accession_id, None)
     try:
       if machine_instance is not None:
         logger.info(
@@ -316,8 +316,8 @@ class MachineManagerMixin:
             f"{machine_orm_accession_id} that is callable and awaitable."
           )
           raise WorkcellRuntimeError(msg)
-        async with self.db_session_factory() as db_session:
-          await self.machine_svc.update_machine_status(
+        async with runtime.db_session_factory() as db_session:
+          await runtime.machine_svc.update_machine_status(
             db_session,
             machine_orm_accession_id,
             MachineStatusEnum.OFFLINE,
@@ -326,8 +326,8 @@ class MachineManagerMixin:
           await db_session.commit()
 
       else:  # pylint: disable=broad-except
-        async with self.db_session_factory() as db_session:
-          await self.machine_svc.update_machine_status(
+        async with runtime.db_session_factory() as db_session:
+          await runtime.machine_svc.update_machine_status(
             db_session,
             machine_orm_accession_id,
             MachineStatusEnum.OFFLINE,
@@ -346,9 +346,9 @@ class MachineManagerMixin:
         raise WorkcellRuntimeError(
           msg,
         ) from e
-      self._active_machines[machine_orm_accession_id] = machine_instance
-      async with self.db_session_factory() as db_session:
-        await self.machine_svc.update_machine_status(
+      runtime._active_machines[machine_orm_accession_id] = machine_instance
+      async with runtime.db_session_factory() as db_session:
+        await runtime.machine_svc.update_machine_status(
           db_session,
           machine_orm_accession_id,
           MachineStatusEnum.ERROR,
@@ -370,7 +370,7 @@ class MachineManagerMixin:
     machine_orm_accession_id: uuid.UUID,
     action_name: str,
     params: dict[str, Any] | None = None,
-  ) -> Any:  # ruff: noqa: ANN401
+  ) -> Any:
     """Execute a method/action on a live PyLabRobot machine instance."""
     # self = cast("WorkcellRuntime", self) # Not needed for this method strictly speaking if get_active_machine is available
     machine = self.get_active_machine(machine_orm_accession_id)
@@ -407,9 +407,9 @@ class MachineManagerMixin:
   )
   async def shutdown_all_machines(self) -> None:
     """Shut down all currently active PyLabRobot machine instances."""
-    self = cast("WorkcellRuntime", self)
+    runtime = cast("WorkcellRuntime", self)
     logger.info("WorkcellRuntime: Shutting down all active machines...")
-    for machine_accession_id in list(self._active_machines.keys()):  # ruff: noqa: PERF203
+    for machine_accession_id in list(runtime._active_machines.keys()):
       try:
         logger.info(
           "WorkcellRuntime: Shutting down machine ID %s...",

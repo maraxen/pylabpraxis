@@ -55,7 +55,6 @@ class WorkcellFactory(SQLAlchemyModelFactory):
 
         model = WorkcellOrm
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
 
 
@@ -69,7 +68,6 @@ class MachineFactory(SQLAlchemyModelFactory):
 
         model = MachineOrm
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
     fqn = factory.Faker("word")
     workcell_accession_id = factory.SelfAttribute("workcell.accession_id")
@@ -132,7 +130,6 @@ class DeckFactory(SQLAlchemyModelFactory):
         deck_type_def = factory.SubFactory(DeckDefinitionFactory)
         machine_def = factory.SubFactory(MachineFactory)
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
 
     # Use the transient parameters to correctly populate the model's foreign key fields.
@@ -151,8 +148,13 @@ class ResourceFactory(SQLAlchemyModelFactory):
 
         model = ResourceOrm
 
+    class Params:
+        res_def = factory.SubFactory(ResourceDefinitionFactory)
+
     name = factory.Faker("word")
-    resource_definition = factory.SubFactory(ResourceDefinitionFactory)
+    resource_definition_accession_id = factory.LazyAttribute(
+        lambda o: o.res_def.accession_id
+    )
 
 
 class FunctionProtocolDefinitionFactory(SQLAlchemyModelFactory):
@@ -175,20 +177,35 @@ class ProtocolRunFactory(SQLAlchemyModelFactory):
 
         model = ProtocolRunOrm
 
-    top_level_protocol_definition = factory.SubFactory(FunctionProtocolDefinitionFactory)
+    class Params:
+        top_level_def = factory.SubFactory(FunctionProtocolDefinitionFactory)
+
+    name = factory.Faker("word")
+    top_level_protocol_definition_accession_id = factory.LazyAttribute(
+        lambda o: o.top_level_def.accession_id
+    )
 
 
 class FunctionCallLogFactory(SQLAlchemyModelFactory):
     """Factory for FunctionCallLogOrm."""
 
     class Meta:
-        """Meta class for FunctionCallLogFactory."""
+        """Meta class for FunctionCallLogOrm."""
 
         model = FunctionCallLogOrm
 
-    protocol_run = factory.SubFactory(ProtocolRunFactory)
+    class Params:
+        protocol_run_obj = factory.SubFactory(ProtocolRunFactory)
+        executed_function_def = factory.SubFactory(FunctionProtocolDefinitionFactory)
+
+    name = factory.Faker("word")
+    protocol_run_accession_id = factory.LazyAttribute(
+        lambda o: o.protocol_run_obj.accession_id
+    )
     sequence_in_run = 0
-    executed_function_definition = factory.SubFactory(FunctionProtocolDefinitionFactory)
+    function_protocol_definition_accession_id = factory.LazyAttribute(
+        lambda o: o.executed_function_def.accession_id
+    )
 
 
 class FunctionDataOutputFactory(SQLAlchemyModelFactory):
@@ -203,10 +220,15 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
         # Create a transient protocol_run that can be shared.
         pr = factory.SubFactory(ProtocolRunFactory)
 
+    name = factory.Faker("word")
     # Create the function_call_log using the transient protocol_run.
     function_call_log = factory.SubFactory(
-        FunctionCallLogFactory, protocol_run=factory.SelfAttribute("..pr")
+        FunctionCallLogFactory, protocol_run_obj=factory.SelfAttribute("..pr")
     )
+    function_call_log_accession_id = factory.LazyAttribute(
+        lambda o: o.function_call_log.accession_id
+    )
+    protocol_run_accession_id = factory.LazyAttribute(lambda o: o.pr.accession_id)
 
 
 class WellDataOutputFactory(SQLAlchemyModelFactory):
@@ -217,6 +239,7 @@ class WellDataOutputFactory(SQLAlchemyModelFactory):
 
         model = WellDataOutputOrm
 
+    name = factory.Faker("word")
     function_data_output = factory.SubFactory(FunctionDataOutputFactory)
     plate_resource = factory.SubFactory(ResourceFactory)
     well_name = "A1"

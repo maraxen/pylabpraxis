@@ -35,10 +35,10 @@ async def create_workcell(
         WorkcellOrm instance with generated accession_id
 
     """
-    if "accession_id" not in kwargs:
-        kwargs["accession_id"] = uuid7()
-
+    accession_id = kwargs.pop("accession_id", None)
     workcell = WorkcellOrm(name=name, **kwargs)
+    if accession_id:
+        workcell.accession_id = accession_id
     db_session.add(workcell)
     await db_session.flush()
     return workcell
@@ -69,8 +69,7 @@ async def create_machine(
         unique_suffix = str(uuid7())
         workcell = await create_workcell(db_session, name=f"test_workcell_{unique_suffix}")
 
-    if "accession_id" not in kwargs:
-        kwargs["accession_id"] = uuid7()
+    accession_id = kwargs.pop("accession_id", None)
 
     # Generate unique machine name if not provided
     if name is None:
@@ -83,9 +82,11 @@ async def create_machine(
     machine = MachineOrm(
         name=name,
         fqn=fqn,
-        workcell_accession_id=workcell.accession_id,
         **kwargs,
     )
+    machine.workcell_accession_id = workcell.accession_id
+    if accession_id:
+        machine.accession_id = accession_id
     db_session.add(machine)
     await db_session.flush()
     return machine
@@ -151,7 +152,6 @@ async def create_resource(
 
     # Set defaults
     defaults = {
-        "accession_id": uuid7(),
         "name": name,
         "fqn": f"test.resource.{uuid7()!s}",
         "asset_type": AssetType.RESOURCE,
@@ -160,7 +160,10 @@ async def create_resource(
     }
     defaults.update(kwargs)
 
+    accession_id = defaults.pop("accession_id", None)
     resource = ResourceOrm(**defaults)
+    if accession_id:
+        resource.accession_id = accession_id
     db_session.add(resource)
     await db_session.flush()
     return resource
@@ -228,24 +231,24 @@ async def create_deck(
     if deck_definition is None:
         deck_definition = await create_deck_definition(db_session)
 
-    deck_id = uuid7()
-
     # Set asset_type if not provided
     if "asset_type" not in kwargs:
         kwargs["asset_type"] = AssetType.DECK
 
+    accession_id = kwargs.pop("accession_id", None)
     deck = DeckOrm(
-        accession_id=deck_id,
         name=name,
         deck_type_id=deck_definition.accession_id,
         parent_machine_accession_id=machine.accession_id,
         resource_definition_accession_id=deck_definition.resource_definition.accession_id,
         **kwargs,
     )
+    if accession_id:
+        deck.accession_id = accession_id
+
     db_session.add(deck)
     await db_session.flush()
     await db_session.refresh(deck)  # Ensure the deck is fully loaded
-    print(f"DEBUG helper created deck ID: {deck.accession_id}, name: {deck.name}")
     return deck
 
 
@@ -294,6 +297,10 @@ async def create_protocol_definition(
         await db_session.flush()
         kwargs["source_repository"] = repo
 
+    # Extract relationships that are init=False
+    file_system_source = kwargs.pop("file_system_source", None)
+    source_repository = kwargs.pop("source_repository", None)
+
     # Set required defaults
     defaults = {
         "name": name,
@@ -305,7 +312,19 @@ async def create_protocol_definition(
     }
     defaults.update(kwargs)
 
+    # Set FK IDs if objects were provided/created
+    if file_system_source:
+        defaults["file_system_source_accession_id"] = file_system_source.accession_id
+    if source_repository:
+        defaults["source_repository_accession_id"] = source_repository.accession_id
+
     protocol_def = FunctionProtocolDefinitionOrm(**defaults)
+
+    # Manually assign relationships since init=False
+    if file_system_source:
+        protocol_def.file_system_source = file_system_source
+    if source_repository:
+        protocol_def.source_repository = source_repository
     db_session.add(protocol_def)
     await db_session.flush()
     return protocol_def

@@ -290,12 +290,14 @@ class FunctionProtocolDefinitionOrm(Base):
     back_populates="function_protocol_definitions",
     foreign_keys=[source_repository_accession_id],
     kw_only=True,
+    init=False,
   )
   file_system_source: Mapped["FileSystemProtocolSourceOrm | None"] = relationship(
     "FileSystemProtocolSourceOrm",
     back_populates="function_protocol_definitions",
     foreign_keys=[file_system_source_accession_id],
     kw_only=True,
+    init=False,
   )
   protocol_runs: Mapped[list["ProtocolRunOrm"]] = relationship(
     "ProtocolRunOrm",
@@ -395,7 +397,7 @@ class ParameterDefinitionOrm(Base):
     nullable=True,
     comment="JSONB representation of any constraints on the parameter, such as allowed values or \
       ranges.",
-    default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
+    default=None,  # TODO(mar): consider using a more structured type for constraints
   )
   ui_hint_json: Mapped[dict | None] = mapped_column(
     "ui_hint",
@@ -492,7 +494,7 @@ class AssetRequirementOrm(Base):
     nullable=True,
     comment="JSONB representation of any constraints on the asset requirement, such as allowed \
       values or ranges.",
-    default=None,  # TODO(mar): consider using a more structured type for constraints # noqa: TD003
+    default=None,  # TODO(mar): consider using a more structured type for constraints
   )
   location_constraints_json: Mapped[dict | None] = mapped_column(
     "location_constraints",
@@ -692,7 +694,6 @@ class FunctionCallLogOrm(Base):
   """
 
   __tablename__ = "function_call_logs"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("protocol_runs.accession_id"),

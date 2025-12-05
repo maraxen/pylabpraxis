@@ -12,22 +12,21 @@ from typing import TYPE_CHECKING, Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models import (
+  MachineOrm,
+  MachineStatusEnum,
+  ResourceDefinitionOrm,
+  ResourceOrm,
+  ResourceStatusEnum,
+)
 from praxis.backend.models.enums import AssetType
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
-from praxis.backend.utils.uuid import uuid7
-
-logger = get_logger(__name__)
 
 if TYPE_CHECKING:
-  from praxis.backend.models import (
-    DeckOrm,
-    MachineOrm,
-    MachineStatusEnum,
-    ResourceDefinitionOrm,
-    ResourceOrm,
-    ResourceStatusEnum,
-  )
+  from praxis.backend.models import DeckOrm
+
+logger = get_logger(__name__)
 
 log_entity_linking_errors = partial(
   log_async_runtime_errors,
@@ -44,8 +43,6 @@ async def _read_resource_definition_for_linking(
   name: str,
 ) -> "ResourceDefinitionOrm":
   """Retrieve a resource definition."""
-  from praxis.backend.models import ResourceDefinitionOrm
-
   result = await db.execute(
     select(ResourceDefinitionOrm).filter(
       ResourceDefinitionOrm.name == name,
@@ -71,11 +68,6 @@ async def _create_or_link_resource_counterpart_for_machine(
   # creating a new resource
 ) -> Optional["ResourceOrm"]:
   """Create or link ResourceOrm counterpart for a MachineOrm."""
-  from praxis.backend.models import (
-    ResourceOrm,
-    ResourceStatusEnum,
-  )  # Runtime import
-
   log_prefix = f"Machine (ID: {machine_orm.accession_id}, Name: '{machine_orm.name}'):"
 
   # Eager load the existing counterpart if the ID is present
@@ -152,7 +144,6 @@ async def _create_or_link_resource_counterpart_for_machine(
   definition = await _read_resource_definition_for_linking(db, resource_definition_name)
 
   new_resource = ResourceOrm(
-    accession_id=uuid7(),
     fqn=machine_orm.fqn,
     name=f"{machine_orm.name}_resource",
     asset_type=AssetType.RESOURCE,
@@ -193,8 +184,6 @@ async def _create_or_link_machine_counterpart_for_resource(
   machine_status: Optional["MachineStatusEnum"] = None,
 ) -> Optional["MachineOrm"]:
   """Create or link a MachineOrm counterpart for a ResourceOrm."""
-  from praxis.backend.models import MachineOrm, MachineStatusEnum
-
   log_prefix = f"Resource (ID: {resource_orm.accession_id}, Name: '{resource_orm.name}'):"
 
   # Eager load the existing counterpart if the ID is present
@@ -278,7 +267,6 @@ async def _create_or_link_machine_counterpart_for_resource(
 
   logger.info("%s Creating new MachineOrm as counterpart.", log_prefix)
   new_machine_counterpart = MachineOrm(
-    accession_id=uuid7(),
     name=f"{resource_orm.name}_machine",
     fqn=machine_fqn,
     asset_type=AssetType.MACHINE_RESOURCE,

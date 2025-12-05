@@ -19,6 +19,8 @@ class ProtocolSourceStatusEnum(enum.Enum):
 
   ACTIVE = "active"
   ARCHIVED = "archived"
+  SYNCING = "syncing"
+  INACTIVE = "inactive"
   SYNC_ERROR = "sync_error"
   PENDING_DELETION = "pending_deletion"
 

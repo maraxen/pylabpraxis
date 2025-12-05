@@ -271,7 +271,7 @@ class ExecutionMixin:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
+      except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,
@@ -289,12 +289,10 @@ class ExecutionMixin:
         try:
           await db_session.commit()
           logger.info("ORCH: Final DB commit for run %s successful.", run_accession_id)
-        except Exception as db_final_err:  # pylint: disable=broad-except
-          logger.error(
-            "ORCH: CRITICAL - Failed to commit final updates for run %s: %s",
+        except Exception:  # pylint: disable=broad-except
+          logger.exception(
+            "ORCH: CRITICAL - Failed to commit final updates for run %s",
             run_accession_id,
-            db_final_err,
-            exc_info=True,
           )
           await db_session.rollback()
 
@@ -392,7 +390,7 @@ class ExecutionMixin:
         )
       except ProtocolCancelledError:
         pass  # Status already updated by the handler
-      except Exception as e:  # pylint: disable=broad-except # noqa: BLE001
+      except Exception as e:  # pylint: disable=broad-except
         await self._handle_protocol_execution_error(
           run_accession_id,
           protocol_def_orm.name,
@@ -420,12 +418,10 @@ class ExecutionMixin:
         try:
           await db_session.commit()
           logger.info("ORCH: Final DB commit for run %s successful.", run_accession_id)
-        except Exception as db_final_err:
-          logger.error(
-            "ORCH: CRITICAL - Failed to commit final updates for run %s: %s",
+        except Exception:
+          logger.exception(
+            "ORCH: CRITICAL - Failed to commit final updates for run %s",
             run_accession_id,
-            db_final_err,
-            exc_info=True,
           )
           await db_session.rollback()
 

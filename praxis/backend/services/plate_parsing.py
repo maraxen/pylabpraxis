@@ -87,6 +87,9 @@ async def read_plate_dimensions(
   return None
 
 
+MIN_WELL_NAME_LENGTH = 2
+
+
 def parse_well_name(well_name: str) -> tuple[int, int]:
   """Parse well name (e.g., 'A1') to row/column indices.
 
@@ -100,7 +103,7 @@ def parse_well_name(well_name: str) -> tuple[int, int]:
     ValueError: If well name format is invalid
 
   """
-  if not well_name or len(well_name) < 2:
+  if not well_name or len(well_name) < MIN_WELL_NAME_LENGTH:
     msg = f"Invalid well name: {well_name}"
     raise ValueError(msg)
 

@@ -21,6 +21,7 @@ from praxis.backend.models.pydantic_internals.protocol import (
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 from praxis.backend.services.protocols import ProtocolRunService
+from praxis.backend.utils.errors import AssetAcquisitionError, OrchestratorError
 from praxis.backend.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -161,13 +162,12 @@ class ProtocolScheduler:
           self._asset_reservations[asset_key] = set()
 
         if self._asset_reservations[asset_key]:
-          logger.warning(
-            "Asset %s is already reserved by runs: %s",
-            asset_key,
-            self._asset_reservations[asset_key],
+          error_msg = (
+            f"Asset {asset_key} is already reserved by runs: {self._asset_reservations[asset_key]}"
           )
+          logger.warning(error_msg)
           await self._release_reservations(reserved_assets, protocol_run_id)
-          return False
+          raise AssetAcquisitionError(error_msg)
 
         self._asset_reservations[asset_key].add(protocol_run_id)
         requirement.reservation_id = uuid.uuid4()
@@ -184,15 +184,18 @@ class ProtocolScheduler:
         len(requirements),
         protocol_run_id,
       )
-    except Exception:
+      return True
+
+    except AssetAcquisitionError:
+      raise
+    except Exception as e:
       logger.exception(
         "Error during asset reservation for run %s",
         protocol_run_id,
       )
       await self._release_reservations(reserved_assets, protocol_run_id)
-      return False
-    else:
-      return True
+      msg = f"Unexpected error during asset reservation: {e!s}"
+      raise AssetAcquisitionError(msg) from e
 
   async def _release_reservations(
     self,
@@ -243,10 +246,13 @@ class ProtocolScheduler:
           user_params,
         )
 
-        if not await self.reserve_assets(requirements, protocol_run_orm.accession_id):
+        try:
+          await self.reserve_assets(requirements, protocol_run_orm.accession_id)
+        except AssetAcquisitionError as e:
           logger.error(
-            "Failed to reserve assets for run %s",
+            "Failed to reserve assets for run %s: %s",
             protocol_run_orm.accession_id,
+            e,
           )
           await self.protocol_run_service.update(
             db=db_session,
@@ -255,12 +261,12 @@ class ProtocolScheduler:
               status=ProtocolRunStatusEnum.FAILED,
               output_data_json={
                 "error": "Asset reservation failed",
-                "details": "Required assets are not available",
+                "details": str(e),
               },
             ),
           )
           await db_session.commit()
-          return False
+          raise
 
         schedule_entry = ScheduleEntry(
           protocol_run_id=protocol_run_orm.accession_id,
@@ -298,12 +304,15 @@ class ProtocolScheduler:
         await self.cancel_scheduled_run(protocol_run_orm.accession_id)
         return False
 
-    except Exception:
+    except Exception as e:
       logger.exception(
         "Error scheduling protocol execution for run %s",
         protocol_run_orm.accession_id,
       )
-      return False
+      if isinstance(e, (AssetAcquisitionError, OrchestratorError)):
+        raise
+      msg = f"Failed to schedule protocol execution: {e!s}"
+      raise OrchestratorError(msg) from e
 
   async def _queue_execution_task(
     self,

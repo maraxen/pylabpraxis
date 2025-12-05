@@ -808,3 +808,57 @@ class TestModuleStructure:
 
         assert hasattr(asset_manager, "async_asset_manager_errors")
         assert hasattr(asset_manager, "asset_manager_errors")
+
+
+class TestLocationHandlerMixin:
+
+    """Tests for LocationHandlerMixin logic."""
+
+    @pytest.mark.asyncio
+    async def test_handle_location_constraints_assigns_to_deck(self) -> None:
+        """Test that _handle_location_constraints calls assign_resource_to_deck."""
+        manager = AssetManager(
+            db_session=AsyncMock(),
+            workcell_runtime=Mock(),
+            deck_service=Mock(),
+            machine_service=Mock(),
+            resource_service=Mock(),
+            resource_type_definition_service=Mock(),
+            asset_lock_manager=Mock(),
+        )
+
+        # Mock resource and constraints
+        mock_resource = Mock()
+        mock_resource.accession_id = uuid7()
+        mock_resource.name = "res"
+
+        deck_id = uuid7()
+        mock_deck = Mock()
+        mock_deck.accession_id = deck_id
+        mock_deck.fqn = "pylabrobot.resources.Deck"
+
+        mock_deck_def = Mock()
+        mock_deck_def.fqn = "pylabrobot.resources.Deck"
+        mock_deck_def.plr_category = "Deck"
+
+        manager.resource_svc.get_by_name = AsyncMock(return_value=mock_deck)
+        manager.resource_type_definition_svc.get_by_name = AsyncMock(return_value=mock_deck_def)
+
+        manager.workcell_runtime.assign_resource_to_deck = AsyncMock()
+
+        constraints = {"deck_name": "main_deck", "position_name": "1"}
+
+        deck_res_id, pos_name, _ = await manager._handle_location_constraints(
+            is_acquiring_a_deck_resource=False,
+            location_constraints=constraints,
+            resource_to_acquire=mock_resource,
+            protocol_run_accession_id=uuid7(),
+        )
+
+        assert deck_res_id == deck_id
+        assert pos_name == "1"
+        manager.workcell_runtime.assign_resource_to_deck.assert_called_once_with(
+            resource_orm_accession_id=mock_resource.accession_id,
+            target=deck_id,
+            position_accession_id="1",
+        )

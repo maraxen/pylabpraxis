@@ -4,7 +4,9 @@
 import inspect
 from typing import Any, Union, get_args, get_origin
 
-from pylabrobot.resources import Resource
+from praxis.common.type_inspection import is_pylabrobot_resource, serialize_type_hint
+
+__all__ = ["fqn_from_hint", "is_pylabrobot_resource", "serialize_type_hint"]
 
 
 def fqn_from_hint(type_hint: Any) -> str:
@@ -28,12 +30,8 @@ def fqn_from_hint(type_hint: Any) -> str:
     elif len(non_none_args) > 1:
       # Handle Union[ResourceType, OtherType] by prioritizing the resource.
       # This is a heuristic. A more robust solution might require more context.
-      from praxis.common.type_inspection import is_pylabrobot_resource
       resource_types = [t for t in non_none_args if is_pylabrobot_resource(t)]
-      if resource_types:
-        actual_type = resource_types[0]
-      else:
-        actual_type = non_none_args[0]  # Fallback to the first type
+      actual_type = resource_types[0] if resource_types else non_none_args[0]
     else:  # Only NoneType in Union
       return "None"
 

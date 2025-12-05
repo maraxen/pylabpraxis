@@ -18,6 +18,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
+from pathlib import Path
 
 from praxis.backend.models import (
   FunctionProtocolDefinitionCreate,
@@ -143,14 +144,12 @@ class ProtocolCodeManager:
           logger.debug("CODE-GIT: STDERR: %s", stderr_stripped)
       return process.stdout.strip()
     except subprocess.TimeoutExpired as e:
+      cmd_str = " ".join(e.cmd)
+      stderr_str = e.stderr.decode(errors="ignore").strip() if e.stderr else "N/A"
+      stdout_str = e.stdout.decode(errors="ignore").strip() if e.stdout else "N/A"
       error_message = (
-        "CODE-GIT: Command '%s' timed out after %d seconds in %s.\nStderr: %s\nStdout: %s"
-      ) % (
-        " ".join(e.cmd),
-        e.timeout,
-        cwd,
-        e.stderr.decode(errors="ignore").strip() if e.stderr else "N/A",
-        e.stdout.decode(errors="ignore").strip() if e.stdout else "N/A",
+        f"CODE-GIT: Command '{cmd_str}' timed out after {e.timeout} seconds in {cwd}.\n"
+        f"Stderr: {stderr_str}\nStdout: {stdout_str}"
       )
       logger.exception(error_message)
       raise RuntimeError(error_message) from e
@@ -169,21 +168,16 @@ class ProtocolCodeManager:
         if e.stdout
         else "N/A"
       )
+      cmd_str = " ".join(e.cmd)
       error_message = (
-        "CODE-GIT: Command '%s' failed with exit code %d in %s.\nStderr: %s\nStdout: %s"
-      ) % (
-        " ".join(e.cmd),
-        e.returncode,
-        cwd,
-        stderr_output,
-        stdout_output,
+        f"CODE-GIT: Command '{cmd_str}' failed with exit code {e.returncode} in {cwd}.\n"
+        f"Stderr: {stderr_output}\nStdout: {stdout_output}"
       )
       logger.exception(error_message)
       raise RuntimeError(error_message) from e
     except FileNotFoundError:  # pragma: no cover
-      error_message = (
-        "CODE-GIT: Git command not found. Ensure git is installed. Command: {}"
-      ).format(" ".join(command))
+      cmd_str = " ".join(command)
+      error_message = f"CODE-GIT: Git command not found. Ensure git is installed. Command: {cmd_str}"
       logger.exception(error_message)
       raise RuntimeError(error_message) from None
 
@@ -261,7 +255,7 @@ class ProtocolCodeManager:
       )
     else:
       if os.path.exists(checkout_path):
-        if os.listdir(checkout_path):
+        if any(Path(checkout_path).iterdir()):
           msg = (
             f"Path '{checkout_path}' for repo '{repo_name_for_logging}' exists, "
             f"is not Git, and not empty. Cannot clone."
@@ -512,12 +506,10 @@ class ProtocolCodeManager:
 
       return func_wrapper, pydantic_def
 
-    except Exception as e:
-      logger.error(
-        "Failed to load protocol function '%s' from module '%s': %s",
+    except Exception:
+      logger.exception(
+        "Failed to load protocol function '%s' from module '%s'",
         protocol_def_orm.function_name,
         protocol_def_orm.module_name,
-        e,
-        exc_info=True,
       )
       raise

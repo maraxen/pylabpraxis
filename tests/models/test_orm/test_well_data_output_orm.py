@@ -49,9 +49,11 @@ async def protocol_definition(
     protocol_definition = FunctionProtocolDefinitionOrm(
         name="test_protocol",
         fqn="test.protocol",
-        source_repository=source_repository,
-        file_system_source=file_system_source,
+        source_repository_accession_id=source_repository.accession_id,
+        file_system_source_accession_id=file_system_source.accession_id,
     )
+    protocol_definition.source_repository = source_repository
+    protocol_definition.file_system_source = file_system_source
     db_session.add(protocol_definition)
     await db_session.commit()
     return protocol_definition
@@ -83,11 +85,11 @@ async def function_call_log(
         name="test_function_call",
         protocol_run_accession_id=protocol_run.accession_id,
         function_protocol_definition_accession_id=protocol_definition.accession_id,
-        protocol_run=protocol_run,
-        executed_function_definition=protocol_definition,
         sequence_in_run=0,
-        start_time=datetime.now(timezone.utc),
     )
+    function_call_log.protocol_run = protocol_run
+    function_call_log.executed_function_definition = protocol_definition
+    function_call_log.start_time = datetime.now(timezone.utc)
     db_session.add(function_call_log)
     await db_session.commit()
     return function_call_log
@@ -104,12 +106,12 @@ async def plate_resource(db_session: AsyncSession) -> ResourceOrm:
     await db_session.commit()
 
     plate_resource = ResourceOrm(
-        accession_id=uuid7(),
         name="plate_1",
         fqn="pylabrobot.resources.corning_costar_96_wellplate_360ul",
         asset_type=AssetType.RESOURCE,
         resource_definition_accession_id=resource_def.accession_id,
     )
+    plate_resource.accession_id = uuid7()
     plate_resource.resource_definition = resource_def
     db_session.add(plate_resource)
     await db_session.commit()
@@ -229,5 +231,5 @@ async def test_well_data_output_orm_relationships(
     await db_session.commit()
     await db_session.refresh(well_data, ["function_data_output", "plate_resource"])
 
-    assert well_data.function_data_output == function_data_output
-    assert well_data.plate_resource == plate_resource
+    assert well_data.function_data_output.accession_id == function_data_output.accession_id
+    assert well_data.plate_resource.accession_id == plate_resource.accession_id

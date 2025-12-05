@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
+from unittest.mock import AsyncMock, patch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -791,3 +792,53 @@ async def test_protocol_run_service_full_lifecycle(
     assert calls[0].input_args_json == {"action": "aspirate"}
     assert calls[1].input_args_json == {"action": "dispense"}
     assert all(c.status == FunctionCallStatusEnum.SUCCESS for c in calls)
+
+
+@pytest.mark.asyncio
+async def test_protocol_run_service_update_status_handles_core_exception(
+    db_session: AsyncSession,
+    protocol_definition: FunctionProtocolDefinitionOrm,
+) -> None:
+    """Test that Core exceptions during status update are caught and handled.
+
+    Demonstrates:
+    - Connecting Core exception handling to Service layer
+    - Verifying run transitions to FAILED instead of crashing
+    """
+    from praxis.backend.utils.uuid import uuid7
+    from praxis.backend.utils.errors import AssetAcquisitionError
+
+    # Create PENDING run
+    run = await protocol_run_service.create(
+        db_session,
+        obj_in=ProtocolRunCreate(
+            run_accession_id=uuid7(),
+            top_level_protocol_definition_accession_id=protocol_definition.accession_id,
+            status=ProtocolRunStatusEnum.PENDING,
+        ),
+    )
+
+    # Mock scheduler to simulate "Not Enough Tips" error
+    mock_scheduler = AsyncMock()
+    mock_scheduler.analyze_protocol_requirements.return_value = []
+    mock_scheduler.reserve_assets.side_effect = AssetAcquisitionError("Not Enough Tips")
+
+    with patch("praxis.backend.api.global_dependencies.get_scheduler", return_value=mock_scheduler):
+        # Update to RUNNING
+        updated = await protocol_run_service.update_run_status(
+            db_session,
+            protocol_run_accession_id=run.accession_id,
+            new_status=ProtocolRunStatusEnum.RUNNING,
+        )
+
+        # Verify status is FAILED (handled exception)
+        assert updated is not None
+
+        # Verify that Core integration was attempted
+        if not mock_scheduler.analyze_protocol_requirements.called:
+             pytest.fail("Scheduler.analyze_protocol_requirements was not called. Integration skipped.")
+
+        assert updated.status == ProtocolRunStatusEnum.FAILED
+        assert updated.output_data_json is not None
+        assert updated.output_data_json["error"] == "Protocol execution failed to start"
+        assert updated.output_data_json["details"] == "Not Enough Tips"

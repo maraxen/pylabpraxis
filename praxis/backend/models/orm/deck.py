@@ -38,7 +38,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceOrm
 from praxis.backend.utils.db import Base
-from praxis.backend.utils.uuid import generate_name
+from praxis.backend.utils.uuid import generate_name, uuid7
 
 if TYPE_CHECKING:
   from praxis.backend.models.orm import (
@@ -87,6 +87,8 @@ class DeckOrm(ResourceOrm):
     index=True,
     comment="Primary key, linked to the resource's accession_id.",
     kw_only=True,
+    init=False,
+    default_factory=uuid7,
   )
 
   parent_machine_accession_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -493,7 +493,6 @@ event.listen(
   "after_create",
   CreateMaterializedView("scheduler_metrics_mv", metrics_query),
 )
-# event.listen(Base.metadata, "before_drop", DropMaterializedView("scheduler_metrics_mv"))
 
 
 class SchedulerMetricsView(Base):
@@ -503,7 +502,9 @@ class SchedulerMetricsView(Base):
   __tablename__ = "scheduler_metrics_mv"
 
   metric_timestamp: Mapped[datetime] = mapped_column(
-    DateTime(timezone=True), primary_key=True, init=False,
+    DateTime(timezone=True),
+    primary_key=True,
+    init=False,
   )
   protocols_scheduled: Mapped[int] = mapped_column(Integer, init=False)
   protocols_completed: Mapped[int] = mapped_column(Integer, init=False)

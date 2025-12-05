@@ -18,7 +18,10 @@ class DeckTypeDefinitionService(
   """Service for managing deck type definitions."""
 
   async def create(
-    self, db: AsyncSession, *, obj_in: DeckTypeDefinitionCreate,
+    self,
+    db: AsyncSession,
+    *,
+    obj_in: DeckTypeDefinitionCreate,
   ) -> DeckDefinitionOrm:
     """Create a new deck type definition."""
     obj_in_data = obj_in.model_dump()
@@ -34,10 +37,7 @@ class DeckTypeDefinitionService(
     if position_definitions:
       for position_definition in position_definitions:
         # Map name to position_accession_id if missing
-        if (
-          "position_accession_id" not in position_definition
-          and "name" in position_definition
-        ):
+        if "position_accession_id" not in position_definition and "name" in position_definition:
           position_definition["position_accession_id"] = position_definition["name"]
 
         # Remove fields that are not accepted by ORM init

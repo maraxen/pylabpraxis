@@ -65,12 +65,16 @@ async def create_protocol_definition(
         "fqn": f"test.protocols.test_protocol_{uuid7()}",
         "version": "1.0.0",
         "is_top_level": True,
-        "source_repository": source_repository,
-        "file_system_source": file_system_source,
+        "source_repository_accession_id": source_repository.accession_id if source_repository else None,
+        "file_system_source_accession_id": file_system_source.accession_id if file_system_source else None,
     }
     defaults.update(kwargs)
 
     protocol = FunctionProtocolDefinitionOrm(**defaults)
+    if source_repository:
+        protocol.source_repository = source_repository
+    if file_system_source:
+        protocol.file_system_source = file_system_source
     db_session.add(protocol)
     await db_session.flush()
     await db_session.refresh(protocol)
@@ -156,7 +160,6 @@ async def create_machine(
 ) -> MachineOrm:
     """Factory for creating MachineOrm."""
     defaults = {
-        "accession_id": uuid7(),
         "name": f"test_machine_{uuid7()}",
         "fqn": f"test.machines.TestMachine_{uuid7()}",
         "asset_type": AssetType.MACHINE,
@@ -177,7 +180,6 @@ async def create_resource(
 ) -> ResourceOrm:
     """Factory for creating ResourceOrm."""
     defaults = {
-        "accession_id": uuid7(),
         "name": f"test_resource_{uuid7()}",
         "fqn": f"test.resources.TestResource_{uuid7()}",
         "asset_type": AssetType.RESOURCE,

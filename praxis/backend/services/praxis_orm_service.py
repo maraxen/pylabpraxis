@@ -22,6 +22,7 @@ import asyncpg  # For Keycloak database
 from sqlalchemy.ext.asyncio import (
   AsyncSession,
 )
+from sqlalchemy.sql import text
 
 from praxis.backend.utils.db import (
   AsyncSessionLocal,
@@ -57,7 +58,7 @@ class PraxisDBService:
   _max_retries = 3
   _retry_delay = 1  # seconds
 
-  def __new__(cls, *_args: Any, **_kwargs: Any) -> "PraxisDBService":  # noqa: ANN401
+  def __new__(cls, *_args: Any, **_kwargs: Any) -> "PraxisDBService":
     """Implement the singleton pattern for PraxisDBService."""
     if cls._instance is None:
       cls._instance = super().__new__(cls)
@@ -112,7 +113,7 @@ class PraxisDBService:
 
       while retries < cls._max_retries:
         try:
-          if not cls._keycloak_pool or cls._keycloak_pool._closed:  # noqa: SLF001
+          if not cls._keycloak_pool or cls._keycloak_pool._closed:
             logger.info(
               "Attempting to connect to Keycloak database: %s",
               keycloak_dsn.split("@")[-1],
@@ -294,8 +295,6 @@ class PraxisDBService:
     """
     logger.info("Executing raw SQL statement.")
     async with self.get_praxis_session() as session:
-      from sqlalchemy.sql import text
-
       await session.execute(text(sql_statement), params)
       logger.debug("Raw SQL statement executed.")
 
@@ -318,8 +317,6 @@ class PraxisDBService:
     """
     logger.info("Fetching all rows from raw SQL query.")
     async with self.get_praxis_session() as session:
-      from sqlalchemy.sql import text
-
       result = await session.execute(text(sql_query), params)
       rows = [dict(row._mapping) for row in result]
       logger.debug("Fetched %d rows.", len(rows))
@@ -344,8 +341,6 @@ class PraxisDBService:
     """
     logger.info("Fetching one row from raw SQL query.")
     async with self.get_praxis_session() as session:
-      from sqlalchemy.sql import text
-
       result = await session.execute(text(sql_query), params)
       row = result.mappings().first()
       if row:
@@ -369,8 +364,6 @@ class PraxisDBService:
     """
     logger.info("Fetching scalar value from raw SQL query.")
     async with self.get_praxis_session() as session:
-      from sqlalchemy.sql import text
-
       result = await session.execute(text(sql_query), params)
       value = result.scalar_one_or_none()
       logger.debug("Fetched scalar value: %s.", value)
@@ -392,7 +385,7 @@ class PraxisDBService:
 
     """
     logger.info("Attempting to close PraxisDBService resources.")
-    if self._keycloak_pool and not self._keycloak_pool._closed:  # noqa: SLF001
+    if self._keycloak_pool and not self._keycloak_pool._closed:
       await self._keycloak_pool.close()
       logger.info("Keycloak database pool closed.")
     logger.info("PraxisDBService resources closed.")
@@ -407,18 +400,18 @@ def _get_keycloak_dsn_from_config() -> str | None:
 
   """
   logger.info("Attempting to retrieve Keycloak DSN from configuration.")
-  PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-  CONFIG_FILE_PATH = PROJECT_ROOT / "praxis.ini"
+  project_root = Path(__file__).resolve().parent.parent.parent
+  config_file_path = project_root / "praxis.ini"
 
-  if not CONFIG_FILE_PATH.exists():
+  if not config_file_path.exists():
     logger.warning(
       "praxis.ini not found at %s for Keycloak DSN lookup.",
-      CONFIG_FILE_PATH,
+      config_file_path,
     )
     return None
 
   config = ConfigParser()
-  config.read(CONFIG_FILE_PATH)
+  config.read(config_file_path)
 
   if config.has_section("keycloak_database"):
     try:

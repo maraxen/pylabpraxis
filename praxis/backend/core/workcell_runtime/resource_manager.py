@@ -33,22 +33,22 @@ class ResourceManagerMixin:
     self,
     resource_orm: ResourceOrm,
     resource_definition_fqn: str,
-  ) -> Resource:  # ruff: noqa: C901, PLR0912
+  ) -> Resource:
     """Create or retrieve a live PyLabRobot resource object."""
-    self = cast("WorkcellRuntime", self)
+    runtime = cast("WorkcellRuntime", self)
     if not hasattr(resource_orm, "id") or resource_orm.accession_id is None:
       msg = "Invalid resource_orm object passed to create_or_get_resource (no id)."
       raise ValueError(
         msg,
       )
 
-    if resource_orm.accession_id in self._active_resources:
+    if resource_orm.accession_id in runtime._active_resources:
       logger.info(
         "WorkcellRuntime: Resource '%s' (ID: %s) already active. Returning existing instance.",
         resource_orm.name,
         resource_orm.accession_id,
       )
-      return self._active_resources[resource_orm.accession_id]
+      return runtime._active_resources[resource_orm.accession_id]
 
     shared_plr_instance: Machine | Resource | None = None
     if (
@@ -59,8 +59,8 @@ class ResourceManagerMixin:
       == resource_orm.accession_id
     ):
       machine_orm = resource_orm.machine_counterpart
-      if machine_orm.accession_id in self._active_machines:
-        shared_plr_instance = self._active_machines[machine_orm.accession_id]
+      if machine_orm.accession_id in runtime._active_machines:
+        shared_plr_instance = runtime._active_machines[machine_orm.accession_id]
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) is linked to active Machine "
           "'%s' (ID: %s). Reusing existing PLR object as the resource instance.",
@@ -101,8 +101,8 @@ class ResourceManagerMixin:
         )
         if hasattr(resource_orm, "id") and resource_orm.accession_id is not None:
           try:
-            async with self.db_session_factory() as db_session:
-              await self.resource_svc.update_resource_location_and_status(
+            async with runtime.db_session_factory() as db_session:
+              await runtime.resource_svc.update_resource_location_and_status(
                 db=db_session,
                 resource_accession_id=resource_orm.accession_id,
                 new_status=ResourceStatusEnum.ERROR,
@@ -117,8 +117,8 @@ class ResourceManagerMixin:
             raise WorkcellRuntimeError(error_message) from db_error
         raise WorkcellRuntimeError(error_message) from e
 
-    self._active_resources[resource_orm.accession_id] = resource
-    self._main_workcell.add_asset(resource)
+    runtime._active_resources[resource_orm.accession_id] = resource
+    runtime._main_workcell.add_asset(resource)
     logger.info(
       "WorkcellRuntime: Resource '%s' (ID: %s) stored in _active_resources and added to main "
       "Workcell.",
@@ -135,7 +135,7 @@ class ResourceManagerMixin:
     ):
       machine_orm = resource_orm.machine_counterpart
       if isinstance(resource, Machine):
-        self._active_machines[machine_orm.accession_id] = cast("Machine", resource)
+        runtime._active_machines[machine_orm.accession_id] = cast("Machine", resource)
         logger.info(
           "WorkcellRuntime: Resource '%s' (ID: %s) also registered as Machine "
           "'%s' (ID: %s) in _active_machines, sharing the same PLR object.",
@@ -160,8 +160,8 @@ class ResourceManagerMixin:
     resource_orm_accession_id: uuid.UUID,
   ) -> Resource:
     """Retrieve an active PyLabRobot resource object by its ORM ID."""
-    self = cast("WorkcellRuntime", self)
-    resource = self._active_resources.get(resource_orm_accession_id)
+    runtime = cast("WorkcellRuntime", self)
+    resource = runtime._active_resources.get(resource_orm_accession_id)
     if resource is None:
       msg = f"Resource instance with ORM ID {resource_orm_accession_id} not found in active \
           resources."
@@ -178,8 +178,8 @@ class ResourceManagerMixin:
 
   def get_active_resource_accession_id(self, resource: Resource) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot resource object."""
-    self = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_resource in self._active_resources.items():
+    runtime = cast("WorkcellRuntime", self)
+    for orm_accession_id, active_resource in runtime._active_resources.items():
       if active_resource is resource:
         return orm_accession_id
     msg = f"Resource instance {resource}"
@@ -191,12 +191,12 @@ class ResourceManagerMixin:
   )
   async def clear_resource(self, resource_orm_accession_id: uuid.UUID) -> None:
     """Clear a resource from the workcell runtime."""
-    self = cast("WorkcellRuntime", self)
-    if resource_orm_accession_id in self._active_resources:
-      del self._active_resources[resource_orm_accession_id]
+    runtime = cast("WorkcellRuntime", self)
+    if resource_orm_accession_id in runtime._active_resources:
+      del runtime._active_resources[resource_orm_accession_id]
 
-    async with self.db_session_factory() as db_session:
-      await self.resource_svc.update_resource_location_and_status(
+    async with runtime.db_session_factory() as db_session:
+      await runtime.resource_svc.update_resource_location_and_status(
         db=db_session,
         resource_accession_id=resource_orm_accession_id,
         new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,

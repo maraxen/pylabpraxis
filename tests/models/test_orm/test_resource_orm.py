@@ -10,7 +10,6 @@ from praxis.backend.models.orm.resource import ResourceDefinitionOrm, ResourceOr
 @pytest.mark.asyncio
 async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> None:
     """Test creating a ResourceOrm with default values."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Create a resource definition first
     resource_def = ResourceDefinitionOrm(
@@ -21,17 +20,17 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
     await db_session.flush()
 
     # Create a resource with only required fields
-    resource_id = uuid7()
     resource = ResourceOrm(
-        accession_id=resource_id,
         name="test_resource",
         fqn="test.resource.Fqn",
         asset_type=AssetType.RESOURCE,
     )
     resource.resource_definition = resource_def
+    db_session.add(resource)
+    await db_session.flush()
 
     # Verify defaults are set
-    assert resource.accession_id == resource_id
+    assert resource.accession_id is not None
     assert resource.name == "test_resource"
     assert resource.fqn == "test.resource.Fqn"
     assert resource.asset_type == AssetType.RESOURCE
@@ -43,7 +42,6 @@ async def test_resource_orm_creation_with_defaults(db_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> None:
     """Test that a ResourceOrm can be persisted to the database."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -55,9 +53,7 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
     def_id = resource_def.accession_id
 
     # Create resource
-    resource_id = uuid7()
     resource = ResourceOrm(
-        accession_id=resource_id,
         name="test_persistence",
         fqn="test.persistence.Resource",
         asset_type=AssetType.RESOURCE,
@@ -72,13 +68,13 @@ async def test_resource_orm_persist_to_database(db_session: AsyncSession) -> Non
 
     # Query back from database
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id),
+        select(ResourceOrm).where(ResourceOrm.accession_id == resource.accession_id),
     )
     retrieved = result.scalars().first()
 
     # Verify persistence
     assert retrieved is not None
-    assert retrieved.accession_id == resource_id
+    assert retrieved.accession_id == resource.accession_id
     assert retrieved.name == "test_persistence"
     assert retrieved.fqn == "test.persistence.Resource"
     assert retrieved.status == ResourceStatusEnum.AVAILABLE_IN_STORAGE
@@ -90,8 +86,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
     """Test that resource names must be unique."""
     from sqlalchemy.exc import IntegrityError
 
-    from praxis.backend.utils.uuid import uuid7
-
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
         name="unique_def",
@@ -102,7 +96,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
 
     # Create first resource
     resource1 = ResourceOrm(
-        accession_id=uuid7(),
         name="unique_resource",
         fqn="test.resource.1",
         asset_type=AssetType.RESOURCE,
@@ -113,7 +106,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
 
     # Try to create another with same name
     resource2 = ResourceOrm(
-        accession_id=uuid7(),
         name="unique_resource",  # Duplicate name
         fqn="test.resource.2",
         asset_type=AssetType.RESOURCE,
@@ -129,7 +121,6 @@ async def test_resource_orm_unique_name_constraint(db_session: AsyncSession) -> 
 @pytest.mark.asyncio
 async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None:
     """Test that resource status enum values are stored correctly."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -149,7 +140,6 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
 
     for status in statuses:
         resource = ResourceOrm(
-            accession_id=uuid7(),
             name=f"resource_{status.value}",
             fqn=f"test.resource.{status.value}",
             asset_type=AssetType.RESOURCE,
@@ -166,7 +156,6 @@ async def test_resource_orm_status_enum_values(db_session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) -> None:
     """Test self-referential parent-child relationship between resources."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -177,9 +166,7 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
     await db_session.flush()
 
     # Create parent resource
-    parent_id = uuid7()
     parent = ResourceOrm(
-        accession_id=parent_id,
         name="parent_resource",
         fqn="test.resource.Parent",
         asset_type=AssetType.RESOURCE,
@@ -189,9 +176,7 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
     await db_session.flush()
 
     # Create child resource referencing parent
-    child_id = uuid7()
     child = ResourceOrm(
-        accession_id=child_id,
         name="child_resource",
         fqn="test.resource.Child",
         asset_type=AssetType.RESOURCE,
@@ -203,24 +188,21 @@ async def test_resource_orm_parent_child_relationship(db_session: AsyncSession) 
 
     # Query back and verify relationship
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == child_id),
+        select(ResourceOrm).where(ResourceOrm.accession_id == child.accession_id),
     )
     retrieved_child = result.scalars().first()
 
     assert retrieved_child is not None
-    assert retrieved_child.parent_accession_id == parent_id
+    assert retrieved_child.parent_accession_id == parent.accession_id
 
 
 @pytest.mark.asyncio
 async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession) -> None:
     """Test creating a resource with a workcell relationship."""
     from praxis.backend.models.orm.workcell import WorkcellOrm
-    from praxis.backend.utils.uuid import uuid7
 
     # Create workcell
-    workcell_id = uuid7()
     workcell = WorkcellOrm(
-        accession_id=workcell_id,
         name="test_workcell_for_resource",
     )
     db_session.add(workcell)
@@ -235,9 +217,7 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
     await db_session.flush()
 
     # Create resource in workcell
-    resource_id = uuid7()
     resource = ResourceOrm(
-        accession_id=resource_id,
         name="resource_in_workcell",
         fqn="test.resource.InWorkcell",
         asset_type=AssetType.RESOURCE,
@@ -249,18 +229,17 @@ async def test_resource_orm_with_workcell_relationship(db_session: AsyncSession)
 
     # Query back and verify
     result = await db_session.execute(
-        select(ResourceOrm).where(ResourceOrm.accession_id == resource_id),
+        select(ResourceOrm).where(ResourceOrm.accession_id == resource.accession_id),
     )
     retrieved = result.scalars().first()
 
     assert retrieved is not None
-    assert retrieved.workcell_accession_id == workcell_id
+    assert retrieved.workcell_accession_id == workcell.accession_id
 
 
 @pytest.mark.asyncio
 async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
     """Test that resource plr_state JSONB field works correctly."""
-    from praxis.backend.utils.uuid import uuid7
 
     # Create resource definition
     resource_def = ResourceDefinitionOrm(
@@ -278,7 +257,6 @@ async def test_resource_orm_plr_state_json(db_session: AsyncSession) -> None:
     }
 
     resource = ResourceOrm(
-        accession_id=uuid7(),
         name="resource_with_plr_state",
         fqn="test.resource.WithPLRState",
         asset_type=AssetType.RESOURCE,

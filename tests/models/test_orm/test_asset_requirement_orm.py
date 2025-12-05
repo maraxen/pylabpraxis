@@ -1,5 +1,6 @@
 """Unit tests for AssetRequirementOrm model."""
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,13 +11,12 @@ from praxis.backend.models.orm.protocol import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
     from praxis.backend.utils.uuid import uuid7
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="test_protocol",
         fqn="test.protocols.test_protocol",
         version="1.0.0",
@@ -37,17 +37,15 @@ async def test_asset_requirement_orm_creation_minimal(
     """Test creating AssetRequirementOrm with minimal required fields."""
     from praxis.backend.utils.uuid import uuid7
 
-    asset_id = uuid7()
     asset = AssetRequirementOrm(
-        accession_id=asset_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
     # Verify creation with defaults
-    assert asset.accession_id == asset_id
+    assert asset.accession_id is not None
     assert asset.protocol_definition_accession_id == protocol_definition.accession_id
     assert asset.name == ""  # Default
     assert asset.type_hint_str == ""  # Default
@@ -68,13 +66,12 @@ async def test_asset_requirement_orm_creation_with_all_fields(
     """Test creating AssetRequirementOrm with all fields populated."""
     from praxis.backend.utils.uuid import uuid7
 
-    asset_id = uuid7()
     constraints = {"capacity_min": 96, "type": "wellplate"}
     location_constraints = {"allowed_positions": ["A1", "A2", "A3"]}
 
     asset = AssetRequirementOrm(
-        accession_id=asset_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="source_plate",
         type_hint_str="Resource",
         actual_type_str="Plate",
@@ -85,12 +82,11 @@ async def test_asset_requirement_orm_creation_with_all_fields(
         constraints_json=constraints,
         location_constraints_json=location_constraints,
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
     # Verify all fields
-    assert asset.accession_id == asset_id
+    assert asset.accession_id is not None
     assert asset.protocol_definition_accession_id == protocol_definition.accession_id
     assert asset.name == "source_plate"
     assert asset.type_hint_str == "Resource"
@@ -111,10 +107,9 @@ async def test_asset_requirement_orm_persist_to_database(
     """Test full persistence cycle for AssetRequirementOrm."""
     from praxis.backend.utils.uuid import uuid7
 
-    asset_id = uuid7()
     asset = AssetRequirementOrm(
-        accession_id=asset_id,
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="liquid_handler",
         type_hint_str="LiquidHandler",
         actual_type_str="STAR",
@@ -122,19 +117,18 @@ async def test_asset_requirement_orm_persist_to_database(
         optional=False,
         description="Hamilton STAR liquid handler",
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
     # Query back
     result = await db_session.execute(
-        select(AssetRequirementOrm).where(AssetRequirementOrm.accession_id == asset_id),
+        select(AssetRequirementOrm).where(AssetRequirementOrm.accession_id == asset.accession_id),
     )
     retrieved = result.scalars().first()
 
     # Verify persistence
     assert retrieved is not None
-    assert retrieved.accession_id == asset_id
+    assert retrieved.accession_id == asset.accession_id
     assert retrieved.name == "liquid_handler"
     assert retrieved.type_hint_str == "LiquidHandler"
     assert retrieved.actual_type_str == "STAR"
@@ -153,27 +147,25 @@ async def test_asset_requirement_orm_unique_constraint(
 
     # Create first asset
     asset1 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="unique_asset",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
     )
-    asset1.protocol_definition = protocol_definition
     db_session.add(asset1)
     await db_session.flush()
 
     # Try to create another with same protocol and name
     asset2 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="unique_asset",  # Duplicate name for same protocol
         type_hint_str="Resource",
         actual_type_str="TipRack",
         fqn="pylabrobot.resources.TipRack",
     )
-    asset2.protocol_definition = protocol_definition
     db_session.add(asset2)
 
     # Should raise IntegrityError
@@ -191,23 +183,22 @@ async def test_asset_requirement_orm_optional_flag(
 
     # Required asset
     required_asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="required_asset",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
         optional=False,
     )
-    required_asset.protocol_definition = protocol_definition
     db_session.add(required_asset)
     await db_session.flush()
     assert required_asset.optional is False
 
     # Optional asset with default
     optional_asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="optional_asset",
         type_hint_str="Resource",
         actual_type_str="TipRack",
@@ -215,7 +206,6 @@ async def test_asset_requirement_orm_optional_flag(
         optional=True,
         default_value_repr="None",
     )
-    optional_asset.protocol_definition = protocol_definition
     db_session.add(optional_asset)
     await db_session.flush()
     assert optional_asset.optional is True
@@ -232,14 +222,13 @@ async def test_asset_requirement_orm_type_hints(
 
     # Asset with abstract type hint and concrete actual type
     asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="typed_asset",
         type_hint_str="Resource",  # Abstract type hint from function signature
         actual_type_str="Corning_96_CorningWellPlate",  # Concrete type
         fqn="pylabrobot.resources.corning_costar.Corning_96_CorningWellPlate",
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
@@ -264,15 +253,14 @@ async def test_asset_requirement_orm_jsonb_constraints(
     }
 
     asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="constrained_asset",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
         constraints_json=constraints,
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
@@ -298,15 +286,14 @@ async def test_asset_requirement_orm_jsonb_location_constraints(
     }
 
     asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="positioned_asset",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
         location_constraints_json=location_constraints,
     )
-    asset.protocol_definition = protocol_definition
     db_session.add(asset)
     await db_session.flush()
 
@@ -326,24 +313,22 @@ async def test_asset_requirement_orm_relationship_to_protocol(
 
     # Create multiple assets for the same protocol
     asset1 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="asset1",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
     )
-    asset1.protocol_definition = protocol_definition
 
     asset2 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="asset2",
         type_hint_str="LiquidHandler",
         actual_type_str="STAR",
         fqn="pylabrobot.liquid_handling.backends.hamilton.STAR",
     )
-    asset2.protocol_definition = protocol_definition
 
     db_session.add(asset1)
     db_session.add(asset2)
@@ -374,24 +359,22 @@ async def test_asset_requirement_orm_query_by_protocol(
 
     # Create assets for this protocol
     asset1 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="query_asset1",
         type_hint_str="Resource",
         actual_type_str="Plate",
         fqn="pylabrobot.resources.Plate",
     )
-    asset1.protocol_definition = protocol_definition
 
     asset2 = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="query_asset2",
         type_hint_str="Resource",
         actual_type_str="TipRack",
         fqn="pylabrobot.resources.TipRack",
     )
-    asset2.protocol_definition = protocol_definition
 
     db_session.add(asset1)
     db_session.add(asset2)
@@ -422,8 +405,8 @@ async def test_asset_requirement_orm_repr(
     from praxis.backend.utils.uuid import uuid7
 
     asset = AssetRequirementOrm(
-        accession_id=uuid7(),
         protocol_definition_accession_id=protocol_definition.accession_id,
+        protocol_definition=protocol_definition,
         name="repr_asset",
         type_hint_str="Resource",
         actual_type_str="Plate",

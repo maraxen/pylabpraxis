@@ -15,11 +15,11 @@ async def test_machine_orm_creation_with_defaults(db_session: AsyncSession) -> N
     # Create a machine with only required fields
     machine_id = uuid7()
     machine = MachineOrm(
-        accession_id=machine_id,
         name="test_machine",
         fqn="test.machine.Fqn",
         asset_type=AssetType.MACHINE,  # Must set explicitly for polymorphic identity
     )
+    machine.accession_id = machine_id
 
     # Verify defaults are set
     assert machine.accession_id == machine_id
@@ -43,7 +43,6 @@ async def test_machine_orm_persist_to_database(db_session: AsyncSession) -> None
 
     machine_id = uuid7()
     machine = MachineOrm(
-        accession_id=machine_id,
         name="test_persistence",
         fqn="test.persistence.Machine",
         asset_type=AssetType.MACHINE,
@@ -53,6 +52,7 @@ async def test_machine_orm_persist_to_database(db_session: AsyncSession) -> None
         status=MachineStatusEnum.AVAILABLE,  # Changed from ONLINE
         machine_category=MachineCategoryEnum.LIQUID_HANDLER,
     )
+    machine.accession_id = machine_id
 
     # Add to session and flush
     db_session.add(machine)
@@ -85,21 +85,21 @@ async def test_machine_orm_unique_name_constraint(db_session: AsyncSession) -> N
 
     # Create first machine
     machine1 = MachineOrm(
-        accession_id=uuid7(),
         name="unique_machine",
         fqn="test.machine.1",
         asset_type=AssetType.MACHINE,
     )
+    machine1.accession_id = uuid7()
     db_session.add(machine1)
     await db_session.flush()
 
     # Try to create another with same name
     machine2 = MachineOrm(
-        accession_id=uuid7(),
         name="unique_machine",  # Duplicate name
         fqn="test.machine.2",
         asset_type=AssetType.MACHINE,
     )
+    machine2.accession_id = uuid7()
     db_session.add(machine2)
 
     # Should raise IntegrityError
@@ -116,23 +116,23 @@ async def test_machine_orm_unique_serial_number(db_session: AsyncSession) -> Non
 
     # Create first machine with serial number
     machine1 = MachineOrm(
-        accession_id=uuid7(),
         name="machine1",
         fqn="test.machine.1",
         asset_type=AssetType.MACHINE,
         serial_number="SN123456",
     )
+    machine1.accession_id = uuid7()
     db_session.add(machine1)
     await db_session.flush()
 
     # Try to create another with same serial number
     machine2 = MachineOrm(
-        accession_id=uuid7(),
         name="machine2",
         fqn="test.machine.2",
         asset_type=AssetType.MACHINE,
         serial_number="SN123456",  # Duplicate serial
     )
+    machine2.accession_id = uuid7()
     db_session.add(machine2)
 
     # Should raise IntegrityError
@@ -141,39 +141,30 @@ async def test_machine_orm_unique_serial_number(db_session: AsyncSession) -> Non
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="MachineOrm.workcell_accession_id not persisting - ORM config issue")
 async def test_machine_orm_with_workcell_relationship(db_session: AsyncSession) -> None:
-    """Test creating a machine with a workcell relationship.
-
-    KNOWN ISSUE: workcell_accession_id is not being persisted even when set
-    directly on the instance. This suggests an ORM configuration problem with
-    the foreign key field, possibly related to MappedAsDataclass or join table
-    inheritance from AssetOrm.
-
-    Needs investigation of MachineOrm field configuration.
-    """
+    """Test creating a machine with a workcell relationship."""
     from praxis.backend.models.orm.workcell import WorkcellOrm
     from praxis.backend.utils.uuid import uuid7
 
     # Create a workcell first
     workcell_id = uuid7()
     workcell = WorkcellOrm(
-        accession_id=workcell_id,
         name="test_workcell",
     )
+    workcell.accession_id = workcell_id
     db_session.add(workcell)
     await db_session.flush()
 
     # Create a machine and set workcell via attribute (not constructor)
     machine_id = uuid7()
     machine = MachineOrm(
-        accession_id=machine_id,
         name="test_machine_in_workcell",
         fqn="test.machine.InWorkcell",
         asset_type=AssetType.MACHINE,
     )
+    machine.accession_id = machine_id
     # Set workcell FK after instantiation
-    machine.workcell_accession_id = workcell_id
+    machine.workcell = workcell
 
     db_session.add(machine)
     await db_session.flush()
@@ -203,12 +194,12 @@ async def test_machine_orm_status_enum_values(db_session: AsyncSession) -> None:
 
     for status in statuses:
         machine = MachineOrm(
-            accession_id=uuid7(),
             name=f"machine_{status.value}",
             fqn=f"test.machine.{status.value}",
             asset_type=AssetType.MACHINE,
             status=status,
         )
+        machine.accession_id = uuid7()
         db_session.add(machine)
         await db_session.flush()
 
@@ -231,12 +222,12 @@ async def test_machine_orm_category_enum_values(db_session: AsyncSession) -> Non
 
     for category in categories:
         machine = MachineOrm(
-            accession_id=uuid7(),
             name=f"machine_{category.value}",
             fqn=f"test.machine.{category.value}",
             asset_type=AssetType.MACHINE,
             machine_category=category,
         )
+        machine.accession_id = uuid7()
         db_session.add(machine)
         await db_session.flush()
 
@@ -257,12 +248,12 @@ async def test_machine_orm_connection_info_json(db_session: AsyncSession) -> Non
     }
 
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="machine_with_connection",
         fqn="test.machine.WithConnection",
         asset_type=AssetType.MACHINE,
         connection_info=connection_data,
     )
+    machine.accession_id = uuid7()
 
     db_session.add(machine)
     await db_session.flush()

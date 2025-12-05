@@ -73,6 +73,16 @@ async def db_session(
         # Create session bound to this connection
         session = AsyncSession(bind=connection, expire_on_commit=False)
 
+        # Set up factories to use this session
+        WorkcellFactory._meta.sqlalchemy_session = session
+        ResourceDefinitionFactory._meta.sqlalchemy_session = session
+        ResourceFactory._meta.sqlalchemy_session = session
+        FunctionProtocolDefinitionFactory._meta.sqlalchemy_session = session
+        ProtocolRunFactory._meta.sqlalchemy_session = session
+        FunctionCallLogFactory._meta.sqlalchemy_session = session
+        FunctionDataOutputFactory._meta.sqlalchemy_session = session
+        WellDataOutputFactory._meta.sqlalchemy_session = session
+
         try:
             yield session
         finally:
@@ -82,16 +92,6 @@ async def db_session(
                 session.expunge_all()
             except Exception:
                 pass
-
-            # Set up factories to use this session
-            WorkcellFactory._meta.sqlalchemy_session = session
-            ResourceDefinitionFactory._meta.sqlalchemy_session = session
-            ResourceFactory._meta.sqlalchemy_session = session
-            FunctionProtocolDefinitionFactory._meta.sqlalchemy_session = session
-            ProtocolRunFactory._meta.sqlalchemy_session = session
-            FunctionCallLogFactory._meta.sqlalchemy_session = session
-            FunctionDataOutputFactory._meta.sqlalchemy_session = session
-            WellDataOutputFactory._meta.sqlalchemy_session = session
 
             try:
                 await session.close()

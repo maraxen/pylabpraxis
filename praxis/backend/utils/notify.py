@@ -71,7 +71,7 @@ class Notifier:
       with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
         server.login(self.smtp_username, self.smtp_password)
         server.send_message(message)
-    except Exception:  # noqa: BLE001
+    except Exception:
       pass
 
   def send_text(

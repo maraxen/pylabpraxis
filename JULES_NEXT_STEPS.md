@@ -1,39 +1,84 @@
-# Jules - Next Steps and Work Bundles
+# Next Steps
 
-## 📋 Future Work Bundles (Based on Coverage Analysis)
+The following chunks target critical ORM failures, API regressions, and coverage gaps identified in the latest assessment (38% coverage, widespread ORM/API failures).
 
-Based on the verification of the test environment and initial coverage run (35% on services), the following work bundles are prioritized:
+### Chunk 1: Fix ProtocolRun Factory & ORM (Critical)
+**Goal**: Fix broken Factory/ORM logic causing 100% failure in `ProtocolRun` tests.
+**Files to Fix**:
+*   `tests/models/test_orm/test_protocol_run_orm.py`
+*   `tests/factories.py` (ProtocolRunFactory)
 
-### Bundle A: Fix Critical Dependencies and User Service Tests
-**Priority: CRITICAL**
-- **Context**: `passlib` with `bcrypt` is throwing `ValueError: password cannot be longer than 72 bytes` and `AttributeError`. This blocks all authentication-related tests.
-- **Files**: `pyproject.toml` (dependency management), `tests/services/test_user_service.py`.
-- **Tasks**:
-  1. Investigate `passlib` / `bcrypt` version incompatibility.
-  2. Fix the dependency or implementation in `praxis/backend/services/user.py`.
-  3. Verify all 18 failing tests in `test_user_service.py` pass.
+### Chunk 2: Fix FunctionCallLog Factory & ORM
+**Goal**: Fix broken Factory/ORM logic for Function Call Logs.
+**Files to Fix**:
+*   `tests/models/test_orm/test_function_call_log_orm.py`
+*   `tests/factories.py` (FunctionCallLogFactory)
 
-### Bundle B: Fix Failing Integration Tests in Services
-**Priority: HIGH**
-- **Context**: Several service tests are failing due to logic or setup issues.
-- **Files**:
-  - `tests/services/test_deck_service.py` (1 failure)
-  - `tests/services/test_protocol_run_service.py` (1 failure)
-  - `tests/services/test_resource_service.py` (4 failures)
-- **Tasks**:
-  1. Debug and fix `test_create_deck_remaps_machine_id`.
-  2. Debug and fix `test_log_function_call_with_parent`.
-  3. Debug and fix `ResourceService` update and relationship tests.
+### Chunk 3: Fix Asset Requirement ORM
+**Goal**: Fix errors in Asset Requirement ORM tests.
+**Files to Fix**:
+*   `tests/models/test_orm/test_asset_requirement_orm.py`
 
-### Bundle C: Increase Coverage for Core Domain Services
-**Priority: MEDIUM**
-- **Context**: Core domain services have low test coverage, leaving business logic exposed.
-- **Files**:
-  - `praxis/backend/services/workcell.py` (Current: 32%)
-  - `praxis/backend/services/machine.py` (Current: 24%)
-  - `praxis/backend/services/deck.py` (Current: 44%)
-- **Tasks**:
-  1. Create/Expand `tests/services/test_workcell_service.py` to cover `WorkcellService` methods.
-  2. Create/Expand `tests/services/test_machine_service.py`.
-  3. Expand `tests/services/test_deck_service.py`.
-  4. Goal: Achieve >80% coverage for these files.
+### Chunk 4: Fix Asset Reservation ORM
+**Goal**: Fix errors in Asset Reservation ORM tests.
+**Files to Fix**:
+*   `tests/models/test_orm/test_asset_reservation_orm.py`
+
+### Chunk 5: Fix Function/Well Data Output ORM
+**Goal**: Fix errors in Data Output ORM tests.
+**Files to Fix**:
+*   `tests/models/test_orm/test_function_data_output_orm.py`
+*   `tests/models/test_orm/test_well_data_output_orm.py` (if exists/failing)
+
+### Chunk 6: Fix Deck API Tests
+**Goal**: Fix `TypeError` failures in Deck API tests.
+**Files to Fix**:
+*   `tests/api/test_decks.py`
+
+### Chunk 7: Fix Protocol Definition API Tests
+**Goal**: Fix failures in Protocol Definition API tests.
+**Files to Fix**:
+*   `tests/api/test_protocol_definitions.py`
+
+### Chunk 8: Fix Protocol Run API Tests
+**Goal**: Fix failures in Protocol Run API tests (likely linked to Chunk 1).
+**Files to Fix**:
+*   `tests/api/test_protocol_runs.py`
+
+### Chunk 9: Fix Well Data Output API Tests
+**Goal**: Fix failures in Well Data Output API tests.
+**Files to Fix**:
+*   `tests/api/test_well_data_outputs.py`
+
+### Chunk 10: Deck Service Coverage
+**Goal**: Increase coverage for Deck Service from 26% to >80%.
+**Files to Fix**:
+*   `praxis/backend/services/deck.py`
+*   `tests/services/test_deck_service.py` (add tests)
+
+### Chunk 11: Protocol Definition Service Coverage
+**Goal**: Increase coverage for Protocol Definition Service from 25% to >80%.
+**Files to Fix**:
+*   `praxis/backend/services/protocol_definition.py`
+*   `tests/services/test_protocol_definition_service.py` (or existing test file)
+
+### Chunk 12: Scheduler Service Coverage
+**Goal**: Increase coverage for Scheduler Service from 0% (if accurate) to >80%.
+**Files to Fix**:
+*   `praxis/backend/services/scheduler.py`
+*   `tests/core/test_scheduler.py` (Verify it covers service layer or add service tests)
+
+### Chunk 13: Fix Pyright Errors (Models)
+**Goal**: Resolve static type errors in Pydantic/ORM models.
+**Files to Fix**:
+*   `praxis/backend/models/` (as reported by Pyright)
+
+### Chunk 14: Fix Pyright Errors (Services)
+**Goal**: Resolve static type errors in Service layer.
+**Files to Fix**:
+*   `praxis/backend/services/` (as reported by Pyright)
+
+### Chunk 15: Fix Ruff Linting
+**Goal**: Resolve remaining 53 Ruff errors.
+**Files to Fix**:
+*   Run `ruff check .` and fix reported issues.

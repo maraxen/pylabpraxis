@@ -78,7 +78,9 @@ def create_crud_router(
     return await service.update(db=db, db_obj=db_obj, obj_in=obj_in)
 
   @router.delete(
-    f"{prefix}{sep}{{accession_id}}", status_code=status.HTTP_204_NO_CONTENT, tags=tags,
+    f"{prefix}{sep}{{accession_id}}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=tags,
   )
   async def delete(
     accession_id: UUID,

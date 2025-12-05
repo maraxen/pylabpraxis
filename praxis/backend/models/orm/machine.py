@@ -46,6 +46,7 @@ from praxis.backend.models.enums import (
   MachineStatusEnum,
 )
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
+from praxis.backend.utils.uuid import uuid7
 
 from .asset import AssetOrm
 
@@ -120,13 +121,6 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     default=None,
   )
 
-  # resource_child_list: Mapped[list["ResourceOrm"]] = relationship(
-  #   "ResourceOrm",
-  #   back_populates="resource_definition",
-  #   cascade="all, delete-orphan",
-  #   default_factory=list,
-  # )
-
   resource_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("resource_definition_catalog.accession_id"),
@@ -142,6 +136,13 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     back_populates="machine_definition",
     default=None,
     init=False,
+  )
+
+  has_deck: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    nullable=False,
+    comment="Flag indicating if this machine has a deck.",
   )
 
   deck_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -180,6 +181,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     uselist=False,
     default=None,
     foreign_keys=[asset_requirement_accession_id],
+    init=False,
   )
 
 
@@ -199,6 +201,8 @@ class MachineOrm(AssetOrm):
     ForeignKey("assets.accession_id"),
     primary_key=True,
     comment="Unique identifier for the machine, derived from the Asset base class.",
+    init=False,
+    default_factory=uuid7,
   )
 
   machine_category: Mapped[MachineCategoryEnum] = mapped_column(
@@ -271,11 +275,13 @@ class MachineOrm(AssetOrm):
     index=True,
     comment="Foreign key to the workcell this machine belongs to, if applicable.",
     default=None,
+    init=False,
   )
   workcell: Mapped["WorkcellOrm | None"] = relationship(
     "WorkcellOrm",
     back_populates="machines",
     default=None,
+    init=False,
   )
   resource_counterpart_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
@@ -302,12 +308,16 @@ class MachineOrm(AssetOrm):
   deck_child_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey(
-      "decks.accession_id", ondelete="SET NULL", use_alter=True, name="fk_machine_deck_child",
+      "decks.accession_id",
+      ondelete="SET NULL",
+      use_alter=True,
+      name="fk_machine_deck_child",
     ),
     nullable=True,
     index=True,
     comment="Foreign key to the deck this machine has, if applicable.",
     default=None,
+    init=False,
   )
 
   deck_child_definition_accession_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -317,6 +327,7 @@ class MachineOrm(AssetOrm):
     index=True,
     comment="Foreign key to the deck definition this machine uses, if applicable.",
     default=None,
+    init=False,
   )
 
   # If this machine has a deck (e.g., a liquid handler)
@@ -325,6 +336,7 @@ class MachineOrm(AssetOrm):
     uselist=False,
     default=None,
     foreign_keys=[deck_child_definition_accession_id],
+    init=False,
   )
 
   # Resources located on/in this machine
@@ -334,6 +346,7 @@ class MachineOrm(AssetOrm):
     default=None,
     uselist=False,
     foreign_keys="ResourceOrm.machine_location_accession_id",
+    init=False,
   )
 
   # Additional fields for machine state tracking

@@ -94,8 +94,8 @@ async def protocol_definition(
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
-        source_repository=source_repository,
-        file_system_source=file_system_source,
+        source_repository_accession_id=source_repository.accession_id,
+        file_system_source_accession_id=file_system_source.accession_id,
     )
     db_session.add(protocol)
     await db_session.flush()
@@ -123,7 +123,6 @@ async def protocol_run(
 async def machine_asset(db_session: AsyncSession) -> MachineOrm:
     """Create a machine asset for reservation testing."""
     machine = MachineOrm(
-        accession_id=uuid7(),
         name="test_machine_scheduler",
         fqn="test.machines.SchedulerTestMachine",
         asset_type=AssetType.MACHINE,

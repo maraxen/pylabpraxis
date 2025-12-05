@@ -31,8 +31,8 @@ class DeckManagerMixin:
 
   def get_active_deck_accession_id(self, deck: Deck) -> uuid.UUID:
     """Retrieve the ORM ID of an active PyLabRobot Deck instance."""
-    self = cast("WorkcellRuntime", self)
-    for orm_accession_id, active_deck in self._active_decks.items():
+    runtime = cast("WorkcellRuntime", self)
+    for orm_accession_id, active_deck in runtime._active_decks.items():
       if active_deck is deck:
         return orm_accession_id
     msg = f"Deck instance {deck} not found in active decks."
@@ -40,8 +40,8 @@ class DeckManagerMixin:
 
   def get_active_deck(self, deck_orm_accession_id: uuid.UUID) -> Deck:
     """Retrieve an active PyLabRobot Deck instance by its ORM ID."""
-    self = cast("WorkcellRuntime", self)
-    deck = self._active_decks.get(deck_orm_accession_id)
+    runtime = cast("WorkcellRuntime", self)
+    deck = runtime._active_decks.get(deck_orm_accession_id)
     if deck is None:
       msg = f"Deck with ORM ID {deck_orm_accession_id} not found in active decks."
       raise WorkcellRuntimeError(
@@ -65,9 +65,9 @@ class DeckManagerMixin:
     target: uuid.UUID,
     location: Coordinate | tuple[float, float, float] | None = None,
     position_accession_id: str | int | uuid.UUID | None = None,
-  ) -> None:  # ruff: noqa: C901, PLR0912, PLR0915
+  ) -> None:
     """Assign a live Resource to a specific location or position on a deck."""
-    self = cast("WorkcellRuntime", self)
+    runtime = cast("WorkcellRuntime", self)
     if location is None and position_accession_id is None:
       msg = (
         "Either 'location' or 'position_accession_id' must be provided to assign a resource to "
@@ -75,9 +75,9 @@ class DeckManagerMixin:
       )
       raise WorkcellRuntimeError(msg)
 
-    if target in self._active_machines:
+    if target in runtime._active_machines:
       inferred_target_type = "machine_orm_accession_id"
-    elif target in self._active_decks:
+    elif target in runtime._active_decks:
       inferred_target_type = "deck_orm_accession_id"
     else:
       msg = f"Target ORM ID {target} not found in active machines or decks."
@@ -85,22 +85,22 @@ class DeckManagerMixin:
         msg,
       )
 
-    resource = self.get_active_resource(resource_orm_accession_id)
+    resource = runtime.get_active_resource(resource_orm_accession_id)
 
     match inferred_target_type:
       case "deck_orm_accession_id":
         deck_orm_accession_id = cast("uuid.UUID", target)
-        target_deck = self.get_active_deck(deck_orm_accession_id)
+        target_deck = runtime.get_active_deck(deck_orm_accession_id)
       case "machine_orm_accession_id":
         machine_orm_accession_id = cast("uuid.UUID", target)
-        target_machine = self.get_active_machine(machine_orm_accession_id)
+        target_machine = runtime.get_active_machine(machine_orm_accession_id)
         target_deck = getattr(target_machine, "deck", None)
         if not isinstance(target_deck, Deck):
           msg = f"Machine ID {machine_orm_accession_id} does not have an associated deck."
           raise WorkcellRuntimeError(
             msg,
           )
-        deck_orm_accession_id = self.get_active_deck_accession_id(target_deck)
+        deck_orm_accession_id = runtime.get_active_deck_accession_id(target_deck)
       case _:
         msg = f"Unexpected target type: {inferred_target_type}. Expected deck_orm_accession_id or \
             machine_orm_accession_id."
@@ -108,18 +108,38 @@ class DeckManagerMixin:
           msg,
         )
 
-    async with self.db_session_factory() as db_session:
-      deck_orm = await self.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
+    async with runtime.db_session_factory() as db_session:
+      deck_orm = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
       if deck_orm is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
         raise WorkcellRuntimeError(msg)
+
+      # Check for occupancy if assigning to a named position
+      if position_accession_id is not None:
+        existing_resources = await runtime.resource_svc.get_multi(
+          db=db_session,
+          filters=SearchFilters(
+            search_filters={
+              "location_machine_accession_id": deck_orm.accession_id,
+              "current_deck_position_name": str(position_accession_id),
+            },
+          ),
+        )
+        for res in existing_resources:
+          if res.accession_id != resource_orm_accession_id:
+            msg = (
+              f"Position '{position_accession_id}' on deck ID {deck_orm.accession_id} "
+              f"is already occupied by resource '{res.name}' (ID: {res.accession_id})."
+            )
+            raise WorkcellRuntimeError(msg)
+
       deck_orm_type_definition_accession_id = deck_orm.deck_type_id
 
       if deck_orm_type_definition_accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} does not have a valid deck type definition."
         raise WorkcellRuntimeError(msg)
 
-      deck_type_definition_orm = await self.deck_type_definition_svc.get(
+      deck_type_definition_orm = await runtime.deck_type_definition_svc.get(
         db=db_session,
         accession_id=deck_orm_type_definition_accession_id,
       )
@@ -143,7 +163,7 @@ class DeckManagerMixin:
         else:
           final_location_for_plr = location
       elif position_accession_id is not None:
-        final_location_for_plr = await self._get_calculated_location(
+        final_location_for_plr = await runtime._get_calculated_location(
           target_deck=target_deck,
           deck_type_id=deck_type_definition_orm.accession_id,
           position_accession_id=position_accession_id,
@@ -160,7 +180,7 @@ class DeckManagerMixin:
           resource=resource,
           location=final_location_for_plr,
         )
-        await self.resource_svc.update_resource_location_and_status(
+        await runtime.resource_svc.update_resource_location_and_status(
           db=db_session,
           resource_accession_id=resource_orm_accession_id,
           new_status=ResourceStatusEnum.AVAILABLE_ON_DECK,
@@ -188,8 +208,8 @@ class DeckManagerMixin:
     resource_orm_accession_id: uuid.UUID | None = None,
   ) -> None:
     """Clear a resource from a specific position on a live deck."""
-    self = cast("WorkcellRuntime", self)
-    deck = self.get_active_deck(deck_orm_accession_id)
+    runtime = cast("WorkcellRuntime", self)
+    deck = runtime.get_active_deck(deck_orm_accession_id)
 
     if not isinstance(deck, Deck):
       msg = (
@@ -218,8 +238,8 @@ class DeckManagerMixin:
       )
 
     if resource_orm_accession_id:
-      async with self.db_session_factory() as db_session:
-        await self.resource_svc.update_resource_location_and_status(
+      async with runtime.db_session_factory() as db_session:
+        await runtime.resource_svc.update_resource_location_and_status(
           db=db_session,
           resource_accession_id=resource_orm_accession_id,
           new_status=ResourceStatusEnum.AVAILABLE_IN_STORAGE,
@@ -237,9 +257,9 @@ class DeckManagerMixin:
     deck_orm_accession_id: uuid.UUID,
   ) -> dict[str, Any]:
     """Construct a dictionary representing the state of a specific deck."""
-    self = cast("WorkcellRuntime", self)
-    async with self.db_session_factory() as db_session:
-      deck_orm = await self.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
+    runtime = cast("WorkcellRuntime", self)
+    async with runtime.db_session_factory() as db_session:
+      deck_orm = await runtime.deck_svc.get(db=db_session, accession_id=deck_orm_accession_id)
 
       if deck_orm is None or not hasattr(deck_orm, "id") or deck_orm.accession_id is None:
         msg = f"Deck ORM ID {deck_orm_accession_id} not found in database."
@@ -247,7 +267,7 @@ class DeckManagerMixin:
 
       response_positions: list[dict[str, Any]] = []
 
-      resources_on_deck: list[ResourceOrm] = await self.resource_svc.get_multi(
+      resources_on_deck: list[ResourceOrm] = await runtime.resource_svc.get_multi(
         db=db_session,
         filters=SearchFilters(
           search_filters={"location_machine_accession_id": deck_orm.accession_id},
@@ -264,7 +284,7 @@ class DeckManagerMixin:
             continue
           lw_def = lw_instance.resource_definition
 
-          lw_active_instance = self.get_active_resource(lw_instance.accession_id)
+          lw_active_instance = runtime.get_active_resource(lw_instance.accession_id)
 
           lw_active_coords = lw_active_instance.get_absolute_location()
 
@@ -293,7 +313,7 @@ class DeckManagerMixin:
       deck_size_y = None
       deck_size_z = None
 
-      live_deck = self.get_active_deck(deck_orm_accession_id)
+      live_deck = runtime.get_active_deck(deck_orm_accession_id)
       if live_deck is not None and hasattr(live_deck, "get_size"):
         try:
           deck_size_tuple = (
@@ -307,7 +327,7 @@ class DeckManagerMixin:
             deck_orm_accession_id,
             deck_size_tuple,
           )
-        except Exception as e:  # pylint: disable=broad-except  # noqa: BLE001
+        except Exception as e:  # pylint: disable=broad-except
           logger.warning(
             "Could not get size from live deck object for ID %s: %s",
             deck_orm_accession_id,
@@ -326,9 +346,9 @@ class DeckManagerMixin:
 
   async def get_last_initialized_deck_object(self) -> Deck | None:
     """Return the Deck most recently initialized by this runtime instance."""
-    self = cast("WorkcellRuntime", self)
-    if self._last_initialized_deck_object:
-      return self._last_initialized_deck_object
+    runtime = cast("WorkcellRuntime", self)
+    if runtime._last_initialized_deck_object:
+      return runtime._last_initialized_deck_object
     return None
 
   @log_workcell_runtime_errors(
@@ -341,9 +361,9 @@ class DeckManagerMixin:
     deck_type_id: uuid.UUID,
     position_accession_id: str | int | uuid.UUID,
     positioning_config: PositioningConfig | None,
-  ) -> Coordinate:  # ruff: noqa: C901, PLR0912, PLR0915
+  ) -> Coordinate:
     """Calculate the PyLabRobot Coordinate for a given position_accession_id."""
-    self = cast("WorkcellRuntime", self)
+    runtime = cast("WorkcellRuntime", self)
     if positioning_config is None:
       logger.info(
         "No general positioning config for deck type ID %s, "
@@ -351,12 +371,14 @@ class DeckManagerMixin:
         deck_type_id,
       )
       if isinstance(position_accession_id, str | int | uuid.UUID):
-        async with self.db_session_factory() as db_session:
-          deck_type_definition = await self.deck_type_definition_svc.get(
-            db=db_session, accession_id=deck_type_id,
+        async with runtime.db_session_factory() as db_session:
+          deck_type_definition = await runtime.deck_type_definition_svc.get(
+            db=db_session,
+            accession_id=deck_type_id,
           )
           if not deck_type_definition:
-            raise WorkcellRuntimeError(f"Deck type definition with ID {deck_type_id} not found.")
+            msg = f"Deck type definition with ID {deck_type_id} not found."
+            raise WorkcellRuntimeError(msg)
           all_deck_position_definitions = deck_type_definition.positions
           found_position_def = next(
             (

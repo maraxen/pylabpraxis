@@ -1,5 +1,6 @@
 """Unit tests for FunctionProtocolDefinitionOrm model."""
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,13 +12,10 @@ from praxis.backend.models.orm.protocol import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def git_source(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
     """Create a ProtocolSourceRepositoryOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     source = ProtocolSourceRepositoryOrm(
-        accession_id=uuid7(),
         name="test_git_source",
         git_url="https://github.com/example/protocols.git",
         default_ref="main",
@@ -27,13 +25,10 @@ async def git_source(db_session: AsyncSession) -> ProtocolSourceRepositoryOrm:
     return source
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def fs_source(db_session: AsyncSession) -> FileSystemProtocolSourceOrm:
     """Create a FileSystemProtocolSourceOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     source = FileSystemProtocolSourceOrm(
-        accession_id=uuid7(),
         name="test_fs_source",
         base_path="/opt/protocols",
     )
@@ -51,10 +46,10 @@ async def test_function_protocol_definition_orm_creation_minimal(
 
     protocol_id = uuid7()
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=protocol_id,
         name="test_protocol",
         fqn="test.protocols.test_protocol",
     )
+    protocol.accession_id = protocol_id
     db_session.add(protocol)
     await db_session.flush()
 
@@ -83,7 +78,6 @@ async def test_function_protocol_definition_orm_with_git_source(
 
     protocol_id = uuid7()
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=protocol_id,
         name="git_protocol",
         fqn="protocols.git_protocol",
         version="1.0.0",
@@ -93,6 +87,7 @@ async def test_function_protocol_definition_orm_with_git_source(
         source_repository_accession_id=git_source.accession_id,
         commit_hash="abc123def456",
     )
+    protocol.accession_id = protocol_id
     protocol.source_repository = git_source
     db_session.add(protocol)
     await db_session.flush()
@@ -113,7 +108,6 @@ async def test_function_protocol_definition_orm_with_fs_source(
 
     protocol_id = uuid7()
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=protocol_id,
         name="fs_protocol",
         fqn="protocols.fs_protocol",
         version="2.0.0",
@@ -122,6 +116,7 @@ async def test_function_protocol_definition_orm_with_fs_source(
         function_name="fs_protocol",
         file_system_source_accession_id=fs_source.accession_id,
     )
+    protocol.accession_id = protocol_id
     protocol.file_system_source = fs_source
     db_session.add(protocol)
     await db_session.flush()
@@ -141,7 +136,6 @@ async def test_function_protocol_definition_orm_persist_to_database(
 
     protocol_id = uuid7()
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=protocol_id,
         name="persistence_protocol",
         fqn="test.protocols.persistence_protocol",
         version="1.0.0",
@@ -151,6 +145,7 @@ async def test_function_protocol_definition_orm_persist_to_database(
         function_name="persistence_protocol",
         is_top_level=True,
     )
+    protocol.accession_id = protocol_id
     db_session.add(protocol)
     await db_session.flush()
 
@@ -182,26 +177,26 @@ async def test_function_protocol_definition_orm_unique_constraint_git(
 
     # Create first protocol
     protocol1 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="unique_protocol",
         fqn="protocols.unique_protocol",
         version="1.0.0",
         source_repository_accession_id=git_source.accession_id,
         commit_hash="commit123",
     )
+    protocol1.accession_id = uuid7()
     protocol1.source_repository = git_source
     db_session.add(protocol1)
     await db_session.flush()
 
     # Try to create another with same name, version, source, commit
     protocol2 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="unique_protocol",  # Same name
         fqn="protocols.unique_protocol_2",
         version="1.0.0",  # Same version
         source_repository_accession_id=git_source.accession_id,  # Same source
         commit_hash="commit123",  # Same commit
     )
+    protocol2.accession_id = uuid7()
     protocol2.source_repository = git_source
     db_session.add(protocol2)
 
@@ -220,26 +215,26 @@ async def test_function_protocol_definition_orm_unique_constraint_fs(
 
     # Create first protocol
     protocol1 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="unique_fs_protocol",
         fqn="protocols.unique_fs_protocol",
         version="1.0.0",
         file_system_source_accession_id=fs_source.accession_id,
         source_file_path="lib/unique.py",
     )
+    protocol1.accession_id = uuid7()
     protocol1.file_system_source = fs_source
     db_session.add(protocol1)
     await db_session.flush()
 
     # Try to create another with same name, version, source, file path
     protocol2 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="unique_fs_protocol",  # Same name
         fqn="protocols.unique_fs_protocol_2",
         version="1.0.0",  # Same version
         file_system_source_accession_id=fs_source.accession_id,  # Same source
         source_file_path="lib/unique.py",  # Same file path
     )
+    protocol2.accession_id = uuid7()
     protocol2.file_system_source = fs_source
     db_session.add(protocol2)
 
@@ -257,22 +252,22 @@ async def test_function_protocol_definition_orm_is_top_level_flag(
 
     # Top-level protocol (can be executed directly)
     top_level = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="top_level_protocol",
         fqn="protocols.top_level_protocol",
         is_top_level=True,
     )
+    top_level.accession_id = uuid7()
     db_session.add(top_level)
     await db_session.flush()
     assert top_level.is_top_level is True
 
     # Helper protocol (not top-level)
     helper = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="helper_protocol",
         fqn="protocols.helper_protocol",
         is_top_level=False,
     )
+    helper.accession_id = uuid7()
     db_session.add(helper)
     await db_session.flush()
     assert helper.is_top_level is False
@@ -287,22 +282,22 @@ async def test_function_protocol_definition_orm_solo_execution_flag(
 
     # Protocol requiring solo execution
     solo = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="solo_protocol",
         fqn="protocols.solo_protocol",
         solo_execution=True,
     )
+    solo.accession_id = uuid7()
     db_session.add(solo)
     await db_session.flush()
     assert solo.solo_execution is True
 
     # Protocol allowing concurrent execution
     concurrent = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="concurrent_protocol",
         fqn="protocols.concurrent_protocol",
         solo_execution=False,
     )
+    concurrent.accession_id = uuid7()
     db_session.add(concurrent)
     await db_session.flush()
     assert concurrent.solo_execution is False
@@ -317,13 +312,13 @@ async def test_function_protocol_definition_orm_preconfigure_deck_flag(
 
     # Protocol with deck preconfiguration
     with_deck = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="deck_protocol",
         fqn="protocols.deck_protocol",
         preconfigure_deck=True,
         deck_param_name="deck",
         deck_construction_function_fqn="protocols.setup_deck",
     )
+    with_deck.accession_id = uuid7()
     db_session.add(with_deck)
     await db_session.flush()
     assert with_deck.preconfigure_deck is True
@@ -340,24 +335,24 @@ async def test_function_protocol_definition_orm_deprecated_flag(
 
     # Deprecated protocol
     deprecated = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="old_protocol",
         fqn="protocols.old_protocol",
         version="0.9.0",
         deprecated=True,
     )
+    deprecated.accession_id = uuid7()
     db_session.add(deprecated)
     await db_session.flush()
     assert deprecated.deprecated is True
 
     # Active protocol
     active = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="new_protocol",
         fqn="protocols.new_protocol",
         version="2.0.0",
         deprecated=False,
     )
+    active.accession_id = uuid7()
     db_session.add(active)
     await db_session.flush()
     assert active.deprecated is False
@@ -378,12 +373,12 @@ async def test_function_protocol_definition_orm_jsonb_tags(
     }
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="tagged_protocol",
         fqn="protocols.tagged_protocol",
         tags=tags,
         category="liquid_handling",
     )
+    protocol.accession_id = uuid7()
     db_session.add(protocol)
     await db_session.flush()
 
@@ -402,11 +397,11 @@ async def test_function_protocol_definition_orm_state_param(
     from praxis.backend.utils.uuid import uuid7
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="stateful_protocol",
         fqn="protocols.stateful_protocol",
         state_param_name="state",
     )
+    protocol.accession_id = uuid7()
     db_session.add(protocol)
     await db_session.flush()
     assert protocol.state_param_name == "state"
@@ -420,10 +415,10 @@ async def test_function_protocol_definition_orm_query_by_fqn(
     from praxis.backend.utils.uuid import uuid7
 
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="queryable_protocol",
         fqn="protocols.queryable.test_protocol",
     )
+    protocol.accession_id = uuid7()
     db_session.add(protocol)
     await db_session.flush()
 
@@ -449,23 +444,23 @@ async def test_function_protocol_definition_orm_query_top_level(
 
     # Create top-level and helper protocols
     top_level1 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="top_level_1",
         fqn="protocols.top_level_1",
         is_top_level=True,
     )
+    top_level1.accession_id = uuid7()
     top_level2 = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="top_level_2",
         fqn="protocols.top_level_2",
         is_top_level=True,
     )
+    top_level2.accession_id = uuid7()
     helper = FunctionProtocolDefinitionOrm(
-        accession_id=uuid7(),
         name="helper",
         fqn="protocols.helper",
         is_top_level=False,
     )
+    helper.accession_id = uuid7()
     db_session.add(top_level1)
     db_session.add(top_level2)
     db_session.add(helper)
@@ -495,11 +490,11 @@ async def test_function_protocol_definition_orm_repr(
 
     protocol_id = uuid7()
     protocol = FunctionProtocolDefinitionOrm(
-        accession_id=protocol_id,
         name="repr_protocol",
         fqn="protocols.repr_protocol",
         version="1.5.0",
     )
+    protocol.accession_id = protocol_id
 
     repr_str = repr(protocol)
     assert "FunctionProtocolDefinitionOrm" in repr_str

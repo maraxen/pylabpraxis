@@ -25,12 +25,12 @@ from praxis.backend.models.enums import (
   ScheduleHistoryEventTriggerEnum,
   ScheduleStatusEnum,
 )
+from praxis.backend.models.orm.protocol import ProtocolRunOrm
 from praxis.backend.models.orm.schedule import (
   AssetReservationOrm,
   AssetReservationStatusEnum,
   ScheduleEntryOrm,
   ScheduleHistoryOrm,
-  ScheduleStatusEnum,
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.scheduler import (
@@ -79,8 +79,6 @@ class ScheduleEntryCRUDService(
     logger.info("%s Attempting to create new schedule entry.", log_prefix)
 
     # Fetch the protocol run
-    from praxis.backend.models.orm.protocol import ProtocolRunOrm
-
     protocol_run_result = await db.execute(
       select(ProtocolRunOrm).filter(
         ProtocolRunOrm.accession_id == obj_in.protocol_run_accession_id,
@@ -108,8 +106,6 @@ class ScheduleEntryCRUDService(
       raise ValueError(error_message)
 
     # Create a new ScheduleEntryOrm
-    from datetime import datetime, timezone
-
     schedule_entry = self.model(
       **obj_in.model_dump(
         exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"},

@@ -12,6 +12,7 @@ to provide a single point of access for all data services.
 """
 
 from praxis.backend.services.deck import deck_service
+from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService
 from praxis.backend.services.discovery_service import DiscoveryService
 from praxis.backend.services.machine import machine_service
 from praxis.backend.services.outputs import (
