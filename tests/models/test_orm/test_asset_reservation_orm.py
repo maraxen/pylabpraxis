@@ -59,9 +59,9 @@ async def protocol_definition(
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
-        source_repository=source_repository,
-        file_system_source=file_system_source,
     )
+    protocol.source_repository = source_repository
+    protocol.file_system_source = file_system_source
     db_session.add(protocol)
     await db_session.flush()
     return protocol
