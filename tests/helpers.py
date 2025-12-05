@@ -297,9 +297,9 @@ async def create_protocol_definition(
         await db_session.flush()
         kwargs["source_repository"] = repo
 
-    # Extract source objects to avoid passing to __init__ (they are init=False)
-    fs_source = kwargs.pop("file_system_source", None)
-    repo = kwargs.pop("source_repository", None)
+    # Extract relationships that are init=False
+    file_system_source = kwargs.pop("file_system_source", None)
+    source_repository = kwargs.pop("source_repository", None)
 
     # Set required defaults
     defaults = {
@@ -312,21 +312,19 @@ async def create_protocol_definition(
     }
     defaults.update(kwargs)
 
-    # Add FKs
-    if fs_source:
-        defaults["file_system_source_accession_id"] = fs_source.accession_id
-    if repo:
-        defaults["source_repository_accession_id"] = repo.accession_id
+    # Set FK IDs if objects were provided/created
+    if file_system_source:
+        defaults["file_system_source_accession_id"] = file_system_source.accession_id
+    if source_repository:
+        defaults["source_repository_accession_id"] = source_repository.accession_id
 
     protocol_def = FunctionProtocolDefinitionOrm(**defaults)
 
-    if source_repository:
-        protocol_def.source_repository = source_repository
+    # Manually assign relationships since init=False
     if file_system_source:
         protocol_def.file_system_source = file_system_source
-    if accession_id:
-        protocol_def.accession_id = accession_id
-
+    if source_repository:
+        protocol_def.source_repository = source_repository
     db_session.add(protocol_def)
     await db_session.flush()
     return protocol_def
