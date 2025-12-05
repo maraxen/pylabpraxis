@@ -91,18 +91,38 @@ class ProtocolDefinitionCRUDService(
 
     # Create default sources if neither was provided (for testing)
     if not source_repository and not file_system_source:
-      logger.info("No sources provided, creating defaults for testing")
-      source_repository = ProtocolSourceRepositoryOrm(
-        name="default_test_repo",
-        git_url="https://github.com/test/default.git",
+      logger.info("No sources provided, checking/creating defaults for testing")
+
+      # Check if default repo exists
+      repo_stmt = select(ProtocolSourceRepositoryOrm).filter(
+        ProtocolSourceRepositoryOrm.name == "default_test_repo",
       )
-      file_system_source = FileSystemProtocolSourceOrm(
-        name="default_test_fs",
-        base_path="/test/protocols",
+      repo_result = await db.execute(repo_stmt)
+      source_repository = repo_result.scalar_one_or_none()
+
+      if not source_repository:
+        source_repository = ProtocolSourceRepositoryOrm(
+          name="default_test_repo",
+          git_url="https://github.com/test/default.git",
+        )
+        db.add(source_repository)
+
+      # Check if default fs source exists
+      fs_stmt = select(FileSystemProtocolSourceOrm).filter(
+        FileSystemProtocolSourceOrm.name == "default_test_fs",
       )
-      db.add(source_repository)
-      db.add(file_system_source)
-      await db.flush()
+      fs_result = await db.execute(fs_stmt)
+      file_system_source = fs_result.scalar_one_or_none()
+
+      if not file_system_source:
+        file_system_source = FileSystemProtocolSourceOrm(
+          name="default_test_fs",
+          base_path="/test/protocols",
+        )
+        db.add(file_system_source)
+
+      if not source_repository.accession_id or not file_system_source.accession_id:
+        await db.flush()
 
     # Build protocol definition with relationships
     protocol_def_data = obj_in.model_dump(
@@ -122,6 +142,8 @@ class ProtocolDefinitionCRUDService(
       if file_system_source
       else None,
     )
+    protocol_def.source_repository = source_repository
+    protocol_def.file_system_source = file_system_source
 
     if source_repository:
       protocol_def.source_repository = source_repository
