@@ -82,9 +82,9 @@ async def create_machine(
     machine = MachineOrm(
         name=name,
         fqn=fqn,
-        workcell_accession_id=workcell.accession_id,
         **kwargs,
     )
+    machine.workcell_accession_id = workcell.accession_id
     if accession_id:
         machine.accession_id = accession_id
     db_session.add(machine)
