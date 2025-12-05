@@ -117,6 +117,10 @@ class ProtocolDefinitionCRUDService(
 
     protocol_def = FunctionProtocolDefinitionOrm(
       **protocol_def_data,
+      source_repository_accession_id=source_repository.accession_id if source_repository else None,
+      file_system_source_accession_id=file_system_source.accession_id
+      if file_system_source
+      else None,
     )
 
     if source_repository:
