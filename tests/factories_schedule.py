@@ -65,12 +65,16 @@ async def create_protocol_definition(
         "fqn": f"test.protocols.test_protocol_{uuid7()}",
         "version": "1.0.0",
         "is_top_level": True,
-        "source_repository": source_repository,
-        "file_system_source": file_system_source,
+        "source_repository_accession_id": source_repository.accession_id if source_repository else None,
+        "file_system_source_accession_id": file_system_source.accession_id if file_system_source else None,
     }
     defaults.update(kwargs)
 
     protocol = FunctionProtocolDefinitionOrm(**defaults)
+    if source_repository:
+        protocol.source_repository = source_repository
+    if file_system_source:
+        protocol.file_system_source = file_system_source
     db_session.add(protocol)
     await db_session.flush()
     await db_session.refresh(protocol)
