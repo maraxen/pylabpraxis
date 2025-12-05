@@ -18,9 +18,7 @@ from praxis.backend.models.pydantic_internals.plr_sync import (
 
 from .pydantic_base import PraxisBaseModel
 from .resource import (
-  ResourceBase,
   ResourceCommon,
-  ResourceCreate,
   ResourceResponse,
   ResourceUpdate,
 )
