@@ -1,84 +1,78 @@
-# Next Steps
+# Jules Next Steps
 
-The following chunks target critical ORM failures, API regressions, and coverage gaps identified in the latest assessment (38% coverage, widespread ORM/API failures).
+This file contains tasks for future agents to complete.
 
-### Chunk 1: Fix ProtocolRun Factory & ORM (Critical)
-**Goal**: Fix broken Factory/ORM logic causing 100% failure in `ProtocolRun` tests.
-**Files to Fix**:
-*   `tests/models/test_orm/test_protocol_run_orm.py`
-*   `tests/factories.py` (ProtocolRunFactory)
+1.  **Fix Pyright Errors in `deck_manager.py`**
+    *   File: `praxis/backend/core/asset_manager/deck_manager.py`
+    *   Issue: `Arguments missing for parameters "name", "fqn", "location", "plr_state", "plr_definition", "properties_json"` in constructor calls.
+    *   Action: Investigate the class instantiation (likely `Deck` or similar) and ensure all required arguments are provided.
 
-### Chunk 2: Fix FunctionCallLog Factory & ORM
-**Goal**: Fix broken Factory/ORM logic for Function Call Logs.
-**Files to Fix**:
-*   `tests/models/test_orm/test_function_call_log_orm.py`
-*   `tests/factories.py` (FunctionCallLogFactory)
+2.  **Fix Pyright Errors in `resource_manager.py`**
+    *   File: `praxis/backend/core/asset_manager/resource_manager.py`
+    *   Issue: `Arguments missing for parameters "name", "fqn", "location", "plr_state", "plr_definition", "properties_json"` in multiple locations.
+    *   Action: Similar to `deck_manager.py`, correct the instantiation of resource objects.
 
-### Chunk 3: Fix Asset Requirement ORM
-**Goal**: Fix errors in Asset Requirement ORM tests.
-**Files to Fix**:
-*   `tests/models/test_orm/test_asset_requirement_orm.py`
+3.  **Fix Pyright Errors in `filesystem.py`**
+    *   File: `praxis/backend/core/filesystem.py`
+    *   Issue: `open` is marked as overload but missing implementations, and `PathLike` type incompatibility in `__new__`.
+    *   Action: Fix the type hints and overloads to satisfy Pyright.
 
-### Chunk 4: Fix Asset Reservation ORM
-**Goal**: Fix errors in Asset Reservation ORM tests.
-**Files to Fix**:
-*   `tests/models/test_orm/test_asset_reservation_orm.py`
+4.  **Fix Pyright Service Import Errors in Orchestrator**
+    *   File: `praxis/backend/core/orchestrator/execution.py` (and others in `orchestrator/`)
+    *   Issue: `reportAttributeAccessIssue` claiming methods like `update_run_status` are not in `praxis.backend.services`.
+    *   Action: Check imports (circular dependency workarounds?) and ensure the services module exposes these functions correctly for static analysis.
 
-### Chunk 5: Fix Function/Well Data Output ORM
-**Goal**: Fix errors in Data Output ORM tests.
-**Files to Fix**:
-*   `tests/models/test_orm/test_function_data_output_orm.py`
-*   `tests/models/test_orm/test_well_data_output_orm.py` (if exists/failing)
+5.  **Fix Pyright Errors in `protocol_preparation.py`**
+    *   File: `praxis/backend/core/orchestrator/protocol_preparation.py`
+    *   Issue: `None` is not awaitable (likely a missing return value or incorrect await) and `actual_type_str` attribute access issues.
+    *   Action: Correct the async logic and property access on `ParameterMetadataModel`.
 
-### Chunk 6: Fix Deck API Tests
-**Goal**: Fix `TypeError` failures in Deck API tests.
-**Files to Fix**:
-*   `tests/api/test_decks.py`
+6.  **Fix Pyright Errors in `protocol_code_manager.py`**
+    *   File: `praxis/backend/core/protocol_code_manager.py`
+    *   Issue: Accessing `accession_id` on `FunctionProtocolDefinitionCreate` (Pydantic model).
+    *   Action: Determine if the code should be using a Response model or an ORM object, or if the field should be added/accessed differently.
 
-### Chunk 7: Fix Protocol Definition API Tests
-**Goal**: Fix failures in Protocol Definition API tests.
-**Files to Fix**:
-*   `tests/api/test_protocol_definitions.py`
+7.  **Fix Pyright Errors in `workcell_runtime/machine_manager.py`**
+    *   File: `praxis/backend/core/workcell_runtime/machine_manager.py`
+    *   Issue: Accessing unknown attribute `machine_counterpart_accession_id` on `ResourceOrm`/`MachineOrm`.
+    *   Action: Verify the ORM model definitions and update the code to use the correct relationship or field name.
 
-### Chunk 8: Fix Protocol Run API Tests
-**Goal**: Fix failures in Protocol Run API tests (likely linked to Chunk 1).
-**Files to Fix**:
-*   `tests/api/test_protocol_runs.py`
+8.  **Fix Pyright Errors in Utilities**
+    *   File: `praxis/backend/utils/db.py` and `praxis/backend/utils/accession_resolver.py`
+    *   Issue: Type mismatch (`None` passed to `str.replace`) and attribute access on `object`.
+    *   Action: Add type guards or assertions to ensure safety.
 
-### Chunk 9: Fix Well Data Output API Tests
-**Goal**: Fix failures in Well Data Output API tests.
-**Files to Fix**:
-*   `tests/api/test_well_data_outputs.py`
+9.  **Fix Test Failures in `test_function_data_outputs.py`**
+    *   File: `tests/api/test_function_data_outputs.py`
+    *   Issue: Multiple failures (sFFFF).
+    *   Action: Debug and fix the tests. Likely related to data setup or API changes.
 
-### Chunk 10: Deck Service Coverage
-**Goal**: Increase coverage for Deck Service from 26% to >80%.
-**Files to Fix**:
-*   `praxis/backend/services/deck.py`
-*   `tests/services/test_deck_service.py` (add tests)
+10. **Fix Test Failures in `test_well_data_outputs.py`**
+    *   File: `tests/api/test_well_data_outputs.py`
+    *   Issue: Multiple failures (sFFFF).
+    *   Action: Debug and fix the tests.
 
-### Chunk 11: Protocol Definition Service Coverage
-**Goal**: Increase coverage for Protocol Definition Service from 25% to >80%.
-**Files to Fix**:
-*   `praxis/backend/services/protocol_definition.py`
-*   `tests/services/test_protocol_definition_service.py` (or existing test file)
+11. **Fix Test Failures in `test_function_data_output_orm.py`**
+    *   File: `tests/models/test_orm/test_function_data_output_orm.py`
+    *   Issue: Errors (E) during execution.
+    *   Action: Investigate if this is related to the API failures (shared model/logic issues).
 
-### Chunk 12: Scheduler Service Coverage
-**Goal**: Increase coverage for Scheduler Service from 0% (if accurate) to >80%.
-**Files to Fix**:
-*   `praxis/backend/services/scheduler.py`
-*   `tests/core/test_scheduler.py` (Verify it covers service layer or add service tests)
+12. **Fix Test Failures in `test_parameter_definition_orm.py`**
+    *   File: `tests/models/test_orm/test_parameter_definition_orm.py`
+    *   Issue: Errors (E) during execution.
+    *   Action: Fix the ORM test errors.
 
-### Chunk 13: Fix Pyright Errors (Models)
-**Goal**: Resolve static type errors in Pydantic/ORM models.
-**Files to Fix**:
-*   `praxis/backend/models/` (as reported by Pyright)
+13. **Fix Test Failures in `test_protocol_code_manager.py`**
+    *   File: `tests/core/test_protocol_code_manager.py`
+    *   Issue: Failures (F) in protocol code management logic.
+    *   Action: Address the logic errors causing these tests to fail.
 
-### Chunk 14: Fix Pyright Errors (Services)
-**Goal**: Resolve static type errors in Service layer.
-**Files to Fix**:
-*   `praxis/backend/services/` (as reported by Pyright)
+14. **Fix Test Failure in `test_e2e_flow.py`**
+    *   File: `tests/api/test_e2e_flow.py`
+    *   Issue: Single failure (F).
+    *   Action: This is a critical E2E test. Prioritize fixing this to ensure the main flow works.
 
-### Chunk 15: Fix Ruff Linting
-**Goal**: Resolve remaining 53 Ruff errors.
-**Files to Fix**:
-*   Run `ruff check .` and fix reported issues.
+15. **Investigate and Resolve Test Suite Timeouts**
+    *   Scope: Full Test Suite
+    *   Issue: `uv run pytest` times out.
+    *   Action: Identify slow-running tests (possibly using `--durations=10`) and optimize them. Ensure no tests are hanging indefinitely (e.g., waiting on a lock or event that never happens).
