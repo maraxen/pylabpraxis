@@ -17,12 +17,8 @@ from praxis.backend.models.orm.protocol import (
 @pytest_asyncio.fixture
 async def protocol_definition(db_session: AsyncSession) -> FunctionProtocolDefinitionOrm:
     """Create a FunctionProtocolDefinitionOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     protocol = FunctionProtocolDefinitionOrm(
         name="test_protocol",
-        source_repository=None,
-        file_system_source=None,
         fqn="test.protocols.test_protocol",
         version="1.0.0",
         is_top_level=True,
@@ -38,8 +34,6 @@ async def protocol_run(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> ProtocolRunOrm:
     """Create a ProtocolRunOrm for testing."""
-    from praxis.backend.utils.uuid import uuid7
-
     run = ProtocolRunOrm(
         name="test_run",
         top_level_protocol_definition_accession_id=protocol_definition.accession_id,
@@ -56,13 +50,9 @@ async def test_function_call_log_orm_creation_minimal(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating FunctionCallLogOrm with minimal required fields."""
-    from praxis.backend.utils.uuid import uuid7
-
-    call_id = uuid7()
     now = datetime.now(timezone.utc)
 
     call_log = FunctionCallLogOrm(
-        accession_id=call_id,
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -96,9 +86,6 @@ async def test_function_call_log_orm_creation_with_all_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test creating FunctionCallLogOrm with all fields populated."""
-    from praxis.backend.utils.uuid import uuid7
-
-    call_id = uuid7()
     start_time = datetime.now(timezone.utc)
     end_time = datetime(
         start_time.year,
@@ -113,7 +100,6 @@ async def test_function_call_log_orm_creation_with_all_fields(
     return_value = {"success": True, "transferred_volume": 98.5}
 
     call_log = FunctionCallLogOrm(
-        accession_id=call_id,
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -145,13 +131,9 @@ async def test_function_call_log_orm_persist_to_database(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test full persistence cycle for FunctionCallLogOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
-    call_id = uuid7()
     now = datetime.now(timezone.utc)
 
     call_log = FunctionCallLogOrm(
-        accession_id=call_id,
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=5,
@@ -184,14 +166,11 @@ async def test_function_call_log_orm_sequence_ordering(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test sequence_in_run for ordering function calls."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
 
     # Create multiple calls with different sequences
     for seq in [0, 1, 2, 3, 4]:
         call_log = FunctionCallLogOrm(
-            accession_id=uuid7(),
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=seq,
@@ -225,8 +204,6 @@ async def test_function_call_log_orm_status_values(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test different status values for function calls."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
     statuses = [
         FunctionCallStatusEnum.UNKNOWN,
@@ -240,7 +217,6 @@ async def test_function_call_log_orm_status_values(
 
     for idx, status in enumerate(statuses):
         call_log = FunctionCallLogOrm(
-            accession_id=uuid7(),
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=idx,
@@ -273,8 +249,6 @@ async def test_function_call_log_orm_input_args_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB input_args_json field."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
     input_args = {
         "volume_ul": 50,
@@ -288,7 +262,6 @@ async def test_function_call_log_orm_input_args_jsonb(
     }
 
     call_log = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -314,8 +287,6 @@ async def test_function_call_log_orm_return_value_jsonb(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test JSONB return_value_json field."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
     return_value = {
         "success": True,
@@ -326,7 +297,6 @@ async def test_function_call_log_orm_return_value_jsonb(
     }
 
     call_log = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -352,8 +322,6 @@ async def test_function_call_log_orm_error_fields(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test error_message_text and error_traceback_text fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
     error_message = "ValueError: Invalid volume specified"
     error_traceback = """Traceback (most recent call last):
@@ -362,7 +330,6 @@ async def test_function_call_log_orm_error_fields(
 ValueError: Invalid volume specified"""
 
     call_log = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -391,14 +358,10 @@ async def test_function_call_log_orm_nested_calls(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test parent-child relationship for nested function calls."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
 
     # Create parent call
-    parent_id = uuid7()
     parent_call = FunctionCallLogOrm(
-        accession_id=parent_id,
         name="parent_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -411,9 +374,7 @@ async def test_function_call_log_orm_nested_calls(
     await db_session.flush()
 
     # Create child call
-    child_id = uuid7()
     child_call = FunctionCallLogOrm(
-        accession_id=child_id,
         name="child_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
@@ -438,14 +399,11 @@ async def test_function_call_log_orm_timing(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test start_time and end_time fields."""
-    from praxis.backend.utils.uuid import uuid7
-
     from datetime import timedelta
     start_time = datetime.now(timezone.utc)
     end_time = start_time + timedelta(seconds=10)
 
     call_log = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -473,14 +431,11 @@ async def test_function_call_log_orm_query_by_protocol_run(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying all function calls for a protocol run."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
 
     # Create multiple calls for the same run
     for i in range(5):
         call_log = FunctionCallLogOrm(
-            accession_id=uuid7(),
             name="test_call",
             protocol_run_accession_id=protocol_run.accession_id,
             sequence_in_run=i,
@@ -512,13 +467,10 @@ async def test_function_call_log_orm_query_by_status(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test querying function calls by status."""
-    from praxis.backend.utils.uuid import uuid7
-
     now = datetime.now(timezone.utc)
 
     # Create calls with different statuses
     success_call = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="success_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=0,
@@ -530,7 +482,6 @@ async def test_function_call_log_orm_query_by_status(
     success_call.executed_function_definition = protocol_definition
 
     failed_call = FunctionCallLogOrm(
-        accession_id=uuid7(),
         name="failed_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=1,
@@ -565,13 +516,9 @@ async def test_function_call_log_orm_repr(
     protocol_definition: FunctionProtocolDefinitionOrm,
 ) -> None:
     """Test string representation of FunctionCallLogOrm."""
-    from praxis.backend.utils.uuid import uuid7
-
-    call_id = uuid7()
     now = datetime.now(timezone.utc)
 
     call_log = FunctionCallLogOrm(
-        accession_id=call_id,
         name="test_call",
         protocol_run_accession_id=protocol_run.accession_id,
         sequence_in_run=42,
