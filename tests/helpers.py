@@ -297,6 +297,11 @@ async def create_protocol_definition(
         await db_session.flush()
         kwargs["source_repository"] = repo
 
+    # Extract relationships and init=False fields
+    source_repository = kwargs.pop("source_repository", None)
+    file_system_source = kwargs.pop("file_system_source", None)
+    accession_id = kwargs.pop("accession_id", None)
+
     # Set required defaults
     defaults = {
         "name": name,
@@ -309,6 +314,14 @@ async def create_protocol_definition(
     defaults.update(kwargs)
 
     protocol_def = FunctionProtocolDefinitionOrm(**defaults)
+
+    if source_repository:
+        protocol_def.source_repository = source_repository
+    if file_system_source:
+        protocol_def.file_system_source = file_system_source
+    if accession_id:
+        protocol_def.accession_id = accession_id
+
     db_session.add(protocol_def)
     await db_session.flush()
     return protocol_def
