@@ -5,25 +5,28 @@ configurations, positioning with "positions" which are human accessible location
 accession_ids (e.g., slots or rails), and decks.
 """
 
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
-from pydantic import UUID7, ConfigDict, Field
+from pydantic import UUID7, BaseModel, ConfigDict, Field
 
+from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
 from praxis.backend.models.pydantic_internals.plr_sync import (
   PLRTypeDefinitionCreate,
+  PLRTypeDefinitionResponse,
   PLRTypeDefinitionUpdate,
 )
 
 from .pydantic_base import PraxisBaseModel
 from .resource import (
   ResourceBase,
+  ResourceCommon,
   ResourceCreate,
   ResourceResponse,
   ResourceUpdate,
 )
 
 
-class DeckBase(ResourceBase):
+class DeckBase(ResourceCommon):
 
   """Base model for a deck."""
 
@@ -31,11 +34,21 @@ class DeckBase(ResourceBase):
   deck_type_id: UUID7 | None = None
 
 
-class DeckCreate(ResourceCreate, DeckBase):
+class DeckCreate(DeckBase):
 
   """Model for creating a new deck."""
 
   resource_definition_accession_id: UUID7
+
+  machine_initial_status: Optional["MachineStatusEnum"] = Field(
+    default=None,
+    description="Initial status for the new machine counterpart.",
+  )
+
+  deck_initial_status: ResourceStatusEnum | None = Field(
+    default=None,
+    description="Initial status for the new deck counterpart.",
+  )
 
 
 class DeckUpdate(ResourceUpdate):
@@ -52,7 +65,7 @@ class DeckResponse(ResourceResponse, DeckBase):
 DeckResponse.model_rebuild()
 
 
-class PositioningConfig(PraxisBaseModel):
+class PositioningConfig(BaseModel):
 
   """Configuration for how positions are calculated/managed for this deck type.
 
@@ -80,7 +93,7 @@ class PositioningConfig(PraxisBaseModel):
   )
 
 
-class DeckPositionDefinitionBase(PraxisBaseModel):
+class DeckPositionDefinitionBase(BaseModel):
 
   """Define the base properties for a deck position definition.
 
@@ -126,7 +139,7 @@ class DeckPositionDefinitionCreate(DeckPositionDefinitionBase):
   )
 
 
-class DeckPositionDefinitionResponse(DeckPositionDefinitionBase):
+class DeckPositionDefinitionResponse(DeckPositionDefinitionBase, PraxisBaseModel):
 
   """Model for API responses for a deck position definition."""
 
@@ -142,11 +155,11 @@ class DeckTypeDefinitionCreate(PLRTypeDefinitionCreate):
   position_definitions: list[DeckPositionDefinitionCreate] | None = None
 
 
-class DeckTypeDefinitionResponse(DeckTypeDefinitionCreate):
+class DeckTypeDefinitionResponse(PLRTypeDefinitionResponse):
 
   """Model for API responses for a deck type definition."""
 
-  positioning_config: PositioningConfig | None = None  # Override to make optional for responses
+  positioning_config: PositioningConfig | None = None
   positions: list[DeckPositionDefinitionResponse]
 
 

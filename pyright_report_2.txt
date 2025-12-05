@@ -1,0 +1,18 @@
+/app/praxis/backend/models/pydantic_internals/deck.py
+  /app/praxis/backend/models/pydantic_internals/deck.py:38:3 - error: "resource_definition_accession_id" overrides a field of the same name but is missing a default value (reportGeneralTypeIssues)
+  /app/praxis/backend/models/pydantic_internals/deck.py:38:3 - error: "resource_definition_accession_id" overrides symbol of same name in class "ResourceBase"
+    Variable is mutable so its type is invariant
+      Override type "UUID7" is not the same as base type "UUID7 | None" (reportIncompatibleVariableOverride)
+  /app/praxis/backend/models/pydantic_internals/deck.py:140:3 - error: "name" overrides a field of the same name but is missing a default value (reportGeneralTypeIssues)
+  /app/praxis/backend/models/pydantic_internals/deck.py:149:3 - error: "positioning_config" overrides symbol of same name in class "DeckTypeDefinitionCreate"
+    Variable is mutable so its type is invariant
+      Override type "PositioningConfig | None" is not the same as base type "PositioningConfig" (reportIncompatibleVariableOverride)
+/app/praxis/backend/models/pydantic_internals/protocol.py
+  /app/praxis/backend/models/pydantic_internals/protocol.py:251:3 - error: "tags" overrides symbol of same name in class "FunctionProtocolDefinitionBase"
+    Variable is mutable so its type is invariant
+      Override type "list[str]" is not the same as base type "list[str] | dict[Unknown, Unknown] | None" (reportIncompatibleVariableOverride)
+/app/praxis/backend/models/pydantic_internals/resource.py
+  /app/praxis/backend/models/pydantic_internals/resource.py:178:3 - error: "name" overrides a field of the same name but is missing a default value (reportGeneralTypeIssues)
+/app/praxis/backend/models/pydantic_internals/workcell.py
+  /app/praxis/backend/models/pydantic_internals/workcell.py:29:3 - error: "name" overrides a field of the same name but is missing a default value (reportGeneralTypeIssues)
+7 errors, 0 warnings, 0 informations

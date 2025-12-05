@@ -9,7 +9,7 @@ import enum
 import inspect
 import uuid
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -197,7 +197,10 @@ class DeckService(CRUDBase[DeckOrm, DeckCreate, DeckUpdate]):
 
     if filters.parent_accession_id is not None:
       conditions.append(
-        self.model.parent_accession_id == filters.parent_accession_id,
+        or_(
+          self.model.parent_accession_id == filters.parent_accession_id,
+          self.model.parent_machine_accession_id == filters.parent_accession_id,
+        ),
       )
 
     if conditions:

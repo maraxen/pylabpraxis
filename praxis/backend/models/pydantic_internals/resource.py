@@ -7,7 +7,7 @@ inventory data.
 
 from typing import Any, ClassVar, Optional
 
-from pydantic import UUID7, Field
+from pydantic import UUID7, BaseModel, ConfigDict, Field
 
 from praxis.backend.models.enums import AssetType, MachineStatusEnum, ResourceStatusEnum
 from praxis.backend.models.pydantic_internals.plr_sync import (
@@ -20,14 +20,13 @@ from .asset import AssetBase, AssetResponse, AssetUpdate
 from .pydantic_base import PraxisBaseModel
 
 
-class ResourceBase(AssetBase):
+class ResourceCommon(AssetBase):
 
-  """Base model for a resource instance."""
+  """Common fields for resource models, excluding definition ID."""
 
   status: ResourceStatusEnum | None = Field(default=ResourceStatusEnum.UNKNOWN)
   status_details: str | None = None
   workcell_accession_id: UUID7 | None = None
-  resource_definition_accession_id: UUID7 | None = None
   parent_accession_id: UUID7 | None = None
   plr_state: dict | None = None
   plr_definition: dict | None = None
@@ -40,6 +39,13 @@ class ResourceBase(AssetBase):
     default_factory=list,
     description="List of accession IDs for child resources to be associated with this resource.",
   )
+
+
+class ResourceBase(ResourceCommon):
+
+  """Base model for a resource instance."""
+
+  resource_definition_accession_id: UUID7 | None = None
 
 
 class ResourceCreate(ResourceBase):
@@ -57,9 +63,16 @@ class ResourceCreate(ResourceBase):
   )
 
 
-class ResourceUpdate(ResourceBase, AssetUpdate):
+class ResourceUpdate(AssetUpdate):
 
   """Model for updating a resource instance."""
+
+  status: ResourceStatusEnum | None = Field(default=None)
+  status_details: str | None = None
+  workcell_accession_id: UUID7 | None = None
+  resource_definition_accession_id: UUID7 | None = None
+  parent_accession_id: UUID7 | None = None
+  child_accession_ids: list[UUID7] | None = None
 
   # Override asset_type to make it optional for updates (shouldn't change during update)
   asset_type: AssetType | None = Field(default=None, description="The type of the asset.")
@@ -164,9 +177,11 @@ class ResourceInventoryDataOut(ResourceInventoryDataIn):
   last_updated_at: str | None = None
 
 
-class ResourceTypeInfo(PraxisBaseModel):
+class ResourceTypeInfo(BaseModel):
 
   """Provides detailed information about a specific resource type."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
 
   name: str
   parent_class: str
