@@ -198,7 +198,6 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
         protocol_run_obj = factory.SubFactory(ProtocolRunFactory)
         executed_function_def = factory.SubFactory(FunctionProtocolDefinitionFactory)
 
-    accession_id = factory.LazyFunction(uuid7)
     name = factory.Faker("word")
     protocol_run_accession_id = factory.LazyAttribute(
         lambda o: o.protocol_run_obj.accession_id
