@@ -694,7 +694,6 @@ class FunctionCallLogOrm(Base):
   """
 
   __tablename__ = "function_call_logs"
-  accession_id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, index=True)
   protocol_run_accession_id: Mapped[uuid.UUID] = mapped_column(
     UUID,
     ForeignKey("protocol_runs.accession_id"),
