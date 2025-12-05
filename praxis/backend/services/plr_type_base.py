@@ -15,8 +15,8 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=PLRTypeDefinitionUpdate)
 
 
 class DiscoverableTypeServiceBase(
-  Generic[ModelType, CreateSchemaType, UpdateSchemaType],
   ABC,
+  Generic[ModelType, CreateSchemaType, UpdateSchemaType],
 ):
 
   """An abstract base class for services that handle discoverable pylabrobot type definitions."""

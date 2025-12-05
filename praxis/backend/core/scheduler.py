@@ -194,7 +194,8 @@ class ProtocolScheduler:
         protocol_run_id,
       )
       await self._release_reservations(reserved_assets, protocol_run_id)
-      raise AssetAcquisitionError(f"Unexpected error during asset reservation: {e!s}") from e
+      msg = f"Unexpected error during asset reservation: {e!s}"
+      raise AssetAcquisitionError(msg) from e
 
   async def _release_reservations(
     self,
@@ -310,7 +311,8 @@ class ProtocolScheduler:
       )
       if isinstance(e, (AssetAcquisitionError, OrchestratorError)):
         raise
-      raise OrchestratorError(f"Failed to schedule protocol execution: {e!s}") from e
+      msg = f"Failed to schedule protocol execution: {e!s}"
+      raise OrchestratorError(msg) from e
 
   async def _queue_execution_task(
     self,

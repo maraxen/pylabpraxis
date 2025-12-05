@@ -1,5 +1,6 @@
 """Generic CRUD base class for SQLAlchemy models."""
 
+import enum
 import inspect as py_inspect
 from typing import Generic, TypeVar
 from uuid import UUID
@@ -95,8 +96,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     # Convert enum string values back to enum members for SQLAlchemy
     # This is necessary because jsonable_encoder converts enums to strings
-    import enum
-
     for attr_name, column in inspect(self.model).columns.items():
       if attr_name in filtered_data and hasattr(column.type, "enum_class"):
         enum_class = getattr(column.type, "enum_class", None)
@@ -126,8 +125,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     update_data = obj_in.model_dump(exclude_unset=True)
 
     # Convert enum string values back to enum members for SQLAlchemy
-    import enum
-
     for attr_name, column in inspect(self.model).columns.items():
       if attr_name in update_data and hasattr(column.type, "enum_class"):
         enum_class = getattr(column.type, "enum_class", None)

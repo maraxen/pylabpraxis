@@ -10,7 +10,7 @@ F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def handle_db_transaction(func: F) -> F:
-  """Decorator to manage database transactions in service layer methods.
+  """Manage database transactions in service layer methods.
 
   This decorator wraps an async function that takes a SQLAlchemy `AsyncSession`
   as its first argument. It ensures that the session is properly committed
