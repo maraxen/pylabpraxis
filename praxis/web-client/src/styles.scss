@@ -1,0 +1,132 @@
+
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// Define base colors
+$rose-pompadour: #ED7A9B;
+$moonstone-blue: #73A9C2;
+
+// Define the light theme using these colors
+$light-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$magenta-palette,
+    tertiary: mat.$cyan-palette,
+  ),
+  typography: (
+    brand-family: 'Roboto Flex',
+    plain-family: 'Roboto Flex',
+  ),
+  density: (
+    scale: 0,
+  )
+));
+
+$dark-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$magenta-palette,
+    tertiary: mat.$cyan-palette,
+  )
+));
+
+// ===== THEME VARIABLES =====
+// Light theme is now a premium light aesthetic (not plain white)
+
+:root {
+  // Brand colors
+  --primary-color: #{$rose-pompadour};
+  --tertiary-color: #{$moonstone-blue};
+  --mat-sys-primary: var(--primary-color);
+  --mat-sys-tertiary: var(--tertiary-color);
+
+  // Default to dark theme
+  --theme-bg-gradient: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  --theme-surface: rgba(255, 255, 255, 0.05);
+  --theme-surface-elevated: rgba(255, 255, 255, 0.08);
+  --theme-text-primary: rgba(255, 255, 255, 0.95);
+  --theme-text-secondary: rgba(255, 255, 255, 0.7);
+  --theme-text-tertiary: rgba(255, 255, 255, 0.5);
+  --theme-border: rgba(255, 255, 255, 0.1);
+  --theme-border-light: rgba(255, 255, 255, 0.05);
+
+  // Glassmorphism
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-blur: blur(20px);
+
+  // Aurora glow colors
+  --aurora-primary: rgba(237, 122, 155, 0.15);
+  --aurora-secondary: rgba(115, 169, 194, 0.15);
+
+  @include mat.all-component-themes($dark-theme);
+}
+
+// Light theme class (toggled via JS)
+.light-theme {
+  --theme-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 50%, #dce2e9 100%);
+  --theme-surface: rgba(255, 255, 255, 0.8);
+  --theme-surface-elevated: rgba(255, 255, 255, 0.95);
+  --theme-text-primary: rgba(15, 15, 26, 0.95);
+  --theme-text-secondary: rgba(15, 15, 26, 0.7);
+  --theme-text-tertiary: rgba(15, 15, 26, 0.5);
+  --theme-border: rgba(0, 0, 0, 0.1);
+  --theme-border-light: rgba(0, 0, 0, 0.05);
+
+  // Glassmorphism for light theme (frosted glass on light bg)
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.8);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  // Aurora glow colors (more vibrant for light theme)
+  --aurora-primary: rgba(237, 122, 155, 0.2);
+  --aurora-secondary: rgba(115, 169, 194, 0.2);
+
+  @include mat.all-component-themes($light-theme);
+}
+
+// Dark theme class (for explicit toggle)
+.dark-theme {
+  // Already the default, but explict for toggle
+  @include mat.all-component-themes($dark-theme);
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Roboto Flex', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  background: var(--theme-bg-gradient);
+  color: var(--theme-text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Utility classes for Roboto Flex variable weights */
+.font-thin { font-weight: 100; }
+.font-extralight { font-weight: 200; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+
+/* Theme-aware utility classes */
+.surface {
+  background: var(--theme-surface);
+  border: var(--glass-border);
+}
+
+.surface-elevated {
+  background: var(--theme-surface-elevated);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.text-primary { color: var(--theme-text-primary); }
+.text-secondary { color: var(--theme-text-secondary); }
+.text-tertiary { color: var(--theme-text-tertiary); }

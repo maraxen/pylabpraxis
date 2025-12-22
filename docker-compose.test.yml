@@ -1,0 +1,26 @@
+services:
+  test_db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432" # Host port 5433 matches local development convention
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  tests:
+    build: .
+    environment:
+      - TEST_DATABASE_URL=postgresql+asyncpg://test_user:test_password@test_db:5432/test_db
+    depends_on:
+      test_db:
+        condition: service_healthy
+    volumes:
+      - ./praxis:/app/praxis
+      - ./tests:/app/tests
+    command: pytest

@@ -1,0 +1,778 @@
+error[invalid-type-form]: Variable of type `type[Unknown]` is not allowed in a type expression
+  --> praxis/backend/api/utils/crud_router_factory.py:50:43
+   |
+48 |     return await service.create(db=db, obj_in=obj_in)
+49 |
+50 |   @router.get(prefix, response_model=list[response_schema], tags=tags)
+   |                                           ^^^^^^^^^^^^^^^
+51 |   async def get_multi(
+52 |     db: Annotated[AsyncSession, Depends(get_db)],
+   |
+info: rule `invalid-type-form` is enabled by default
+
+warning[invalid-ignore-comment]: Invalid `type: ignore` comment: no whitespace after `ignore`
+   --> praxis/backend/core/container.py:132:30
+    |
+130 |   # as a context manager to create and close the session.
+131 |   # `pyright` struggles to infer the provided type from the Resource provider,
+132 |   # so we use `# type: ignore` to suppress the incorrect error.
+    |                              ^
+133 |   db_session: providers.Provider[AsyncSession] = providers.Resource(
+134 |     db_session_factory,
+    |
+
+error[unresolved-attribute]: Object of type `(...) -> Unknown` has no attribute `__name__`
+  --> praxis/backend/core/decorators/definition_builder.py:20:32
+   |
+18 | ) -> tuple[FunctionProtocolDefinitionCreate, dict[str, Any] | None]:
+19 |   """Parse a function signature and decorator args to create a protocol definition."""
+20 |   resolved_name = data.name or data.func.__name__
+   |                                ^^^^^^^^^^^^^^^^^^
+21 |   if not resolved_name:
+22 |     msg = (
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Object of type `(...) -> Unknown` has no attribute `__name__`
+  --> praxis/backend/core/decorators/definition_builder.py:80:19
+   |
+78 |     source_file_path=inspect.getfile(data.func),
+79 |     module_name=data.func.__module__,
+80 |     function_name=data.func.__name__,
+   |                   ^^^^^^^^^^^^^^^^^^
+81 |     is_top_level=data.is_top_level,
+82 |     solo_execution=data.solo,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Object of type `(...) -> Unknown` has no attribute `__qualname__`
+  --> praxis/backend/core/decorators/models.py:81:31
+   |
+80 |   """
+81 |   return f"{func.__module__}.{func.__qualname__}"
+   |                               ^^^^^^^^^^^^^^^^^
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `UUID`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `str`, and 4 more union elements, are not assignable to `UUID`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `str`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 4 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `str`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 4 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `str`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 4 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `bool`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 4 more union elements, are not assignable to `bool`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `str | None`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 3 more union elements, are not assignable to `str | None`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `str | None`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 3 more union elements, are not assignable to `str | None`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `AssetConstraintsModel`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 5 more union elements, are not assignable to `AssetConstraintsModel`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:63:46
+   |
+61 |       "ui_hints": p_ui_hints,
+62 |     }
+63 |     assets_list.append(AssetRequirementModel(**asset_args))
+   |                                              ^^^^^^^^^^^^ Expected `LocationConstraintsModel`, found `Unknown | UUID | str | ... omitted 4 union elements`
+64 |   else:
+65 |     param_args = {
+   |
+info: Union element `UUID`, and 5 more union elements, are not assignable to `LocationConstraintsModel`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `str`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `bool`, and 3 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `str`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `bool`, and 3 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `str`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `bool`, and 3 more union elements, are not assignable to `str`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `bool`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `str`, and 3 more union elements, are not assignable to `bool`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `bool`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `str`, and 3 more union elements, are not assignable to `bool`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `str | None`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `bool`, and 2 more union elements, are not assignable to `str | None`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `str | None`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `bool`, and 2 more union elements, are not assignable to `str | None`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `ParameterConstraintsModel`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `str`, and 4 more union elements, are not assignable to `ParameterConstraintsModel`
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument is incorrect
+  --> praxis/backend/core/decorators/parameter_processor.py:91:51
+   |
+89 |         "expects_dict": is_dict_type_match,
+90 |       }
+91 |     parameters_list.append(ParameterMetadataModel(**param_args))
+   |                                                   ^^^^^^^^^^^^ Expected `UIHint | None`, found `Unknown | str | bool | ... omitted 3 union elements`
+92 |
+93 |   return parameters_list, assets_list, found_deck_param, found_state_param_details
+   |
+info: Union element `str`, and 2 more union elements, are not assignable to `UIHint | None`
+info: rule `invalid-argument-type` is enabled by default
+
+error[unresolved-attribute]: Object of type `(...) -> Unknown` has no attribute `__code__`
+  --> praxis/backend/core/decorators/protocol_decorator.py:70:41
+   |
+68 |   if (
+69 |     "__praxis_run_context__" in processed_kwargs_for_call
+70 |     and "__praxis_run_context__" not in func.__code__.co_varnames
+   |                                         ^^^^^^^^^^^^^
+71 |     and not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_check.parameters.values())
+72 |   ):
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Object of type `(...) -> Unknown` has no attribute `_protocol_runtime_info`
+   --> praxis/backend/core/decorators/protocol_decorator.py:233:22
+    |
+231 |     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+232 |       # Get the runtime metadata from the function itself, not a global registry.
+233 |       current_meta = func._protocol_runtime_info
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+234 |       protocol_unique_key = (
+235 |         f"{current_meta.pydantic_definition.name}_v{current_meta.pydantic_definition.version}"
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-overload]: Overloaded function `open` requires at least two overloads
+  --> praxis/backend/core/filesystem.py:24:7
+   |
+22 |   ) -> IO[Any]: ...
+23 |
+24 |   def open(self, *args: Any, **kwargs: Any) -> IO[Any]:
+   |       ^^^^
+25 |     """Open a file and return a file object."""
+26 |     return open(*args, **kwargs)
+   |
+  ::: praxis/backend/core/filesystem.py:12:7
+   |
+11 |   @overload
+12 |   def open(
+   |       ---- Only one overload defined here
+13 |     self,
+14 |     file: str | bytes | int,
+   |
+info: rule `invalid-overload` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:30:17
+   |
+28 |   def exists(self, path: str | bytes | int) -> bool:
+29 |     """Return True if path refers to an existing path."""
+30 |     return Path(path).exists()
+   |                 ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+31 |
+32 |   def isdir(self, path: str | bytes | int) -> bool:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:34:17
+   |
+32 |   def isdir(self, path: str | bytes | int) -> bool:
+33 |     """Return True if path is an existing directory."""
+34 |     return Path(path).is_dir()
+   |                 ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+35 |
+36 |   def listdir(self, path: str | bytes | int | None = None) -> list[str]:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:40:40
+   |
+38 |     if path is None:
+39 |       path = "."
+40 |     return [item.name for item in Path(path).iterdir()]
+   |                                        ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+41 |
+42 |   def mkdir(self, path: str | bytes | int, mode: int = 0o777) -> None:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:44:10
+   |
+42 |   def mkdir(self, path: str | bytes | int, mode: int = 0o777) -> None:
+43 |     """Create a directory named path with numeric mode mode."""
+44 |     Path(path).mkdir(mode=mode)
+   |          ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+45 |
+46 |   def makedirs(self, path: str | bytes | int, mode: int = 0o777, exist_ok: bool = False) -> None:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:48:10
+   |
+46 |   def makedirs(self, path: str | bytes | int, mode: int = 0o777, exist_ok: bool = False) -> None:
+47 |     """Create a directory named path with numeric mode mode."""
+48 |     Path(path).mkdir(mode=mode, parents=True, exist_ok=exist_ok)
+   |          ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+49 |
+50 |   def remove(self, path: str | bytes | int) -> None:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:52:10
+   |
+50 |   def remove(self, path: str | bytes | int) -> None:
+51 |     """Remove (delete) the file path."""
+52 |     Path(path).unlink()
+   |          ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+53 |
+54 |   def rmdir(self, path: str | bytes | int) -> None:
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `__new__` is incorrect
+  --> praxis/backend/core/filesystem.py:56:10
+   |
+54 |   def rmdir(self, path: str | bytes | int) -> None:
+55 |     """Remove (delete) the directory path."""
+56 |     Path(path).rmdir()
+   |          ^^^^ Expected `str | PathLike[str]`, found `str | bytes | int`
+   |
+info: Union elements `bytes` and `int` are not assignable to `str | PathLike[str]`
+info: Function defined here
+   --> stdlib/pathlib/__init__.pyi:299:13
+    |
+297 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...  # pyright: ignore[reportInconsistentConstructor]
+298 |     else:
+299 |         def __new__(cls, *args: StrPath, **kwargs: Unused) -> Self: ...
+    |             ^^^^^^^      -------------- Parameter declared here
+300 |
+301 |     @classmethod
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `read_deck_by_name`
+   --> praxis/backend/core/orchestrator/asset_acquisition.py:125:35
+    |
+123 |         deck_config_orm_accession_id_to_apply: uuid.UUID | None = None
+124 |         if isinstance(deck_accession_identifier_from_user, str):
+125 |           deck_config_orm = await svc.read_deck_by_name(
+    |                                   ^^^^^^^^^^^^^^^^^^^^^
+126 |             db_session,
+127 |             deck_accession_identifier_from_user,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/error_handling.py:115:11
+    |
+113 |       )
+114 |
+115 |     await svc.update_run_status(
+    |           ^^^^^^^^^^^^^^^^^^^^^
+116 |       db_session,
+117 |       run_accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+  --> praxis/backend/core/orchestrator/execution.py:59:13
+   |
+57 |       logger.info("ORCH: Run %s PAUSED before execution.", run_accession_id)
+58 |       await clear_control_command(run_accession_id)
+59 |       await svc.update_run_status(
+   |             ^^^^^^^^^^^^^^^^^^^^^
+60 |         db_session,
+61 |         protocol_run_orm.accession_id,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+  --> praxis/backend/core/orchestrator/execution.py:71:17
+   |
+69 |           logger.info("ORCH: Run %s RESUMING.", run_accession_id)
+70 |           await clear_control_command(run_accession_id)
+71 |           await svc.update_run_status(
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+72 |             db_session,
+73 |             protocol_run_orm.accession_id,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+  --> praxis/backend/core/orchestrator/execution.py:81:17
+   |
+79 |           logger.info("ORCH: Run %s CANCELLED during pause.", run_accession_id)
+80 |           await clear_control_command(run_accession_id)
+81 |           await svc.update_run_status(
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+82 |             db_session,
+83 |             protocol_run_orm.accession_id,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+  --> praxis/backend/core/orchestrator/execution.py:93:13
+   |
+91 |       logger.info("ORCH: Run %s CANCELLED before execution.", run_accession_id)
+92 |       await clear_control_command(run_accession_id)
+93 |       await svc.update_run_status(
+   |             ^^^^^^^^^^^^^^^^^^^^^
+94 |         db_session,
+95 |         protocol_run_orm.accession_id,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `create_protocol_run`
+   --> praxis/backend/core/orchestrator/execution.py:222:35
+    |
+221 |       # Create protocol run record
+222 |       protocol_run_db_obj = await svc.create_protocol_run(
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+223 |         db=db_session,
+224 |         run_accession_id=run_accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/execution.py:247:15
+    |
+245 |       await db_session.refresh(protocol_run_db_obj)
+246 |       if protocol_run_db_obj.status == ProtocolRunStatusEnum.PREPARING:
+247 |         await svc.update_run_status(
+    |               ^^^^^^^^^^^^^^^^^^^^^
+248 |           db_session,
+249 |           protocol_run_db_obj.accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/execution.py:266:15
+    |
+264 |           db_session,
+265 |         )
+266 |         await svc.update_run_status(
+    |               ^^^^^^^^^^^^^^^^^^^^^
+267 |           db_session,
+268 |           protocol_run_db_obj.accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/execution.py:333:15
+    |
+331 |         error_msg = f"Protocol definition not found for run {run_accession_id}"
+332 |         logger.error(error_msg)
+333 |         await svc.update_run_status(
+    |               ^^^^^^^^^^^^^^^^^^^^^
+334 |           db_session,
+335 |           run_accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/execution.py:366:15
+    |
+364 |         ProtocolRunStatusEnum.QUEUED,
+365 |       ]:
+366 |         await svc.update_run_status(
+    |               ^^^^^^^^^^^^^^^^^^^^^
+367 |           db_session,
+368 |           protocol_run_orm.accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `update_run_status`
+   --> praxis/backend/core/orchestrator/execution.py:385:15
+    |
+383 |           db_session,
+384 |         )
+385 |         await svc.update_run_status(
+    |               ^^^^^^^^^^^^^^^^^^^^^
+386 |           db_session,
+387 |           protocol_run_orm.accession_id,
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `praxis.backend.services` has no member `read_protocol_definition_by_name`
+  --> praxis/backend/core/orchestrator/protocol_preparation.py:48:18
+   |
+46 |       source_name,
+47 |     )
+48 |     return await svc.read_protocol_definition_by_name(
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+49 |       db=db_session,
+50 |       name=protocol_name,
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-await]: `None` is not awaitable
+   --> praxis/backend/core/orchestrator/protocol_preparation.py:86:11
+    |
+ 85 |       current_workcell_snapshot = self.workcell_runtime.get_state_snapshot()
+ 86 |       await praxis_state.set(
+    |  ___________^
+ 87 | |       "workcell_last_successful_snapshot",
+ 88 | |       current_workcell_snapshot,
+ 89 | |     )
+    | |_____^
+ 90 |       logger.debug(
+ 91 |         "Workcell state snapshot captured and stored in PraxisState for run %s.",
+    |
+   ::: stdlib/types.pyi:950:11
+    |
+948 |   if sys.version_info >= (3, 10):
+949 |       @final
+950 |       class NoneType:
+    |             -------- type defined here
+951 |           """The type of the None singleton."""
+    |
+info: `__await__` is missing
+info: rule `invalid-await` is enabled by default
+
+error[invalid-argument-type]: Argument to function `to_thread` is incorrect
+   --> praxis/backend/core/protocol_code_manager.py:131:9
+    |
+129 |       process = await asyncio.to_thread(
+130 |         subprocess.run,
+131 |         command,
+    |         ^^^^^^^ Expected `Overload[(args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: Literal[True], timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, *, universal_newlines: Literal[True], startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: Literal[False] | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: None = None, errors: None = None, input: Buffer | None = None, text: Literal[False] | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: Buffer | str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown]`, found `list[str]`
+132 |         cwd=cwd,
+133 |         check=True,
+    |
+info: Function defined here
+  --> stdlib/asyncio/threads.pyi:12:11
+   |
+10 | _R = TypeVar("_R")
+11 |
+12 | async def to_thread(func: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+   |           ^^^^^^^^^                            -------------- Parameter declared here
+13 |     """Asynchronously run function *func* in a separate thread.
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `to_thread` is incorrect
+   --> praxis/backend/core/protocol_code_manager.py:132:9
+    |
+130 |         subprocess.run,
+131 |         command,
+132 |         cwd=cwd,
+    |         ^^^^^^^ Expected `Overload[(args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: Literal[True], timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, *, universal_newlines: Literal[True], startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: Literal[False] | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: None = None, errors: None = None, input: Buffer | None = None, text: Literal[False] | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: Buffer | str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown]`, found `str`
+133 |         check=True,
+134 |         capture_output=True,
+    |
+info: Function defined here
+  --> stdlib/asyncio/threads.pyi:12:11
+   |
+10 | _R = TypeVar("_R")
+11 |
+12 | async def to_thread(func: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+   |           ^^^^^^^^^                                            ------------------- Parameter declared here
+13 |     """Asynchronously run function *func* in a separate thread.
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `to_thread` is incorrect
+   --> praxis/backend/core/protocol_code_manager.py:133:9
+    |
+131 |         command,
+132 |         cwd=cwd,
+133 |         check=True,
+    |         ^^^^^^^^^^ Expected `Overload[(args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: Literal[True], timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, *, universal_newlines: Literal[True], startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: Literal[False] | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: None = None, errors: None = None, input: Buffer | None = None, text: Literal[False] | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: Buffer | str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown]`, found `Literal[True]`
+134 |         capture_output=True,
+135 |         text=True,
+    |
+info: Function defined here
+  --> stdlib/asyncio/threads.pyi:12:11
+   |
+10 | _R = TypeVar("_R")
+11 |
+12 | async def to_thread(func: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+   |           ^^^^^^^^^                                            ------------------- Parameter declared here
+13 |     """Asynchronously run function *func* in a separate thread.
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `to_thread` is incorrect
+   --> praxis/backend/core/protocol_code_manager.py:134:9
+    |
+132 |         cwd=cwd,
+133 |         check=True,
+134 |         capture_output=True,
+    |         ^^^^^^^^^^^^^^^^^^^ Expected `Overload[(args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: Literal[True], timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, *, universal_newlines: Literal[True], startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: Literal[False] | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: None = None, errors: None = None, input: Buffer | None = None, text: Literal[False] | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: Buffer | str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown]`, found `Literal[True]`
+135 |         text=True,
+136 |         timeout=timeout,  # type: ignore
+    |
+info: Function defined here
+  --> stdlib/asyncio/threads.pyi:12:11
+   |
+10 | _R = TypeVar("_R")
+11 |
+12 | async def to_thread(func: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+   |           ^^^^^^^^^                                            ------------------- Parameter declared here
+13 |     """Asynchronously run function *func* in a separate thread.
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `to_thread` is incorrect
+   --> praxis/backend/core/protocol_code_manager.py:135:9
+    |
+133 |         check=True,
+134 |         capture_output=True,
+135 |         text=True,
+    |         ^^^^^^^^^ Expected `Overload[(args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: Literal[True], timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, *, universal_newlines: Literal[True], startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: Literal[False] | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: None = None, errors: None = None, input: Buffer | None = None, text: Literal[False] | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown, (args: Sequence[str | bytes | PathLike[str] | PathLike[bytes]] | bytes | PathLike[str] | PathLike[bytes], bufsize: int = Literal[-1], executable: str | bytes | PathLike[str] | PathLike[bytes] | None = None, stdin: None | int | IO[Any] = None, stdout: None | int | IO[Any] = None, stderr: None | int | IO[Any] = None, preexec_fn: (() -> Any) | None = None, close_fds: bool = Literal[True], shell: bool = Literal[False], cwd: str | bytes | PathLike[str] | PathLike[bytes] | None = None, env: Mapping[bytes, str | bytes | PathLike[str] | PathLike[bytes]] | Mapping[str, str | bytes | PathLike[str] | PathLike[bytes]] | None = None, universal_newlines: bool | None = None, startupinfo: Any = None, creationflags: int = Literal[0], restore_signals: bool = Literal[True], start_new_session: bool = Literal[False], pass_fds: Collection[int] = tuple[()], *, capture_output: bool = Literal[False], check: bool = Literal[False], encoding: str | None = None, errors: str | None = None, input: Buffer | str | None = None, text: bool | None = None, timeout: int | float | None = None, user: str | int | None = None, group: str | int | None = None, extra_groups: Iterable[str | int] | None = None, umask: int = Literal[-1], pipesize: int = Literal[-1]) -> Unknown]`, found `Literal[True]`
+136 |         timeout=timeout,  # type: ignore
+137 |       )
+    |
+info: Function defined here
+  --> stdlib/asyncio/threads.pyi:12:11
+   |
+10 | _R = TypeVar("_R")
+11 |
+12 | async def to_thread(func: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+   |           ^^^^^^^^^                                            ------------------- Parameter declared here
+13 |     """Asynchronously run function *func* in a separate thread.
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+Found 52 diagnostics

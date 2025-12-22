@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: praxis_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount local code to container for hot-reloading
+      - ./praxis:/app/praxis
+      - ./tests:/app/tests
+    environment:
+      # Use the service name 'praxis-db' as the host
+      - DATABASE_URL=postgresql://praxis:praxis@praxis-db:5432/praxis_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      praxis-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Override the command for development to enable reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak-postgres:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.4
+    restart: always
+    volumes:
+        - ./keycloak:/opt/keycloak/data/import # Mount the directory
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin # CHANGE FOR PRODUCTION
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+    command: start-dev --import-realm /opt/keycloak/data/import/praxis-realm.json --verbose
+    ports:
+      - "8080:8080"
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+
+  praxis-db:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: praxis_db
+      POSTGRES_USER: praxis
+      POSTGRES_PASSWORD: praxis
+    volumes:
+      - praxis_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U praxis -d praxis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  keycloak_data:
+  praxis_data:

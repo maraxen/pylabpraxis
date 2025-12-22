@@ -1,0 +1,180 @@
+"""Tests for the well_outputs service."""
+import pytest
+from uuid import uuid4
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from praxis.backend.models.orm.outputs import WellDataOutputOrm
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.outputs import WellDataOutputCreate, WellDataOutputUpdate
+from praxis.backend.services.well_outputs import WellDataOutputCRUDService, create_well_data_outputs, create_well_data_outputs_from_flat_array
+from tests.factories import (
+    FunctionDataOutputFactory,
+    ProtocolRunFactory,
+    ResourceFactory,
+    WellDataOutputFactory,
+)
+
+
+@pytest.fixture
+def well_data_output_service():
+    """Return a WellDataOutputCRUDService."""
+    return WellDataOutputCRUDService(WellDataOutputOrm)
+
+
+@pytest.mark.asyncio
+async def test_create_well_data_output(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test creating a well data output."""
+    function_data_output = FunctionDataOutputFactory.create()
+    plate_resource = ResourceFactory.create()
+    well_data_output_in = WellDataOutputCreate(
+        function_data_output_accession_id=function_data_output.accession_id,
+        plate_resource_accession_id=plate_resource.accession_id,
+        well_name="A1",
+        data_value=1.23,
+    )
+    created_well_data_output = await well_data_output_service.create(
+        db_session, obj_in=well_data_output_in
+    )
+    assert created_well_data_output.well_name == "A1"
+    assert created_well_data_output.data_value == 1.23
+    assert created_well_data_output.function_data_output_accession_id == function_data_output.accession_id
+    assert created_well_data_output.plate_resource_accession_id == plate_resource.accession_id
+
+
+@pytest.mark.asyncio
+async def test_create_well_data_output_invalid_well_name(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test creating a well data output with an invalid well name."""
+    function_data_output = FunctionDataOutputFactory.create()
+    plate_resource = ResourceFactory.create()
+    well_data_output_in = WellDataOutputCreate(
+        function_data_output_accession_id=function_data_output.accession_id,
+        plate_resource_accession_id=plate_resource.accession_id,
+        well_name="Z99",  # Invalid well name
+        data_value=1.23,
+    )
+    with pytest.raises(ValueError, match="Invalid well name format"):
+        await well_data_output_service.create(
+            db_session, obj_in=well_data_output_in
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_well_data_output(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test getting a well data output."""
+    well_data_output = WellDataOutputFactory.create()
+    retrieved_well_data_output = await well_data_output_service.get(
+        db_session, accession_id=well_data_output.accession_id
+    )
+    assert retrieved_well_data_output
+    assert retrieved_well_data_output.accession_id == well_data_output.accession_id
+
+
+@pytest.mark.asyncio
+async def test_get_multi_well_data_output(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test getting multiple well data outputs."""
+    WellDataOutputFactory.create_batch(3)
+    retrieved_well_data_outputs = await well_data_output_service.get_multi(
+        db_session, filters=SearchFilters()
+    )
+    assert len(retrieved_well_data_outputs) == 3
+
+
+@pytest.mark.asyncio
+async def test_update_well_data_output(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test updating a well data output."""
+    well_data_output = WellDataOutputFactory.create(data_value=1.23)
+    well_data_output_update = WellDataOutputUpdate(data_value=4.56)
+    updated_well_data_output = await well_data_output_service.update(
+        db_session, db_obj=well_data_output, obj_in=well_data_output_update
+    )
+    assert updated_well_data_output.data_value == 4.56
+
+
+@pytest.mark.asyncio
+async def test_remove_well_data_output(
+    db_session: AsyncSession,
+    well_data_output_service: WellDataOutputCRUDService,
+):
+    """Test removing a well data output."""
+    well_data_output = WellDataOutputFactory.create()
+    removed_well_data_output = await well_data_output_service.remove(
+        db_session, accession_id=well_data_output.accession_id
+    )
+    assert removed_well_data_output
+    assert removed_well_data_output.accession_id == well_data_output.accession_id
+    retrieved_well_data_output = await well_data_output_service.get(
+        db_session, accession_id=well_data_output.accession_id
+    )
+    assert not retrieved_well_data_output
+
+
+@pytest.mark.asyncio
+async def test_create_well_data_outputs(db_session: AsyncSession):
+    """Test creating multiple well data outputs from a dictionary."""
+    function_data_output = FunctionDataOutputFactory.create()
+    plate_resource = ResourceFactory.create()
+    well_data = {"A1": 1.1, "B2": 2.2, "C3": 3.3}
+
+    well_outputs = await create_well_data_outputs(
+        db_session,
+        function_data_output_accession_id=function_data_output.accession_id,
+        plate_resource_accession_id=plate_resource.accession_id,
+        well_data=well_data,
+    )
+
+    assert len(well_outputs) == 3
+    for well_output in well_outputs:
+        assert well_output.well_name in well_data
+        assert well_output.data_value == well_data[well_output.well_name]
+
+
+@pytest.mark.asyncio
+async def test_create_well_data_outputs_from_flat_array(db_session: AsyncSession):
+    """Test creating multiple well data outputs from a flat array."""
+    function_data_output = FunctionDataOutputFactory.create()
+    plate_resource = ResourceFactory.create()
+    data_array = [1.1, 2.2, 3.3]
+
+    well_outputs = await create_well_data_outputs_from_flat_array(
+        db_session,
+        function_data_output_accession_id=function_data_output.accession_id,
+        plate_resource_accession_id=plate_resource.accession_id,
+        data_array=data_array,
+    )
+
+    assert len(well_outputs) == 3
+    for i, well_output in enumerate(well_outputs):
+        assert well_output.data_value == data_array[i]
+
+
+@pytest.mark.asyncio
+async def test_create_well_data_outputs_from_flat_array_invalid_length(
+    db_session: AsyncSession,
+):
+    """Test creating multiple well data outputs from a flat array with an invalid length."""
+    function_data_output = FunctionDataOutputFactory.create()
+    # Plate dimensions are not set in the factory, so this should raise an error.
+    plate_resource = ResourceFactory.create()
+    data_array = [1.1, 2.2, 3.3]
+    with pytest.raises(ValueError, match="Could not determine plate dimensions for resource"):
+        await create_well_data_outputs_from_flat_array(
+            db_session,
+            function_data_output_accession_id=function_data_output.accession_id,
+            plate_resource_accession_id=plate_resource.accession_id,
+            data_array=data_array,
+        )

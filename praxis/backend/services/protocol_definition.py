@@ -1,0 +1,296 @@
+"""Service layer for Protocol Definition management."""
+
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from praxis.backend.models.orm.protocol import (
+  AssetRequirementOrm,
+  FileSystemProtocolSourceOrm,
+  FunctionProtocolDefinitionOrm,
+  ParameterDefinitionOrm,
+  ProtocolSourceRepositoryOrm,
+)
+from praxis.backend.models.pydantic_internals.filters import SearchFilters
+from praxis.backend.models.pydantic_internals.protocol import (
+  FunctionProtocolDefinitionCreate,
+  FunctionProtocolDefinitionUpdate,
+)
+from praxis.backend.services.utils.crud_base import CRUDBase
+from praxis.backend.utils.db_decorator import handle_db_transaction
+from praxis.backend.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class ProtocolDefinitionCRUDService(
+  CRUDBase[
+    FunctionProtocolDefinitionOrm,
+    FunctionProtocolDefinitionCreate,
+    FunctionProtocolDefinitionUpdate,
+  ],
+):
+
+  """CRUD service for protocol definitions."""
+
+  @handle_db_transaction
+  async def create(
+    self,
+    db: AsyncSession,
+    *,
+    obj_in: FunctionProtocolDefinitionCreate,
+  ) -> FunctionProtocolDefinitionOrm:
+    """Create a new protocol definition.
+
+    Handles relationship lookups for source_repository and file_system_source.
+    Creates default sources if not provided for testing convenience.
+    """
+    logger.info("Creating protocol definition '%s'", obj_in.name)
+
+    # Look up or create source repository
+    source_repository = None
+    if obj_in.source_repository_name:
+      stmt = select(ProtocolSourceRepositoryOrm).filter(
+        ProtocolSourceRepositoryOrm.name == obj_in.source_repository_name,
+      )
+      result = await db.execute(stmt)
+      source_repository = result.scalar_one_or_none()
+
+      if not source_repository:
+        logger.warning(
+          "Source repository '%s' not found, creating default",
+          obj_in.source_repository_name,
+        )
+        source_repository = ProtocolSourceRepositoryOrm(
+          name=obj_in.source_repository_name,
+          git_url=f"https://github.com/default/{obj_in.source_repository_name}.git",
+        )
+        db.add(source_repository)
+        await db.flush()
+
+    # Look up or create file system source
+    file_system_source = None
+    if obj_in.file_system_source_name:
+      stmt = select(FileSystemProtocolSourceOrm).filter(
+        FileSystemProtocolSourceOrm.name == obj_in.file_system_source_name,
+      )
+      result = await db.execute(stmt)
+      file_system_source = result.scalar_one_or_none()
+
+      if not file_system_source:
+        logger.warning(
+          "File system source '%s' not found, creating default",
+          obj_in.file_system_source_name,
+        )
+        file_system_source = FileSystemProtocolSourceOrm(
+          name=obj_in.file_system_source_name,
+          base_path="/default/protocols",
+        )
+        db.add(file_system_source)
+        await db.flush()
+
+    # Create default sources if neither was provided (for testing)
+    if not source_repository and not file_system_source:
+      logger.info("No sources provided, checking/creating defaults for testing")
+
+      # Check if default repo exists
+      repo_stmt = select(ProtocolSourceRepositoryOrm).filter(
+        ProtocolSourceRepositoryOrm.name == "default_test_repo",
+      )
+      repo_result = await db.execute(repo_stmt)
+      source_repository = repo_result.scalar_one_or_none()
+
+      if not source_repository:
+        source_repository = ProtocolSourceRepositoryOrm(
+          name="default_test_repo",
+          git_url="https://github.com/test/default.git",
+        )
+        db.add(source_repository)
+
+      # Check if default fs source exists
+      fs_stmt = select(FileSystemProtocolSourceOrm).filter(
+        FileSystemProtocolSourceOrm.name == "default_test_fs",
+      )
+      fs_result = await db.execute(fs_stmt)
+      file_system_source = fs_result.scalar_one_or_none()
+
+      if not file_system_source:
+        file_system_source = FileSystemProtocolSourceOrm(
+          name="default_test_fs",
+          base_path="/test/protocols",
+        )
+        db.add(file_system_source)
+
+      if not source_repository.accession_id or not file_system_source.accession_id:
+        await db.flush()
+
+    # Build protocol definition with relationships
+    protocol_def_data = obj_in.model_dump(
+      exclude={
+        "source_repository_name",
+        "file_system_source_name",
+        "accession_id",  # Exclude init=False fields from Base
+        "created_at",
+        "updated_at",
+        "assets",  # Handle separately as ORM objects
+        "parameters",  # Handle separately as ORM objects
+      },
+    )
+
+    protocol_def = FunctionProtocolDefinitionOrm(
+      **protocol_def_data,
+      source_repository_accession_id=source_repository.accession_id if source_repository else None,
+      file_system_source_accession_id=file_system_source.accession_id
+      if file_system_source
+      else None,
+    )
+    protocol_def.source_repository = source_repository
+    protocol_def.file_system_source = file_system_source
+
+    if source_repository:
+      protocol_def.source_repository = source_repository
+    if file_system_source:
+      protocol_def.file_system_source = file_system_source
+
+    # accession_id is auto-generated by the Base model
+
+    db.add(protocol_def)
+    await db.flush()
+
+    # Convert parameter dicts to ORM objects
+    if obj_in.parameters:
+      for param_data in obj_in.parameters:
+        param_dict = param_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
+        # Map pydantic field names to ORM field names
+        if "constraints" in param_dict:
+          param_dict["constraints_json"] = param_dict.pop("constraints")
+        if "ui_hint" in param_dict:
+          param_dict["ui_hint_json"] = param_dict.pop("ui_hint")
+        param_orm = ParameterDefinitionOrm(
+          protocol_definition_accession_id=protocol_def.accession_id,
+          protocol_definition=protocol_def,
+          **param_dict,
+        )
+        protocol_def.parameters.append(param_orm)
+
+    # Convert asset dicts to ORM objects
+    if obj_in.assets:
+      for asset_data in obj_in.assets:
+        asset_dict = asset_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
+        # Map pydantic field names to ORM field names
+        if "constraints" in asset_dict:
+          asset_dict["constraints_json"] = asset_dict.pop("constraints")
+        if "location_constraints" in asset_dict:
+          asset_dict["location_constraints_json"] = asset_dict.pop("location_constraints")
+        # Remove any pydantic-only fields not in ORM
+        asset_dict.pop("ui_hints", None)
+        asset_orm = AssetRequirementOrm(
+          protocol_definition_accession_id=protocol_def.accession_id,
+          protocol_definition=protocol_def,
+          **asset_dict,
+        )
+        protocol_def.assets.append(asset_orm)
+
+    await db.flush()
+
+    # Eagerly load relationships to avoid lazy loading errors during serialization
+    await db.refresh(
+      protocol_def,
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
+    )
+
+    logger.info(
+      "Successfully created protocol definition '%s' with ID %s",
+      protocol_def.name,
+      protocol_def.accession_id,
+    )
+    return protocol_def
+
+  async def get(
+    self,
+    db: AsyncSession,
+    accession_id: uuid.UUID,
+  ) -> FunctionProtocolDefinitionOrm | None:
+    """Get a single protocol definition by ID with eager loaded relationships."""
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .where(self.model.accession_id == accession_id)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+  async def get_multi(
+    self,
+    db: AsyncSession,
+    *,
+    filters: SearchFilters | None = None,
+  ) -> list[FunctionProtocolDefinitionOrm]:
+    """Get multiple protocol definitions with eager loaded relationships."""
+    # Get results from parent class (which handles filters)
+    if filters is None:
+      filters = SearchFilters()
+
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .offset(filters.offset)
+      .limit(filters.limit)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+  async def get_by_fqn(self, db: AsyncSession, fqn: str) -> FunctionProtocolDefinitionOrm | None:
+    """Retrieve a specific protocol definition by its fully qualified name."""
+    stmt = (
+      select(self.model)
+      .options(
+        selectinload(self.model.parameters),
+        selectinload(self.model.assets),
+      )
+      .filter(self.model.fqn == fqn)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: FunctionProtocolDefinitionOrm,
+    obj_in: FunctionProtocolDefinitionUpdate,
+  ) -> FunctionProtocolDefinitionOrm:
+    """Update a protocol definition with eager loaded relationships."""
+    # Call parent update method
+    updated_obj = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+
+    # Eagerly load relationships after update
+    await db.refresh(
+      updated_obj,
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
+    )
+    return updated_obj
+
+  async def get_by_name(
+    self,
+    db: AsyncSession,
+    name: str,
+    version: str | None = None,
+    commit_hash: str | None = None,
+  ) -> FunctionProtocolDefinitionOrm | None:
+    """Retrieve a protocol definition by name and other optional criteria."""
+    stmt = select(self.model).filter(self.model.name == name)
+    if version:
+      stmt = stmt.filter(self.model.version == version)
+    if commit_hash:
+      stmt = stmt.filter(self.model.commit_hash == commit_hash)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()

@@ -1,0 +1,14 @@
+{
+  "/api": {
+    "target": "http://localhost:8000",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true
+  },
+  "/ws": {
+    "target": "ws://localhost:8000",
+    "secure": false,
+    "ws": true,
+    "logLevel": "debug"
+  }
+}

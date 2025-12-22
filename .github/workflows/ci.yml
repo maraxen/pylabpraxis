@@ -1,0 +1,181 @@
+name: CI
+
+# This CI workflow is optimized for fast test execution following best practices:
+# - PYTHONDONTWRITEBYTECODE=1 to skip .pyc generation
+# - Parallel test execution with pytest-xdist (-n auto)
+# - Fast and slow tests run separately for quick feedback
+# - See docs/TESTING.md for more details
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install dependencies
+      run: |
+        source $HOME/.cargo/env
+        uv venv
+        uv pip install -e ".[dev]"
+
+    - name: Lint with ruff
+      run: |
+        source $HOME/.cargo/env
+        ruff check --select F,E,B praxis
+
+    - name: Format check with ruff
+      run: |
+        source $HOME/.cargo/env
+        ruff format --check praxis
+
+  typecheck:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install dependencies
+      run: |
+        source $HOME/.cargo/env
+        uv venv
+        uv pip install -e ".[dev]"
+        uv pip install pyright
+
+    - name: Type check with pyright
+      run: |
+        source $HOME/.cargo/env
+        pyright praxis
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: praxis_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install dependencies
+      run: |
+        source $HOME/.cargo/env
+        uv venv
+        uv pip install -e ".[dev]"
+
+    # Run fast tests in parallel first (fails fast if there are issues)
+    - name: Run fast tests (parallel)
+      env:
+        PYTHONDONTWRITEBYTECODE: 1
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/praxis_test
+        TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test
+        REDIS_URL: redis://localhost:6379
+      run: |
+        source $HOME/.cargo/env
+        pytest -n auto -m "not slow" --cov=praxis --cov-report=xml --cov-report=term-missing
+      timeout-minutes: 10
+
+    # Run slow tests separately (can be parallelized but might need more time)
+    - name: Run slow tests (parallel)
+      env:
+        PYTHONDONTWRITEBYTECODE: 1
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/praxis_test
+        TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test
+        REDIS_URL: redis://localhost:6379
+      run: |
+        source $HOME/.cargo/env
+        pytest -n auto -m slow --cov=praxis --cov-append --cov-report=xml --cov-report=term-missing
+      timeout-minutes: 20
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: |
+          source $HOME/.cargo/env
+          uv venv
+          uv pip install -e ".[dev]"
+
+      - name: Run smoke tests
+        run: |
+          source $HOME/.cargo/env
+          pytest -m smoke
+        timeout-minutes: 5

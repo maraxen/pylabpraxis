@@ -1,0 +1,3 @@
+[submodule "external/pylabrobot"]
+	path = external/pylabrobot
+	url = https://github.com/PyLabRobot/pylabrobot.git

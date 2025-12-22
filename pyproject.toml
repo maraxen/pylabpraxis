@@ -1,0 +1,238 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "praxis"
+version = "0.0.1"
+description = "A hardware agnostic platform for lab automation"
+authors = [{name = "Marielle Russo"}]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+dependencies = [
+    "typing_extensions",
+    "inflection",
+    "pylabrobot @ git+https://github.com/pylabrobot/pylabrobot.git@main",
+    "pydantic>=2.0.0",
+    "sqlalchemy[asyncio]",
+    "asyncpg>=0.27.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "uuid-utils>=0.11.0",
+    "dependency-injector",
+    "pwdlib[bcrypt]>=0.2.0",
+    "bcrypt",
+    "python-jose[cryptography]>=3.3.0",
+    "python-keycloak>=5.8.1",
+]
+
+[project.optional-dependencies]
+fw = [
+    "pyusb",
+]
+http = [
+    "requests",
+    "types-requests",
+]
+plate_reading = [
+    "pylibftdi",
+]
+websockets = [
+    "websockets",
+]
+visualizer = [
+    "websockets",
+]
+opentrons = [
+    "opentrons-http-api-client",
+    "opentrons-shared-data",
+]
+server = [
+    "flask[async]",
+]
+inheco = [
+    "hid",
+]
+agrow = [
+    "pymodbus",
+]
+email = [
+    "boto3",
+]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.3.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout",
+    "pytest-socket>=0.6.0",        # Prevent inadvertent network access
+    "pytest-skip-slow>=0.0.5",     # Mark and skip slow tests
+    "pytest-randomly>=3.12.0",     # Randomize test order to catch dependencies
+    "pytest-monitor>=1.6.0",       # Monitor test performance
+    "factory-boy>=3.2.0",
+    "httpx>=0.24.0",
+    "locust>=2.15.0",
+    "responses",                   # Mock HTTP requests
+    "freezegun",
+    "fakeredis",
+    "pyfakefs>=5.2.0",            # In-memory filesystem for faster tests
+    "celery",
+    "aiosqlite",
+    "alembic",
+    "psycopg2-binary",
+]
+dev = [
+    "praxis[fw,http,plate_reading,websockets,opentrons,server,inheco,agrow,email,test]",
+    "sphinx_book_theme",
+    "myst_nb",
+    "sphinx_copybutton",
+    "ruff",
+    "pyright",
+    "ty",
+]
+all = [
+    "praxis[dev]",
+]
+
+[project.urls]
+Repository = "https://github.com/maraxen/pylabpraxis.git"
+Homepage = "https://github.com/maraxen/pylabpraxis.git"
+
+[tool.setuptools]
+packages = ["praxis"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+# Pytest configuration
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Don't recurse into these directories during collection
+norecursedirs = [
+    ".git",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    "node_modules",
+    "praxis/web-client",
+    "alembic",
+    "alembic_old",
+    "scripts",
+    "docs",
+]
+
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=praxis",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+    "--timeout=300",
+    # Disable unnecessary built-in plugins for faster collection
+    "-p", "no:pastebin",
+    "-p", "no:nose",
+    "-p", "no:doctest",
+    # Network access control - only allow localhost connections
+    "--allow-hosts=127.0.0.1,::1,localhost,test_db",
+]
+
+# Markers for selective test running
+markers = [
+    "unit: Unit tests that don't require database or external services",
+    "integration: Integration tests that require database",
+    "e2e: End-to-end tests",
+    "slow: Slow running tests (>1s) - skip with -m 'not slow'",
+    "hardware: Tests requiring hardware",
+    "network: Tests that require network access - use with pytest-socket",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["praxis"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/*_test.py",
+    "*/conftest.py",
+    "setup.py",
+    "praxis/backend/commons/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Ruff configuration for linting and formatting
+[tool.ruff]
+line-length = 100
+indent-width = 2
+fix = true
+target-version = "py310"
+exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D211", "D213",
+    "D100", "D101", "D102", "D103", "D104", "D107", # Missing docstrings
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204", "ANN401", # Type annotations
+    "FBT001", "FBT002", "FBT003", # Boolean trap
+    "PLR0913", "PLR0915", "PLR0912", "PLR0911", "C901", # Complexity
+    "PTH123", "PTH118", "PTH120", "PTH103", "PTH100", "PTH110", "PTH112", # Pathlib usage
+    "TD002", "TD003", "FIX002", # TODOs
+    "S110", # Try-Except-Pass
+    "E501", # Line too long
+    "COM812", "D203", # Format conflicts
+    "PGH003", # Blanket type ignore
+    "BLE001", # Blind exception catch
+    "FAST001", "FAST002", "B008", # FastAPI rules
+    "ARG002", # Unused arguments
+    "SLF001", # Private member access
+    "TRY300", "TRY301", "TRY400", "TRY401", "TID252", # Relative imports
+    "ERA001", # Commented out code
+    "G004", # F-string in logging
+    "PYI063", # PEP 570 positional-only parameters
+    "RUF012", # ClassVar annotation
+    "RUF022", # __all__ sort
+    "PERF203", "PERF403", # Perf
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+indent-style = "space"
+exclude = ["D211", "D213"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+
+
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]

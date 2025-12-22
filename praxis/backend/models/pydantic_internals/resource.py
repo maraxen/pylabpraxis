@@ -1,0 +1,213 @@
+"""Pydantic models for managing resource definitions and instances in Praxis.
+
+These models handle the structured representation of various lab resources,
+from their generic definitions to specific physical instances and their
+inventory data.
+"""
+
+from typing import Any, ClassVar, Optional
+
+from pydantic import UUID7, BaseModel, ConfigDict, Field
+
+from praxis.backend.models.enums import AssetType, MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.pydantic_internals.plr_sync import (
+  PLRTypeDefinitionCreate,
+  PLRTypeDefinitionResponse,
+  PLRTypeDefinitionUpdate,
+)
+
+from .asset import AssetBase, AssetResponse, AssetUpdate
+from .pydantic_base import PraxisBaseModel
+
+
+class ResourceCommon(AssetBase):
+
+  """Common fields for resource models, excluding definition ID."""
+
+  status: ResourceStatusEnum | None = Field(default=ResourceStatusEnum.UNKNOWN)
+  status_details: str | None = None
+  workcell_accession_id: UUID7 | None = None
+  parent_accession_id: UUID7 | None = None
+  plr_state: dict | None = None
+  plr_definition: dict | None = None
+  children: list["ResourceBase"] = Field(
+    default_factory=list,
+    description="List of child resources associated with this resource.",
+  )
+  parent: "ResourceBase | None" = None
+  child_accession_ids: list[UUID7] = Field(
+    default_factory=list,
+    description="List of accession IDs for child resources to be associated with this resource.",
+  )
+
+
+class ResourceBase(ResourceCommon):
+
+  """Base model for a resource instance."""
+
+  resource_definition_accession_id: UUID7 | None = None
+
+
+class ResourceCreate(ResourceBase):
+
+  """Model for creating a new resource instance."""
+
+  machine_initial_status: Optional["MachineStatusEnum"] = Field(
+    default=None,
+    description="Initial status for the new machine counterpart.",
+  )
+
+  deck_initial_status: ResourceStatusEnum | None = Field(
+    default=None,
+    description="Initial status for the new deck counterpart.",
+  )
+
+
+class ResourceUpdate(AssetUpdate):
+
+  """Model for updating a resource instance."""
+
+  status: ResourceStatusEnum | None = Field(default=None)
+  status_details: str | None = None
+  workcell_accession_id: UUID7 | None = None
+  resource_definition_accession_id: UUID7 | None = None
+  parent_accession_id: UUID7 | None = None
+  child_accession_ids: list[UUID7] | None = None
+
+  # Override asset_type to make it optional for updates (shouldn't change during update)
+  asset_type: AssetType | None = Field(default=None, description="The type of the asset.")
+  current_protocol_run_accession_id: UUID7 | None = Field(default=None)
+  machine_location_accession_id: UUID7 | None = Field(default=None)
+  current_deck_position_name: str | None = Field(default=None)
+
+
+class ResourceResponse(AssetResponse, ResourceBase):
+
+  """Model for API responses for a resource instance."""
+
+  parent_response: "ResourceResponse | None" = None
+  child_responses: ClassVar[list["ResourceResponse"]] = []
+
+  model_config = AssetResponse.model_config.copy()
+
+
+ResourceResponse.model_rebuild()
+
+
+class ResourceDefinitionBase(PraxisBaseModel):
+
+  """Defines the base properties for a resource definition."""
+
+  resource_type: str | None = None
+  description: str | None = None
+  is_consumable: bool = True
+  nominal_volume_ul: float | None = None
+  material: str | None = None
+  manufacturer: str | None = None
+  plr_definition_details_json: dict[str, Any] | None = None
+  size_x_mm: float | None = None
+  size_y_mm: float | None = None
+  size_z_mm: float | None = None
+  model: str | None = None
+  plr_category: str | None = None
+  rotation_json: dict[str, Any] | None = None
+  ordering: str | None = None
+  # Dynamic filtering fields
+  num_items: int | None = None
+  plate_type: str | None = None
+  well_volume_ul: float | None = None
+  tip_volume_ul: float | None = None
+  vendor: str | None = None
+
+
+class ResourceDefinitionCreate(ResourceDefinitionBase, PLRTypeDefinitionCreate):
+
+  """Represents a resource definition for creation requests."""
+
+
+class ResourceDefinitionUpdate(ResourceDefinitionBase, PLRTypeDefinitionUpdate):
+
+  """Specifies the fields that can be updated for an existing resource definition."""
+
+
+class ResourceDefinitionResponse(ResourceDefinitionBase, PLRTypeDefinitionResponse):
+
+  """Represents a resource definition for API responses."""
+
+
+class ResourceInventoryReagentItem(PraxisBaseModel):
+
+  """Represents a single reagent item within resource inventory data."""
+
+  reagent_accession_id: UUID7
+  reagent_name: str | None = None
+  lot_number: str | None = None
+  expiry_date: str | None = None
+  supplier: str | None = None
+  catalog_number: str | None = None
+  date_received: str | None = None
+  date_opened: str | None = None
+  concentration: dict[str, Any] | None = None
+  initial_quantity: dict[str, Any]
+  current_quantity: dict[str, Any]
+  quantity_unit_is_volume: bool | None = True
+  custom_fields: dict[str, Any] | None = None
+
+
+class ResourceInventoryItemCount(PraxisBaseModel):
+
+  """Provides counts and usage information for items within a resource inventory."""
+
+  item_type: str | None = None
+  initial_max_items: int | None = None
+  current_available_items: int | None = None
+  positions_used: list[str] | None = None
+
+
+class ResourceInventoryDataIn(PraxisBaseModel):
+
+  """Represents inbound inventory data for a resource instance."""
+
+  praxis_inventory_schema_version: str | None = "1.0"
+  reagents: list[ResourceInventoryReagentItem] | None = None
+  item_count: ResourceInventoryItemCount | None = None
+  consumable_state: str | None = None
+  last_updated_by: str | None = None
+  inventory_notes: str | None = None
+
+
+class ResourceInventoryDataOut(ResourceInventoryDataIn):
+
+  """Represents outbound inventory data for a resource instance."""
+
+  last_updated_at: str | None = None
+
+
+class ResourceTypeInfo(BaseModel):
+
+  """Provides detailed information about a specific resource type."""
+
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+
+  name: str
+  parent_class: str
+  can_create_directly: bool
+  constructor_params: dict[str, dict]
+  doc: str
+  module: str
+
+
+class ResourceCategoriesResponse(PraxisBaseModel):
+
+  """Organizes resource types by category for categorization and discovery."""
+
+  categories: dict[str, list[str]]
+
+
+# Rebuild models to resolve forward references to ResourceBase
+ResourceCommon.model_rebuild()
+ResourceBase.model_rebuild()
+ResourceCreate.model_rebuild()
+ResourceUpdate.model_rebuild()
+ResourceResponse.model_rebuild()
+
