@@ -5,7 +5,8 @@
 **Phases 0-2.5 COMPLETE** ✅
 **Phase 2.7.1 Backend IN PROGRESS** 🔄
 
-### What's Working:
+### What's Working
+
 - **374 PLR resource definitions** synced to database
 - **PLR type autocomplete** with `[Vendor] FunctionName` display format
 - **Category filter chips** (All, Plates, Tip Racks, Troughs, Tubes, Carriers)
@@ -22,6 +23,7 @@
 **Context:** Sync fails when storing `properties_json` dict in `ResourceDefinitionOrm` during `_sync_definition()`.
 
 **Attempted fixes:**
+
 1. Added `init=False` to `properties_json` column
 2. Set `properties_json` after object creation
 
