@@ -62,31 +62,39 @@ export interface ResourceCreate {
 }
 
 export interface MachineDefinition {
-    accession_id: string;
-    name: string;
-    fqn?: string;
-    description?: string;
-    machine_category?: string;
-    manufacturer?: string;
-    model?: string;
-    nominal_volume_ul?: number;
+  accession_id: string;
+  name: string;
+  fqn?: string;
+  description?: string;
+  machine_category?: string;
+  manufacturer?: string;
+  model?: string;
+  nominal_volume_ul?: number;
 }
 export interface ResourceDefinition {
-    accession_id: string;
-    name: string;
-    fqn?: string;
-    description?: string;
-    resource_type?: string;
-    manufacturer?: string;
-    model?: string;
-    nominal_volume_ul?: number;
-    is_consumable: boolean;
-    // Dynamic filter fields
-    num_items?: number;
-    plate_type?: string;
-    well_volume_ul?: number;
-    tip_volume_ul?: number;
-    vendor?: string;
-    plr_category?: string;
+  accession_id: string;
+  name: string;
+  fqn?: string;
+  description?: string;
+  resource_type?: string;
+  manufacturer?: string;
+  model?: string;
+  nominal_volume_ul?: number;
+  is_consumable: boolean;
+  // Dynamic filter fields
+  num_items?: number;
+  plate_type?: string;
+  well_volume_ul?: number;
+  tip_volume_ul?: number;
+  vendor?: string;
+  plr_category?: string;
+}
+
+// Active facet filters for dynamic querying
+export interface ActiveFilters {
+  plr_category: (string | number)[];
+  vendor: (string | number)[];
+  num_items: (string | number)[];
+  plate_type: (string | number)[];
 }
 

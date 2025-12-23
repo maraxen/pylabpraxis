@@ -1,8 +1,9 @@
 """Service layer for Protocol Definition management."""
 
 import uuid
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,8 +16,10 @@ from praxis.backend.models.orm.protocol import (
 )
 from praxis.backend.models.pydantic_internals.filters import SearchFilters
 from praxis.backend.models.pydantic_internals.protocol import (
+  AssetRequirementModel,
   FunctionProtocolDefinitionCreate,
   FunctionProtocolDefinitionUpdate,
+  ParameterMetadataModel,
 )
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.db_decorator import handle_db_transaction
@@ -34,6 +37,72 @@ class ProtocolDefinitionCRUDService(
 ):
 
   """CRUD service for protocol definitions."""
+
+  def _update_parameters(
+    self,
+    protocol_def: FunctionProtocolDefinitionOrm,
+    parameters: list[ParameterMetadataModel] | list[dict[str, Any]],
+  ) -> None:
+    """Update parameters for a protocol definition (replace all)."""
+    # Create new ORM objects
+    new_params = []
+    for param_data in parameters:
+      # efficient data handling whether it's model or dict
+      param_dict = (
+        param_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
+        if hasattr(param_data, "model_dump")
+        else param_data
+      )  # type: ignore
+
+      # Map pydantic field names to ORM field names
+      if "constraints" in param_dict:
+        param_dict["constraints_json"] = param_dict.pop("constraints")
+      if "ui_hint" in param_dict:
+        param_dict["ui_hint_json"] = param_dict.pop("ui_hint")
+      
+      param_orm = ParameterDefinitionOrm(
+        protocol_definition_accession_id=protocol_def.accession_id,
+        protocol_definition=protocol_def,
+        **param_dict,
+      )
+      new_params.append(param_orm)
+
+    # Replace existing collection
+    protocol_def.parameters = new_params
+
+
+  def _update_assets(
+    self,
+    protocol_def: FunctionProtocolDefinitionOrm,
+    assets: list[AssetRequirementModel] | list[dict[str, Any]],
+  ) -> None:
+    """Update assets for a protocol definition (replace all)."""
+    new_assets = []
+    for asset_data in assets:
+      asset_dict = (
+        asset_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
+        if hasattr(asset_data, "model_dump")
+        else asset_data
+      ) # type: ignore
+
+      # Map pydantic field names to ORM field names
+      if "constraints" in asset_dict:
+        asset_dict["constraints_json"] = asset_dict.pop("constraints")
+      if "location_constraints" in asset_dict:
+        asset_dict["location_constraints_json"] = asset_dict.pop("location_constraints")
+      # Remove any pydantic-only fields not in ORM
+      asset_dict.pop("ui_hints", None)
+      
+      asset_orm = AssetRequirementOrm(
+        protocol_definition_accession_id=protocol_def.accession_id,
+        protocol_definition=protocol_def,
+        **asset_dict,
+      )
+      new_assets.append(asset_orm)
+    
+    # Replace existing collection
+    protocol_def.assets = new_assets
+
 
   @handle_db_transaction
   async def create(
@@ -159,39 +228,12 @@ class ProtocolDefinitionCRUDService(
     db.add(protocol_def)
     await db.flush()
 
-    # Convert parameter dicts to ORM objects
+    # Handle relationships
     if obj_in.parameters:
-      for param_data in obj_in.parameters:
-        param_dict = param_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
-        # Map pydantic field names to ORM field names
-        if "constraints" in param_dict:
-          param_dict["constraints_json"] = param_dict.pop("constraints")
-        if "ui_hint" in param_dict:
-          param_dict["ui_hint_json"] = param_dict.pop("ui_hint")
-        param_orm = ParameterDefinitionOrm(
-          protocol_definition_accession_id=protocol_def.accession_id,
-          protocol_definition=protocol_def,
-          **param_dict,
-        )
-        protocol_def.parameters.append(param_orm)
+      self._update_parameters(protocol_def, obj_in.parameters)
 
-    # Convert asset dicts to ORM objects
     if obj_in.assets:
-      for asset_data in obj_in.assets:
-        asset_dict = asset_data.model_dump(exclude={"accession_id", "created_at", "updated_at"})
-        # Map pydantic field names to ORM field names
-        if "constraints" in asset_dict:
-          asset_dict["constraints_json"] = asset_dict.pop("constraints")
-        if "location_constraints" in asset_dict:
-          asset_dict["location_constraints_json"] = asset_dict.pop("location_constraints")
-        # Remove any pydantic-only fields not in ORM
-        asset_dict.pop("ui_hints", None)
-        asset_orm = AssetRequirementOrm(
-          protocol_definition_accession_id=protocol_def.accession_id,
-          protocol_definition=protocol_def,
-          **asset_dict,
-        )
-        protocol_def.assets.append(asset_orm)
+      self._update_assets(protocol_def, obj_in.assets)
 
     await db.flush()
 
@@ -207,6 +249,61 @@ class ProtocolDefinitionCRUDService(
       protocol_def.accession_id,
     )
     return protocol_def
+
+  @handle_db_transaction
+  async def update(
+    self,
+    db: AsyncSession,
+    *,
+    db_obj: FunctionProtocolDefinitionOrm,
+    obj_in: FunctionProtocolDefinitionUpdate,
+  ) -> FunctionProtocolDefinitionOrm:
+    """Update a protocol definition with eager loaded relationships."""
+    
+    # 1. Separate relationship data from scalar data
+    update_data = obj_in.model_dump(exclude_unset=True)
+    params_data = update_data.pop("parameters", None)
+    assets_data = update_data.pop("assets", None)
+
+    # 2. Update scalar fields manually to avoid passing relationships as dicts to parent
+    # We cannot use super().update(obj_in=obj_in) because obj_in still has the relationships
+    # We cannot use super().update(obj_in=update_data) because parent might expect schema model (though usually it handles dicts)
+    # The CRUDBase implementation allows dict for obj_in.
+    
+    # CRUDBase.update implementation:
+    # update_data = obj_in.model_dump(exclude_unset=True) ...
+    # for field, value in update_data.items(): setattr(...)
+    
+    # So we can just do the scalar update here directly or pass the cleaned dict.
+    # Passing cleaned dict to super().update seems safest if we want to reuse its logic (enums etc)
+    # BUT we need to check if CRUDBase.update supports dict input properly.
+    # Yes, previous inspection of CRUDBase showed:
+    # obj_in_model = ResourceDefinitionUpdate(**obj_in) if isinstance(obj_in, dict) else obj_in
+    # Wait, ResourceDefinitionUpdate is for Resource service. Generic T.
+    
+    # So if we pass a dict, CRUDBase tries to instantiate the Update model from it.
+    # If we instantiate the Update model with "parameters"=missing, it's fine (Optional = None).
+    
+    # So: create new Pydantic model with exclusions
+    obj_in_scalar = obj_in.model_copy(update={"parameters": None, "assets": None})
+    
+    updated_obj = await super().update(db=db, db_obj=db_obj, obj_in=obj_in_scalar)
+
+    # 3. Handle parameters/assets updates
+    if params_data is not None:
+        self._update_parameters(db_obj, params_data)
+
+    if assets_data is not None:
+        self._update_assets(db_obj, assets_data)
+        
+    await db.flush()
+
+    # Eagerly load relationships after update
+    await db.refresh(
+      updated_obj,
+      attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
+    )
+    return updated_obj
 
   async def get(
     self,
@@ -261,6 +358,7 @@ class ProtocolDefinitionCRUDService(
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
+  @handle_db_transaction
   async def update(
     self,
     db: AsyncSession,
@@ -269,15 +367,47 @@ class ProtocolDefinitionCRUDService(
     obj_in: FunctionProtocolDefinitionUpdate,
   ) -> FunctionProtocolDefinitionOrm:
     """Update a protocol definition with eager loaded relationships."""
-    # Call parent update method
-    updated_obj = await super().update(db=db, db_obj=db_obj, obj_in=obj_in)
+    
+    # 1. Separate relationship data from scalar data
+    update_data = obj_in.model_dump(exclude_unset=True)
+    params_data = update_data.pop("parameters", None)
+    assets_data = update_data.pop("assets", None)
+
+    # 2. Update scalar fields manually (copied from CRUDBase to avoid None issues)
+    # Convert enum string values back to enum members for SQLAlchemy
+    import enum
+    for attr_name, column in inspect(self.model).columns.items():
+      if attr_name in update_data and hasattr(column.type, "enum_class"):
+        enum_class = getattr(column.type, "enum_class", None)
+        if enum_class and issubclass(enum_class, enum.Enum):
+          value = update_data[attr_name]
+          if isinstance(value, str):
+            # Find the enum member with this value
+            for member in enum_class:
+              if member.value == value:
+                update_data[attr_name] = member
+                break
+
+    for field, value in update_data.items():
+      setattr(db_obj, field, value)
+    
+    db.add(db_obj)
+
+    # 3. Handle parameters/assets updates
+    if params_data is not None:
+        self._update_parameters(db_obj, params_data)
+
+    if assets_data is not None:
+        self._update_assets(db_obj, assets_data)
+        
+    await db.flush()
 
     # Eagerly load relationships after update
     await db.refresh(
-      updated_obj,
+      db_obj,
       attribute_names=["parameters", "assets", "source_repository", "file_system_source"],
     )
-    return updated_obj
+    return db_obj
 
   async def get_by_name(
     self,

@@ -59,10 +59,12 @@ class PraxisConfiguration:
         str: The Praxis database connection string.
 
     """
-    dsn = self._database_section.get(
-      "praxis_dsn",
-      "postgresql://praxis:praxis@localhost:5432/praxis_db",
-    )
+    dsn = os.getenv("PRAXIS_DB_DSN") or os.getenv("DATABASE_URL")
+    if not dsn:
+      dsn = self._database_section.get(
+        "praxis_dsn",
+        "postgresql://praxis:praxis@localhost:5432/praxis_db",
+      )
     if not dsn.startswith(("postgresql://", "postgres://")):
       return f"postgresql://{dsn}"
     return dsn

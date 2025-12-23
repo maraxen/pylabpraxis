@@ -33,6 +33,8 @@ async def sync_all_definitions(
       content={"message": "Discovery and synchronization initiated successfully."},
     )
   except Exception as e:
+    import logging
+    logging.getLogger(__name__).exception("Discovery sync failed")
     return JSONResponse(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       content={"message": f"Failed to initiate discovery and synchronization: {e}"},

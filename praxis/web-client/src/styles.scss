@@ -1,4 +1,3 @@
-
 @use '@angular/material' as mat;
 
 @include mat.core();
@@ -8,28 +7,20 @@ $rose-pompadour: #ED7A9B;
 $moonstone-blue: #73A9C2;
 
 // Define the light theme using these colors
-$light-theme: mat.define-theme((
-  color: (
-    theme-type: light,
-    primary: mat.$magenta-palette,
-    tertiary: mat.$cyan-palette,
-  ),
-  typography: (
-    brand-family: 'Roboto Flex',
-    plain-family: 'Roboto Flex',
-  ),
-  density: (
-    scale: 0,
-  )
-));
+$light-theme: mat.define-theme((color: (theme-type: light,
+        primary: mat.$magenta-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: (brand-family: 'Roboto Flex',
+        plain-family: 'Roboto Flex',
+      ),
+      density: (scale: 0,
+      )));
 
-$dark-theme: mat.define-theme((
-  color: (
-    theme-type: dark,
-    primary: mat.$magenta-palette,
-    tertiary: mat.$cyan-palette,
-  )
-));
+$dark-theme: mat.define-theme((color: (theme-type: dark,
+        primary: mat.$magenta-palette,
+        tertiary: mat.$cyan-palette,
+      )));
 
 // ===== THEME VARIABLES =====
 // Light theme is now a premium light aesthetic (not plain white)
@@ -40,6 +31,20 @@ $dark-theme: mat.define-theme((
   --tertiary-color: #{$moonstone-blue};
   --mat-sys-primary: var(--primary-color);
   --mat-sys-tertiary: var(--tertiary-color);
+
+  // Material System Colors (Dark Theme Defaults)
+  --mat-sys-surface-container-low: #1a1a2e;
+  --mat-sys-surface-container: #1e1e2d;
+  --mat-sys-surface-container-high: #2a2a3c;
+  --mat-sys-surface-variant: rgba(255, 255, 255, 0.1);
+  --mat-sys-on-surface: rgba(255, 255, 255, 0.95);
+  --mat-sys-on-surface-variant: rgba(255, 255, 255, 0.7);
+  --mat-sys-outline-variant: rgba(255, 255, 255, 0.2);
+  --mat-sys-error: #cf6679;
+  --mat-sys-error-container: #8b0000;
+  --mat-sys-on-error-container: #ffb4ab;
+  --mat-sys-tertiary-container: rgba(115, 169, 194, 0.3);
+  --mat-sys-on-tertiary-container: #cce5ff;
 
   // Default to dark theme
   --theme-bg-gradient: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
@@ -66,6 +71,20 @@ $dark-theme: mat.define-theme((
 
 // Light theme class (toggled via JS)
 .light-theme {
+  // Material System Colors (Light Theme Overrides)
+  --mat-sys-surface-container-low: #f5f5f5;
+  --mat-sys-surface-container: #ffffff;
+  --mat-sys-surface-container-high: #f0f0f0;
+  --mat-sys-surface-variant: rgba(0, 0, 0, 0.08);
+  --mat-sys-on-surface: #1a1a1a;
+  --mat-sys-on-surface-variant: #484848;
+  --mat-sys-outline-variant: rgba(0, 0, 0, 0.12);
+  --mat-sys-error: #ba1a1a;
+  --mat-sys-error-container: #ffdad6;
+  --mat-sys-on-error-container: #410002;
+  --mat-sys-tertiary-container: #cce5ff;
+  --mat-sys-on-tertiary-container: #001e30;
+
   --theme-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 50%, #dce2e9 100%);
   --theme-surface: rgba(255, 255, 255, 0.8);
   --theme-surface-elevated: rgba(255, 255, 255, 0.95);
@@ -93,7 +112,11 @@ $dark-theme: mat.define-theme((
   @include mat.all-component-themes($dark-theme);
 }
 
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Roboto Flex', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -105,15 +128,41 @@ body {
 }
 
 /* Utility classes for Roboto Flex variable weights */
-.font-thin { font-weight: 100; }
-.font-extralight { font-weight: 200; }
-.font-light { font-weight: 300; }
-.font-normal { font-weight: 400; }
-.font-medium { font-weight: 500; }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
-.font-extrabold { font-weight: 800; }
-.font-black { font-weight: 900; }
+.font-thin {
+  font-weight: 100;
+}
+
+.font-extralight {
+  font-weight: 200;
+}
+
+.font-light {
+  font-weight: 300;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-extrabold {
+  font-weight: 800;
+}
+
+.font-black {
+  font-weight: 900;
+}
 
 /* Theme-aware utility classes */
 .surface {
@@ -127,6 +176,42 @@ body {
   box-shadow: var(--glass-shadow);
 }
 
-.text-primary { color: var(--theme-text-primary); }
-.text-secondary { color: var(--theme-text-secondary); }
-.text-tertiary { color: var(--theme-text-tertiary); }
+.text-primary {
+  color: var(--theme-text-primary);
+}
+
+.text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--theme-text-tertiary);
+}
+
+/* Skeleton Loading Utilities */
+@keyframes skeleton-pulse {
+  0% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  background: var(--mat-sys-surface-variant, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  min-height: 1rem;
+}
+
+.skeleton-block {
+  @extend .skeleton-pulse;
+  display: block;
+  width: 100%;
+}

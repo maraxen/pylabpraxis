@@ -171,7 +171,18 @@ class ResourceTypeDefinitionService(
   def _get_category_from_plr_class(self, plr_class: type[Any]) -> str | None:
     """Extract the category from a PyLabRobot class."""
     if hasattr(plr_class, "category"):
-      return plr_class.category
+      category = plr_class.category
+      # Normalize categories (e.g. tecan_plate -> plate)
+      if category:
+        if "plate" in category and category != "plate":
+          return "plate"
+        if "tip_rack" in category and category != "tip_rack":
+          return "tip_rack"
+        if "carrier" in category and category != "carrier":
+           # Keep specific carrier types if needed, but for now normalize if it's just vendor_carrier
+           if category.endswith("_carrier") and category != "plate_carrier" and category != "tip_carrier" and category != "tube_carrier":
+             return "carrier"
+      return category
     return None
 
   def _extract_ordering_from_plr_class(self, plr_class: type[Any]) -> str | None:

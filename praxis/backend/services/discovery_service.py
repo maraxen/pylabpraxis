@@ -151,15 +151,35 @@ class DiscoveryService:
     """Discovers and synchronizes all PLR type definitions and protocols."""
     logger.info("Starting discovery and synchronization of all definitions...")
 
-    if self.resource_type_definition_service:
-      logger.info("Synchronizing resource type definitions...")
-      await self.resource_type_definition_service.discover_and_synchronize_type_definitions()
-      logger.info("Resource type definitions synchronized.")
+    if self.db_session_factory:
+      async with self.db_session_factory() as session:
+        # Create fresh service instances with the new session
+        # This prevents ConnectionRefusedError from stale sessions
+        logger.info("Created new DB session for synchronization.")
+        
+        resource_service = ResourceTypeDefinitionService(session)
+        machine_service = MachineTypeDefinitionService(session)
 
-    if self.machine_type_definition_service:
-      logger.info("Synchronizing machine type definitions...")
-      await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
-      logger.info("Machine type definitions synchronized.")
+        logger.info("Synchronizing resource type definitions...")
+        await resource_service.discover_and_synchronize_type_definitions()
+        logger.info("Resource type definitions synchronized.")
+
+        logger.info("Synchronizing machine type definitions...")
+        await machine_service.discover_and_synchronize_type_definitions()
+        logger.info("Machine type definitions synchronized.")
+    
+    else:
+      # Fallback to existing services if factory not provided (legacy/testing)
+      logger.warning("No DB session factory provided. Using injected services (may be stale).")
+      if self.resource_type_definition_service:
+        logger.info("Synchronizing resource type definitions...")
+        await self.resource_type_definition_service.discover_and_synchronize_type_definitions()
+        logger.info("Resource type definitions synchronized.")
+
+      if self.machine_type_definition_service:
+        logger.info("Synchronizing machine type definitions...")
+        await self.machine_type_definition_service.discover_and_synchronize_type_definitions()
+        logger.info("Machine type definitions synchronized.")
 
     logger.info("Discovering and upserting protocols...")
     await self.discover_and_upsert_protocols(

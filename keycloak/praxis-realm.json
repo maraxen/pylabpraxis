@@ -408,6 +408,31 @@
     }
   },
   "groups": [],
+  "users": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "username": "testuser",
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "testuser@praxis.local",
+      "emailVerified": true,
+      "enabled": true,
+      "createdTimestamp": 1703203200000,
+      "totp": false,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "testpass123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-praxis"
+      ],
+      "notBefore": 0,
+      "groups": []
+    }
+  ],
   "defaultRole": {
     "id": "b6e199b0-6872-4501-9024-3f3cb8fa1bc6",
     "name": "default-roles-praxis",

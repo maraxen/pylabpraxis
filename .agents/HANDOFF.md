@@ -1,70 +1,75 @@
-# PyLabPraxis Agent Handoff - December 22, 2025
+# PyLabPraxis Agent Handoff - December 22, 2025 (Update 5)
 
-## Current State
+## ✅ FIXED: Critical Blocking Issues
 
-**Phases 0-2.5 COMPLETE** ✅
-**Phase 2.7.1 Backend IN PROGRESS** 🔄
+### 1. Resource Dialog "Loading Categories..." Hang
 
-### What's Working
+**Root Cause**: Frontend `ResourceDialogComponent` lacked error handling for `getFacets` observable. When the backend failed (due to connection issues), the observable errored but the loading spinner (`loadingFacets = true`) was never reset.
+**Resolution**:
 
-- **374 PLR resource definitions** synced to database
-- **PLR type autocomplete** with `[Vendor] FunctionName` display format
-- **Category filter chips** (All, Plates, Tip Racks, Troughs, Tubes, Carriers)
-- **Natural language search** across name, FQN, vendor, specs
-- **Theme toggle** working (light/dark mode)
-- **Keycloak auth** working on port 4200
+* Added `finalize` operator and `ChangeDetectorRef` to `ResourceDialogComponent.ts`.
+* Implemented explicit `error` callback in `loadInitialFacets` to ensure loader is stopped even on failure.
 
----
+### 2. Backend Sync-All Crash (`'dict' object has no attribute '_sa_instance_state'`)
 
-## Immediate Next Step: Debug `properties_json` Sync Error
+**Root Cause**: `ProtocolDefinitionCRUDService.update` was passing lists of dictionaries (for `parameters` and `assets` relationships) directly to the parent `CRUDBase.update`. SQLAlchcemy expects ORM instances or proper relationship handling, not raw dicts for relationships.
+**Resolution**:
 
-**Error:** `'dict' object has no attribute '_sa_instance_state'`
+* Refactored `ProtocolDefinitionCRUDService.update` to:
+    1. Extract `parameters` and `assets` data from the input model.
+    2. Pass a "clean" model (without relationships) to `super().update` for scalar field updates.
+    3. Manually create/update ORM objects for `parameters` and `assets` using helper methods `_update_parameters` and `_update_assets`.
 
-**Context:** Sync fails when storing `properties_json` dict in `ResourceDefinitionOrm` during `_sync_definition()`.
+### 3. Backend Connection Refused (Localhost IPv6 vs IPv4)
 
-**Attempted fixes:**
+**Root Cause**: The `test_db` container was missing/stopped, and the backend was struggling with `localhost` resolution (trying IPv6 `::1` first).
+**Resolution**:
 
-1. Added `init=False` to `properties_json` column
-2. Set `properties_json` after object creation
-
-**Likely cause:** One of the other JSONB columns (e.g., `plr_definition_details_json`, `rotation_json`) may also need `init=False`, OR there's a deeper dataclass/MappedAsDataclass interaction issue.
-
-**Debug approach:** Run sync with verbose logging to identify which object/column causes the error.
+* Restarted `test_db` container via `docker-compose`.
+* Updated `praxis/backend/configure.py` to respect `PRAXIS_DB_DSN` environment variable.
+* Verified backend connectivity with `curl`.
 
 ---
 
-## Phase 2.7 Code Changes Completed
+## ✅ COMPLETED: Resource Dialog Polish
 
-| File | Change |
-|------|--------|
-| `praxis/backend/services/resource_type_definition.py` | Expanded `VENDOR_MODULE_PATTERNS` (11→28 vendors), added `_extract_properties_from_instance()` for PLR inheritance-based extraction |
-| `praxis/backend/models/orm/resource.py` | Added `properties_json` JSONB column with `init=False` |
-| `alembic/versions/a7f3e8c9d2b1_*.py` | Migration for `properties_json` column (already applied) |
+### 1. UI Polish & Theming
 
----
+* **Dark/Light Mode**: Fixed rendering issues. Hardcoded colors replaced with System Variables (`--mat-sys-*`).
+* **Loading Experience**: Implemented **Skeleton Loaders** for Categories and Facets.
 
-## Remaining Phase 2.7 Work
+### 2. Feature Enhancements
 
-| Task | Status |
-|------|--------|
-| 2.7.1 Debug sync error | **BLOCKED** |
-| 2.7.2 Facets API | Not Started |
-| 2.7.3 ChipCarouselComponent | Not Started |
-| 2.7.4 ResourceSelectorComponent | Not Started |
-| 2.7.5 Enhanced Keyword Search | Not Started |
+* **Invert Filtering**: Added client-side "Invert" toggle to facet carousels to exclude selected options.
+
+### 3. Error Fixes
+
+* Resolved `NG0100` (ExpressionChangedAfterItHasBeenCheckedError).
+* Resolved `TS4111` (Property access on Index Signature).
 
 ---
 
-## Commands Reference
+## 🏗️ Current Status
 
-```bash
-# Backend
-PRAXIS_DB_DSN="postgresql+asyncpg://test_user:test_password@localhost:5433/test_db" \
-  uv run uvicorn main:app --reload --port 8000
+* **Backend**: Running on `http://localhost:8000`. `POST /api/v1/discovery/sync-all` returns 200 OK.
+* **Frontend**: `ResourceDialogComponent` is fully polished, themed, and error-free.
+* **Database**: `test_db` container is UP and healthy.
 
-# Trigger sync
-curl -X POST http://localhost:8000/api/v1/discovery/sync-all
+## 📋 Next Steps (User Requests)
 
-# Frontend
-cd praxis/web-client && npm start
-```
+### 1. Future Frontend Logic (Future Work)
+
+* **Logic Separation**: Separate "skirted" (bottom type) from "plate type" logic in facets.
+* **Performance Scaling**: Move definition filtering from client-side to backend API to handle large datasets.
+
+### 2. Phase 2.7: AI-Powered Resource Selection
+
+* Continue with the planned AI integration for resource selection (see `NEXT_STEPS.md`).
+
+---
+
+## 📂 Key Files
+
+* `praxis/web-client/src/app/features/assets/components/resource-dialog.component.ts` (Dialog Logic)
+* `praxis/backend/services/protocol_definition.py` (Fixed CRUD Logic)
+* `praxis/backend/utils/db.py` (DB Connection Logic)

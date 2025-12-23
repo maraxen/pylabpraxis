@@ -16,7 +16,7 @@ class PraxisUser(HttpUser):
 
     @task(3)
     def list_resource_definitions(self):
-        self.client.get("/api/v1/assets/definitions")
+        self.client.get("/api/v1/resources/definitions")
 
     @task(1)
     def create_and_delete_machine(self):

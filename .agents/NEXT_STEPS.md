@@ -8,6 +8,7 @@
 ## 📚 Lessons Learned (Dec 21, 2025 Session)
 
 ### API Endpoint Mismatches
+
 Several frontend services were calling incorrect backend API endpoints:
 
 | Service | Incorrect Endpoint | Correct Endpoint | Status |
@@ -19,42 +20,51 @@ Several frontend services were calling incorrect backend API endpoints:
 **Key Insight**: Always verify frontend API calls against the backend's OpenAPI spec at `http://localhost:8000/docs`.
 
 ### Discovery Service Configuration
+
 The `/api/v1/discovery/sync-all` endpoint was failing because `praxis_config` was not attached to `app.state`.
 
 **Fix**: Added `app.state.praxis_config = praxis_config` in `main.py` lifespan.
 
 ### Database Schema Issue
+
 The `name` field in PLR type definition tables (`resource_definition_catalog`, `machine_definition_catalog`, `deck_definition_catalog`) had a `unique=True` constraint, but multiple PyLabRobot classes share the same short name (e.g., "Plate" exists in many modules).
 
 **Fix**:
+
 1. Changed `unique=True` → `unique=False` in `praxis/backend/models/orm/plr_sync.py`
 2. Created migration `577d92edf9a5_remove_unique_from_name.py` to drop and recreate indexes without uniqueness
 
 ### PyLabRobot Import Errors
+
 Some deprecated PLR modules (e.g., `pylabrobot.resources.falcon`) raise exceptions when imported.
 
 **Fix**: Changed `except ImportError` → `except Exception` in `resource_type_definition.py` to catch all import-related exceptions.
 
 ### Discovery Filtering Issue (KNOWN ISSUE)
+
 The current discovery service syncs generic base classes (e.g., `Plate`, `TipRack`, `TubeCarrier`) instead of concrete implementations (e.g., `Azenta360uLPlate`, `HTF_L_SBS`, `Cos_96_EZWash`).
 
 **Problem**:
+
 - Abstract base classes are being included when they should be excluded
 - Generic class names appear multiple times from different modules
 - Users need specific, instantiable resource definitions, not base classes
 
 **Required Fix** (in `resource_type_definition.py`):
+
 1. Expand `EXCLUDED_BASE_CLASSES` to include more abstract types
 2. Filter to only include classes that have a concrete `__init__` (not just inherited)
 3. Prefer the "furthest down the chain" class names - concrete implementations
 4. Consider filtering by module pattern (e.g., include only from vendor-specific modules like `pylabrobot.resources.azenta.*`, `pylabrobot.resources.corning.*`)
 
 ### Theme Toggle Not Working (KNOWN ISSUE)
+
 The light/dark mode toggle in the frontend does not function correctly.
 
 **Symptoms**: Clicking the theme toggle does not switch between light and dark themes.
 
 **To Investigate**:
+
 - Check `ThemeService` or theme-related code in `praxis/web-client/src/app/`
 - Verify CSS custom properties are being updated
 - Check localStorage persistence of theme preference
@@ -65,6 +75,7 @@ The light/dark mode toggle in the frontend does not function correctly.
 ## 🎯 Next Steps Roadmap
 
 ### Phase 0: Fix PLR Discovery Filtering ✅ COMPLETE (Dec 21, 2025)
+
 The discovery service now syncs concrete, instantiable resource definitions.
 
 - [x] **Expanded exclusion list**: Added 26 base classes to `EXCLUDED_BASE_CLASSES`:
@@ -81,6 +92,7 @@ The discovery service now syncs concrete, instantiable resource definitions.
 ### Phase 1: Protocol Library & Simulation Mode ✅ COMPLETE (Dec 21, 2025)
 
 #### 1.1 Example Protocol Library ✅
+
 Created 3 demo protocols with PLR-compatible type hints that work with the discovery service.
 
 - [x] Created `praxis/protocol/protocols/` directory with example protocols:
@@ -92,6 +104,7 @@ Created 3 demo protocols with PLR-compatible type hints that work with the disco
 - [x] Discovery service syncs protocols via AST parsing
 
 #### 1.2 Simulation Mode Support ✅
+
 Added `is_simulation` parameter throughout the execution chain.
 
 - [x] Added `is_simulation: bool = False` to `IOrchestrator` interface
@@ -100,6 +113,7 @@ Added `is_simulation` parameter throughout the execution chain.
 - [x] Updated `ExecutionMixin.execute_protocol()` and `execute_existing_protocol_run()` to log simulation status
 
 #### 1.3 Protocol Discovery & Verification ✅
+
 Fixed multiple issues to enable end-to-end protocol discovery.
 
 - [x] Fixed `configure.py:default_protocol_dir` path resolution
@@ -115,6 +129,7 @@ Fixed multiple issues to enable end-to-end protocol discovery.
 ### Phase 2: Asset Management Enhancements ✅ COMPLETE (Dec 21, 2025)
 
 #### 2.1 PLR Type Autofill for Assets ✅
+
 Enhanced "Add Machine" and "Add Resource" dialogs to use PLR type definitions.
 
 - [x] Add autocomplete/dropdown for `Machine Type` using synced machine definitions
@@ -124,11 +139,13 @@ Enhanced "Add Machine" and "Add Resource" dialogs to use PLR type definitions.
 - [x] Add `fqn` field to `MachineDefinition` and `ResourceDefinition` interfaces
 
 #### 2.2 Display Improvements ✅
+
 - [x] Show factory function name (last part of FQN) as primary display name
 - [x] Show module path in smaller, lighter styled text
 - [x] Fixed inline styling for proper visual spacing
 
 #### 2.3 Theme Toggle Fix ✅
+
 - [x] Fixed `AppStore.setTheme()` to properly add `light-theme` class
 - [x] Theme now correctly switches between light and dark modes
 
@@ -141,49 +158,66 @@ Enhanced "Add Machine" and "Add Resource" dialogs to use PLR type definitions.
 - [x] Natural language search across name, FQN, vendor, specs
 - [x] Selected definition preview with badges (wells, volume, plate type)
 - [x] Enhanced autocomplete with metadata tags
+- [x] **Skeleton Loaders**: Implemented for Categories and Facets to improve perceived performance.
+- [x] **Invert Filtering**: Added client-side "exclude" logic for facet chips.
+- [x] **Theming**: Fixed dark/light mode consistency using Material System variables.
 
 ---
 
-### Phase 2.7: AI-Powered Resource Selection (HIGH PRIORITY)
+### Phase 2.7: Resource Selection & Protocol Execution (REORGANIZED)
 
-**Goal**: Create a unified, intelligent resource selection interface that works for both asset management and protocol resource binding.
+> **📋 Development Tracks**: This phase has been split into two parallel tracks for focused development:
+>
+> - **[Track A: Operation "First Light"](./TRACK_A_PLAN.md)** – E2E Protocol Execution (run `simple_transfer.py`)
+> - **[Track B: Operation "Premium Polish"](./TRACK_B_PLAN.md)** – UI/UX & Non-AI Improvements
+>
+> See [PROMPT_TRACK_A.md](./PROMPT_TRACK_A.md) and [PROMPT_TRACK_B.md](./PROMPT_TRACK_B.md) for agent onboarding.
 
-#### 2.7.1 Object Attribute Parsing
+#### 2.7.1 Object Attribute Parsing (Track B)
+
 Parse actual PLR object attributes into filterable properties instead of just metadata.
 
 - [ ] Extract all PLR resource class attributes (size_x, size_y, size_z, num_items, well_volume, etc.)
+- [ ] **Separate "skirted" (bottom type) from "plate type" logic** to avoid conflating different physical properties.
 - [ ] Store structured properties in `properties_json` field during discovery
 - [ ] Create backend API to expose all unique property keys and value ranges
 - [ ] Build property-to-chip mapping for dynamic filter generation
 
-#### 2.7.2 Dynamic Chip-Based Filtering
+#### 2.7.2 Dynamic Chip-Based Filtering (Track B)
+
 Replace static category chips with dynamically populated filter chips on carousels.
 
+- [ ] **Move definition filtering to backend**: Transition from client-side filtering to backend-driven filtering for performance scaling.
 - [ ] Create horizontal carousel component for chip groups
 - [ ] Group chips by property category (Type, Vendor, Capacity, Dimensions, etc.)
 - [ ] Chips should be toggleable and show result counts
 - [ ] Support multi-select within categories (OR logic) and cross-category (AND logic)
 - [ ] Animate chip selections for visual feedback
 
-#### 2.7.3 AI-Powered Search Bar
-Use client-side Gemma model to process natural language queries into filter chips.
+#### 2.7.3 AI-Powered Search Bar 🚫 **DEFERRED**
 
-- [ ] Integrate `@anthropic-ai/sdk` or `@anthropic/gemma` for browser-based inference
-- [ ] Parse queries like "96 well plate around 200uL from corning" into chips
-- [ ] Show suggested chip combinations as user types
-- [ ] Fallback to keyword search if AI unavailable
-- [ ] Consider using WebLLM or Transformers.js for local inference
+> **Status**: De-prioritized until application is stable. All AI/LLM-based features are removed from immediate scope.
 
-#### 2.7.4 Protocol Resource Binding Integration
-Reuse the same dialog for selecting resources when configuring protocol runs.
+~~Use client-side Gemma model to process natural language queries into filter chips.~~
 
-- [ ] When protocol specifies constraints (e.g., `Plate` type hint, `min_volume=100`), pre-apply as locked chips
-- [ ] Show locked/required chips in a different color (disabled state)
-- [ ] Allow user to refine selection within constraints
+- [ ] ~~Integrate `@anthropic-ai/sdk` or `@anthropic/gemma` for browser-based inference~~
+- [ ] ~~Parse queries like "96 well plate around 200uL from corning" into chips~~
+- [ ] ~~Show suggested chip combinations as user types~~
+- [ ] ~~Fallback to keyword search if AI unavailable~~
+- [ ] ~~Consider using WebLLM or Transformers.js for local inference~~
+
+#### 2.7.4 Protocol Resource Binding Integration (Track A - HIGH PRIORITY)
+
+Enable protocol wizard to bind assets for execution.
+
+- [ ] Enhance `asset-selector` to filter by PLR type hint
+- [ ] Allow inline resource creation via `ResourceDialogComponent`
+- [ ] Return asset `accession_id` for backend execution
+- [ ] Add "Simulation Mode" toggle to wizard
 - [ ] Validate selected resource meets protocol requirements
-- [ ] Share component between asset creation and protocol wizard
 
-#### 2.7.5 UI/UX Polish
+#### 2.7.5 UI/UX Polish (Track B)
+
 - [ ] Large search bar at top of dialog (prominent, centered)
 - [ ] Chip carousels below search bar (scrollable horizontally)
 - [ ] Results grid/list below chips (virtualized for performance)
@@ -197,14 +231,17 @@ Reuse the same dialog for selecting resources when configuring protocol runs.
 Apply the same pattern from 2.7 to machine selection.
 
 #### 2.8.1 Machine Attribute Parsing
+
 - [ ] Extract machine class attributes during discovery
 - [ ] Store structured properties (deck_size, pipette_channels, tip_types, etc.)
 
 #### 2.8.2 Dynamic Machine Filtering
+
 - [ ] Chip carousels for: Machine Type, Manufacturer, Deck Layout, Pipette Config
 - [ ] Same AI-powered search bar integration
 
 #### 2.8.3 Protocol Machine Binding
+
 - [ ] When protocol specifies machine requirements, show as locked chips
 - [ ] Validate machine compatibility with protocol
 
@@ -215,16 +252,19 @@ Apply the same pattern from 2.7 to machine selection.
 Automatically detect connected lab instruments via browser APIs.
 
 #### 2.9.1 USB/Serial Detection
+
 - [ ] Use WebUSB API to enumerate connected USB devices
 - [ ] Use Web Serial API for serial port instruments
 - [ ] Match VID/PID against known instrument database
 
 #### 2.9.2 Instrument Identification
+
 - [ ] Query detected devices for identity strings
 - [ ] Infer PLR machine type from device signatures
 - [ ] Suggest matching MachineDefinition from catalog
 
 #### 2.9.3 One-Click Connection
+
 - [ ] Auto-populate connection_info from detected device
 - [ ] Create machine asset with detected parameters
 - [ ] Test connection via PLR backend
@@ -235,6 +275,7 @@ Automatically detect connected lab instruments via browser APIs.
 ### Phase 3: Deck Visualizer (MEDIUM)
 
 #### 3.1 Visualizer Integration
+
 Get the deck visualizer working in the frontend.
 
 - [ ] Review existing `DeckVisualizerComponent` implementation
@@ -244,6 +285,7 @@ Get the deck visualizer working in the frontend.
 - [ ] Test with simulated deck configurations
 
 #### 3.2 Interactive Deck Configuration
+
 Allow users to configure deck layouts before protocol execution.
 
 - [ ] Implement deck position selection UI
@@ -256,6 +298,7 @@ Allow users to configure deck layouts before protocol execution.
 ### Phase 4: Backend & Infrastructure (LOW)
 
 #### 4.1 Backend Token Validation
+
 Complete Keycloak integration on the backend.
 
 - [ ] Implement JWT validation middleware
@@ -264,6 +307,7 @@ Complete Keycloak integration on the backend.
 - [ ] Add user context to protocol runs and logs
 
 #### 4.2 WebSocket Improvements
+
 Enhance real-time communication.
 
 - [ ] Implement reconnection logic on frontend
@@ -272,6 +316,7 @@ Enhance real-time communication.
 - [ ] Add TypeScript types for all WS message types
 
 #### 4.3 Test Coverage
+
 Improve test coverage for new features.
 
 - [ ] Add unit tests for fixed services
@@ -283,6 +328,7 @@ Improve test coverage for new features.
 ## 🔧 Development Commands Reference
 
 ### Start All Services
+
 ```bash
 # Terminal 1: Database
 make db-test
@@ -299,6 +345,7 @@ cd praxis/web-client && npm start
 ```
 
 ### Discovery Sync
+
 ```bash
 # Sync PLR type definitions to database
 curl -X POST http://localhost:8000/api/v1/discovery/sync-all
@@ -308,6 +355,7 @@ curl http://localhost:8000/api/v1/assets/definitions | python3 -c "import sys,js
 ```
 
 ### Database Operations
+
 ```bash
 # Run migrations
 PRAXIS_DB_DSN="postgresql+asyncpg://test_user:test_password@localhost:5433/test_db" \

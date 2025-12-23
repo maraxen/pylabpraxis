@@ -28,7 +28,7 @@ async def test_create_resource(client: AsyncClient, db_session: AsyncSession) ->
     }
 
     # 3. ACT: Call the API
-    response = await client.post("/api/v1/assets/", json=payload)
+    response = await client.post("/api/v1/resources/", json=payload)
 
     # 4. ASSERT: Check the response
     assert response.status_code == 201
@@ -45,7 +45,7 @@ async def test_get_resource(client: AsyncClient, db_session: AsyncSession) -> No
     resource = await create_resource(db_session, name="test_resource_get")
 
     # 2. ACT: Retrieve via API
-    response = await client.get(f"/api/v1/assets/{resource.accession_id}")
+    response = await client.get(f"/api/v1/resources/{resource.accession_id}")
 
     # 3. ASSERT: Verify response
     assert response.status_code == 200
@@ -70,7 +70,7 @@ async def test_get_multi_resources(client: AsyncClient, db_session: AsyncSession
     await create_resource(db_session, name="resource_3_multi", resource_definition=resource_def)
 
     # 3. ACT: Call the API
-    response = await client.get("/api/v1/assets/")
+    response = await client.get("/api/v1/resources/")
 
     # 4. ASSERT: Verify response
     assert response.status_code == 200
@@ -87,7 +87,7 @@ async def test_update_resource(client: AsyncClient, db_session: AsyncSession) ->
     # 2. ACT: Update via API
     new_name = "updated_resource_name"
     response = await client.put(
-        f"/api/v1/assets/{resource.accession_id}",
+        f"/api/v1/resources/{resource.accession_id}",
         json={"name": new_name},
     )
 
@@ -125,7 +125,7 @@ async def test_delete_resource(client: AsyncClient, db_session: AsyncSession) ->
          patch.object(db_session, "flush", new=mock_flush):
 
         # 3. ACT: Call the API
-        response = await client.delete(f"/api/v1/assets/{resource_id}")
+        response = await client.delete(f"/api/v1/resources/{resource_id}")
 
         # 4. ASSERT: Verify response
         assert response.status_code == 204  # No Content

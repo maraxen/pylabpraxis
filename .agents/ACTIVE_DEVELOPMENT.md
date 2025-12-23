@@ -2,46 +2,41 @@
 
 **Purpose**: This document tracks current development activities, recent changes, and immediate next steps. Updated frequently during active development sessions.
 
-**Last Updated**: 2025-12-20
+**Last Updated**: 2025-12-23
 
 ---
 
 ## Current Session Summary
 
-**Date**: 2025-12-20 (Session 7 - Keycloak Auth Integration)
-**Focus**: Phase 7 - Integrating Keycloak for enterprise authentication
+**Date**: 2025-12-22/23 (Session 8 - Documentation Reorganization)
+**Focus**: Strategic replanning and documentation consolidation
 
-### What We Did Today
+### What We Did
 
-1. **✅ Keycloak Frontend Integration Complete** 🔐
-   - **Packages installed**: `keycloak-angular@20`, `keycloak-js@26` (with `--legacy-peer-deps` for Angular 21)
-   - **KeycloakService created**: Custom Angular service with reactive signals
-     - `isAuthenticated()`, `user()`, `token()` signals
-     - `login()`, `logout()`, `register()` methods
-     - Automatic token refresh via keycloak-js
-   - **APP_INITIALIZER configured**: Keycloak initializes on app startup
-   - **Auth interceptor updated**: Bearer token from Keycloak attached to API calls
-   - **Auth guard updated**: Uses KeycloakService for route protection
-   - **AppStore refactored**: Auth state derived from Keycloak via computed signals
-   - **Auth UI components**: Login/Register/ForgotPassword now redirect to Keycloak pages
-   - **Files created**:
-     - `app/core/auth/keycloak.service.ts`
-     - `public/silent-check-sso.html`
-   - **Files modified**:
-     - `environment.ts`, `environment.prod.ts` - Keycloak config added
-     - `app.config.ts` - APP_INITIALIZER + interceptor
-     - `auth.guard.ts`, `app.store.ts`, `main-layout.component.ts`
-     - `login.component.ts`, `register.component.ts`, `forgot-password.component.ts`
+1. **✅ Created Track A/B Separation** 📋
+   - **Track A (First Light)**: E2E Protocol Execution plan
+   - **Track B (Premium Polish)**: UI/UX improvements plan
+   - Created `TRACK_A_PLAN.md`, `TRACK_B_PLAN.md`
+   - Created `PROMPT_TRACK_A.md`, `PROMPT_TRACK_B.md` for agent onboarding
+   - AI features marked as DEFERRED in `NEXT_STEPS.md`
 
-2. **✅ Keycloak Server Verified**
-   - Docker containers running: `keycloak`, `keycloak-postgres`
-   - Realm: `praxis` (pre-configured via `praxis-realm.json`)
-   - Client: `praxis` (public client, PKCE enabled)
-   - Test user created: `testuser` / `password123`
+2. **✅ Documentation Reorganization**
+   - **Deleted**: `PROMPT_FOR_NEXT_AGENT.md` (task complete)
+   - **Archived 6 files** to `archive/`:
+     - `ANGULAR_FRONTEND_ROADMAP.md` → archived
+     - `GEMINI_FRONTEND_PLAN.md` → archived  
+     - `HANDOFF_JULES.md` → archived
+     - `PRIORITY_ANALYSIS.md` → archived
+     - `FRONTEND_COORDINATION.md` → archived
+     - `tasks_for_jules.json` → archived
+   - **Updated**: `README.md` (streamlined), `CONTEXT_TRANSFER.md` (fixed stale refs)
+   - **Active files**: 15 (down from 18)
+   - **Archived files**: 9
 
-3. **✅ Frontend Build Passes**
-   - Only warnings (unused imports, bundle size)
-   - Ready for manual verification
+3. **✅ Build Status Verified**
+   - Backend running on localhost:8000
+   - Frontend running on localhost:4200
+   - Discovery sync-all working
 
 ---
 
@@ -172,6 +167,7 @@
 ## Next Steps (Prioritized)
 
 ### Completed This Session ✅
+
 - [x] **Protocol decorator coverage (24% → 92%)** ✅ (Session 5) ⭐ **COMPLETE**
 - [x] **All 23 protocol decorator tests passing** ✅ (Session 5)
 - [x] **Added INTERVENE to ALLOWED_COMMANDS** ✅ (Session 5)
@@ -184,9 +180,11 @@
 - [x] **Fix pytest fixture scoping (409 errors)** ✅ (Session 2)
 
 ### HIGH PRIORITY - Coverage Improvements to 80%
+
 **Goal**: Increase backend coverage from ~40% to 80%
 
 **Priority 1 - Critical Backend Components** (Essential for production):
+
 1. **✅ COMPLETE: protocol_decorator.py coverage (24% → 92%)** ⭐
    - Achievement: **Exceeded 80% target**
    - All 23 tests passing
@@ -205,19 +203,22 @@
 
 **Priority 2 - Authentication & User Management**:
 4. **user.py coverage** (28% → 80%)
-   - Size: 116 lines
-   - Importance: **HIGH** - user authentication and authorization
-   - Current gaps: Password hashing, token generation, permissions
+
+- Size: 116 lines
+- Importance: **HIGH** - user authentication and authorization
+- Current gaps: Password hashing, token generation, permissions
 
 5. **auth.py API coverage** (57% → 80%)
    - Size: 49 lines
    - Current gaps: Login/logout flows, token refresh
 
 **Priority 3 - Optional Improvements**:
+
 - [ ] Fix remaining 20 backend test failures (98.6% pass rate is acceptable)
 - [ ] Address 14 ExecutionService frontend test timing issues (E2E may be better)
 
 ### Can Wait
+
 - [ ] Frontend F2.1: Asset definitions tab
 - [ ] Frontend F2.2: Protocol details view
 - [ ] Frontend F2.3: Dynamic protocol parameters
@@ -228,10 +229,12 @@
 ## Recent Accomplishments (Last 48 Hours)
 
 ### Dec 11, 2025 (Evening) - Session 1
+
 - ✅ **F2.4 - Real Authentication**: Complete JWT-based auth with backend integration
 - ✅ **F1.3 - Environment Configuration**: Dev/prod setup with proxy
 
 ### Dec 12, 2025 (Session 2) - Infrastructure Breakthrough
+
 - ✅ **MAJOR FIX - Pytest Fixture Scoping**: Resolved 409 scope mismatch errors
   - Added `loop_scope="session"` to async `db_engine` fixture
   - Result: **+298 tests now able to run** (1074 → 1372 passing)
@@ -243,6 +246,7 @@
 - ✅ **Backend Test Coverage Validation**: 64% coverage confirmed
 
 ### Dec 13, 2025 (Session 4) - Coverage Improvement
+
 - ✅ **WebSocket Coverage: 17% → 87%**: Comprehensive test suite created
   - 10 test cases covering all major code paths
   - Only exception handlers left uncovered
@@ -255,6 +259,7 @@
   - `tests/core/decorators/test_protocol_decorator_runtime.py` (592 lines)
 
 ### Dec 12, 2025 (Session 3) - Final Polish
+
 - ✅ **Orchestrator Test Fix**: Updated test mocking for refactored service architecture
   - Test now passes after fixing service instance mocking
   - Result: **1373 passing tests (98.6% pass rate)**
@@ -287,14 +292,13 @@
 
 ---
 
-
 ## Environment Status
 
 | Component | Status | Version | Notes |
 |-----------|--------|---------|-------|
 | Docker DB | ✅ Running | PostgreSQL | test_db container |
-| Backend API | ✅ Running | - | http://localhost:8000 (Started manually) |
-| Frontend | ✅ Running | Angular 21.0.3 | http://localhost:4200 (Started manually) |
+| Backend API | ✅ Running | - | <http://localhost:8000> (Started manually) |
+| Frontend | ✅ Running | Angular 21.0.3 | <http://localhost:4200> (Started manually) |
 | Test User | ✅ Created | - | u: `admin`, p: `password123` |
 | Test Suite | ✅ Excellent | pytest 8.4.2 | **1373/1393 passing (98.6%)** |
 
@@ -328,6 +332,7 @@ pytest -n auto           # Parallel execution
 ## Notes & Decisions
 
 ### Dec 13, 2025 (Session 4) - Coverage Improvement Strategy
+
 - **WebSocket Success**: Achieved 87% coverage by testing the websocket_endpoint function directly
   - Avoided app startup issues by using MockWebSocket class
   - Patched asyncio.sleep to speed up tests
@@ -342,6 +347,7 @@ pytest -n auto           # Parallel execution
   - Remaining work: Wrapper execution paths and state management
 
 ### Dec 12, 2025 (Session 3) - Orchestrator Fix
+
 - **RESOLVED - Orchestrator Test Mocking**: Fixed test to use service instances instead of non-existent `svc` module attributes
   - Orchestrator refactoring moved services from module-level to instance attributes
   - Updated test constructor to pass mock service instances
@@ -350,12 +356,14 @@ pytest -n auto           # Parallel execution
 - **Decision**: 98.6% pass rate is excellent - remaining failures are low priority
 
 ### Dec 12, 2025 (Session 2) - Infrastructure Breakthrough
+
 - **RESOLVED - Fixture Scoping**: Used `loop_scope="session"` parameter in pytest_asyncio.fixture decorator
   - This allows session-scoped async fixtures without changing global event loop scope
   - Result: +298 tests able to run, pass rate improved from 72% to 92%
 - **Frontend Testing Complete**: All service tests created (116/130 passing)
 
 ### Dec 12, 2025 (Session 1) - Initial Setup
+
 - **Context Transferred**: Previous conversation summarized
 - **Workflow**: Backend validation → T1.5 (slow tests) → F2.5 (frontend tests) → fixture scoping
 
@@ -372,6 +380,7 @@ pytest -n auto           # Parallel execution
 ---
 
 **Maintenance Instructions**:
+
 - Update this file at the start and end of each development session
 - Keep "Current Session Summary" focused on today's work
 - Archive completed sessions to "Recent Accomplishments"

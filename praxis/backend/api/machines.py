@@ -5,7 +5,7 @@ including machine creation, retrieval, updates, and deletion.
 """
 
 from functools import partial
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,13 +13,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.api.dependencies import get_db
 from praxis.backend.api.utils.crud_router_factory import create_crud_router
-from praxis.backend.models.orm.machine import MachineOrm, MachineStatusEnum
+from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm, MachineStatusEnum
 from praxis.backend.models.pydantic_internals.machine import (
   MachineCreate,
+  MachineDefinitionCreate,
+  MachineDefinitionResponse,
+  MachineDefinitionUpdate,
   MachineResponse,
   MachineUpdate,
 )
 from praxis.backend.services.machine import MachineService
+from praxis.backend.services.machine_type_definition import MachineTypeDefinitionCRUDService
 from praxis.backend.utils.accession_resolver import get_accession_id_from_accession
 from praxis.backend.utils.errors import PraxisAPIError
 from praxis.backend.utils.logging import get_logger, log_async_runtime_errors
@@ -43,6 +47,66 @@ machine_accession_resolver = partial(
   get_by_name_func=machine_service.get_by_name,
   entity_type_name="Machine",
 )
+
+
+@router.get(
+  "/definitions/facets",
+  tags=["Machine Definitions"],
+  summary="Get facet values with counts for machine filtering",
+  response_model=dict[str, list[dict[str, Any]]],
+)
+async def get_machine_definition_facets(
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, list[dict[str, Any]]]:
+  """Return unique values and counts for filterable machine definition fields.
+
+  Returns facets for: machine_category, manufacturer.
+  """
+  from sqlalchemy import func, select
+
+  # machine_definition_orm is imported above, but we keep local import if needed or use top-level
+  # We'll use the top-level import now.
+
+  facets: dict[str, list[dict[str, Any]]] = {}
+
+  # Machine category facet (enum values)
+  stmt = (
+    select(MachineDefinitionOrm.machine_category, func.count().label("count"))
+    .where(MachineDefinitionOrm.machine_category.isnot(None))
+    .group_by(MachineDefinitionOrm.machine_category)
+    .order_by(func.count().desc())
+  )
+  result = await db.execute(stmt)
+  rows = result.all()
+  facets["machine_category"] = [{"value": row[0].value, "count": row[1]} for row in rows]
+
+  # Manufacturer facet
+  stmt = (
+    select(MachineDefinitionOrm.manufacturer, func.count().label("count"))
+    .where(MachineDefinitionOrm.manufacturer.isnot(None))
+    .group_by(MachineDefinitionOrm.manufacturer)
+    .order_by(func.count().desc())
+  )
+  result = await db.execute(stmt)
+  rows = result.all()
+  facets["manufacturer"] = [{"value": row[0], "count": row[1]} for row in rows]
+
+  return facets
+
+
+# Include Machine Definition CRUD Router
+# MUST be included after specific /definitions endpoints (like /facets)
+router.include_router(
+  create_crud_router(
+    service=MachineTypeDefinitionCRUDService(MachineDefinitionOrm),
+    prefix="/definitions",
+    tags=["Machine Definitions"],
+    create_schema=MachineDefinitionCreate,
+    update_schema=MachineDefinitionUpdate,
+    response_schema=MachineDefinitionResponse,
+  ),
+)
+
 
 router.include_router(
   create_crud_router(

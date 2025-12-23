@@ -36,8 +36,8 @@ class PraxisBaseModel(BaseModel):
     description="An optional name for the record.",
     frozen=True,
   )
-  properties_json: dict[str, Any] = Field(
-    default_factory=dict,
+  properties_json: dict[str, Any] | None = Field(
+    default=None,
     description="Arbitrary metadata associated with the record.",
   )
 

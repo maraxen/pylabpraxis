@@ -11,6 +11,7 @@ from praxis.backend.models.pydantic_internals.machine import (
   MachineDefinitionUpdate,
 )
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
+from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.logging import get_logger
 from praxis.backend.utils.plr_inspection import get_machine_classes
 
@@ -83,3 +84,13 @@ class MachineTypeDefinitionService(
     await self.db.commit()
     logger.info("Synchronized %d machine definitions.", len(synced_definitions))
     return synced_definitions
+
+
+class MachineTypeDefinitionCRUDService(
+  CRUDBase[
+    MachineDefinitionOrm,
+    MachineDefinitionCreate,
+    MachineDefinitionUpdate,
+  ],
+):
+  """CRUD service for machine type definitions."""

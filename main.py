@@ -224,7 +224,7 @@ app.include_router(
 )
 app.include_router(protocols.router, prefix="/api/v1/protocols", tags=["Protocols"])
 app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["Workcell"])
-app.include_router(resources.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(resources.router, prefix="/api/v1/resources", tags=["Assets"])
 app.include_router(decks.router, prefix="/api/v1/decks", tags=["Decks"])
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["Machines"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
