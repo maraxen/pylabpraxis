@@ -5,10 +5,14 @@ import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../features/assets/services/asset.service';
 import { Observable, forkJoin } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, startWith, map } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, startWith, map, filter, take } from 'rxjs/operators';
 import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
+import { ResourceDialogComponent } from '../../features/assets/components/resource-dialog.component';
 
 @Component({
   selector: 'app-asset-selector',
@@ -19,6 +23,8 @@ import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/m
     MatAutocompleteModule,
     MatInputModule,
     MatFormFieldModule,
+    MatButtonModule,
+    MatIconModule,
     FormlyModule
   ],
   template: `
@@ -30,6 +36,16 @@ import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/m
       [matAutocomplete]="auto"
       [placeholder]="to.placeholder || 'Select Asset'"
     />
+    <button
+      *ngIf="to['assetType'] === 'resource'"
+      mat-icon-button
+      matSuffix
+      type="button"
+      (click)="openDialog()"
+      [attr.aria-label]="'Add New Resource'"
+    >
+      <mat-icon>add</mat-icon>
+    </button>
     <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
       <mat-option *ngFor="let asset of filteredAssets$ | async" [value]="asset" class="asset-option">
         <div class="flex flex-col">
@@ -66,6 +82,7 @@ import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/m
 })
 export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implements OnInit {
   private assetService = inject(AssetService);
+  private dialog = inject(MatDialog);
   filteredAssets$!: Observable<AssetBase[]>;
   private definitionsMap = new Map<string, ResourceDefinition>();
 
@@ -139,5 +156,21 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
     if (def.tip_volume_ul) parts.push(`${def.tip_volume_ul}µL`);
 
     return parts.join(' • ');
+  }
+
+  openDialog() {
+    const dialogRef = this.dialog.open(ResourceDialogComponent, {
+      width: '800px',
+      maxWidth: '95vw',
+      maxHeight: '90vh'
+    });
+
+    dialogRef.afterClosed().pipe(
+      filter(result => !!result),
+      take(1),
+      switchMap(result => this.assetService.createResource(result))
+    ).subscribe(newResource => {
+      this.formControl.setValue(newResource);
+    });
   }
 }

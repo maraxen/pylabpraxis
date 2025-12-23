@@ -8,11 +8,13 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
 import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
+import { MatDialog } from '@angular/material/dialog';
 
 describe('AssetSelectorComponent', () => {
   let component: AssetSelectorComponent;
   let fixture: ComponentFixture<AssetSelectorComponent>;
   let mockAssetService: any;
+  let mockDialog: any;
 
   beforeAll(() => {
     const testBed = getTestBed();
@@ -45,7 +47,12 @@ describe('AssetSelectorComponent', () => {
     mockAssetService = {
       getResources: vi.fn().mockReturnValue(of(mockResources)),
       getResourceDefinitions: vi.fn().mockReturnValue(of(mockDefinitions)),
-      getMachines: vi.fn().mockReturnValue(of([]))
+      getMachines: vi.fn().mockReturnValue(of([])),
+      createResource: vi.fn()
+    };
+
+    mockDialog = {
+      open: vi.fn()
     };
 
     await TestBed.configureTestingModule({
@@ -56,7 +63,8 @@ describe('AssetSelectorComponent', () => {
         NoopAnimationsModule
       ],
       providers: [
-        { provide: AssetService, useValue: mockAssetService }
+        { provide: AssetService, useValue: mockAssetService },
+        { provide: MatDialog, useValue: mockDialog }
       ]
     }).compileComponents();
 
@@ -71,11 +79,7 @@ describe('AssetSelectorComponent', () => {
     };
     
     component.field = field;
-    
-    // Force 'to' getter to return templateOptions
     Object.defineProperty(component, 'to', { get: () => component.field.templateOptions });
-
-    // fixture.detectChanges(); // REMOVED
   });
 
   it('should create', () => {
@@ -134,5 +138,26 @@ describe('AssetSelectorComponent', () => {
     const details = component.getAssetDetails(plate1!);
     expect(details).toContain('96');
     expect(details).toContain('v-bottom');
+  });
+
+  it('should open dialog and create resource on save', () => {
+     component.field.templateOptions['assetType'] = 'resource';
+     fixture.detectChanges();
+
+     const mockResult = { name: 'New Res' };
+     const mockCreatedRes = { accession_id: 'new-1', name: 'New Res' };
+     
+     mockDialog.open.mockReturnValue({
+         afterClosed: () => of(mockResult)
+     });
+     
+     mockAssetService.createResource.mockReturnValue(of(mockCreatedRes));
+     
+     // We expect openDialog method to exist
+     (component as any).openDialog(); 
+     
+     expect(mockDialog.open).toHaveBeenCalled();
+     expect(mockAssetService.createResource).toHaveBeenCalledWith(mockResult);
+     expect(component.formControl.value).toEqual(mockCreatedRes);
   });
 });
