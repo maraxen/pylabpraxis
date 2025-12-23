@@ -5,10 +5,10 @@
     *   [x] Subtask: Write unit tests for `asset-selector` input filtering and tag display.
     *   [x] Subtask: Implement `plrTypeFilter` logic in `asset-selector.component.ts`.
     *   [x] Subtask: Implement hover tags (e.g., "96", "V-bottom") in `asset-selector.component.html`.
-*   [~] Task: Integrate `ResourceDialogComponent` with `asset-selector`.
-    *   [ ] Subtask: Write unit tests verifying dialog launch and selection return (accession_id).
-    *   [ ] Subtask: Update `asset-selector` to open `ResourceDialogComponent` on click and handle the result.
-*   [ ] Task: Conductor - User Manual Verification 'Frontend Core - Asset Selection' (Protocol in workflow.md)
+*   [x] Task: Integrate `ResourceDialogComponent` with `asset-selector`. [9b9251f]
+    *   [x] Subtask: Write unit tests verifying dialog launch and selection return (accession_id).
+    *   [x] Subtask: Update `asset-selector` to open `ResourceDialogComponent` on click and handle the result.
+*   [~] Task: Conductor - User Manual Verification 'Frontend Core - Asset Selection' (Protocol in workflow.md)
 
 ## Phase 2: Backend & Frontend - Autofill & Availability
 *   [ ] Task: Implement Backend Availability/Soonest Available Logic.
