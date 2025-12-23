@@ -1,11 +1,11 @@
 # Plan: End-to-End Protocol Execution (Operation "First Light")
 
 ## Phase 1: Frontend Core - Asset Selection
-*   [ ] Task: Update `asset-selector` to support `plrTypeFilter` and Hover Tags.
-    *   [ ] Subtask: Write unit tests for `asset-selector` input filtering and tag display.
-    *   [ ] Subtask: Implement `plrTypeFilter` logic in `asset-selector.component.ts`.
-    *   [ ] Subtask: Implement hover tags (e.g., "96", "V-bottom") in `asset-selector.component.html`.
-*   [ ] Task: Integrate `ResourceDialogComponent` with `asset-selector`.
+*   [x] Task: Update `asset-selector` to support `plrTypeFilter` and Hover Tags. [8665826]
+    *   [x] Subtask: Write unit tests for `asset-selector` input filtering and tag display.
+    *   [x] Subtask: Implement `plrTypeFilter` logic in `asset-selector.component.ts`.
+    *   [x] Subtask: Implement hover tags (e.g., "96", "V-bottom") in `asset-selector.component.html`.
+*   [~] Task: Integrate `ResourceDialogComponent` with `asset-selector`.
     *   [ ] Subtask: Write unit tests verifying dialog launch and selection return (accession_id).
     *   [ ] Subtask: Update `asset-selector` to open `ResourceDialogComponent` on click and handle the result.
 *   [ ] Task: Conductor - User Manual Verification 'Frontend Core - Asset Selection' (Protocol in workflow.md)
