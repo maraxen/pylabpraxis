@@ -6,6 +6,7 @@ This protocol demonstrates the use of PLR type hints for resources.
 
 from typing import Any
 
+from pylabrobot.machines.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack
 
 from praxis.backend.core.decorators import protocol_function
@@ -19,6 +20,10 @@ from praxis.backend.core.decorators import protocol_function
     tags=["demo", "transfer", "basic"],
     is_top_level=True,
     param_metadata={
+        "liquid_handler": {
+            "description": "The liquid handling robot to use for transfers",
+            "plr_type": "LiquidHandler",
+        },
         "source_plate": {
             "description": "Source plate containing liquid to transfer",
             "plr_type": "Plate",
@@ -44,6 +49,7 @@ from praxis.backend.core.decorators import protocol_function
 )
 async def simple_transfer(
     state: dict[str, Any],
+    liquid_handler: LiquidHandler,
     source_plate: Plate,
     dest_plate: Plate,
     tip_rack: TipRack,

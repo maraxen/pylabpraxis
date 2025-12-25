@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, ViewChild, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, ViewChild, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,8 @@ import { MachineDialogComponent } from './components/machine-dialog.component';
 import { ResourceDialogComponent } from './components/resource-dialog.component';
 import { AssetService } from './services/asset.service';
 import { switchMap, filter, finalize } from 'rxjs/operators';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; // Import MatProgressSpinnerModule
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-assets',
@@ -22,7 +23,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatProgressSpinnerModule, // Add MatProgressSpinnerModule
+    MatProgressSpinnerModule,
     MachineListComponent,
     ResourceListComponent,
     DefinitionsListComponent
@@ -110,24 +111,62 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AssetsComponent {
+export class AssetsComponent implements OnInit {
   private dialog = inject(MatDialog);
   private assetService = inject(AssetService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   @ViewChild('machineList') machineList!: MachineListComponent;
   @ViewChild('resourceList') resourceList!: ResourceListComponent;
 
   selectedIndex = 0;
   assetTypeLabel = signal('Machine');
-  isLoading = signal(false); // New loading signal
+  isLoading = signal(false);
+
+  ngOnInit() {
+    // Listen to query params to switch tabs
+    this.route.queryParams.subscribe(params => {
+      const type = params['type'];
+      if (type === 'resource') {
+        this.selectedIndex = 1;
+        this.assetTypeLabel.set('Resource');
+      } else if (type === 'definition') {
+        this.selectedIndex = 2;
+        this.assetTypeLabel.set('Definition');
+      } else {
+        this.selectedIndex = 0;
+        this.assetTypeLabel.set('Machine');
+      }
+    });
+  }
 
   onTabChange(index: number) {
     this.selectedIndex = index;
+    let type = 'machine';
+
     switch (index) {
-      case 0: this.assetTypeLabel.set('Machine'); break;
-      case 1: this.assetTypeLabel.set('Resource'); break;
-      case 2: this.assetTypeLabel.set('Definition'); break;
+      case 0:
+        this.assetTypeLabel.set('Machine');
+        type = 'machine';
+        break;
+      case 1:
+        this.assetTypeLabel.set('Resource');
+        type = 'resource';
+        break;
+      case 2:
+        this.assetTypeLabel.set('Definition');
+        type = 'definition';
+        break;
     }
+
+    // Update URL without reloading
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { type },
+      queryParamsHandling: 'merge', // merge with other existing query params
+      replaceUrl: true // prevent pushing a new history state for every tab click
+    });
   }
 
   openAddAsset() {

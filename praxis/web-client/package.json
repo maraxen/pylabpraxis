@@ -36,8 +36,11 @@
     "@ngrx/signals": "^21.0.0-rc.0",
     "@ngx-formly/core": "^7.0.1",
     "@ngx-formly/material": "^7.0.1",
+    "@types/plotly.js-dist-min": "^2.3.4",
+    "angular-plotly.js": "^20.0.0",
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.2",
+    "plotly.js-dist-min": "^3.3.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

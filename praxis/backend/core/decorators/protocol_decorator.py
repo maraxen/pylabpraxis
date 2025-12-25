@@ -265,6 +265,17 @@ def protocol_function(
         _func=func,
       )
 
+      # Check for control commands (PAUSE/CANCEL) before executing the function
+      # This allows the protocol to be interrupted at any decorated step
+      try:
+        await _handle_control_commands(
+            context_for_this_call.run_accession_id,
+            context_for_this_call.current_db_session
+        )
+      except ProtocolCancelledError:
+        # Re-raise cancellation to be caught by the outer try/except block
+        raise
+
       result = None
       error = None
       status_enum_val = FunctionCallStatusEnum.SUCCESS

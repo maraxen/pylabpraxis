@@ -2,7 +2,7 @@
 """The Orchestrator manages the lifecycle of protocol runs."""
 # broad-except is justified at method level where necessary.
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -44,6 +44,7 @@ class Orchestrator(
     protocol_code_manager: ProtocolCodeManager | None = None,
     protocol_run_service: "ProtocolRunService | None" = None,
     protocol_definition_service: "ProtocolDefinitionCRUDService | None" = None,
+    scheduler: Any | None = None,
   ) -> None:
     """Initialize the Orchestrator.
 
@@ -55,6 +56,7 @@ class Orchestrator(
             If None, a new instance will be created.
         protocol_run_service: Service for protocol run operations.
         protocol_definition_service: Service for protocol definition operations.
+        scheduler: Instance of ProtocolScheduler for releasing reservations.
 
     Raises:
         ValueError: If any of the arguments are invalid.
@@ -65,6 +67,7 @@ class Orchestrator(
     self.asset_manager = asset_manager
     self.workcell_runtime = workcell_runtime
     self.protocol_code_manager = protocol_code_manager or ProtocolCodeManager()
+    self.scheduler = scheduler
 
     if not protocol_run_service or not protocol_definition_service:
        # For backwards compatibility with tests that might not provide them yet,

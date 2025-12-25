@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FieldType, FieldTypeConfig, FormlyModule } from '@ngx-formly/core';
@@ -7,12 +7,20 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../features/assets/services/asset.service';
-import { Observable, forkJoin } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, startWith, map, filter, take } from 'rxjs/operators';
+import { Observable, forkJoin, of, BehaviorSubject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, startWith, map, filter, take, tap } from 'rxjs/operators';
 import { AssetBase, Resource, ResourceDefinition } from '../../features/assets/models/asset.models';
 import { ResourceDialogComponent } from '../../features/assets/components/resource-dialog.component';
+
+interface AssetOption {
+  asset: AssetBase;
+  label: string;
+  tags: string[];
+}
 
 @Component({
   selector: 'app-asset-selector',
@@ -25,57 +33,202 @@ import { ResourceDialogComponent } from '../../features/assets/components/resour
     MatFormFieldModule,
     MatButtonModule,
     MatIconModule,
+    MatChipsModule,
+    MatTooltipModule,
     FormlyModule
   ],
   template: `
-    <input
-      type="text"
-      matInput
-      [formControl]="formControl"
-      [formlyAttributes]="field"
-      [matAutocomplete]="auto"
-      [placeholder]="to.placeholder || 'Select Asset'"
-    />
-    <button
-      *ngIf="to['assetType'] === 'resource'"
-      mat-icon-button
-      matSuffix
-      type="button"
-      (click)="openDialog()"
-      [attr.aria-label]="'Add New Resource'"
-    >
-      <mat-icon>add</mat-icon>
-    </button>
-    <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
-      <mat-option *ngFor="let asset of filteredAssets$ | async" [value]="asset" class="asset-option">
-        <div class="flex flex-col">
-          <div>
-            {{ asset.name }} <span class="accession-id">({{ asset.accession_id }})</span>
+    <div class="asset-field-container">
+      <!-- Variable Name Header -->
+      <div class="field-header">
+        <span class="variable-name">{{ props['variableName'] || key }}</span>
+        <span class="type-hint">{{ props['plrTypeFilter'] }}</span>
+      </div>
+
+      <!-- Auto Toggle Chip -->
+      <div class="selection-row">
+        <button
+          mat-stroked-button
+          [class.auto-active]="isAutoMode()"
+          [class.auto-inactive]="!isAutoMode()"
+          [disabled]="!canUseAuto()"
+          (click)="toggleAutoMode()"
+          class="auto-chip"
+        >
+          <mat-icon>{{ isAutoMode() ? 'auto_awesome' : 'auto_awesome_outlined' }}</mat-icon>
+          @if (isAutoMode() && autoAsset()) {
+            <span class="auto-label">{{ autoAsset()?.name }}</span>
+            @for (tag of autoAssetTags(); track tag) {
+              <span class="tag-badge">{{ tag }}</span>
+            }
+          } @else if (isAutoMode()) {
+            <span class="auto-label">Auto (Resolving...)</span>
+          } @else {
+            <span class="auto-label">Auto</span>
+          }
+        </button>
+
+        @if (!isAutoMode()) {
+          <div class="manual-select">
+            <mat-form-field appearance="outline" class="asset-input">
+              <input
+                type="text"
+                matInput
+                [formControl]="formControl"
+                [formlyAttributes]="field"
+                [matAutocomplete]="auto"
+                [placeholder]="props.placeholder || 'Search...'"
+              />
+              @if (props['assetType'] === 'resource') {
+                <button
+                  mat-icon-button
+                  matSuffix
+                  type="button"
+                  (click)="openDialog(); $event.stopPropagation()"
+                  matTooltip="Create New Resource"
+                >
+                  <mat-icon>add</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+              @for (option of filteredOptions$ | async; track option.asset.accession_id) {
+                <mat-option [value]="option.asset" class="asset-option">
+                  <div class="asset-content">
+                    <div class="asset-main">
+                      <span class="asset-name">{{ option.asset.name }}</span>
+                      <span class="accession-id">({{ option.asset.accession_id }})</span>
+                    </div>
+                    @if (option.tags.length > 0) {
+                      <div class="asset-tags">
+                        @for (tag of option.tags; track tag) {
+                          <span class="tag-chip">{{ tag }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </mat-option>
+              }
+              @empty {
+                <mat-option disabled>No assets found</mat-option>
+              }
+            </mat-autocomplete>
           </div>
-          <div class="asset-tags" *ngIf="getAssetDetails(asset)">
-            {{ getAssetDetails(asset) }}
-          </div>
-        </div>
-      </mat-option>
-    </mat-autocomplete>
+        }
+      </div>
+
+      @if (props.description) {
+        <div class="field-description">{{ props.description }}</div>
+      }
+    </div>
   `,
   styles: [`
-    .accession-id {
+    .asset-field-container {
+      margin-bottom: 20px;
+    }
+    .field-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .variable-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--sys-primary);
+    }
+    .type-hint {
       font-size: 0.8em;
-      color: var(--mat-sys-color-on-surface-variant);
-      margin-left: 8px;
+      color: var(--sys-on-surface-variant);
+      opacity: 0.7;
+    }
+    .selection-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .auto-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      transition: all 0.2s ease;
+      min-height: 40px;
+    }
+    .auto-chip.auto-active {
+      background: var(--sys-primary-container);
+      border-color: var(--sys-primary);
+      color: var(--sys-on-primary-container);
+    }
+    .auto-chip.auto-inactive {
+      background: transparent;
+      border-color: var(--sys-outline);
+      color: var(--sys-on-surface-variant);
+    }
+    .auto-chip.auto-inactive:hover {
+      border-color: var(--sys-primary);
+    }
+    .auto-chip:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .auto-label {
+      font-weight: 500;
+    }
+    .tag-badge {
+      background: var(--sys-secondary);
+      color: var(--sys-on-secondary);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75em;
+      font-weight: 500;
+    }
+    .manual-select {
+      flex: 1;
+    }
+    .asset-input {
+      width: 100%;
     }
     .asset-option {
-      line-height: 1.2;
-      padding-top: 8px;
-      padding-bottom: 8px;
+      line-height: 1.3;
+      padding: 8px 16px;
+      min-height: 52px;
+    }
+    .asset-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .asset-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .asset-name {
+      font-weight: 500;
+    }
+    .accession-id {
+      font-size: 0.8em;
+      color: var(--sys-on-surface-variant);
     }
     .asset-tags {
-      font-size: 0.75em;
-      color: var(--mat-sys-secondary);
       display: flex;
-      gap: 8px;
-      margin-top: 2px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tag-chip {
+      background: var(--sys-secondary-container);
+      color: var(--sys-on-secondary-container);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7em;
+      font-weight: 500;
+    }
+    .field-description {
+      font-size: 0.85em;
+      color: var(--sys-on-surface-variant);
+      margin-top: 4px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -83,80 +236,164 @@ import { ResourceDialogComponent } from '../../features/assets/components/resour
 export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implements OnInit {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
-  filteredAssets$!: Observable<AssetBase[]>;
+
+  filteredOptions$!: Observable<AssetOption[]>;
   private definitionsMap = new Map<string, ResourceDefinition>();
+  private allAssets = signal<AssetBase[]>([]);
+
+  isAutoMode = signal(true);
+  autoAsset = signal<AssetBase | null>(null);
+  autoAssetTags = signal<string[]>([]);
+  canUseAuto = signal(true);
 
   ngOnInit() {
-    const assetType = this.to['assetType'] || 'machine'; // 'machine' or 'resource'
+    const assetType = this.props['assetType'] || 'machine';
 
-    this.filteredAssets$ = this.formControl.valueChanges.pipe(
+    // Load assets and determine auto selection
+    this.loadAssets(assetType);
+
+    // Setup filtered options for manual selection
+    this.filteredOptions$ = this.formControl.valueChanges.pipe(
       startWith(''),
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(value => {
-        const name = typeof value === 'string' ? value : value?.name;
-        return this.searchAssets(name, assetType);
+        const query = typeof value === 'string' ? value : (value?.name || '');
+        return this.getFilteredOptions(query, assetType);
       })
     );
+
+    // Set initial value to auto mode
+    this.formControl.setValue({ mode: 'auto' });
   }
 
-  private searchAssets(query: string, type: 'machine' | 'resource'): Observable<AssetBase[]> {
+  private loadAssets(type: 'machine' | 'resource') {
     if (type === 'machine') {
-      return this.assetService.getMachines().pipe(
-        map(assets => this.filterAssets(assets, query))
-      );
+      this.assetService.getMachines().subscribe({
+        next: (assets) => {
+          console.log('[AssetSelector] Loaded machines:', assets.length);
+          this.allAssets.set(assets);
+          this.selectBestAuto(assets);
+        },
+        error: (err) => {
+          console.error('[AssetSelector] Error loading machines:', err);
+          this.canUseAuto.set(false);
+        }
+      });
     } else {
-      return forkJoin({
+      forkJoin({
         resources: this.assetService.getResources(),
         definitions: this.assetService.getResourceDefinitions()
-      }).pipe(
-        map(({ resources, definitions }) => {
-          // Update definitions map
+      }).subscribe({
+        next: ({ resources, definitions }) => {
+          console.log('[AssetSelector] Loaded resources:', resources.length, 'definitions:', definitions.length);
           definitions.forEach(d => this.definitionsMap.set(d.accession_id, d));
 
           let filtered = resources;
+          const typeFilter = this.props['plrTypeFilter'];
 
-          // Apply plrTypeFilter if present
-          const typeFilter = this.to['plrTypeFilter'];
           if (typeFilter) {
+            const lowerFilter = typeFilter.toLowerCase();
             filtered = filtered.filter(r => {
-              const def = this.definitionsMap.get((r as Resource).resource_definition_accession_id || '');
-              return def && def.plr_category === typeFilter;
+              const def = this.definitionsMap.get(r.resource_definition_accession_id || '');
+              if (!def) return false;
+
+              // Check plr_category (case-insensitive)
+              if (def.plr_category?.toLowerCase() === lowerFilter) return true;
+
+              // Fallback: check if class name contains the filter
+              if (def.name?.toLowerCase().includes(lowerFilter)) return true;
+
+              return false;
             });
+            console.log('[AssetSelector] After filter for', typeFilter, ':', filtered.length, 'resources');
           }
 
-          return this.filterAssets(filtered, query);
-        })
-      );
+          this.allAssets.set(filtered);
+          this.selectBestAuto(filtered);
+        },
+        error: (err) => {
+          console.error('[AssetSelector] Error loading resources:', err);
+          this.canUseAuto.set(false);
+        }
+      });
     }
   }
 
-  private filterAssets(assets: AssetBase[], query: string): AssetBase[] {
-    if (!query) return assets;
-    const lowerQuery = query.toLowerCase();
-    return assets.filter(asset => 
-      asset.name.toLowerCase().includes(lowerQuery) || 
-      asset.accession_id.toLowerCase().includes(lowerQuery)
-    );
+  private selectBestAuto(assets: AssetBase[]) {
+    if (assets.length === 0) {
+      this.canUseAuto.set(false);
+      this.autoAsset.set(null);
+      return;
+    }
+
+    // Use autoSelectIndex to pick a unique asset (fallback to 0)
+    const autoIndex = this.props['autoSelectIndex'] || 0;
+    const assetIndex = Math.min(autoIndex, assets.length - 1);
+    const best = assets[assetIndex];
+
+    console.log('[AssetSelector] Auto-selecting index', assetIndex, 'of', assets.length, ':', best?.name);
+
+    this.autoAsset.set(best);
+    this.autoAssetTags.set(this.getAssetTags(best));
+    this.canUseAuto.set(true);
+
+    // Update form value with actual asset
+    if (this.isAutoMode()) {
+      this.formControl.setValue({ mode: 'auto', resolvedAsset: best });
+    }
   }
 
-  displayFn(asset: AssetBase): string {
-    return asset && asset.name ? asset.name : '';
+  toggleAutoMode() {
+    const newMode = !this.isAutoMode();
+    this.isAutoMode.set(newMode);
+
+    if (newMode) {
+      const best = this.autoAsset();
+      this.formControl.setValue({ mode: 'auto', resolvedAsset: best });
+    } else {
+      this.formControl.setValue(null);
+    }
   }
 
-  getAssetDetails(asset: AssetBase): string {
+  private getFilteredOptions(query: string, type: 'machine' | 'resource'): Observable<AssetOption[]> {
+    const assets = this.allAssets();
+    let filtered = assets;
+
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      filtered = assets.filter(a =>
+        a.name.toLowerCase().includes(lowerQuery) ||
+        a.accession_id.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    return of(filtered.map(asset => ({
+      asset,
+      label: asset.name,
+      tags: this.getAssetTags(asset),
+    })));
+  }
+
+  private getAssetTags(asset: AssetBase): string[] {
     const res = asset as Resource;
-    if (!res.resource_definition_accession_id) return '';
+    if (!res.resource_definition_accession_id) return [];
     const def = this.definitionsMap.get(res.resource_definition_accession_id);
-    if (!def) return '';
+    if (!def) return [];
 
-    const parts = [];
-    if (def.num_items) parts.push(`${def.num_items}`);
-    if (def.plate_type) parts.push(def.plate_type);
-    if (def.tip_volume_ul) parts.push(`${def.tip_volume_ul}µL`);
+    const tags: string[] = [];
+    if (def.num_items) tags.push(`${def.num_items}`);
+    if (def.plate_type) tags.push(def.plate_type);
+    if (def.tip_volume_ul) tags.push(`${def.tip_volume_ul}µL`);
 
-    return parts.join(' • ');
+    return tags;
   }
+
+  displayFn = (value: AssetBase | { mode: string } | null): string => {
+    if (!value) return '';
+    if ('mode' in value) return '';
+    return (value as AssetBase).name || '';
+  };
 
   openDialog() {
     const dialogRef = this.dialog.open(ResourceDialogComponent, {
@@ -170,6 +407,7 @@ export class AssetSelectorComponent extends FieldType<FieldTypeConfig> implement
       take(1),
       switchMap(result => this.assetService.createResource(result))
     ).subscribe(newResource => {
+      this.isAutoMode.set(false);
       this.formControl.setValue(newResource);
     });
   }

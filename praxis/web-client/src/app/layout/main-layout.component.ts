@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -6,6 +6,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppStore } from '@core/store/app.store';
 import { StatusBarComponent } from '@core/components/status-bar/status-bar.component';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
@@ -25,103 +26,258 @@ import { toSignal } from '@angular/core/rxjs-interop';
     MatListModule,
     MatIconModule,
     MatButtonModule,
+    MatTooltipModule,
     StatusBarComponent
   ],
   template: `
-    <mat-sidenav-container class="sidenav-container">
-      <mat-sidenav
-        #drawer
-        class="sidenav"
-        fixedInViewport
-        [attr.role]="(isHandset() ? 'dialog' : 'navigation')"
-        [mode]="(isHandset() ? 'over' : 'side')"
-        [opened]="(store.sidebarOpen() || !isHandset())">
+    <div class="app-layout">
+      <!-- Navigation Rail -->
+      <nav class="nav-rail">
+        <!-- Logo -->
+        <div class="nav-logo">
+          <mat-icon class="logo-icon">biotech</mat-icon>
+        </div>
 
-        <mat-toolbar>PyLabPraxis</mat-toolbar>
+        <!-- Navigation Items -->
+        <div class="nav-items">
+          <a class="nav-item" routerLink="/app/home" routerLinkActive="active">
+            <mat-icon>dashboard</mat-icon>
+            <span class="nav-label">Home</span>
+          </a>
+          <a class="nav-item" routerLink="/app/assets" routerLinkActive="active">
+            <mat-icon>science</mat-icon>
+            <span class="nav-label">Assets</span>
+          </a>
+          <a class="nav-item" routerLink="/app/protocols" routerLinkActive="active">
+            <mat-icon>assignment</mat-icon>
+            <span class="nav-label">Protocols</span>
+          </a>
+          <a class="nav-item" routerLink="/app/run" routerLinkActive="active">
+            <mat-icon>play_circle</mat-icon>
+            <span class="nav-label">Run</span>
+          </a>
+          <a class="nav-item" routerLink="/app/visualizer" routerLinkActive="active">
+            <mat-icon>view_in_ar</mat-icon>
+            <span class="nav-label">Deck</span>
+          </a>
+          <a class="nav-item" routerLink="/app/settings" routerLinkActive="active">
+            <mat-icon>settings</mat-icon>
+            <span class="nav-label">Settings</span>
+          </a>
+        </div>
 
-        <mat-nav-list>
-          <a mat-list-item routerLink="/app/home" routerLinkActive="active-link">
-            <mat-icon matListItemIcon>dashboard</mat-icon>
-            <span matListItemTitle>Dashboard</span>
-          </a>
-          <a mat-list-item routerLink="/app/assets" routerLinkActive="active-link">
-            <mat-icon matListItemIcon>science</mat-icon>
-            <span matListItemTitle>Assets</span>
-          </a>
-          <a mat-list-item routerLink="/app/protocols" routerLinkActive="active-link">
-             <mat-icon matListItemIcon>assignment</mat-icon>
-             <span matListItemTitle>Protocols</span>
-          </a>
-          <a mat-list-item routerLink="/app/run" routerLinkActive="active-link">
-             <mat-icon matListItemIcon>play_circle</mat-icon>
-             <span matListItemTitle>Run Protocol</span>
-          </a>
-           <a mat-list-item routerLink="/app/visualizer" routerLinkActive="active-link">
-             <mat-icon matListItemIcon>view_in_ar</mat-icon>
-             <span matListItemTitle>Visualizer</span>
-          </a>
-           <a mat-list-item routerLink="/app/settings" routerLinkActive="active-link">
-             <mat-icon matListItemIcon>settings</mat-icon>
-             <span matListItemTitle>Settings</span>
-          </a>
-          <a mat-list-item routerLink="/app/stress-test" routerLinkActive="active-link">
-             <mat-icon matListItemIcon>speed</mat-icon>
-             <span matListItemTitle>Stress Test</span>
-          </a>
-        </mat-nav-list>
-      </mat-sidenav>
-
-      <mat-sidenav-content>
-        <mat-toolbar color="primary">
+        <!-- Bottom Controls -->
+        <div class="nav-controls">
+          <!-- Simulation Mode Toggle -->
           <button
-            type="button"
-            aria-label="Toggle sidenav"
-            mat-icon-button
-            (click)="store.toggleSidebar()">
-            <mat-icon>menu</mat-icon>
+            class="nav-control-btn"
+            [class.active]="store.simulationMode()"
+            (click)="store.toggleSimulationMode()"
+            matTooltip="{{ store.simulationMode() ? 'Simulation Mode ON' : 'LIVE Hardware Mode' }}"
+            matTooltipPosition="right">
+            <mat-icon>{{ store.simulationMode() ? 'science' : 'precision_manufacturing' }}</mat-icon>
+            <span class="nav-label">{{ store.simulationMode() ? 'Sim' : 'Live' }}</span>
           </button>
-          <span>PyLabPraxis</span>
-          <span class="spacer"></span>
-          @if (store.auth().isAuthenticated) {
-            <span class="text-sm mr-2">{{ store.auth().user?.username }}</span>
-          }
-          <button mat-icon-button (click)="toggleTheme()">
-            <mat-icon>{{ store.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+
+          <!-- Theme Toggle -->
+          <button
+            class="nav-control-btn"
+            (click)="cycleTheme()"
+            matTooltip="Theme: {{ store.theme() | titlecase }}"
+            matTooltipPosition="right">
+            <mat-icon>{{ themeIcon() }}</mat-icon>
+            <span class="nav-label">{{ store.theme() | titlecase }}</span>
           </button>
+
+          <!-- Logout -->
           @if (store.auth().isAuthenticated) {
-            <button mat-icon-button (click)="logout()" matTooltip="Logout">
+            <button
+              class="nav-control-btn"
+              (click)="logout()"
+              matTooltip="Logout"
+              matTooltipPosition="right">
               <mat-icon>logout</mat-icon>
+              <span class="nav-label">Logout</span>
             </button>
           }
-        </mat-toolbar>
+        </div>
+      </nav>
 
-        <main class="content p-4">
+      <!-- Main Content Area -->
+      <div class="main-content-wrapper">
+        <main class="main-content">
           <router-outlet></router-outlet>
         </main>
-
         <app-status-bar></app-status-bar>
-
-      </mat-sidenav-content>
-    </mat-sidenav-container>
+      </div>
+    </div>
   `,
   styles: [`
-    .sidenav-container {
-      height: 100%;
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
     }
-    .sidenav {
-      width: 250px;
+
+    /* Navigation Rail */
+    .nav-rail {
+      display: flex;
+      flex-direction: column;
+      width: 72px;
+      min-width: 72px;
+      background: var(--sys-surface-container);
+      border-right: 1px solid var(--sys-outline-variant);
+      padding: 8px 0;
+      overflow: hidden;
     }
-    .mat-toolbar.mat-primary {
-      position: sticky;
-      top: 0;
-      z-index: 1;
+
+    .nav-logo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px 0;
+      margin-bottom: 8px;
     }
-    .spacer {
-      flex: 1 1 auto;
+
+    .logo-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      color: var(--sys-primary);
     }
-    .active-link {
-        background-color: rgba(0, 0, 0, 0.05); /* or use theme color */
-        border-right: 4px solid var(--mat-sys-primary);
+
+    .nav-items {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 0 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 0;
+      border-radius: 16px;
+      text-decoration: none;
+      color: var(--sys-on-surface-variant);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-item mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 4px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .nav-item:hover {
+      background: var(--sys-surface-container-high);
+      color: var(--sys-on-surface);
+    }
+
+    .nav-item.active {
+      background: var(--sys-secondary-container);
+      color: var(--sys-on-secondary-container);
+    }
+
+    .nav-item.active mat-icon {
+      color: var(--sys-on-secondary-container);
+    }
+
+    /* Bottom Controls */
+    .nav-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px;
+      border-top: 1px solid var(--sys-outline-variant);
+      margin-top: auto;
+    }
+
+    .nav-control-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      border-radius: 12px;
+      background: transparent;
+      border: none;
+      color: var(--sys-on-surface-variant);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-control-btn mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      margin-bottom: 2px;
+    }
+
+    .nav-control-btn .nav-label {
+      font-size: 10px;
+    }
+
+    .nav-control-btn:hover {
+      background: var(--sys-surface-container-high);
+      color: var(--sys-on-surface);
+    }
+
+    .nav-control-btn.active {
+      background: var(--sys-primary-container);
+      color: var(--sys-on-primary-container);
+    }
+
+    .nav-control-btn.active mat-icon {
+      color: var(--sys-primary);
+    }
+
+    /* Main Content */
+    .main-content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--sys-surface);
+    }
+
+    /* Responsive - Collapse rail further on small screens */
+    @media (max-width: 600px) {
+      .nav-rail {
+        width: 56px;
+        min-width: 56px;
+      }
+
+      .nav-label {
+        display: none;
+      }
+
+      .nav-item {
+        padding: 16px 0;
+      }
+
+      .nav-control-btn {
+        padding: 12px 0;
+      }
     }
   `]
 })
@@ -130,20 +286,28 @@ export class MainLayoutComponent {
   router = inject(Router);
   private breakpointObserver = inject(BreakpointObserver);
 
-  isHandset = toSignal(this.breakpointObserver.observe(Breakpoints.Handset).pipe(map(result => result.matches)), { initialValue: false });
+  isHandset = toSignal(
+    this.breakpointObserver.observe(Breakpoints.Handset).pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
 
-  toggleTheme() {
-    const newTheme = this.store.theme() === 'dark' ? 'light' : 'dark';
-    this.store.setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
+  themeIcon() {
+    switch (this.store.theme()) {
+      case 'light': return 'light_mode';
+      case 'dark': return 'dark_mode';
+      case 'system': return 'brightness_auto';
+      default: return 'brightness_auto';
     }
   }
 
+  cycleTheme() {
+    const themes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(this.store.theme());
+    const nextIndex = (currentIndex + 1) % themes.length;
+    this.store.setTheme(themes[nextIndex]);
+  }
+
   logout() {
-    // Use Keycloak logout via AppStore
     this.store.logout();
   }
 }

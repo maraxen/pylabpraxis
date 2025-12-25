@@ -12,9 +12,7 @@ describe('authInterceptor', () => {
 
   beforeEach(() => {
     storeMock = {
-      auth: {
-        token: vi.fn()
-      }
+      auth: vi.fn().mockReturnValue({ token: null })
     };
 
     TestBed.configureTestingModule({
@@ -35,7 +33,7 @@ describe('authInterceptor', () => {
 
   it('should add Authorization header when token is present', () => {
     const mockToken = 'test-token-123';
-    storeMock.auth.token.mockReturnValue(mockToken);
+    storeMock.auth.mockReturnValue({ token: mockToken });
 
     httpClient.get('/api/data').subscribe();
 
@@ -46,7 +44,7 @@ describe('authInterceptor', () => {
   });
 
   it('should not add Authorization header when token is missing', () => {
-    storeMock.auth.token.mockReturnValue(null);
+    storeMock.auth.mockReturnValue({ token: null });
 
     httpClient.get('/api/data').subscribe();
 

@@ -9,6 +9,7 @@ type AppState = {
   theme: Theme;
   sidebarOpen: boolean;
   isLoading: boolean;
+  simulationMode: boolean;  // Global simulation mode for protocol execution
 };
 
 const getSavedTheme = (): Theme => {
@@ -19,10 +20,20 @@ const getSavedTheme = (): Theme => {
   }
 };
 
+const getSavedSimulationMode = (): boolean => {
+  try {
+    const saved = localStorage.getItem('simulationMode');
+    return saved === null ? true : saved === 'true';  // Default ON
+  } catch {
+    return true;
+  }
+};
+
 const initialState: AppState = {
   theme: getSavedTheme(),
   sidebarOpen: true,
   isLoading: false,
+  simulationMode: getSavedSimulationMode(),
 };
 
 export const AppStore = signalStore(
@@ -54,16 +65,16 @@ export const AppStore = signalStore(
           // Apply theme immediately
           document.body.classList.remove('light-theme', 'dark-theme');
           if (theme === 'system') {
-             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-             if (systemDark) {
-               document.body.classList.add('dark-theme');
-             } else {
-               document.body.classList.add('light-theme');
-             }
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (systemDark) {
+              document.body.classList.add('dark-theme');
+            } else {
+              document.body.classList.add('light-theme');
+            }
           } else if (theme === 'dark') {
-             document.body.classList.add('dark-theme');
+            document.body.classList.add('dark-theme');
           } else if (theme === 'light') {
-             document.body.classList.add('light-theme');
+            document.body.classList.add('light-theme');
           }
         } catch (e) {
           console.error('Failed to save theme preference', e);
@@ -71,6 +82,23 @@ export const AppStore = signalStore(
       },
       setLoading(isLoading: boolean) {
         patchState(store, { isLoading });
+      },
+      toggleSimulationMode() {
+        const newMode = !store.simulationMode();
+        patchState(store, { simulationMode: newMode });
+        try {
+          localStorage.setItem('simulationMode', String(newMode));
+        } catch (e) {
+          console.error('Failed to save simulation mode preference', e);
+        }
+      },
+      setSimulationMode(simulationMode: boolean) {
+        patchState(store, { simulationMode });
+        try {
+          localStorage.setItem('simulationMode', String(simulationMode));
+        } catch (e) {
+          console.error('Failed to save simulation mode preference', e);
+        }
       },
       // Login now delegates to Keycloak
       login(redirectUri?: string) {

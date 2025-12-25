@@ -163,11 +163,42 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       )
       logger.info("Celery app configured.")
 
-      # Store the fully initialized orchestrator and discovery service in the app state
+      # Initialize ProtocolExecutionService
+      logger.info("Initializing ProtocolExecutionService...")
+      from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
+      from praxis.backend.services.protocols import ProtocolRunService
+      from praxis.backend.models.orm.protocol import ProtocolRunOrm
+      from praxis.backend.core.scheduler import ProtocolScheduler
+      
+      protocol_run_service = ProtocolRunService(ProtocolRunOrm)
+      protocol_scheduler = ProtocolScheduler(
+        db_session_factory=AsyncSessionLocal,
+        task_queue=celery_app,
+        protocol_run_service=protocol_run_service,
+        protocol_definition_service=protocol_definition_service,
+      )
+      
+      # Inject scheduler into orchestrator
+      # This addresses the circular dependency where Orchestrator needs Scheduler to release assets
+      orchestrator.scheduler = protocol_scheduler
+      
+      protocol_execution_service = ProtocolExecutionService(
+        db_session_factory=AsyncSessionLocal,
+        asset_manager=asset_manager,
+        workcell_runtime=workcell_runtime,
+        scheduler=protocol_scheduler,
+        orchestrator=orchestrator,
+        protocol_run_service=protocol_run_service,
+        protocol_definition_service=protocol_definition_service,
+      )
+      logger.info("ProtocolExecutionService initialized.")
+
+      # Store the fully initialized services in the app state
       app.state.orchestrator = orchestrator
       app.state.discovery_service = discovery_service
       app.state.praxis_config = praxis_config
-      logger.info("Orchestrator and DiscoveryService attached to application state.")
+      app.state.protocol_execution_service = protocol_execution_service
+      logger.info("Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state.")
       logger.info("Application startup complete.")
 
       yield  # The application is now running

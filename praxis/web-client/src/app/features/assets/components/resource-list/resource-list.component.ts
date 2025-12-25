@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { AssetService } from '../../services/asset.service';
 import { Resource, ResourceStatus } from '../../models/asset.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -23,6 +25,8 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
     MatTooltipModule,
     MatInputModule,
     MatFormFieldModule,
+    MatMenuModule,
+    MatDividerModule,
     ReactiveFormsModule
   ],
   template: `
@@ -69,23 +73,49 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
             <button mat-icon-button color="primary" matTooltip="View Details">
               <mat-icon>info</mat-icon>
             </button>
-            <button mat-icon-button color="accent" matTooltip="Edit Resource">
+            <button mat-icon-button color="accent" matTooltip="Edit Resource" (click)="editResource(resource)">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color="warn" matTooltip="Delete Resource">
+            <button mat-icon-button color="warn" matTooltip="Delete Resource" (click)="deleteResource(resource)">
               <mat-icon>delete</mat-icon>
             </button>
           </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            (contextmenu)="onContextMenu($event, row)"
+            class="resource-row"></tr>
 
         <!-- Row shown when there is no matching data. -->
         <tr class="mat-row" *matNoDataRow>
           <td class="mat-cell" colspan="5">No resources matching the filter "{{ filterControl.value }}"</td>
         </tr>
       </table>
+
+      <!-- Context Menu -->
+      <div style="visibility: hidden; position: fixed"
+           [style.left]="contextMenuPosition.x"
+           [style.top]="contextMenuPosition.y"
+           [matMenuTriggerFor]="contextMenu">
+      </div>
+      <mat-menu #contextMenu="matMenu">
+        <ng-template matMenuContent let-item="item">
+          <button mat-menu-item (click)="editResource(item)">
+            <mat-icon>edit</mat-icon>
+            <span>Edit</span>
+          </button>
+          <button mat-menu-item (click)="duplicateResource(item)">
+            <mat-icon>content_copy</mat-icon>
+            <span>Duplicate</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="deleteResource(item)">
+            <mat-icon color="warn">delete</mat-icon>
+            <span style="color: var(--mat-sys-error)">Delete</span>
+          </button>
+        </ng-template>
+      </mat-menu>
     </div>
   `,
   styles: [`
@@ -100,6 +130,11 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
     .mat-elevation-z2 {
       width: 100%;
+    }
+
+    .resource-row:hover {
+      background-color: var(--mat-sys-surface-container-highest);
+      cursor: pointer;
     }
 
     .status-badge {
@@ -133,6 +168,9 @@ export class ResourceListComponent {
 
   displayedColumns: string[] = ['name', 'status', 'definition', 'parent', 'actions'];
 
+  @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
+  contextMenuPosition = { x: '0px', y: '0px' };
+
   constructor() {
     this.loadResources();
 
@@ -154,7 +192,6 @@ export class ResourceListComponent {
       },
       (error) => {
         console.error('Error fetching resources:', error);
-        // TODO: Integrate global error handling / snackbar
       }
     );
   }
@@ -170,4 +207,34 @@ export class ResourceListComponent {
       )
     );
   }
+
+  onContextMenu(event: MouseEvent, resource: Resource) {
+    event.preventDefault();
+    this.contextMenuPosition.x = event.clientX + 'px';
+    this.contextMenuPosition.y = event.clientY + 'px';
+    this.contextMenuTrigger.menuData = { item: resource };
+    this.contextMenuTrigger.openMenu();
+  }
+
+  editResource(resource: Resource) {
+    console.log('Edit resource:', resource);
+    // Placeholder for future implementation
+  }
+
+  duplicateResource(resource: Resource) {
+    console.log('Duplicate resource:', resource);
+    // Placeholder for future implementation
+  }
+
+  deleteResource(resource: Resource) {
+    if (confirm(`Are you sure you want to delete resource "${resource.name}"?`)) {
+      this.assetService.deleteResource(resource.accession_id).subscribe({
+        next: () => {
+          this.loadResources();
+        },
+        error: (err) => console.error('Error deleting resource', err)
+      });
+    }
+  }
 }
+

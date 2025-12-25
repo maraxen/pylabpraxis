@@ -45,3 +45,21 @@ def get_workcell_runtime(request: Request) -> WorkcellRuntime:
       detail="WorkcellRuntime not initialized. Application startup may have failed.",
     )
   return workcell_runtime
+
+
+def get_protocol_execution_service(request: Request):
+  """Get ProtocolExecutionService instance from request state."""
+  from praxis.backend.core.protocol_execution_service import ProtocolExecutionService
+  
+  app = request.app
+  execution_service: ProtocolExecutionService | None = getattr(
+    app.state,
+    "protocol_execution_service",
+    None,
+  )
+  if execution_service is None:
+    raise HTTPException(
+      status_code=500,
+      detail="ProtocolExecutionService not initialized. Application startup may have failed.",
+    )
+  return execution_service

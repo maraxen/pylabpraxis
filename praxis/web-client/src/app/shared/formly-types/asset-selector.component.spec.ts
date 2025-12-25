@@ -88,7 +88,9 @@ describe('AssetSelectorComponent', () => {
   });
 
   it('should filter resources by name', () => {
-    component.field.templateOptions['assetType'] = 'resource';
+    if (component.field.templateOptions) {
+      component.field.templateOptions['assetType'] = 'resource';
+    }
     fixture.detectChanges(); // Calls ngOnInit
     
     let result: any[] = [];
@@ -108,8 +110,10 @@ describe('AssetSelectorComponent', () => {
   });
 
   it('should filter resources by plrTypeFilter', () => {
-    component.field.templateOptions['assetType'] = 'resource';
-    component.field.templateOptions['plrTypeFilter'] = 'plate';
+    if (component.field.templateOptions) {
+      component.field.templateOptions['assetType'] = 'resource';
+      component.field.templateOptions['plrTypeFilter'] = 'plate';
+    }
     fixture.detectChanges();
 
     let result: any[] = [];
@@ -124,7 +128,9 @@ describe('AssetSelectorComponent', () => {
   });
 
   it('should provide definition details for hover tags', () => {
-    component.field.templateOptions['assetType'] = 'resource';
+    if (component.field.templateOptions) {
+      component.field.templateOptions['assetType'] = 'resource';
+    }
     fixture.detectChanges();
 
     let result: any[] = [];
@@ -141,7 +147,9 @@ describe('AssetSelectorComponent', () => {
   });
 
   it('should open dialog and create resource on save', () => {
-     component.field.templateOptions['assetType'] = 'resource';
+     if (component.field.templateOptions) {
+       component.field.templateOptions['assetType'] = 'resource';
+     }
      fixture.detectChanges();
 
      const mockResult = { name: 'New Res' };

@@ -13,6 +13,7 @@ import { AssetSelectorComponent } from './shared/formly-types/asset-selector.com
 import { RepeatTypeComponent } from './shared/formly-types/repeat-section.component';
 import { ChipsTypeComponent } from './shared/formly-types/chips.component';
 import { KeycloakService } from './core/auth/keycloak.service';
+import { KeyboardService } from './core/services/keyboard.service';
 import { from, switchMap } from 'rxjs';
 
 /**
@@ -20,6 +21,13 @@ import { from, switchMap } from 'rxjs';
  */
 function initializeKeycloak(keycloakService: KeycloakService) {
   return () => keycloakService.init({ onLoad: 'check-sso' });
+}
+
+/**
+ * Initialize Keyboard shortcuts and Command Palette
+ */
+function initializeKeyboard(keyboardService: KeyboardService) {
+  return () => Promise.resolve();
 }
 
 /**
@@ -59,6 +67,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,
       deps: [KeycloakService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeKeyboard,
+      deps: [KeyboardService],
       multi: true
     },
     importProvidersFrom(

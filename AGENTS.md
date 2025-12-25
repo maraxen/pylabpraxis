@@ -2,9 +2,13 @@
 
 Welcome to the PyLabPraxis repository. This guide provides essential information for agents and developers to contribute effectively and consistently to the project.
 
-## 1. Core Project Objective
-
-Our current primary objective is to achieve **full test coverage of the backend services** to create a stable foundation for frontend development.
+## Project Context
+- **Codebase:** This is a Python backend (FastAPI, SQLAlchemy, Celery) and an Angular frontend.
+- **Protocol:** PyLabPraxis uses a specialized "Conductor" framework for managing development tracks.
+- **Rules:** 
+    - See `.agents/README.md` for agent-specific workflows.
+    - See `.agents/CONDUCTOR.md` for Conductor interaction rules.
+    - Always strictly follow the active plan in `conductor/tracks/<track_id>/plan.md`.
 
 ## 2. System Architecture Overview
 

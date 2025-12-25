@@ -175,7 +175,7 @@ class AssetConstraintsModel(BaseModel):
 
   """Defines constraints for an asset required by a protocol."""
 
-  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+  model_config = ConfigDict(use_enum_values=True, validate_assignment=True, from_attributes=True)
 
   required_methods: list[str] = Field(default_factory=list)
   required_attributes: list[str] = Field(default_factory=list)
@@ -191,7 +191,12 @@ class AssetRequirementModel(BaseModel):
   description, and specific constraints.
   """
 
-  model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+  model_config = ConfigDict(
+    use_enum_values=True, 
+    validate_assignment=True, 
+    from_attributes=True,
+    populate_by_name=True,
+  )
 
   accession_id: UUID7
   name: str
@@ -200,9 +205,13 @@ class AssetRequirementModel(BaseModel):
   optional: bool = False
   default_value_repr: str | None = None
   description: str | None = None
-  constraints: AssetConstraintsModel = Field(default_factory=AssetConstraintsModel)
+  constraints: AssetConstraintsModel = Field(
+    default_factory=AssetConstraintsModel,
+    validation_alias="constraints_json",
+  )
   location_constraints: LocationConstraintsModel = Field(
     default_factory=LocationConstraintsModel,
+    validation_alias="location_constraints_json",
   )
 
 

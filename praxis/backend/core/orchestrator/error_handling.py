@@ -179,3 +179,14 @@ class ErrorHandlingMixin:
           )
 
     await db_session.merge(protocol_run_orm)
+
+    # Release scheduler reservations
+    # Note: self.scheduler is typed as Any | None in Orchestrator, so we check for existence
+    if hasattr(self, "scheduler") and getattr(self, "scheduler"):
+      try:
+        await getattr(self, "scheduler").complete_scheduled_run(run_accession_id)
+      except Exception:
+        logger.exception(
+          "ORCH: Failed to complete scheduled run %s in scheduler",
+          run_accession_id,
+        )

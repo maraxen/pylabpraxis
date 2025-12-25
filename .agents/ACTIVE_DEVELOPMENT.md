@@ -38,6 +38,14 @@
    - Frontend running on localhost:4200
    - Discovery sync-all working
 
+4. **✅ FIXED - Asset Reservation & Cancellation Bug** (Session 8)
+   - **Problem**: Asset reservations were leaked in memory after run completion/failure.
+   - **Solution**: Implemented `ProtocolScheduler.complete_scheduled_run` to release assets.
+   - **Enhancement**: Updated cancellation flow to signal Orchestrator via Redis `CANCEL` command.
+   - **Safety**: Added check in `ProtocolDecorator` to respect PAUSE/CANCEL commands.
+   - **Infrastructure**: Injected `ProtocolScheduler` into `Orchestrator` to enable proper finalization.
+   - **Verified**: E2E cancellation logic and queue endpoint availability.
+
 ---
 
 ## Previous Session Summary
@@ -147,7 +155,7 @@
      - `user.py`: 28% → Target: 80%
      - `api/auth.py`: 57% → Target: 80%
 
-5. **20 Remaining Test Failures** (MINOR - 98.6% pass rate achieved)
+6. **20 Remaining Test Failures** (MINOR - 98.6% pass rate achieved)
    - Breakdown:
      - 6 scheduler API tests (redirect/validation issues)
      - 9 well_outputs tests (IntegrityError/ValidationError)
@@ -158,7 +166,7 @@
    - **Impact**: Low priority - pre-existing test logic issues
    - **Note**: All critical infrastructure fixed, tests run reliably
 
-6. **Backend Server Password Auth** (NON-BLOCKING for tests)
+7. **Backend Server Password Auth** (NON-BLOCKING for tests)
    - **Error**: `asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "praxis"`
    - **Note**: Tests use separate docker-compose.test.yml and work fine
 
@@ -208,7 +216,7 @@
 - Importance: **HIGH** - user authentication and authorization
 - Current gaps: Password hashing, token generation, permissions
 
-5. **auth.py API coverage** (57% → 80%)
+1. **auth.py API coverage** (57% → 80%)
    - Size: 49 lines
    - Current gaps: Login/logout flows, token refresh
 

@@ -28,6 +28,8 @@ from praxis.backend.services.resource_type_definition import ResourceTypeDefinit
 router = APIRouter()
 
 
+
+
 @router.get(
   "/definitions/facets",
   tags=["Resource Definitions"],

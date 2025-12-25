@@ -1,33 +1,25 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, RouterStateSnapshot, ActivatedRouteSnapshot } from '@angular/router';
 import { authGuard } from './auth.guard';
-import { AppStore } from '../store/app.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { KeycloakService } from '../auth/keycloak.service';
 import { signal } from '@angular/core';
 
 describe('authGuard', () => {
-  let router: Router;
-  let storeMock: any;
+  let keycloakServiceMock: any;
 
   beforeEach(() => {
-    storeMock = {
-      auth: {
-        isAuthenticated: vi.fn()
-      }
-    };
-
-    const routerMock = {
-      createUrlTree: vi.fn()
+    keycloakServiceMock = {
+      isAuthenticated: signal(false),
+      login: vi.fn().mockResolvedValue(undefined)
     };
 
     TestBed.configureTestingModule({
       providers: [
-        { provide: AppStore, useValue: storeMock },
-        { provide: Router, useValue: routerMock }
+        { provide: KeycloakService, useValue: keycloakServiceMock },
+        { provide: Router, useValue: { navigate: vi.fn() } }
       ]
     });
-
-    router = TestBed.inject(Router);
   });
 
   const executeGuard = (url: string) => {
@@ -37,22 +29,17 @@ describe('authGuard', () => {
   };
 
   it('should allow access if user is authenticated', () => {
-    storeMock.auth.isAuthenticated.mockReturnValue(true);
+    keycloakServiceMock.isAuthenticated.set(true);
     const result = executeGuard('/protected');
     expect(result).toBe(true);
   });
 
-  it('should redirect to login with returnUrl if user is not authenticated', () => {
-    storeMock.auth.isAuthenticated.mockReturnValue(false);
-    const mockUrlTree = {} as any;
-    vi.spyOn(router, 'createUrlTree').mockReturnValue(mockUrlTree);
-
+  it('should redirect to Keycloak if user is not authenticated', () => {
+    keycloakServiceMock.isAuthenticated.set(false);
+    
     const result = executeGuard('/protected');
 
-    expect(router.createUrlTree).toHaveBeenCalledWith(
-      ['/login'],
-      { queryParams: { returnUrl: '/protected' } }
-    );
-    expect(result).toBe(mockUrlTree);
+    expect(keycloakServiceMock.login).toHaveBeenCalled();
+    expect(result).toBe(false);
   });
 });

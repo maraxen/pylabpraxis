@@ -125,13 +125,27 @@ class ProtocolExecutionService(IProtocolExecutionService):
     run_accession_id = uuid7()
 
     async with self.db_session_factory() as db_session:
-      # Get protocol definition
-      protocol_def_orm = await self.protocol_definition_service.get_by_name(
-        db=db_session,
-        name=protocol_name,
-        version=protocol_version,
-        commit_hash=commit_hash,
-      )
+      # Get protocol definition - try by accession_id first (if it looks like a UUID)
+      protocol_def_orm = None
+      try:
+        # Check if protocol_name is a UUID (accession_id)
+        protocol_uuid = uuid.UUID(protocol_name)
+        protocol_def_orm = await self.protocol_definition_service.get(
+          db=db_session,
+          accession_id=protocol_uuid,
+        )
+      except (ValueError, TypeError):
+        # Not a valid UUID, ignore and fall through to name lookup
+        pass
+
+      # Fall back to name lookup if not found by ID
+      if not protocol_def_orm:
+        protocol_def_orm = await self.protocol_definition_service.get_by_name(
+          db=db_session,
+          name=protocol_name,
+          version=protocol_version,
+          commit_hash=commit_hash,
+        )
 
       if not protocol_def_orm or not protocol_def_orm.accession_id:
         error_msg = (
@@ -156,9 +170,9 @@ class ProtocolExecutionService(IProtocolExecutionService):
       await db_session.refresh(protocol_run_orm)
       await db_session.commit()
 
-      # Schedule the protocol run
+      # Schedule the protocol run (pass ID to avoid session boundary issues)
       success = await self.scheduler.schedule_protocol_execution(
-        protocol_run_orm,
+        protocol_run_orm.accession_id,
         user_input_params,
         initial_state_data,
       )
@@ -224,25 +238,44 @@ class ProtocolExecutionService(IProtocolExecutionService):
     """Cancel a protocol run."""
     logger.info("Cancelling protocol run %s", protocol_run_id)
 
-    # Cancel in scheduler (releases resources and stops Celery task if possible)
+    # 1. Send CANCEL command to orchestrator via Redis (for running protocols)
+    from praxis.backend.utils.run_control import send_control_command
+
+    redis_command_sent = await send_control_command(protocol_run_id, "CANCEL")
+    if redis_command_sent:
+      logger.info("Sent CANCEL command to orchestrator for run %s", protocol_run_id)
+    else:
+      logger.warning("Failed to send CANCEL command to orchestrator for run %s (Redis error?)", protocol_run_id)
+
+    # 2. Cancel in scheduler (releases resources and stops Celery task if possible)
     scheduler_cancelled = await self.scheduler.cancel_scheduled_run(protocol_run_id)
 
-    # Update database status
+    # 3. Update database status
+    database_cancelled = False
     async with self.db_session_factory() as db_session:
       try:
-        await self.protocol_run_service.update_run_status(
-          db_session,
-          protocol_run_id,
-          ProtocolRunStatusEnum.CANCELLED,
-          output_data_json=json.dumps(
-            {
-              "status": "Cancelled by user via ProtocolExecutionService",
-              "cancelled_at": json.dumps(None),  # Would use actual timestamp
-            },
-          ),
-        )
-        await db_session.commit()
-        database_cancelled = True
+        # Check current status first
+        current_run = await self.protocol_run_service.get(db_session, protocol_run_id)
+        if current_run:
+            # If already completed or cancelled, don't overwrite status
+            if current_run.status in [ProtocolRunStatusEnum.COMPLETED, ProtocolRunStatusEnum.CANCELLED, ProtocolRunStatusEnum.FAILED]:
+                logger.info("Run %s is already in terminal state %s, not updating status", protocol_run_id, current_run.status)
+                database_cancelled = True # Consider it a success as it's already done
+            else:
+                from datetime import datetime, timezone
+                await self.protocol_run_service.update_run_status(
+                  db_session,
+                  protocol_run_id,
+                  ProtocolRunStatusEnum.CANCELLED,
+                  output_data_json=json.dumps(
+                    {
+                      "status": "Cancelled by user via ProtocolExecutionService",
+                      "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                  ),
+                )
+                await db_session.commit()
+                database_cancelled = True
       except Exception:
         logger.exception(
           "Failed to update database status for cancelled run %s",
@@ -250,7 +283,7 @@ class ProtocolExecutionService(IProtocolExecutionService):
         )
         database_cancelled = False
 
-    success = scheduler_cancelled and database_cancelled
+    success = (scheduler_cancelled or redis_command_sent) and database_cancelled
     if success:
       logger.info("Successfully cancelled protocol run %s", protocol_run_id)
     else:

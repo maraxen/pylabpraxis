@@ -11,7 +11,8 @@ New to this project? Read these in order:
 
 1. **[HANDOFF.md](./HANDOFF.md)** - Latest handoff notes and current state
 2. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Roadmap with Track A/B references
-3. **[GEMINI.md](/GEMINI.md)** - Project conventions (root directory)
+3. **[CONDUCTOR.md](./CONDUCTOR.md)** - Conductor framework rules
+4. **[GEMINI.md](/GEMINI.md)** - Project conventions (root directory)
 
 ---
 

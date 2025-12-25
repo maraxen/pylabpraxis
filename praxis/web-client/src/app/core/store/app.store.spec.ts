@@ -1,12 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { AppStore } from './app.store';
 import { vi, describe, beforeEach, it, expect, MockInstance } from 'vitest';
+import { KeycloakService } from '../auth/keycloak.service';
+import { signal } from '@angular/core';
 
 describe('AppStore', () => {
   let store: InstanceType<typeof AppStore>;
   let setItemSpy: MockInstance;
   let removeItemSpy: MockInstance;
   let getItemSpy: MockInstance;
+  
+  const mockKeycloakService = {
+    isAuthenticated: signal(false),
+    user: signal<any>(null),
+    token: signal<string | null>(null),
+    login: vi.fn(),
+    logout: vi.fn(),
+    register: vi.fn(),
+    init: vi.fn().mockResolvedValue(true)
+  };
 
   beforeEach(() => {
     // robust LocalStorage mock
@@ -51,7 +63,10 @@ describe('AppStore', () => {
     });
 
     TestBed.configureTestingModule({
-      providers: [AppStore]
+      providers: [
+        AppStore,
+        { provide: KeycloakService, useValue: mockKeycloakService }
+      ]
     });
 
     store = TestBed.inject(AppStore);
@@ -66,7 +81,7 @@ describe('AppStore', () => {
     expect(store.theme()).toBe('system');
     expect(store.sidebarOpen()).toBe(true);
     expect(store.isLoading()).toBe(false);
-    expect(store.auth.isAuthenticated()).toBe(false);
+    expect(store.auth().isAuthenticated).toBe(false);
   });
 
   describe('Sidebar', () => {
@@ -112,33 +127,30 @@ describe('AppStore', () => {
   });
 
   describe('Authentication', () => {
-    const mockUser = { id: 1, name: 'Test User' };
-    const mockToken = 'test-token';
-
-    it('should update state and localStorage on login', () => {
-      store.login(mockUser, mockToken);
-
-      expect(store.auth.isAuthenticated()).toBe(true);
-      expect(store.auth.user()).toEqual(mockUser);
-      expect(store.auth.token()).toBe(mockToken);
-      
-      expect(setItemSpy).toHaveBeenCalledWith('auth_token', mockToken);
-      expect(setItemSpy).toHaveBeenCalledWith('auth_user', JSON.stringify(mockUser));
+    it('should delegate login to KeycloakService', () => {
+      store.login('redirect-uri');
+      expect(mockKeycloakService.login).toHaveBeenCalledWith('redirect-uri');
     });
 
-    it('should clear state and localStorage on logout', () => {
-      // Login first
-      store.login(mockUser, mockToken);
-      
-      // Then logout
-      store.logout();
+    it('should delegate logout to KeycloakService', () => {
+      store.logout('redirect-uri');
+      expect(mockKeycloakService.logout).toHaveBeenCalledWith('redirect-uri');
+    });
 
-      expect(store.auth.isAuthenticated()).toBe(false);
-      expect(store.auth.user()).toBeNull();
-      expect(store.auth.token()).toBeNull();
+    it('should delegate register to KeycloakService', () => {
+      store.register('redirect-uri');
+      expect(mockKeycloakService.register).toHaveBeenCalledWith('redirect-uri');
+    });
 
-      expect(removeItemSpy).toHaveBeenCalledWith('auth_token');
-      expect(removeItemSpy).toHaveBeenCalledWith('auth_user');
+    it('should reflect KeycloakService state in auth computed signal', () => {
+      const mockUser = { id: '1', username: 'test' } as any;
+      mockKeycloakService.isAuthenticated.set(true);
+      mockKeycloakService.user.set(mockUser);
+      mockKeycloakService.token.set('test-token');
+
+      expect(store.auth().isAuthenticated).toBe(true);
+      expect(store.auth().user).toEqual(mockUser);
+      expect(store.auth().token).toBe('test-token');
     });
   });
 });

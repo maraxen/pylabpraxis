@@ -9,6 +9,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { RouterLink } from '@angular/router';
 import { ExecutionService } from '../services/execution.service';
 import { ExecutionStatus } from '../models/execution.models';
+import { TelemetryService } from '@core/services/telemetry.service';
+import { TelemetryChartComponent } from '@shared/components/telemetry-chart/telemetry-chart.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-live-dashboard',
@@ -20,7 +23,8 @@ import { ExecutionStatus } from '../models/execution.models';
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
-    RouterLink
+    RouterLink,
+    TelemetryChartComponent
   ],
   template: `
     <div class="p-6">
@@ -87,6 +91,22 @@ import { ExecutionStatus } from '../models/execution.models';
             </mat-card-content>
           </mat-card>
         </div>
+  
+        <div class="mt-6">
+          <mat-card class="glass-panel">
+            <mat-card-header>
+              <mat-card-title>Live Telemetry</mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="pt-4">
+              <app-telemetry-chart
+                [xData]="telemetryX"
+                [yData]="telemetryY"
+                title="Temperature Over Time"
+                yAxisTitle="Temperature (°C)">
+              </app-telemetry-chart>
+            </mat-card-content>
+          </mat-card>
+        </div>
 
         <!-- Actions -->
         <div class="mt-6 flex gap-2" *ngIf="run.status === ExecutionStatus.COMPLETED || run.status === ExecutionStatus.FAILED">
@@ -111,13 +131,37 @@ import { ExecutionStatus } from '../models/execution.models';
 })
 export class LiveDashboardComponent implements OnDestroy {
   executionService = inject(ExecutionService);
+  telemetryService = inject(TelemetryService);
   ExecutionStatus = ExecutionStatus;
+
+  telemetryX: string[] = [];
+  telemetryY: number[] = [];
+  private telemetrySubscription?: Subscription;
+
+  constructor() {
+    this.startTelemetry();
+  }
+
+  startTelemetry() {
+    this.telemetrySubscription = this.telemetryService.getTemperatureStream().subscribe(point => {
+      const timeStr = new Date(point.timestamp).toLocaleTimeString();
+      this.telemetryX = [...this.telemetryX, timeStr];
+      this.telemetryY = [...this.telemetryY, point.value];
+
+      // Keep only last 30 points for performance
+      if (this.telemetryX.length > 30) {
+        this.telemetryX.shift();
+        this.telemetryY.shift();
+      }
+    });
+  }
 
   stopRun() {
     this.executionService.stopRun().subscribe();
   }
 
   ngOnDestroy() {
+    this.telemetrySubscription?.unsubscribe();
     // Don't clear run on destroy - allow continued monitoring
   }
 }
