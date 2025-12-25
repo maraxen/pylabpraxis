@@ -18,7 +18,7 @@ vi.mock('rxjs/webSocket', () => ({
 describe('ExecutionService', () => {
   let service: ExecutionService;
   let httpMock: HttpTestingController;
-  const API_URL = '/api/v1';
+  const API_URL = '/api/v1/protocols';
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -135,7 +135,7 @@ describe('ExecutionService', () => {
       // Now stop it
       service.stopRun().subscribe();
 
-      const req = httpMock.expectOne(`${API_URL}/runs/run-123/stop`);
+      const req = httpMock.expectOne(`${API_URL}/runs/run-123/cancel`);
       expect(req.request.method).toBe('POST');
       req.flush(null);
 
@@ -153,7 +153,7 @@ describe('ExecutionService', () => {
       // Stop it
       service.stopRun().subscribe();
 
-      const req = httpMock.expectOne(`${API_URL}/runs/run-123/stop`);
+      const req = httpMock.expectOne(`${API_URL}/runs/run-123/cancel`);
       req.flush(null);
 
       expect(service.isConnected()).toBe(false);
@@ -180,7 +180,7 @@ describe('ExecutionService', () => {
         }
       });
 
-      const req = httpMock.expectOne(`${API_URL}/runs/run-123/stop`);
+      const req = httpMock.expectOne(`${API_URL}/runs/run-123/cancel`);
       req.flush('Error stopping run', { status: 500, statusText: 'Internal Server Error' });
     });
   });
@@ -238,7 +238,7 @@ describe('ExecutionService', () => {
   describe('Signal Reactivity', () => {
     it('should have isRunning computed from status', () => {
       service.startRun('protocol-1', 'Test Run').subscribe();
-      
+
       const req = httpMock.expectOne(`${API_URL}/runs`);
       req.flush({ run_id: 'run-123' });
 
@@ -248,7 +248,7 @@ describe('ExecutionService', () => {
 
     it('should expose currentRun as readonly signal', () => {
       service.startRun('protocol-1', 'Test').subscribe();
-      
+
       const req = httpMock.expectOne(`${API_URL}/runs`);
       req.flush({ run_id: 'run-123' });
 
@@ -324,7 +324,7 @@ describe('ExecutionService', () => {
       service.startRun('protocol-1', 'Test Run').subscribe();
       const req = httpMock.expectOne(`${API_URL}/runs`);
       req.flush({ run_id: 'run-123' });
-      
+
       expect(service.currentRun()).not.toBeNull();
 
       service.clearRun();

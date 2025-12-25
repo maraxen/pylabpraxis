@@ -32,11 +32,17 @@ export class ExecutionService {
   /**
    * Start a new protocol run
    */
-  startRun(protocolId: string, runName: string, parameters?: Record<string, any>): Observable<{ run_id: string }> {
-    return this.http.post<{ run_id: string }>(`${this.API_URL}/runs`, {
+  startRun(
+    protocolId: string,
+    runName: string,
+    parameters?: Record<string, any>,
+    simulationMode: boolean = true
+  ): Observable<{ run_id: string }> {
+    return this.http.post<{ run_id: string }>(`${this.API_URL}/protocols/runs`, {
       protocol_definition_accession_id: protocolId,
       name: runName,
-      parameters
+      parameters,
+      simulation_mode: simulationMode
     }).pipe(
       tap(response => {
         this._currentRun.set({
@@ -60,7 +66,7 @@ export class ExecutionService {
     }
 
     this.socket$ = webSocket<ExecutionMessage>({
-      url: `${this.WS_URL}/${runId}`,
+      url: `${this.WS_URL}/execution/${runId}`,
       openObserver: {
         next: () => {
           console.log('WebSocket connected for run:', runId);
@@ -148,7 +154,7 @@ export class ExecutionService {
     const runId = this._currentRun()?.runId;
     if (!runId) return of(void 0);
 
-    return this.http.post<void>(`${this.API_URL}/runs/${runId}/stop`, {}).pipe(
+    return this.http.post<void>(`${this.API_URL}/protocols/runs/${runId}/cancel`, {}).pipe(
       tap(() => {
         const current = this._currentRun();
         if (current) {
