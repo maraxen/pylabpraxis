@@ -3,6 +3,7 @@ import uuid
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from praxis.backend.core.orchestrator import Orchestrator
+from praxis.backend.services.mock_data_generator import MockTelemetryService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -15,6 +16,12 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
     try:
         run_uuid = uuid.UUID(run_id)
         orchestrator: Orchestrator = websocket.app.state.orchestrator
+
+        # Initialize telemetry if available
+        mock_telemetry: MockTelemetryService | None = getattr(websocket.app.state, "mock_telemetry_service", None)
+        if mock_telemetry:
+            # Idempotently start streaming. The service handles deduplication.
+            mock_telemetry.start_streaming(run_uuid)
 
         # Polling loop
         last_status = None
@@ -53,6 +60,16 @@ async def websocket_endpoint(websocket: WebSocket, run_id: str):
                     },
                     "timestamp": str(asyncio.get_event_loop().time())
                 })
+
+                # 2.5 Send Telemetry Update
+                if mock_telemetry:
+                    telemetry_data = mock_telemetry.get_latest_data(run_uuid)
+                    if telemetry_data:
+                        await websocket.send_json({
+                            "type": "telemetry",
+                            "payload": telemetry_data,
+                            "timestamp": str(asyncio.get_event_loop().time())
+                        })
 
                 # 3. Send New Logs
                 if len(all_logs) > last_log_count:
