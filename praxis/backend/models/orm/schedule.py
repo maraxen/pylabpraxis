@@ -36,7 +36,6 @@ from sqlalchemy import (
   select,
 )
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
@@ -45,6 +44,7 @@ from praxis.backend.models.enums.schedule import (
   ScheduleHistoryEventTriggerEnum,
   ScheduleStatusEnum,
 )
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base, CreateMaterializedView
 from praxis.backend.utils.uuid import uuid7
 
@@ -111,7 +111,7 @@ class ScheduleEntryOrm(Base):
   # Asset requirements and analysis
   required_asset_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
   asset_requirements_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
     comment="JSONB representation of asset requirements for the protocol run.",
@@ -151,13 +151,13 @@ class ScheduleEntryOrm(Base):
 
   # Metadata
   user_params_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="User-defined parameters for the protocol run, if any.",
     default=None,
   )
   initial_state_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Initial state of the protocol run, if applicable.",
     default=None,
@@ -304,7 +304,7 @@ class AssetReservationOrm(Base):
 
   # Reservation metadata
   required_capabilities_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of required capabilities for the asset reservation.",
     default=None,
@@ -376,7 +376,7 @@ class ScheduleHistoryOrm(Base):
 
   # Event data
   event_data_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
     comment="Additional event data.",

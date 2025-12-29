@@ -37,7 +37,6 @@ from sqlalchemy import (
 from sqlalchemy import (
   Enum as SAEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums import (
@@ -46,6 +45,7 @@ from praxis.backend.models.enums import (
   MachineStatusEnum,
 )
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.uuid import uuid7
 
 from .asset import AssetOrm
@@ -81,7 +81,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Manufacturer of the resource, if applicable.",
   )
   plr_definition_details_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Additional PyLabRobot specific definition details as JSONB.",
     default=None,
@@ -112,7 +112,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Model of the resource, if applicable.",
   )
   rotation_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment=(
       "Represents PLR Resource.rotation, e.g., {'x_deg': 0, 'y_deg': 0,"
@@ -162,7 +162,7 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     init=False,
   )
   setup_method_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of setup method for this machine definition.",
     default=None,
@@ -256,7 +256,7 @@ class MachineOrm(AssetOrm):
     default=None,
   )
   connection_info: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="e.g., {'backend': 'hamilton', 'address': '192.168.1.1'}",
     default=None,

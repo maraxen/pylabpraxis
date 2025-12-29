@@ -160,6 +160,37 @@ class PraxisConfiguration:
       "redis://127.0.0.1:6379/0",
     )
 
+  # --- Storage Backend Configuration ---
+  # These properties control which storage backend is used (production vs demo mode)
+
+  @property
+  def storage_backend(self) -> str:
+    """Return the storage backend type.
+
+    Possible values:
+      - "postgresql": Production mode with PostgreSQL + Redis
+      - "memory": Demo mode with in-memory storage
+      - "sqlite": Demo mode with SQLite + in-memory KV store
+
+    Priority: STORAGE_BACKEND env var > [storage] section > default "postgresql"
+    """
+    return (
+      os.getenv("STORAGE_BACKEND")
+      or self._get_section_dict("storage").get("backend", "postgresql")
+    )
+
+  @property
+  def is_demo_mode(self) -> bool:
+    """Return True if running in demo mode (no production dependencies).
+
+    Demo mode uses in-memory or SQLite backends instead of PostgreSQL/Redis.
+    This is triggered by STORAGE_BACKEND being 'memory' or 'sqlite',
+    or by setting PRAXIS_DEMO_MODE=true.
+    """
+    if os.getenv("PRAXIS_DEMO_MODE", "").lower() in ("true", "1", "yes"):
+      return True
+    return self.storage_backend in ("memory", "sqlite")
+
   @property
   def _logging_section(self) -> dict[str, str]:
     """Return the 'logging' section as a dictionary."""

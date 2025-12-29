@@ -9,17 +9,15 @@ including:
 
 from typing import TYPE_CHECKING, ClassVar
 
-from sqlalchemy import JSON, Enum, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums import AssetType
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base
 
 if TYPE_CHECKING:
   from praxis.backend.models.orm.schedule import AssetReservationOrm
-
-JsonVariant = JSON().with_variant(JSONB, "postgresql")
 
 
 class AssetOrm(Base):

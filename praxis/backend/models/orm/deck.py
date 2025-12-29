@@ -32,11 +32,11 @@ from sqlalchemy import (
   UniqueConstraint,
   text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
 from praxis.backend.models.orm.resource import ResourceOrm
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import generate_name, uuid7
 
@@ -212,27 +212,27 @@ class DeckDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Default size in Z dimension in mm.",
   )
   serialized_constructor_args_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
   )
   serialized_assignment_methods_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
   )
   serialized_constructor_hints_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
   )
   additional_properties_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
   )
   positioning_config_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
   )
@@ -348,7 +348,7 @@ class DeckPositionDefinitionOrm(Base):
     default=None,
   )
   allowed_resource_definition_names: Mapped[list[str] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="List of specific resource definition names allowed at this position.",
     default=None,
@@ -379,7 +379,7 @@ class DeckPositionDefinitionOrm(Base):
   )
 
   compatible_resource_fqns: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB field to store additional, position-specific details.",
     default=None,

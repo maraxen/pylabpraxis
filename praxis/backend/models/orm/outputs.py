@@ -36,11 +36,11 @@ from sqlalchemy import (
 from sqlalchemy import (
   Enum as SAEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import uuid7
 
@@ -126,7 +126,7 @@ class FunctionDataOutputOrm(Base):
   )
 
   spatial_coordinates_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Spatial coordinates within resource (e.g., {'well': 'A1', 'row': 0, 'col': 0})",
     default=None,
@@ -140,7 +140,7 @@ class FunctionDataOutputOrm(Base):
   )
 
   data_value_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Structured data (arrays, objects, etc.)",
     default=None,
@@ -189,7 +189,7 @@ class FunctionDataOutputOrm(Base):
   )
 
   measurement_conditions_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Measurement conditions (temperature, wavelength, etc.)",
     default=None,
@@ -219,7 +219,7 @@ class FunctionDataOutputOrm(Base):
   )
 
   processing_metadata_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Metadata about data processing/transformation",
     default=None,

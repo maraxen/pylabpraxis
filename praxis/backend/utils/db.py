@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import UUID, DateTime, String
+from sqlalchemy import JSON, UUID, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -20,6 +20,11 @@ from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.selectable import Select
 
 from praxis.backend.utils.uuid import uuid7
+
+# JsonVariant: Uses JSONB on PostgreSQL for better performance,
+# falls back to standard JSON on other databases (SQLite, etc.)
+# Defined here to avoid circular import with models.orm.types
+JsonVariant = JSON().with_variant(JSONB, "postgresql")
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +182,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
     init=False,
   )
   properties_json: Mapped[dict[str, Any]] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Arbitrary metadata.",
     default_factory=dict,

@@ -90,6 +90,8 @@ class ProtocolExecutionService(IProtocolExecutionService):
       source_name=source_name,
       is_simulation=is_simulation,
     )
+    
+    return result
 
   async def schedule_protocol_execution(
     self,

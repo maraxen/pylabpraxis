@@ -10,10 +10,10 @@ from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import UUID, DateTime, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base
 from praxis.backend.utils.uuid import generate_name, uuid7
 
@@ -59,7 +59,7 @@ class WorkcellOrm(Base):
   )
 
   latest_state_json: Mapped[dict[str, Any] | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of the latest state of the workcell",
     default=None,

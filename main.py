@@ -169,7 +169,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       from praxis.backend.services.protocols import ProtocolRunService
       from praxis.backend.models.orm.protocol import ProtocolRunOrm
       from praxis.backend.core.scheduler import ProtocolScheduler
-      
+      from praxis.backend.services.mock_data_generator import MockTelemetryService
+
       protocol_run_service = ProtocolRunService(ProtocolRunOrm)
       protocol_scheduler = ProtocolScheduler(
         db_session_factory=AsyncSessionLocal,
@@ -182,6 +183,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       # This addresses the circular dependency where Orchestrator needs Scheduler to release assets
       orchestrator.scheduler = protocol_scheduler
       
+      mock_telemetry_service = MockTelemetryService(protocol_run_service=protocol_run_service)
+
       protocol_execution_service = ProtocolExecutionService(
         db_session_factory=AsyncSessionLocal,
         asset_manager=asset_manager,
@@ -198,6 +201,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       app.state.discovery_service = discovery_service
       app.state.praxis_config = praxis_config
       app.state.protocol_execution_service = protocol_execution_service
+      app.state.mock_telemetry_service = mock_telemetry_service
       logger.info("Orchestrator, DiscoveryService, and ProtocolExecutionService attached to application state.")
       logger.info("Application startup complete.")
 

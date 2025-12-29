@@ -1,65 +1,56 @@
-# .agents/ Directory - Agent Documentation Hub
+# .agents/ Directory
 
-**Purpose**: Development documentation for agents working on PyLabPraxis  
-**Last Updated**: 2025-12-23
+Agent documentation and coordination for PyLabPraxis development.
 
 ---
 
 ## 🚀 Quick Start
 
-New to this project? Read these in order:
-
-1. **[HANDOFF.md](./HANDOFF.md)** - Latest handoff notes and current state
-2. **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Roadmap with Track A/B references
-3. **[CONDUCTOR.md](./CONDUCTOR.md)** - Conductor framework rules
-4. **[GEMINI.md](/GEMINI.md)** - Project conventions (root directory)
+1. **[NEXT_STEPS.md](./NEXT_STEPS.md)** – Roadmap and active phases
+2. **[CONDUCTOR.md](./CONDUCTOR.md)** – Development framework rules
+3. **[GEMINI.md](/GEMINI.md)** – Project conventions (root)
 
 ---
 
-## 📋 Active Implementation Plans
+## 📁 Directory Structure
 
-| Document | Purpose |
-|----------|---------|
-| [TRACK_A_PLAN.md](./TRACK_A_PLAN.md) | **E2E Protocol Execution** - Run `simple_transfer.py` |
-| [TRACK_B_PLAN.md](./TRACK_B_PLAN.md) | **UI/UX Polish** - Backend filtering, property separation |
-| [PROMPT_TRACK_A.md](./PROMPT_TRACK_A.md) | Agent prompt to start Track A |
-| [PROMPT_TRACK_B.md](./PROMPT_TRACK_B.md) | Agent prompt to start Track B |
-
----
-
-## 📚 Reference Documentation
-
-### Status Tracking
-
-| Document | Purpose |
-|----------|---------|
-| [BACKEND_STATUS.md](./BACKEND_STATUS.md) | Backend tasks, coverage gaps, commands |
-| [FRONTEND_STATUS.md](./FRONTEND_STATUS.md) | Frontend status (concise) |
-| [FRONTEND_DEV.md](./FRONTEND_DEV.md) | Frontend development phases |
-
-### Guides & Protocols
-
-| Document | Purpose |
-|----------|---------|
-| [FRONTEND_UI_GUIDE.md](./FRONTEND_UI_GUIDE.md) | UI/UX style guide, Material 3 |
-| [AGENTIC_WORKFLOW.md](./AGENTIC_WORKFLOW.md) | Jules collaboration protocol |
-| [CONTEXT_TRANSFER.md](./CONTEXT_TRANSFER.md) | Agent handoff protocol |
-
-### State Files
-
-| File | Purpose |
-|------|---------|
-| [agent_tasks.jsonl](./agent_tasks.jsonl) | Machine-readable task tracking |
+```
+.agents/
+├── skills/               # Claude Skills format
+│   ├── jules-remote/     # Jules usage guide
+│   └── agentic-workflow.md
+│
+├── prompts/              # Agent onboarding prompts
+│   ├── dispatcher.md     # Jules task dispatcher
+│   └── context-transfer.md
+│
+├── status/               # Living status docs
+│   ├── backend.md        # Test coverage, priorities
+│   └── frontend.md       # Phase status, features
+│
+├── tasks/                # Active task tracking
+│   └── {date}_{task}.md
+│
+├── archive/              # Historical docs
+│
+├── NEXT_STEPS.md         # Condensed roadmap
+├── CONDUCTOR.md          # Framework rules
+├── TECHNICAL_DEBT.md     # Known issues
+├── FRONTEND_UI_GUIDE.md  # UI/UX specifications
+└── agent_tasks.jsonl     # Machine-readable tasks
+```
 
 ---
 
-## 📦 Archive
+## 📋 Key References
 
-Historical documentation preserved in [`archive/`](./archive/):
-
-- Completed planning docs (Angular roadmap, Gemini frontend plan)
-- Resolved issues (production bugs, refactoring strategy)
-- Completed coordination (Jules handoff, frontend coordination)
+| Document | Purpose |
+|----------|---------|
+| [status/backend.md](./status/backend.md) | Backend coverage gaps, commands |
+| [status/frontend.md](./status/frontend.md) | Frontend phase status |
+| [skills/jules-remote/](./skills/jules-remote/SKILL.md) | Jules CLI usage |
+| [prompts/dispatcher.md](./prompts/dispatcher.md) | Task dispatch guide |
+| [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) | Known issues |
 
 ---
 
@@ -71,14 +62,24 @@ make db-test
 PRAXIS_DB_DSN="..." uv run uvicorn main:app --reload --port 8000
 cd praxis/web-client && npm start
 
-# Sync definitions
-curl -X POST http://localhost:8000/api/v1/discovery/sync-all
-
 # Run tests
 uv run pytest                    # Backend
 cd praxis/web-client && npm test # Frontend
+
+# Sync definitions
+curl -X POST http://localhost:8000/api/v1/discovery/sync-all
 ```
 
 ---
 
-**Maintained By**: Development Team
+## 📦 Archive
+
+Historical docs in [`archive/`](./archive/):
+
+- Completed session logs
+- Resolved issues
+- Deprecated plans
+
+---
+
+*Maintained by: Development Team*

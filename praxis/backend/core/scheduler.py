@@ -498,3 +498,61 @@ class ProtocolScheduler:
     except Exception:
       logger.exception("Error completing scheduled run %s", protocol_run_id)
       return False
+
+  async def recover_stale_runs(self) -> None:
+    """Find and fail stale protocol runs on startup.
+    
+    This method scans for runs stuck in QUEUED or PREPARING states
+    (which can happen if the server restarted mid-execution) and
+    marks them as FAILED with an appropriate message.
+    """
+    from praxis.backend.models.pydantic_internals.filters import SearchFilters
+    
+    logger.info("Starting recovery of stale protocol runs...")
+    recovered_runs_count = 0
+    batch_size = 100
+    offset = 0
+    
+    try:
+      async with self.db_session_factory() as db_session:
+        stale_statuses = [ProtocolRunStatusEnum.QUEUED, ProtocolRunStatusEnum.PREPARING]
+        while True:
+          runs_to_recover = await self.protocol_run_service.get_multi(
+            db=db_session,
+            filters=SearchFilters(offset=offset, limit=batch_size),
+            statuses=stale_statuses,
+          )
+          if not runs_to_recover:
+            break
+
+          for run in runs_to_recover:
+            logger.warning(
+              "Found stale run %s in %s state. Marking as FAILED.",
+              run.accession_id,
+              run.status.name,
+            )
+            await self.protocol_run_service.update(
+              db=db_session,
+              db_obj=run,
+              obj_in=ProtocolRunUpdate(
+                status=ProtocolRunStatusEnum.FAILED,
+                output_data_json={
+                  "error": "Stale run recovered on server startup",
+                  "details": (
+                    f"The server restarted while this run was in a {run.status.name} state. "
+                    "Asset reservations were lost, and the run could not proceed."
+                  ),
+                },
+              ),
+            )
+            recovered_runs_count += 1
+          
+          await db_session.commit()  # Commit each batch
+          offset += len(runs_to_recover)
+
+      if recovered_runs_count > 0:
+        logger.info("Successfully recovered %d stale runs.", recovered_runs_count)
+      else:
+        logger.info("No stale runs found.")
+    except Exception:
+      logger.exception("Error during stale run recovery. This may indicate a database connection issue.")

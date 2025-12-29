@@ -27,12 +27,12 @@ from sqlalchemy import (
 from sqlalchemy import (
   Enum as SAEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from praxis.backend.models.enums.resource import ResourceStatusEnum
 from praxis.backend.models.orm.asset import AssetOrm
 from praxis.backend.models.orm.plr_sync import PLRTypeDefinitionOrm
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.uuid import uuid7
 
 if TYPE_CHECKING:
@@ -84,7 +84,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Manufacturer of the resource, if applicable.",
   )
   plr_definition_details_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Additional PyLabRobot specific definition details as JSONB.",
     default=None,
@@ -121,7 +121,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Model of the resource, if applicable.",
   )
   rotation_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment=(
       "Represents PLR Resource.rotation, e.g., {'x_deg': 0, 'y_deg': 0,"
@@ -166,7 +166,7 @@ class ResourceDefinitionOrm(PLRTypeDefinitionOrm):
     comment="Vendor/manufacturer extracted from FQN (e.g., 'corning', 'opentrons').",
   )
   properties_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
     init=False,  # Don't include in dataclass __init__ to avoid SA dict issues

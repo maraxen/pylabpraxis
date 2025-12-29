@@ -15,8 +15,6 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy.dialects.postgresql import JSONB
-
 if TYPE_CHECKING:
   from . import (
     AssetReservationOrm,
@@ -50,6 +48,7 @@ from praxis.backend.models.enums import (
   ProtocolRunStatusEnum,
   ProtocolSourceStatusEnum,
 )
+from praxis.backend.models.orm.types import JsonVariant
 from praxis.backend.utils.db import Base
 
 
@@ -266,7 +265,7 @@ class FunctionProtocolDefinitionOrm(Base):
     default=None,
   )
   tags: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Arbitrary tags associated with the protocol function for categorization.",
     default=None,
@@ -393,7 +392,7 @@ class ParameterDefinitionOrm(Base):
   )
   constraints_json: Mapped[dict | None] = mapped_column(
     "constraints",
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of any constraints on the parameter, such as allowed values or \
       ranges.",
@@ -401,7 +400,7 @@ class ParameterDefinitionOrm(Base):
   )
   ui_hint_json: Mapped[dict | None] = mapped_column(
     "ui_hint",
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of UI hints for the parameter.",
     default=None,
@@ -490,7 +489,7 @@ class AssetRequirementOrm(Base):
   )
   constraints_json: Mapped[dict | None] = mapped_column(
     "constraints",
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of any constraints on the asset requirement, such as allowed \
       values or ranges.",
@@ -498,7 +497,7 @@ class AssetRequirementOrm(Base):
   )
   location_constraints_json: Mapped[dict | None] = mapped_column(
     "location_constraints",
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="JSONB representation of location constraints for the asset requirement.",
     default=None,
@@ -579,31 +578,31 @@ class ProtocolRunOrm(Base):
     default=None,
   )
   input_parameters_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Input parameters for the protocol run.",
     default=None,
   )
   resolved_assets_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Resolved assets for the protocol run.",
     default=None,
   )
   output_data_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Output data for the protocol run.",
     default=None,
   )
   initial_state_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Initial state for the protocol run.",
     default=None,
   )
   final_state_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Final state for the protocol run.",
     default=None,
@@ -615,7 +614,7 @@ class ProtocolRunOrm(Base):
     default=None,
   )
   created_by_user: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     comment="Information about the user who created this protocol run.",
     default=None,
@@ -747,13 +746,13 @@ class FunctionCallLogOrm(Base):
     init=False,
   )
   input_args_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
     comment="Input arguments for the function call.",
   )
   return_value_json: Mapped[dict | None] = mapped_column(
-    JSONB,
+    JsonVariant,
     nullable=True,
     default=None,
     comment="Return value of the function call.",

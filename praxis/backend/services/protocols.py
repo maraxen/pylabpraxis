@@ -118,13 +118,15 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
     protocol_definition_accession_id: uuid.UUID | None = None,
     protocol_name: str | None = None,
     status: ProtocolRunStatusEnum | None = None,
+    statuses: list[ProtocolRunStatusEnum] | None = None,
   ) -> list[ProtocolRunOrm]:
     """List protocol runs with optional filtering and pagination."""
     logger.info(
-      "Listing protocol runs with filters: def_accession_id=%s, name='%s', status=%s, ",
+      "Listing protocol runs with filters: def_accession_id=%s, name='%s', status=%s, statuses=%s",
       protocol_definition_accession_id,
       protocol_name,
       status,
+      statuses,
     )
     stmt = select(self.model).options(
       joinedload(self.model.top_level_protocol_definition),
@@ -145,7 +147,10 @@ class ProtocolRunService(CRUDBase[ProtocolRunOrm, ProtocolRunCreate, ProtocolRun
         == FunctionProtocolDefinitionOrm.accession_id,
       ).filter(FunctionProtocolDefinitionOrm.name == protocol_name)
       logger.debug("Filtering by protocol name: '%s'.", protocol_name)
-    if status is not None:
+    if statuses:
+      stmt = stmt.filter(self.model.status.in_(statuses))
+      logger.debug("Filtering by statuses: %s.", statuses)
+    elif status is not None:
       stmt = stmt.filter(self.model.status == status)
       logger.debug("Filtering by status: '%s'.", status.name)
 

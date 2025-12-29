@@ -1,0 +1,59 @@
+:host {
+  display: block;
+  font-family: sans-serif;
+}
+
+.plate-heatmap-container {
+  display: grid;
+  grid-template-columns: 30px repeat(12, 40px);
+  grid-template-rows: 30px repeat(8, 40px);
+  gap: 2px;
+  padding: 10px;
+}
+
+.column-header,
+.row-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Place column headers in the first row */
+.column-header {
+  grid-row: 1;
+}
+
+/* Place row headers in the first column */
+.row-header {
+  grid-column: 1;
+}
+
+.plate-grid {
+  grid-column: 2 / span 12;
+  grid-row: 2 / span 8;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 2px;
+  border: 1px solid #ccc;
+}
+
+.plate-row {
+  display: contents; /* Allows wells to be direct children of the grid */
+}
+
+.well {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ddd;
+  border-radius: 50%; /* Make wells circular */
+  transition: transform 0.1s ease-in-out;
+  cursor: pointer;
+}
+
+.well:hover {
+  transform: scale(1.1);
+  border: 1px solid #000;
+}
