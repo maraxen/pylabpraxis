@@ -18,6 +18,7 @@ from praxis.backend.core.filesystem import FileSystem
 from praxis.backend.core.orchestrator import Orchestrator
 from praxis.backend.core.workcell import Workcell
 from praxis.backend.core.workcell_runtime import WorkcellRuntime
+from praxis.backend.core.storage import StorageFactory, StorageBackend
 from praxis.backend.models.orm.deck import DeckDefinitionOrm, DeckOrm
 from praxis.backend.models.orm.machine import MachineOrm
 from praxis.backend.models.orm.resource import ResourceOrm
@@ -38,6 +39,7 @@ from praxis.backend.utils.db import (
 
 if TYPE_CHECKING:
   from praxis.backend.services.praxis_orm_service import PraxisDBService
+
 from praxis.backend.utils.db import (
   async_engine as praxis_async_engine,
 )
@@ -85,6 +87,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
   discovery_service: DiscoveryService | None = None
   try:
     logger.info("Application startup sequence initiated...")
+
+    # Determine storage backend from configuration
+    storage_backend_str = praxis_config.storage_backend
+    is_demo = praxis_config.is_demo_mode
+    logger.info("Storage backend: %s (demo mode: %s)", storage_backend_str, is_demo)
+    
+    # Map string to enum
+    backend_map = {
+      "postgresql": StorageBackend.POSTGRESQL,
+      "memory": StorageBackend.MEMORY,
+      "sqlite": StorageBackend.SQLITE,
+      "redis": StorageBackend.REDIS,
+    }
+    storage_backend = backend_map.get(storage_backend_str, StorageBackend.POSTGRESQL)
+    
+    # Create key-value store and task queue based on backend
+    kv_store = StorageFactory.create_key_value_store(storage_backend)
+    task_queue = StorageFactory.create_task_queue(storage_backend)
+    app.state.kv_store = kv_store
+    app.state.task_queue = task_queue
+    logger.info("Storage layer initialized: kv_store=%s, task_queue=%s", type(kv_store).__name__, type(task_queue).__name__)
 
     logger.info("Initializing Praxis database schema...")
     engine = getattr(app.state, "async_engine", None)
@@ -154,14 +177,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       )
       logger.info("Orchestrator dependencies initialized.")
 
-      # Configure Celery
-      logger.info("Configuring Celery app...")
-      configure_celery_app(
-        celery_app,
-        broker_url=praxis_config.celery_broker_url,
-        backend_url=praxis_config.celery_result_backend,
-      )
-      logger.info("Celery app configured.")
+      # Configure Celery (only in production mode)
+      if not is_demo:
+        logger.info("Configuring Celery app...")
+        configure_celery_app(
+          celery_app,
+          broker_url=praxis_config.celery_broker_url,
+          backend_url=praxis_config.celery_result_backend,
+        )
+        logger.info("Celery app configured.")
+        scheduler_task_queue = celery_app
+      else:
+        logger.info("Demo mode: Skipping Celery configuration, using in-memory task queue")
+        scheduler_task_queue = task_queue
 
       # Initialize ProtocolExecutionService
       logger.info("Initializing ProtocolExecutionService...")
@@ -174,7 +202,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
       protocol_run_service = ProtocolRunService(ProtocolRunOrm)
       protocol_scheduler = ProtocolScheduler(
         db_session_factory=AsyncSessionLocal,
-        task_queue=celery_app,
+        task_queue=scheduler_task_queue,
         protocol_run_service=protocol_run_service,
         protocol_definition_service=protocol_definition_service,
       )
