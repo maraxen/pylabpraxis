@@ -31,7 +31,27 @@ export class KeycloakService {
    * Initialize Keycloak. Call this in APP_INITIALIZER.
    * @param options Configuration options
    */
+  /**
+   * Initialize Keycloak. Call this in APP_INITIALIZER.
+   * @param options Configuration options
+   */
   async init(options?: { onLoad?: 'login-required' | 'check-sso' }): Promise<boolean> {
+    // Handle Demo Mode
+    if ((environment as any).demo) {
+      console.log('[KeycloakService] Demo mode detected - simulating authentication');
+      this._isAuthenticated.set(true);
+      this._user.set({
+        id: 'demo-user',
+        username: 'demo',
+        email: 'demo@pylabpraxis.example',
+        firstName: 'Demo',
+        lastName: 'User',
+        roles: ['user', 'demo', 'admin']
+      });
+      this._token.set('demo-token');
+      return true;
+    }
+
     this.keycloak = new Keycloak({
       url: environment.keycloak.url,
       realm: environment.keycloak.realm,
@@ -73,6 +93,12 @@ export class KeycloakService {
    * Redirect to Keycloak login page
    */
   login(redirectUri?: string): Promise<void> {
+    if ((environment as any).demo) {
+      console.log('[KeycloakService] Demo mode - login simulated');
+      this._isAuthenticated.set(true);
+      return Promise.resolve();
+    }
+
     if (!this.keycloak) {
       throw new Error('Keycloak not initialized');
     }
@@ -85,6 +111,11 @@ export class KeycloakService {
    * Redirect to Keycloak registration page
    */
   register(redirectUri?: string): Promise<void> {
+    if ((environment as any).demo) {
+      console.log('[KeycloakService] Demo mode - registration simulated');
+      return Promise.resolve();
+    }
+
     if (!this.keycloak) {
       throw new Error('Keycloak not initialized');
     }
@@ -97,13 +128,19 @@ export class KeycloakService {
    * Logout and redirect to Keycloak logout
    */
   logout(redirectUri?: string): Promise<void> {
-    if (!this.keycloak) {
-      throw new Error('Keycloak not initialized');
-    }
-
     this._isAuthenticated.set(false);
     this._user.set(null);
     this._token.set(null);
+
+    if ((environment as any).demo) {
+      console.log('[KeycloakService] Demo mode - logout simulated');
+      window.location.href = '/';
+      return Promise.resolve();
+    }
+
+    if (!this.keycloak) {
+      throw new Error('Keycloak not initialized');
+    }
 
     return this.keycloak.logout({
       redirectUri: redirectUri || window.location.origin
@@ -114,6 +151,10 @@ export class KeycloakService {
    * Get the current access token
    */
   async getToken(): Promise<string | null> {
+    if ((environment as any).demo) {
+      return 'demo-token';
+    }
+
     if (!this.keycloak || !this.keycloak.authenticated) {
       return null;
     }
@@ -134,6 +175,9 @@ export class KeycloakService {
    * Check if user has a specific role
    */
   hasRole(role: string): boolean {
+    if ((environment as any).demo) {
+      return ['user', 'demo', 'admin'].includes(role);
+    }
     return this.keycloak?.hasRealmRole(role) || false;
   }
 
@@ -148,6 +192,9 @@ export class KeycloakService {
    * Get Keycloak account management URL
    */
   getAccountUrl(): string | undefined {
+    if ((environment as any).demo) {
+      return '#';
+    }
     return this.keycloak?.createAccountUrl();
   }
 

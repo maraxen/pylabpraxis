@@ -1,0 +1,90 @@
+{
+    "resource": {
+        "name": "deck",
+        "type": "HamiltonSTARDeck",
+        "location": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        "size_x": 1000,
+        "size_y": 653.5,
+        "size_z": 500,
+        "num_rails": 50,
+        "children": [
+            {
+                "name": "plate_carrier",
+                "type": "PlateCarrier",
+                "location": {
+                    "x": 100,
+                    "y": 63,
+                    "z": 0
+                },
+                "size_x": 135.0,
+                "size_y": 497.0,
+                "size_z": 10.0,
+                "children": [
+                    {
+                        "name": "plate_1",
+                        "type": "Plate",
+                        "location": {
+                            "x": 10,
+                            "y": 10,
+                            "z": 5
+                        },
+                        "size_x": 127.76,
+                        "size_y": 85.48,
+                        "size_z": 14.5,
+                        "num_items_x": 12,
+                        "num_items_y": 8,
+                        "children": []
+                    },
+                    {
+                        "name": "plate_2",
+                        "type": "Plate",
+                        "location": {
+                            "x": 10,
+                            "y": 110,
+                            "z": 5
+                        },
+                        "size_x": 127.76,
+                        "size_y": 85.48,
+                        "size_z": 14.5,
+                        "num_items_x": 12,
+                        "num_items_y": 8,
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "name": "tip_carrier",
+                "type": "TipCarrier",
+                "location": {
+                    "x": 300,
+                    "y": 63,
+                    "z": 0
+                },
+                "size_x": 135.0,
+                "size_y": 497.0,
+                "size_z": 10.0,
+                "children": [
+                    {
+                        "name": "tip_rack_1",
+                        "type": "TipRack",
+                        "location": {
+                            "x": 10,
+                            "y": 10,
+                            "z": 5
+                        },
+                        "size_x": 127.76,
+                        "size_y": 85.48,
+                        "size_z": 14.5,
+                        "num_items_x": 12,
+                        "num_items_y": 8,
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    }
+}

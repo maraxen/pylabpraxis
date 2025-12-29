@@ -13,7 +13,7 @@ license = {text = "MIT"}
 dependencies = [
     "typing_extensions",
     "inflection",
-    "pylabrobot @ git+https://github.com/pylabrobot/pylabrobot.git@main",
+    "pylabrobot",
     "pydantic>=2.0.0",
     "sqlalchemy[asyncio]",
     "asyncpg>=0.27.0",
@@ -26,6 +26,9 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "python-keycloak>=5.8.1",
 ]
+
+[tool.uv.sources]
+pylabrobot = { path = "lib/pylabrobot", editable = true }
 
 [project.optional-dependencies]
 fw = [

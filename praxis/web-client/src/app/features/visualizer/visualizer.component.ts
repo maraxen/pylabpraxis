@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { environment } from '@env/environment';
+
 
 @Component({
   selector: 'app-visualizer',
@@ -13,7 +13,8 @@ import { environment } from '@env/environment';
         *ngIf="visualizerUrl" 
         [src]="visualizerUrl" 
         class="visualizer-frame"
-        title="PyLabRobot Visualizer">
+        title="PyLabRobot Visualizer"
+        (load)="onIframeLoad($event)">
       </iframe>
       <div *ngIf="!visualizerUrl" class="error">
         Unable to load visualizer URL.
@@ -45,10 +46,17 @@ export class VisualizerComponent implements OnInit {
   visualizerUrl: SafeResourceUrl | null = null;
 
   ngOnInit() {
-    const wsPort = '2121'; 
+    // In demo mode, we use the wrapper which listens for postMessage
+    const wsPort = '2121';
     const fsPort = '1337';
 
-    const url = `/assets/visualizer-wrapper.html?ws_port=${wsPort}&fs_port=${fsPort}`;
+    const url = `assets/visualizer-wrapper.html?ws_port=${wsPort}&fs_port=${fsPort}&mode=demo`;
     this.visualizerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  onIframeLoad(event: Event) {
+    // PostMessage logic can be added here if we want to dynamic update
+    // For now, mode=demo in the URL handles loading the mock data.
+    console.log('Visualizer iframe loaded');
   }
 }

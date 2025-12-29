@@ -5,6 +5,7 @@ import { provideHttpClient, withInterceptors, HttpRequest, HttpHandlerFn } from 
 import { inject } from '@angular/core';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/http/error.interceptor';
+import { demoInterceptor } from './core/interceptors/demo.interceptor';
 import { importProvidersFrom } from '@angular/core';
 import { FormlyModule } from '@ngx-formly/core';
 import { FormlyMaterialModule } from '@ngx-formly/material';
@@ -14,13 +15,23 @@ import { RepeatTypeComponent } from './shared/formly-types/repeat-section.compon
 import { ChipsTypeComponent } from './shared/formly-types/chips.component';
 import { KeycloakService } from './core/auth/keycloak.service';
 import { KeyboardService } from './core/services/keyboard.service';
-import { from, switchMap } from 'rxjs';
+import { environment } from '../environments/environment';
+import { from, switchMap, of } from 'rxjs';
+
+// Check if we're in demo mode
+const isDemoMode = (environment as { demo?: boolean }).demo === true;
 
 /**
- * Initialize Keycloak on app startup
+ * Initialize Keycloak on app startup (skipped in demo mode)
  */
 function initializeKeycloak(keycloakService: KeycloakService) {
-  return () => keycloakService.init({ onLoad: 'check-sso' });
+  return () => {
+    // if (isDemoMode) {
+    //   console.log('[Demo Mode] Skipping Keycloak initialization (handled by KeycloakService)');
+    //   // return Promise.resolve();
+    // }
+    return keycloakService.init({ onLoad: 'check-sso' });
+  };
 }
 
 /**
@@ -31,9 +42,14 @@ function initializeKeyboard(keyboardService: KeyboardService) {
 }
 
 /**
- * HTTP interceptor that adds Keycloak Bearer token to requests
+ * HTTP interceptor that adds Keycloak Bearer token to requests (skipped in demo mode)
  */
 const keycloakInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
+  // Skip token in demo mode
+  if (isDemoMode) {
+    return next(req);
+  }
+
   const keycloakService = inject(KeycloakService);
 
   // Skip token for non-API requests
@@ -62,7 +78,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
     provideAnimationsAsync(),
-    provideHttpClient(withInterceptors([keycloakInterceptor, errorInterceptor])),
+    // Demo interceptor runs FIRST to catch API requests before they hit proxy
+    provideHttpClient(withInterceptors([demoInterceptor, keycloakInterceptor, errorInterceptor])),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,

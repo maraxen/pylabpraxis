@@ -37,11 +37,13 @@
     "@ngx-formly/core": "^7.0.1",
     "@ngx-formly/material": "^7.0.1",
     "@types/plotly.js-dist-min": "^2.3.4",
+    "@types/sql.js": "^1.4.9",
     "angular-plotly.js": "^20.0.0",
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.2",
     "plotly.js-dist-min": "^3.3.1",
     "rxjs": "~7.8.0",
+    "sql.js": "^1.13.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

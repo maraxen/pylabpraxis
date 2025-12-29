@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { KeycloakService } from '../../core/auth/keycloak.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -186,7 +187,18 @@ export class LoginComponent implements OnInit {
   error = '';
   loading = true;
 
+  // Check if we're in demo mode
+  private isDemoMode = ((window as any).__DEMO_MODE__) ||
+    ((environment as any).demo === true);
+
   async ngOnInit() {
+    // Demo mode: redirect directly to home without auth
+    if (this.isDemoMode) {
+      console.log('[Demo Mode] Bypassing login, redirecting to home');
+      window.location.href = '/pylabpraxis/app/home';
+      return;
+    }
+
     this.loading = true;
     try {
       // If already authenticated, redirect to home

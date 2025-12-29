@@ -31,12 +31,25 @@
               },
               {
                 "glob": "**/*",
-                "input": "../../external/pylabrobot/pylabrobot/visualizer",
-                "output": "/assets/visualizer"
+                "input": "src/assets",
+                "output": "/assets"
+              },
+              {
+                "glob": "sql-wasm.wasm",
+                "input": "node_modules/sql.js/dist",
+                "output": "assets/wasm"
               }
             ],
             "styles": [
               "src/styles.scss"
+            ],
+            "scripts": [
+              "node_modules/plotly.js-dist-min/plotly.min.js"
+            ],
+            "externalDependencies": [
+              "fs",
+              "path",
+              "crypto"
             ]
           },
           "configurations": {
@@ -59,6 +72,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "demo": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo.ts"
+                }
+              ],
+              "baseHref": "/pylabpraxis/",
+              "optimization": true,
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"
@@ -74,6 +98,9 @@
             },
             "development": {
               "buildTarget": "web-client:build:development"
+            },
+            "demo": {
+              "buildTarget": "web-client:build:demo"
             }
           },
           "defaultConfiguration": "development"

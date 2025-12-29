@@ -410,11 +410,11 @@ class ScheduleHistoryOrm(Base):
   )
   completed_duration_ms: Mapped[int | None] = mapped_column(
     Integer,
-    Computed(
-      "(EXTRACT(EPOCH FROM (event_end - event_start)) * 1000)",
-      persisted=True,
-    ),
-    comment="Stored duration in milliseconds, computed by the DB when a run completes.",
+    # Computed(
+    #   "(EXTRACT(EPOCH FROM (event_end - event_start)) * 1000)",
+    #   persisted=True,
+    # ),
+    comment="Stored duration in milliseconds, computed manually for SQLite compatibility.",
     nullable=True,
     init=False,
   )
@@ -488,11 +488,11 @@ scheduler_metrics_mv = Table(
   Column("avg_execution_time_ms", Float),
 )
 
-event.listen(
-  Base.metadata,
-  "after_create",
-  CreateMaterializedView("scheduler_metrics_mv", metrics_query),
-)
+# event.listen(
+#   Base.metadata,
+#   "after_create",
+#   CreateMaterializedView("scheduler_metrics_mv", metrics_query),
+# )
 
 
 class SchedulerMetricsView(Base):

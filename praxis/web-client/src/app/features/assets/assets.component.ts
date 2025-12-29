@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MachineListComponent } from './components/machine-list/machine-list.component';
-import { ResourceListComponent } from './components/resource-list/resource-list.component';
+import { ResourceAccordionComponent } from './components/resource-accordion/resource-accordion.component';
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
 import { MachineDialogComponent } from './components/machine-dialog.component';
 import { ResourceDialogComponent } from './components/resource-dialog.component';
@@ -25,7 +25,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatDialogModule,
     MatProgressSpinnerModule,
     MachineListComponent,
-    ResourceListComponent,
+    ResourceAccordionComponent,  // Changed from ResourceListComponent
     DefinitionsListComponent
   ],
   template: `
@@ -54,7 +54,7 @@ import { ActivatedRoute, Router } from '@angular/router';
             Resources
           </ng-template>
           <div *ngIf="isLoading()" class="spinner-overlay"><mat-spinner diameter="40"></mat-spinner></div>
-          <app-resource-list #resourceList></app-resource-list>
+          <app-resource-accordion #resourceAccordion></app-resource-accordion>
         </mat-tab>
 
         <mat-tab>
@@ -118,7 +118,7 @@ export class AssetsComponent implements OnInit {
   private router = inject(Router);
 
   @ViewChild('machineList') machineList!: MachineListComponent;
-  @ViewChild('resourceList') resourceList!: ResourceListComponent;
+  @ViewChild('resourceAccordion') resourceAccordion!: ResourceAccordionComponent;
 
   selectedIndex = 0;
   assetTypeLabel = signal('Machine');
@@ -217,7 +217,7 @@ export class AssetsComponent implements OnInit {
       })
     ).subscribe({
       next: () => {
-        this.resourceList.loadResources();
+        this.resourceAccordion.loadData();
       },
       error: (err) => console.error('Error creating resource', err)
     });

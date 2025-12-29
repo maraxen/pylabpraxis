@@ -60,6 +60,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
             <mat-icon>view_in_ar</mat-icon>
             <span class="nav-label">Deck</span>
           </a>
+          <a class="nav-item" routerLink="/app/data" routerLinkActive="active">
+            <mat-icon>bar_chart</mat-icon>
+            <span class="nav-label">Data</span>
+          </a>
           <a class="nav-item" routerLink="/app/settings" routerLinkActive="active">
             <mat-icon>settings</mat-icon>
             <span class="nav-label">Settings</span>

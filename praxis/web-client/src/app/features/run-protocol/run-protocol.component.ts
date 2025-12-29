@@ -21,8 +21,10 @@ import { ParameterConfigComponent } from './components/parameter-config/paramete
 import { ProtocolCardComponent } from './components/protocol-card/protocol-card.component';
 import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
 import { DeckVisualizerComponent } from './components/deck-visualizer/deck-visualizer.component';
-import { DeckLayout } from './models/deck-layout.models';
 import { AppStore } from '@core/store/app.store';
+import { DeckGeneratorService } from './services/deck-generator.service';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
 
 const RECENTS_KEY = 'pylabpraxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -75,6 +77,16 @@ interface FilterCategory {
                 <div class="banner-content">
                   <h3>{{ selectedProtocol()?.name }}</h3>
                   <p>{{ selectedProtocol()?.description }}</p>
+                  <button mat-raised-button color="primary"
+                    [disabled]="!configuredAssets() || isStartingRun() || executionService.isRunning()"
+                    (click)="startRun()">
+                  <mat-icon>play_arrow</mat-icon> Run Protocol
+                </button>
+                </div>
+                <div class="actions" [class.pulse-action]="!configuredAssets()">
+                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()">
+                    <mat-icon>settings_suggest</mat-icon> Configure Deck
+                  </button>
                 </div>
                 <button mat-button (click)="clearProtocol()">
                   <mat-icon>close</mat-icon> Change
@@ -205,24 +217,22 @@ interface FilterCategory {
         <!-- Step 3: Deck Configuration -->
         <mat-step label="Deck Configuration">
           <div class="deck-config-step">
-            <app-deck-visualizer [layoutData]="mockDeckLayout()"></app-deck-visualizer>
+            <app-deck-visualizer [layoutData]="deckData()"></app-deck-visualizer>
             
             <div class="deck-info">
               <h3><mat-icon>info</mat-icon> Pre-Run Deck Check</h3>
-              <p>Verify that all resources are placed in their assigned slots before starting the run.</p>
+              <p>Ensure resources are placed correctly as shown on the left.</p>
               
-              @if (selectedProtocol()) {
-                <div class="resource-summary">
-                  <strong>Required Assets:</strong>
-                  <ul>
-                    @for (asset of selectedProtocol()?.assets; track asset.name) {
-                      <li>
-                        {{ asset.name }} ({{ asset.type_hint_str }})
-                      </li>
-                    }
-                  </ul>
-                </div>
-              }
+              <div class="deck-status" [class.ready]="!!configuredAssets()">
+                 <mat-icon>{{ configuredAssets() ? 'check_circle' : 'warning' }}</mat-icon>
+                 <span>{{ configuredAssets() ? 'Deck Configured' : 'Configuration Required' }}</span>
+              </div>
+
+              <div class="actions" [class.pulse-action]="!configuredAssets()">
+                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()">
+                    <mat-icon>settings_suggest</mat-icon> Configure Deck
+                  </button>
+              </div>
             </div>
           </div>
           <div class="actions">
@@ -272,9 +282,41 @@ interface FilterCategory {
       min-height: 400px;
     }
     .deck-info {
-      padding: 24px;
-      background: var(--sys-surface-container-high);
-      border-radius: 12px;
+        flex: 0 0 300px;
+        padding: 24px;
+        background: var(--sys-surface-container-high);
+        border-radius: 12px;
+    }
+
+    .deck-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0;
+        padding: 12px;
+        border-radius: 8px;
+        background: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        font-weight: 500;
+    }
+
+    .deck-status.ready {
+        background: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+    }
+    
+    .actions {
+        margin-top: 16px;
+    }
+
+    @keyframes subtle-pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--sys-primary-rgb), 0.7); }
+        50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(var(--sys-primary-rgb), 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--sys-primary-rgb), 0); }
+    }
+
+    .pulse-action button {
+        animation: subtle-pulse 2s infinite;
     }
     .deck-info h3 {
       display: flex;
@@ -434,6 +476,8 @@ export class RunProtocolComponent implements OnInit {
   private router = inject(Router);
   private protocolService = inject(ProtocolService);
   private executionService = inject(ExecutionService);
+  private deckGenerator = inject(DeckGeneratorService);
+  private dialog = inject(MatDialog);
 
   protocolFormGroup = this._formBuilder.group({ protocolId: [''] });
   parametersFormGroup = this._formBuilder.group({});
@@ -445,28 +489,34 @@ export class RunProtocolComponent implements OnInit {
   isStartingRun = signal(false);
   searchQuery = signal('');
   activeFilters = signal<Record<string, Set<string>>>({});
+  configuredAssets = signal<Record<string, any> | null>(null);
 
-  // Mock Deck Layout
-  mockDeckLayout = signal<DeckLayout>({
-    width: 800,
-    height: 500,
-    slots: [
-      { id: 'Slot 1', x: 20, y: 50, width: 120, height: 180, resource: { name: 'Tips 1000', type: 'tip_rack', color: '#009688' } },
-      { id: 'Slot 2', x: 160, y: 50, width: 120, height: 180, resource: { name: 'Plate 1', type: 'plate', color: '#3f51b5' } },
-      { id: 'Slot 3', x: 300, y: 50, width: 120, height: 180 },
-      { id: 'Slot 4', x: 440, y: 50, width: 120, height: 180, resource: { name: 'Plate 2', type: 'plate', color: '#3f51b5' } },
-      { id: 'Slot 5', x: 580, y: 50, width: 120, height: 180 },
-
-      { id: 'Slot 6', x: 20, y: 270, width: 120, height: 180 },
-      { id: 'Slot 7', x: 160, y: 270, width: 120, height: 180, resource: { name: 'Tips 200', type: 'tip_rack', color: '#009688' } },
-      { id: 'Slot 8', x: 300, y: 270, width: 120, height: 180, resource: { name: 'Reservoir', type: 'plate', color: '#ff9800' } },
-      { id: 'Slot 9', x: 440, y: 270, width: 120, height: 180 },
-      { id: 'Slot 10', x: 580, y: 270, width: 120, height: 180 },
-    ]
+  // Computed Deck Data
+  deckData = computed(() => {
+    const protocol = this.selectedProtocol();
+    if (!protocol) return null;
+    return this.deckGenerator.generateDeckForProtocol(protocol, this.configuredAssets() || undefined);
   });
 
   // Inject global store for simulation mode
   store = inject(AppStore);
+
+  openGuidedSetup() {
+    const protocol = this.selectedProtocol();
+    if (!protocol) return;
+
+    const dialogRef = this.dialog.open(GuidedSetupComponent, {
+      data: { protocol },
+      width: '600px',
+      disableClose: true
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && result.assetMap) {
+        this.configuredAssets.set(result.assetMap);
+      }
+    });
+  }
 
   // Computed
   recentProtocols = computed(() => {
@@ -578,6 +628,14 @@ export class RunProtocolComponent implements OnInit {
 
   selectProtocol(protocol: ProtocolDefinition) {
     this.selectedProtocol.set(protocol);
+    this.configuredAssets.set(null); // Reset deck config
+    this.parametersFormGroup = this._formBuilder.group({});
+
+    // Create form controls for parameters
+    if (protocol.parameters) {
+      // This block's content was not provided in the instruction,
+      // so it remains empty as per the instruction's snippet.
+    }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
     this.addToRecents(protocol.accession_id);
   }

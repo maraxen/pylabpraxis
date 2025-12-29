@@ -54,6 +54,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
       },
       {
+        path: 'data',
+        loadChildren: () => import('./features/data/data.routes').then(m => m.DATA_ROUTES)
+      },
+      {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
       },
@@ -69,6 +73,7 @@ export const routes: Routes = [
   { path: 'protocols', redirectTo: 'app/protocols' },
   { path: 'run', redirectTo: 'app/run' },
   { path: 'visualizer', redirectTo: 'app/visualizer' },
+  { path: 'data', redirectTo: 'app/data' },
   { path: 'settings', redirectTo: 'app/settings' },
   { path: 'stress-test', redirectTo: 'app/stress-test' },
   // Fallback

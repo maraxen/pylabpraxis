@@ -66,7 +66,7 @@ interface RecentRun {
 
       <!-- Stats Overview -->
       <section class="stats-grid">
-        <div class="stat-card active-runs">
+        <div class="stat-card active-runs clickable" routerLink="/app/run" matTooltip="View active protocol runs">
           <div class="stat-icon">
             <mat-icon>play_arrow</mat-icon>
           </div>
@@ -77,7 +77,7 @@ interface RecentRun {
           <div class="stat-indicator pulse"></div>
         </div>
 
-        <div class="stat-card instruments">
+        <div class="stat-card instruments clickable" routerLink="/app/assets" matTooltip="View laboratory instruments">
           <div class="stat-icon">
             <mat-icon>precision_manufacturing</mat-icon>
           </div>
@@ -87,7 +87,7 @@ interface RecentRun {
           </div>
         </div>
 
-        <div class="stat-card protocols">
+        <div class="stat-card protocols clickable" routerLink="/app/protocols" matTooltip="Manage protocols">
           <div class="stat-icon">
             <mat-icon>science</mat-icon>
           </div>
@@ -97,7 +97,7 @@ interface RecentRun {
           </div>
         </div>
 
-        <div class="stat-card resources">
+        <div class="stat-card resources clickable" routerLink="/app/assets" matTooltip="Manage resources">
           <div class="stat-icon">
             <mat-icon>inventory_2</mat-icon>
           </div>
@@ -128,7 +128,10 @@ interface RecentRun {
           <div class="panel-content">
             @if (hasRunningExperiments()) {
               @for (run of currentRuns(); track run.id) {
-                <div class="experiment-card" [class.running]="run.status === 'running'">
+                <div class="experiment-card clickable" 
+                     [class.running]="run.status === 'running'"
+                     routerLink="/app/run"
+                     matTooltip="View run details">
                   <div class="experiment-header">
                     <div class="experiment-info">
                       <h3>{{ run.name }}</h3>
@@ -152,7 +155,7 @@ interface RecentRun {
                       Started {{ formatTimeAgo(run.startedAt) }}
                     </span>
                     @if (run.status === 'running') {
-                      <button mat-icon-button matTooltip="View Details" routerLink="/app/run">
+                      <button mat-icon-button routerLink="/app/run">
                         <mat-icon>visibility</mat-icon>
                       </button>
                     }
@@ -240,6 +243,10 @@ interface RecentRun {
       padding: 1.5rem;
       max-width: 1400px;
       margin: 0 auto;
+    }
+
+    .clickable {
+      cursor: pointer;
     }
 
     /* Header */
@@ -444,6 +451,12 @@ interface RecentRun {
       padding: 1rem;
       margin-bottom: 0.75rem;
       transition: all 0.3s ease;
+    }
+
+    .experiment-card:hover {
+      background: var(--theme-surface-elevated, rgba(255,255,255,0.08));
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .experiment-card.running {
