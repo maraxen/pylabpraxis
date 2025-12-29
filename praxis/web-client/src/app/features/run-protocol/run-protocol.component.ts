@@ -228,8 +228,27 @@ interface FilterCategory {
                  <span>{{ configuredAssets() ? 'Deck Configured' : 'Configuration Required' }}</span>
               </div>
 
+              <div class="resource-summary">
+                <h4>Required Assets:</h4>
+                <ul>
+                  @for (req of selectedProtocol()?.assets; track req.accession_id) {
+                    <li>
+                      <span class="req-name">{{ req.name }}</span>: 
+                      @if (configuredAssets()?.[req.accession_id]) {
+                        <span class="status-ready">
+                          {{ configuredAssets()![req.accession_id].name }}
+                        </span>
+                      } @else {
+                        <span class="status-pending">Not Assigned</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+
               <div class="actions" [class.pulse-action]="!configuredAssets()">
-                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()">
+                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()"
+                    [disabled]="executionService.isRunning()">
                     <mat-icon>settings_suggest</mat-icon> Configure Deck
                   </button>
               </div>
@@ -237,7 +256,7 @@ interface FilterCategory {
           </div>
           <div class="actions">
             <button mat-button matStepperPrevious>Back</button>
-            <button mat-button matStepperNext>Next</button>
+            <button mat-button matStepperNext [disabled]="!configuredAssets()">Next</button>
           </div>
         </mat-step>
 
@@ -248,10 +267,15 @@ interface FilterCategory {
           <p>Parameters Configured: {{ parametersFormGroup.valid ? 'Yes' : 'No' }}</p>
           <div class="actions">
             <button mat-button matStepperPrevious>Back</button>
-            <button mat-raised-button color="primary" (click)="startRun()" [disabled]="isStartingRun()">
-              <mat-icon *ngIf="!isStartingRun()">play_arrow</mat-icon>
-              <mat-spinner *ngIf="isStartingRun()" diameter="20" class="button-spinner"></mat-spinner>
-              {{ isStartingRun() ? 'Starting...' : 'Start Execution' }}
+            <button mat-raised-button color="primary" (click)="startRun()" 
+              [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
+              @if (isStartingRun()) {
+                <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                Starting...
+              } @else {
+                <mat-icon>play_arrow</mat-icon>
+                Start Execution
+              }
             </button>
           </div>
         </mat-step>
@@ -332,9 +356,24 @@ interface FilterCategory {
       padding-left: 20px;
     }
     .resource-summary li {
-      margin-bottom: 4px;
+      margin-bottom: 8px;
       font-size: 0.9em;
       color: var(--sys-on-surface-variant);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .req-name {
+      font-weight: 500;
+      color: var(--sys-on-surface);
+    }
+    .status-ready {
+      color: var(--sys-primary);
+      font-weight: 500;
+    }
+    .status-pending {
+      color: var(--sys-error);
+      font-style: italic;
     }
 
     /* Selected Protocol Banner */
@@ -475,7 +514,7 @@ export class RunProtocolComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private protocolService = inject(ProtocolService);
-  private executionService = inject(ExecutionService);
+  public executionService = inject(ExecutionService);
   private deckGenerator = inject(DeckGeneratorService);
   private dialog = inject(MatDialog);
 
