@@ -10,21 +10,29 @@
 1. **Robust Asset Management**
     * Move beyond simple CRUD to deep PLR introspection.
     * Enable "discover hardware" as the primary means of adding machines in Browser Mode.
-    * Differentiate between Frontend (PLR capability) and Backend (Driver) clearly.
-    * Support complex hardware capabilities (channels, optional modules) via proper metadata.
+        * Differentiate between Frontend (PLR capability) and Backend (Driver) clearly.
+        * Support complex hardware capabilities (channels, optional modules) via proper metadata.
 
-2. **Application Modes Strategy**
-    * **Browser Mode (Pure)**: Zero-install, runs entirely in browser. LocalStorage state. No login. "Discover Hardware" only. State savable and restorable. Uses a hardcoded PLR definitions file. Not sure how to execute the REPL in this mode but it is essential.
-    * **Demo Mode**: Browser Mode + Pre-loaded "fake" assets/protocols for demonstration.
-    * **Lite Mode**: SQLite backend, low resource footprint, no database or backend server needed.
-    * **Production Mode**: Full Postgres/Redis/FastAPI stack with Authentication.
+    1. **Application Modes Strategy**
+        * **Browser Mode (Pure)**: Zero-install, runs entirely in browser.
+            * **Runtime**: Pyodide (WASM) running the Python Service Layer.
+            * **Storage**: SQLite-in-WASM (via SQLAlchemy Repository pattern).
+            * **IO Layer**: `WebBridgeBackend` (Python) -> Angular -> WebSerial.
+        * **Demo Mode**: Browser Mode + Pre-loaded "fake" assets/protocols.
+        * **Lite Mode**: SQLite backend, low resource footprint.
+        * **Production Mode**: Full Postgres/Redis/FastAPI stack.
 
-3. **Visualization Evolution**
-    * **REWRITE**: Transition from "Deck Visualizer" to "Workcell Visualizer".
+    2. **Static Analysis & Graph Building**
+        * **Tooling**: Use `LibCST` (Python) for robust, safe protocol parsing.
+        * **Goal**: Extract DAGs and metadata without runtime execution risks.
+        * **Decision**: Explicitly NOT rewriting backend in Rust at this stage.
+
+    3. **Visualization Evolution**
+        * **REWRITE**: Transition from "Deck Visualizer" to "Workcell Visualizer".
     * Remove legacy PLR visualizer components.
     * Implement configurable, multi-window views for complex workcells.
 
-4. **Interactive REPL**
+2. **Interactive REPL**
     * Complete the PLR REPL implementation.
     * Finish the terminal UI and keyboard interaction layer.
 
@@ -45,12 +53,18 @@
 
 ### 1. Asset Management & PLR Inspection
 
-* [ ] **PLR Assessment**: Enumerate machine types, identifiers, capabilities (channels, pumps).
-* [ ] **Metadata Parsing**: Parse capabilities into chips (e.g., "8-channel", "96-channel").
-* [ ] **Machine Types**: Backend vs Frontend differentiation in UI.
-* [ ] **Collapsible Menus**: Hierarchical view for machine types (Type -> Manufacturer -> Model).
+* [x] **PLR Assessment**: Enumerate machine types, identifiers, capabilities (channels, pumps).
+* [x] **Metadata Parsing**: Parse capabilities into chips (e.g., "8-channel", "96-channel").
+* [x] **Machine Types**: Backend vs Frontend differentiation in UI.
+* [x] **Collapsible Menus**: Hierarchical view for machine types (Type -> Manufacturer -> Model).
 
-### 2. Application Modes
+### 2. Browser Runtime & Analysis (New)
+
+* [ ] **LibCST Parsing**: Static analysis for protocol safety and asset extraction.
+* [ ] **Pyodide Runtime**: WASM-based Python execution in the browser.
+* [ ] **WebBridge Backend**: Python shim to route PLR commands to Angular/WebSerial.
+
+### 3. Application Modes
 
 * [ ] **Browser Mode**: Implement LocalStorage persistence adapter.
 * [ ] **No-Login Flow**: Bypass AuthGuard in Browser/Demo modes.
@@ -59,9 +73,9 @@
 
 ### 3. Visualizer Rewrite
 
-* [ ] **Workcell Visualizer**: New architecture for multi-window deck views.
-* [ ] **Remove Legacy**: Strip out old iframe/PLR-based visualization components.
-* [ ] **Configurability**: Allow user to arrange deck views/windows.
+* [x] **Workcell Visualizer**: New architecture for multi-window deck views.
+* [x] **Remove Legacy**: Strip out old iframe/PLR-based visualization components.
+* [x] **Configurability**: Allow user to arrange deck views/windows.
 
 ### 4. REPL
 

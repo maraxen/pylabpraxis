@@ -9,11 +9,11 @@
 
 ### Workcell Visualizer (REWRITE)
 
-- [ ] **Architectural Rewrite**:
+- [x] **Architectural Rewrite**:
   - Abandon legacy `DeckVisualizer` (iframe/PLR component).
   - Implement **Workcell Visualizer**: A configurable canvas of "Deck Windows".
   - Allow users to open/close/arrange windows for different decks/machines.
-- [ ] **Configurability**:
+- [x] **Configurability**:
   - Persist window layout in LocalStorage.
 - [ ] **Future**: Spatial relationship mapping (workcells in space).
 

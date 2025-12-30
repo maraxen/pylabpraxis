@@ -12,36 +12,38 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ### Backend
 
-- [ ] **Enumerate Machine Types**:
-  - Introspect PLR to find all available `LiquidHandler` and `PlateReader` subclasses.
-  - Identify Manufacturers (Hamilton, Opentrons, Tecan, etc.).
-  - Distinguish between **Frontend** (Logic/API) and **Backend** (Driver/Communication) classes.
+- [ ] **Static PLR Inspection (LibCST)**:
+  - [ ] **DEPRECATE**: Move away from runtime `inspect` and class instantiation in `ResourceTypeDefinitionService`.
+  - [ ] **Enumerate Machine Types**:
+    - Use `LibCST` to introspect PLR source to find all available `LiquidHandler` and `PlateReader` subclasses.
+    - Identify Manufacturers (Hamilton, Opentrons, Tecan, etc.).
+    - Distinguish between **Frontend** (Logic/API) and **Backend** (Driver/Communication) classes.
 - [ ] **Capability Extraction**:
-  - Extract channel counts (e.g., "8-channel", "96-channel", "384-channel").
+  - Extract channel counts (e.g., "8-channel", "96-channel", "384-channel") from constructor calls.
   - Identify optional modules (Swap, HEPA, etc.).
   - Parse identifiers and metadata into a structured format for the UI.
 - [ ] **Discovery Service Update**:
-  - Ensure `sync-all` endpoints populate this rich metadata into database/store.
+  - Ensure `sync-all` endpoints populate this rich metadata into database/store using the new static analyzer.
 
 ### Frontend
 
-- [ ] **Collapsible Menus**:
+- [x] **Collapsible Menus**:
   - Implement collapsible categories for Machine Types (e.g., `Liquid Handlers > Hamilton > STAR`).
   - Similar UI pattern to Resources.
-- [ ] **Capability Chips**:
+- [x] **Capability Chips**:
   - Render capability tags (e.g., `[8-channel]`, `[96-channel]`, `[SmartSteps]`).
   - Add tooltips/hover info for these chips.
-- [ ] **Manufacturer Rendering**:
+- [x] **Manufacturer Rendering**:
   - Explicitly render Manufacturer name/logo if available.
   - Group availability by Manufacturer.
-- [ ] **Backend vs Frontend Selection**:
+- [x] **Backend vs Frontend Selection**:
   - UI to select the "Machine Type" (Frontend) and then allow selecting the "Driver" (Backend) if applicable (e.g., STAR vs Simulated).
 
 ---
 
 ## 2. Asset UX & Visualizer Rewrite
 
-- [ ] **Workcell Visualizer (Rewrite)**:
+- [x] **Workcell Visualizer (Rewrite)**:
   - **Goal**: Rework the deck visualizer into a "Workcell Visualizer".
   - **Architecture**: Configurable set of deck view windows.
   - **Space**: Relation of workcells in physical space (future).
@@ -70,6 +72,7 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ## Reference Patterns
 
-* **Benchling**: Registry/Inventory split.
+- **Benchling**: Registry/Inventory split.
+
 - **LabArchives**: Freezer box visualization.
 - **Docker**: Capabilities/Driver abstraction.
