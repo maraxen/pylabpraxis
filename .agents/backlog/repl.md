@@ -8,31 +8,37 @@
 
 ## 1. Status Overview
 
-* **Backend**: Foundation largely complete (Kernel, WebSocket, Execution).
-* **Frontend**: UI exists but needs significant polish (Keyboard handling, scrolling, responsiveness).
+* **Backend**: Foundation complete (ReplSession, WebSocket). Auto-imports for PLR added.
+* **Frontend**: xterm.js UI implemented and integrated. Browser Mode (Pyodide) works for execution and stdout.
+* **Issues**: Autocompletion (Browser Mode) is implemented but failing in verification.
 
 ---
 
 ## 2. Outstanding Tasks
 
-### Frontend Terminal UI
+### 1. Fix Autocompletion (Immediate)
 
-- [ ] **Keyboard Events**:
-  * Fix Up/Down arrow history navigation (currently buggy/unresponsive).
-  * Implement standard terminal shortcuts (Ctrl+C, Ctrl+L).
-* [ ] **Scrolling**:
-  * Auto-scroll to bottom on new output.
-  * User pause scrolling on scroll-up.
-* [ ] **Visual Polish**:
-  * Monospace font consistency.
-  * Syntax highlighting for input/output.
+* [x] Debug Browser Mode `Tab` key handling and Worker communication.
+* [x] Ensure `rlcompleter` works in Pyodide or fallback to manual dictionary completion.
 
-### Backend Refinement
+### 2. PLR Deep Integration (Next Step)
 
-- [ ] **Session Isolation**: Ensure multiple browser tabs get distinct kernels (or shared if desired).
-* [ ] **Context Injection**: Ensure `lh` (LiquidHandler), `tips`, `plates` are pre-injected into the namespace based on current state.
+* [x] **Console Host Output**: Separate stream for "console" logs vs "inline" execution results.
+* [ ] **Introspection**: `lh = LiquidHandler` should auto-fill arguments based on available backends. (Requires generic completer)
+* [x] **Resource/Machine Context**:
+  * [x] Auto-import `LiquidHandler`, `Plate`, `TipRack`.
+  * [x] Pre-populate context with discovered machines (e.g., if a STAR is connected, `lh` should be pre-configured or easy to init).
 
-### Integration
+### 3. UI Refinements
 
-- [ ] **Quick Access**: Toggle REPL from status bar or Command Palette (`Alt+` backtick?).
-* [ ] **Hardware Bridge**: Ensure REPL can talk to discovered WebSerial devices.
+* [x] **Command History**: Implement Up/Down arrow navigation for previous commands.
+* [x] **Clear Shortcut**: Implement `Ctrl+L` to clear the terminal window.
+* [ ] **Auto-scroll**: Ensure terminal always scrolls to bottom on new output.
+* [ ] **Split Streams**: Visually distinguish between `stdout` (logs), `stderr` (errors), and `return` values.
+* [ ] **Signature Help**: Show function arguments/docstrings when typing `(` (Language Server Protocol lite).
+
+### 4. Integration
+
+* [x] **Quick Access**: Toggle REPL with `Alt+` ` (Backtick) and Command Palette.
+
+* [ ] **Hardware Bridge**: Ensure REPL can control WebSerial devices via `WebBridgeBackend`.
