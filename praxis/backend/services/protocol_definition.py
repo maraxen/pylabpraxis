@@ -208,6 +208,12 @@ class ProtocolDefinitionCRUDService(
       },
     )
 
+    # Map hardware_requirements to ORM field
+    if "hardware_requirements" in protocol_def_data:
+      protocol_def_data["hardware_requirements_json"] = protocol_def_data.pop(
+        "hardware_requirements",
+      )
+
     protocol_def = FunctionProtocolDefinitionOrm(
       **protocol_def_data,
       source_repository_accession_id=source_repository.accession_id if source_repository else None,
@@ -372,6 +378,10 @@ class ProtocolDefinitionCRUDService(
     update_data = obj_in.model_dump(exclude_unset=True)
     params_data = update_data.pop("parameters", None)
     assets_data = update_data.pop("assets", None)
+
+    # Map hardware_requirements to ORM field
+    if "hardware_requirements" in update_data:
+      update_data["hardware_requirements_json"] = update_data.pop("hardware_requirements")
 
     # 2. Update scalar fields manually (copied from CRUDBase to avoid None issues)
     # Convert enum string values back to enum members for SQLAlchemy

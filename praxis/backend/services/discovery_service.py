@@ -8,7 +8,11 @@ via the protocol_data_service. It also updates the in-memory PROTOCOL_REGISTRY
 with the database ID of the discovered protocols.
 """
 
-import ast
+
+# LibCST-based extraction
+import libcst as cst
+from libcst.metadata import MetadataWrapper
+
 import logging
 import os
 import uuid
@@ -27,101 +31,12 @@ from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDSe
 from praxis.backend.services.resource_type_definition import (
   ResourceTypeDefinitionService,
 )
+from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+  ProtocolFunctionVisitor,
+)
 from praxis.backend.utils.uuid import uuid7
-from praxis.common.type_inspection import is_pylabrobot_resource
 
 logger = logging.getLogger(__name__)
-
-
-class ProtocolVisitor(ast.NodeVisitor):
-
-  """AST visitor to find functions decorated with @protocol_function."""
-
-  # Decorator names that indicate a protocol function
-  PROTOCOL_DECORATOR_NAMES = {"protocol_function"}
-
-  def __init__(self, module_name: str, file_path: str):
-    self.module_name = module_name
-    self.file_path = file_path
-    self.definitions = []
-
-  def _has_protocol_decorator(self, node: ast.FunctionDef) -> bool:
-    """Check if the function has a @protocol_function decorator."""
-    for decorator in node.decorator_list:
-      # Handle @protocol_function (simple name)
-      if isinstance(decorator, ast.Name):
-        if decorator.id in self.PROTOCOL_DECORATOR_NAMES:
-          return True
-      # Handle @protocol_function(...) (call with arguments)
-      elif isinstance(decorator, ast.Call):
-        if isinstance(decorator.func, ast.Name):
-          if decorator.func.id in self.PROTOCOL_DECORATOR_NAMES:
-            return True
-        # Handle module.protocol_function(...)
-        elif isinstance(decorator.func, ast.Attribute):
-          if decorator.func.attr in self.PROTOCOL_DECORATOR_NAMES:
-            return True
-    return False
-
-  def _process_function_node(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-    """Process a function definition and extract protocol metadata if decorated."""
-    # Only process functions with @protocol_function decorator
-    if not self._has_protocol_decorator(node):
-      return
-
-    params_list = []
-    assets_list = []
-
-    num_args = len(node.args.args)
-    num_defaults = len(node.args.defaults)
-    defaults = [None] * (num_args - num_defaults) + [ast.unparse(d) for d in node.args.defaults]
-
-    for arg, default in zip(node.args.args, defaults, strict=True):
-      annotation = ast.unparse(arg.annotation) if arg.annotation else "Any"
-
-      if is_pylabrobot_resource(annotation):
-        # Asset parameters require accession_id and type_hint_str
-        asset_args = {
-          "accession_id": uuid7(),
-          "name": arg.arg,
-          "fqn": f"{self.module_name}.{node.name}.{arg.arg}",
-          "type_hint_str": annotation,
-          "actual_type_str": annotation,
-          "optional": default is not None,
-          "default_value_repr": default,
-        }
-        assets_list.append(asset_args)
-      else:
-        # Regular parameters
-        param_args = {
-          "name": arg.arg,
-          "fqn": f"{self.module_name}.{node.name}.{arg.arg}",
-          "type_hint": annotation,
-          "optional": default is not None,
-          "default_value_repr": default,
-        }
-        params_list.append(param_args)
-
-    inferred_model = {
-      "name": node.name,
-      "fqn": f"{self.module_name}.{node.name}",
-      "version": "0.0.0-inferred",
-      "description": ast.get_docstring(node) or "Inferred from code.",
-      "source_file_path": self.file_path,
-      "module_name": self.module_name,
-      "function_name": node.name,
-      "parameters": params_list,
-      "assets": assets_list,
-    }
-    self.definitions.append(inferred_model)
-
-  def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-    """Visit a sync function definition."""
-    self._process_function_node(node)
-
-  def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-    """Visit an async function definition."""
-    self._process_function_node(node)
 
 
 class DiscoveryService:
@@ -209,20 +124,37 @@ class DiscoveryService:
               module_file_path.relative_to(abs_path_item.parent).with_suffix("").parts,
             )
 
-            with open(module_file_path, encoding="utf-8") as f:
-              source = f.read()
-              try:
-                tree = ast.parse(source, filename=str(module_file_path))
-                visitor = ProtocolVisitor(
-                  module_name,
-                  str(module_file_path),
-                )
-                visitor.visit(tree)
-                extracted_definitions.extend(visitor.definitions)
-              except SyntaxError as e:
-                logger.warning(
-                  f"Could not parse {module_file_path}: {e}",
-                )
+            try:
+              source = module_file_path.read_text(encoding="utf-8")
+              tree = cst.parse_module(source)
+              visitor = ProtocolFunctionVisitor(
+                module_name,
+                str(module_file_path),
+              )
+              # Use MetadataWrapper to enable advanced features in visitors later if needed
+              wrapper = MetadataWrapper(tree)
+              wrapper.visit(visitor)
+              
+              # Convert ProtocolFunctionInfo models back to raw dicts for existing upsert logic
+              for def_info in visitor.definitions:
+                definition_dict = {
+                  "name": def_info.name,
+                  "fqn": def_info.fqn,
+                  "version": "0.0.0-inferred",
+                  "description": def_info.docstring,
+                  "source_file_path": def_info.source_file_path,
+                  "module_name": def_info.module_name,
+                  "function_name": def_info.name,
+                  "parameters": def_info.raw_parameters,
+                  "assets": def_info.raw_assets,
+                  "hardware_requirements": def_info.hardware_requirements,
+                }
+                extracted_definitions.append(definition_dict)
+
+            except (cst.ParserSyntaxError, OSError, UnicodeDecodeError) as e:
+              logger.warning(
+                f"Could not parse {module_file_path}: {e}",
+              )
     return extracted_definitions
 
   async def discover_and_upsert_protocols(

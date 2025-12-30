@@ -30,6 +30,13 @@ export class ExecutionService {
   messages$ = this.messagesSubject.asObservable();
 
   /**
+   * Check protocol compatibility with available machines
+   */
+  getCompatibility(protocolId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/protocols/${protocolId}/compatibility`);
+  }
+
+  /**
    * Start a new protocol run
    */
   startRun(

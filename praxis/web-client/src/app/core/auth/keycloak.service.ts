@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import Keycloak from 'keycloak-js';
 import { environment } from '../../../environments/environment';
+import { isBrowserModeEnv } from '../services/mode.service';
 
 export interface KeycloakUser {
   id: string;
@@ -37,7 +38,7 @@ export class KeycloakService {
    */
   async init(options?: { onLoad?: 'login-required' | 'check-sso' }): Promise<boolean> {
     // Handle Demo Mode
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       console.log('[KeycloakService] Demo mode detected - simulating authentication');
       this._isAuthenticated.set(true);
       this._user.set({
@@ -93,7 +94,7 @@ export class KeycloakService {
    * Redirect to Keycloak login page
    */
   login(redirectUri?: string): Promise<void> {
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       console.log('[KeycloakService] Demo mode - login simulated');
       this._isAuthenticated.set(true);
       return Promise.resolve();
@@ -111,7 +112,7 @@ export class KeycloakService {
    * Redirect to Keycloak registration page
    */
   register(redirectUri?: string): Promise<void> {
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       console.log('[KeycloakService] Demo mode - registration simulated');
       return Promise.resolve();
     }
@@ -132,7 +133,7 @@ export class KeycloakService {
     this._user.set(null);
     this._token.set(null);
 
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       console.log('[KeycloakService] Demo mode - logout simulated');
       window.location.href = '/';
       return Promise.resolve();
@@ -151,7 +152,7 @@ export class KeycloakService {
    * Get the current access token
    */
   async getToken(): Promise<string | null> {
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       return 'demo-token';
     }
 
@@ -175,7 +176,7 @@ export class KeycloakService {
    * Check if user has a specific role
    */
   hasRole(role: string): boolean {
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       return ['user', 'demo', 'admin'].includes(role);
     }
     return this.keycloak?.hasRealmRole(role) || false;
@@ -192,7 +193,7 @@ export class KeycloakService {
    * Get Keycloak account management URL
    */
   getAccountUrl(): string | undefined {
-    if ((environment as any).demo) {
+    if (isBrowserModeEnv()) {
       return '#';
     }
     return this.keycloak?.createAccountUrl();

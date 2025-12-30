@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, inject, signal, computed, ViewChild, ElementRef, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject, signal, computed, ViewChild, ElementRef, PLATFORM_ID, ViewEncapsulation, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -15,6 +15,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
 @Component({
   selector: 'app-command-palette',
   standalone: true,
+  encapsulation: ViewEncapsulation.None,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -74,17 +75,20 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
     </div>
   `,
   styles: [`
-    :host {
-      display: block;
-      background: var(--mat-sys-surface-container-high);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: var(--mat-sys-level5);
+    .command-palette-panel .mat-mdc-dialog-container .mat-mdc-dialog-surface {
+      background: transparent !important;
+      box-shadow: none !important;
+      overflow: visible !important;
     }
 
     .command-palette-container {
       width: 600px;
       max-width: 90vw;
+      background: var(--theme-surface-elevated);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--glass-shadow);
+      border: 1px solid var(--theme-border);
     }
 
     .search-header {
@@ -94,7 +98,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
       gap: 12px;
 
       mat-icon {
-        color: var(--mat-sys-on-surface-variant);
+        color: var(--theme-text-secondary);
       }
 
       input {
@@ -102,18 +106,18 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
         background: transparent;
         border: none;
         outline: none;
-        color: var(--mat-sys-on-surface);
+        color: var(--theme-text-primary);
         font-size: 1.1rem;
         font-family: inherit;
 
         &::placeholder {
-          color: var(--mat-sys-outline);
+          color: var(--theme-text-tertiary);
         }
       }
 
       .esc-hint {
         font-size: 0.75rem;
-        color: var(--mat-sys-outline);
+        color: var(--theme-text-tertiary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
@@ -123,6 +127,11 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
       max-height: 400px;
       overflow-y: auto;
       padding: 8px 0;
+      scroll-behavior: smooth;
+
+      button {
+        transition: background-color 0.15s ease;
+      }
 
       .selected-item {
         /* Distinct background */
@@ -160,7 +169,7 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
 
       .description {
         font-size: 0.85rem;
-        color: var(--mat-sys-on-surface-variant);
+        color: var(--theme-text-secondary);
       }
 
       .meta-container {
@@ -173,20 +182,20 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
       .shortcut-badge {
         font-size: 0.7rem;
         font-weight: 600;
-        background: var(--mat-sys-surface-container);
-        color: var(--mat-sys-on-surface-variant);
+        background: var(--theme-surface);
+        color: var(--theme-text-secondary);
         padding: 2px 6px;
         border-radius: 4px;
-        border: 1px solid var(--mat-sys-outline-variant);
+        border: 1px solid var(--theme-border);
         font-family: monospace;
       }
 
       .category-chip {
         font-size: 0.7rem;
-        background: var(--mat-sys-surface-container-low);
+        background: var(--theme-surface);
         padding: 2px 8px;
         border-radius: 4px;
-        color: var(--mat-sys-outline);
+        color: var(--theme-text-tertiary);
         text-transform: uppercase;
       }
     }
@@ -194,25 +203,25 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
     .no-results {
       padding: 32px;
       text-align: center;
-      color: var(--mat-sys-outline);
+      color: var(--theme-text-tertiary);
     }
 
     .palette-footer {
       padding: 12px 16px;
-      background: var(--mat-sys-surface-container-low);
-      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--theme-surface);
+      border-top: 1px solid var(--theme-border);
 
       .shortcuts {
         display: flex;
         gap: 16px;
         font-size: 0.75rem;
-        color: var(--mat-sys-outline);
+        color: var(--theme-text-tertiary);
 
         kbd {
-          background: var(--mat-sys-surface-container);
+          background: var(--theme-surface-elevated);
           padding: 2px 4px;
           border-radius: 3px;
-          border: 1px solid var(--mat-sys-outline-variant);
+          border: 1px solid var(--theme-border);
           font-family: monospace;
         }
       }
@@ -265,6 +274,21 @@ export class CommandPaletteComponent implements OnInit, AfterViewInit {
     { initialValue: [] }
   );
 
+  constructor() {
+    // Reactive scrolling effect
+    effect(() => {
+      const index = this.selectedIndex();
+      const listEl = this.commandList?.nativeElement;
+      if (listEl) {
+        const buttons = listEl.querySelectorAll('button[mat-list-item]');
+        const selectedEl = buttons[index] as HTMLElement;
+        if (selectedEl) {
+          selectedEl.scrollIntoView({ block: 'nearest' });
+        }
+      }
+    });
+  }
+
   ngOnInit() {
     this.searchControl.valueChanges.subscribe(() => {
       this.selectedIndex.set(0);
@@ -310,27 +334,7 @@ export class CommandPaletteComponent implements OnInit, AfterViewInit {
     if (count === 0) return;
 
     this.selectedIndex.update(current => {
-      const next = (current + delta + count) % count;
-      this.scrollToItem(next);
-      return next;
-    });
-  }
-
-  scrollToItem(index: number) {
-    setTimeout(() => {
-      const listEl = this.commandList?.nativeElement;
-      if (listEl) {
-        // Find the button at the specific index
-        // Since we use @for, the children should be in order
-        // However, mat-action-list might inject other elements? 
-        // Best to select by class or just children
-        const buttons = listEl.querySelectorAll('button[mat-list-item]');
-        const selectedEl = buttons[index] as HTMLElement;
-
-        if (selectedEl) {
-          selectedEl.scrollIntoView({ block: 'nearest' });
-        }
-      }
+      return (current + delta + count) % count;
     });
   }
 

@@ -47,15 +47,15 @@ interface RecentRun {
       <!-- Header with Quick Actions -->
       <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="greeting">
-          <h1 class="text-3xl font-bold text-white mb-1">Welcome back</h1>
-          <p class="text-white/70">Here's what's happening in your lab</p>
+          <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Welcome back</h1>
+          <p class="text-sys-text-secondary">Here's what's happening in your lab</p>
         </div>
         <div class="flex gap-3 w-full md:w-auto">
           <a mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-6 !font-semibold flex items-center gap-2 flex-1 md:flex-none justify-center shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" routerLink="/app/run">
             <mat-icon>play_circle</mat-icon>
             Run Protocol
           </a>
-          <a mat-stroked-button class="!border-white/20 !text-white !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-white/5 transition-all" routerLink="/app/protocols">
+          <a mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-[var(--mat-sys-surface-variant)] transition-all" routerLink="/app/protocols">
             <mat-icon>schedule</mat-icon>
             Schedule
           </a>
@@ -64,7 +64,7 @@ interface RecentRun {
 
       <!-- Stats Overview -->
       <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/run" matTooltip="View active protocol runs">
+        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/run" matTooltip="View active protocol runs">
           <!-- Glow effect -->
           <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           
@@ -72,39 +72,39 @@ interface RecentRun {
             <mat-icon class="text-primary">play_arrow</mat-icon>
           </div>
           <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-white">{{ runningCount() }}</span>
-            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Running</span>
+            <span class="text-2xl font-bold text-sys-text-primary">{{ runningCount() }}</span>
+            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Running</span>
           </div>
           <div class="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
         </div>
 
-        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="View laboratory machines">
+        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="View laboratory machines">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 relative z-10">
             <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
           </div>
           <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-white">{{ activeMachines() }}<span class="text-base font-normal text-white/40">/{{ totalMachines() }}</span></span>
-            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Machines Online</span>
+            <span class="text-2xl font-bold text-sys-text-primary">{{ activeMachines() }}<span class="text-base font-normal text-sys-text-tertiary">/{{ totalMachines() }}</span></span>
+            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Machines Online</span>
           </div>
         </div>
 
-        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/protocols" matTooltip="Manage protocols">
+        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/protocols" matTooltip="Manage protocols">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20 relative z-10">
             <mat-icon class="text-purple-400">science</mat-icon>
           </div>
           <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-white">{{ totalProtocols() }}</span>
-            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Protocols</span>
+            <span class="text-2xl font-bold text-sys-text-primary">{{ totalProtocols() }}</span>
+            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Protocols</span>
           </div>
         </div>
 
-        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="Manage resources">
+        <div class="group relative bg-surface border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="Manage resources">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-primary/20 relative z-10">
             <mat-icon class="text-orange-400">inventory_2</mat-icon>
           </div>
           <div class="flex flex-col relative z-10">
-            <span class="text-2xl font-bold text-white">{{ totalResources() }}</span>
-            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Resources</span>
+            <span class="text-2xl font-bold text-sys-text-primary">{{ totalResources() }}</span>
+            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Resources</span>
           </div>
         </div>
       </section>
@@ -112,9 +112,9 @@ interface RecentRun {
       <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Live Experiments Panel -->
-        <section class="lg:col-span-2 bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
-          <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
-            <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+        <section class="lg:col-span-2 bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
+          <div class="p-5 border-b border-[var(--theme-border)] flex justify-between items-center bg-[var(--mat-sys-surface-variant)]">
+            <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
               <mat-icon class="text-primary">monitor_heart</mat-icon>
               Live Experiments
             </h2>
@@ -129,14 +129,14 @@ interface RecentRun {
           <div class="p-4">
             @if (hasRunningExperiments()) {
               @for (run of currentRuns(); track run.id) {
-                <div class="group relative bg-white/5 border border-white/5 rounded-xl p-4 mb-3 hover:bg-white/10 hover:border-white/20 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" 
+                <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl p-4 mb-3 hover:bg-[var(--mat-sys-surface-variant)] hover:border-[var(--theme-border)] transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" 
                      [class.border-green-500-30]="run.status === 'running'"
                      routerLink="/app/run"
                      matTooltip="View run details">
                   <div class="flex justify-between items-start mb-3">
                     <div>
-                      <h3 class="font-semibold text-white group-hover:text-primary transition-colors">{{ run.name }}</h3>
-                      <span class="text-sm text-white/50">{{ run.protocolName }}</span>
+                      <h3 class="font-semibold text-sys-text-primary group-hover:text-primary transition-colors">{{ run.name }}</h3>
+                      <span class="text-sm text-sys-text-secondary">{{ run.protocolName }}</span>
                     </div>
                     <mat-chip [class]="getStatusClass(run.status) + ' !border-0 !min-h-[24px] !text-xs !font-bold uppercase tracking-wider'">
                       {{ run.status }}
@@ -150,13 +150,13 @@ interface RecentRun {
                     </div>
                   }
 
-                  <div class="flex justify-between items-center text-sm text-white/40 group-hover:text-white/60 transition-colors">
+                  <div class="flex justify-between items-center text-sm text-sys-text-tertiary group-hover:text-sys-text-secondary transition-colors">
                     <span class="flex items-center gap-1.5">
                       <mat-icon class="!w-4 !h-4 !text-[16px]">schedule</mat-icon>
                       Started {{ formatTimeAgo(run.startedAt) }}
                     </span>
                     @if (run.status === 'running') {
-                      <button mat-icon-button class="!text-white/40 hover:!text-primary transition-colors">
+                      <button mat-icon-button class="!text-sys-text-tertiary hover:!text-primary transition-colors">
                         <mat-icon>visibility</mat-icon>
                       </button>
                     }
@@ -164,8 +164,8 @@ interface RecentRun {
                 </div>
               }
             } @else {
-              <div class="flex flex-col items-center justify-center py-16 text-white/40">
-                <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <div class="flex flex-col items-center justify-center py-16 text-sys-text-tertiary">
+                <div class="w-16 h-16 rounded-full bg-[var(--mat-sys-surface-variant)] flex items-center justify-center mb-4">
                   <mat-icon class="!w-8 !h-8 !text-[32px] opacity-50">science</mat-icon>
                 </div>
                 <p class="mb-4 text-center">No experiments running right now</p>
@@ -178,30 +178,30 @@ interface RecentRun {
         <!-- Right Column (Activity & Links) -->
         <div class="flex flex-col gap-6">
           <!-- Recent Activity -->
-          <section class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
-            <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
-              <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+          <section class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
+            <div class="p-5 border-b border-[var(--theme-border)] flex justify-between items-center bg-[var(--mat-sys-surface-variant)]">
+              <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
                 <mat-icon class="text-blue-400">history</mat-icon>
                 Recent Activity
               </h2>
-              <a mat-button class="!text-white/60 hover:!text-white/90" routerLink="/app/protocols">View All</a>
+              <a mat-button class="!text-sys-text-secondary hover:!text-sys-text-primary" routerLink="/app/protocols">View All</a>
             </div>
 
             <div class="p-2">
               @if (recentRuns().length > 0) {
                 @for (run of recentRuns(); track run.id) {
-                  <div class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer group">
+                  <div class="flex items-center gap-3 p-3 hover:bg-[var(--mat-sys-surface-variant)] rounded-xl transition-colors cursor-pointer group">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center" [class]="getStatusBgClass(run.status)">
-                      <mat-icon class="!text-white !w-5 !h-5 !text-[20px]">{{ getStatusIcon(run.status) }}</mat-icon>
+                      <mat-icon class="!text-sys-text-primary !w-5 !h-5 !text-[20px]">{{ getStatusIcon(run.status) }}</mat-icon>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-medium text-white truncate group-hover:text-primary transition-colors">{{ run.name }}</div>
-                      <div class="text-xs text-white/40 truncate">{{ run.protocolName }} • {{ run.duration }}</div>
+                      <div class="font-medium text-sys-text-primary truncate group-hover:text-primary transition-colors">{{ run.name }}</div>
+                      <div class="text-xs text-sys-text-tertiary truncate">{{ run.protocolName }} • {{ run.duration }}</div>
                     </div>
                   </div>
                 }
               } @else {
-                <div class="p-8 text-center text-white/30">
+                <div class="p-8 text-center text-sys-text-tertiary">
                   <p>No recent activity</p>
                 </div>
               }
@@ -209,29 +209,29 @@ interface RecentRun {
           </section>
 
           <!-- Quick Links -->
-          <section class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
-            <div class="p-5 border-b border-white/10 bg-white/5">
-              <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+          <section class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
+            <div class="p-5 border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
+              <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
                 <mat-icon class="text-purple-400">apps</mat-icon>
                 Quick Links
               </h2>
             </div>
             <div class="grid grid-cols-2 gap-3 p-4">
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/assets">
-                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">precision_manufacturing</mat-icon>
-                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Machines</span>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/assets">
+                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">precision_manufacturing</mat-icon>
+                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Machines</span>
               </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/protocols">
-                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">assignment</mat-icon>
-                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Protocols</span>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/protocols">
+                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">assignment</mat-icon>
+                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Protocols</span>
               </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/visualizer">
-                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">view_in_ar</mat-icon>
-                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Visualizer</span>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/visualizer">
+                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">view_in_ar</mat-icon>
+                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Visualizer</span>
               </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/settings">
-                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">settings</mat-icon>
-                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Settings</span>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/settings">
+                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">settings</mat-icon>
+                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Settings</span>
               </a>
             </div>
           </section>
@@ -390,7 +390,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       case 'completed': return '!bg-blue-400/10 !text-blue-400';
       case 'failed': return '!bg-red-400/10 !text-red-400';
       case 'pending': return '!bg-amber-400/10 !text-amber-400';
-      default: return '!bg-white/10 !text-white';
+      default: return '!bg-[var(--mat-sys-surface-variant)] !text-sys-text-primary';
     }
   }
 
@@ -400,7 +400,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       case 'completed': return 'bg-blue-400/20';
       case 'failed': return 'bg-red-400/20';
       case 'pending': return 'bg-amber-400/20';
-      default: return 'bg-white/10';
+      default: return 'bg-[var(--mat-sys-surface-variant)]';
     }
   }
 }

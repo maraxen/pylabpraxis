@@ -71,7 +71,11 @@ def test_extract_protocol_definitions_from_paths(discovery_service, tmp_path):
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
+    protocol_file = protocol_dir / "proto.py"
     protocol_content = dedent("""
+        def protocol_function(f): return f
+        
+        @protocol_function
         def my_protocol(volume: float):
             '''A test protocol.'''
             pass
@@ -96,6 +100,9 @@ def test_extract_protocol_definitions_with_complex_signature(discovery_service, 
     protocol_file = protocol_dir / "proto.py"
     protocol_content = dedent("""
         from typing import Optional
+        def protocol_function(f): return f
+
+        @protocol_function
         def my_protocol(
             a: int,
             b: str = "hello",
@@ -130,8 +137,12 @@ def test_extract_protocol_definitions_with_pylabrobot_resource(discovery_service
     (protocol_dir / "__init__.py").touch()
 
     protocol_file = protocol_dir / "proto.py"
+    protocol_file = protocol_dir / "proto.py"
     protocol_content = dedent("""
         from pylabrobot.resources import Plate
+        def protocol_function(f): return f
+
+        @protocol_function
         def my_protocol(plate: Plate):
             pass
     """)
@@ -178,22 +189,11 @@ async def test_discover_and_upsert_protocols_successfully(
   protocol_file = protocol_dir / "protocol.py"
   protocol_file.write_text(dedent("""
         from praxis.backend.models.pydantic_internals.protocol import FunctionProtocolDefinitionCreate
+        def protocol_function(f): return f
 
+        @protocol_function
         def mock_protocol_func():
             pass
-
-        protocol_def = FunctionProtocolDefinitionCreate(
-            name="mock_protocol_func",
-            version="1.0",
-            description="A mock protocol function.",
-            source_file_path=__file__,
-            module_name="protocol",
-            function_name="mock_protocol_func",
-            parameters=[],
-            assets=[],
-            is_top_level=True,
-        )
-        setattr(mock_protocol_func, "_protocol_definition", protocol_def)
     """).strip())
 
   result = await discovery_service.discover_and_upsert_protocols([str(protocol_dir)])
@@ -216,6 +216,9 @@ async def test_discover_and_upsert_protocols_inferred(
   protocol_dir.mkdir()
   protocol_file = protocol_dir / "inferred_protocol.py"
   protocol_file.write_text(dedent("""
+        def protocol_function(f): return f
+
+        @protocol_function
         def another_mock_func(param1: int, param2: str = "default"):
             \"\"\"A docstring for description.\"\"\"
             pass
@@ -299,3 +302,40 @@ async def test_discover_and_sync_all_definitions(
         call_kwargs = mock_upsert.call_args[1]
         assert call_kwargs["search_paths"] == ["/tmp/protocols"]
         assert call_kwargs["commit_hash"] == "abc1234"
+
+
+def test_extract_protocol_definitions_with_hardware_requirements(discovery_service, tmp_path):
+    """Test that hardware requirements are inferred from protocol code."""
+    protocol_dir = tmp_path / "my_protocols"
+    protocol_dir.mkdir()
+    (protocol_dir / "__init__.py").touch()
+
+    protocol_file = protocol_dir / "proto_reqs.py"
+    protocol_content = dedent("""
+        def protocol_function(f): return f
+        
+        @protocol_function
+        def my_req_protocol(lh):
+            lh.pick_up_tips96(tips)
+            lh.drop_tips96()
+    """)
+    protocol_file.write_text(protocol_content)
+
+    definitions = discovery_service._extract_protocol_definitions_from_paths([protocol_dir])
+    assert len(definitions) == 1
+    assert definitions[0]["name"] == "my_req_protocol"
+
+    # Check hardware requirements
+    reqs = definitions[0].get("hardware_requirements")
+    assert reqs is not None
+    assert reqs["machine_type"] == "liquid_handler"
+    assert len(reqs["requirements"]) >= 1
+
+    cap_names = [r["capability_name"] for r in reqs["requirements"]]
+    assert "has_core96" in cap_names
+
+    # Verify expected value
+    for r in reqs["requirements"]:
+        if r["capability_name"] == "has_core96":
+            assert r["expected_value"] is True
+

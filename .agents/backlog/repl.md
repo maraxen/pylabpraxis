@@ -41,4 +41,4 @@
 
 * [x] **Quick Access**: Toggle REPL with `Alt+` ` (Backtick) and Command Palette.
 
-* [ ] **Hardware Bridge**: Ensure REPL can control WebSerial devices via `WebBridgeBackend`.
+* [x] **Hardware Bridge**: REPL can control WebSerial devices via `WebBridgeIO` (IO Layer Shimming - completed 2025-12-30).

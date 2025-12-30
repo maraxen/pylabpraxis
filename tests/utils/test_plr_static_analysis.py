@@ -1,0 +1,426 @@
+"""Tests for PLR static analysis module."""
+
+import pytest
+
+from praxis.backend.utils.plr_static_analysis import (
+  DiscoveredClass,
+  MACHINE_BACKEND_TYPES,
+  MACHINE_FRONTEND_TYPES,
+  PLRClassType,
+  PLRSourceParser,
+  find_plr_source_root,
+)
+from praxis.backend.utils.plr_static_analysis.manufacturer_inference import (
+  infer_manufacturer,
+  infer_vendor,
+  is_vendor_module,
+)
+
+
+class TestManufacturerInference:
+  """Tests for manufacturer inference from module paths."""
+
+  def test_infer_hamilton(self):
+    """Test Hamilton manufacturer inference."""
+    assert infer_manufacturer("pylabrobot.liquid_handling.backends.hamilton.STAR") == "Hamilton"
+
+  def test_infer_opentrons(self):
+    """Test Opentrons manufacturer inference."""
+    assert infer_manufacturer("pylabrobot.liquid_handling.backends.opentrons_backend") == "Opentrons"
+
+  def test_infer_tecan(self):
+    """Test Tecan manufacturer inference."""
+    assert infer_manufacturer("pylabrobot.liquid_handling.backends.tecan.EVO_backend") == "Tecan"
+
+  def test_infer_unknown(self):
+    """Test unknown manufacturer returns None."""
+    assert infer_manufacturer("pylabrobot.some.unknown.module") is None
+
+  def test_infer_vendor_hamilton(self):
+    """Test Hamilton vendor inference."""
+    assert infer_vendor("pylabrobot.resources.hamilton.plates") == "Hamilton"
+
+  def test_infer_vendor_corning(self):
+    """Test Corning vendor inference."""
+    assert infer_vendor("pylabrobot.resources.corning.plates") == "Corning"
+
+  def test_is_vendor_module(self):
+    """Test vendor module detection."""
+    assert is_vendor_module("pylabrobot.resources.hamilton.plates") is True
+    assert is_vendor_module("pylabrobot.resources.base") is False
+
+
+class TestPLRSourceParser:
+  """Tests for the PLR source parser."""
+
+  @pytest.fixture(scope="class")
+  def parser(self):
+    """Create a parser instance shared across all tests in this class."""
+    plr_root = find_plr_source_root()
+    return PLRSourceParser(plr_root)
+
+  def test_find_plr_source_root(self):
+    """Test that PLR source root can be found."""
+    plr_root = find_plr_source_root()
+    assert plr_root.exists()
+    assert (plr_root / "pylabrobot").is_dir()
+
+  def test_discover_machine_classes(self, parser):
+    """Test machine class discovery."""
+    machines = parser.discover_machine_classes()
+
+    # Should find some machines
+    assert len(machines) > 0
+
+    # All should be non-abstract
+    for m in machines:
+      assert not m.is_abstract
+
+    # All should be machine types (frontends or backends)
+    all_machine_types = MACHINE_FRONTEND_TYPES | MACHINE_BACKEND_TYPES
+    for m in machines:
+      assert m.class_type in all_machine_types
+
+  def test_discover_star_backend(self, parser):
+    """Test that STARBackend is discovered with capabilities."""
+    machines = parser.discover_machine_classes()
+
+    star_backends = [m for m in machines if m.name == "STARBackend"]
+    assert len(star_backends) == 1
+
+    star = star_backends[0]
+    assert star.manufacturer == "Hamilton"
+    assert star.class_type == PLRClassType.LH_BACKEND
+    # Should detect iswap capability
+    assert star.capabilities.has_iswap or "swap" in star.capabilities.modules
+
+  def test_discover_opentrons_backend(self, parser):
+    """Test that Opentrons backend is discovered."""
+    machines = parser.discover_machine_classes()
+
+    ot_backends = [m for m in machines if "Opentrons" in m.name]
+    assert len(ot_backends) >= 1
+
+    ot = ot_backends[0]
+    assert ot.manufacturer == "Opentrons"
+    assert ot.class_type == PLRClassType.LH_BACKEND
+
+  def test_discover_chatterbox_backend(self, parser):
+    """Test that ChatterBox simulation backend is discovered."""
+    machines = parser.discover_machine_classes()
+
+    chatterbox = [m for m in machines if "chatterbox" in m.name.lower()]
+    assert len(chatterbox) >= 1
+
+  def test_discover_backend_classes(self, parser):
+    """Test backend-only discovery."""
+    backends = parser.discover_backend_classes()
+
+    assert len(backends) > 0
+
+    # All should be backend types
+    for b in backends:
+      assert b.class_type in MACHINE_BACKEND_TYPES
+
+  def test_discover_resource_classes(self, parser):
+    """Test resource class discovery."""
+    resources = parser.discover_resource_classes()
+
+    # Should find some resources
+    assert len(resources) > 0
+
+    # All should be non-abstract
+    for r in resources:
+      assert not r.is_abstract
+
+  def test_discover_deck_classes(self, parser):
+    """Test deck class discovery."""
+    decks = parser.discover_deck_classes()
+
+    # Should find some decks
+    assert len(decks) > 0
+
+    for d in decks:
+      assert d.class_type == PLRClassType.DECK
+      assert d.name != "Deck"  # Should not include base Deck class
+
+  def test_caching(self, parser):
+    """Test that results are cached."""
+    # First call
+    machines1 = parser.discover_machine_classes()
+
+    # Second call should return same results from cache
+    machines2 = parser.discover_machine_classes()
+
+    assert len(machines1) == len(machines2)
+    assert machines1 is machines2  # Should be same object
+
+  def test_clear_cache(self, parser):
+    """Test cache clearing."""
+    # Populate cache
+    machines1 = parser.discover_machine_classes()
+
+    # Clear cache
+    parser.clear_cache()
+
+    # Should rediscover
+    machines2 = parser.discover_machine_classes()
+
+    assert len(machines1) == len(machines2)
+    assert machines1 is not machines2  # Should be different objects
+
+
+class TestDiscoveredClass:
+  """Tests for DiscoveredClass model."""
+
+  def test_to_capabilities_dict(self):
+    """Test capabilities dict conversion."""
+    from praxis.backend.utils.plr_static_analysis.models import DiscoveredCapabilities
+
+    cls = DiscoveredClass(
+      fqn="test.module.TestClass",
+      name="TestClass",
+      module_path="test.module",
+      file_path="/test/path.py",
+      class_type=PLRClassType.LH_BACKEND,
+      capabilities=DiscoveredCapabilities(
+        channels=[8, 96],
+        modules=["swap", "hepa"],
+        has_core96=True,
+        has_iswap=True,
+      ),
+    )
+
+    caps = cls.to_capabilities_dict()
+    assert caps["channels"] == [8, 96]
+    assert "swap" in caps["modules"]
+    assert "hepa" in caps["modules"]
+    assert caps["has_core96"] is True
+    assert caps["has_iswap"] is True
+
+
+class TestMachineCapabilitySchemas:
+  """Tests for machine-type-specific capability schemas."""
+
+  def test_liquid_handler_capabilities(self):
+    """Test LiquidHandlerCapabilities model."""
+    from praxis.backend.utils.plr_static_analysis.models import LiquidHandlerCapabilities
+
+    caps = LiquidHandlerCapabilities(
+      channels=[8, 96],
+      has_iswap=True,
+      has_core96=True,
+      has_hepa=True,
+    )
+    assert caps.channels == [8, 96]
+    assert caps.has_iswap is True
+    assert caps.has_core96 is True
+    assert caps.has_hepa is True
+
+  def test_plate_reader_capabilities(self):
+    """Test PlateReaderCapabilities model."""
+    from praxis.backend.utils.plr_static_analysis.models import PlateReaderCapabilities
+
+    caps = PlateReaderCapabilities(
+      absorbance=True,
+      fluorescence=True,
+      luminescence=False,
+      imaging=True,
+    )
+    assert caps.absorbance is True
+    assert caps.fluorescence is True
+    assert caps.luminescence is False
+    assert caps.imaging is True
+
+  def test_heater_shaker_capabilities(self):
+    """Test HeaterShakerCapabilities model."""
+    from praxis.backend.utils.plr_static_analysis.models import HeaterShakerCapabilities
+
+    caps = HeaterShakerCapabilities(
+      max_temperature_c=95.0,
+      min_temperature_c=4.0,
+      max_speed_rpm=2000,
+      has_cooling=True,
+    )
+    assert caps.max_temperature_c == 95.0
+    assert caps.min_temperature_c == 4.0
+    assert caps.max_speed_rpm == 2000
+    assert caps.has_cooling is True
+
+  def test_centrifuge_capabilities(self):
+    """Test CentrifugeCapabilities model."""
+    from praxis.backend.utils.plr_static_analysis.models import CentrifugeCapabilities
+
+    caps = CentrifugeCapabilities(
+      max_rpm=15000,
+      max_g=20000,
+      temperature_controlled=True,
+    )
+    assert caps.max_rpm == 15000
+    assert caps.max_g == 20000
+    assert caps.temperature_controlled is True
+
+  def test_pump_capabilities(self):
+    """Test PumpCapabilities model."""
+    from praxis.backend.utils.plr_static_analysis.models import PumpCapabilities
+
+    caps = PumpCapabilities(
+      max_flow_rate_ml_min=50.0,
+      min_flow_rate_ml_min=0.1,
+      reversible=True,
+      num_channels=4,
+    )
+    assert caps.max_flow_rate_ml_min == 50.0
+    assert caps.min_flow_rate_ml_min == 0.1
+    assert caps.reversible is True
+    assert caps.num_channels == 4
+
+  def test_to_capabilities_dict_with_machine_caps(self):
+    """Test that machine_capabilities are merged into to_capabilities_dict."""
+    from praxis.backend.utils.plr_static_analysis.models import (
+      DiscoveredCapabilities,
+      HeaterShakerCapabilities,
+    )
+
+    cls = DiscoveredClass(
+      fqn="test.module.TestHS",
+      name="TestHS",
+      module_path="test.module",
+      file_path="/test/path.py",
+      class_type=PLRClassType.HEATER_SHAKER,
+      capabilities=DiscoveredCapabilities(),
+      machine_capabilities=HeaterShakerCapabilities(
+        max_temperature_c=100.0,
+        max_speed_rpm=1500,
+        has_cooling=True,
+      ),
+    )
+
+    caps = cls.to_capabilities_dict()
+    assert caps["max_temperature_c"] == 100.0
+    assert caps["max_speed_rpm"] == 1500
+    assert caps["has_cooling"] is True
+
+
+class TestCapabilityExtraction:
+  """Tests for type-specific capability extraction from PLR sources."""
+
+  @pytest.fixture(scope="class")
+  def parser(self):
+    """Create a parser instance shared across all tests in this class."""
+    plr_root = find_plr_source_root()
+    return PLRSourceParser(plr_root, use_cache=False)
+
+  def test_star_backend_has_machine_capabilities(self, parser):
+    """Test that STARBackend gets type-specific machine capabilities."""
+    from praxis.backend.utils.plr_static_analysis.models import LiquidHandlerCapabilities
+
+    machines = parser.discover_machine_classes()
+    star_backends = [m for m in machines if m.name == "STARBackend"]
+    assert len(star_backends) == 1
+
+    star = star_backends[0]
+    assert star.machine_capabilities is not None
+    assert isinstance(star.machine_capabilities, LiquidHandlerCapabilities)
+    # STAR should have iswap capability detected from method names
+    assert star.machine_capabilities.has_iswap or star.machine_capabilities.has_core96
+
+  def test_heater_shaker_backend_capabilities(self, parser):
+    """Test that HeaterShaker backends get type-specific capabilities."""
+    machines = parser.discover_machine_classes()
+    hs_backends = [m for m in machines if m.class_type == PLRClassType.HS_BACKEND]
+
+    # Should find at least one heater shaker backend
+    if len(hs_backends) > 0:
+      hs = hs_backends[0]
+      assert hs.machine_capabilities is not None
+
+
+class TestProtocolFunctionVisitor:
+  """Tests for ProtocolFunctionVisitor."""
+  
+  def test_basic_protocol_function(self):
+    """Test extracting a basic protocol function."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+    
+    source = """
+@protocol_function
+def my_protocol():
+    '''Docstring.'''
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+    
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    assert info.name == "my_protocol"
+    assert info.docstring == "Docstring."
+    assert len(info.parameters) == 0
+
+  def test_protocol_with_parameters(self):
+    """Test extracting parameters with defaults."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+    
+    source = """
+@protocol_function
+def my_protocol(vol: float, name: str = "test"):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+    
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    assert len(info.parameters) == 2
+    
+    # Check regular param
+    p1 = info.parameters[0]
+    assert p1.name == "vol"
+    assert p1.type_hint == "float"
+    assert not p1.is_optional
+    assert not p1.is_asset
+
+    # Check default param
+    p2 = info.parameters[1]
+    assert p2.name == "name"
+    assert p2.type_hint == "str"
+    assert p2.is_optional
+    # Note: LibCST preserves quotes in source representation
+    assert '"test"' in p2.default_value or "'test'" in p2.default_value
+
+  def test_protocol_with_assets(self):
+    """Test extracting PLR asset parameters."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (
+      ProtocolFunctionVisitor,
+    )
+    
+    source = """
+@protocol_function
+def my_protocol(plate: Plate, tips: TipRack):
+    pass
+"""
+    tree = cst.parse_module(source.strip())
+    visitor = ProtocolFunctionVisitor("test_module", "/path/to/file.py")
+    tree.visit(visitor)
+    
+    assert len(visitor.definitions) == 1
+    info = visitor.definitions[0]
+    assert len(info.parameters) == 2
+    
+    # Check assets
+    p1 = info.parameters[0]
+    assert p1.name == "plate"
+    assert p1.is_asset
+    assert p1.asset_type == "Plate"
+    
+    p2 = info.parameters[1]
+    assert p2.name == "tips"
+    assert p2.is_asset
+    assert p2.asset_type == "TipRack"

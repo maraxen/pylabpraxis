@@ -294,8 +294,9 @@ app.include_router(hardware.router, prefix="/api/v1/hardware", tags=["Hardware"]
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["Scheduler"])
 
-from praxis.backend.api import websockets
+from praxis.backend.api import websockets, repl
 app.include_router(websockets.router, prefix="/api/v1/ws", tags=["WebSockets"])
+app.include_router(repl.router, prefix="/api/v1/repl", tags=["REPL"])
 
 
 # --- Middleware and Root Endpoint ---

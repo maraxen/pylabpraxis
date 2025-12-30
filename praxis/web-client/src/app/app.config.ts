@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient, withInterceptors, HttpRequest, HttpHandlerFn, HttpClient } from '@angular/common/http';
 import { provideMarkdown } from 'ngx-markdown';
@@ -16,11 +16,8 @@ import { RepeatTypeComponent } from './shared/formly-types/repeat-section.compon
 import { ChipsTypeComponent } from './shared/formly-types/chips.component';
 import { KeycloakService } from './core/auth/keycloak.service';
 import { KeyboardService } from './core/services/keyboard.service';
-import { environment } from '../environments/environment';
-import { from, switchMap, of } from 'rxjs';
-
-// Check if we're in demo mode
-const isDemoMode = (environment as { demo?: boolean }).demo === true;
+import { ModeService } from './core/services/mode.service';
+import { from, switchMap } from 'rxjs';
 
 /**
  * Initialize Keycloak on app startup (skipped in demo mode)
@@ -43,11 +40,13 @@ function initializeKeyboard(keyboardService: KeyboardService) {
 }
 
 /**
- * HTTP interceptor that adds Keycloak Bearer token to requests (skipped in demo mode)
+ * HTTP interceptor that adds Keycloak Bearer token to requests (skipped in browser modes)
  */
 const keycloakInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
-  // Skip token in demo mode
-  if (isDemoMode) {
+  const modeService = inject(ModeService);
+
+  // Skip token in browser/demo modes
+  if (modeService.isBrowserMode()) {
     return next(req);
   }
 
@@ -77,11 +76,14 @@ const keycloakInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn) => 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withComponentInputBinding()),
+    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' })),
     provideAnimationsAsync(),
     // Demo interceptor runs FIRST to catch API requests before they hit proxy
     provideHttpClient(withInterceptors([demoInterceptor, keycloakInterceptor, errorInterceptor])),
-    provideMarkdown({ loader: HttpClient }),
+    provideMarkdown({
+      loader: HttpClient,
+      mermaid: true
+    } as any),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,

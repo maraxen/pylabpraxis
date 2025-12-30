@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     "./src/**/*.{html,ts}",
   ],
@@ -20,12 +21,16 @@ module.exports = {
         'rose-pompadour': '#ED7A9B',
         'moonstone-blue': '#73A9C2',
 
-        // Dark mode specific surface colors (matching the existing polished feel)
+        // Theme-aware colors
         surface: {
           DEFAULT: 'var(--theme-surface)',
           elevated: 'var(--theme-surface-elevated)',
-          low: '#1a1a2e', // Keep hardcoded for absolute bottoms if needed, or map to vars
-          high: '#2a2a3c',
+        },
+        // Text colors that swap based on theme
+        'sys-text': {
+          primary: 'var(--theme-text-primary)',
+          secondary: 'var(--theme-text-secondary)',
+          tertiary: 'var(--theme-text-tertiary)',
         }
       },
       fontFamily: {

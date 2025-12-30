@@ -1,7 +1,7 @@
 import { HttpRequest, HttpHandlerFn, HttpEvent, HttpResponse } from '@angular/common/http';
-import { Observable, of, delay, switchMap, map } from 'rxjs';
+import { Observable, of, delay, switchMap } from 'rxjs';
 import { inject } from '@angular/core';
-import { environment } from '../../../environments/environment';
+import { ModeService } from '../services/mode.service';
 import { SqliteService } from '../services/sqlite.service';
 
 // Import mock data for fallback
@@ -12,13 +12,6 @@ import { MOCK_MACHINES } from '../../../assets/demo-data/machines';
 import { PLR_RESOURCE_DEFINITIONS, PLR_MACHINE_DEFINITIONS } from '../../../assets/demo-data/plr-definitions';
 
 const LATENCY_MS = 150;
-
-/**
- * Check if demo mode is enabled
- */
-function isDemoMode(): boolean {
-    return (environment as { demo?: boolean }).demo === true;
-}
 
 /**
  * Get mock response for a given URL and method
@@ -244,8 +237,10 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
  * entirely client-side without a backend.
  */
 export const demoInterceptor = (req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> => {
-    // Only intercept in demo mode
-    if (!isDemoMode()) {
+    const modeService = inject(ModeService);
+
+    // Only intercept in browser/demo modes
+    if (!modeService.isBrowserMode()) {
         return next(req);
     }
 

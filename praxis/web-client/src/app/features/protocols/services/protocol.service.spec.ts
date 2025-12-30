@@ -11,6 +11,7 @@ describe('ProtocolService', () => {
   const API_URL = '/api/v1';
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         ProtocolService,
@@ -30,8 +31,8 @@ describe('ProtocolService', () => {
   describe('getProtocols', () => {
     it('should retrieve protocols', () => {
       const mockProtocols: ProtocolDefinition[] = [
-        { accession_id: 'p1', name: 'Protocol 1', is_top_level: true, version: '1.0' },
-        { accession_id: 'p2', name: 'Protocol 2', is_top_level: false, version: '2.0' }
+        { accession_id: 'p1', name: 'Protocol 1', is_top_level: true, version: '1.0', parameters: [], assets: [] },
+        { accession_id: 'p2', name: 'Protocol 2', is_top_level: false, version: '2.0', parameters: [], assets: [] }
       ];
 
       service.getProtocols().subscribe(protocols => {
@@ -48,7 +49,7 @@ describe('ProtocolService', () => {
   describe('uploadProtocol', () => {
     it('should upload a protocol file', () => {
       const file = new File(['content'], 'protocol.py', { type: 'text/x-python' });
-      const mockResponse: ProtocolDefinition = { accession_id: 'p3', name: 'protocol.py', is_top_level: true, version: '1.0' };
+      const mockResponse: ProtocolDefinition = { accession_id: 'p3', name: 'protocol.py', is_top_level: true, version: '1.0', parameters: [], assets: [] };
 
       service.uploadProtocol(file).subscribe(response => {
         expect(response).toEqual(mockResponse);

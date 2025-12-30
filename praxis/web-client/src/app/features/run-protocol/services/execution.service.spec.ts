@@ -7,20 +7,33 @@ import { Subject } from 'rxjs';
 import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest';
 
 // Mock rxjs/webSocket
-const mockWebSocketSubject = new Subject<any>();
-// Add a complete method to the mock subject as it is expected by the service
-(mockWebSocketSubject as any).complete = vi.fn();
-
+// Mock with a factory that will be overridden
 vi.mock('rxjs/webSocket', () => ({
-  webSocket: vi.fn(() => mockWebSocketSubject)
+  webSocket: vi.fn()
 }));
+
+import { webSocket } from 'rxjs/webSocket';
 
 describe('ExecutionService', () => {
   let service: ExecutionService;
   let httpMock: HttpTestingController;
+  let mockWebSocketSubject: Subject<any>;
   const API_URL = '/api/v1/protocols';
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
+
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Setup fresh subject for this test
+    mockWebSocketSubject = new Subject<any>();
+    (mockWebSocketSubject as any).complete = vi.fn();
+    (mockWebSocketSubject as any).next = vi.fn((val) => mockWebSocketSubject.next(val)); // Ensure next works
+
+    // Configure webSocket mock to return our fresh subject
+    vi.mocked(webSocket).mockReturnValue(mockWebSocketSubject as any);
+
     TestBed.configureTestingModule({
       providers: [
         ExecutionService,
@@ -36,7 +49,7 @@ describe('ExecutionService', () => {
   afterEach(() => {
     httpMock.verify();
     service.disconnect();
-    vi.clearAllMocks();
+    TestBed.resetTestingModule();
   });
 
   describe('Initial State', () => {
@@ -50,6 +63,21 @@ describe('ExecutionService', () => {
 
     it('should not be running initially', () => {
       expect(service.isRunning()).toBe(false);
+    });
+  });
+
+  describe('getCompatibility', () => {
+    it('should fetch compatibility data', () => {
+      const protocolId = 'proto-1';
+      const mockData = [{ machine: { accession_id: 'm1' }, compatibility: { is_compatible: true } }];
+
+      service.getCompatibility(protocolId).subscribe(data => {
+        expect(data).toEqual(mockData);
+      });
+
+      const req = httpMock.expectOne(`${API_URL}/${protocolId}/compatibility`);
+      expect(req.request.method).toBe('GET');
+      req.flush(mockData);
     });
   });
 
@@ -68,7 +96,8 @@ describe('ExecutionService', () => {
       expect(req.request.body).toEqual({
         protocol_definition_accession_id: protocolId,
         name: runName,
-        parameters
+        parameters,
+        simulation_mode: true
       });
 
       req.flush({ run_id: 'run-456' });
@@ -316,7 +345,7 @@ describe('ExecutionService', () => {
         expect(service.isConnected()).toBe(false);
       });
 
-      const stopReq = httpMock.expectOne(`${API_URL}/runs/run-123/stop`);
+      const stopReq = httpMock.expectOne(`${API_URL}/runs/run-123/cancel`);
       stopReq.flush(null);
     });
 

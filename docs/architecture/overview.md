@@ -103,8 +103,54 @@ graph TD
 
 | Component | Responsibility |
 |-----------|----------------|
-| **PostgreSQL** | Persistent storage for configurations, history, and logs |
-| **Redis** | Distributed state, task queue, and caching |
+| **PostgreSQL** | Persistent storage for configurations, history, and logs (Production Mode) |
+| **Redis** | Distributed state, task queue, and caching (Production Mode) |
+| **SQLite (WASM)** | Client-side persistent storage using LocalStorage syncing (Browser/Demo Mode) |
+
+## Application Modes
+
+Praxis supports multiple operational modes to suit different environments:
+
+### 1. Production Mode
+
+The full distributed system. Requires a backend server, PostgreSQL database, and Redis. Best for multi-user labs and complex scheduling.
+
+### 2. Browser Mode
+
+A pure client-side experience. The entire Python service layer and hardware drivers run in the browser via **Pyodide**.
+
+- **IO**: Hardware is controlled via [WebSerial](https://developer.mozilla.org/en-US/docs/Web/API/WebSerial_API) and [WebUSB](https://developer.mozilla.org/en-US/docs/Web/API/WebUSB_API).
+- **Persistence**: Data is stored in an in-browser SQLite database and synchronized with the browser's `LocalStorage`.
+
+### 3. Demo Mode
+
+A specialized version of Browser Mode that loads mock assets and protocols. Used for demonstrations and testing UI features without physical hardware.
+
+## Browser Runtime Architecture
+
+In Browser/Demo modes, the architecture shifts to a "Local-First" model:
+
+```mermaid
+graph LR
+    subgraph "Main Thread"
+        UI[Angular UI]
+        HW[WebSerial/WebUSB]
+    end
+
+    subgraph "Web Worker"
+        Py[Pyodide / Python]
+        DB[SQLite WASM]
+    end
+
+    UI -->|Execute| Py
+    Py -->|SQL| DB
+    Py -->|IO Request| UI
+    UI -->|Serial Write| HW
+    HW -->|Serial Read| UI
+    UI -->|IO Response| Py
+```
+
+This model enables zero-install laboratory automation while maintaining the same Python API used in Production Mode.
 
 ## Key Design Principles
 

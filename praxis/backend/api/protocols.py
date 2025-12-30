@@ -184,3 +184,67 @@ router.include_router(
   ),
 )
 
+
+# =============================================================================
+# Capability Matching
+# =============================================================================
+
+@router.get(
+  "/{accession_id}/compatibility",
+  response_model=list[dict[str, Any]],  # TODO: Use proper Pydantic model
+  status_code=status.HTTP_200_OK,
+  tags=["Protocol Capability Matching"],
+)
+async def get_protocol_compatibility(
+  accession_id: UUID,
+  db: Annotated[Any, Depends(get_db)],
+) -> Any:
+  """Check protocol compatibility against all machines.
+
+  Returns a list of compatibility results for each available machine.
+  """
+  from praxis.backend.models.orm.machine import MachineDefinitionOrm, MachineOrm
+  from praxis.backend.services.capability_matcher import capability_matcher
+  from sqlalchemy import select
+  from sqlalchemy.orm import selectinload
+
+  # 1. Fetch protocol
+  protocol = await db.get(FunctionProtocolDefinitionOrm, accession_id)
+  if not protocol:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=f"Protocol {accession_id} not found",
+    )
+
+  # 2. Fetch all machines with definitions
+  stmt = (
+    select(MachineOrm)
+    .options(selectinload(MachineOrm.definition))
+  )
+  result = await db.execute(stmt)
+  machines = result.scalars().all()
+
+  # 3. Match
+  machine_tuples = []
+  for m in machines:
+    machine_tuples.append((m, m.definition))
+
+  results = capability_matcher.find_compatible_machines(protocol, machine_tuples)
+
+  # 4. Format response
+  # Note: CapabilityMatchResult is a Pydantic model, so we can return it directly if we want
+  # But we also want to return the machine details for the UI.
+  response = []
+  for machine, match_result in results:
+    response.append({
+      "machine": {
+        "accession_id": str(machine.accession_id),
+        "name": machine.name,
+        "machine_type": machine.definition.class_type if machine.definition else "unknown",
+        # Add other machine details as needed
+      },
+      "compatibility": match_result.model_dump(),
+    })
+
+  return response
+

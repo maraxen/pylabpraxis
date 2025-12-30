@@ -167,6 +167,24 @@ class MachineDefinitionOrm(PLRTypeDefinitionOrm):
     comment="JSONB representation of setup method for this machine definition.",
     default=None,
   )
+  capabilities: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="JSONB representation of hardware capabilities (channels, modules).",
+    default=None,
+  )
+  compatible_backends: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="JSON list of compatible backend class FQNs.",
+    default=None,
+  )
+  capabilities_config: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Schema for user-configurable capabilities (questions for the user).",
+    default=None,
+  )
   asset_requirement_accession_id: Mapped[uuid.UUID | None] = mapped_column(
     UUID,
     ForeignKey("protocol_asset_requirements.accession_id"),
@@ -266,6 +284,12 @@ class MachineOrm(AssetOrm):
     nullable=True,
     default=None,
     comment="If True, this machine is a simulation override for testing purposes.",
+  )
+  user_configured_capabilities: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="User-specified capability overrides (e.g., 'has_iswap': true).",
+    default=None,
   )
 
   workcell_accession_id: Mapped[uuid.UUID | None] = mapped_column(

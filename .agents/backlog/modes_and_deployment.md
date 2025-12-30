@@ -48,10 +48,23 @@
   * [x] Add `pyodide` script/package to `praxis/web-client`.
   * [x] Create `PythonRuntimeService` (Angular) to manage WASM worker.
   * [x] Resolve dependencies (`micropip.install('pylabrobot')`) or create mocks.
-* [ ] **WebBridge I/O Layer**:
-  * [ ] Implement messaging bridge between Angular and Pyodide worker.
-  * [x] Route `WebBridgeBackend` (Python) signals to `WebSerialService` (Angular) - *Python side implemented*.
-  * [ ] Verify End-to-End "Hello World" (Python script moving robot).
+  * [x] WebWorker (`python.worker.ts`) handles EXEC and INSTALL commands.
+* [x] **Basic WebBridge**:
+  * [x] `web_bridge.py` with high-level `WebBridgeBackend` overriding LiquidHandlerBackend methods.
+
+#### IO Layer Shimming: ✅ COMPLETED 2025-12-30
+
+**Goal**: Generic IO shim that works for ALL PLR machines by replacing their transport layer.
+
+* [x] **1. Identify IO Point**: Found `self.io` attribute using `IOBase` interface (`write()`, `read()`, `setup()`, `stop()`).
+* [x] **2. WebBridgeIO Class**: Implemented in `web_bridge.py` with full PLR-compatible interface.
+* [x] **3. Async Read/Write**: UUID-based request correlation with `asyncio.Future` for async reads.
+* [x] **4. Generic Patcher**: `patch_io_for_browser(machine, port_id)` + `create_browser_machine()` factory.
+* [x] **5. Angular Integration**:
+  * `python.worker.ts`: RAW_IO and RAW_IO_RESPONSE message handling.
+  * `PythonRuntimeService.handleRawIO()`: Routes commands to `HardwareDiscoveryService`.
+  * `HardwareDiscoveryService`: Added `openPort()`, `closePort()`, `writeToPort()`, `readFromPort()`, `readLineFromPort()`.
+* [ ] **6. E2E Test**: Pending hardware testing (scheduled for tomorrow).
 
 ### State Persistence
 

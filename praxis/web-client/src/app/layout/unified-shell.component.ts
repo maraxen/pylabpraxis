@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { AppStore } from '@core/store/app.store';
 import { StatusBarComponent } from '@core/components/status-bar/status-bar.component';
+import { ModeService } from '@core/services/mode.service';
 import { filter } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 
@@ -27,7 +28,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       <!-- Thin Sidebar Rail -->
       <nav class="sidebar-rail">
         <!-- Logo / Home -->
-        <a class="nav-item logo-item" routerLink="/" matTooltip="Home" matTooltipPosition="right">
+        <a class="nav-item logo-item" [routerLink]="modeService.isBrowserMode() ? '/app/home' : '/'" matTooltip="Home" matTooltipPosition="right">
           <div class="logo-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
@@ -113,7 +114,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
           <span class="nav-label">Theme</span>
         </button>
 
-        @if (store.auth().isAuthenticated) {
+        @if (modeService.isBrowserMode()) {
+          <div class="mode-badge" [matTooltip]="'Running in ' + modeService.modeLabel() + ' mode'" matTooltipPosition="right">
+            <mat-icon>{{ modeService.isDemoMode() ? 'science' : 'cloud_off' }}</mat-icon>
+            <span class="nav-label">{{ modeService.modeLabel() }}</span>
+          </div>
+        } @else if (store.auth().isAuthenticated) {
           <button
             class="nav-item control-btn"
             (click)="logout()"
@@ -151,7 +157,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       height: 100vh;
       width: 100vw;
       overflow: hidden;
-      background-color: var(--app-background, #121212);
+      background: var(--theme-bg-gradient);
     }
 
     /* Sidebar Rail */
@@ -161,8 +167,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
       align-items: center;
       width: 80px;
       min-width: 80px;
-      background: rgba(20, 20, 30, 0.95);
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--mat-sys-surface-container);
+      border-right: 1px solid var(--mat-sys-outline-variant);
       z-index: 100;
       padding: 12px 0;
       gap: 4px;
@@ -177,7 +183,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       height: 56px;
       border-radius: 12px;
       margin: 2px 0;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--mat-sys-on-surface-variant);
       text-decoration: none;
       transition: all 0.2s ease;
       cursor: pointer;
@@ -187,13 +193,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
+      background: var(--mat-sys-surface-variant);
+      color: var(--mat-sys-on-surface);
     }
 
     .nav-item.active {
-      background: rgba(237, 122, 155, 0.2);
-      color: var(--primary-color);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
     }
 
     .nav-item mat-icon {
@@ -244,7 +250,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
     .nav-divider {
       width: 40px;
       height: 1px;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--mat-sys-outline-variant);
       margin: 4px 0;
     }
 
@@ -255,7 +261,35 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
     /* Control Buttons */
     .control-btn {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    /* Mode Badge */
+    .mode-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 56px;
+      border-radius: 12px;
+      margin: 2px 0;
+      background: var(--mat-sys-tertiary-container);
+      border: 1px solid var(--mat-sys-tertiary);
+      color: var(--mat-sys-on-tertiary-container);
+      gap: 2px;
+    }
+
+    .mode-badge mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .mode-badge .nav-label {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
     }
 
     /* Main Content */
@@ -298,6 +332,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 export class UnifiedShellComponent {
   store = inject(AppStore);
   router = inject(Router);
+  modeService = inject(ModeService);
 
   // Check if current route is in /app/*
   isInApp(): boolean {

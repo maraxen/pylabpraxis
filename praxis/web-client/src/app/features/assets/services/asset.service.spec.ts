@@ -11,6 +11,7 @@ describe('AssetService', () => {
   const API_URL = '/api/v1';
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         AssetService,
@@ -123,7 +124,7 @@ describe('AssetService', () => {
         expect(defs).toEqual(mockDefs);
       });
 
-      const req = httpMock.expectOne(`${API_URL}/assets/definitions?type=machine`);
+      const req = httpMock.expectOne(`${API_URL}/machines/definitions?type=machine`);
       expect(req.request.method).toBe('GET');
       req.flush(mockDefs);
     });
@@ -139,7 +140,7 @@ describe('AssetService', () => {
         expect(defs).toEqual(mockDefs);
       });
 
-      const req = httpMock.expectOne(`${API_URL}/assets/definitions?type=resource`);
+      const req = httpMock.expectOne(`${API_URL}/resources/definitions?type=resource`);
       expect(req.request.method).toBe('GET');
       req.flush(mockDefs);
     });

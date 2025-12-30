@@ -49,12 +49,25 @@
               "src/styles.scss"
             ],
             "scripts": [
-              "node_modules/plotly.js-dist-min/plotly.min.js"
+              "node_modules/plotly.js-dist-min/plotly.min.js",
+              "node_modules/mermaid/dist/mermaid.min.js"
             ],
             "externalDependencies": [
               "fs",
               "path",
-              "crypto"
+              "crypto",
+              "node:crypto",
+              "node:fs",
+              "node:path",
+              "node:child_process",
+              "node:vm",
+              "node:url",
+              "node:fs/promises",
+              "node:buffer",
+              "node:stream",
+              "node:util",
+              "node:events",
+              "ws"
             ]
           },
           "configurations": {

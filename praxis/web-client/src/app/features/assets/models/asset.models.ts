@@ -37,6 +37,7 @@ export interface Machine extends AssetBase {
   serial_number?: string;
   connection_info?: Record<string, any>;
   is_simulation_override?: boolean;
+  user_configured_capabilities?: Record<string, any>;
 }
 
 export interface MachineCreate {
@@ -48,6 +49,7 @@ export interface MachineCreate {
   serial_number?: string;
   connection_info?: Record<string, any>;
   is_simulation_override?: boolean;
+  user_configured_capabilities?: Record<string, any>;
   machine_definition_accession_id?: string;
 }
 
@@ -75,6 +77,28 @@ export interface MachineDefinition {
   manufacturer?: string;
   model?: string;
   nominal_volume_ul?: number;
+  capabilities?: {
+    channels: number[];
+    modules: string[];
+    [key: string]: any;
+  };
+  compatible_backends?: string[];
+  capabilities_config?: MachineCapabilityConfigSchema;
+}
+
+export interface MachineCapabilityConfigSchema {
+  machine_type: string;
+  config_fields: CapabilityConfigField[];
+}
+
+export interface CapabilityConfigField {
+  field_name: string;
+  display_name: string;
+  field_type: 'boolean' | 'number' | 'select' | 'multiselect';
+  default_value: any;
+  options?: string[];
+  help_text?: string;
+  depends_on?: string;
 }
 export interface ResourceDefinition {
   accession_id: string;

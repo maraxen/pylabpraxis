@@ -7,13 +7,15 @@
 
 ## 🎯 Current Priorities
 
-### 1. PLR Introspection (High)
+### 1. PLR Introspection (High) - COMPLETED
 
 * **Goal**: Dynamically enumerate `pylabrobot` classes.
+* **Implementation**: LibCST-based static analysis (`praxis/backend/utils/plr_static_analysis/`)
 * **Tasks**:
-  * [ ] Identify `LiquidHandler` vs `Backend` classes.
-  * [ ] Extract metadata (Channels, Optional Modules).
-  * [ ] Expose via `sync-all` or `discovery` endpoints.
+  * [x] Identify `LiquidHandler` vs `Backend` classes via AST parsing.
+  * [x] Extract metadata (Channels, Optional Modules) from method/attribute analysis.
+  * [x] MachineTypeDefinitionService updated to use static analysis.
+  * [x] Deprecation warnings added to old runtime inspection functions.
 
 ### 2. Application Modes
 

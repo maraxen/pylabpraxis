@@ -38,16 +38,20 @@
     "@ngx-formly/material": "^7.0.1",
     "@types/plotly.js-dist-min": "^2.3.4",
     "@types/sql.js": "^1.4.9",
+    "@types/xterm": "^2.0.3",
     "angular-plotly.js": "^20.0.0",
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.2",
     "marked": "^17.0.1",
+    "mermaid": "^11.12.2",
     "ngx-markdown": "^21.0.1",
     "plotly.js-dist-min": "^3.3.1",
     "pyodide": "^0.29.0",
     "rxjs": "~7.8.0",
     "sql.js": "^1.13.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
   },
   "devDependencies": {
     "@angular/build": "^21.0.2",

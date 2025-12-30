@@ -1,10 +1,18 @@
-"""Utilities for inspecting PyLabRobot resources and machines."""
+"""Utilities for inspecting PyLabRobot resources and machines.
+
+.. deprecated::
+  This module uses runtime inspection which has side effects (imports PLR modules).
+  For machine/backend discovery, use :mod:`praxis.backend.utils.plr_static_analysis`
+  instead, which provides LibCST-based static analysis without imports.
+
+"""
 
 # Standard Library Imports
 import importlib
 import inspect
 import logging
 import pkgutil
+import warnings
 from inspect import isabstract
 from typing import (
   Any,
@@ -237,7 +245,18 @@ def get_resource_classes(
 def get_machine_classes(
   concrete_only: bool = True,
 ) -> dict[str, type[Machine]]:
-  """Return all machine classes from PyLabRobot modules."""
+  """Return all machine classes from PyLabRobot modules.
+
+  .. deprecated::
+    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
+    Static analysis avoids import side effects.
+
+  """
+  warnings.warn(
+    "get_machine_classes() is deprecated. Use PLRSourceParser.discover_machine_classes() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+  )
   return get_all_classes(  # type: ignore
     base_module_names="pylabrobot.machines",
     parent_class=Machine,
@@ -256,6 +275,106 @@ def get_deck_classes(concrete_only: bool = True) -> dict[str, type[Deck]]:
     concrete_only=concrete_only,
   )
   return {fqn: deck_class for fqn, deck_class in all_decks.items() if deck_class is not Deck}
+
+
+def get_liquid_handler_classes(
+  concrete_only: bool = True,
+) -> dict[str, type[Any]]:
+  """Return all LiquidHandler classes from PyLabRobot modules.
+
+  .. deprecated::
+    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
+    Static analysis avoids import side effects.
+
+  """
+  warnings.warn(
+    "get_liquid_handler_classes() is deprecated. Use PLRSourceParser.discover_machine_classes() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+  )
+  # Import locally to avoid circular imports or import errors if PLR is broken
+  try:
+    from pylabrobot.liquid_handling import LiquidHandler
+    return get_all_classes(  # type: ignore
+      base_module_names=[
+        "pylabrobot.liquid_handling",
+        "pylabrobot.resources", # some definitions might be here
+      ],
+      parent_class=LiquidHandler,
+      concrete_only=concrete_only,
+    )
+  except ImportError:
+    return {}
+
+
+def get_backend_classes(
+  concrete_only: bool = True,
+) -> dict[str, type[Any]]:
+  """Return all Backend classes from PyLabRobot modules.
+
+  .. deprecated::
+    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
+    Static analysis avoids import side effects.
+
+  """
+  warnings.warn(
+    "get_backend_classes() is deprecated. Use PLRSourceParser.discover_backend_classes() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+  )
+  try:
+    from pylabrobot.liquid_handling.backends import LiquidHandlerBackend
+    return get_all_classes(  # type: ignore
+      base_module_names=[
+        "pylabrobot.liquid_handling.backends",
+      ],
+      parent_class=LiquidHandlerBackend,
+      concrete_only=concrete_only,
+    )
+  except ImportError:
+    return {}
+
+
+def get_capabilities(class_obj: type[Any]) -> dict[str, Any]:
+  """Extract capabilities from a PLR class (LiquidHandler or Backend).
+
+  .. deprecated::
+    Use :class:`praxis.backend.utils.plr_static_analysis.PLRSourceParser` instead.
+    Static analysis provides more accurate capability extraction via AST analysis.
+
+  """
+  warnings.warn(
+    "get_capabilities() is deprecated. Use PLRSourceParser for capability extraction instead.",
+    DeprecationWarning,
+    stacklevel=2,
+  )
+  capabilities: dict[str, Any] = {
+    "channels": [],
+    "modules": [],
+    "is_backend": False,
+  }
+
+  # Heuristics for capabilities based on class name or attributes
+  name = class_obj.__name__.lower()
+  doc = inspect.getdoc(class_obj) or ""
+  doc_lower = doc.lower()
+
+  # Channels
+  if "96" in name or "96" in doc_lower:
+    capabilities["channels"].append(96)
+  if "384" in name or "384" in doc_lower:
+    capabilities["channels"].append(384)
+  if "8" in name or "8" in doc_lower or "channels" in doc_lower: # Basic assumption
+     # Refine this: check for 'num_channels' attribute if instantiated, but we are static here
+     pass
+
+  # Modules
+  if "swap" in name or "swap" in doc_lower:
+    capabilities["modules"].append("swap")
+  if "hepa" in name or "hepa" in doc_lower:
+    capabilities["modules"].append("hepa")
+
+  return capabilities
 
 
 # --- Phase 1: Enhanced PyLabRobot Deck and General Asset Introspection ---

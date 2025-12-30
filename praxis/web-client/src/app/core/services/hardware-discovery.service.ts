@@ -491,4 +491,159 @@ export class HardwareDiscoveryService {
     isPlrSupported(device: DiscoveredDevice): boolean {
         return !!(device.plrBackend && device.plrBackend.length > 0);
     }
+
+    // =========================================================================
+    // Low-level Port I/O Methods (for WebBridgeIO integration)
+    // =========================================================================
+
+    /**
+     * Track open ports with their stream readers/writers
+     */
+    private openPorts = new Map<string, {
+        port: SerialPort;
+        reader: ReadableStreamDefaultReader<Uint8Array>;
+        writer: WritableStreamDefaultWriter<Uint8Array>;
+    }>();
+
+    /**
+     * Open a serial port by device ID
+     */
+    async openPort(portId: string, options: { baudRate?: number } = {}): Promise<void> {
+        const device = this.discoveredDevices().find(d => d.id === portId);
+        if (!device?.port) {
+            throw new Error(`Port ${portId} not found in discovered devices`);
+        }
+
+        // Check if already open
+        if (this.openPorts.has(portId)) {
+            console.warn(`Port ${portId} is already open`);
+            return;
+        }
+
+        const baudRate = options.baudRate || 9600;
+        await device.port.open({ baudRate });
+
+        const reader = device.port.readable?.getReader();
+        const writer = device.port.writable?.getWriter();
+
+        if (!reader || !writer) {
+            throw new Error(`Failed to get reader/writer for port ${portId}`);
+        }
+
+        this.openPorts.set(portId, {
+            port: device.port,
+            reader,
+            writer
+        });
+
+        // Update device status
+        this.discoveredDevices.update(devices =>
+            devices.map(d => d.id === portId ? { ...d, status: 'connected' as DeviceStatus } : d)
+        );
+
+        console.log(`[HardwareDiscovery] Opened port ${portId} at ${baudRate} baud`);
+    }
+
+    /**
+     * Close a serial port by device ID
+     */
+    async closePort(portId: string): Promise<void> {
+        const conn = this.openPorts.get(portId);
+        if (!conn) {
+            console.warn(`Port ${portId} is not open`);
+            return;
+        }
+
+        try {
+            conn.reader.releaseLock();
+            conn.writer.releaseLock();
+            await conn.port.close();
+        } finally {
+            this.openPorts.delete(portId);
+
+            // Update device status
+            this.discoveredDevices.update(devices =>
+                devices.map(d => d.id === portId ? { ...d, status: 'available' as DeviceStatus } : d)
+            );
+        }
+
+        console.log(`[HardwareDiscovery] Closed port ${portId}`);
+    }
+
+    /**
+     * Write data to a serial port
+     */
+    async writeToPort(portId: string, data: Uint8Array): Promise<void> {
+        const conn = this.openPorts.get(portId);
+        if (!conn) {
+            throw new Error(`Port ${portId} is not open`);
+        }
+
+        await conn.writer.write(data);
+    }
+
+    /**
+     * Read a specific number of bytes from a serial port
+     */
+    async readFromPort(portId: string, size: number): Promise<Uint8Array> {
+        const conn = this.openPorts.get(portId);
+        if (!conn) {
+            throw new Error(`Port ${portId} is not open`);
+        }
+
+        const chunks: Uint8Array[] = [];
+        let bytesRead = 0;
+
+        while (bytesRead < size) {
+            const { value, done } = await conn.reader.read();
+            if (done || !value) break;
+            chunks.push(value);
+            bytesRead += value.length;
+        }
+
+        // Concatenate chunks
+        const result = new Uint8Array(bytesRead);
+        let offset = 0;
+        for (const chunk of chunks) {
+            result.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        return result.slice(0, size);
+    }
+
+    /**
+     * Read a line (until newline) from a serial port
+     */
+    async readLineFromPort(portId: string): Promise<Uint8Array> {
+        const conn = this.openPorts.get(portId);
+        if (!conn) {
+            throw new Error(`Port ${portId} is not open`);
+        }
+
+        const chunks: number[] = [];
+        const NEWLINE = 0x0A; // \n
+
+        while (true) {
+            const { value, done } = await conn.reader.read();
+            if (done || !value) break;
+
+            for (let i = 0; i < value.length; i++) {
+                chunks.push(value[i]);
+                if (value[i] === NEWLINE) {
+                    return new Uint8Array(chunks);
+                }
+            }
+        }
+
+        return new Uint8Array(chunks);
+    }
+
+    /**
+     * Check if a port is currently open
+     */
+    isPortOpen(portId: string): boolean {
+        return this.openPorts.has(portId);
+    }
 }
+

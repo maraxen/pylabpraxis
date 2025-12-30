@@ -26,10 +26,12 @@
 ### Theme & Polish
 
 - [ ] **Light Theme Debugging**:
-  - Fix text contrast issues.
-  - Fix button rendering anomalies in Light mode.
+  - [x] Fix text contrast issues.
+  - [ ] Fix button rendering anomalies in Light mode.
 - [ ] **Deck Setup Step**:
-  - Debug rendering issues in the Protocol Wizard's deck setup phase.
+  - **Critical**: Required assets are not showing up for selection.
+  - **Critical**: UI does not indicate which items have been autofilled.
+  - Generaly debug rendering issues in the Protocol Wizard's deck setup phase.
 
 ---
 

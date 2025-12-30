@@ -35,25 +35,29 @@ For a detailed breakdown of components, services, and workflows, please refer to
 
 ## Key Features
 
-* **FastAPI Backend**: RESTful API for protocol management and execution.
-* **PyLabRobot Integration**: Hardware control for liquid handlers, plate readers, and more.
-* **Robust State Management**: Distributed state tracking using PostgreSQL, Redis (`PraxisState`), and in-memory objects.
-* **Asynchronous Execution**: Celery-based task queue for scheduling and running protocols.
-* **Asset Management**: Comprehensive tracking of labware, machines, and their real-time status.
+* **Application Modes**:
+  * **Production Mode**: Full stack with PostgreSQL, Redis, and FastAPI.
+  * **Browser Mode**: Pure client-side execution using Pyodide (WASM) and SQLite-in-browser.
+  * **Demo Mode**: Frontend-only with pre-loaded mock data.
+* **Hardware Discovery**: Detect connected USB/Serial devices directly from the browser via WebSerial and WebUSB.
+* **Real-time Monitoring**: WebSocket-based live updates during protocol execution.
+* **Workcell Visualizer**: Modern, dynamic 3D/2D visualization of deck slots, rails, and resources with accurate scaling.
+* **Asset Management**: Comprehensive tracking of machines (liquid handlers, plate readers) and resources (plates, tips) with typed capabilities.
+* **Interactive REPL**: Browser-based terminal for real-time hardware control and state inspection.
 
 ## Documentation
 
-* **[System Architecture](docs/architecture.md)**: Deep dive into components, data flow, and services.
-* **[State Management](docs/state_management.md)**: Explanation of how state is persisted and shared across the system.
-* **[Testing Strategy](docs/testing.md)**: Guide to testing patterns, tools, and best practices.
-* **[Installation](docs/installation.md)**: Setup instructions.
+* **[Architecture Overview](docs/architecture/overview.md)**: Deep dive into components, data flow, and services.
+* **[Installation Guide](docs/getting-started/installation.md)**: Setup instructions for all modes.
+* **[Quick Start](docs/getting-started/quickstart.md)**: Run your first protocol in minutes.
 
-## Asset Model Refactor (2025-06)
+## Asset Management Refactor (2025-12)
 
-The asset-related backend models have been **unified and modernized**. All asset types (machines, resources, decks, workcells) now inherit from a single `Asset` base model.
+The asset management system has been overhauled to include:
 
-* **Unified Fields**: `accession_id`, `name`, `fqn`, `asset_type`, `location`, `plr_state`, `plr_definition`, `properties_json`.
-* **Legacy Fields Removed**: Code should be updated to use the new standardized fields.
+* **PLR Inspection**: Automatic discovery of hardware capabilities via LibCST-based static analysis.
+* **Typed Capabilities**: Detailed tracking of machine-specific features (e.g., channel counts, iSWAP existence).
+* **Unified Asset Model**: Standardized storage for all laboratory entities.
 
 ## Development
 
@@ -61,35 +65,17 @@ Praxis uses standard Python development tools managed by `uv`.
 
 * **Test**: `uv run pytest`
 * **Lint**: `uv run ruff check .`
-* **Typecheck**: `uv run ty check`
+* **Typecheck**: `uv run pyright`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for more details.
-
-## Demo Mode
-
-Praxis supports a frontend-only demo mode for GitHub Pages deployment. When running in demo mode:
-
-* **No backend required** - All API calls are intercepted and return mock data
-* **Pre-seeded protocols** - Sample protocols demonstrate the workflow
-* **Mock execution** - Protocol execution is simulated with animations
-
-> [!CAUTION]
-> **Demo Mode Security**
->
-> Demo mode bypasses authentication. It is **critical** that this is never accidentally enabled in production:
->
-> 1. Environment variable check (`NODE_ENV !== 'production'`)
-> 2. Build-time configuration replacement (separate `environment.demo.ts`)
-> 3. No demo interceptor code included in production bundle
 
 ## Known Limitations
 
 | Feature | Limitation | Recommendation |
 |---------|------------|----------------|
-| **SQLite Backend** | In-memory only; file persistence not supported | Use PostgreSQL for production |
-| **Scheduled Runs** | Not available in demo mode | "Coming Soon" indicator shown |
-| **Deck Visualizer** | Placeholder only | PLR visualizer integration planned |
-| **Real-time Pub/Sub** | Uses polling, not true WebSocket pub/sub | High-priority future work |
+| **Multi-Workcell** | Scheduling across multiple physical robots is in progress | Use single-robot protocols for now |
+| **PWA Support** | Mobile optimization is planned | Use desktop browsers for best experience |
+| **Legacy Drivers** | Some older PLR drivers may require backend mode | Use Production Mode for full driver coverage |
 
 ---
 

@@ -34,8 +34,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 class="text-3xl font-bold text-white mb-1">Protocol Library</h1>
-          <p class="text-white/70">Manage and execute your experimental protocols</p>
+          <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Protocol Library</h1>
+          <p class="text-sys-text-secondary">Manage and execute your experimental protocols</p>
         </div>
         <button mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-6 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" (click)="uploadProtocol()" [disabled]="isLoading()">
           <mat-icon>upload</mat-icon>
@@ -43,27 +43,27 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
         </button>
       </div>
 
-      <div class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl">
-        <div class="p-4 border-b border-white/10 bg-white/5 flex gap-4 items-center">
-          <mat-icon class="text-white/50">search</mat-icon>
+      <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl">
+        <div class="p-4 border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)] flex gap-4 items-center">
+          <mat-icon class="text-sys-text-secondary">search</mat-icon>
           <input 
             [formControl]="filterControl" 
             placeholder="Search protocols..." 
-            class="bg-transparent border-none outline-none text-white placeholder-white/30 w-full h-full text-lg"
+            class="bg-transparent border-none outline-none text-sys-text-primary placeholder-sys-text-tertiary w-full h-full text-lg"
           >
           @if (isLoading()) {
             <mat-spinner diameter="24" class="mr-2"></mat-spinner>
           }
         </div>
 
-        <div class="flex-1 overflow-auto bg-white/5 relative">
+        <div class="flex-1 overflow-auto bg-[var(--mat-sys-surface-variant)] relative">
            
           @if (filteredProtocols().length > 0) {
             <table mat-table [dataSource]="filteredProtocols()" class="!bg-transparent w-full">
               <!-- Name Column -->
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-white/70 !font-medium !text-sm border-b !border-white/10 px-6 py-4"> Name </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-white border-b !border-white/5 px-6 py-4">
+                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Name </th>
+                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-primary border-b !border-[var(--theme-border)] px-6 py-4">
                   <div class="flex flex-col">
                     <div class="flex items-center gap-2">
                       <span class="font-medium text-base">{{ protocol.name }}</span>
@@ -77,38 +77,38 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
 
               <!-- Version Column -->
               <ng-container matColumnDef="version">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-white/70 !font-medium !text-sm border-b !border-white/10 px-6 py-4"> Version </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-white/70 border-b !border-white/5 px-6 py-4"> 
-                  <span class="font-mono text-xs bg-white/10 px-2 py-1 rounded text-white/80">{{ protocol.version }}</span>
+                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Version </th>
+                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4"> 
+                  <span class="font-mono text-xs bg-[var(--theme-surface-elevated)] px-2 py-1 rounded text-sys-text-secondary">{{ protocol.version }}</span>
                 </td>
               </ng-container>
 
               <!-- Description Column -->
               <ng-container matColumnDef="description">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-white/70 !font-medium !text-sm border-b !border-white/10 px-6 py-4"> Description </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-white/50 border-b !border-white/5 px-6 py-4 max-w-md truncate"> {{ protocol.description || 'No description' }} </td>
+                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Description </th>
+                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary opacity-70 border-b !border-[var(--theme-border)] px-6 py-4 max-w-md truncate"> {{ protocol.description || 'No description' }} </td>
               </ng-container>
 
               <!-- Category Column -->
               <ng-container matColumnDef="category">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-white/70 !font-medium !text-sm border-b !border-white/10 px-6 py-4"> Category </th>
-                <td mat-cell *matCellDef="let protocol" class="!text-white/70 border-b !border-white/5 px-6 py-4">
+                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4"> Category </th>
+                <td mat-cell *matCellDef="let protocol" class="!text-sys-text-secondary border-b !border-[var(--theme-border)] px-6 py-4">
                   @if (protocol.category) {
                     <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-400/10 text-blue-300 border border-blue-400/20">
                       {{ protocol.category }}
                     </span>
                   } @else {
-                    <span class="text-white/20 italic">Uncategorized</span>
+                    <span class="text-sys-text-tertiary italic">Uncategorized</span>
                   }
                 </td>
               </ng-container>
 
               <!-- Actions Column -->
               <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-white/70 !font-medium !text-sm border-b !border-white/10 px-6 py-4 text-right"> Actions </th>
-                <td mat-cell *matCellDef="let protocol" class="border-b !border-white/5 px-6 py-4">
+                <th mat-header-cell *matHeaderCellDef class="!bg-surface-elevated/50 !text-sys-text-secondary !font-medium !text-sm border-b !border-[var(--theme-border)] px-6 py-4 text-right"> Actions </th>
+                <td mat-cell *matCellDef="let protocol" class="border-b !border-[var(--theme-border)] px-6 py-4">
                   <div class="flex justify-end gap-2">
-                    <button mat-icon-button class="!text-white/60 hover:!text-primary transition-colors" matTooltip="View Details" (click)="viewDetails(protocol)">
+                    <button mat-icon-button class="!text-sys-text-secondary hover:!text-primary transition-colors" matTooltip="View Details" (click)="viewDetails(protocol)">
                       <mat-icon>info</mat-icon>
                     </button>
                     <button mat-icon-button class="!text-green-400 hover:!bg-green-400/20 transition-all" matTooltip="Run Protocol" (click)="runProtocol(protocol)">
@@ -119,10 +119,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; /
               </ng-container>
 
               <tr mat-header-row *matHeaderRowDef="displayedColumns" class="!h-12"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-white/5 transition-colors cursor-default !h-16"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-[var(--mat-sys-surface-variant)] transition-colors cursor-default !h-16"></tr>
             </table>
           } @else {
-            <div class="flex flex-col items-center justify-center h-full text-white/40 py-20">
+            <div class="flex flex-col items-center justify-center h-full text-sys-text-tertiary py-20">
               <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">science</mat-icon>
               <p class="text-lg font-medium">No protocols found</p>
               <p class="text-sm opacity-60">Try adjusting your search or upload a new protocol</p>

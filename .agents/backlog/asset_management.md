@@ -12,18 +12,22 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ### Backend
 
-- [ ] **Static PLR Inspection (LibCST)**:
-  - [ ] **DEPRECATE**: Move away from runtime `inspect` and class instantiation in `ResourceTypeDefinitionService`.
-  - [ ] **Enumerate Machine Types**:
-    - Use `LibCST` to introspect PLR source to find all available `LiquidHandler` and `PlateReader` subclasses.
-    - Identify Manufacturers (Hamilton, Opentrons, Tecan, etc.).
-    - Distinguish between **Frontend** (Logic/API) and **Backend** (Driver/Communication) classes.
-- [ ] **Capability Extraction**:
-  - Extract channel counts (e.g., "8-channel", "96-channel", "384-channel") from constructor calls.
-  - Identify optional modules (Swap, HEPA, etc.).
-  - Parse identifiers and metadata into a structured format for the UI.
-- [ ] **Discovery Service Update**:
-  - Ensure `sync-all` endpoints populate this rich metadata into database/store using the new static analyzer.
+- [x] **Static PLR Inspection (LibCST)** - COMPLETED 2025-12-30:
+  - [x] Created `praxis/backend/utils/plr_static_analysis/` module with LibCST visitors.
+  - [x] **Enumerate Machine Types**: Discovers LiquidHandler, PlateReader, and Backend classes via AST.
+  - [x] Manufacturers inferred from module paths (Hamilton, Opentrons, Tecan, etc.).
+  - [x] Frontend vs Backend distinction via class type classification.
+- [x] **Capability Extraction** - COMPLETED:
+  - [x] Channel detection from `num_channels` property/defaults and method patterns.
+  - [x] Module detection (iSWAP, CoRe96, HEPA) from method names and attributes.
+- [x] **Discovery Service Update** - COMPLETED:
+  - [x] `MachineTypeDefinitionService` now uses `PLRSourceParser` for static analysis.
+  - [x] Deprecation warnings added to old runtime inspection functions in `plr_inspection.py`.
+
+**Known Issues** (tracked in [capability_tracking.md](./capability_tracking.md)):
+- Classification bug: `LiquidHandler` inherits from both `Resource` and `Machine`, currently misclassified.
+- Only 2 machine types covered (LiquidHandler, PlateReader); PLR has 15+.
+- Capabilities are Hamilton-specific; need generic schemas per machine type.
 
 ### Frontend
 
@@ -70,9 +74,14 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 
 ---
 
+## Related Backlogs
+
+- **[Capability Tracking System](./capability_tracking.md)**: Comprehensive plan for fixing classification, expanding machine types, and enabling user-configurable capabilities.
+
+---
+
 ## Reference Patterns
 
 - **Benchling**: Registry/Inventory split.
-
 - **LabArchives**: Freezer box visualization.
 - **Docker**: Capabilities/Driver abstraction.

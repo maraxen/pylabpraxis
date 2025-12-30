@@ -1,4 +1,5 @@
-import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit, effect } from '@angular/core';
+import { AppStore } from '../../core/store/app.store';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,9 +41,9 @@ import { Subscription } from 'rxjs';
       display: flex;
       flex-direction: column;
       padding: 16px;
-      background: #1e1e1e;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: white;
+      background: var(--mat-sys-surface-container);
+      border: 1px solid var(--mat-sys-outline-variant);
+      color: var(--mat-sys-on-surface);
       border-radius: 8px;
     }
     .repl-header {
@@ -53,7 +54,7 @@ import { Subscription } from 'rxjs';
       flex-shrink: 0;
     }
     .repl-header mat-icon {
-      color: #cd4d6e;
+      color: var(--mat-sys-primary);
     }
     .repl-header h2 {
       margin: 0;
@@ -63,7 +64,8 @@ import { Subscription } from 'rxjs';
     .repl-terminal-wrapper {
       flex-grow: 1;
       overflow: hidden;
-      background: #000;
+      background: var(--mat-sys-surface-container-low);
+      border: 1px solid var(--mat-sys-outline-variant);
       border-radius: 4px;
       padding: 8px;
     }
@@ -76,6 +78,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   private modeService = inject(ModeService);
   private pythonRuntime = inject(PythonRuntimeService);
   private backendRepl = inject(BackendReplService);
+  private store = inject(AppStore);
 
   private terminal!: Terminal;
   private fitAddon!: FitAddon;
@@ -91,6 +94,22 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
 
   modeLabel = this.modeService.modeLabel;
 
+  constructor() {
+    // Sync terminal theme with app theme
+    effect(() => {
+      const theme = this.store.theme();
+      if (this.terminal) {
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        this.terminal.options.theme = {
+          background: isDark ? '#0a0a0c' : '#f8fafc',
+          foreground: isDark ? '#e0e0e0' : '#0f172a',
+          cursor: isDark ? '#cd4d6e' : '#ed7a9b',
+          selectionBackground: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+        };
+      }
+    });
+  }
+
   ngOnInit() {
     this.runtime = this.modeService.isBrowserMode()
       ? this.pythonRuntime
@@ -103,12 +122,15 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private initTerminal() {
+    const theme = this.store.theme();
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
     this.terminal = new Terminal({
       cursorBlink: true,
       theme: {
-        background: '#0a0a0c',
-        foreground: '#e0e0e0',
-        cursor: '#cd4d6e',
+        background: isDark ? '#0a0a0c' : '#f8fafc',
+        foreground: isDark ? '#e0e0e0' : '#0f172a',
+        cursor: isDark ? '#cd4d6e' : '#ed7a9b',
       },
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       fontSize: 13,
@@ -225,7 +247,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   private handleTabCompletion() {
     const tokenMatch = this.inputBuffer.match(/[a-zA-Z_][a-zA-Z0-9_.]*$/);
     const token = tokenMatch ? tokenMatch[0] : '';
-    
+
     this.runtime.getCompletions(token, this.inputBuffer.length).then(matches => {
       if (matches.length === 1) {
         const completion = matches[0];

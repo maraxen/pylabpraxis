@@ -1,0 +1,199 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.4.2, pluggy-1.6.0 -- /Users/mar/Projects/pylabpraxis/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/mar/Projects/pylabpraxis
+configfile: pyproject.toml
+plugins: asyncio-1.2.0, anyio-4.11.0, socket-0.7.0, timeout-2.4.0, Faker-37.11.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+collecting ... collected 1 item
+
+tests/utils/test_plr_inspection.py::TestGetCapabilities::test_get_capabilities_channels ERROR [100%]
+ERROR: Coverage failure: total of 20 is less than fail-under=80
+
+
+==================================== ERRORS ====================================
+_____ ERROR at setup of TestGetCapabilities.test_get_capabilities_channels _____
+file /Users/mar/Projects/pylabpraxis/tests/utils/test_plr_inspection.py, line 757
+      def test_get_capabilities_channels(self) -> None:
+file /Users/mar/Projects/pylabpraxis/tests/conftest.py, line 37
+  @pytest.fixture(scope="session", autouse=True)
+  def docker_db(worker_id):
+E       fixture 'worker_id' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, db_engine, db_session, docker_db, doctest_namespace, event_loop_policy, expired_token, faker, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, socket_disabled, socket_enabled, test_inactive_user, test_user, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, valid_auth_headers
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/mar/Projects/pylabpraxis/tests/conftest.py:37
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.5-final-0 _______________
+
+Name                                                          Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------------------
+praxis/backend/__init__.py                                        1      0   100%
+praxis/backend/api/__init__.py                                    4      4     0%   8-14
+praxis/backend/api/auth.py                                       49     49     0%   3-182
+praxis/backend/api/decks.py                                       9      9     0%   3-31
+praxis/backend/api/dependencies.py                               28     28     0%   3-65
+praxis/backend/api/discovery.py                                  16     16     0%   3-38
+praxis/backend/api/global_dependencies.py                        33     33     0%   10-75
+praxis/backend/api/hardware.py                                  104    104     0%   7-354
+praxis/backend/api/machines.py                                   46     46     0%   7-169
+praxis/backend/api/outputs.py                                     9      9     0%   3-31
+praxis/backend/api/protocols.py                                  59     59     0%   7-176
+praxis/backend/api/resources.py                                  38     38     0%   8-126
+praxis/backend/api/scheduler.py                                  26     26     0%   4-84
+praxis/backend/api/utils/__init__.py                              0      0   100%
+praxis/backend/api/utils/crud_router_factory.py                  44     44     0%   3-93
+praxis/backend/api/websockets.py                                 60     60     0%   1-127
+praxis/backend/api/workcell.py                                    7      7     0%   7-20
+praxis/backend/celery_app.py                                      2      2     0%   1-3
+praxis/backend/configure.py                                     152     64    58%   44, 50, 62-70, 82-88, 118, 123, 128, 133, 138-140, 145, 150, 158, 177, 190-192, 197, 202, 207, 212, 217-219, 224, 229, 234, 243-250, 255-256, 261, 266-267, 276-289, 295-297, 307-308, 324-331
+praxis/backend/core/__init__.py                                   2      2     0%   3-5
+praxis/backend/core/asset_lock_manager.py                        39     39     0%   3-77
+praxis/backend/core/asset_manager/__init__.py                     8      8     0%   3-28
+praxis/backend/core/asset_manager/core.py                        52     52     0%   4-149
+praxis/backend/core/asset_manager/deck_manager.py                75     75     0%   5-218
+praxis/backend/core/asset_manager/location_handler.py            46     46     0%   4-96
+praxis/backend/core/asset_manager/machine_manager.py             78     78     0%   4-205
+praxis/backend/core/asset_manager/resource_manager.py           130    130     0%   4-381
+praxis/backend/core/celery.py                                     4      4     0%   7-15
+praxis/backend/core/celery_base.py                               12     12     0%   1-24
+praxis/backend/core/celery_tasks.py                              72     72     0%   9-203
+praxis/backend/core/container.py                                 49     49     0%   10-216
+praxis/backend/core/decorators/__init__.py                        5      5     0%   1-21
+praxis/backend/core/decorators/definition_builder.py             30     30     0%   1-94
+praxis/backend/core/decorators/models.py                         39     39     0%   1-81
+praxis/backend/core/decorators/parameter_processor.py            35     35     0%   1-93
+praxis/backend/core/decorators/protocol_decorator.py            197    197     0%   1-509
+praxis/backend/core/filesystem.py                                23     23     0%   3-56
+praxis/backend/core/orchestrator/__init__.py                      3      3     0%   3-12
+praxis/backend/core/orchestrator/asset_acquisition.py            58     58     0%   3-152
+praxis/backend/core/orchestrator/core.py                         26     26     0%   5-80
+praxis/backend/core/orchestrator/error_handling.py               73     73     0%   3-189
+praxis/backend/core/orchestrator/execution.py                   175    175     0%   3-464
+praxis/backend/core/orchestrator/protocol_preparation.py         75     75     0%   3-206
+praxis/backend/core/protocol_code_manager.py                    151    151     0%   14-515
+praxis/backend/core/protocol_execution_service.py                99     99     0%   9-294
+praxis/backend/core/protocols/__init__.py                         0      0   100%
+praxis/backend/core/protocols/asset_lock_manager.py               5      5     0%   1-8
+praxis/backend/core/protocols/asset_manager.py                    7      7     0%   3-11
+praxis/backend/core/protocols/filesystem.py                       1      1     0%   1
+praxis/backend/core/protocols/orchestrator.py                     2      2     0%   3-5
+praxis/backend/core/protocols/protocol_code_manager.py            3      3     0%   3-6
+praxis/backend/core/protocols/protocol_execution_service.py       3      3     0%   3-6
+praxis/backend/core/protocols/scheduler.py                        3      3     0%   3-6
+praxis/backend/core/protocols/workcell.py                         3      3     0%   3-6
+praxis/backend/core/protocols/workcell_runtime.py                 7      7     0%   3-11
+praxis/backend/core/run_context.py                               50     50     0%   19-131
+praxis/backend/core/scheduler.py                                219    219     0%   4-558
+praxis/backend/core/storage/__init__.py                           3      3     0%   16-27
+praxis/backend/core/storage/celery_adapter.py                    41     41     0%   7-129
+praxis/backend/core/storage/factory.py                           70     70     0%   24-230
+praxis/backend/core/storage/memory_adapter.py                   238    238     0%   18-400
+praxis/backend/core/storage/protocols.py                          2      2     0%   13-14
+praxis/backend/core/storage/redis_adapter.py                    163    163     0%   9-327
+praxis/backend/core/workcell.py                                 107    107     0%   13-244
+praxis/backend/core/workcell_runtime/__init__.py                  2      2     0%   1-3
+praxis/backend/core/workcell_runtime/core.py                     38     38     0%   3-73
+praxis/backend/core/workcell_runtime/deck_manager.py            201    201     0%   4-488
+praxis/backend/core/workcell_runtime/machine_manager.py         171    171     0%   4-427
+praxis/backend/core/workcell_runtime/resource_manager.py         83     83     0%   4-209
+praxis/backend/core/workcell_runtime/state_sync.py               91     91     0%   3-181
+praxis/backend/core/workcell_runtime/utils.py                    13     13     0%   3-26
+praxis/backend/main.py                                          151    151     0%   3-321
+praxis/backend/models/__init__.py                                 5      0   100%
+praxis/backend/models/enums/__init__.py                           8      0   100%
+praxis/backend/models/enums/asset.py                             14      0   100%
+praxis/backend/models/enums/machine.py                           30      1    97%   55
+praxis/backend/models/enums/outputs.py                           28      0   100%
+praxis/backend/models/enums/protocol.py                          30      0   100%
+praxis/backend/models/enums/resource.py                          60      3    95%   103, 123, 137
+praxis/backend/models/enums/schedule.py                          33      0   100%
+praxis/backend/models/enums/workcell.py                          12      1    92%   29
+praxis/backend/models/orm/__init__.py                            10      0   100%
+praxis/backend/models/orm/asset.py                               18      1    94%   20
+praxis/backend/models/orm/deck.py                                61      2    97%   44, 113
+praxis/backend/models/orm/machine.py                             66      3    95%   16, 405, 410
+praxis/backend/models/orm/outputs.py                             56      1    98%   48
+praxis/backend/models/orm/plr_sync.py                             9      0   100%
+praxis/backend/models/orm/protocol.py                           128      1    99%   19
+praxis/backend/models/orm/resource.py                            70      4    94%   39, 416, 421, 426
+praxis/backend/models/orm/schedule.py                            83      1    99%   21
+praxis/backend/models/orm/types.py                                2      0   100%
+praxis/backend/models/orm/user.py                                19      2    89%   93-94
+praxis/backend/models/orm/workcell.py                            24      1    96%   21
+praxis/backend/models/pydantic_internals/__init__.py             11      0   100%
+praxis/backend/models/pydantic_internals/asset.py                40      0   100%
+praxis/backend/models/pydantic_internals/deck.py                 61      0   100%
+praxis/backend/models/pydantic_internals/filters.py              16      0   100%
+praxis/backend/models/pydantic_internals/machine.py              88      0   100%
+praxis/backend/models/pydantic_internals/outputs.py             115      6    95%   127-141
+praxis/backend/models/pydantic_internals/plr_sync.py             17      0   100%
+praxis/backend/models/pydantic_internals/protocol.py            181      0   100%
+praxis/backend/models/pydantic_internals/pydantic_base.py        13      1    92%   46
+praxis/backend/models/pydantic_internals/resource.py            103      0   100%
+praxis/backend/models/pydantic_internals/runtime.py              20      3    85%   31, 42-43
+praxis/backend/models/pydantic_internals/scheduler.py           192      0   100%
+praxis/backend/models/pydantic_internals/user.py                 16     16     0%   7-40
+praxis/backend/models/pydantic_internals/workcell.py             34      0   100%
+praxis/backend/services/__init__.py                              13     13     0%   14-31
+praxis/backend/services/async_state.py                           89     89     0%   8-205
+praxis/backend/services/deck.py                                 124    124     0%   8-310
+praxis/backend/services/deck_type_definition.py                  27     27     0%   3-59
+praxis/backend/services/discovery_service.py                    138    138     0%   11-308
+praxis/backend/services/entity_linking.py                       147    147     0%   8-405
+praxis/backend/services/hardware_discovery.py                    72     72     0%   7-230
+praxis/backend/services/machine.py                              109    109     0%   10-251
+praxis/backend/services/machine_type_definition.py               61     61     0%   3-130
+praxis/backend/services/mock_data_generator.py                   59     59     0%   3-102
+praxis/backend/services/outputs.py                               67     67     0%   8-160
+praxis/backend/services/plate_parsing.py                         60     60     0%   8-141
+praxis/backend/services/plate_viz.py                             25     25     0%   10-99
+praxis/backend/services/plr_type_base.py                          8      8     0%   3-17
+praxis/backend/services/praxis_orm_service.py                   171    171     0%   12-434
+praxis/backend/services/protocol_definition.py                  155    155     0%   3-426
+praxis/backend/services/protocol_output_data.py                  25     25     0%   8-124
+praxis/backend/services/protocols.py                            165    165     0%   12-395
+praxis/backend/services/resource.py                             112    112     0%   4-276
+praxis/backend/services/resource_type_definition.py             288    288     0%   3-692
+praxis/backend/services/scheduler.py                            176    176     0%   12-564
+praxis/backend/services/state.py                                124    124     0%   3-275
+praxis/backend/services/type_definition_base.py                   6      6     0%   3-15
+praxis/backend/services/user.py                                 116    116     0%   8-334
+praxis/backend/services/utils/__init__.py                         2      2     0%   3-10
+praxis/backend/services/utils/crud_base.py                       85     85     0%   3-161
+praxis/backend/services/utils/plr_type_base.py                   56     56     0%   3-117
+praxis/backend/services/utils/query_builder.py                   66     66     0%   8-209
+praxis/backend/services/well_outputs.py                         124    124     0%   8-331
+praxis/backend/services/workcell.py                              84     84     0%   12-200
+praxis/backend/utils/__init__.py                                  7      0   100%
+praxis/backend/utils/accession_resolver.py                       19     19     0%   6-68
+praxis/backend/utils/auth.py                                     62     62     0%   7-123
+praxis/backend/utils/db.py                                      120     62    48%   35-37, 43, 58-61, 68-92, 100-132, 141-142, 205-212, 220-240, 249-250, 259, 279, 300
+praxis/backend/utils/db_decorator.py                             25     25     0%   3-67
+praxis/backend/utils/errors.py                                   62     30    52%   20-21, 25, 44-45, 49, 68-69, 73, 92-93, 97, 116-117, 121, 140-141, 145, 165-166, 170, 189-190, 194, 210-211, 233-234, 247, 266
+praxis/backend/utils/filesystem.py                                4      4     0%   1-10
+praxis/backend/utils/logging.py                                  47     38    19%   12-18, 32-48, 92-111, 155-174
+praxis/backend/utils/notify.py                                   27     13    52%   64-75, 96-97
+praxis/backend/utils/plr_inspection.py                          202    161    20%   34, 53-77, 95-106, 111, 121, 131, 157-189, 208-220, 227, 241, 250-258, 266-277, 284-294, 299-325, 335-353, 364-390, 400, 417, 431, 445, 459, 484-492, 503-505, 512-514, 521-523, 545-568, 578-580, 590-598, 612-617, 629-664
+praxis/backend/utils/redis_lock.py                               21     15    29%   30-49
+praxis/backend/utils/run_control.py                              38     38     0%   3-90
+praxis/backend/utils/sanitation.py                              151    132    13%   24-25, 43-54, 68-86, 91-109, 117, 136-142, 152-157, 183-218, 231-234, 248, 252-261, 269-283, 320-349, 366-372
+praxis/backend/utils/type_inspection.py                          24     24     0%   4-49
+praxis/backend/utils/uuid.py                                      9      4    56%   24, 34, 39-40
+praxis/common/__init__.py                                         0      0   100%
+praxis/common/type_inspection.py                                 34     34     0%   4-61
+praxis/protocol/__init__.py                                       2      2     0%   6-12
+praxis/protocol/protocols/__init__.py                             4      4     0%   9-13
+praxis/protocol/protocols/plate_preparation.py                   47     47     0%   7-140
+praxis/protocol/protocols/serial_dilution.py                     28     28     0%   7-132
+praxis/protocol/protocols/simple_transfer.py                     19     19     0%   7-111
+-------------------------------------------------------------------------------------------
+TOTAL                                                          9299   7393    20%
+Coverage HTML written to dir htmlcov
+FAIL Required test coverage of 80% not reached. Total coverage: 20.50%
+=========================== short test summary info ============================
+ERROR tests/utils/test_plr_inspection.py::TestGetCapabilities::test_get_capabilities_channels
+========================= 1 warning, 1 error in 1.69s ==========================

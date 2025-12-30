@@ -8,6 +8,15 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
   imports: [CommonModule],
   template: `
     <div class="deck-container" [style.width.px]="containerWidth()" [style.height.px]="containerHeight()">
+      <!-- Background Rails/Slots -->
+      @if (resource()?.num_rails) {
+         <div class="rails-container absolute inset-0 pointer-events-none">
+           @for (rail of getRails(); track $index) {
+             <div class="rail-line" [style.left.px]="scaleX(100 + ($index * 22.5))"></div>
+           }
+         </div>
+      }
+
       <!-- Render the root resource and its children recursively -->
       <ng-container *ngTemplateOutlet="resourceTpl; context: { $implicit: resource() }"></ng-container>
     </div>
@@ -20,6 +29,8 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
            [style.width.px]="scaleDim(res.size_x)"
            [style.height.px]="scaleDim(res.size_y)"
            [class.is-root]="res === resource()"
+           [class.is-ghost]="isGhost(res)"
+           [class.is-well]="res.type === 'Well'"
            [style.background-color]="getColor(res)">
         
         <!-- Label for significant resources -->
@@ -86,6 +97,36 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
       text-overflow: ellipsis;
       max-width: 100%;
     }
+
+    .rails-container {
+      z-index: 0;
+    }
+    
+    .rail-line {
+      position: absolute;
+      top: 63px; /* Standard Hamilton rail start Y */
+      bottom: 63px; /* Standard Hamilton rail end Y */
+      width: 2px;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Ghost styling */
+    .is-ghost {
+       border: 2px dashed rgba(0, 0, 0, 0.3) !important;
+       background-color: rgba(0, 0, 0, 0.02) !important; 
+    }
+
+    /* Well styling */
+    .is-well {
+      border-radius: 50%; /* Assume round wells for now */
+      border: 1px solid rgba(0,0,0,0.1); 
+    }
+
+    /* Override for rectangular wells if needed, based on cross_section_type */
+    .resource-node[data-shape='rect'] {
+       border-radius: 1px;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -93,11 +134,11 @@ export class DeckViewComponent {
   // Inputs
   resource = signal<PlrResource | null>(null);
   state = signal<PlrState | null>(null);
-  
+
   @Input({ alias: 'resource', required: true }) set _resource(val: PlrResource | null) {
     this.resource.set(val);
   }
-  
+
   @Input({ alias: 'state' }) set _state(val: PlrState | null) {
     this.state.set(val);
   }
@@ -135,7 +176,7 @@ export class DeckViewComponent {
   // 
   // Simplification: Let's assume direct mapping first (top-left origin) as many 
   // web-facing conversions do this. If it looks upside down, I'll invert.
-  
+
   scaleY(val: number): number {
     return val * this.pixelsPerMm;
     // To flip Y (Cartesian to Screen):
@@ -159,5 +200,14 @@ export class DeckViewComponent {
   shouldShowLabel(res: PlrResource): boolean {
     // Only show labels for larger items, not wells/tips
     return res.size_x > 20 && res.size_y > 20 && !['Well', 'Tip'].includes(res.type);
+  }
+
+  isGhost(res: PlrResource): boolean {
+    return res.name.startsWith('ghost_');
+  }
+
+  getRails(): number[] {
+    const num = this.resource()?.num_rails || 0;
+    return Array(num).fill(0);
   }
 }

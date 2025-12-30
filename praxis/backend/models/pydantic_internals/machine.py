@@ -44,6 +44,7 @@ class MachineBase(AssetBase):
   installation_date: Any | None = None
   connection_info: dict[str, Any] | None = None
   is_simulation_override: bool | None = None
+  user_configured_capabilities: dict[str, Any] | None = None
   last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
 
@@ -90,6 +91,7 @@ class MachineUpdate(AssetUpdate):
   installation_date: Any | None = None
   connection_info: dict[str, Any] | None = None
   is_simulation_override: bool | None = None
+  user_configured_capabilities: dict[str, Any] | None = None
   last_seen_online: Any | None = None
   current_protocol_run_accession_id: UUID7 | None = None
 
@@ -157,6 +159,18 @@ class MachineDefinitionBase(PLRTypeDefinitionBase):
     default=None,
     description="The setup method for the machine.",
   )
+  capabilities: dict[str, Any] | None = Field(
+    default=None,
+    description="Hardware capabilities (channels, modules, etc).",
+  )
+  compatible_backends: list[str] | None = Field(
+    default=None,
+    description="List of compatible backend FQNs.",
+  )
+  capabilities_config: dict[str, Any] | None = Field(
+    default=None,
+    description="Schema for user-configurable capabilities.",
+  )
 
 
 class MachineDefinitionCreate(MachineDefinitionBase, PLRTypeDefinitionCreate):
@@ -182,6 +196,9 @@ class MachineDefinitionUpdate(PLRTypeDefinitionUpdate):
   has_deck: bool | None = None
   deck_definition_accession_id: UUID7 | None = None
   setup_method_json: dict[str, Any] | None = None
+  capabilities: dict[str, Any] | None = None
+  compatible_backends: list[str] | None = None
+  capabilities_config: dict[str, Any] | None = None
 
 
 class MachineDefinitionResponse(MachineDefinitionBase, PLRTypeDefinitionResponse):

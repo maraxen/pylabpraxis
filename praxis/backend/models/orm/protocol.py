@@ -271,6 +271,12 @@ class FunctionProtocolDefinitionOrm(Base):
     default=None,
   )
   deprecated: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+  hardware_requirements_json: Mapped[dict | None] = mapped_column(
+    JsonVariant,
+    nullable=True,
+    comment="Inferred hardware requirements from static analysis (ProtocolRequirements).",
+    default=None,
+  )
 
   parameters: Mapped[list["ParameterDefinitionOrm"]] = relationship(
     "ParameterDefinitionOrm",

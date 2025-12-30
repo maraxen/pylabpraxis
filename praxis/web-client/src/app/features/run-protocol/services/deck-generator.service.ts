@@ -86,8 +86,7 @@ export class DeckGeneratorService {
 
                     if (isGhost) {
                         resource.children = []; // No detailed wells for ghosts
-                        resource.color = 'rgba(0, 0, 0, 0)'; // Transparent, only outline will be shown
-                        // resource.type = 'Container'; // Simplify type? optional.
+                        // resource.color is REMOVED so CSS class .is-ghost can apply background/border
                     }
 
                     parent.children.push(resource);

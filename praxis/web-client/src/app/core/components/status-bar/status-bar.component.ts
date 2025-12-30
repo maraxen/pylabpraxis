@@ -53,21 +53,18 @@ import { ExecutionStatus } from '../../../features/run-protocol/models/execution
       align-items: center;
       justify-content: space-between;
       padding: 4px 16px;
-      font-size: 0.8em;
-      color: white;
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-primary);
       transition: background-color 0.3s ease;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000; /* Ensure it's on top */
-      height: 32px; /* Compact height */
+      height: 32px;
+      flex-shrink: 0;
     }
     .status-bar.connected {
-      background-color: var(--mat-sys-color-primary); /* Primary color for connected */
+      background-color: var(--mat-sys-primary);
     }
     .status-bar.disconnected {
-      background-color: var(--mat-sys-color-error); /* Error color for disconnected */
+      background-color: var(--mat-sys-error);
+      color: var(--mat-sys-on-error);
     }
     .status-left, .status-right, .status-center {
       display: flex;

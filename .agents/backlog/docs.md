@@ -7,12 +7,14 @@
 
 ## High Priority
 
-### Docs Building
+### Build & Infrastructure
 
-- [ ] Configure Sphinx/MkDocs for auto-generation
-- [ ] API documentation from docstrings
-- [ ] Component documentation
-- [ ] Build pipeline (CI/CD integration)
+- [x] Configure MkDocs for documentation site
+- [x] Enable Mermaid rendering in MkDocs
+- [x] Enable Mermaid rendering in Angular App (ngx-markdown)
+- [ ] Add `mkdocstrings` for automatic API documentation from docstrings
+- [ ] Deprecate and remove remaining Sphinx configuration (`conf.py`, `.rst` files)
+- [ ] Build pipeline (CI/CD integration for MkDocs)
 
 ### Demo Documentation
 
@@ -23,10 +25,12 @@
 
 ### Architecture Updates
 
-- [ ] Update `docs/architecture.md` with current state
-- [ ] Add frontend architecture section
-- [ ] Document WebSocket protocol
-- [ ] Document state management patterns
+- [x] Consolidate `docs/architecture.md` into `docs/architecture/*.md`
+- [x] Document state management patterns (`docs/architecture/state-management.md`)
+- [x] Document execution flow (`docs/architecture/execution-flow.md`)
+- [x] Document Application Modes (Production, Browser, Demo)
+- [ ] Document WebSocket protocol in detail
+- [ ] Add frontend component architecture diagrams
 
 ---
 
@@ -34,7 +38,8 @@
 
 ### User Guides
 
-- [ ] Getting started guide
+- [ ] Audit and rename legacy "PyLabPraxis" to "Praxis" in all documents
+- [x] Getting started guide (Quickstart)
 - [ ] Protocol authoring guide
 - [ ] Resource management guide
 - [ ] Deck configuration guide
@@ -75,11 +80,12 @@
 
 | File | Status | Action |
 |------|--------|--------|
-| `docs/architecture.md` | Outdated | Update with current components |
-| `docs/state_management.md` | Current | Review for accuracy |
-| `docs/testing.md` | Current | Consolidate with tests/*.md |
-| `docs/installation.md` | Minimal | Expand with full setup |
-| `docs/quickstart.md` | Stub | Write proper quickstart |
+| `docs/architecture/overview.md` | Current | Reviewed and updated with Modes |
+| `docs/architecture.md` | Legacy | Consolidate and delete |
+| `docs/state_management.md` | Legacy | Move to `architecture/` |
+| `docs/testing.md` | Legacy | Move to `development/` |
+| `docs/installation.md` | Current | Updated with Browser Mode |
+| `docs/quickstart.md` | Current | Updated with Browser Mode |
 
 ---
 

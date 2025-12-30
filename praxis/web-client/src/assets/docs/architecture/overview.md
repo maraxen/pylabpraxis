@@ -4,48 +4,59 @@ Praxis is designed as a modular, service-oriented system for laboratory automati
 
 ## System Diagram
 
+### Production Mode
+
 ```mermaid
 graph TD
-    subgraph "Frontend (Angular)"
+    %% Styling for Subgraph Titles
+    classDef sectionTitle font-size:22px,font-weight:bold,fill:none,stroke:none;
+
+    subgraph Frontend ["Frontend (Angular)"]
         UI[Web UI]
         Store[NgRx Store]
         Services[Frontend Services]
     end
+    style Frontend fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
 
-    subgraph "API Layer"
-        API[FastAPI Server]
+    subgraph API ["API Layer"]
+        Server[FastAPI Server]
         WS[WebSocket Handler]
     end
+    style API fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
 
-    subgraph "Core Engine"
+    subgraph Core ["Core Engine"]
         Orch[Orchestrator]
         Sched[Scheduler]
         Proto[Protocol Engine]
         Asset[Asset Manager]
     end
+    style Core fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
 
-    subgraph "Runtime"
+    subgraph Runtime ["Runtime"]
         WCR[WorkcellRuntime]
         PLR[PyLabRobot]
         Sim[Simulators]
     end
+    style Runtime fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
 
-    subgraph "Workers"
+    subgraph Workers ["Workers"]
         Celery[Celery Workers]
     end
+    style Workers fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
 
-    subgraph "Data Layer"
+    subgraph Data ["Data Layer"]
         PG[(PostgreSQL)]
         Redis[(Redis)]
     end
+    style Data fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
 
-    UI --> API
+    UI --> Server
     UI --> WS
     Store --> Services
-    Services --> API
+    Services --> Server
 
-    API --> Orch
-    API --> Asset
+    Server --> Orch
+    Server --> Asset
     WS --> Orch
 
     Orch --> Proto
@@ -58,10 +69,96 @@ graph TD
     WCR --> PLR
     WCR --> Sim
 
-    API --> PG
+    Server --> PG
     Orch --> Redis
     Celery --> Redis
     WCR --> PG
+```
+
+### Lite Mode
+
+```mermaid
+graph TD
+    subgraph Frontend_Lite ["Frontend (Angular)"]
+        UI_L[Web UI]
+        Store_L[NgRx Store]
+    end
+    style Frontend_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+
+    subgraph API_Lite ["Local API"]
+        Server_L[FastAPI Process]
+    end
+    style API_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+
+    subgraph Core_Lite ["Core Engine"]
+        Orch_L[Orchestrator]
+        Asset_L[Asset Manager]
+    end
+    style Core_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+
+    subgraph Runtime_Lite ["Runtime"]
+        WCR_L[WorkcellRuntime]
+        PLR_L[PyLabRobot]
+    end
+    style Runtime_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+
+    subgraph Data_Lite ["Data Layer"]
+        SQLite[(SQLite)]
+    end
+    style Data_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+
+    UI_L --> Server_L
+    Store_L --> Server_L
+    Server_L --> Orch_L
+    Server_L --> Asset_L
+    Orch_L --> WCR_L
+    Asset_L --> WCR_L
+    WCR_L --> PLR_L
+    Server_L --> SQLite
+    WCR_L --> SQLite
+```
+
+### Browser Mode (Pyodide)
+
+```mermaid
+graph TD
+    subgraph Frontend_Browser ["Frontend (Browser Only)"]
+        UI_B[Web UI]
+        Store_B[NgRx Store]
+        IO_Shim[IO Shim Service]
+    end
+    style Frontend_Browser fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+
+    subgraph WebWorker ["Web Worker (Pyodide)"]
+        PyBridge[Python Bridge]
+        Core_B[Core Engine]
+        PLR_B[PyLabRobot]
+    end
+    style WebWorker fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+
+    subgraph BrowserData ["Browser Storage"]
+        IDB[(IndexedDB)]
+        LocalStorage[(LocalStorage)]
+    end
+    style BrowserData fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+
+    subgraph Hardware ["Physical Hardware"]
+        USB[WebSerial / USB]
+        Bluetooth[WebBluetooth]
+    end
+    style Hardware fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+
+    UI_B --> Store_B
+    Store_B --> PyBridge
+    PyBridge --> Core_B
+    Core_B --> PLR_B
+    
+    PLR_B --> IO_Shim
+    IO_Shim --> USB
+    IO_Shim --> Bluetooth
+    
+    Store_B --> IDB
+    Store_B --> LocalStorage
 ```
 
 ## Layer Responsibilities

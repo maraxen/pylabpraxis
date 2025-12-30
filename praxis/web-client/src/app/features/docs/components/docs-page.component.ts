@@ -1,14 +1,16 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect, computed } from '@angular/core';
+import { AppStore } from '../../../core/store/app.store';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
+import { SystemTopologyComponent } from './system-topology/system-topology.component';
 import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-docs-page',
   standalone: true,
-  imports: [CommonModule, MarkdownModule],
+  imports: [CommonModule, MarkdownModule, SystemTopologyComponent],
   template: `
     <div class="docs-page">
       @if (loading()) {
@@ -23,7 +25,10 @@ import { catchError, of } from 'rxjs';
         </div>
       } @else {
         <article class="docs-article">
-          <markdown [data]="markdownContent()"></markdown>
+          @if (showSystemTopology()) {
+            <app-system-topology></app-system-topology>
+          }
+          <markdown [data]="markdownContent()" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
         </article>
       }
     </div>
@@ -234,12 +239,14 @@ import { catchError, of } from 'rxjs';
 
       /* Mermaid diagrams */
       .mermaid {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 16px 0;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 32px;
+        margin: 24px 0;
         display: flex;
         justify-content: center;
+        overflow-x: auto;
       }
     }
 
@@ -273,10 +280,90 @@ import { catchError, of } from 'rxjs';
 export class DocsPageComponent {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private store = inject(AppStore);
+
+  mermaidOptions = computed(() => {
+    const theme = this.store.theme();
+    let isDark = theme === 'dark';
+
+    if (theme === 'system') {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    const common = {
+      fontFamily: '"Roboto Flex", sans-serif',
+      fontSize: '18px',
+      flowchart: {
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        curve: 'basis'
+      }
+    };
+
+    return {
+      theme: 'base' as const,
+      flowchart: {
+        htmlLabels: true,
+        useMaxWidth: false,
+      },
+      themeVariables: isDark ? {
+        ...common,
+        darkMode: true,
+        background: 'transparent',
+        mainBkg: 'transparent',
+
+        // Primary (Standard Nodes)
+        primaryColor: '#2a2a3c',         // Surface Container High
+        primaryTextColor: '#ffffff',
+        primaryBorderColor: '#ed7a9b',   // Rose Pompadour
+
+        // Secondary (e.g. subgraphs)
+        secondaryColor: '#1a1a2e',       // Surface Container Low
+        secondaryTextColor: '#ffffff',
+        secondaryBorderColor: '#73a9c2', // Moonstone Blue
+
+        // Tertiary
+        tertiaryColor: '#1e1e2d',
+        tertiaryTextColor: '#ffffff',
+        tertiaryBorderColor: '#ed7a9b',
+
+        // Lines and Text
+        lineColor: 'rgba(255, 255, 255, 0.6)',
+        textColor: '#ffffff',
+        noteBkgColor: '#2a2a3c',
+        noteTextColor: '#ffffff',
+        noteBorderColor: '#73a9c2'
+      } : {
+        ...common,
+        darkMode: false,
+        background: 'transparent',
+        mainBkg: 'transparent',
+
+        // Primary
+        primaryColor: '#f1f5f9',         // Slate 100
+        primaryTextColor: '#020617',     // Slate 950
+        primaryBorderColor: '#ed7a9b',
+
+        // Secondary
+        secondaryColor: '#ffffff',
+        secondaryTextColor: '#020617',
+        secondaryBorderColor: '#73a9c2',
+
+        // Lines and Text
+        lineColor: '#1e293b',            // Slate 800
+        textColor: '#020617',
+        noteBkgColor: '#f8fafc',
+        noteTextColor: '#020617',
+        noteBorderColor: '#73a9c2'
+      }
+    };
+  });
 
   markdownContent = signal<string>('');
   loading = signal(true);
   error = signal<string | null>(null);
+
+  showSystemTopology = signal(false);
 
   constructor() {
     effect(() => {
@@ -287,6 +374,8 @@ export class DocsPageComponent {
       const page = params['page'] || data['page'] || 'index';
 
       this.loadMarkdown(section, page);
+
+      this.showSystemTopology.set(section === 'architecture' && page === 'overview');
     }, { allowSignalWrites: true });
 
     // Also react to route changes
@@ -298,6 +387,7 @@ export class DocsPageComponent {
       const page = params['page'] || data['page'] || 'index';
 
       this.loadMarkdown(section, page);
+      this.showSystemTopology.set(section === 'architecture' && page === 'overview');
     });
   }
 
@@ -320,7 +410,14 @@ export class DocsPageComponent {
       .subscribe({
         next: (content) => {
           if (content) {
-            this.markdownContent.set(content);
+            let processedContent = content;
+            if (section === 'architecture' && page === 'overview') {
+              // Strip out the System Diagram section + mermaid block
+              // We'll replace it with the component
+              // Regex matches "## System Diagram" until "## Layer Responsibilities"
+              processedContent = content.replace(/## System Diagram[\s\S]*?(?=## Layer Responsibilities)/, '');
+            }
+            this.markdownContent.set(processedContent);
             this.loading.set(false);
           } else {
             this.error.set(`Documentation page "${section}/${page}" not found.`);

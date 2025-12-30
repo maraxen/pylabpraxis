@@ -2,7 +2,11 @@
 
 This document details how protocols are executed in Praxis, from user request to completion.
 
-## High-Level Flow
+## High-Level Flows
+
+### Production Mode (Distributed)
+
+In Production Mode, the orchestrator manages execution across multiple services using Redis for state and Celery for async tasks.
 
 ```mermaid
 sequenceDiagram
@@ -37,6 +41,37 @@ sequenceDiagram
     Orch-->>API: ProtocolRun
     API-->>UI: Run Result
     UI-->>User: Display Result
+```
+
+### Browser Mode (Local-Only)
+
+In Browser Mode, the entire stack (except for Serial I/O) runs inside a Web Worker. There is no network latency between the core logic and the database.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as UI Context
+    participant PW as Python Worker (Pyodide)
+    participant HW as Hardware (WebSerial)
+
+    User->>UI: Configure & Run
+    UI->>PW: execute_protocol()
+    PW->>PW: load code & SQLite
+    PW->>UI: request_hw_access()
+    UI-->>User: Permission Popup
+    User-->>UI: Grant
+    UI-->>PW: hw_ready
+
+    loop Execution
+        PW->>PW: step logic
+        PW->>UI: RAW_IO(write)
+        UI->>HW: serial_write()
+        HW-->>UI: data
+        UI-->>PW: RAW_IO_RESPONSE(read)
+    end
+
+    PW->>UI: run_complete
+    UI->>User: Show Result
 ```
 
 ## Execution Modes

@@ -247,6 +247,7 @@ class FunctionProtocolDefinitionBase(BaseModel):
 
   parameters: list[ParameterMetadataModel] = Field(default_factory=list)
   assets: list[AssetRequirementModel] = Field(default_factory=list)
+  hardware_requirements: dict[str, Any] | None = None  # Inferred hardware requirements
 
 
 class FunctionProtocolDefinitionCreate(FunctionProtocolDefinitionBase):
@@ -285,6 +286,7 @@ class FunctionProtocolDefinitionUpdate(BaseModel):
   deprecated: bool | None = None
   parameters: list[ParameterMetadataModel] | None = None
   assets: list[AssetRequirementModel] | None = None
+  hardware_requirements: dict[str, Any] | None = None
 
 
 class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisBaseModel):
@@ -292,6 +294,12 @@ class FunctionProtocolDefinitionResponse(FunctionProtocolDefinitionBase, PraxisB
   """Model for API responses for a function protocol definition."""
 
   model_config = ConfigDict(from_attributes=True)
+
+  # Override base field to map from ORM JSON field
+  hardware_requirements: dict[str, Any] | None = Field(
+    default=None,
+    validation_alias="hardware_requirements_json",
+  )
 
 
 class ProtocolParameters(BaseModel):

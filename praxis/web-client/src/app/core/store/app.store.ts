@@ -63,18 +63,29 @@ export const AppStore = signalStore(
         try {
           localStorage.setItem('theme', theme);
           // Apply theme immediately
-          document.body.classList.remove('light-theme', 'dark-theme');
-          if (theme === 'system') {
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (systemDark) {
-              document.body.classList.add('dark-theme');
+          const applyThemeClass = (t: Theme) => {
+            document.body.classList.remove('light-theme', 'dark-theme');
+            if (t === 'system') {
+              const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              document.body.classList.add(systemDark ? 'dark-theme' : 'light-theme');
             } else {
-              document.body.classList.add('light-theme');
+              document.body.classList.add(`${t}-theme`);
             }
-          } else if (theme === 'dark') {
-            document.body.classList.add('dark-theme');
-          } else if (theme === 'light') {
-            document.body.classList.add('light-theme');
+          };
+
+          applyThemeClass(theme);
+
+          // Handle system preference changes
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          const listener = () => {
+            if (store.theme() === 'system') {
+              applyThemeClass('system');
+            }
+          };
+          
+          mediaQuery.removeEventListener('change', listener);
+          if (theme === 'system') {
+            mediaQuery.addEventListener('change', listener);
           }
         } catch (e) {
           console.error('Failed to save theme preference', e);

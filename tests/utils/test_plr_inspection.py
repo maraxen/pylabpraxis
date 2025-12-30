@@ -3,6 +3,8 @@
 import inspect
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
 from pylabrobot.machines.machine import Machine
 from pylabrobot.resources import Deck, Plate, Resource, ResourceHolder
 from pylabrobot.resources.carrier import Carrier, PlateCarrier, TipCarrier, TroughCarrier
@@ -20,12 +22,15 @@ from praxis.backend.utils.plr_inspection import (
     get_all_resource_and_machine_classes,
     get_all_resource_and_machine_classes_enhanced,
     get_all_resource_classes,
+    get_backend_classes,
+    get_capabilities,
     get_carrier_classes,
     get_class_fqn,
     get_constructor_params_with_defaults,
     get_deck_and_carrier_classes,
     get_deck_classes,
     get_deck_details,
+    get_liquid_handler_classes,
     get_machine_classes,
     get_module_classes,
     get_plate_carrier_classes,
@@ -716,3 +721,71 @@ class TestPlrInspectionIntegration:
 
         # Deck should be excluded by is_deck_subclass
         assert is_deck_subclass(Deck) is False
+
+
+class TestGetLiquidHandlerClasses:
+
+    """Tests for get_liquid_handler_classes function."""
+
+    def test_get_liquid_handler_classes_returns_dict(self) -> None:
+        """Test that function returns a dictionary."""
+        # This might return empty if PLR is not installed or import fails
+        result = get_liquid_handler_classes()
+        assert isinstance(result, dict)
+
+    @patch("praxis.backend.utils.plr_inspection.get_all_classes")
+    def test_get_liquid_handler_classes_calls_get_all_classes(self, mock_get_all: MagicMock) -> None:
+        """Test that it delegates to get_all_classes."""
+        try:
+            import pylabrobot.liquid_handling  # noqa: F401
+        except ImportError:
+            pytest.skip("pylabrobot.liquid_handling not available")
+
+        # Mocking import to ensure we hit the try block success path or check call
+        with patch("pylabrobot.liquid_handling.LiquidHandler"):
+            get_liquid_handler_classes()
+            assert mock_get_all.call_count > 0
+
+
+class TestGetBackendClasses:
+
+    """Tests for get_backend_classes function."""
+
+    def test_get_backend_classes_returns_dict(self) -> None:
+        """Test that function returns a dictionary."""
+        result = get_backend_classes()
+        assert isinstance(result, dict)
+
+
+class TestGetCapabilities:
+
+    """Tests for get_capabilities function."""
+
+    def test_get_capabilities_channels(self) -> None:
+        """Test channel extraction."""
+        class Mock96(Machine):
+            """A 96-channel mock."""
+            pass
+
+        caps = get_capabilities(Mock96)
+        assert 96 in caps["channels"]
+
+    def test_get_capabilities_modules(self) -> None:
+        """Test module extraction."""
+        class MockSwap(Machine):
+            """Has a swap capability."""
+            pass
+
+        caps = get_capabilities(MockSwap)
+        assert "swap" in caps["modules"]
+
+    def test_get_capabilities_structure(self) -> None:
+        """Test the capabilities dict structure."""
+        class MockEmpty(Machine):
+            pass
+        
+        caps = get_capabilities(MockEmpty)
+        assert "channels" in caps
+        assert isinstance(caps["channels"], list)
+        assert "modules" in caps
+        assert isinstance(caps["modules"], list)

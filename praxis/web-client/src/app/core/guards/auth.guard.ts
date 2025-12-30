@@ -2,14 +2,13 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { KeycloakService } from '../auth/keycloak.service';
-import { environment } from '../../../environments/environment';
-
-// Check if we're in demo mode
-const isDemoMode = (environment as { demo?: boolean }).demo === true;
+import { ModeService } from '../services/mode.service';
 
 export const authGuard: CanActivateFn = (route, state) => {
-  // Demo mode: allow all access without auth
-  if (isDemoMode) {
+  const modeService = inject(ModeService);
+
+  // Browser/Demo modes: allow all access without auth
+  if (modeService.isBrowserMode()) {
     return true;
   }
 

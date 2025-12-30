@@ -71,10 +71,10 @@ export const routes: Routes = [
             path: 'stress-test',
             loadComponent: () => import('./features/stress-test/stress-test.component').then(m => m.StressTestComponent)
           },
-          // {
-          //   path: 'repl',
-          //   loadComponent: () => import('./features/repl/repl.component').then(m => m.ReplComponent)
-          // }
+          {
+            path: 'repl',
+            loadComponent: () => import('./features/repl/repl.component').then(m => m.ReplComponent)
+          },
         ]
       },
 

@@ -35,12 +35,12 @@ import { ActivatedRoute, Router } from '@angular/router';
     <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
-          <h1 class="text-3xl font-bold text-white mb-1">Asset Management</h1>
-          <p class="text-white/70">Manage your laboratory hardware and inventory</p>
+          <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Asset Management</h1>
+          <p class="text-sys-text-secondary">Manage your laboratory hardware and inventory</p>
         </div>
         <div class="flex gap-3">
           @if (selectedIndex === 0) {
-            <button mat-stroked-button class="!border-white/20 !text-white !rounded-xl !px-4 !py-5 flex items-center gap-2 hover:bg-white/5 transition-all" (click)="openHardwareDiscovery()">
+            <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-4 !py-5 flex items-center gap-2 hover:bg-[var(--mat-sys-surface-variant)] transition-all" (click)="openHardwareDiscovery()">
               <mat-icon>usb</mat-icon>
               Discover Hardware
             </button>
@@ -52,7 +52,7 @@ import { ActivatedRoute, Router } from '@angular/router';
         </div>
       </div>
 
-      <div class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl relative">
+      <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl relative">
         <mat-tab-group 
           animationDuration="300ms" 
           class="assets-tabs flex-1 flex flex-col min-h-0 custom-tabs" 
@@ -68,7 +68,7 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Overview</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-white/5 relative p-4">
+            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative p-4">
               <app-asset-dashboard></app-asset-dashboard>
             </div>
           </mat-tab>
@@ -80,9 +80,9 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Machines</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-white/5 relative">
+            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative">
               @if (isLoading()) {
-                <div class="absolute inset-0 bg-white/5 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div class="absolute inset-0 bg-[var(--mat-sys-surface-variant)] backdrop-blur-sm z-10 flex items-center justify-center">
                   <mat-spinner diameter="40"></mat-spinner>
                 </div>
               }
@@ -97,9 +97,9 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Resources</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-white/5 relative">
+            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative">
               @if (isLoading()) {
-                <div class="absolute inset-0 bg-white/5 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div class="absolute inset-0 bg-[var(--mat-sys-surface-variant)] backdrop-blur-sm z-10 flex items-center justify-center">
                   <mat-spinner diameter="40"></mat-spinner>
                 </div>
               }
@@ -114,7 +114,7 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Definitions</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-white/5">
+            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)]">
               <app-definitions-list></app-definitions-list>
             </div>
           </mat-tab>
@@ -130,8 +130,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 
     /* Custom Mat Tab Styling */
     ::ng-deep .custom-tabs .mat-mdc-tab-header {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.05); /* Slightly lighter header */
+      border-bottom: 1px solid var(--theme-border);
+      background: var(--mat-sys-surface-variant); /* Slightly lighter header */
     }
 
     ::ng-deep .custom-tabs .mat-mdc-tab-label-container {
@@ -139,7 +139,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     }
 
     ::ng-deep .custom-tabs .mdc-tab {
-      color: rgba(255, 255, 255, 0.6) !important;
+      color: var(--theme-text-secondary) !important;
       font-family: inherit !important;
       letter-spacing: normal !important;
       min-width: 120px !important;
@@ -148,7 +148,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     }
 
     ::ng-deep .custom-tabs .mdc-tab--active {
-      color: white !important;
+      color: var(--theme-text-primary) !important;
     }
 
     ::ng-deep .custom-tabs .mdc-tab--active .mdc-tab__text-label {

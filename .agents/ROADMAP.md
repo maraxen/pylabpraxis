@@ -67,17 +67,17 @@
 
 ### 2. Browser Runtime & Analysis (New)
 
-* [x] **LibCST Parsing**: Static analysis for machine/backend discovery (plr_static_analysis module).
+* [x] **LibCST Parsing**: Static analysis for machine/backend discovery & protocol inspection (plr_static_analysis module).
 * [x] **Pyodide Runtime**: WASM-based Python execution in browser (WebWorker + python.worker.ts).
 * [x] **Basic WebBridge**: web_bridge.py with high-level WebBridgeBackend overrides.
 
-**IO Layer Shimming** (Next Step):
+**IO Layer Shimming**: ✅ COMPLETED 2025-12-30
 
-* [ ] **WebBridgeIO Class**: Generic IO shim that replaces `self.io` transport layer on any PLR machine.
-* [ ] **Serial/USB Dispatch**: Route raw bytes via `js.postMessage` to Angular's WebSerialService/WebUSB.
-* [ ] **Async Read/Write**: Implement WebBridgeIO.write() → JS and WebBridgeIO.read() ← JS patterns.
-* [ ] **Generic Patcher**: Helper/decorator to patch any standard PLR machine's IO layer when `is_browser_mode`.
-* [ ] **Angular Integration**: PythonRuntimeService listens for RAW_IO_WRITE/READ messages.
+* [x] **WebBridgeIO Class**: Generic IO shim in `web_bridge.py` that replaces `self.io` transport layer.
+* [x] **Serial/USB Dispatch**: RAW_IO messages routed via `python.worker.ts` to Angular.
+* [x] **Async Read/Write**: UUID-based request correlation with asyncio futures.
+* [x] **Generic Patcher**: `patch_io_for_browser()` + `create_browser_machine()` factory.
+* [x] **Angular Integration**: `PythonRuntimeService.handleRawIO()` routes to `HardwareDiscoveryService` port I/O methods.
 
 ### 3. Application Modes
 
@@ -95,11 +95,11 @@
 
 **Deck View Improvements** (Needed):
 
-* [ ] **Slots/Rails**: Dynamic rendering of deck slots, rails, and mounting positions.
-* [ ] **Itemized Resources**: Show individual wells, tips, tubes within containers.
-* [ ] **Dimensions**: Use actual PLR resource dimensions for accurate scaling.
+* [x] **Slots/Rails**: Dynamic rendering of deck slots, rails, and mounting positions.
+* [x] **Itemized Resources**: Show individual wells, tips, tubes within containers.
+* [x] **Dimensions**: Use actual PLR resource dimensions for accurate scaling.
 * [ ] **PLR Theming**: Match original PLR visualizer aesthetic while keeping app theme consistency.
-* [ ] **Resource Placement**: Fix buggy "add resource to deck" workflow.
+* [x] **Resource Placement**: Fix buggy "add resource to deck" workflow.
 
 ### 4. REPL
 
@@ -133,21 +133,35 @@ See [backlog/capability_tracking.md](./backlog/capability_tracking.md) for full 
 * [x] Expand machine type discovery to all 15+ PLR types.
 * [x] Fix backend-frontend mapping.
 
-**Phase 2 - Generic Capability Model (Short-term)**:
+**Phase 2 - Generic Capability Model (Short-term)**: ✅ COMPLETED 2025-12-30
 
-* [ ] Machine-type-specific capability schemas (not just Hamilton).
-* [ ] Extend capability extraction for all machine types.
+* [x] Machine-type-specific capability schemas (15 machine types covered).
+* [x] Extend capability extraction for all machine types.
+* [x] Created `plr-capability-update.md` prompt for future PLR updates.
 
-**Phase 3 - User-Configurable Capabilities (Medium-term)**:
+**Phase 3 - User-Configurable Capabilities (Medium-term)**: ✅ MVP COMPLETED 2025-12-30
 
-* [ ] Backend config schema for optional capabilities.
-* [ ] Frontend dialog for machine setup with capability questions.
-* [ ] ORM updates for user-configured capabilities.
+* [x] Backend config schema for optional capabilities (`CapabilityConfigField`, `MachineCapabilityConfigSchema`).
+* [x] ORM updates for user-configured capabilities (`user_configured_capabilities`, `capabilities_config`).
+* [x] Frontend dialog for machine setup with JSON capability input (MVP).
+* [ ] Dynamic form generation from capability schema (future enhancement).
 
-**Phase 4 & 5 - Protocol Matching & Inspection (Future)**:
+**Phase 4 - Protocol Capability Matching (MVP)**: ✅ MVP COMPLETED 2025-12-30
 
-* [ ] Extract protocol asset requirements via LibCST.
-* [ ] Match protocol requirements to available hardware capabilities.
+* [x] Extract protocol asset requirements via LibCST (ProtocolRequirementExtractor).
+* [x] Match protocol requirements to available hardware capabilities (CapabilityMatcherService).
+* [x] Integrate requirement extraction into DiscoveryService.
+* [x] UI Integration (show compatibility warnings in wizard) - ✅ COMPLETED 2025-12-30
+* [ ] Generalized requirement extraction (backlog).
+
+**Phase 5 - Deep Protocol Inspection (Future)**:
+
+* [ ] Full AST analysis of protocol logic flow (deferred).
+
+**Phase 6 - Resource Matching & Constraints (Future)**:
+
+* [ ] Extract resource constraints (volume, bottom type, wells) from protocol AST.
+* [ ] Match protocol resource needs against available lab inventory.
 
 ---
 

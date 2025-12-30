@@ -1,6 +1,6 @@
 """Service layer for Machine Type Definition Management."""
 
-import inspect
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,11 @@ from praxis.backend.models.pydantic_internals.machine import (
 from praxis.backend.services.plr_type_base import DiscoverableTypeServiceBase
 from praxis.backend.services.utils.crud_base import CRUDBase
 from praxis.backend.utils.logging import get_logger
-from praxis.backend.utils.plr_inspection import get_machine_classes
+from praxis.backend.utils.plr_static_analysis import (
+  DiscoveredClass,
+  PLRSourceParser,
+  find_plr_source_root,
+)
 
 logger = get_logger(__name__)
 
@@ -26,11 +30,32 @@ class MachineTypeDefinitionService(
   ],
 ):
 
-  """Service for discovering and syncing machine type definitions."""
+  """Service for discovering and syncing machine type definitions.
 
-  def __init__(self, db: AsyncSession) -> None:
-    """Initialize the MachineDefinitionService."""
+  Uses LibCST-based static analysis to discover machine types from PyLabRobot
+  source without runtime imports.
+
+  """
+
+  def __init__(self, db: AsyncSession, plr_source_path: Path | None = None) -> None:
+    """Initialize the MachineDefinitionService.
+
+    Args:
+      db: The database session.
+      plr_source_path: Optional path to PLR source. Auto-detected if not provided.
+
+    """
     self.db = db
+    self._plr_source_path = plr_source_path
+    self._parser: PLRSourceParser | None = None
+
+  @property
+  def parser(self) -> PLRSourceParser:
+    """Get or create the PLR source parser."""
+    if self._parser is None:
+      plr_path = self._plr_source_path or find_plr_source_root()
+      self._parser = PLRSourceParser(plr_path)
+    return self._parser
 
   @property
   def _orm_model(self) -> type[MachineDefinitionOrm]:
@@ -38,52 +63,78 @@ class MachineTypeDefinitionService(
     return MachineDefinitionOrm
 
   async def discover_and_synchronize_type_definitions(self) -> list[MachineDefinitionOrm]:
-    """Discover all machine type definitions from pylabrobot and synchronizes with the database."""
-    logger.info("Discovering machine types...")
-    discovered_machines = get_machine_classes()
+    """Discover all machine type definitions from pylabrobot and synchronizes with the database.
+
+    Uses LibCST-based static analysis for safe, import-free discovery.
+
+    """
+    logger.info("Discovering machine types via static analysis...")
+
+    # Use static analysis to discover machines
+    discovered_machines = self.parser.discover_machine_classes()
     logger.info("Discovered %d machine types.", len(discovered_machines))
 
     synced_definitions = []
-    for fqn, plr_class_obj in discovered_machines.items():
-      existing_machine_def_result = await self.db.execute(
-        select(MachineDefinitionOrm).filter(MachineDefinitionOrm.fqn == fqn),
-      )
-      existing_machine_def = existing_machine_def_result.scalar_one_or_none()
-
-      if existing_machine_def:
-        update_data = MachineDefinitionUpdate(
-          fqn=fqn,
-          name=plr_class_obj.__name__,
-          description=inspect.getdoc(plr_class_obj),
-        )
-        for key, value in update_data.model_dump(exclude_unset=True).items():
-          setattr(existing_machine_def, key, value)
-        self.db.add(existing_machine_def)
-        logger.debug("Updated machine definition: %s", fqn)
-        synced_definitions.append(existing_machine_def)
-      else:
-        create_data = MachineDefinitionCreate(
-          name=plr_class_obj.__name__,
-          fqn=fqn,
-          description=inspect.getdoc(plr_class_obj),
-        )
-        obj_in_data = create_data.model_dump()
-        # Remove fields that are not accepted by ORM init
-        obj_in_data.pop("accession_id", None)
-        obj_in_data.pop("created_at", None)
-        obj_in_data.pop("updated_at", None)
-        obj_in_data.pop("nominal_volume_ul", None)
-        obj_in_data.pop("ordering", None)
-        obj_in_data.pop("has_deck", None)
-
-        new_machine_def = MachineDefinitionOrm(**obj_in_data)
-        self.db.add(new_machine_def)
-        logger.debug("Added new machine definition: %s", fqn)
-        synced_definitions.append(new_machine_def)
+    for cls in discovered_machines:
+      definition = await self._upsert_definition(cls)
+      synced_definitions.append(definition)
 
     await self.db.commit()
     logger.info("Synchronized %d machine definitions.", len(synced_definitions))
     return synced_definitions
+
+  async def _upsert_definition(self, cls: DiscoveredClass) -> MachineDefinitionOrm:
+    """Create or update a machine definition from discovered class.
+
+    Args:
+      cls: The discovered class from static analysis.
+
+    Returns:
+      The created or updated ORM object.
+
+    """
+    existing_result = await self.db.execute(
+      select(MachineDefinitionOrm).filter(MachineDefinitionOrm.fqn == cls.fqn),
+    )
+    existing_def = existing_result.scalar_one_or_none()
+
+    # Convert capabilities to the expected format
+    capabilities = cls.to_capabilities_dict()
+
+    if existing_def:
+      update_data = MachineDefinitionUpdate(
+        fqn=cls.fqn,
+        name=cls.name,
+        description=cls.docstring,
+        manufacturer=cls.manufacturer,
+        capabilities=capabilities,
+        compatible_backends=cls.compatible_backends,
+        capabilities_config=cls.capabilities_config.model_dump() if cls.capabilities_config else None,
+      )
+      for key, value in update_data.model_dump(exclude_unset=True).items():
+        setattr(existing_def, key, value)
+      self.db.add(existing_def)
+      logger.debug("Updated machine definition: %s", cls.fqn)
+      return existing_def
+
+    create_data = MachineDefinitionCreate(
+      name=cls.name,
+      fqn=cls.fqn,
+      description=cls.docstring,
+      manufacturer=cls.manufacturer,
+      capabilities=capabilities,
+      compatible_backends=cls.compatible_backends,
+      capabilities_config=cls.capabilities_config.model_dump() if cls.capabilities_config else None,
+    )
+    obj_in_data = create_data.model_dump()
+    # Remove fields that are not accepted by ORM init
+    for field in ("accession_id", "created_at", "updated_at", "nominal_volume_ul", "ordering", "has_deck"):
+      obj_in_data.pop(field, None)
+
+    new_def = MachineDefinitionOrm(**obj_in_data)
+    self.db.add(new_def)
+    logger.debug("Added new machine definition: %s", cls.fqn)
+    return new_def
 
 
 class MachineTypeDefinitionCRUDService(

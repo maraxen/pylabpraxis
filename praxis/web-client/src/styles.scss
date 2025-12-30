@@ -79,10 +79,10 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-surface-container-low: #ffffff;
   --mat-sys-surface-container: #f8fafc;
   --mat-sys-surface-container-high: #f1f5f9;
-  --mat-sys-surface-variant: rgba(0, 0, 0, 0.06);
-  --mat-sys-on-surface: #0f172a;
-  --mat-sys-on-surface-variant: #475569;
-  --mat-sys-outline-variant: rgba(0, 0, 0, 0.1);
+  --mat-sys-surface-variant: rgba(0, 0, 0, 0.08); // Slightly more visible variant bg
+  --mat-sys-on-surface: #020617; // Slate 950 - High contrast black
+  --mat-sys-on-surface-variant: #1e293b; // Slate 800 - High contrast dark grey
+  --mat-sys-outline-variant: rgba(0, 0, 0, 0.25); // Much more visible outlines
   --mat-sys-error: #ba1a1a;
   --mat-sys-error-container: #ffdad6;
   --mat-sys-on-error-container: #410002;
@@ -92,11 +92,11 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --theme-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
   --theme-surface-elevated: #ffffff;
-  --theme-text-primary: #0f172a; // Slate 900
-  --theme-text-secondary: #475569; // Slate 600
-  --theme-text-tertiary: #94a3b8; // Slate 400
-  --theme-border: rgba(0, 0, 0, 0.08);
-  --theme-border-light: rgba(0, 0, 0, 0.04);
+  --theme-text-primary: #020617; // Slate 950
+  --theme-text-secondary: #1e293b; // Slate 800
+  --theme-text-tertiary: #475569; // Slate 600
+  --theme-border: rgba(0, 0, 0, 0.20); // Darker border
+  --theme-border-light: rgba(0, 0, 0, 0.10);
 
   // Glassmorphism for light theme
   --glass-bg: rgba(255, 255, 255, 0.8);

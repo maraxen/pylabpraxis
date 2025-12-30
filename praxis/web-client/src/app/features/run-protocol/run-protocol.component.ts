@@ -25,6 +25,7 @@ import { AppStore } from '@core/store/app.store';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
+import { MachineSelectionComponent, MachineCompatibility } from './components/machine-selection/machine-selection.component';
 
 const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
@@ -64,26 +65,27 @@ interface FilterCategory {
     ProtocolCardComponent,
     ProtocolCardSkeletonComponent,
     DeckVisualizerComponent,
+    MachineSelectionComponent,
   ],
   template: `
     <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
       <!-- Top Bar -->
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-white mb-1">Execute Protocol</h1>
-          <p class="text-white/70">Configure and run experimental procedures</p>
+          <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Execute Protocol</h1>
+          <p class="text-sys-text-secondary">Configure and run experimental procedures</p>
         </div>
         
         <!-- Simulation Mode Toggle -->
-        <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-          <span class="text-sm font-medium" [class.text-white]="!store.simulationMode()" [class.text-white/50]="store.simulationMode()">Physical</span>
+        <div class="flex items-center gap-3 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-full px-4 py-2">
+          <span class="text-sm font-medium" [class.text-sys-text-primary]="!store.simulationMode()" [class.text-sys-text-tertiary]="store.simulationMode()">Physical</span>
           <mat-slide-toggle [checked]="store.simulationMode()" (change)="store.setSimulationMode($event.checked)" color="primary"></mat-slide-toggle>
-          <span class="text-sm font-medium" [class.text-primary]="store.simulationMode()" [class.text-white/50]="!store.simulationMode()">Simulation</span>
+          <span class="text-sm font-medium" [class.text-primary]="store.simulationMode()" [class.text-sys-text-tertiary]="!store.simulationMode()">Simulation</span>
         </div>
       </div>
 
       <!-- Main Content Surface -->
-      <div class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl flex-1 min-h-0 shadow-xl flex flex-col">
+      <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex-1 min-h-0 shadow-xl flex flex-col">
         <mat-stepper [linear]="true" #stepper class="!bg-transparent h-full flex flex-col">
           
           <!-- Step 1: Select Protocol -->
@@ -99,20 +101,20 @@ interface FilterCategory {
                         <mat-icon class="!w-8 !h-8 !text-[32px] text-white">science</mat-icon>
                       </div>
                       
-                      <h2 class="text-3xl font-bold text-white mb-0">{{ selectedProtocol()?.name }}</h2>
-                      <p class="text-lg text-white/70 max-w-lg">{{ selectedProtocol()?.description }}</p>
+                      <h2 class="text-3xl font-bold text-sys-text-primary mb-0">{{ selectedProtocol()?.name }}</h2>
+                      <p class="text-lg text-sys-text-secondary max-w-lg">{{ selectedProtocol()?.description }}</p>
                       
                       <div class="flex gap-2 mt-2">
-                          <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm flex items-center gap-2">
+                          <span class="px-3 py-1 rounded-full bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] text-sys-text-secondary text-sm flex items-center gap-2">
                             <mat-icon class="!w-4 !h-4 !text-[16px]">category</mat-icon> {{ selectedProtocol()?.category || 'General' }}
                           </span>
-                          <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm flex items-center gap-2">
+                          <span class="px-3 py-1 rounded-full bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] text-sys-text-secondary text-sm flex items-center gap-2">
                             <mat-icon class="!w-4 !h-4 !text-[16px]">tag</mat-icon> {{ selectedProtocol()?.version }}
                           </span>
                       </div>
 
                       <div class="flex gap-4 mt-6 w-full justify-center">
-                        <button mat-button class="!border-white/20 !text-white !rounded-xl !px-6 !py-6 w-40" (click)="clearProtocol()">
+                        <button mat-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 w-40" (click)="clearProtocol()">
                           Change
                         </button>
                         <button mat-flat-button class="!bg-primary !text-white !rounded-xl !px-6 !py-6 !font-bold w-40 shadow-lg shadow-primary/25" matStepperNext>
@@ -126,17 +128,17 @@ interface FilterCategory {
                 <div class="flex h-full gap-6">
                   <!-- Sidebar Filters -->
                   <aside class="w-72 flex-shrink-0 flex flex-col gap-6">
-                    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-4">
                       <div class="relative mb-4">
-                        <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-white/50">search</mat-icon>
+                        <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-sys-text-tertiary">search</mat-icon>
                         <input 
-                          class="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                          class="w-full bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl py-3 pl-10 pr-10 text-sys-text-primary placeholder-sys-text-tertiary focus:outline-none focus:border-primary/50 transition-colors"
                           [value]="searchQuery()" 
                           (input)="onSearchChange($event)" 
                           placeholder="Search protocols..."
                         >
                         @if (searchQuery()) {
-                          <button class="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white" (click)="clearSearch()">
+                          <button class="absolute right-3 top-1/2 -translate-y-1/2 text-sys-text-tertiary hover:text-sys-text-primary" (click)="clearSearch()">
                             <mat-icon class="!w-5 !h-5 !text-[20px]">close</mat-icon>
                           </button>
                         }
@@ -145,17 +147,17 @@ interface FilterCategory {
                       <div class="flex flex-col gap-4">
                         @for (category of filterCategories(); track category.key) {
                           <div class="flex flex-col gap-2">
-                            <h4 class="text-xs font-bold text-white/40 uppercase tracking-wider px-2">{{ category.label }}</h4>
+                            <h4 class="text-xs font-bold text-sys-text-tertiary uppercase tracking-wider px-2">{{ category.label }}</h4>
                             @for (option of category.options; track option.value) {
                               <button 
-                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-left"
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm transition-all hover:bg-[var(--mat-sys-surface-variant)] text-left"
                                 [class.bg-primary-10]="option.selected"
                                 [class.text-primary]="option.selected"
-                                [class.text-white-70]="!option.selected"
+                                [class.text-sys-text-secondary]="!option.selected"
                                 (click)="toggleFilter(category.key, option.value)"
                               >
                                 <span>{{ option.value }}</span>
-                                <span class="bg-white/10 px-1.5 py-0.5 rounded text-xs opacity-60">{{ option.count }}</span>
+                                <span class="bg-[var(--mat-sys-surface-variant)] px-1.5 py-0.5 rounded text-xs opacity-60">{{ option.count }}</span>
                               </button>
                             }
                           </div>
@@ -169,7 +171,7 @@ interface FilterCategory {
                     <!-- Recents -->
                     @if (recentProtocols().length > 0 && !searchQuery()) {
                       <div class="mb-8">
-                        <h3 class="text-white text-lg font-medium mb-4 flex items-center gap-2">
+                        <h3 class="text-sys-text-primary text-lg font-medium mb-4 flex items-center gap-2">
                           <mat-icon class="text-primary/70">history</mat-icon> Recently Used
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -187,7 +189,7 @@ interface FilterCategory {
 
                     <!-- All Protocols -->
                     <div>
-                      <h3 class="text-white text-lg font-medium mb-4 flex items-center gap-2">
+                      <h3 class="text-sys-text-primary text-lg font-medium mb-4 flex items-center gap-2">
                         <mat-icon class="text-primary/70">grid_view</mat-icon> All Protocols
                       </h3>
                       
@@ -198,7 +200,7 @@ interface FilterCategory {
                           }
                         </div>
                       } @else if (filteredProtocols().length === 0) {
-                        <div class="flex flex-col items-center justify-center py-20 text-white/40">
+                        <div class="flex flex-col items-center justify-center py-20 text-sys-text-tertiary">
                           <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">search_off</mat-icon>
                           <p class="text-lg">No protocols found matching your criteria</p>
                           <button mat-button class="mt-4 !text-primary" (click)="clearSearch()">Clear Filters</button>
@@ -221,12 +223,44 @@ interface FilterCategory {
             </form>
           </mat-step>
 
-          <!-- Step 2: Configure Parameters -->
+          <!-- Step 2: Machine Selection -->
+          <mat-step [stepControl]="machineFormGroup" label="Select Machine">
+            <div class="h-full flex flex-col p-6">
+              <div class="flex-1 overflow-auto">
+                <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
+                   <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                     <mat-icon>precision_manufacturing</mat-icon>
+                   </div>
+                   Select Execution Machine
+                </h3>
+
+                @if (isLoadingCompatibility()) {
+                  <div class="flex flex-col items-center justify-center py-12">
+                    <mat-spinner diameter="40"></mat-spinner>
+                    <p class="mt-4 text-sys-text-tertiary">Checking compatibility...</p>
+                  </div>
+                } @else {
+                  <app-machine-selection
+                    [machines]="compatibilityData()"
+                    [selected]="selectedMachine()"
+                    (select)="onMachineSelect($event)"
+                  ></app-machine-selection>
+                }
+              </div>
+
+              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                 <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
+                 <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedMachine()" class="!rounded-xl !px-8 !py-6">Continue</button>
+              </div>
+            </div>
+          </mat-step>
+
+          <!-- Step 3: Configure Parameters -->
           <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
             <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6">
               <div class="flex-1 overflow-auto max-w-3xl mx-auto w-full">
-                <div class="bg-white/5 border border-white/10 rounded-2xl p-8">
-                  <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-8">
+                  <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
                       <mat-icon>tune</mat-icon>
                     </div>
@@ -240,8 +274,8 @@ interface FilterCategory {
                 </div>
               </div>
 
-              <div class="mt-6 flex justify-between border-t border-white/10 pt-6">
-                <button mat-button matStepperPrevious class="!text-white/70">Back</button>
+              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                 <button mat-flat-button color="primary" matStepperNext class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
             </form>
@@ -252,16 +286,16 @@ interface FilterCategory {
             <div class="h-full flex flex-col p-6">
               <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
                 <!-- Visualizer Column -->
-                <div class="lg:col-span-2 bg-black/20 rounded-2xl border border-white/10 overflow-hidden relative group">
-                  <div class="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white/70 border border-white/10">
+                <div class="lg:col-span-2 bg-[var(--mat-sys-surface-variant)] rounded-2xl border border-[var(--theme-border)] overflow-hidden relative group">
+                  <div class="absolute top-4 left-4 z-10 bg-surface-elevated/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-sys-text-secondary border border-[var(--theme-border)]">
                     Deck Visualizer
                   </div>
                   <app-deck-visualizer [layoutData]="deckData()" class="w-full h-full block"></app-deck-visualizer>
                   
                   <!-- Legend overlay on hover or always -->
                   <div class="absolute bottom-4 left-4 right-4 flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                       <span class="w-3 h-3 rounded-full bg-primary"></span> <span class="text-xs text-white">Target</span>
+                     <div class="flex items-center gap-2 bg-surface-elevated/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-[var(--theme-border)]">
+                        <span class="w-3 h-3 rounded-full bg-primary"></span> <span class="text-xs text-sys-text-primary">Target</span>
                     </div>
                   </div>
                 </div>
@@ -269,17 +303,17 @@ interface FilterCategory {
                 <!-- Info Column -->
                 <div class="flex flex-col gap-6 overflow-y-auto">
                    <!-- Status Card -->
-                   <div class="bg-surface-elevated border border-white/10 rounded-2xl p-6" 
+                   <div class="bg-surface-elevated border border-[var(--theme-border)] rounded-2xl p-6" 
                         [class.border-green-500-30]="configuredAssets()"
                         [class.bg-green-500-05]="configuredAssets()">
-                     <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                     <h3 class="text-lg font-bold text-sys-text-primary mb-4 flex items-center gap-2">
                        <mat-icon [class.text-green-400]="configuredAssets()" [class.text-amber-400]="!configuredAssets()">
                          {{ configuredAssets() ? 'check_circle' : 'warning' }}
                        </mat-icon>
                        Configuration Status
                      </h3>
                      
-                     <p class="text-white/70 mb-6 text-sm">
+                     <p class="text-sys-text-secondary mb-6 text-sm">
                        {{ configuredAssets() ? 'All required assets are mapped and ready.' : 'Please configure the deck layout before proceeding.' }}
                      </p>
 
@@ -289,14 +323,14 @@ interface FilterCategory {
                    </div>
 
                    <!-- Requirements List -->
-                   <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex-1">
-                      <h4 class="text-white font-medium mb-4 text-sm uppercase tracking-wider opacity-70">Required Assets</h4>
+                   <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex-1">
+                      <h4 class="text-sys-text-primary font-medium mb-4 text-sm uppercase tracking-wider opacity-70">Required Assets</h4>
                       <div class="flex flex-col gap-3">
                         @for (req of selectedProtocol()?.assets; track req.accession_id) {
-                          <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                          <div class="flex items-center justify-between p-3 rounded-xl bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)]">
                              <div class="flex flex-col">
-                               <span class="text-white font-medium text-sm">{{ req.name }}</span>
-                               <span class="text-xs text-white/40">{{ req.type_hint_str || 'Unknown Type' }}</span>
+                               <span class="text-sys-text-primary font-medium text-sm">{{ req.name }}</span>
+                               <span class="text-xs text-sys-text-tertiary">{{ req.type_hint_str || 'Unknown Type' }}</span>
                              </div>
                              
                              @if (configuredAssets()?.[req.accession_id]) {
@@ -315,8 +349,8 @@ interface FilterCategory {
                 </div>
               </div>
 
-              <div class="mt-6 flex justify-between border-t border-white/10 pt-6">
-                <button mat-button matStepperPrevious class="!text-white/70">Back</button>
+              <div class="mt-6 flex justify-between border-t border-[var(--theme-border)] pt-6">
+                <button mat-button matStepperPrevious class="!text-sys-text-secondary">Back</button>
                 <button mat-flat-button color="primary" matStepperNext [disabled]="!configuredAssets()" class="!rounded-xl !px-8 !py-6">Continue</button>
               </div>
             </div>
@@ -329,17 +363,16 @@ interface FilterCategory {
                  <mat-icon class="!w-12 !h-12 !text-[48px]">rocket_launch</mat-icon>
                </div>
                
-               <h2 class="text-4xl font-bold text-white mb-2">Ready to Launch</h2>
-               <p class="text-xl text-white/60 mb-12">Confirm execution parameters before starting</p>
+               <h2 class="text-4xl font-bold text-sys-text-primary mb-2">Ready to Launch</h2>
+               <p class="text-xl text-sys-text-secondary mb-12">Confirm execution parameters before starting</p>
                
                <div class="grid grid-cols-2 gap-4 w-full mb-12">
-                 <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center">
-                    <span class="text-white/40 text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
-                    <span class="text-white text-lg font-medium">{{ selectedProtocol()?.name }}</span>
-                 </div>
-                 
-                 <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center">
-                    <span class="text-white/40 text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
+                  <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
+                     <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
+                     <span class="text-sys-text-primary text-lg font-medium">{{ selectedProtocol()?.name }}</span>
+                  </div>
+                                  <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-6 flex flex-col items-center">
+                     <span class="text-sys-text-tertiary text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
                     <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-blue-400]="!store.simulationMode()">
                       {{ store.simulationMode() ? 'Simulation' : 'Physical Run' }}
                     </span>
@@ -347,7 +380,7 @@ interface FilterCategory {
                </div>
 
                <div class="flex gap-4 w-full justify-center">
-                  <button mat-button matStepperPrevious class="!border-white/10 !text-white/70 !rounded-xl !px-8 !py-6 w-40 border">Back</button>
+                  <button mat-button matStepperPrevious class="!border-[var(--theme-border)] !text-sys-text-secondary !rounded-xl !px-8 !py-6 w-40 border">Back</button>
                   <button mat-raised-button class="!bg-gradient-to-r !from-green-500 !to-emerald-600 !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-0.5 transition-all" (click)="startRun()" 
                     [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
                     @if (isStartingRun()) {
@@ -375,7 +408,7 @@ interface FilterCategory {
     
     /* Utilities */
     .bg-primary-10 { background-color: rgba(var(--primary-color-rgb), 0.1); }
-    .text-white-70 { color: rgba(255, 255, 255, 0.7); }
+    .text-white-70 { color: var(--theme-text-secondary); }
     .border-green-500-30 { border-color: rgba(74, 222, 128, 0.3) !important; }
     .bg-green-500-05 { background-color: rgba(74, 222, 128, 0.05) !important; }
 
@@ -385,19 +418,19 @@ interface FilterCategory {
       transition: background 0.2s;
     }
     ::ng-deep .mat-step-header:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--mat-sys-surface-variant);
     }
     ::ng-deep .mat-step-label {
-      color: rgba(255, 255, 255, 0.5) !important;
+      color: var(--theme-text-secondary) !important;
       font-size: 1rem !important;
     }
     ::ng-deep .mat-step-label-selected {
-      color: white !important;
+      color: var(--theme-text-primary) !important;
       font-weight: 600 !important;
     }
     ::ng-deep .mat-step-icon {
-      background-color: rgba(255, 255, 255, 0.1) !important;
-      color: rgba(255, 255, 255, 0.5) !important;
+      background-color: var(--mat-sys-surface-variant) !important;
+      color: var(--theme-text-secondary) !important;
     }
     ::ng-deep .mat-step-icon-selected {
       background-color: var(--primary-color) !important;
@@ -416,11 +449,16 @@ export class RunProtocolComponent implements OnInit {
   private dialog = inject(MatDialog);
 
   protocolFormGroup = this._formBuilder.group({ protocolId: [''] });
+  machineFormGroup = this._formBuilder.group({ machineId: [''] });
   parametersFormGroup = this._formBuilder.group({});
 
   // Signals
   protocols = signal<ProtocolDefinition[]>([]);
   selectedProtocol = signal<ProtocolDefinition | null>(null);
+  selectedMachine = signal<MachineCompatibility | null>(null);
+  compatibilityData = signal<MachineCompatibility[]>([]);
+  isLoadingCompatibility = signal(false);
+
   isLoading = signal(true);
   isStartingRun = signal(false);
   searchQuery = signal('');
@@ -574,11 +612,37 @@ export class RunProtocolComponent implements OnInit {
     }
     this.protocolFormGroup.patchValue({ protocolId: protocol.accession_id });
     this.addToRecents(protocol.accession_id);
+    this.loadCompatibility(protocol.accession_id);
+  }
+
+  loadCompatibility(protocolId: string) {
+    this.isLoadingCompatibility.set(true);
+    this.executionService.getCompatibility(protocolId)
+      .pipe(finalize(() => this.isLoadingCompatibility.set(false)))
+      .subscribe({
+        next: (data) => {
+          this.compatibilityData.set(data);
+          // Auto-select if only one compatible machine
+          const compatible = data.filter(d => d.compatibility.is_compatible);
+          if (compatible.length === 1) {
+            this.onMachineSelect(compatible[0]);
+          }
+        },
+        error: (err) => console.error('Failed to load compatibility', err)
+      });
+  }
+
+  onMachineSelect(machine: MachineCompatibility) {
+    this.selectedMachine.set(machine);
+    this.machineFormGroup.patchValue({ machineId: machine.machine.accession_id });
   }
 
   clearProtocol() {
     this.selectedProtocol.set(null);
+    this.selectedMachine.set(null);
+    this.compatibilityData.set([]);
     this.protocolFormGroup.reset();
+    this.machineFormGroup.reset();
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { protocolId: null },

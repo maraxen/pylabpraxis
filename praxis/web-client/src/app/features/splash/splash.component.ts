@@ -1,9 +1,11 @@
-import { Component, signal, effect } from '@angular/core';
+import { Component, signal, effect, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { isBrowserModeEnv } from '../../core/services/mode.service';
+import { AppStore } from '../../core/store/app.store';
 
 @Component({
   selector: 'app-splash',
@@ -474,30 +476,20 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   `]
 })
 export class SplashComponent {
-  isLightTheme = signal(false);
+  store = inject(AppStore);
+  isLightTheme = computed(() => this.store.theme() === 'light');
 
   constructor() {
-    // Check localStorage for saved preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      this.isLightTheme.set(true);
-      document.body.classList.add('light-theme');
+    // Auto-redirect in browser mode or if already authenticated
+    if (isBrowserModeEnv()) {
+      // Use direct navigation since we're in constructor
+      window.location.href = '/app/home';
+      return;
     }
-
-    // Effect to update body class when theme changes
-    effect(() => {
-      if (this.isLightTheme()) {
-        document.body.classList.add('light-theme');
-        document.body.classList.remove('dark-theme');
-      } else {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-      }
-    });
   }
 
   toggleTheme() {
-    this.isLightTheme.update(v => !v);
-    localStorage.setItem('theme', this.isLightTheme() ? 'light' : 'dark');
+    const nextTheme = this.store.theme() === 'light' ? 'dark' : 'light';
+    this.store.setTheme(nextTheme);
   }
 }
