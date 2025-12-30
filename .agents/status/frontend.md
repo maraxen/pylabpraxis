@@ -13,33 +13,23 @@
 | 1. Foundation | Architecture & Shell | ✅ Complete |
 | 2. Features | Asset/Protocol CRUD | ✅ Complete |
 | 3. Polish | Themes & UX | ✅ Complete |
-| **4. Asset Core** | **PLR Inspection & Visualizer** | **🚧 In Progress** |
-| 5. Modes | Browser/Lite Support | 📝 Planned |
+| **4. Asset Core** | **PLR Inspection & Visualizer** | ✅ Complete |
+| 5. Modes | Browser/Lite Support | **🚧 In Progress** |
 
 ---
 
 ## 🚧 Active Development
 
-### Asset Management (Core)
+### Modes & Discovery
 
-* [ ] **Machine Types**: Collapsible menus, Manufacturer grouping.
-* [ ] **Capabilities**: Rendering chips for channels, modules.
 * [ ] **Discovery**: WebSerial integration hookup.
-
-### Visualizer (Rewrite)
-
-* [ ] **Workcell Layout**: Moving from single Deck view to multi-window Workcell view.
-* [ ] **Removal**: Deleting legacy PLR iframe components.
-
-### Polish & Bugs
-
-* [ ] **Light Theme**: Contrast fixes.
-* [ ] **Command Palette**: Selection state visuals.
+* [ ] **Browser Runtime**: Pyodide + WebBridge setup.
 
 ---
 
 ## ✅ Maintained Features
 
+* **Workcell Visualizer**: Angular-native, multi-window deck visualization.
 * **Unified Shell**: Rail navigation.
 * **Protocol Library**: Wizard, List, Parameter Config.
 * **Documentation**: Markdown viewer.
