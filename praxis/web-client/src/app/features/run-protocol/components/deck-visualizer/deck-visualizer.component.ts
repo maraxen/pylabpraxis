@@ -1,26 +1,28 @@
-import { Component, ChangeDetectionStrategy, Input, signal, effect, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PlrDeckData } from '@core/models/plr.models';
+import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
 
 @Component({
   selector: 'app-deck-visualizer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DeckViewComponent],
   template: `
     <div class="deck-visualizer-wrapper">
       <div class="visualizer-header">
         <h4>Deck Configuration Visualizer</h4>
       </div>
 
-      <div class="iframe-container">
-        <iframe
-            *ngIf="visualizerUrl"
-            [src]="visualizerUrl"
-            class="visualizer-frame"
-            title="PyLabRobot Visualizer"
-            (load)="onIframeLoad($event)">
-        </iframe>
+      <div class="view-container">
+        <app-deck-view
+          *ngIf="data()"
+          [resource]="data()!.resource"
+          [state]="data()!.state">
+        </app-deck-view>
+        
+        <div *ngIf="!data()" class="empty-state">
+          No deck data available
+        </div>
       </div>
     </div>
   `,
@@ -50,25 +52,32 @@ import { PlrDeckData } from '@core/models/plr.models';
       color: var(--sys-on-surface);
     }
 
-    .iframe-container {
+    .view-container {
       flex: 1;
       min-height: 0;
       overflow: hidden;
       border-radius: 8px;
       background: white;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    app-deck-view {
+      flex: 1;
+      overflow: auto;
     }
 
-    .visualizer-frame {
-      width: 100%;
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       height: 100%;
-      border: none;
+      color: var(--sys-outline);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeckVisualizerComponent {
-  private sanitizer = inject(DomSanitizer);
-
   // Inputs
   @Input({ required: true }) set layoutData(value: PlrDeckData | null) {
     this.data.set(value);
@@ -76,39 +85,4 @@ export class DeckVisualizerComponent {
 
   // Signals
   data = signal<PlrDeckData | null>(null);
-  iframeLoaded = signal(false);
-  private iframeWindow: Window | null = null;
-
-  visualizerUrl: SafeResourceUrl;
-
-  constructor() {
-    const url = `assets/visualizer-wrapper.html?mode=demo&autoload=false&embedded=true`;
-    this.visualizerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-
-    // Effect to update visualizer when data changes
-    effect(() => {
-      const data = this.data();
-      const loaded = this.iframeLoaded();
-
-      if (data && loaded && this.iframeWindow) {
-        this.sendDataToVisualizer(data);
-      }
-    });
-  }
-
-  onIframeLoad(event: Event) {
-    const iframe = event.target as HTMLIFrameElement;
-    this.iframeWindow = iframe.contentWindow;
-    this.iframeLoaded.set(true);
-  }
-
-  private sendDataToVisualizer(data: PlrDeckData) {
-    // Small timeout to ensure visualizer scripts are fully ready to receive
-    setTimeout(() => {
-      this.iframeWindow?.postMessage({
-        type: 'init_visualizer',
-        data: data // vis.js expects { resource: ... } structure
-      }, '*');
-    }, 100);
-  }
 }
