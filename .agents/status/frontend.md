@@ -23,7 +23,7 @@
 ### Modes & Discovery
 
 * [ ] **Discovery**: WebSerial integration hookup.
-* [ ] **Browser Runtime**: Pyodide + WebBridge setup.
+* [x] **Browser Runtime**: Pyodide + WebBridge setup (Worker & Service).
 
 ---
 

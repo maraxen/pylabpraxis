@@ -38,6 +38,11 @@
                 "glob": "sql-wasm.wasm",
                 "input": "node_modules/sql.js/dist",
                 "output": "assets/wasm"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/pyodide",
+                "output": "assets/pyodide"
               }
             ],
             "styles": [
@@ -83,6 +88,16 @@
               "baseHref": "/praxis/",
               "optimization": true,
               "outputHashing": "all"
+            },
+            "browser": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.browser.ts"
+                }
+              ],
+              "optimization": true,
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"
@@ -101,6 +116,9 @@
             },
             "demo": {
               "buildTarget": "web-client:build:demo"
+            },
+            "browser": {
+              "buildTarget": "web-client:build:browser"
             }
           },
           "defaultConfiguration": "development"

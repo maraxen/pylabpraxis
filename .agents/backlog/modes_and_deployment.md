@@ -42,33 +42,48 @@
 
 ## 2. Tasks
 
+### Browser Runtime Implementation (New)
+
+* [x] **Pyodide Integration**:
+  * [x] Add `pyodide` script/package to `praxis/web-client`.
+  * [x] Create `PythonRuntimeService` (Angular) to manage WASM worker.
+  * [x] Resolve dependencies (`micropip.install('pylabrobot')`) or create mocks.
+* [ ] **WebBridge I/O Layer**:
+  * [ ] Implement messaging bridge between Angular and Pyodide worker.
+  * [x] Route `WebBridgeBackend` (Python) signals to `WebSerialService` (Angular) - *Python side implemented*.
+  * [ ] Verify End-to-End "Hello World" (Python script moving robot).
+
 ### State Persistence
 
-- [ ] **LocalStorage Adapter**: Implement a storage adapter for the frontend that mirrors the backend API but saves to browser LocalStorage (for Browser/Demo modes).
-* [ ] **State Save/Load**:
-  * Ability to export current state to a JSON file.
-  * Ability to load state from JSON file (Strudel-like functionality).
+* [x] **LocalStorage Adapter**: Implemented `LocalStorageAdapter` service with CRUD operations for protocols, runs, resources, machines.
+
+* [x] **State Save/Load**:
+  * `exportState()` exports current state to JSON string.
+  * `importState(json, merge)` loads state from JSON (with optional merge).
   * Essential for "Browser Mode" session management.
 
 ### Authentication & Routing
 
-- [ ] **No-Login Flow**:
-  * Update `AuthGuard` to allow passthrough if `mode === 'browser' | 'demo'`.
-  * Hide "Login/Logout" buttons in UI for these modes.
-* [ ] **Routing Logic**:
-  * If Browser/Demo: `Root` -> `Dashboard`.
+* [x] **ModeService**: Centralized mode detection (`ModeService`) with `isBrowserMode()`, `requiresAuth()` signals.
+* [x] **No-Login Flow**:
+  * `AuthGuard` now checks `ModeService` to allow passthrough in browser/demo modes.
+  * Login/Logout buttons hidden in UI for these modes, replaced with mode badge.
+
+* [x] **Routing Logic**:
+  * If Browser/Demo: `Root` -> `Dashboard` (via SplashComponent auto-redirect).
   * If Prod: `Root` -> `Landing` -> `Login` -> `Dashboard`.
 
 ### Hardware Discovery
 
-- [ ] **Browser Only**:
+* [ ] **Browser Only**:
   * Disable "Add Machine manually" (IP/Host).
   * Enforce "Discover" workflow via WebSerial.
+
 * [ ] **Production Tunneling**:
   * If adding a machine in Production mode, show help text/modal: "To connect a local machine, run the Praxis Tunnel client..." (Future feature, but UI hook needed).
 
 ### Validation
 
-- [ ] **Validation Docs**:
+* [ ] **Validation Docs**:
   * Create documentation in `.agents/reference/modes.md` specifically validating each mode's constraints.
   * Verification checklist for each mode release.
