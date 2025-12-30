@@ -1,4 +1,4 @@
-"""Core backend application for PyLabPraxis."""
+"""Core backend application for Praxis."""
 
 import logging
 from collections.abc import AsyncGenerator
@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from praxis.backend.api import auth, decks, discovery, machines, outputs, protocols, resources, scheduler, workcell
+from praxis.backend.api import auth, decks, discovery, hardware, machines, outputs, protocols, resources, scheduler, workcell
 from praxis.backend.configure import PraxisConfiguration
 from praxis.backend.core.asset_lock_manager import AssetLockManager
 from praxis.backend.core.asset_manager import AssetManager
@@ -259,7 +259,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-  title="PyLabPraxis Backend",
+  title="Praxis Backend",
   description="A comprehensive Python-based platform to automate and manage laboratory \
     workflows.",
   version="1.0.0",
@@ -290,6 +290,7 @@ app.include_router(workcell.router, prefix="/api/v1/workcell", tags=["Workcell"]
 app.include_router(resources.router, prefix="/api/v1/resources", tags=["Assets"])
 app.include_router(decks.router, prefix="/api/v1/decks", tags=["Decks"])
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["Machines"])
+app.include_router(hardware.router, prefix="/api/v1/hardware", tags=["Hardware"])
 app.include_router(discovery.router, prefix="/api/v1/discovery", tags=["Discovery"])
 app.include_router(scheduler.router, prefix="/api/v1/scheduler", tags=["Scheduler"])
 

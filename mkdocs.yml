@@ -1,0 +1,102 @@
+site_name: Praxis
+site_description: Lab automation platform built on PyLabRobot
+site_url: https://maraxen.github.io/pylabpraxis/
+repo_url: https://github.com/maraxen/pylabpraxis
+repo_name: maraxen/pylabpraxis
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Demo Mode: getting-started/demo-mode.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Backend Components: architecture/backend.md
+    - Frontend Components: architecture/frontend.md
+    - State Management: architecture/state-management.md
+    - Execution Flow: architecture/execution-flow.md
+  - User Guide:
+    - Protocols: user-guide/protocols.md
+    - Assets: user-guide/assets.md
+    - Hardware Discovery: user-guide/hardware-discovery.md
+    - Data Visualization: user-guide/data-visualization.md
+  - API Reference:
+    - REST API: api/rest-api.md
+    - WebSocket API: api/websocket-api.md
+    - Services: api/services.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Code Style: development/code-style.md
+  - Reference:
+    - Configuration: reference/configuration.md
+    - CLI Commands: reference/cli-commands.md
+    - Troubleshooting: reference/troubleshooting.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - admonition
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - autorefs
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/maraxen/pylabpraxis
+  generator: false
+
+copyright: Copyright &copy; 2025 Ovchinnikov Lab, MIT Biology

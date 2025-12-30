@@ -1,79 +1,54 @@
 # Frontend Development Status
 
-**Framework**: Angular v21 + Material 3 + Keycloak  
-**Last Updated**: 2025-12-26
+**Framework**: Angular v21 + Material 3 + Tailwind
+**Phase**: Refinement & Asset Management
+**Last Updated**: 2025-12-30
 
 ---
 
 ## 📊 Phase Summary
 
-| Phase | Status |
-|-------|--------|
-| 1. Foundation | ✅ Complete |
-| 2. Feature Components | ✅ Complete |
-| 3. Visualization & Polish | ✅ Complete |
-| 4. UI/UX Overhaul | ✅ Complete |
-| 5. Auth Integration | ✅ Complete (Frontend) |
-| 6. E2E Testing | ⏸️ Blocked |
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 1. Foundation | Architecture & Shell | ✅ Complete |
+| 2. Features | Asset/Protocol CRUD | ✅ Complete |
+| 3. Polish | Themes & UX | ✅ Complete |
+| **4. Asset Core** | **PLR Inspection & Visualizer** | **🚧 In Progress** |
+| 5. Modes | Browser/Lite Support | 📝 Planned |
 
 ---
 
-## ✅ Completed Features
+## 🚧 Active Development
 
-- **Auth**: Keycloak integration, guards, interceptors
-- **Asset Management**: Machine/Resource CRUD, Definitions, Dialog
-- **Protocol Workflow**: Library, Wizard, Parameter Config
-- **Deck Visualizer**: PLR iframe integration
-- **Theme System**: Dark/Light toggle, theme persistence
-- **Public Pages**: Splash, Login, Register, Forgot Password
-- **Dashboard**: Real-time monitoring, stats, quick actions
+### Asset Management (Core)
+
+* [ ] **Machine Types**: Collapsible menus, Manufacturer grouping.
+* [ ] **Capabilities**: Rendering chips for channels, modules.
+* [ ] **Discovery**: WebSerial integration hookup.
+
+### Visualizer (Rewrite)
+
+* [ ] **Workcell Layout**: Moving from single Deck view to multi-window Workcell view.
+* [ ] **Removal**: Deleting legacy PLR iframe components.
+
+### Polish & Bugs
+
+* [ ] **Light Theme**: Contrast fixes.
+* [ ] **Command Palette**: Selection state visuals.
 
 ---
 
-## 🚧 Pending
+## ✅ Maintained Features
 
-### Backend Integration (Waiting)
-
-- [ ] Token validation middleware (backend)
-- [ ] OAuth provider setup in Keycloak
-
-### Polish (Lower Priority)
-
-- [ ] Loading skeletons for all views
-- [ ] 404/Error pages
-- [ ] Micro-animations
-- [ ] Bundle size optimization (775KB → 500KB)
+* **Unified Shell**: Rail navigation.
+* **Protocol Library**: Wizard, List, Parameter Config.
+* **Documentation**: Markdown viewer.
+* **Data Viz**: Plotly integration.
 
 ---
 
 ## 🔧 Development
 
-### Start Frontend
-
 ```bash
 cd praxis/web-client && npm start
 ```
-
-### Access Points
-
-- Splash: <http://localhost:4200/>
-- App: <http://localhost:4200/app/home>
-- Login: Redirects to Keycloak
-
-### Test User
-
-- **Username**: `testuser`
-- **Password**: `password123`
-
----
-
-## Technical Constraints
-
-- **Strict Typing**: No `any`
-- **OnPush**: All components
-- **Signals**: For local state
-- **Typography**: Roboto Flex
-
----
-
-*See `FRONTEND_UI_GUIDE.md` for styling specifications.*

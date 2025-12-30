@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { MainLayoutComponent } from './layout/main-layout.component';
+import { UnifiedShellComponent } from './layout/unified-shell.component';
 import { LoginComponent } from './features/auth/login.component';
 import { RegisterComponent } from './features/auth/register.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password.component';
@@ -26,48 +27,66 @@ export const routes: Routes = [
     path: 'forgot-password',
     component: ForgotPasswordComponent
   },
-  // Authenticated app routes
+
+  // Unified Shell Routes (App + Docs)
   {
-    path: 'app',
-    component: MainLayoutComponent,
-    canActivate: [authGuard],
+    path: '',
+    component: UnifiedShellComponent,
     children: [
-      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      // Praxis App
       {
-        path: 'home',
-        loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent)
+        path: 'app',
+        canActivate: [authGuard],
+        children: [
+          { path: '', redirectTo: 'home', pathMatch: 'full' },
+          {
+            path: 'home',
+            loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent)
+          },
+          {
+            path: 'assets',
+            loadChildren: () => import('./features/assets/asset.routes').then(m => m.ASSET_ROUTES)
+          },
+          {
+            path: 'protocols',
+            loadChildren: () => import('./features/protocols/protocol.routes').then(m => m.PROTOCOL_ROUTES)
+          },
+          {
+            path: 'run',
+            loadChildren: () => import('./features/run-protocol/run-protocol.routes').then(m => m.RUN_PROTOCOL_ROUTES)
+          },
+          {
+            path: 'visualizer',
+            loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
+          },
+          {
+            path: 'data',
+            loadChildren: () => import('./features/data/data.routes').then(m => m.DATA_ROUTES)
+          },
+          {
+            path: 'settings',
+            loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+          },
+          {
+            path: 'stress-test',
+            loadComponent: () => import('./features/stress-test/stress-test.component').then(m => m.StressTestComponent)
+          },
+          // {
+          //   path: 'repl',
+          //   loadComponent: () => import('./features/repl/repl.component').then(m => m.ReplComponent)
+          // }
+        ]
       },
+
+      // Documentation
       {
-        path: 'assets',
-        loadChildren: () => import('./features/assets/asset.routes').then(m => m.ASSET_ROUTES)
-      },
-      {
-        path: 'protocols',
-        loadChildren: () => import('./features/protocols/protocol.routes').then(m => m.PROTOCOL_ROUTES)
-      },
-      {
-        path: 'run',
-        loadChildren: () => import('./features/run-protocol/run-protocol.routes').then(m => m.RUN_PROTOCOL_ROUTES)
-      },
-      {
-        path: 'visualizer',
-        loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
-      },
-      {
-        path: 'data',
-        loadChildren: () => import('./features/data/data.routes').then(m => m.DATA_ROUTES)
-      },
-      {
-        path: 'settings',
-        loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
-      },
-      {
-        path: 'stress-test',
-        loadComponent: () => import('./features/stress-test/stress-test.component').then(m => m.StressTestComponent)
-      },
+        path: 'docs',
+        loadChildren: () => import('./features/docs/docs.routes').then(m => m.DOCS_ROUTES)
+      }
     ]
   },
-  // Legacy routes redirect to /app/...
+
+  // Legacy/Compatibility Redirects
   { path: 'home', redirectTo: 'app/home' },
   { path: 'assets', redirectTo: 'app/assets' },
   { path: 'protocols', redirectTo: 'app/protocols' },
@@ -76,6 +95,7 @@ export const routes: Routes = [
   { path: 'data', redirectTo: 'app/data' },
   { path: 'settings', redirectTo: 'app/settings' },
   { path: 'stress-test', redirectTo: 'app/stress-test' },
+
   // Fallback
   { path: '**', redirectTo: '' }
 ];

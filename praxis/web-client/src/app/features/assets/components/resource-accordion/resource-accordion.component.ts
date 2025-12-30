@@ -14,8 +14,10 @@ import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { AssetService } from '../../services/asset.service';
 import { Resource, ResourceStatus, ResourceDefinition } from '../../models/asset.models';
 import { ResourceInstancesDialogComponent } from './resource-instances-dialog.component';
+import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { getCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
 
 export interface ResourceGroup {
   category: string;
@@ -33,6 +35,7 @@ export interface ResourceDefinitionGroup {
   isReusable: boolean;
   activeCount: number;
   discardedCount: number;
+  primaryStatus: AssetStatusType | null; // Most relevant status for chip display
 }
 
 @Component({
@@ -51,7 +54,8 @@ export interface ResourceDefinitionGroup {
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    AssetStatusChipComponent
   ],
   template: `
     <div class="resource-accordion-container">
@@ -74,13 +78,19 @@ export interface ResourceDefinitionGroup {
           <mat-expansion-panel class="category-panel">
             <mat-expansion-panel-header>
               <mat-panel-title>
-                <mat-icon class="category-icon">{{ getCategoryIcon(group.category) }}</mat-icon>
-                {{ group.category }}
+                <mat-icon class="category-icon" [matTooltip]="getCategoryTooltip(group.category)">{{ getCategoryIcon(group.category) }}</mat-icon>
+                <span [matTooltip]="getCategoryTooltip(group.category)">{{ group.category }}</span>
               </mat-panel-title>
               <mat-panel-description>
                 <span class="count-badge">{{ group.totalCount }} types</span>
                 @if (group.consumableStatus !== 'none') {
-                  <mat-chip class="consumable-chip" [class.mixed]="group.consumableStatus === 'mixed'">
+                  <mat-chip
+                    class="consumable-chip"
+                    [class.mixed]="group.consumableStatus === 'mixed'"
+                    [matTooltip]="group.consumableStatus === 'mixed'
+                      ? 'Some items in this category are consumable (used up during protocols)'
+                      : getPropertyTooltip('consumable')"
+                  >
                     Consumable
                   </mat-chip>
                 }
@@ -92,30 +102,44 @@ export interface ResourceDefinitionGroup {
                 <div class="definition-item" (click)="openInstancesDialog(defGroup)">
                   <div class="def-info">
                     <span class="def-name">{{ defGroup.definition.name }}</span>
-                    <span class="def-meta">
+                    <!-- Prioritized chip ordering: Status (if itemized) → Count → Type flags → Vendor -->
+                    <div class="def-chips">
+                      @if (defGroup.isConsumable && defGroup.primaryStatus) {
+                        <app-asset-status-chip [status]="defGroup.primaryStatus" [showLabel]="true" />
+                      }
                       @if (defGroup.definition.num_items) {
-                        {{ defGroup.definition.num_items }} items
+                        <mat-chip class="info-chip" [matTooltip]="'Number of items/wells'">{{ defGroup.definition.num_items }} items</mat-chip>
+                      }
+                      @if (defGroup.definition.plate_type) {
+                        <mat-chip class="info-chip" [matTooltip]="'Plate type'">{{ defGroup.definition.plate_type }}</mat-chip>
                       }
                       @if (defGroup.isConsumable) {
-                        · Consumable
+                        <mat-chip class="info-chip consumable" [matTooltip]="getPropertyTooltip('consumable')">Consumable</mat-chip>
                       }
-                    </span>
+                      @if (defGroup.definition.vendor) {
+                        <mat-chip class="info-chip vendor" [matTooltip]="'Vendor/Manufacturer'">{{ defGroup.definition.vendor }}</mat-chip>
+                      }
+                    </div>
                   </div>
                   <div class="def-counts">
                     @if (defGroup.isConsumable && defGroup.isInfinite) {
-                      <span class="count infinite" matTooltip="Infinite quantity available">∞</span>
+                      <span class="count infinite" [matTooltip]="getPropertyTooltip('infinite')">∞</span>
                     } @else {
-                      <span class="count" [class.low]="defGroup.activeCount < 3">
+                      <span
+                        class="count"
+                        [class.low]="defGroup.activeCount < 3"
+                        [matTooltip]="defGroup.activeCount < 3 ? getPropertyTooltip('low-stock') : 'Available quantity'"
+                      >
                         {{ defGroup.isConsumable ? defGroup.activeCount : 1 }}
                       </span>
                     }
                     @if (showDiscarded && defGroup.discardedCount > 0) {
-                      <span class="count discarded" matTooltip="Discarded instances">
+                      <span class="count discarded" [matTooltip]="getPropertyTooltip('depleted')">
                         ({{ defGroup.discardedCount }} discarded)
                       </span>
                     }
                     @if (defGroup.isReusable) {
-                      <mat-icon class="reusable-icon" matTooltip="Reusable (washable)">refresh</mat-icon>
+                      <mat-icon class="reusable-icon" [matTooltip]="getPropertyTooltip('reusable')">refresh</mat-icon>
                     }
                   </div>
                   <mat-icon class="chevron">chevron_right</mat-icon>
@@ -225,6 +249,29 @@ export interface ResourceDefinitionGroup {
       font-size: 0.9rem;
     }
 
+    .def-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .info-chip {
+      --mdc-chip-container-height: 20px;
+      font-size: 0.65rem;
+      font-weight: 500;
+    }
+
+    .info-chip.consumable {
+      --mdc-chip-elevated-container-color: var(--sys-tertiary-container);
+      --mdc-chip-label-text-color: var(--sys-on-tertiary-container);
+    }
+
+    .info-chip.vendor {
+      --mdc-chip-elevated-container-color: var(--sys-surface-container-high);
+      --mdc-chip-label-text-color: var(--sys-on-surface-variant);
+    }
+
     .def-meta {
       font-size: 0.75rem;
       color: var(--sys-on-surface-variant);
@@ -324,6 +371,24 @@ export class ResourceAccordionComponent implements OnInit {
         r.status === ResourceStatus.DEPLETED || r.status === ResourceStatus.EXPIRED
       );
 
+      // Compute primary status for chip display (priority: reserved > in_use > error statuses > available)
+      const statusPriority: Record<string, number> = {
+        'reserved': 1,
+        'in_use': 2,
+        'depleted': 3,
+        'expired': 4,
+        'available': 5,
+        'unknown': 6
+      };
+      let primaryStatus: AssetStatusType | null = null;
+      if (isConsumable && activeInstances.length > 0) {
+        // Find the highest priority status among active instances
+        const sortedByPriority = activeInstances.sort((a, b) =>
+          (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99)
+        );
+        primaryStatus = sortedByPriority[0]?.status as AssetStatusType || null;
+      }
+
       const defGroup: ResourceDefinitionGroup = {
         definition: def,
         instances: instances,
@@ -333,7 +398,8 @@ export class ResourceAccordionComponent implements OnInit {
         isConsumable: isConsumable,
         isReusable: (def as any).is_reusable ?? false,
         activeCount: activeInstances.length,
-        discardedCount: discardedInstances.length
+        discardedCount: discardedInstances.length,
+        primaryStatus: primaryStatus
       };
 
       if (!categoryMap.has(category)) {
@@ -413,6 +479,14 @@ export class ResourceAccordionComponent implements OnInit {
       'Other': 'category'
     };
     return icons[category] || 'category';
+  }
+
+  getCategoryTooltip(category: string): string {
+    return getCategoryTooltip(category);
+  }
+
+  getPropertyTooltip(property: string): string {
+    return getPropertyTooltip(property);
   }
 
   openInstancesDialog(defGroup: ResourceDefinitionGroup) {

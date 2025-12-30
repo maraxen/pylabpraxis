@@ -130,10 +130,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
       flex-direction: column;
       width: 72px;
       min-width: 72px;
-      background: var(--sys-surface-container);
-      border-right: 1px solid var(--sys-outline-variant);
+      background: rgba(30, 30, 45, 0.6); /* Semi-transparent dark */
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
       padding: 8px 0;
       overflow: hidden;
+      z-index: 50;
     }
 
     .nav-logo {
@@ -148,14 +151,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
       font-size: 32px;
       width: 32px;
       height: 32px;
-      color: var(--sys-primary);
+      color: var(--primary-color);
+      filter: drop-shadow(0 0 8px rgba(237, 122, 155, 0.4));
     }
 
     .nav-items {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 8px;
       padding: 0 8px;
     }
 
@@ -167,9 +171,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
       padding: 12px 0;
       border-radius: 16px;
       text-decoration: none;
-      color: var(--sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
       transition: all 0.2s ease;
       cursor: pointer;
+      border: 1px solid transparent;
     }
 
     .nav-item mat-icon {
@@ -177,6 +182,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       width: 24px;
       height: 24px;
       margin-bottom: 4px;
+      transition: transform 0.2s ease;
     }
 
     .nav-label {
@@ -187,17 +193,25 @@ import { toSignal } from '@angular/core/rxjs-interop';
     }
 
     .nav-item:hover {
-      background: var(--sys-surface-container-high);
-      color: var(--sys-on-surface);
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      transform: translateY(-1px);
+    }
+    
+    .nav-item:hover mat-icon {
+      transform: scale(1.1);
+      color: var(--primary-color);
     }
 
     .nav-item.active {
-      background: var(--sys-secondary-container);
-      color: var(--sys-on-secondary-container);
+      background: rgba(237, 122, 155, 0.15); /* Primary low opacity */
+      color: white;
+      border-color: rgba(237, 122, 155, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .nav-item.active mat-icon {
-      color: var(--sys-on-secondary-container);
+      color: var(--primary-color);
     }
 
     /* Bottom Controls */
@@ -206,8 +220,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
       flex-direction: column;
       gap: 4px;
       padding: 8px;
-      border-top: 1px solid var(--sys-outline-variant);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       margin-top: auto;
+      background: rgba(0, 0, 0, 0.1);
     }
 
     .nav-control-btn {
@@ -219,7 +234,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       border-radius: 12px;
       background: transparent;
       border: none;
-      color: var(--sys-on-surface-variant);
+      color: rgba(255, 255, 255, 0.5);
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -236,17 +251,17 @@ import { toSignal } from '@angular/core/rxjs-interop';
     }
 
     .nav-control-btn:hover {
-      background: var(--sys-surface-container-high);
-      color: var(--sys-on-surface);
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
     }
 
     .nav-control-btn.active {
-      background: var(--sys-primary-container);
-      color: var(--sys-on-primary-container);
+      background: rgba(237, 122, 155, 0.15);
+      color: white;
     }
 
     .nav-control-btn.active mat-icon {
-      color: var(--sys-primary);
+      color: var(--primary-color);
     }
 
     /* Main Content */
@@ -255,13 +270,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
     }
 
     .main-content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
-      background: var(--sys-surface);
+      padding: 0; /* Remove padding here, components handle it */
+      background: transparent; /* Allow body gradient to show */
     }
 
     /* Responsive - Collapse rail further on small screens */
@@ -283,6 +299,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
         padding: 12px 0;
       }
     }
+
   `]
 })
 export class MainLayoutComponent {

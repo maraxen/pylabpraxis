@@ -26,7 +26,7 @@ import { DeckGeneratorService } from './services/deck-generator.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
 
-const RECENTS_KEY = 'pylabpraxis_recent_protocols';
+const RECENTS_KEY = 'praxis_recent_protocols';
 const MAX_RECENTS = 5;
 
 interface FilterOption {
@@ -66,445 +66,342 @@ interface FilterCategory {
     DeckVisualizerComponent,
   ],
   template: `
-    <div class="run-protocol-container">
-      <mat-stepper [linear]="true" #stepper>
-        <!-- Step 1: Select Protocol -->
-        <mat-step [stepControl]="protocolFormGroup" label="Select Protocol">
-          <form [formGroup]="protocolFormGroup">
-            @if (selectedProtocol()) {
-              <div class="selected-protocol-banner">
-                <mat-icon>check_circle</mat-icon>
-                <div class="banner-content">
-                  <h3>{{ selectedProtocol()?.name }}</h3>
-                  <p>{{ selectedProtocol()?.description }}</p>
-                  <button mat-raised-button color="primary"
-                    [disabled]="!configuredAssets() || isStartingRun() || executionService.isRunning()"
-                    (click)="startRun()">
-                  <mat-icon>play_arrow</mat-icon> Run Protocol
-                </button>
-                </div>
-                <div class="actions" [class.pulse-action]="!configuredAssets()">
-                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()">
-                    <mat-icon>settings_suggest</mat-icon> Configure Deck
-                  </button>
-                </div>
-                <button mat-button (click)="clearProtocol()">
-                  <mat-icon>close</mat-icon> Change
-                </button>
-              </div>
-            } @else {
-              <div class="protocol-selection-view">
-                <!-- Header -->
-                <div class="selection-header">
-                  <h2>Select a Protocol</h2>
-                  <button mat-stroked-button routerLink="/app/protocols">
-                    <mat-icon>library_books</mat-icon> Go to Library
-                  </button>
-                </div>
+    <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
+      <!-- Top Bar -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-3xl font-bold text-white mb-1">Execute Protocol</h1>
+          <p class="text-white/70">Configure and run experimental procedures</p>
+        </div>
+        
+        <!-- Simulation Mode Toggle -->
+        <div class="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2">
+          <span class="text-sm font-medium" [class.text-white]="!store.simulationMode()" [class.text-white/50]="store.simulationMode()">Physical</span>
+          <mat-slide-toggle [checked]="store.simulationMode()" (change)="store.setSimulationMode($event.checked)" color="primary"></mat-slide-toggle>
+          <span class="text-sm font-medium" [class.text-primary]="store.simulationMode()" [class.text-white/50]="!store.simulationMode()">Simulation</span>
+        </div>
+      </div>
 
-                <!-- Recents Section -->
-                @if (isLoading() || recentProtocols().length > 0) {
-                  <section class="recents-section">
-                    <h3><mat-icon>history</mat-icon> Jump Back In</h3>
-                    <div class="recents-carousel">
-                      @if (isLoading()) {
-                        @for (i of [1, 2, 3]; track i) {
-                          <app-protocol-card-skeleton [compact]="true" />
-                        }
-                      } @else {
-                        @for (protocol of recentProtocols(); track protocol.accession_id) {
-                          <app-protocol-card
-                            [protocol]="protocol"
-                            [compact]="true"
-                            (select)="selectProtocol($event)"
-                          />
-                        }
-                      }
+      <!-- Main Content Surface -->
+      <div class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl flex-1 min-h-0 shadow-xl flex flex-col">
+        <mat-stepper [linear]="true" #stepper class="!bg-transparent h-full flex flex-col">
+          
+          <!-- Step 1: Select Protocol -->
+          <mat-step [stepControl]="protocolFormGroup" label="Select Protocol">
+            <form [formGroup]="protocolFormGroup" class="h-full flex flex-col p-6">
+              @if (selectedProtocol()) {
+                <div class="flex flex-col h-full items-center justify-center gap-8">
+                  <div class="max-w-2xl w-full bg-surface-elevated border border-primary/30 rounded-3xl p-8 relative overflow-hidden group shadow-2xl">
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-50"></div>
+                    
+                    <div class="relative z-10 flex flex-col items-center text-center gap-4">
+                      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-lg shadow-primary/30 mb-2">
+                        <mat-icon class="!w-8 !h-8 !text-[32px] text-white">science</mat-icon>
+                      </div>
+                      
+                      <h2 class="text-3xl font-bold text-white mb-0">{{ selectedProtocol()?.name }}</h2>
+                      <p class="text-lg text-white/70 max-w-lg">{{ selectedProtocol()?.description }}</p>
+                      
+                      <div class="flex gap-2 mt-2">
+                          <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm flex items-center gap-2">
+                            <mat-icon class="!w-4 !h-4 !text-[16px]">category</mat-icon> {{ selectedProtocol()?.category || 'General' }}
+                          </span>
+                          <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-sm flex items-center gap-2">
+                            <mat-icon class="!w-4 !h-4 !text-[16px]">tag</mat-icon> {{ selectedProtocol()?.version }}
+                          </span>
+                      </div>
+
+                      <div class="flex gap-4 mt-6 w-full justify-center">
+                        <button mat-button class="!border-white/20 !text-white !rounded-xl !px-6 !py-6 w-40" (click)="clearProtocol()">
+                          Change
+                        </button>
+                        <button mat-flat-button class="!bg-primary !text-white !rounded-xl !px-6 !py-6 !font-bold w-40 shadow-lg shadow-primary/25" matStepperNext>
+                          Continue
+                        </button>
+                      </div>
                     </div>
-                  </section>
-                }
-
-                <!-- Main Protocol List -->
-                <section class="all-protocols-section">
-                  <h3><mat-icon>folder_open</mat-icon> All Protocols</h3>
-                  <div class="protocols-layout">
-                    <!-- Sidebar Filters -->
-                    <aside class="filters-sidebar">
-                      <!-- Search -->
-                      <mat-form-field appearance="outline" class="search-field">
-                        <mat-label>Search Protocols</mat-label>
-                        <input matInput [value]="searchQuery()" (input)="onSearchChange($event)" placeholder="e.g. dilution, transfer">
-                        <mat-icon matPrefix>search</mat-icon>
+                  </div>
+                </div>
+              } @else {
+                <div class="flex h-full gap-6">
+                  <!-- Sidebar Filters -->
+                  <aside class="w-72 flex-shrink-0 flex flex-col gap-6">
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <div class="relative mb-4">
+                        <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-white/50">search</mat-icon>
+                        <input 
+                          class="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                          [value]="searchQuery()" 
+                          (input)="onSearchChange($event)" 
+                          placeholder="Search protocols..."
+                        >
                         @if (searchQuery()) {
-                          <button matSuffix mat-icon-button (click)="clearSearch()">
-                            <mat-icon>close</mat-icon>
+                          <button class="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white" (click)="clearSearch()">
+                            <mat-icon class="!w-5 !h-5 !text-[20px]">close</mat-icon>
                           </button>
                         }
-                      </mat-form-field>
+                      </div>
 
-                      <!-- Filter Panels -->
-                      <mat-accordion>
+                      <div class="flex flex-col gap-4">
                         @for (category of filterCategories(); track category.key) {
-                          <mat-expansion-panel [expanded]="category.expanded">
-                            <mat-expansion-panel-header>
-                              <mat-panel-title>
-                                {{ category.label }}
-                                @if (getSelectedCount(category) > 0) {
-                                  <span class="filter-badge">{{ getSelectedCount(category) }}</span>
-                                }
-                              </mat-panel-title>
-                            </mat-expansion-panel-header>
-                            <div class="filter-options">
-                              @for (option of category.options; track option.value) {
-                                <mat-checkbox
-                                  [checked]="option.selected"
-                                  (change)="toggleFilter(category.key, option.value)"
-                                >
-                                  {{ option.value }} <span class="count">({{ option.count }})</span>
-                                </mat-checkbox>
-                              }
-                            </div>
-                          </mat-expansion-panel>
+                          <div class="flex flex-col gap-2">
+                            <h4 class="text-xs font-bold text-white/40 uppercase tracking-wider px-2">{{ category.label }}</h4>
+                            @for (option of category.options; track option.value) {
+                              <button 
+                                class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-left"
+                                [class.bg-primary-10]="option.selected"
+                                [class.text-primary]="option.selected"
+                                [class.text-white-70]="!option.selected"
+                                (click)="toggleFilter(category.key, option.value)"
+                              >
+                                <span>{{ option.value }}</span>
+                                <span class="bg-white/10 px-1.5 py-0.5 rounded text-xs opacity-60">{{ option.count }}</span>
+                              </button>
+                            }
+                          </div>
                         }
-                      </mat-accordion>
-                    </aside>
+                      </div>
+                    </div>
+                  </aside>
 
-                    <!-- Protocol Grid -->
-                    <div class="protocols-grid">
+                  <!-- Main Grid -->
+                  <div class="flex-1 overflow-auto pr-2">
+                    <!-- Recents -->
+                    @if (recentProtocols().length > 0 && !searchQuery()) {
+                      <div class="mb-8">
+                        <h3 class="text-white text-lg font-medium mb-4 flex items-center gap-2">
+                          <mat-icon class="text-primary/70">history</mat-icon> Recently Used
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          @for (protocol of recentProtocols(); track protocol.accession_id) {
+                            <app-protocol-card
+                              [protocol]="protocol"
+                              [compact]="true"
+                              (select)="selectProtocol($event)"
+                              class="transform hover:-translate-y-1 transition-transform duration-300"
+                            />
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- All Protocols -->
+                    <div>
+                      <h3 class="text-white text-lg font-medium mb-4 flex items-center gap-2">
+                        <mat-icon class="text-primary/70">grid_view</mat-icon> All Protocols
+                      </h3>
+                      
                       @if (isLoading()) {
-                        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-                          <app-protocol-card-skeleton />
-                        }
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+                            <app-protocol-card-skeleton />
+                          }
+                        </div>
                       } @else if (filteredProtocols().length === 0) {
-                        <div class="empty-state">
-                          <mat-icon>search_off</mat-icon>
-                          <h4>No protocols found</h4>
-                          <p>Try adjusting your search or filters.</p>
+                        <div class="flex flex-col items-center justify-center py-20 text-white/40">
+                          <mat-icon class="!w-16 !h-16 !text-[64px] opacity-20 mb-4">search_off</mat-icon>
+                          <p class="text-lg">No protocols found matching your criteria</p>
+                          <button mat-button class="mt-4 !text-primary" (click)="clearSearch()">Clear Filters</button>
                         </div>
                       } @else {
-                        @for (protocol of filteredProtocols(); track protocol.accession_id) {
-                          <app-protocol-card
-                            [protocol]="protocol"
-                            (select)="selectProtocol($event)"
-                          />
-                        }
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-8">
+                          @for (protocol of filteredProtocols(); track protocol.accession_id) {
+                            <app-protocol-card
+                              [protocol]="protocol"
+                              (select)="selectProtocol($event)"
+                              class="transform hover:-translate-y-1 transition-transform duration-300"
+                            />
+                          }
+                        </div>
                       }
                     </div>
                   </div>
-                </section>
-              </div>
-            }
-            <div class="actions">
-              <button mat-button matStepperNext [disabled]="!selectedProtocol()">Next</button>
-            </div>
-          </form>
-        </mat-step>
-
-        <!-- Step 2: Configure Parameters -->
-        <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
-          <form [formGroup]="parametersFormGroup">
-            <app-parameter-config
-              [protocol]="selectedProtocol()"
-              [formGroup]="parametersFormGroup">
-            </app-parameter-config>
-            <div class="actions">
-              <button mat-button matStepperPrevious>Back</button>
-              <button mat-button matStepperNext>Next</button>
-            </div>
-          </form>
-        </mat-step>
-
-        <!-- Step 3: Deck Configuration -->
-        <mat-step label="Deck Configuration">
-          <div class="deck-config-step">
-            <app-deck-visualizer [layoutData]="deckData()"></app-deck-visualizer>
-            
-            <div class="deck-info">
-              <h3><mat-icon>info</mat-icon> Pre-Run Deck Check</h3>
-              <p>Ensure resources are placed correctly as shown on the left.</p>
-              
-              <div class="deck-status" [class.ready]="!!configuredAssets()">
-                 <mat-icon>{{ configuredAssets() ? 'check_circle' : 'warning' }}</mat-icon>
-                 <span>{{ configuredAssets() ? 'Deck Configured' : 'Configuration Required' }}</span>
-              </div>
-
-              <div class="resource-summary">
-                <h4>Required Assets:</h4>
-                <ul>
-                  @for (req of selectedProtocol()?.assets; track req.accession_id) {
-                    <li>
-                      <span class="req-name">{{ req.name }}</span>: 
-                      @if (configuredAssets()?.[req.accession_id]) {
-                        <span class="status-ready">
-                          {{ configuredAssets()![req.accession_id].name }}
-                        </span>
-                      } @else {
-                        <span class="status-pending">Not Assigned</span>
-                      }
-                    </li>
-                  }
-                </ul>
-              </div>
-
-              <div class="actions" [class.pulse-action]="!configuredAssets()">
-                  <button mat-stroked-button color="primary" (click)="openGuidedSetup()"
-                    [disabled]="executionService.isRunning()">
-                    <mat-icon>settings_suggest</mat-icon> Configure Deck
-                  </button>
-              </div>
-            </div>
-          </div>
-          <div class="actions">
-            <button mat-button matStepperPrevious>Back</button>
-            <button mat-button matStepperNext [disabled]="!configuredAssets()">Next</button>
-          </div>
-        </mat-step>
-
-        <!-- Step 4: Review & Run -->
-        <mat-step label="Review & Run">
-          <h3>Ready to Run</h3>
-          <p>Protocol: {{ selectedProtocol()?.name }}</p>
-          <p>Parameters Configured: {{ parametersFormGroup.valid ? 'Yes' : 'No' }}</p>
-          <div class="actions">
-            <button mat-button matStepperPrevious>Back</button>
-            <button mat-raised-button color="primary" (click)="startRun()" 
-              [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
-              @if (isStartingRun()) {
-                <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
-                Starting...
-              } @else {
-                <mat-icon>play_arrow</mat-icon>
-                Start Execution
+                </div>
               }
-            </button>
-          </div>
-        </mat-step>
-      </mat-stepper>
+            </form>
+          </mat-step>
+
+          <!-- Step 2: Configure Parameters -->
+          <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
+            <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6">
+              <div class="flex-1 overflow-auto max-w-3xl mx-auto w-full">
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-8">
+                  <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                      <mat-icon>tune</mat-icon>
+                    </div>
+                    Protocol Parameters
+                  </h3>
+                  
+                  <app-parameter-config
+                    [protocol]="selectedProtocol()"
+                    [formGroup]="parametersFormGroup">
+                  </app-parameter-config>
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-between border-t border-white/10 pt-6">
+                <button mat-button matStepperPrevious class="!text-white/70">Back</button>
+                <button mat-flat-button color="primary" matStepperNext class="!rounded-xl !px-8 !py-6">Continue</button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- Step 3: Deck Configuration -->
+          <mat-step label="Deck Setup">
+            <div class="h-full flex flex-col p-6">
+              <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+                <!-- Visualizer Column -->
+                <div class="lg:col-span-2 bg-black/20 rounded-2xl border border-white/10 overflow-hidden relative group">
+                  <div class="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white/70 border border-white/10">
+                    Deck Visualizer
+                  </div>
+                  <app-deck-visualizer [layoutData]="deckData()" class="w-full h-full block"></app-deck-visualizer>
+                  
+                  <!-- Legend overlay on hover or always -->
+                  <div class="absolute bottom-4 left-4 right-4 flex justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                       <span class="w-3 h-3 rounded-full bg-primary"></span> <span class="text-xs text-white">Target</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Info Column -->
+                <div class="flex flex-col gap-6 overflow-y-auto">
+                   <!-- Status Card -->
+                   <div class="bg-surface-elevated border border-white/10 rounded-2xl p-6" 
+                        [class.border-green-500-30]="configuredAssets()"
+                        [class.bg-green-500-05]="configuredAssets()">
+                     <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                       <mat-icon [class.text-green-400]="configuredAssets()" [class.text-amber-400]="!configuredAssets()">
+                         {{ configuredAssets() ? 'check_circle' : 'warning' }}
+                       </mat-icon>
+                       Configuration Status
+                     </h3>
+                     
+                     <p class="text-white/70 mb-6 text-sm">
+                       {{ configuredAssets() ? 'All required assets are mapped and ready.' : 'Please configure the deck layout before proceeding.' }}
+                     </p>
+
+                     <button mat-stroked-button class="w-full !py-6 !rounded-xl !border-primary/50 !text-primary hover:!bg-primary/10 transition-colors" (click)="openGuidedSetup()" [disabled]="executionService.isRunning()">
+                        <mat-icon>settings_suggest</mat-icon> {{ configuredAssets() ? 'Reconfigure Deck' : 'Configure Deck' }}
+                     </button>
+                   </div>
+
+                   <!-- Requirements List -->
+                   <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex-1">
+                      <h4 class="text-white font-medium mb-4 text-sm uppercase tracking-wider opacity-70">Required Assets</h4>
+                      <div class="flex flex-col gap-3">
+                        @for (req of selectedProtocol()?.assets; track req.accession_id) {
+                          <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                             <div class="flex flex-col">
+                               <span class="text-white font-medium text-sm">{{ req.name }}</span>
+                               <span class="text-xs text-white/40">{{ req.type_hint_str || 'Unknown Type' }}</span>
+                             </div>
+                             
+                             @if (configuredAssets()?.[req.accession_id]) {
+                               <div class="w-8 h-8 rounded-full bg-green-400/20 flex items-center justify-center text-green-400">
+                                 <mat-icon class="!w-5 !h-5 !text-[20px]">check</mat-icon>
+                               </div>
+                             } @else {
+                               <div class="w-8 h-8 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-400 animate-pulse">
+                                  <mat-icon class="!w-5 !h-5 !text-[20px]">question_mark</mat-icon>
+                               </div>
+                             }
+                          </div>
+                        }
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-between border-t border-white/10 pt-6">
+                <button mat-button matStepperPrevious class="!text-white/70">Back</button>
+                <button mat-flat-button color="primary" matStepperNext [disabled]="!configuredAssets()" class="!rounded-xl !px-8 !py-6">Continue</button>
+              </div>
+            </div>
+          </mat-step>
+
+          <!-- Step 4: Review & Run -->
+          <mat-step label="Review & Run">
+             <div class="h-full flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto">
+               <div class="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-6 shadow-[0_0_30px_rgba(237,122,155,0.3)]">
+                 <mat-icon class="!w-12 !h-12 !text-[48px]">rocket_launch</mat-icon>
+               </div>
+               
+               <h2 class="text-4xl font-bold text-white mb-2">Ready to Launch</h2>
+               <p class="text-xl text-white/60 mb-12">Confirm execution parameters before starting</p>
+               
+               <div class="grid grid-cols-2 gap-4 w-full mb-12">
+                 <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center">
+                    <span class="text-white/40 text-sm uppercase tracking-wider font-bold mb-2">Protocol</span>
+                    <span class="text-white text-lg font-medium">{{ selectedProtocol()?.name }}</span>
+                 </div>
+                 
+                 <div class="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center">
+                    <span class="text-white/40 text-sm uppercase tracking-wider font-bold mb-2">Mode</span>
+                    <span class="text-lg font-medium" [class.text-primary]="store.simulationMode()" [class.text-blue-400]="!store.simulationMode()">
+                      {{ store.simulationMode() ? 'Simulation' : 'Physical Run' }}
+                    </span>
+                 </div>
+               </div>
+
+               <div class="flex gap-4 w-full justify-center">
+                  <button mat-button matStepperPrevious class="!border-white/10 !text-white/70 !rounded-xl !px-8 !py-6 w-40 border">Back</button>
+                  <button mat-raised-button class="!bg-gradient-to-r !from-green-500 !to-emerald-600 !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-0.5 transition-all" (click)="startRun()" 
+                    [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
+                    @if (isStartingRun()) {
+                      <mat-spinner diameter="24" class="mr-2"></mat-spinner>
+                      Initializing...
+                    } @else {
+                      <div class="flex items-center gap-2">
+                        <mat-icon>play_circle</mat-icon>
+                        Start Execution
+                      </div>
+                    }
+                  </button>
+               </div>
+             </div>
+          </mat-step>
+        </mat-stepper>
+      </div>
     </div>
   `,
   styles: [`
-    .run-protocol-container {
-      padding: 24px;
+    :host {
+      display: block;
       height: 100%;
-      overflow-y: auto;
-    }
-    .actions {
-      margin-top: 24px;
-      display: flex;
-      gap: 8px;
-    }
-    .button-spinner {
-      margin-right: 8px;
-    }
-
-    /* Deck Config Step */
-    .deck-config-step {
-      display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: 24px;
-      margin-bottom: 24px;
-      min-height: 400px;
-    }
-    .deck-info {
-        flex: 0 0 300px;
-        padding: 24px;
-        background: var(--sys-surface-container-high);
-        border-radius: 12px;
-    }
-
-    .deck-status {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 16px 0;
-        padding: 12px;
-        border-radius: 8px;
-        background: var(--sys-error-container);
-        color: var(--sys-on-error-container);
-        font-weight: 500;
-    }
-
-    .deck-status.ready {
-        background: var(--sys-primary-container);
-        color: var(--sys-on-primary-container);
     }
     
-    .actions {
-        margin-top: 16px;
-    }
+    /* Utilities */
+    .bg-primary-10 { background-color: rgba(var(--primary-color-rgb), 0.1); }
+    .text-white-70 { color: rgba(255, 255, 255, 0.7); }
+    .border-green-500-30 { border-color: rgba(74, 222, 128, 0.3) !important; }
+    .bg-green-500-05 { background-color: rgba(74, 222, 128, 0.05) !important; }
 
-    @keyframes subtle-pulse {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--sys-primary-rgb), 0.7); }
-        50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(var(--sys-primary-rgb), 0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(var(--sys-primary-rgb), 0); }
-    }
-
-    .pulse-action button {
-        animation: subtle-pulse 2s infinite;
-    }
-    .deck-info h3 {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 0;
-    }
-    .resource-summary {
-      margin-top: 24px;
-    }
-    .resource-summary ul {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-    .resource-summary li {
-      margin-bottom: 8px;
-      font-size: 0.9em;
-      color: var(--sys-on-surface-variant);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .req-name {
-      font-weight: 500;
-      color: var(--sys-on-surface);
-    }
-    .status-ready {
-      color: var(--sys-primary);
-      font-weight: 500;
-    }
-    .status-pending {
-      color: var(--sys-error);
-      font-style: italic;
-    }
-
-    /* Selected Protocol Banner */
-    .selected-protocol-banner {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px 24px;
-      background: var(--sys-primary-container);
-      color: var(--sys-on-primary-container);
+    /* Stepper Overrides */
+    ::ng-deep .mat-step-header {
       border-radius: 12px;
-      margin-bottom: 16px;
+      transition: background 0.2s;
     }
-    .selected-protocol-banner mat-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-      color: var(--sys-primary);
+    ::ng-deep .mat-step-header:hover {
+      background: rgba(255, 255, 255, 0.05);
     }
-    .selected-protocol-banner .banner-content {
-      flex: 1;
+    ::ng-deep .mat-step-label {
+      color: rgba(255, 255, 255, 0.5) !important;
+      font-size: 1rem !important;
     }
-    .selected-protocol-banner h3 {
-      margin: 0;
+    ::ng-deep .mat-step-label-selected {
+      color: white !important;
+      font-weight: 600 !important;
     }
-    .selected-protocol-banner p {
-      margin: 4px 0 0;
-      opacity: 0.8;
+    ::ng-deep .mat-step-icon {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: rgba(255, 255, 255, 0.5) !important;
     }
-
-    /* Selection View */
-    .protocol-selection-view {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .selection-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .selection-header h2 {
-      margin: 0;
-    }
-
-    /* Recents Section */
-    .recents-section h3 {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .recents-carousel {
-      display: flex;
-      gap: 16px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-    }
-
-    /* All Protocols Section */
-    .all-protocols-section h3 {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .protocols-layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 24px;
-    }
-
-    /* Filters Sidebar */
-    .filters-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .search-field {
-      width: 100%;
-    }
-    .filter-options {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .filter-options .count {
-      opacity: 0.6;
-      font-size: 0.85em;
-    }
-    .filter-badge {
-      background: var(--sys-primary);
-      color: var(--sys-on-primary);
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75em;
-      margin-left: 8px;
-    }
-
-    /* Protocol Grid */
-    .protocols-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    /* Empty State */
-    .empty-state {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 48px;
-      color: var(--sys-on-surface-variant);
-    }
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      opacity: 0.5;
-    }
-    .empty-state h4 {
-      margin: 16px 0 8px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .protocols-layout {
-        grid-template-columns: 1fr;
-      }
-      .filters-sidebar {
-        order: -1;
-      }
+    ::ng-deep .mat-step-icon-selected {
+      background-color: var(--primary-color) !important;
+      color: white !important;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,

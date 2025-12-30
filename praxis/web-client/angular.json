@@ -57,13 +57,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1MB",
-                  "maximumError": "2MB"
+                  "maximumWarning": "5MB",
+                  "maximumError": "8MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "6kB",
+                  "maximumError": "10kB"
                 }
               ],
               "outputHashing": "all"
@@ -80,7 +80,7 @@
                   "with": "src/environments/environment.demo.ts"
                 }
               ],
-              "baseHref": "/pylabpraxis/",
+              "baseHref": "/praxis/",
               "optimization": true,
               "outputHashing": "all"
             }

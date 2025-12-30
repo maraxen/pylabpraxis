@@ -43,7 +43,7 @@ export class KeycloakService {
       this._user.set({
         id: 'demo-user',
         username: 'demo',
-        email: 'demo@pylabpraxis.example',
+        email: 'demo@praxis.example',
         firstName: 'Demo',
         lastName: 'User',
         roles: ['user', 'demo', 'admin']

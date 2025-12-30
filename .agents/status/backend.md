@@ -1,90 +1,48 @@
 # Backend Development Status
 
-**Last Updated**: 2025-12-26  
-**Pass Rate**: 98.6% (1373/1393 tests)  
-**Coverage**: ~42% (target: 80%)
+**Phase**: PLR Introspection & Modes
+**Last Updated**: 2025-12-30
 
 ---
 
 ## 🎯 Current Priorities
 
-### High Priority - Production Critical
+### 1. PLR Introspection (High)
 
-| Module | Coverage | Target | Notes |
-|--------|----------|--------|-------|
-| `services/scheduler.py` | 0% | 80% | Scheduler service layer |
-| `services/user.py` | 0% | 80% | User management |
+* **Goal**: Dynamically enumerate `pylabrobot` classes.
+* **Tasks**:
+  * [ ] Identify `LiquidHandler` vs `Backend` classes.
+  * [ ] Extract metadata (Channels, Optional Modules).
+  * [ ] Expose via `sync-all` or `discovery` endpoints.
 
-### Medium Priority
+### 2. Application Modes
 
-| Module | Coverage | Target |
-|--------|----------|--------|
-| `services/deck.py` | 26% | 80% |
-| `services/protocol_definition.py` | 21% | 80% |
-| `services/protocols.py` | 20% | 80% |
-| `services/discovery_service.py` | 21% | 80% |
-| `services/entity_linking.py` | 18% | 80% |
-
----
-
-## ✅ Completed Modules
-
-| Module | Coverage | Date |
-|--------|----------|------|
-| `api/websockets.py` | 87% | Dec 13 |
-| `core/decorators/protocol_decorator.py` | 92% | Dec 14 |
-| `utils/auth.py` | 100% | Dec 14 |
-| `api/auth.py` | 76% | Dec 14 |
-| `core/orchestrator/execution.py` | 100% | Dec 15 |
-| `core/scheduler.py` | ~85% | Dec 15 |
+* **Goal**: Support Browser/Lite/Production variants.
+* **Tasks**:
+  * [ ] **Lite**: SQLite configuration testing.
+  * [ ] **Production**: Redis/Postgres set up docs.
+  * [ ] **Validation**: Scripts to verify mode constraints.
 
 ---
 
-## 📋 Task Tiers
+## ✅ Stable Modules
 
-### Tier 1: Simple (Any agent)
-
-- [ ] T1.2 - Update AGENTS.md type checker ref (`pyright` → `ty`)
-- [x] T1.5 - Mark slow tests ✅
-- [x] T1.6 - WebSocket test coverage ✅
-
-### Tier 2: Medium
-
-- [ ] T2.3 - Service layer tests (workcell, resource, user)  
-- [x] T2.5 - Fix test collection ✅
-
-### Tier 3: Complex
-
-- [ ] T3.4 - Complex service coverage (scheduler, protocols, discovery)
-- [ ] T3.5 - Resolve ty type errors
+* **Orchestrator**: Execution engine (100% coverage).
+* **WebSockets**: Log streaming & status.
+* **Auth**: Keycloak integration (Production).
 
 ---
 
-## 🚫 Do Not Edit
+## 📋 Coverage Targets
 
-- `praxis/backend/commons/` - Do not modify
-- `praxis/backend/models/orm/` - MappedAsDataclass patterns are sensitive
+* `services/scheduler.py`: 0% -> 80%
+* `services/discovery_service.py`: 21% -> 80% (Critical for PLR work)
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Start test database
 make db-test
-
-# Run tests
-make test                    # All tests
-make test-parallel-fast      # Fast in parallel
-make test-cov               # With coverage
-
-# Type checking
-uv run ty check praxis/
-
-# Linting
-uv run ruff check . --fix
+uv run pytest
 ```
-
----
-
-*See `archive/BACKEND_STATUS_HISTORY_20251215.md` for historical session logs.*

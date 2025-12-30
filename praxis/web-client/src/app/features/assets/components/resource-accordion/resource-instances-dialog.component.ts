@@ -8,6 +8,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { Resource, ResourceDefinition, ResourceStatus } from '../../models/asset.models';
+import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
 
 export interface InstancesDialogData {
   definition: ResourceDefinition;
@@ -26,7 +27,10 @@ export interface InstancesDialogData {
     MatButtonModule,
     MatChipsModule,
     MatSlideToggleModule,
-    FormsModule
+    MatChipsModule,
+    MatSlideToggleModule,
+    FormsModule,
+    LocationBreadcrumbComponent
   ],
   template: `
     <h2 mat-dialog-title>
@@ -70,7 +74,7 @@ export interface InstancesDialogData {
           <ng-container matColumnDef="location">
             <th mat-header-cell *matHeaderCellDef>Location</th>
             <td mat-cell *matCellDef="let instance">
-              {{ $any(instance).location || 'Not assigned' }}
+              <app-location-breadcrumb [location]="instance.location"></app-location-breadcrumb>
             </td>
           </ng-container>
 

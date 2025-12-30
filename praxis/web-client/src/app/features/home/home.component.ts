@@ -43,119 +43,120 @@ interface RecentRun {
     MatBadgeModule
   ],
   template: `
-    <div class="dashboard">
+    <div class="p-6 max-w-screen-2xl mx-auto">
       <!-- Header with Quick Actions -->
-      <header class="dashboard-header">
-        <div class="header-content">
-          <div class="greeting">
-            <h1 class="title">Welcome back</h1>
-            <p class="subtitle">Here's what's happening in your lab</p>
-          </div>
-          <div class="quick-actions">
-            <a mat-flat-button class="action-primary" routerLink="/app/run">
-              <mat-icon>play_circle</mat-icon>
-              Run Protocol
-            </a>
-            <a mat-stroked-button class="action-secondary" routerLink="/app/protocols">
-              <mat-icon>schedule</mat-icon>
-              Schedule
-            </a>
-          </div>
+      <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="greeting">
+          <h1 class="text-3xl font-bold text-white mb-1">Welcome back</h1>
+          <p class="text-white/70">Here's what's happening in your lab</p>
+        </div>
+        <div class="flex gap-3 w-full md:w-auto">
+          <a mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-6 !font-semibold flex items-center gap-2 flex-1 md:flex-none justify-center shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" routerLink="/app/run">
+            <mat-icon>play_circle</mat-icon>
+            Run Protocol
+          </a>
+          <a mat-stroked-button class="!border-white/20 !text-white !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-white/5 transition-all" routerLink="/app/protocols">
+            <mat-icon>schedule</mat-icon>
+            Schedule
+          </a>
         </div>
       </header>
 
       <!-- Stats Overview -->
-      <section class="stats-grid">
-        <div class="stat-card active-runs clickable" routerLink="/app/run" matTooltip="View active protocol runs">
-          <div class="stat-icon">
-            <mat-icon>play_arrow</mat-icon>
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/run" matTooltip="View active protocol runs">
+          <!-- Glow effect -->
+          <div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 relative z-10">
+            <mat-icon class="text-primary">play_arrow</mat-icon>
           </div>
-          <div class="stat-content">
-            <span class="stat-value">{{ runningCount() }}</span>
-            <span class="stat-label">Running</span>
+          <div class="flex flex-col relative z-10">
+            <span class="text-2xl font-bold text-white">{{ runningCount() }}</span>
+            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Running</span>
           </div>
-          <div class="stat-indicator pulse"></div>
+          <div class="absolute top-4 right-4 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
         </div>
 
-        <div class="stat-card instruments clickable" routerLink="/app/assets" matTooltip="View laboratory instruments">
-          <div class="stat-icon">
-            <mat-icon>precision_manufacturing</mat-icon>
+        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="View laboratory machines">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 relative z-10">
+            <mat-icon class="text-blue-400">precision_manufacturing</mat-icon>
           </div>
-          <div class="stat-content">
-            <span class="stat-value">{{ activeMachines() }}/{{ totalMachines() }}</span>
-            <span class="stat-label">Instruments Online</span>
-          </div>
-        </div>
-
-        <div class="stat-card protocols clickable" routerLink="/app/protocols" matTooltip="Manage protocols">
-          <div class="stat-icon">
-            <mat-icon>science</mat-icon>
-          </div>
-          <div class="stat-content">
-            <span class="stat-value">{{ totalProtocols() }}</span>
-            <span class="stat-label">Protocols</span>
+          <div class="flex flex-col relative z-10">
+            <span class="text-2xl font-bold text-white">{{ activeMachines() }}<span class="text-base font-normal text-white/40">/{{ totalMachines() }}</span></span>
+            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Machines Online</span>
           </div>
         </div>
 
-        <div class="stat-card resources clickable" routerLink="/app/assets" matTooltip="Manage resources">
-          <div class="stat-icon">
-            <mat-icon>inventory_2</mat-icon>
+        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/protocols" matTooltip="Manage protocols">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20 relative z-10">
+            <mat-icon class="text-purple-400">science</mat-icon>
           </div>
-          <div class="stat-content">
-            <span class="stat-value">{{ totalResources() }}</span>
-            <span class="stat-label">Resources</span>
+          <div class="flex flex-col relative z-10">
+            <span class="text-2xl font-bold text-white">{{ totalProtocols() }}</span>
+            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Protocols</span>
+          </div>
+        </div>
+
+        <div class="group relative bg-surface border border-white/10 rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all hover:-translate-y-0.5 cursor-pointer overflow-hidden" routerLink="/app/assets" matTooltip="Manage resources">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-primary/20 relative z-10">
+            <mat-icon class="text-orange-400">inventory_2</mat-icon>
+          </div>
+          <div class="flex flex-col relative z-10">
+            <span class="text-2xl font-bold text-white">{{ totalResources() }}</span>
+            <span class="text-xs font-medium text-white/50 uppercase tracking-wide">Resources</span>
           </div>
         </div>
       </section>
 
       <!-- Main Content Grid -->
-      <div class="content-grid">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Live Experiments Panel -->
-        <section class="panel live-experiments">
-          <div class="panel-header">
-            <h2>
-              <mat-icon>monitor_heart</mat-icon>
+        <section class="lg:col-span-2 bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
+          <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+              <mat-icon class="text-primary">monitor_heart</mat-icon>
               Live Experiments
             </h2>
             @if (runningCount() > 0) {
-              <span class="live-badge">
-                <span class="live-dot"></span>
+              <span class="flex items-center gap-2 text-sm font-medium text-green-400 bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                 {{ runningCount() }} Active
               </span>
             }
           </div>
 
-          <div class="panel-content">
+          <div class="p-4">
             @if (hasRunningExperiments()) {
               @for (run of currentRuns(); track run.id) {
-                <div class="experiment-card clickable" 
-                     [class.running]="run.status === 'running'"
+                <div class="group relative bg-white/5 border border-white/5 rounded-xl p-4 mb-3 hover:bg-white/10 hover:border-white/20 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" 
+                     [class.border-green-500-30]="run.status === 'running'"
                      routerLink="/app/run"
                      matTooltip="View run details">
-                  <div class="experiment-header">
-                    <div class="experiment-info">
-                      <h3>{{ run.name }}</h3>
-                      <span class="protocol-name">{{ run.protocolName }}</span>
+                  <div class="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 class="font-semibold text-white group-hover:text-primary transition-colors">{{ run.name }}</h3>
+                      <span class="text-sm text-white/50">{{ run.protocolName }}</span>
                     </div>
-                    <mat-chip [class]="'status-' + run.status">
-                      {{ run.status | titlecase }}
+                    <mat-chip [class]="getStatusClass(run.status) + ' !border-0 !min-h-[24px] !text-xs !font-bold uppercase tracking-wider'">
+                      {{ run.status }}
                     </mat-chip>
                   </div>
 
                   @if (run.status === 'running') {
-                    <div class="progress-section">
-                      <mat-progress-bar mode="determinate" [value]="run.progress"></mat-progress-bar>
-                      <span class="progress-label">{{ run.progress }}%</span>
+                    <div class="flex items-center gap-4 mb-3">
+                      <mat-progress-bar mode="determinate" [value]="run.progress" class="flex-1 rounded-full overflow-hidden !h-2"></mat-progress-bar>
+                      <span class="text-sm font-bold text-primary min-w-[3rem] text-right">{{ run.progress }}%</span>
                     </div>
                   }
 
-                  <div class="experiment-footer">
-                    <span class="time-info">
-                      <mat-icon>schedule</mat-icon>
+                  <div class="flex justify-between items-center text-sm text-white/40 group-hover:text-white/60 transition-colors">
+                    <span class="flex items-center gap-1.5">
+                      <mat-icon class="!w-4 !h-4 !text-[16px]">schedule</mat-icon>
                       Started {{ formatTimeAgo(run.startedAt) }}
                     </span>
                     @if (run.status === 'running') {
-                      <button mat-icon-button routerLink="/app/run">
+                      <button mat-icon-button class="!text-white/40 hover:!text-primary transition-colors">
                         <mat-icon>visibility</mat-icon>
                       </button>
                     }
@@ -163,541 +164,90 @@ interface RecentRun {
                 </div>
               }
             } @else {
-              <div class="empty-state">
-                <mat-icon>science</mat-icon>
-                <p>No experiments running</p>
-                <a mat-stroked-button routerLink="/app/run">Start a Protocol</a>
+              <div class="flex flex-col items-center justify-center py-16 text-white/40">
+                <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <mat-icon class="!w-8 !h-8 !text-[32px] opacity-50">science</mat-icon>
+                </div>
+                <p class="mb-4 text-center">No experiments running right now</p>
+                <a mat-stroked-button class="!border-primary !text-primary hover:!bg-primary/10 transition-all" routerLink="/app/run">Start a Protocol</a>
               </div>
             }
           </div>
         </section>
 
-        <!-- Recent Activity Panel -->
-        <section class="panel recent-activity">
-          <div class="panel-header">
-            <h2>
-              <mat-icon>history</mat-icon>
-              Recent Activity
-            </h2>
-            <a mat-button routerLink="/app/protocols">View All</a>
-          </div>
+        <!-- Right Column (Activity & Links) -->
+        <div class="flex flex-col gap-6">
+          <!-- Recent Activity -->
+          <section class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
+            <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                <mat-icon class="text-blue-400">history</mat-icon>
+                Recent Activity
+              </h2>
+              <a mat-button class="!text-white/60 hover:!text-white/90" routerLink="/app/protocols">View All</a>
+            </div>
 
-          <div class="panel-content">
-            @if (recentRuns().length > 0) {
-              @for (run of recentRuns(); track run.id) {
-                <div class="activity-item">
-                  <div class="activity-icon" [class]="'status-bg-' + run.status">
-                    <mat-icon>{{ getStatusIcon(run.status) }}</mat-icon>
+            <div class="p-2">
+              @if (recentRuns().length > 0) {
+                @for (run of recentRuns(); track run.id) {
+                  <div class="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer group">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" [class]="getStatusBgClass(run.status)">
+                      <mat-icon class="!text-white !w-5 !h-5 !text-[20px]">{{ getStatusIcon(run.status) }}</mat-icon>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-white truncate group-hover:text-primary transition-colors">{{ run.name }}</div>
+                      <div class="text-xs text-white/40 truncate">{{ run.protocolName }} • {{ run.duration }}</div>
+                    </div>
                   </div>
-                  <div class="activity-content">
-                    <span class="activity-name">{{ run.name }}</span>
-                    <span class="activity-meta">{{ run.protocolName }} • {{ run.duration }}</span>
-                  </div>
-                  <mat-chip [class]="'status-chip-' + run.status" size="small">
-                    {{ run.status | titlecase }}
-                  </mat-chip>
+                }
+              } @else {
+                <div class="p-8 text-center text-white/30">
+                  <p>No recent activity</p>
                 </div>
               }
-            } @else {
-              <div class="empty-state small">
-                <mat-icon>history</mat-icon>
-                <p>No recent activity</p>
-              </div>
-            }
-          </div>
-        </section>
+            </div>
+          </section>
 
-        <!-- Quick Links Panel -->
-        <section class="panel quick-links">
-          <div class="panel-header">
-            <h2>
-              <mat-icon>apps</mat-icon>
-              Quick Links
-            </h2>
-          </div>
-
-          <div class="panel-content links-grid">
-            <a class="quick-link" routerLink="/app/assets">
-              <mat-icon>precision_manufacturing</mat-icon>
-              <span>Instruments</span>
-            </a>
-            <a class="quick-link" routerLink="/app/protocols">
-              <mat-icon>assignment</mat-icon>
-              <span>Protocols</span>
-            </a>
-            <a class="quick-link" routerLink="/app/visualizer">
-              <mat-icon>view_in_ar</mat-icon>
-              <span>Visualizer</span>
-            </a>
-            <a class="quick-link" routerLink="/app/settings">
-              <mat-icon>settings</mat-icon>
-              <span>Settings</span>
-            </a>
-          </div>
-        </section>
+          <!-- Quick Links -->
+          <section class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
+            <div class="p-5 border-b border-white/10 bg-white/5">
+              <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                <mat-icon class="text-purple-400">apps</mat-icon>
+                Quick Links
+              </h2>
+            </div>
+            <div class="grid grid-cols-2 gap-3 p-4">
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/assets">
+                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">precision_manufacturing</mat-icon>
+                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Machines</span>
+              </a>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/protocols">
+                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">assignment</mat-icon>
+                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Protocols</span>
+              </a>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/visualizer">
+                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">view_in_ar</mat-icon>
+                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Visualizer</span>
+              </a>
+              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/settings">
+                <mat-icon class="text-white/60 group-hover:text-primary transition-colors">settings</mat-icon>
+                <span class="text-sm font-medium text-white group-hover:text-white transition-colors">Settings</span>
+              </a>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   `,
   styles: [`
-    .dashboard {
-      padding: 1.5rem;
-      max-width: 1400px;
-      margin: 0 auto;
+    /* Custom utility overrides requiring specificity can go here, but mostly empty now */
+    :host {
+      display: block;
+      width: 100%;
     }
-
-    .clickable {
-      cursor: pointer;
-    }
-
-    /* Header */
-    .dashboard-header {
-      margin-bottom: 2rem;
-    }
-
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .greeting .title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--theme-text-primary, #fff);
-      margin: 0;
-    }
-
-    .greeting .subtitle {
-      color: var(--theme-text-secondary, rgba(255,255,255,0.7));
-      margin: 0.25rem 0 0 0;
-    }
-
-    .quick-actions {
-      display: flex;
-      gap: 0.75rem;
-    }
-
-    .action-primary {
-      background: linear-gradient(135deg, var(--primary-color, #ED7A9B) 0%, #d85a7f 100%) !important;
-      color: white !important;
-      padding: 0.75rem 1.5rem !important;
-      border-radius: 12px !important;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .action-secondary {
-      border-color: var(--theme-border, rgba(255,255,255,0.2)) !important;
-      color: var(--theme-text-primary, white) !important;
-      padding: 0.75rem 1.5rem !important;
-      border-radius: 12px !important;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .stat-card {
-      background: var(--theme-surface, rgba(255,255,255,0.05));
-      border: 1px solid var(--theme-border, rgba(255,255,255,0.1));
-      border-radius: 16px;
-      padding: 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-      background: var(--theme-surface-elevated, rgba(255,255,255,0.08));
-      transform: translateY(-2px);
-    }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, var(--aurora-primary, rgba(237,122,155,0.2)) 0%, var(--aurora-secondary, rgba(115,169,194,0.2)) 100%);
-    }
-
-    .stat-icon mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-      color: var(--primary-color, #ED7A9B);
-    }
-
-    .stat-content {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--theme-text-primary, white);
-    }
-
-    .stat-label {
-      font-size: 0.85rem;
-      color: var(--theme-text-tertiary, rgba(255,255,255,0.5));
-    }
-
-    .stat-indicator.pulse {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      width: 8px;
-      height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.2); }
-    }
-
-    /* Content Grid */
-    .content-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      grid-template-rows: auto auto;
-      gap: 1.5rem;
-    }
-
-    .live-experiments {
-      grid-row: span 2;
-    }
-
-    /* Panel Styling */
-    .panel {
-      background: var(--theme-surface, rgba(255,255,255,0.05));
-      border: 1px solid var(--theme-border, rgba(255,255,255,0.1));
-      border-radius: 20px;
-      overflow: hidden;
-    }
-
-    .panel-header {
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--theme-border, rgba(255,255,255,0.1));
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .panel-header h2 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--theme-text-primary, white);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .panel-header h2 mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      color: var(--primary-color, #ED7A9B);
-    }
-
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-      color: #4ade80;
-      background: rgba(74, 222, 128, 0.1);
-      padding: 0.35rem 0.75rem;
-      border-radius: 20px;
-    }
-
-    .live-dot {
-      width: 6px;
-      height: 6px;
-      background: #4ade80;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    .panel-content {
-      padding: 1rem;
-    }
-
-    /* Experiment Card */
-    .experiment-card {
-      background: var(--theme-surface-elevated, rgba(255,255,255,0.03));
-      border: 1px solid var(--theme-border-light, rgba(255,255,255,0.05));
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 0.75rem;
-      transition: all 0.3s ease;
-    }
-
-    .experiment-card:hover {
-      background: var(--theme-surface-elevated, rgba(255,255,255,0.08));
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .experiment-card.running {
+    
+    .border-green-500-30 {
       border-color: rgba(74, 222, 128, 0.3);
-    }
-
-    .experiment-card:last-child {
-      margin-bottom: 0;
-    }
-
-    .experiment-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 0.75rem;
-    }
-
-    .experiment-info h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--theme-text-primary, white);
-      margin: 0;
-    }
-
-    .protocol-name {
-      font-size: 0.85rem;
-      color: var(--theme-text-tertiary, rgba(255,255,255,0.5));
-    }
-
-    .progress-section {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .progress-section mat-progress-bar {
-      flex: 1;
-      border-radius: 4px;
-    }
-
-    .progress-label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--primary-color, #ED7A9B);
-      min-width: 40px;
-    }
-
-    .experiment-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .time-info {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.8rem;
-      color: var(--theme-text-tertiary, rgba(255,255,255,0.5));
-    }
-
-    .time-info mat-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
-
-    /* Status Chips */
-    .status-running { background: rgba(74, 222, 128, 0.2) !important; color: #4ade80 !important; }
-    .status-completed { background: rgba(96, 165, 250, 0.2) !important; color: #60a5fa !important; }
-    .status-failed { background: rgba(248, 113, 113, 0.2) !important; color: #f87171 !important; }
-    .status-pending { background: rgba(251, 191, 36, 0.2) !important; color: #fbbf24 !important; }
-
-    /* Activity Items */
-    .activity-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid var(--theme-border-light, rgba(255,255,255,0.05));
-    }
-
-    .activity-item:last-child {
-      border-bottom: none;
-    }
-
-    .activity-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .activity-icon mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-      color: white;
-    }
-
-    .status-bg-completed { background: rgba(96, 165, 250, 0.3); }
-    .status-bg-failed { background: rgba(248, 113, 113, 0.3); }
-    .status-bg-running { background: rgba(74, 222, 128, 0.3); }
-    .status-bg-pending { background: rgba(251, 191, 36, 0.3); }
-
-    .activity-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .activity-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--theme-text-primary, white);
-    }
-
-    .activity-meta {
-      font-size: 0.8rem;
-      color: var(--theme-text-tertiary, rgba(255,255,255,0.5));
-    }
-
-    .status-chip-completed { background: rgba(96, 165, 250, 0.15) !important; color: #60a5fa !important; font-size: 0.7rem !important; }
-    .status-chip-failed { background: rgba(248, 113, 113, 0.15) !important; color: #f87171 !important; font-size: 0.7rem !important; }
-    .status-chip-running { background: rgba(74, 222, 128, 0.15) !important; color: #4ade80 !important; font-size: 0.7rem !important; }
-
-    /* Quick Links */
-    .links-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0.75rem;
-    }
-
-    .quick-link {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 1.25rem;
-      background: var(--theme-surface-elevated, rgba(255,255,255,0.03));
-      border: 1px solid var(--theme-border-light, rgba(255,255,255,0.05));
-      border-radius: 12px;
-      text-decoration: none;
-      color: var(--theme-text-primary, white);
-      transition: all 0.3s ease;
-    }
-
-    .quick-link:hover {
-      background: var(--primary-color, #ED7A9B);
-      border-color: var(--primary-color, #ED7A9B);
-      transform: translateY(-2px);
-    }
-
-    .quick-link mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-      color: var(--primary-color, #ED7A9B);
-      transition: color 0.3s ease;
-    }
-
-    .quick-link:hover mat-icon {
-      color: white;
-    }
-
-    .quick-link span {
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-
-    /* Empty States */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 3rem 1rem;
-      color: var(--theme-text-tertiary, rgba(255,255,255,0.5));
-    }
-
-    .empty-state.small {
-      padding: 1.5rem;
-    }
-
-    .empty-state mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      opacity: 0.5;
-      margin-bottom: 1rem;
-    }
-
-    .empty-state p {
-      margin: 0 0 1rem 0;
-    }
-
-    /* Responsive */
-    @media (max-width: 1024px) {
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .live-experiments {
-        grid-row: auto;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .dashboard {
-        padding: 1rem;
-      }
-
-      .header-content {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .quick-actions {
-        width: 100%;
-      }
-
-      .action-primary, .action-secondary {
-        flex: 1;
-        justify-content: center;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .greeting .title {
-        font-size: 1.5rem;
-      }
     }
   `]
 })
@@ -816,20 +366,41 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   getStatusIcon(status: string): string {
     switch (status) {
+      case 'running': return 'play_arrow';
       case 'completed': return 'check_circle';
       case 'failed': return 'error';
-      case 'running': return 'play_arrow';
-      default: return 'schedule';
+      case 'pending': return 'schedule';
+      default: return 'help';
     }
   }
 
   formatTimeAgo(date: Date): string {
     const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-    return `${Math.floor(diff / 86400)} days ago`;
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  }
+
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'running': return '!bg-green-400/10 !text-green-400';
+      case 'completed': return '!bg-blue-400/10 !text-blue-400';
+      case 'failed': return '!bg-red-400/10 !text-red-400';
+      case 'pending': return '!bg-amber-400/10 !text-amber-400';
+      default: return '!bg-white/10 !text-white';
+    }
+  }
+
+  getStatusBgClass(status: string): string {
+    switch (status) {
+      case 'running': return 'bg-green-400/20';
+      case 'completed': return 'bg-blue-400/20';
+      case 'failed': return 'bg-red-400/20';
+      case 'pending': return 'bg-amber-400/20';
+      default: return 'bg-white/10';
+    }
   }
 }

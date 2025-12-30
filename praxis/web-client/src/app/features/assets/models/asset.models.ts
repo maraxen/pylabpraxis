@@ -10,6 +10,7 @@ export enum MachineStatus {
 
 export enum ResourceStatus {
   AVAILABLE = 'available',
+  RESERVED = 'reserved',
   IN_USE = 'in_use',
   DEPLETED = 'depleted',
   EXPIRED = 'expired',
@@ -19,6 +20,10 @@ export enum ResourceStatus {
 export interface AssetBase {
   accession_id: string;
   name: string;
+  fqn?: string;
+  location?: string;
+  plr_state?: any;
+  plr_definition?: any;
   created_at?: string;
   updated_at?: string;
 }

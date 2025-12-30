@@ -54,6 +54,10 @@ export class KeyboardService {
             event.preventDefault();
             this.router.navigate(['/app/assets'], { queryParams: { type: 'machine' } });
             break;
+          case 'KeyD':
+            event.preventDefault();
+            this.registry.executeCommand('hardware-discovery');
+            break;
           case 'KeyH':
             event.preventDefault();
             this.router.navigate(['/app/home']);
@@ -109,7 +113,27 @@ export class KeyboardService {
       category: 'Navigation',
       shortcut: 'Alt+A',
       action: () => this.router.navigate(['/app/assets']),
-      keywords: ['machines', 'instruments', 'labware'],
+      keywords: ['machines', 'labware', 'equipment'],
+    });
+
+    this.registry.registerCommand({
+      id: 'hardware-discovery',
+      label: 'Discover Hardware',
+      description: 'Scan for connected USB and serial devices',
+      icon: 'usb',
+      category: 'Actions',
+      shortcut: 'Alt+D',
+      action: () => {
+        // Navigate to assets (machines tab) and open discovery dialog
+        this.router.navigate(['/app/assets'], { queryParams: { type: 'machine' } }).then(() => {
+          // Small delay to ensure the component is loaded
+          setTimeout(() => {
+            const event = new CustomEvent('open-hardware-discovery');
+            window.dispatchEvent(event);
+          }, 100);
+        });
+      },
+      keywords: ['usb', 'serial', 'scan', 'detect', 'connect'],
     });
 
     this.registry.registerCommand({

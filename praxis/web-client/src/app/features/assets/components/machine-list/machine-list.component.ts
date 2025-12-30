@@ -8,8 +8,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialog } from '@angular/material/dialog';
 import { AssetService } from '../../services/asset.service';
 import { Machine, MachineStatus } from '../../models/asset.models';
+import { AssetStatusChipComponent, AssetStatusType } from '../asset-status-chip/asset-status-chip.component';
+import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
+import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith, switchMap, filter, finalize } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -27,7 +31,10 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
     MatFormFieldModule,
     MatMenuModule,
     MatDividerModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    ReactiveFormsModule,
+    AssetStatusChipComponent,
+    LocationBreadcrumbComponent
   ],
   template: `
     <div class="machine-list-container">
@@ -48,9 +55,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef> Status </th>
           <td mat-cell *matCellDef="let machine">
-            <span class="status-badge" [ngClass]="machine.status">
-              {{ machine.status | titlecase }}
-            </span>
+            <app-asset-status-chip [status]="machine.status" [showLabel]="true" />
           </td>
         </ng-container>
 
@@ -66,11 +71,19 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
           <td mat-cell *matCellDef="let machine"> {{ machine.manufacturer || 'N/A' }} </td>
         </ng-container>
 
+        <!-- Location Column -->
+        <ng-container matColumnDef="location">
+          <th mat-header-cell *matHeaderCellDef> Location </th>
+          <td mat-cell *matCellDef="let machine">
+              <app-location-breadcrumb [location]="machine.location"></app-location-breadcrumb>
+          </td>
+        </ng-container>
+
         <!-- Actions Column -->
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef> Actions </th>
           <td mat-cell *matCellDef="let machine">
-            <button mat-icon-button color="primary" matTooltip="View Details">
+            <button mat-icon-button color="primary" matTooltip="View Details" (click)="viewDetails(machine)">
               <mat-icon>info</mat-icon>
             </button>
             <button mat-icon-button color="accent" matTooltip="Edit Machine" (click)="editMachine(machine)">
@@ -137,22 +150,6 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
       cursor: pointer;
     }
 
-    .status-badge {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-weight: bold;
-      color: white;
-      font-size: 0.75em;
-      text-transform: uppercase;
-    }
-
-    .status-badge.idle { background-color: var(--mat-sys-color-primary); }
-    .status-badge.running { background-color: var(--mat-sys-color-secondary); }
-    .status-badge.offline { background-color: var(--mat-sys-color-error); }
-    .status-badge.error { background-color: var(--mat-sys-color-warn); }
-    .status-badge.maintenance { background-color: var(--mat-sys-color-tertiary); }
-    .status-badge.unknown { background-color: var(--mat-sys-color-outline); }
-
     .mat-no-data-row {
       text-align: center;
       font-style: italic;
@@ -163,11 +160,12 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 })
 export class MachineListComponent {
   private assetService = inject(AssetService);
+  private dialog = inject(MatDialog);
   machines = signal<Machine[]>([]);
   filteredMachines = signal<Machine[]>([]);
   filterControl = new FormControl('', { nonNullable: true });
 
-  displayedColumns: string[] = ['name', 'status', 'model', 'manufacturer', 'actions'];
+  displayedColumns: string[] = ['name', 'status', 'model', 'manufacturer', 'location', 'actions'];
 
   @ViewChild(MatMenuTrigger) contextMenuTrigger!: MatMenuTrigger;
   contextMenuPosition = { x: '0px', y: '0px' };
@@ -215,6 +213,13 @@ export class MachineListComponent {
     this.contextMenuPosition.y = event.clientY + 'px';
     this.contextMenuTrigger.menuData = { item: machine };
     this.contextMenuTrigger.openMenu();
+  }
+
+  viewDetails(machine: Machine) {
+    this.dialog.open(MachineDetailsDialogComponent, {
+      width: '800px', // Wider to accommodate tabs and deck view
+      data: { machine }
+    });
   }
 
   editMachine(machine: Machine) {

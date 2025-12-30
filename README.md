@@ -1,16 +1,16 @@
-# PyLabPraxis
+# Praxis
 
-[**Docs**](https://docs.pylabrobot.org) | [**Forum**](https://forums.pylabrobot.org) | [**Installation**](https://docs.pylabrobot.org/installation.html) | [**Getting started**](https://docs.pylabrobot.org/basic.html)
+[**Docs**](https://maraxen.github.io/pylabpraxis/) | [**Forum**](https://forums.pylabrobot.org) | [**Installation**](https://maraxen.github.io/pylabpraxis/getting-started/installation/) | [**Getting started**](https://maraxen.github.io/pylabpraxis/getting-started/quickstart/)
 
-## What is PyLabPraxis?
+## What is Praxis?
 
-PyLabPraxis is a comprehensive Python-based platform designed to automate and manage laboratory workflows. It leverages the [PyLabRobot](https://pylabrobot.org/) library to interface with a wide range of lab automation hardware. PyLabPraxis provides a robust backend system built with FastAPI, enabling protocol execution, asset management, real-time hardware control, and persistent state management.
+Praxis is a comprehensive Python-based platform designed to automate and manage laboratory workflows. It leverages the [PyLabRobot](https://pylabrobot.org/) library to interface with a wide range of lab automation hardware. Praxis provides a robust backend system built with FastAPI, enabling protocol execution, asset management, real-time hardware control, and persistent state management.
 
 Developed for the Ovchinnikov group in MIT Biology.
 
 ## Architecture Overview
 
-PyLabPraxis employs a modular, service-oriented architecture.
+Praxis employs a modular, service-oriented architecture.
 
 ```mermaid
 graph TD
@@ -57,7 +57,7 @@ The asset-related backend models have been **unified and modernized**. All asset
 
 ## Development
 
-PyLabPraxis uses standard Python development tools managed by `uv`.
+Praxis uses standard Python development tools managed by `uv`.
 
 * **Test**: `uv run pytest`
 * **Lint**: `uv run ruff check .`
@@ -67,7 +67,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for more detai
 
 ## Demo Mode
 
-PyLabPraxis supports a frontend-only demo mode for GitHub Pages deployment. When running in demo mode:
+Praxis supports a frontend-only demo mode for GitHub Pages deployment. When running in demo mode:
 
 * **No backend required** - All API calls are intercepted and return mock data
 * **Pre-seeded protocols** - Sample protocols demonstrate the workflow
@@ -93,4 +93,4 @@ PyLabPraxis supports a frontend-only demo mode for GitHub Pages deployment. When
 
 ---
 
-**Disclaimer:** PyLabPraxis is not officially endorsed or supported by any robot manufacturer. Usage of firmware drivers is at your own risk.
+**Disclaimer:** Praxis is not officially endorsed or supported by any robot manufacturer. Usage of firmware drivers is at your own risk.

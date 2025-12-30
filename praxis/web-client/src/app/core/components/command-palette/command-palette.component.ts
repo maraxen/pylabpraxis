@@ -1,5 +1,5 @@
-import { Component, OnInit, AfterViewInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, AfterViewInit, inject, signal, computed, ViewChild, ElementRef, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
@@ -7,7 +7,10 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { debounceTime, distinctUntilChanged, startWith, switchMap, map } from 'rxjs/operators';
+import { of, combineLatest } from 'rxjs';
 import { CommandRegistryService, Command } from '../../services/command-registry.service';
+import { AssetSearchService } from '../../../features/assets/services/asset-search.service';
 
 @Component({
   selector: 'app-command-palette',
@@ -42,7 +45,7 @@ import { CommandRegistryService, Command } from '../../services/command-registry
           <button
             mat-list-item
             (click)="execute(command)"
-            [class.selected]="i === selectedIndex()"
+            [class.selected-item]="i === selectedIndex()"
             (mouseenter)="selectedIndex.set(i)"
             tabindex="-1"
           >
@@ -51,7 +54,7 @@ import { CommandRegistryService, Command } from '../../services/command-registry
             <div matListItemLine class="description">{{ command.description }}</div>
             
             <div matListItemMeta class="meta-container">
-              <span class="shortcut-badge" *ngIf="command.shortcut">{{ command.shortcut }}</span>
+              <span class="shortcut-badge" *ngIf="command.shortcut">{{ formatShortcut(command.shortcut) }}</span>
               <div class="category-chip" *ngIf="command.category">
                 {{ command.category }}
               </div>
@@ -121,9 +124,38 @@ import { CommandRegistryService, Command } from '../../services/command-registry
       overflow-y: auto;
       padding: 8px 0;
 
-      .selected {
-        background: var(--mat-sys-secondary-container);
-        color: var(--mat-sys-on-secondary-container);
+      .selected-item {
+        /* Distinct background */
+        background-color: var(--mat-sys-secondary-container) !important;
+        position: relative;
+        
+        /* Side bar indicator */
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background-color: var(--mat-sys-on-secondary-container); 
+          border-radius: 0 4px 4px 0;
+        }
+
+        /* Ensure text contrast is correct */
+        &, .mat-mdc-list-item-title, .mat-icon {
+           color: var(--mat-sys-on-secondary-container) !important;
+           font-weight: 500; /* Make text slightly bolder */
+        }
+        
+        mat-icon {
+          color: var(--mat-sys-on-secondary-container) !important;
+        }
+
+        /* Ensure description also has correct contrast, maybe slightly diminished */
+        .description {
+          color: var(--mat-sys-on-secondary-container) !important;
+          opacity: 0.8;
+        }
       }
 
       .description {
@@ -190,32 +222,57 @@ import { CommandRegistryService, Command } from '../../services/command-registry
 export class CommandPaletteComponent implements OnInit, AfterViewInit {
   private dialogRef = inject(MatDialogRef<CommandPaletteComponent>);
   private registry = inject(CommandRegistryService);
+  private assetSearchService = inject(AssetSearchService);
+  private platformId = inject(PLATFORM_ID);
 
   searchControl = new FormControl('');
   searchQuery = toSignal(this.searchControl.valueChanges, { initialValue: '' });
 
   selectedIndex = signal(0);
+  isMac = signal(false);
+
   @ViewChild('searchInput') searchInput!: ElementRef;
   @ViewChild('commandList', { read: ElementRef }) commandList!: ElementRef;
 
-  filteredCommands = computed(() => {
-    const query = (this.searchQuery() || '').toLowerCase();
-    const all = this.registry.commands();
+  filteredCommands = toSignal(
+    this.searchControl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(200),
+      distinctUntilChanged(),
+      switchMap(query => {
+        const normalized = (query || '').toLowerCase();
 
-    if (!query) return all;
+        // Filter static commands
+        const staticCommands = this.registry.commands().filter(c =>
+          !normalized ||
+          c.label.toLowerCase().includes(normalized) ||
+          c.description?.toLowerCase().includes(normalized) ||
+          c.category?.toLowerCase().includes(normalized) ||
+          c.keywords?.some(k => k.toLowerCase().includes(normalized))
+        );
 
-    return all.filter(c =>
-      c.label.toLowerCase().includes(query) ||
-      c.description?.toLowerCase().includes(query) ||
-      c.category?.toLowerCase().includes(query) ||
-      c.keywords?.some(k => k.toLowerCase().includes(query))
-    );
-  });
+        if (!normalized || normalized.length < 2) {
+          return of(staticCommands);
+        }
+
+        // Search assets and merge
+        return this.assetSearchService.search(normalized).pipe(
+          map(assetCommands => [...staticCommands, ...assetCommands]),
+          startWith(staticCommands)
+        );
+      })
+    ),
+    { initialValue: [] }
+  );
 
   ngOnInit() {
     this.searchControl.valueChanges.subscribe(() => {
       this.selectedIndex.set(0);
     });
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.isMac.set(navigator.userAgent.includes('Mac'));
+    }
   }
 
   ngAfterViewInit() {
@@ -228,7 +285,6 @@ export class CommandPaletteComponent implements OnInit, AfterViewInit {
     // Stop propagation to prevent global listeners (e.g. KeyboardService) from reacting
     event.stopPropagation();
 
-    console.log('Key down:', event.key, event.code);
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
@@ -253,13 +309,24 @@ export class CommandPaletteComponent implements OnInit, AfterViewInit {
     const count = this.filteredCommands().length;
     if (count === 0) return;
 
-    this.selectedIndex.update(current => (current + delta + count) % count);
+    this.selectedIndex.update(current => {
+      const next = (current + delta + count) % count;
+      this.scrollToItem(next);
+      return next;
+    });
+  }
 
-    // Ensure the selected item is visible
+  scrollToItem(index: number) {
     setTimeout(() => {
       const listEl = this.commandList?.nativeElement;
       if (listEl) {
-        const selectedEl = listEl.querySelector('.selected');
+        // Find the button at the specific index
+        // Since we use @for, the children should be in order
+        // However, mat-action-list might inject other elements? 
+        // Best to select by class or just children
+        const buttons = listEl.querySelectorAll('button[mat-list-item]');
+        const selectedEl = buttons[index] as HTMLElement;
+
         if (selectedEl) {
           selectedEl.scrollIntoView({ block: 'nearest' });
         }
@@ -277,5 +344,19 @@ export class CommandPaletteComponent implements OnInit, AfterViewInit {
   execute(command: Command) {
     this.dialogRef.close();
     command.action();
+  }
+
+  formatShortcut(shortcut: string): string {
+    if (!shortcut) return '';
+    if (this.isMac()) {
+      return shortcut
+        .replace('Alt', '⌥')
+        .replace('Control', '⌃')
+        .replace('Ctrl', '⌃')
+        .replace('Shift', '⇧')
+        .replace('Meta', '⌘')
+        .replace('Cmd', '⌘');
+    }
+    return shortcut;
   }
 }

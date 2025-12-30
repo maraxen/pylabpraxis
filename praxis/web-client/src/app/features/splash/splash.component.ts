@@ -47,7 +47,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
           </div>
 
           <h1 class="hero-title">
-            <span class="title-gradient">PyLabPraxis</span>
+            <span class="title-gradient">Praxis</span>
           </h1>
 
           <p class="hero-subtitle">

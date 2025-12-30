@@ -1,5 +1,9 @@
 @use '@angular/material' as mat;
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @include mat.core();
 
 // Define base colors
@@ -46,25 +50,25 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-tertiary-container: rgba(115, 169, 194, 0.3);
   --mat-sys-on-tertiary-container: #cce5ff;
 
-  // Default to dark theme
-  --theme-bg-gradient: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
-  --theme-surface: rgba(255, 255, 255, 0.05);
-  --theme-surface-elevated: rgba(255, 255, 255, 0.08);
+  // Default to dark theme - Refined Gradient
+  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0f0f1a 100%);
+  --theme-surface: rgba(255, 255, 255, 0.03); // More subtle
+  --theme-surface-elevated: rgba(255, 255, 255, 0.06);
   --theme-text-primary: rgba(255, 255, 255, 0.95);
   --theme-text-secondary: rgba(255, 255, 255, 0.7);
   --theme-text-tertiary: rgba(255, 255, 255, 0.5);
-  --theme-border: rgba(255, 255, 255, 0.1);
-  --theme-border-light: rgba(255, 255, 255, 0.05);
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-border-light: rgba(255, 255, 255, 0.04);
 
-  // Glassmorphism
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --glass-blur: blur(20px);
+  // Glassmorphism - Refined
+  --glass-bg: rgba(20, 20, 30, 0.6); // Darker base for better contrast
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --glass-blur: blur(24px);
 
   // Aurora glow colors
-  --aurora-primary: rgba(237, 122, 155, 0.15);
-  --aurora-secondary: rgba(115, 169, 194, 0.15);
+  --aurora-primary: rgba(237, 122, 155, 0.1);
+  --aurora-secondary: rgba(115, 169, 194, 0.1);
 
   @include mat.all-component-themes($dark-theme);
 }
@@ -72,36 +76,36 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
 // Light theme class (toggled via JS)
 .light-theme {
   // Material System Colors (Light Theme Overrides)
-  --mat-sys-surface-container-low: #f5f5f5;
-  --mat-sys-surface-container: #ffffff;
-  --mat-sys-surface-container-high: #f0f0f0;
-  --mat-sys-surface-variant: rgba(0, 0, 0, 0.08);
-  --mat-sys-on-surface: #1a1a1a;
-  --mat-sys-on-surface-variant: #484848;
-  --mat-sys-outline-variant: rgba(0, 0, 0, 0.12);
+  --mat-sys-surface-container-low: #ffffff;
+  --mat-sys-surface-container: #f8fafc;
+  --mat-sys-surface-container-high: #f1f5f9;
+  --mat-sys-surface-variant: rgba(0, 0, 0, 0.06);
+  --mat-sys-on-surface: #0f172a;
+  --mat-sys-on-surface-variant: #475569;
+  --mat-sys-outline-variant: rgba(0, 0, 0, 0.1);
   --mat-sys-error: #ba1a1a;
   --mat-sys-error-container: #ffdad6;
   --mat-sys-on-error-container: #410002;
-  --mat-sys-tertiary-container: #cce5ff;
-  --mat-sys-on-tertiary-container: #001e30;
+  --mat-sys-tertiary-container: #e0f2fe;
+  --mat-sys-on-tertiary-container: #0c4a6e;
 
-  --theme-bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 50%, #dce2e9 100%);
-  --theme-surface: rgba(255, 255, 255, 0.8);
-  --theme-surface-elevated: rgba(255, 255, 255, 0.95);
-  --theme-text-primary: rgba(15, 15, 26, 0.95);
-  --theme-text-secondary: rgba(15, 15, 26, 0.7);
-  --theme-text-tertiary: rgba(15, 15, 26, 0.5);
-  --theme-border: rgba(0, 0, 0, 0.1);
-  --theme-border-light: rgba(0, 0, 0, 0.05);
+  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
+  --theme-surface: rgba(255, 255, 255, 0.7);
+  --theme-surface-elevated: #ffffff;
+  --theme-text-primary: #0f172a; // Slate 900
+  --theme-text-secondary: #475569; // Slate 600
+  --theme-text-tertiary: #94a3b8; // Slate 400
+  --theme-border: rgba(0, 0, 0, 0.08);
+  --theme-border-light: rgba(0, 0, 0, 0.04);
 
-  // Glassmorphism for light theme (frosted glass on light bg)
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.8);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  // Glassmorphism for light theme
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 
   // Aurora glow colors (more vibrant for light theme)
-  --aurora-primary: rgba(237, 122, 155, 0.2);
-  --aurora-secondary: rgba(115, 169, 194, 0.2);
+  --aurora-primary: rgba(237, 122, 155, 0.15);
+  --aurora-secondary: rgba(115, 169, 194, 0.15);
 
   @include mat.all-component-themes($light-theme);
 }
@@ -165,6 +169,7 @@ body {
 }
 
 /* Theme-aware utility classes */
+// These can now be composed with Tailwind, e.g. "bg-surface border-glass" if we map them
 .surface {
   background: var(--theme-surface);
   border: var(--glass-border);

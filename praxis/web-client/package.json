@@ -41,6 +41,8 @@
     "angular-plotly.js": "^20.0.0",
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.2",
+    "marked": "^17.0.1",
+    "ngx-markdown": "^21.0.1",
     "plotly.js-dist-min": "^3.3.1",
     "rxjs": "~7.8.0",
     "sql.js": "^1.13.0",
@@ -51,7 +53,10 @@
     "@angular/cli": "^21.0.2",
     "@angular/compiler-cli": "^21.0.0",
     "@playwright/test": "^1.57.0",
+    "autoprefixer": "^10.4.23",
     "jsdom": "^27.1.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

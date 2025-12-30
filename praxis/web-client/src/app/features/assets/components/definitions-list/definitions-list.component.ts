@@ -12,6 +12,7 @@ import { MachineDefinition, ResourceDefinition } from '../../models/asset.models
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { getMachineCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
 
 @Component({
   selector: 'app-definitions-list',
@@ -45,7 +46,11 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
             <ng-container matColumnDef="category">
               <th mat-header-cell *matHeaderCellDef> Category </th>
-              <td mat-cell *matCellDef="let def"> {{ def.machine_category || 'N/A' }} </td>
+              <td mat-cell *matCellDef="let def">
+                <span [matTooltip]="getMachineCategoryTooltip(def.machine_category)">
+                  {{ def.machine_category || 'N/A' }}
+                </span>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="manufacturer">
@@ -107,7 +112,10 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
             <ng-container matColumnDef="consumable">
               <th mat-header-cell *matHeaderCellDef> Consumable </th>
               <td mat-cell *matCellDef="let def">
-                <mat-icon [color]="def.is_consumable ? 'primary' : 'warn'">
+                <mat-icon
+                  [color]="def.is_consumable ? 'primary' : 'warn'"
+                  [matTooltip]="def.is_consumable ? getPropertyTooltip('consumable') : 'Non-consumable: can be reused across protocols'"
+                >
                   {{ def.is_consumable ? 'check_circle' : 'cancel' }}
                 </mat-icon>
               </td>
@@ -244,5 +252,13 @@ export class DefinitionsListComponent {
         def.model?.toLowerCase().includes(lowerCaseFilter)
       )
     );
+  }
+
+  getMachineCategoryTooltip(category: string | undefined): string {
+    return category ? getMachineCategoryTooltip(category) : '';
+  }
+
+  getPropertyTooltip(property: string): string {
+    return getPropertyTooltip(property);
   }
 }

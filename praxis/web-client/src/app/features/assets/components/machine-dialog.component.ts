@@ -38,7 +38,7 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
     MatAutocompleteModule
   ],
   template: `
-    <h2 mat-dialog-title>Add New Instrument</h2>
+    <h2 mat-dialog-title>Add New Machine</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="flex flex-col gap-4 py-4">
         <mat-form-field appearance="outline">

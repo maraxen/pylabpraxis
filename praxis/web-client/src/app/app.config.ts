@@ -1,7 +1,8 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideHttpClient, withInterceptors, HttpRequest, HttpHandlerFn } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, HttpRequest, HttpHandlerFn, HttpClient } from '@angular/common/http';
+import { provideMarkdown } from 'ngx-markdown';
 import { inject } from '@angular/core';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/http/error.interceptor';
@@ -80,6 +81,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     // Demo interceptor runs FIRST to catch API requests before they hit proxy
     provideHttpClient(withInterceptors([demoInterceptor, keycloakInterceptor, errorInterceptor])),
+    provideMarkdown({ loader: HttpClient }),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,

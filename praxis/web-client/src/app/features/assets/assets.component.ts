@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, ViewChild, signal, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, ViewChild, signal, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,8 @@ import { ResourceAccordionComponent } from './components/resource-accordion/reso
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
 import { MachineDialogComponent } from './components/machine-dialog.component';
 import { ResourceDialogComponent } from './components/resource-dialog.component';
+import { HardwareDiscoveryDialogComponent } from './components/hardware-discovery-dialog/hardware-discovery-dialog.component';
+import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
 import { AssetService } from './services/asset.service';
 import { switchMap, filter, finalize } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -25,97 +27,157 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatDialogModule,
     MatProgressSpinnerModule,
     MachineListComponent,
-    ResourceAccordionComponent,  // Changed from ResourceListComponent
-    DefinitionsListComponent
+    ResourceAccordionComponent,
+    DefinitionsListComponent,
+    AssetDashboardComponent
   ],
   template: `
-    <div class="assets-container">
-      <div class="header">
-        <h1>Asset Management</h1>
-        <button mat-flat-button color="primary" (click)="openAddAsset()" [disabled]="isLoading()">
-          <mat-icon>add</mat-icon>
-          Add {{ assetTypeLabel() }}
-        </button>
+    <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div>
+          <h1 class="text-3xl font-bold text-white mb-1">Asset Management</h1>
+          <p class="text-white/70">Manage your laboratory hardware and inventory</p>
+        </div>
+        <div class="flex gap-3">
+          @if (selectedIndex === 0) {
+            <button mat-stroked-button class="!border-white/20 !text-white !rounded-xl !px-4 !py-5 flex items-center gap-2 hover:bg-white/5 transition-all" (click)="openHardwareDiscovery()">
+              <mat-icon>usb</mat-icon>
+              Discover Hardware
+            </button>
+          }
+          <button mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-5 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" (click)="openAddAsset()" [disabled]="isLoading()">
+            <mat-icon>add</mat-icon>
+            Add {{ assetTypeLabel() }}
+          </button>
+        </div>
       </div>
 
-      <mat-tab-group animationDuration="0ms" class="assets-tabs" [(selectedIndex)]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon class="tab-icon">precision_manufacturing</mat-icon>
-            Machines
-          </ng-template>
-          <div *ngIf="isLoading()" class="spinner-overlay"><mat-spinner diameter="40"></mat-spinner></div>
-          <app-machine-list #machineList></app-machine-list>
-        </mat-tab>
+      <div class="bg-surface border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col flex-1 min-h-0 shadow-xl relative">
+        <mat-tab-group 
+          animationDuration="300ms" 
+          class="assets-tabs flex-1 flex flex-col min-h-0 custom-tabs" 
+          [(selectedIndex)]="selectedIndex" 
+          (selectedIndexChange)="onTabChange($event)"
+          mat-stretch-tabs="false" 
+          mat-align-tabs="start"
+        >
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <div class="flex items-center gap-2 px-2 py-1">
+                <mat-icon class="!w-5 !h-5 !text-[20px]">dashboard</mat-icon>
+                <span class="font-medium">Overview</span>
+              </div>
+            </ng-template>
+            <div class="h-full overflow-hidden bg-white/5 relative p-4">
+              <app-asset-dashboard></app-asset-dashboard>
+            </div>
+          </mat-tab>
 
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon class="tab-icon">science</mat-icon>
-            Resources
-          </ng-template>
-          <div *ngIf="isLoading()" class="spinner-overlay"><mat-spinner diameter="40"></mat-spinner></div>
-          <app-resource-accordion #resourceAccordion></app-resource-accordion>
-        </mat-tab>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <div class="flex items-center gap-2 px-2 py-1">
+                <mat-icon class="!w-5 !h-5 !text-[20px]">precision_manufacturing</mat-icon>
+                <span class="font-medium">Machines</span>
+              </div>
+            </ng-template>
+            <div class="h-full overflow-hidden bg-white/5 relative">
+              @if (isLoading()) {
+                <div class="absolute inset-0 bg-white/5 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <mat-spinner diameter="40"></mat-spinner>
+                </div>
+              }
+              <app-machine-list #machineList></app-machine-list>
+            </div>
+          </mat-tab>
 
-        <mat-tab>
-          <ng-template mat-tab-label>
-            <mat-icon class="tab-icon">library_books</mat-icon>
-            Definitions
-          </ng-template>
-          <app-definitions-list></app-definitions-list>
-        </mat-tab>
-      </mat-tab-group>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <div class="flex items-center gap-2 px-2 py-1">
+                <mat-icon class="!w-5 !h-5 !text-[20px]">science</mat-icon>
+                <span class="font-medium">Resources</span>
+              </div>
+            </ng-template>
+            <div class="h-full overflow-hidden bg-white/5 relative">
+              @if (isLoading()) {
+                <div class="absolute inset-0 bg-white/5 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <mat-spinner diameter="40"></mat-spinner>
+                </div>
+              }
+              <app-resource-accordion #resourceAccordion></app-resource-accordion>
+            </div>
+          </mat-tab>
+
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <div class="flex items-center gap-2 px-2 py-1">
+                <mat-icon class="!w-5 !h-5 !text-[20px]">library_books</mat-icon>
+                <span class="font-medium">Definitions</span>
+              </div>
+            </ng-template>
+            <div class="h-full overflow-hidden bg-white/5">
+              <app-definitions-list></app-definitions-list>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </div>
     </div>
   `,
   styles: [`
-    .assets-container {
+    :host {
+      display: block;
       height: 100%;
-      display: flex;
-      flex-direction: column;
-      position: relative; /* Needed for spinner-overlay positioning */
     }
 
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px;
+    /* Custom Mat Tab Styling */
+    ::ng-deep .custom-tabs .mat-mdc-tab-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05); /* Slightly lighter header */
     }
 
-    h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 500;
+    ::ng-deep .custom-tabs .mat-mdc-tab-label-container {
+      padding: 0 16px;
     }
 
-    .assets-tabs {
+    ::ng-deep .custom-tabs .mdc-tab {
+      color: rgba(255, 255, 255, 0.6) !important;
+      font-family: inherit !important;
+      letter-spacing: normal !important;
+      min-width: 120px !important;
+      height: 56px !important;
+      opacity: 1 !important;
+    }
+
+    ::ng-deep .custom-tabs .mdc-tab--active {
+      color: white !important;
+    }
+
+    ::ng-deep .custom-tabs .mdc-tab--active .mdc-tab__text-label {
+      color: var(--primary-color) !important;
+    }
+
+    ::ng-deep .custom-tabs .mdc-tab--active .mat-icon {
+      color: var(--primary-color) !important;
+    }
+
+    ::ng-deep .custom-tabs .mat-mdc-tab-group-indicator {
+      border-bottom-color: var(--primary-color) !important;
+      height: 3px !important;
+      border-radius: 3px 3px 0 0;
+    }
+
+    ::ng-deep .custom-tabs .mat-mdc-tab-body-wrapper {
       flex: 1;
-    }
-
-    .tab-icon {
-      margin-right: 8px;
-    }
-
-    .spinner-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
+      height: 100%;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AssetsComponent implements OnInit {
+export class AssetsComponent implements OnInit, OnDestroy {
   private dialog = inject(MatDialog);
   private assetService = inject(AssetService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private ngZone = inject(NgZone);
 
   @ViewChild('machineList') machineList!: MachineListComponent;
   @ViewChild('resourceAccordion') resourceAccordion!: ResourceAccordionComponent;
@@ -124,37 +186,57 @@ export class AssetsComponent implements OnInit {
   assetTypeLabel = signal('Machine');
   isLoading = signal(false);
 
+  private hardwareDiscoveryListener = () => {
+    this.ngZone.run(() => this.openHardwareDiscovery());
+  };
+
   ngOnInit() {
+    // Listen for command palette hardware discovery event
+    window.addEventListener('open-hardware-discovery', this.hardwareDiscoveryListener);
+    window.addEventListener('asset-dashboard-action', this.dashboardActionListener);
+
     // Listen to query params to switch tabs
     this.route.queryParams.subscribe(params => {
       const type = params['type'];
-      if (type === 'resource') {
+      if (type === 'machine') {
         this.selectedIndex = 1;
+        this.assetTypeLabel.set('Machine');
+      } else if (type === 'resource') {
+        this.selectedIndex = 2;
         this.assetTypeLabel.set('Resource');
       } else if (type === 'definition') {
-        this.selectedIndex = 2;
+        this.selectedIndex = 3;
         this.assetTypeLabel.set('Definition');
       } else {
         this.selectedIndex = 0;
-        this.assetTypeLabel.set('Machine');
+        this.assetTypeLabel.set('Asset');
       }
     });
   }
 
+  ngOnDestroy() {
+    window.removeEventListener('open-hardware-discovery', this.hardwareDiscoveryListener);
+    window.removeEventListener('asset-dashboard-action', this.dashboardActionListener);
+  }
+
   onTabChange(index: number) {
     this.selectedIndex = index;
-    let type = 'machine';
+    let type = 'overview';
 
     switch (index) {
       case 0:
+        this.assetTypeLabel.set('Asset');
+        type = 'overview';
+        break;
+      case 1:
         this.assetTypeLabel.set('Machine');
         type = 'machine';
         break;
-      case 1:
+      case 2:
         this.assetTypeLabel.set('Resource');
         type = 'resource';
         break;
-      case 2:
+      case 3:
         this.assetTypeLabel.set('Definition');
         type = 'definition';
         break;
@@ -169,13 +251,26 @@ export class AssetsComponent implements OnInit {
     });
   }
 
+  private dashboardActionListener = (event: Event) => {
+    const action = (event as CustomEvent).detail;
+    this.ngZone.run(() => {
+      if (action === 'add-machine') this.openAddMachine();
+      if (action === 'add-resource') this.openAddResource();
+      if (action === 'discover') this.openHardwareDiscovery();
+    });
+  };
+
   openAddAsset() {
     if (this.isLoading()) return; // Prevent multiple clicks
 
-    if (this.selectedIndex === 0) {
+    if (this.selectedIndex === 1) { // Machine tab
       this.openAddMachine();
-    } else if (this.selectedIndex === 1) {
+    } else if (this.selectedIndex === 2) { // Resource tab
       this.openAddResource();
+    } else if (this.selectedIndex === 0) {
+      // If on dashboard, ask what to add? Or default to machine?
+      // For now let's open machine dialog as default
+      this.openAddMachine();
     } else {
       alert('Adding definitions manually is not supported yet. Please sync from backend.');
     }
@@ -220,6 +315,13 @@ export class AssetsComponent implements OnInit {
         this.resourceAccordion.loadData();
       },
       error: (err) => console.error('Error creating resource', err)
+    });
+  }
+
+  openHardwareDiscovery() {
+    this.dialog.open(HardwareDiscoveryDialogComponent, {
+      width: '800px',
+      maxHeight: '90vh'
     });
   }
 }
