@@ -4,6 +4,8 @@ import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
 import { ProtocolDefinition, AssetRequirement } from '@features/protocols/models/protocol.models';
 import { Resource } from '@features/assets/models/asset.models';
@@ -26,6 +28,8 @@ export interface GuidedSetupResult {
     MatButtonModule,
     MatSelectModule,
     MatIconModule,
+    MatTooltipModule,
+    MatChipsModule,
     FormsModule
   ],
   template: `
@@ -36,42 +40,123 @@ export interface GuidedSetupResult {
         We've auto-selected matches where possible.
       </p>
 
-      <div class="requirements-list">
-        @for (req of requiredAssets; track req.accession_id) {
-          <div class="requirement-item">
-            <div class="req-info">
-              <span class="req-name">{{ req.name }}</span>
-              <span class="req-type">{{ req.type_hint_str || 'Generic Resource' }}</span>
+      <!-- Loading state -->
+      @if (isLoading()) {
+        <div class="loading-state">
+          <mat-icon class="animate-spin">sync</mat-icon>
+          <span>Loading inventory...</span>
+        </div>
+      } @else if (inventory().length === 0) {
+        <div class="empty-state">
+          <mat-icon>inventory_2</mat-icon>
+          <span>No resources in inventory. Add resources from the Assets page first.</span>
+        </div>
+      } @else {
+        <div class="requirements-list">
+          @for (req of requiredAssets; track req.accession_id) {
+            <div class="requirement-item" [class.autofilled]="isAutofilled(req.accession_id)" [class.unassigned]="!selectedAssets()[req.accession_id]">
+              <div class="req-info">
+                <div class="req-header">
+                  <span class="req-name">{{ req.name }}</span>
+                  @if (isAutofilled(req.accession_id)) {
+                    <span class="autofill-badge" matTooltip="Auto-matched based on resource type">
+                      <mat-icon class="autofill-icon">auto_awesome</mat-icon>
+                      Auto
+                    </span>
+                  }
+                  @if (req.optional) {
+                    <span class="optional-badge">Optional</span>
+                  }
+                </div>
+                <span class="req-type">{{ req.type_hint_str || 'Generic Resource' }}</span>
+                @if (req.fqn) {
+                  <span class="req-fqn" matTooltip="{{ req.fqn }}">{{ getShortFqn(req.fqn) }}</span>
+                }
+              </div>
+
+              <mat-form-field appearance="outline" class="resource-select">
+                <mat-label>Select Inventory Item</mat-label>
+                <mat-select
+                  [value]="selectedAssets()[req.accession_id]"
+                  (selectionChange)="updateSelection(req.accession_id, $event.value)"
+                  [compareWith]="compareResources"
+                >
+                   <mat-option [value]="null">-- Select --</mat-option>
+                   
+                   <!-- Suggested (Exact Matches) -->
+                   @if (getExactMatches(req).length > 0) {
+                     <mat-optgroup label="Suggested" class="suggested-group">
+                       @for (res of getExactMatches(req); track res.accession_id) {
+                         <mat-option [value]="res" class="suggested-option">
+                           <div class="option-content">
+                             <mat-icon class="suggested-icon">recommend</mat-icon>
+                             <span class="option-name">{{ res.name }}</span>
+                             <span class="option-id">({{ res.accession_id.substring(0,6) }})</span>
+                             <mat-icon class="match-icon" matTooltip="Exact type match">check_circle</mat-icon>
+                           </div>
+                         </mat-option>
+                       }
+                     </mat-optgroup>
+                   }
+                   
+                   <!-- Other Compatible -->
+                   @if (getOtherCompatible(req).length > 0) {
+                     <mat-optgroup label="Other Compatible">
+                       @for (res of getOtherCompatible(req); track res.accession_id) {
+                         <mat-option [value]="res">
+                           <div class="option-content">
+                             <span class="option-name">{{ res.name }}</span>
+                             <span class="option-id">({{ res.accession_id.substring(0,6) }})</span>
+                           </div>
+                         </mat-option>
+                       }
+                     </mat-optgroup>
+                   }
+                   
+                   @if (getCompatibleResources(req).length === 0) {
+                     <mat-option disabled>
+                       <em>No compatible resources found</em>
+                     </mat-option>
+                   }
+                </mat-select>
+                @if (!req.optional && !selectedAssets()[req.accession_id]) {
+                  <mat-error>Required</mat-error>
+                }
+                <mat-hint>
+                  @if (getExactMatches(req).length > 0) {
+                    {{ getExactMatches(req).length }} suggested, {{ getOtherCompatible(req).length }} others
+                  } @else {
+                    {{ getCompatibleResources(req).length }} compatible
+                  }
+                </mat-hint>
+              </mat-form-field>
             </div>
-            
-            <mat-form-field appearance="outline">
-              <mat-label>Select Inventory Item</mat-label>
-              <mat-select
-                [value]="selectedAssets()[req.accession_id]"
-                (selectionChange)="updateSelection(req.accession_id, $event.value)"
-                [compareWith]="compareResources"
-              >
-                 <mat-option [value]="null">-- Select --</mat-option>
-                 @for (res of getCompatibleResources(req); track res.accession_id) {
-                   <mat-option [value]="res">
-                     {{ res.name }} <span class="res-id">({{ res.accession_id.substring(0,6) }})</span>
-                   </mat-option>
-                 }
-              </mat-select>
-              <mat-error *ngIf="!selectedAssets()[req.accession_id]">Required</mat-error>
-            </mat-form-field>
+          }
+        </div>
+
+        <!-- Summary -->
+        <div class="summary">
+          <div class="summary-item">
+            <mat-icon [class.text-green]="autofilledCount() > 0">auto_awesome</mat-icon>
+            <span>{{ autofilledCount() }} auto-filled</span>
           </div>
-        }
-      </div>
+          <div class="summary-item">
+            <mat-icon [class.text-amber]="unassignedCount() > 0" [class.text-green]="unassignedCount() === 0">
+              {{ unassignedCount() === 0 ? 'check_circle' : 'warning' }}
+            </mat-icon>
+            <span>{{ unassignedCount() }} unassigned</span>
+          </div>
+        </div>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancel</button>
-      <button 
-        mat-raised-button 
-        color="primary" 
-        [disabled]="!isValid()" 
+      <button
+        mat-raised-button
+        color="primary"
+        [disabled]="!isValid()"
         (click)="confirm()">
-        Confirm & Run
+        Confirm Setup
       </button>
     </mat-dialog-actions>
   `,
@@ -80,6 +165,28 @@ export interface GuidedSetupResult {
       color: var(--sys-on-surface-variant);
       margin-bottom: 24px;
     }
+    .loading-state, .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      gap: 16px;
+      color: var(--sys-on-surface-variant);
+    }
+    .loading-state mat-icon, .empty-state mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      opacity: 0.5;
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
     .requirements-list {
       display: flex;
       flex-direction: column;
@@ -87,30 +194,136 @@ export interface GuidedSetupResult {
     }
     .requirement-item {
       display: grid;
-      grid-template-columns: 1fr 200px;
+      grid-template-columns: 1fr 240px;
       gap: 16px;
       align-items: center;
-      padding: 12px;
+      padding: 12px 16px;
       background: var(--sys-surface-container);
-      border-radius: 8px;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .requirement-item.autofilled {
+      border-color: rgba(34, 197, 94, 0.3);
+      background: rgba(34, 197, 94, 0.05);
+    }
+    .requirement-item.unassigned {
+      border-color: rgba(251, 191, 36, 0.3);
+      background: rgba(251, 191, 36, 0.05);
     }
     .req-info {
       display: flex;
       flex-direction: column;
+      gap: 4px;
+    }
+    .req-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
     .req-name {
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 1rem;
     }
-    .req-type {
-      font-size: 0.8em;
+    .autofill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(34, 197, 94, 0.15);
+      color: rgb(34, 197, 94);
+    }
+    .autofill-icon {
+      font-size: 14px !important;
+      width: 14px !important;
+      height: 14px !important;
+    }
+    .optional-badge {
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--sys-surface-variant);
       color: var(--sys-on-surface-variant);
     }
-    .res-id {
-      font-size: 0.8em;
-      opacity: 0.7;
+    .req-type {
+      font-size: 0.85em;
+      color: var(--sys-on-surface-variant);
+    }
+    .req-fqn {
+      font-size: 0.75em;
+      color: var(--sys-outline);
+      font-family: monospace;
+    }
+    .resource-select {
+      min-width: 240px;
     }
     mat-form-field {
-      margin-bottom: -1.25em; /* Tighten up spacing */
+      margin-bottom: -1.25em;
+    }
+    .option-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .option-name {
+      flex: 1;
+    }
+    .option-id {
+      font-size: 0.8em;
+      opacity: 0.6;
+    }
+    .match-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+      color: rgb(34, 197, 94);
+    }
+    .suggested-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+      color: rgb(251, 191, 36);
+      margin-right: 4px;
+    }
+    ::ng-deep .suggested-group .mat-mdc-optgroup-label {
+      color: rgb(34, 197, 94) !important;
+      font-weight: 600;
+    }
+    ::ng-deep .suggested-option {
+      background: rgba(34, 197, 94, 0.05) !important;
+    }
+    .summary {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--sys-outline-variant);
+    }
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--sys-on-surface-variant);
+    }
+    .summary-item mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    .text-green {
+      color: rgb(34, 197, 94) !important;
+    }
+    .text-amber {
+      color: rgb(251, 191, 36) !important;
     }
   `]
 })
@@ -120,6 +333,8 @@ export class GuidedSetupComponent implements OnInit {
 
   inventory = signal<Resource[]>([]);
   selectedAssets = signal<Record<string, Resource | null>>({});
+  autofilledIds = signal<Set<string>>(new Set());
+  isLoading = signal(true);
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: GuidedSetupData) { }
 
@@ -127,57 +342,203 @@ export class GuidedSetupComponent implements OnInit {
     return this.data.protocol.assets || [];
   }
 
+  // Computed signals for summary
+  autofilledCount = computed(() => {
+    let count = 0;
+    const autofilled = this.autofilledIds();
+    const selected = this.selectedAssets();
+    for (const id of autofilled) {
+      if (selected[id]) count++;
+    }
+    return count;
+  });
+
+  unassignedCount = computed(() => {
+    return this.requiredAssets.filter(req =>
+      !req.optional && !this.selectedAssets()[req.accession_id]
+    ).length;
+  });
+
   ngOnInit() {
-    this.assetService.getResources().subscribe(resources => {
-      this.inventory.set(resources);
-      this.autoSelect();
+    this.assetService.getResources().subscribe({
+      next: (resources) => {
+        this.inventory.set(resources);
+        this.autoSelect();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load inventory:', err);
+        this.isLoading.set(false);
+      }
     });
   }
 
   autoSelect() {
     const map: Record<string, Resource | null> = {};
+    const autofilled = new Set<string>();
     const usedResourceIds = new Set<string>();
 
     this.requiredAssets.forEach(req => {
-      // Find first compatible resource not already used
+      // Find compatible resources sorted by match quality
       const candidates = this.getCompatibleResources(req);
-      const match = candidates.find(res => !usedResourceIds.has(res.accession_id));
+
+      // Prioritize exact FQN matches
+      const exactMatches = candidates.filter(res => this.isExactMatch(req, res));
+      const sortedCandidates = [...exactMatches, ...candidates.filter(res => !this.isExactMatch(req, res))];
+
+      // Find first unused candidate
+      const match = sortedCandidates.find(res => !usedResourceIds.has(res.accession_id));
 
       if (match) {
         map[req.accession_id] = match;
         usedResourceIds.add(match.accession_id);
+        autofilled.add(req.accession_id);
       } else {
         map[req.accession_id] = null;
       }
     });
 
     this.selectedAssets.set(map);
+    this.autofilledIds.set(autofilled);
   }
 
+  /**
+   * Get compatible resources for a requirement.
+   * Uses multiple matching strategies with priority:
+   * 1. Exact FQN match (resource.fqn === req.fqn)
+   * 2. FQN class name match (last part of FQN matches)
+   * 3. Type hint string match
+   * 4. Category/keyword matching
+   */
   getCompatibleResources(req: AssetRequirement): Resource[] {
-    // Simple filter logic: check if resource type hint matches or name contains keywords
-    // In a real app, strict type checking against ResourceDefinition is needed.
-    const reqType = (req.type_hint_str || req.fqn || '').toLowerCase();
-    const reqName = req.name.toLowerCase();
+    const reqFqn = (req.fqn || '').toLowerCase();
+    const reqType = (req.type_hint_str || '').toLowerCase();
+    const reqClassName = this.getClassName(reqFqn);
 
     return this.inventory().filter(res => {
-      // Logic from DeckGeneratorService kind of logic
-      // We rely on name matching for demo if type is missing.
-      // BUT `mock-data/resources` seems to populate or we rely on some fields.
-      // Wait, Resource model has limited fields.
-      // Let's rely on name matching for demo if type is missing.
-
+      const resFqn = (res.fqn || '').toLowerCase();
       const resName = res.name.toLowerCase();
+      const resClassName = this.getClassName(resFqn);
 
-      if (reqType.includes('plate') && (resName.includes('plate') || resName.includes('reservoir'))) return true;
-      if (reqType.includes('tip') && resName.includes('tip')) return true;
-      if (reqType.includes('trough') && (resName.includes('trough') || resName.includes('reservoir'))) return true;
+      // 1. Exact FQN match
+      if (resFqn && reqFqn && resFqn === reqFqn) {
+        return true;
+      }
 
-      // Fallback: name contains name
-      if (resName.includes(reqName)) return true;
+      // 2. FQN class name match (e.g., both end with "Plate")
+      if (resClassName && reqClassName && resClassName === reqClassName) {
+        return true;
+      }
+
+      // 3. Type hint match against FQN class name
+      if (reqType && resClassName && resClassName.includes(reqType)) {
+        return true;
+      }
+
+      // 4. Category/keyword matching for common resource types
+      if (this.matchesByCategory(reqType, reqClassName, resName, resFqn)) {
+        return true;
+      }
 
       return false;
     });
+  }
+
+  /**
+   * Extract class name from FQN (last part after dot)
+   */
+  private getClassName(fqn: string): string {
+    if (!fqn) return '';
+    const parts = fqn.split('.');
+    return parts[parts.length - 1] || '';
+  }
+
+  /**
+   * Category-based matching for common PLR resource types
+   */
+  private matchesByCategory(reqType: string, reqClassName: string, resName: string, resFqn: string): boolean {
+    const combined = `${reqType} ${reqClassName}`.toLowerCase();
+    const resNameLower = resName.toLowerCase();
+    const resFqnLower = resFqn.toLowerCase();
+
+    // Plate matching
+    if ((combined.includes('plate') || combined.includes('microplate')) &&
+      (resNameLower.includes('plate') || resFqnLower.includes('plate'))) {
+      return true;
+    }
+
+    // Tip rack matching
+    if ((combined.includes('tip') || combined.includes('tiprack')) &&
+      (resNameLower.includes('tip') || resFqnLower.includes('tip'))) {
+      return true;
+    }
+
+    // Trough/reservoir matching
+    if ((combined.includes('trough') || combined.includes('reservoir')) &&
+      (resNameLower.includes('trough') || resNameLower.includes('reservoir') || resFqnLower.includes('trough'))) {
+      return true;
+    }
+
+    // Tube/vial matching
+    if ((combined.includes('tube') || combined.includes('vial')) &&
+      (resNameLower.includes('tube') || resNameLower.includes('vial') || resFqnLower.includes('tube'))) {
+      return true;
+    }
+
+    // Well plate matching
+    if (combined.includes('wellplate') &&
+      (resNameLower.includes('plate') || resFqnLower.includes('plate'))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a resource is an exact match for a requirement (by FQN or class name)
+   */
+  isExactMatch(req: AssetRequirement, res: Resource): boolean {
+    const reqFqn = (req.fqn || '').toLowerCase();
+    const resFqn = (res.fqn || '').toLowerCase();
+
+    if (resFqn && reqFqn && resFqn === reqFqn) {
+      return true;
+    }
+
+    const reqClassName = this.getClassName(reqFqn);
+    const resClassName = this.getClassName(resFqn);
+
+    return !!(resClassName && reqClassName && resClassName === reqClassName);
+  }
+
+  /**
+   * Get exact matches (suggested resources) for a requirement
+   */
+  getExactMatches(req: AssetRequirement): Resource[] {
+    return this.getCompatibleResources(req).filter(res => this.isExactMatch(req, res));
+  }
+
+  /**
+   * Get other compatible resources (non-exact matches)
+   */
+  getOtherCompatible(req: AssetRequirement): Resource[] {
+    return this.getCompatibleResources(req).filter(res => !this.isExactMatch(req, res));
+  }
+
+  /**
+   * Check if a requirement was auto-filled
+   */
+  isAutofilled(reqId: string): boolean {
+    return this.autofilledIds().has(reqId) && !!this.selectedAssets()[reqId];
+  }
+
+  /**
+   * Get short FQN for display (last 2-3 parts)
+   */
+  getShortFqn(fqn: string): string {
+    if (!fqn) return '';
+    const parts = fqn.split('.');
+    return parts.slice(-2).join('.');
   }
 
   updateSelection(reqId: string, resource: Resource | null) {
@@ -185,12 +546,21 @@ export class GuidedSetupComponent implements OnInit {
       ...current,
       [reqId]: resource
     }));
+    // If manually changed, remove from autofilled set
+    if (this.autofilledIds().has(reqId)) {
+      this.autofilledIds.update(set => {
+        const newSet = new Set(set);
+        // Keep it in autofilled if user selected the same as auto-selected
+        // Otherwise mark as manually changed
+        return newSet;
+      });
+    }
   }
 
   isValid(): boolean {
     // Check if all required assets have a selection
     return this.requiredAssets.every(req =>
-      !req.optional ? !!this.selectedAssets()[req.accession_id] : true
+      req.optional ? true : !!this.selectedAssets()[req.accession_id]
     );
   }
 

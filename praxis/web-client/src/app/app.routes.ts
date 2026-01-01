@@ -56,6 +56,19 @@ export const routes: Routes = [
             loadChildren: () => import('./features/run-protocol/run-protocol.routes').then(m => m.RUN_PROTOCOL_ROUTES)
           },
           {
+            path: 'monitor',
+            children: [
+              {
+                path: '',
+                loadComponent: () => import('./features/execution-monitor/execution-monitor.component').then(m => m.ExecutionMonitorComponent)
+              },
+              {
+                path: ':id',
+                loadComponent: () => import('./features/execution-monitor/components/run-detail.component').then(m => m.RunDetailComponent)
+              }
+            ]
+          },
+          {
             path: 'visualizer',
             loadChildren: () => import('./features/visualizer/visualizer.routes').then(m => m.VISUALIZER_ROUTES)
           },

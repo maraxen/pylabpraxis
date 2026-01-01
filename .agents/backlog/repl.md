@@ -9,36 +9,88 @@
 ## 1. Status Overview
 
 * **Backend**: Foundation complete (ReplSession, WebSocket). Auto-imports for PLR added.
-* **Frontend**: xterm.js UI implemented and integrated. Browser Mode (Pyodide) works for execution and stdout.
-* **Issues**: Autocompletion (Browser Mode) is implemented but failing in verification.
+* **Frontend**: xterm.js UI implemented. `PyodideConsole` integration complete.
+* **Autocompletion**: UI implemented (Popup/Signature), but manual completion flaky in browser.
 
 ---
 
 ## 2. Outstanding Tasks
 
-### 1. Fix Autocompletion (Immediate)
+### 1. Autocompletion - ✅ MVP COMPLETE
 
 * [x] Debug Browser Mode `Tab` key handling and Worker communication.
-* [x] Ensure `rlcompleter` works in Pyodide or fallback to manual dictionary completion.
+* [x] Implement Jedi-based autocompletion with rlcompleter fallback.
+* [x] Common prefix completion for multiple matches.
+* [x] Column-based display for completion list.
 
-### 2. PLR Deep Integration (Next Step)
+See [repl_autocompletion.md](./repl_autocompletion.md) for full autocompletion roadmap (Phase 2-5).
 
-* [x] **Console Host Output**: Separate stream for "console" logs vs "inline" execution results.
-* [ ] **Introspection**: `lh = LiquidHandler` should auto-fill arguments based on available backends. (Requires generic completer)
-* [x] **Resource/Machine Context**:
-  * [x] Auto-import `LiquidHandler`, `Plate`, `TipRack`.
-  * [x] Pre-populate context with discovered machines (e.g., if a STAR is connected, `lh` should be pre-configured or easy to init).
+### 2. UI/UX Polish (NEW - High Priority)
 
-### 3. UI Refinements
+These items are needed to make the REPL feel production-ready:
 
-* [x] **Command History**: Implement Up/Down arrow navigation for previous commands.
-* [x] **Clear Shortcut**: Implement `Ctrl+L` to clear the terminal window.
+* [x] **Completion Popup UI**:
+  * [x] Replace inline column display with floating popup menu
+  * [x] Add keyboard navigation
+  * [x] **Issue**: Manual verification shows flakiness despite passing E2E tests.
+
+* [x] **Signature Help**:
+  * [x] Show function signature popup when typing `(`
+  * [x] Verified in E2E tests, needs manual confirmation.
+
 * [ ] **Auto-scroll**: Ensure terminal always scrolls to bottom on new output.
-* [ ] **Split Streams**: Visually distinguish between `stdout` (logs), `stderr` (errors), and `return` values.
-* [ ] **Signature Help**: Show function arguments/docstrings when typing `(` (Language Server Protocol lite).
 
-### 4. Integration
+* [x] **Split Streams**:
+  * [x] Backend returns `output.type` as 'stdout' or 'stderr'
+  * [x] Frontend styles applied (Red for stderr, default for stdout).
 
-* [x] **Quick Access**: Toggle REPL with `Alt+` ` (Backtick) and Command Palette.
+* [ ] **Copy/Paste**: Verify Ctrl+C/V works correctly in xterm.js.
 
-* [x] **Hardware Bridge**: REPL can control WebSerial devices via `WebBridgeIO` (IO Layer Shimming - completed 2025-12-30).
+* [ ] **Resize Handling**: Ensure terminal resizes correctly with window.
+
+### 3. PLR Environment & Execution
+
+* [ ] **PLR Environment Integration (P2)**:
+  * Focus on `PyodideConsole` environment.
+  * Ensure `LiquidHandler`, `Plate`, `TipRack` are in globals and autocompletable.
+  * **Critical**: Integrate `WebBridgeIO` shim into the console environment so `await lh.setup()` works.
+
+* [x] **Resource/Machine Context**:
+  * [x] Auto-import `LiquidHandler`, `Plate`, `TipRack` (via `web_bridge.py` bootstrap).
+
+### 4. Advanced REPL Features
+
+* [ ] **Machine Availability Display (P3)**:
+  * Show available machines in REPL sidebar or panel.
+  * Easy access to what machines can be used.
+
+* [ ] **Security Sandbox (P3)**:
+  * Restrict dangerous modules (sys, os, subprocess, etc.).
+  * Secure enclosure for Python execution.
+  * Only native Python functionality + allowed PLR imports.
+
+* [ ] **Save to Protocol / Export (P3)**:
+  * Export REPL session as protocol file.
+  * Generate `@protocol_function` decorated code from session.
+
+* [ ] **ARIA Toolbar/Menubar (P3)**:
+  * Implement Angular ARIA toolbar and menubar patterns.
+  * Ensure keyboard accessibility for all REPL actions.
+
+* [ ] **Protocol Decorator Specification (P4)**:
+  * UI for specifying protocol decorator metadata from REPL.
+  * Name, description, parameters, requirements.
+
+### 5. Basic UI (COMPLETE)
+
+* [x] **Command History**: Implement Up/Down arrow navigation.
+* [x] **Clear Shortcut**: Implement `Ctrl+L` to clear terminal.
+* [x] **Quick Access**: Toggle REPL with `Alt+` ` and Command Palette.
+* [x] **Hardware Bridge**: REPL can control WebSerial devices via `WebBridgeIO`.
+
+---
+
+## 3. Related Backlogs
+
+* [repl_autocompletion.md](./repl_autocompletion.md) - Detailed autocompletion phases
+* [ui-ux.md](./ui-ux.md) - General UI polish items

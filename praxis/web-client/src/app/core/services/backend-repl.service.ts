@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, Subject, map, tap } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { environment } from '@env/environment';
-import { ReplOutput, ReplRuntime } from './repl-runtime.interface';
+import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
 
 @Injectable({
     providedIn: 'root'
@@ -80,7 +80,7 @@ export class BackendReplService implements ReplRuntime {
         this.socket$?.next({ type: 'INTERRUPT' });
     }
 
-    async getCompletions(code: string, _cursor: number): Promise<string[]> {
+    async getCompletions(code: string, _cursor: number): Promise<CompletionItem[]> {
         if (!this.socket$) return [];
 
         const id = crypto.randomUUID();
@@ -88,12 +88,43 @@ export class BackendReplService implements ReplRuntime {
             const subscription = this.socket$?.asObservable().subscribe(msg => {
                 if (msg.id === id && msg.type === 'COMPLETION_RESULT') {
                     subscription?.unsubscribe();
-                    resolve(msg.payload.matches);
+                    // Backend may return either string[] or CompletionItem[]
+                    const matches = msg.payload.matches || [];
+                    const items = matches.map((m: string | CompletionItem) =>
+                        typeof m === 'string' ? { name: m, type: 'unknown' } : m
+                    );
+                    resolve(items);
                 }
             });
 
             this.socket$?.next({
                 type: 'COMPLETION',
+                id,
+                payload: { code }
+            });
+
+            // Timeout after 2 seconds
+            setTimeout(() => {
+                subscription?.unsubscribe();
+                resolve([]);
+            }, 2000);
+        });
+    }
+
+    async getSignatures(code: string, _cursor: number): Promise<SignatureInfo[]> {
+        if (!this.socket$) return [];
+
+        const id = crypto.randomUUID();
+        return new Promise((resolve) => {
+            const subscription = this.socket$?.asObservable().subscribe(msg => {
+                if (msg.id === id && msg.type === 'SIGNATURE_RESULT') {
+                    subscription?.unsubscribe();
+                    resolve(msg.payload.signatures || []);
+                }
+            });
+
+            this.socket$?.next({
+                type: 'SIGNATURES',
                 id,
                 payload: { code }
             });

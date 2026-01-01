@@ -12,6 +12,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
@@ -22,6 +24,7 @@ import { ProtocolCardComponent } from './components/protocol-card/protocol-card.
 import { ProtocolCardSkeletonComponent } from './components/protocol-card/protocol-card-skeleton.component';
 import { DeckVisualizerComponent } from './components/deck-visualizer/deck-visualizer.component';
 import { AppStore } from '@core/store/app.store';
+import { ModeService } from '@core/services/mode.service';
 import { DeckGeneratorService } from './services/deck-generator.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GuidedSetupComponent } from './components/guided-setup/guided-setup.component';
@@ -59,8 +62,11 @@ interface FilterCategory {
     MatExpansionModule,
     MatCheckboxModule,
     MatBadgeModule,
+    MatBadgeModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
+    MatButtonToggleModule,
+    MatTooltipModule,
     ParameterConfigComponent,
     ProtocolCardComponent,
     ProtocolCardSkeletonComponent,
@@ -77,22 +83,26 @@ interface FilterCategory {
         </div>
         
         <!-- Simulation Mode Toggle -->
-        <div class="flex items-center gap-3 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-full px-4 py-2">
-          <span class="text-sm font-medium" [class.text-sys-text-primary]="!store.simulationMode()" [class.text-sys-text-tertiary]="store.simulationMode()">Physical</span>
-          <mat-slide-toggle [checked]="store.simulationMode()" (change)="store.setSimulationMode($event.checked)" color="primary"></mat-slide-toggle>
-          <span class="text-sm font-medium" [class.text-primary]="store.simulationMode()" [class.text-sys-text-tertiary]="!store.simulationMode()">Simulation</span>
+        <div class="flex items-center gap-3">
+           <mat-button-toggle-group
+             [value]="store.simulationMode()"
+             (change)="store.setSimulationMode($event.value)"
+             class="!rounded-full !border-[var(--theme-border)] !bg-[var(--mat-sys-surface-variant)] !overflow-hidden">
+             <mat-button-toggle [value]="false" class="!px-4 !text-sm !font-medium" [class.!text-sys-text-primary]="!store.simulationMode()">Physical</mat-button-toggle>
+             <mat-button-toggle [value]="true" class="!px-4 !text-sm !font-medium" [class.!text-primary]="store.simulationMode()">Simulation</mat-button-toggle>
+           </mat-button-toggle-group>
         </div>
       </div>
 
       <!-- Main Content Surface -->
-      <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl flex-1 min-h-0 shadow-xl flex flex-col">
+      <div class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-y-auto overflow-x-hidden backdrop-blur-xl flex-1 min-h-0 shadow-xl flex flex-col">
         <mat-stepper [linear]="true" #stepper class="!bg-transparent h-full flex flex-col">
           
           <!-- Step 1: Select Protocol -->
           <mat-step [stepControl]="protocolFormGroup" label="Select Protocol">
             <form [formGroup]="protocolFormGroup" class="h-full flex flex-col p-6">
               @if (selectedProtocol()) {
-                <div class="flex flex-col h-full items-center justify-center gap-8">
+                <div class="flex flex-col h-full items-center justify-center gap-8 overflow-y-auto">
                   <div class="max-w-2xl w-full bg-surface-elevated border border-primary/30 rounded-3xl p-8 relative overflow-hidden group shadow-2xl">
                     <div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-50"></div>
                     
@@ -226,7 +236,7 @@ interface FilterCategory {
           <!-- Step 2: Machine Selection -->
           <mat-step [stepControl]="machineFormGroup" label="Select Machine">
             <div class="h-full flex flex-col p-6">
-              <div class="flex-1 overflow-auto">
+              <div class="flex-1 overflow-y-auto">
                 <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
                      <mat-icon>precision_manufacturing</mat-icon>
@@ -258,7 +268,7 @@ interface FilterCategory {
           <!-- Step 3: Configure Parameters -->
           <mat-step [stepControl]="parametersFormGroup" label="Configure Parameters">
             <form [formGroup]="parametersFormGroup" class="h-full flex flex-col p-6">
-              <div class="flex-1 overflow-auto max-w-3xl mx-auto w-full">
+              <div class="flex-1 overflow-y-auto max-w-3xl mx-auto w-full">
                 <div class="bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-8">
                   <h3 class="text-xl font-bold text-sys-text-primary mb-6 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
@@ -284,12 +294,9 @@ interface FilterCategory {
           <!-- Step 3: Deck Configuration -->
           <mat-step label="Deck Setup">
             <div class="h-full flex flex-col p-6">
-              <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+              <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 overflow-y-auto">
                 <!-- Visualizer Column -->
                 <div class="lg:col-span-2 bg-[var(--mat-sys-surface-variant)] rounded-2xl border border-[var(--theme-border)] overflow-hidden relative group">
-                  <div class="absolute top-4 left-4 z-10 bg-surface-elevated/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-sys-text-secondary border border-[var(--theme-border)]">
-                    Deck Visualizer
-                  </div>
                   <app-deck-visualizer [layoutData]="deckData()" class="w-full h-full block"></app-deck-visualizer>
                   
                   <!-- Legend overlay on hover or always -->
@@ -358,7 +365,8 @@ interface FilterCategory {
 
           <!-- Step 4: Review & Run -->
           <mat-step label="Review & Run">
-             <div class="h-full flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto">
+             <div class="h-full flex flex-col items-center p-6 text-center max-w-2xl mx-auto overflow-y-auto">
+               <div class="my-auto w-full">
                <div class="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-6 shadow-[0_0_30px_rgba(237,122,155,0.3)]">
                  <mat-icon class="!w-12 !h-12 !text-[48px]">rocket_launch</mat-icon>
                </div>
@@ -381,6 +389,19 @@ interface FilterCategory {
 
                <div class="flex gap-4 w-full justify-center">
                   <button mat-button matStepperPrevious class="!border-[var(--theme-border)] !text-sys-text-secondary !rounded-xl !px-8 !py-6 w-40 border">Back</button>
+                  
+                  <!-- Schedule Button -->
+                  <button mat-stroked-button color="primary" 
+                    class="!rounded-xl !px-6 !py-6 !font-bold !text-lg w-48 !border-primary/50"
+                    [disabled]="modeService.isBrowserMode() || isStartingRun() || executionService.isRunning()"
+                    [matTooltip]="modeService.isBrowserMode() ? 'Scheduling is not supported in browser mode' : 'Schedule this protocol for later'"
+                    matTooltipPosition="above">
+                    <div class="flex items-center gap-2">
+                      <mat-icon>calendar_today</mat-icon>
+                      Schedule
+                    </div>
+                  </button>
+                  
                   <button mat-raised-button class="!bg-gradient-to-r !from-green-500 !to-emerald-600 !text-white !rounded-xl !px-8 !py-6 !font-bold !text-lg w-64 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-0.5 transition-all" (click)="startRun()" 
                     [disabled]="isStartingRun() || executionService.isRunning() || !configuredAssets()">
                     @if (isStartingRun()) {
@@ -394,6 +415,7 @@ interface FilterCategory {
                     }
                   </button>
                </div>
+             </div>
              </div>
           </mat-step>
         </mat-stepper>
@@ -412,17 +434,59 @@ interface FilterCategory {
     .border-green-500-30 { border-color: rgba(74, 222, 128, 0.3) !important; }
     .bg-green-500-05 { background-color: rgba(74, 222, 128, 0.05) !important; }
 
+    /* Fix Stepper Content Scrolling - MDC Classes */
+    ::ng-deep .mat-horizontal-stepper-wrapper {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    ::ng-deep .mat-horizontal-content-container {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* Active Step Content */
+    ::ng-deep .mat-horizontal-stepper-content.mat-horizontal-stepper-content-current {
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      /* Ensure overflow is hidden on the container so inner scrollable div takes over */
+      overflow: hidden !important;
+      visibility: visible !important;
+    }
+
+    /* Inactive Step Content: Hide everything else */
+    ::ng-deep .mat-horizontal-stepper-content:not(.mat-horizontal-stepper-content-current) {
+      height: 0 !important;
+      overflow: hidden !important;
+      visibility: hidden !important;
+      display: none !important;
+    }
+
     /* Stepper Overrides */
     ::ng-deep .mat-step-header {
       border-radius: 12px;
       transition: background 0.2s;
+      height: auto !important; /* Allow growing for wrapped text */
+      padding: 8px 16px !important; /* Reduced padding */
+      align-items: flex-start !important; /* Align top when wrapped */
     }
     ::ng-deep .mat-step-header:hover {
       background: var(--mat-sys-surface-variant);
     }
     ::ng-deep .mat-step-label {
       color: var(--theme-text-secondary) !important;
-      font-size: 1rem !important;
+      font-size: 0.85rem !important; /* Smaller labels */
+      white-space: normal !important; /* Allow wrapping */
+      overflow: visible !important;
+      line-height: 1.3 !important;
     }
     ::ng-deep .mat-step-label-selected {
       color: var(--theme-text-primary) !important;
@@ -430,11 +494,15 @@ interface FilterCategory {
     }
     ::ng-deep .mat-step-icon {
       background-color: var(--mat-sys-surface-variant) !important;
-      color: var(--theme-text-secondary) !important;
+      color: var(--theme-text-secondary) !important; /* Ensure number is readable */
     }
     ::ng-deep .mat-step-icon-selected {
       background-color: var(--primary-color) !important;
-      color: white !important;
+      color: white !important; /* White text on primary color */
+    }
+    ::ng-deep .mat-step-icon-content {
+      /* Ensure the inner text (number) inherits the color correctly */
+      color: inherit !important; 
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -447,6 +515,7 @@ export class RunProtocolComponent implements OnInit {
   public executionService = inject(ExecutionService);
   private deckGenerator = inject(DeckGeneratorService);
   private dialog = inject(MatDialog);
+  public modeService = inject(ModeService);
 
   protocolFormGroup = this._formBuilder.group({ protocolId: [''] });
   machineFormGroup = this._formBuilder.group({ machineId: [''] });
@@ -699,10 +768,17 @@ export class RunProtocolComponent implements OnInit {
   // Execution
   startRun() {
     const protocol = this.selectedProtocol();
-    if (protocol && this.parametersFormGroup.valid && !this.isStartingRun()) {
+    // Validate parameters form AND ensure deck is configured
+    if (protocol && this.parametersFormGroup.valid && !this.isStartingRun() && this.configuredAssets()) {
       this.isStartingRun.set(true);
       const runName = `${protocol.name} - ${new Date().toLocaleString()}`;
-      const params = this.parametersFormGroup.value;
+
+      // Merge parameters form values with configured assets
+      // This ensures backend receives both standard parameters and asset mappings
+      const params = {
+        ...this.parametersFormGroup.value,
+        ...this.configuredAssets()
+      };
 
       this.executionService.startRun(
         protocol.accession_id,

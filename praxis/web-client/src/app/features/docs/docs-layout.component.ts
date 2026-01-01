@@ -60,7 +60,7 @@ interface DocSection {
       min-width: 280px;
       /* background: rgba(255, 255, 255, 0.02); */
       background: transparent;
-      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-right: 1px solid var(--theme-border);
       overflow-y: auto;
     }
 
@@ -77,7 +77,7 @@ interface DocSection {
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--theme-text-tertiary);
       margin: 0 0 12px 8px;
     }
 
@@ -94,7 +94,7 @@ interface DocSection {
       padding: 10px 12px;
       margin: 2px 0;
       border-radius: 8px;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--theme-text-secondary);
       text-decoration: none;
       font-size: 0.9rem;
       transition: all 0.2s ease;
@@ -108,13 +108,13 @@ interface DocSection {
     }
 
     .page-link:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: white;
+      background: var(--theme-surface-elevated);
+      color: var(--theme-text-primary);
     }
 
     .page-link.active {
-      background: rgba(237, 122, 155, 0.15);
-      color: white;
+      background: var(--aurora-primary);
+      color: var(--theme-text-primary);
     }
 
     .page-link.active mat-icon {
@@ -146,7 +146,7 @@ interface DocSection {
         min-width: 100%;
         max-height: 200px;
         border-right: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid var(--theme-border);
       }
 
       .docs-sidebar-content {

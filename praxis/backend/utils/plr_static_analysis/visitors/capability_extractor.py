@@ -4,6 +4,9 @@ from typing import Any
 
 import libcst as cst
 
+from praxis.backend.utils.plr_static_analysis.capability_config_templates import (
+  get_config_template,
+)
 from praxis.backend.utils.plr_static_analysis.models import (
   CentrifugeCapabilities,
   DiscoveredCapabilities,
@@ -13,6 +16,7 @@ from praxis.backend.utils.plr_static_analysis.models import (
   IncubatorCapabilities,
   LiquidHandlerCapabilities,
   MachineCapabilities,
+  MachineCapabilityConfigSchema,
   PeelerCapabilities,
   PlateReaderCapabilities,
   PLRClassType,
@@ -486,3 +490,41 @@ class CapabilityExtractorVisitor(cst.CSTVisitor):
       return GenericMachineCapabilities(raw_capabilities=self._signals)
 
     return None
+
+  def build_capabilities_config(self) -> MachineCapabilityConfigSchema | None:
+    """Generate config schema based on machine type and detected signals.
+
+    This creates a user-configurable capability schema for dynamic form
+    generation in the frontend. Templates are customized with detected
+    capability signals pre-filled as defaults.
+
+    Returns:
+      The config schema with defaults pre-filled, or None for non-machine types.
+
+    """
+    if self.class_type is None:
+      return None
+
+    # Get the template for this machine type
+    template = get_config_template(self.class_type)
+    if template is None:
+      return None
+
+    # Pre-fill defaults based on what we detected in the source
+    for field in template.config_fields:
+      # Map detected signals to config field defaults
+      if field.field_name in self._signals:
+        field.default_value = self._signals[field.field_name]
+
+      # Special handling for liquid handler capabilities
+      if field.field_name == "has_iswap" and self.capabilities.has_iswap:
+        field.default_value = True
+      elif field.field_name == "has_core96" and self.capabilities.has_core96:
+        field.default_value = True
+      elif field.field_name == "has_hepa" and "hepa" in self._found_modules:
+        field.default_value = True
+      elif field.field_name == "num_channels" and self.capabilities.channels:
+        # Use the primary channel count
+        field.default_value = str(max(self.capabilities.channels))
+
+    return template

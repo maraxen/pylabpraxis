@@ -5,10 +5,10 @@ import { MarkdownModule } from 'ngx-markdown';
 import { AppStore } from '../../../../core/store/app.store';
 
 @Component({
-    selector: 'app-system-topology',
-    standalone: true,
-    imports: [CommonModule, MatTabsModule, MarkdownModule],
-    template: `
+  selector: 'app-system-topology',
+  standalone: true,
+  imports: [CommonModule, MatTabsModule, MarkdownModule],
+  template: `
     <div class="system-topology surface-elevated">
       <div class="header">
         <h3>System Architecture</h3>
@@ -17,29 +17,35 @@ import { AppStore } from '../../../../core/store/app.store';
       
       <mat-tab-group animationDuration="0ms" class="topology-tabs">
         <mat-tab label="Production">
-          <div class="diagram-container">
-            <markdown [data]="productionDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
-             <div class="legend">
-              <div class="item"><span class="dot angular"></span> Frontend</div>
-              <div class="item"><span class="dot api"></span> API Layer</div>
-              <div class="item"><span class="dot core"></span> Core Engine</div>
+          <ng-template matTabContent>
+            <div class="diagram-container">
+              <markdown [data]="productionDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
+               <div class="legend">
+                <div class="item"><span class="dot angular"></span> Frontend</div>
+                <div class="item"><span class="dot api"></span> API Layer</div>
+                <div class="item"><span class="dot core"></span> Core Engine</div>
+              </div>
             </div>
-          </div>
+          </ng-template>
         </mat-tab>
         <mat-tab label="Lite Mode">
-          <div class="diagram-container">
-            <markdown [data]="liteDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
-          </div>
+          <ng-template matTabContent>
+            <div class="diagram-container">
+              <markdown [data]="liteDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
+            </div>
+          </ng-template>
         </mat-tab>
         <mat-tab label="Browser (Pyodide)">
-          <div class="diagram-container">
-            <markdown [data]="browserDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
-          </div>
+          <ng-template matTabContent>
+            <div class="diagram-container">
+              <markdown [data]="browserDiagram" mermaid [mermaidOptions]="mermaidOptions()"></markdown>
+            </div>
+          </ng-template>
         </mat-tab>
       </mat-tab-group>
     </div>
   `,
-    styles: [`
+  styles: [`
     .system-topology {
       border-radius: 16px;
       margin: 32px 0;
@@ -99,44 +105,44 @@ import { AppStore } from '../../../../core/store/app.store';
   `]
 })
 export class SystemTopologyComponent {
-    private store = inject(AppStore);
+  private store = inject(AppStore);
 
-    mermaidOptions = computed(() => {
-        const theme = this.store.theme();
-        let isDark = theme === 'dark';
-        if (theme === 'system') {
-            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        }
-        const common = {
-            fontFamily: '"Roboto Flex", sans-serif',
-            fontSize: '16px',
-            flowchart: { nodeSpacing: 60, rankSpacing: 60, curve: 'basis' }
-        };
+  mermaidOptions = computed(() => {
+    const theme = this.store.theme();
+    let isDark = theme === 'dark';
+    if (theme === 'system') {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    const common = {
+      fontFamily: '"Roboto Flex", sans-serif',
+      fontSize: '16px',
+      flowchart: { nodeSpacing: 60, rankSpacing: 60, curve: 'basis' }
+    };
 
-        return {
-            theme: 'base' as const,
-            flowchart: { htmlLabels: true, useMaxWidth: false },
-            themeVariables: isDark ? {
-                ...common,
-                darkMode: true,
-                background: 'transparent',
-                mainBkg: 'transparent',
-                primaryColor: '#2a2a3c', primaryTextColor: '#ffffff', primaryBorderColor: '#ed7a9b',
-                secondaryColor: '#1a1a2e', secondaryTextColor: '#ffffff', secondaryBorderColor: '#73a9c2',
-                lineColor: 'rgba(255, 255, 255, 0.6)', textColor: '#ffffff'
-            } : {
-                ...common,
-                darkMode: false,
-                background: 'transparent',
-                mainBkg: 'transparent',
-                primaryColor: '#f1f5f9', primaryTextColor: '#020617', primaryBorderColor: '#ed7a9b',
-                secondaryColor: '#ffffff', secondaryTextColor: '#020617', secondaryBorderColor: '#73a9c2',
-                lineColor: '#1e293b', textColor: '#020617'
-            }
-        };
-    });
+    return {
+      theme: 'base' as const,
+      flowchart: { htmlLabels: true, useMaxWidth: false },
+      themeVariables: isDark ? {
+        ...common,
+        darkMode: true,
+        background: 'transparent',
+        mainBkg: 'transparent',
+        primaryColor: '#2a2a3c', primaryTextColor: '#ffffff', primaryBorderColor: '#ed7a9b',
+        secondaryColor: '#1a1a2e', secondaryTextColor: '#ffffff', secondaryBorderColor: '#73a9c2',
+        lineColor: 'rgba(255, 255, 255, 0.6)', textColor: '#ffffff'
+      } : {
+        ...common,
+        darkMode: false,
+        background: 'transparent',
+        mainBkg: 'transparent',
+        primaryColor: '#fbf9e6', primaryTextColor: '#020617', primaryBorderColor: '#ed7a9b',
+        secondaryColor: '#ffffff', secondaryTextColor: '#020617', secondaryBorderColor: '#73a9c2',
+        lineColor: '#1e293b', textColor: '#020617'
+      }
+    };
+  });
 
-    productionDiagram = `
+  productionDiagram = `
 \`\`\`mermaid
 graph TD
     subgraph Frontend ["Frontend (Angular)"]
@@ -144,13 +150,13 @@ graph TD
         Store[NgRx Store]
         Services[Frontend Services]
     end
-    style Frontend fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph API ["API Layer"]
         Server[FastAPI Server]
         WS[WebSocket Handler]
     end
-    style API fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style API fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     subgraph Core ["Core Engine"]
         Orch[Orchestrator]
@@ -158,20 +164,20 @@ graph TD
         Proto[Protocol Engine]
         Asset[Asset Manager]
     end
-    style Core fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Core fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph Runtime ["Runtime"]
         WCR[WorkcellRuntime]
         PLR[PyLabRobot]
         Sim[Simulators]
     end
-    style Runtime fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Runtime fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     subgraph Data ["Data Layer"]
         PG[(PostgreSQL)]
         Redis[(Redis)]
     end
-    style Data fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Data fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     UI --> Server
     UI --> WS
@@ -188,36 +194,36 @@ graph TD
 \`\`\`
 `;
 
-    liteDiagram = `
+  liteDiagram = `
 \`\`\`mermaid
 graph TD
     subgraph Frontend_Lite ["Frontend (Angular)"]
         UI_L[Web UI]
         Store_L[NgRx Store]
     end
-    style Frontend_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph API_Lite ["Local API"]
         Server_L[FastAPI Process]
     end
-    style API_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style API_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     subgraph Core_Lite ["Core Engine"]
         Orch_L[Orchestrator]
         Asset_L[Asset Manager]
     end
-    style Core_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Core_Lite fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph Runtime_Lite ["Runtime"]
         WCR_L[WorkcellRuntime]
         PLR_L[PyLabRobot]
     end
-    style Runtime_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Runtime_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     subgraph Data_Lite ["Data Layer"]
         SQLite[(SQLite)]
     end
-    style Data_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Data_Lite fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     UI_L --> Server_L
     Store_L --> Server_L
@@ -231,7 +237,7 @@ graph TD
 \`\`\`
 `;
 
-    browserDiagram = `
+  browserDiagram = `
 \`\`\`mermaid
 graph TD
     subgraph Frontend_Browser ["Frontend (Browser Only)"]
@@ -239,26 +245,26 @@ graph TD
         Store_B[NgRx Store]
         IO_Shim[IO Shim Service]
     end
-    style Frontend_Browser fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style Frontend_Browser fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph WebWorker ["Web Worker (Pyodide)"]
         PyBridge[Python Bridge]
         Core_B[Core Engine]
         PLR_B[PyLabRobot]
     end
-    style WebWorker fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style WebWorker fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     subgraph BrowserData ["Browser Storage"]
         IDB[(IndexedDB)]
         LocalStorage[(LocalStorage)]
     end
-    style BrowserData fill:transparent,stroke:#ed7a9b,stroke-width:2px,color:#fff
+    style BrowserData fill:transparent,stroke:#ed7a9b,stroke-width:2px
 
     subgraph Hardware ["Physical Hardware"]
         USB[WebSerial / USB]
         Bluetooth[WebBluetooth]
     end
-    style Hardware fill:transparent,stroke:#73a9c2,stroke-width:2px,color:#fff
+    style Hardware fill:transparent,stroke:#73a9c2,stroke-width:2px
 
     UI_B --> Store_B
     Store_B --> PyBridge

@@ -1,4 +1,5 @@
 @use '@angular/material' as mat;
+@import 'xterm/css/xterm.css';
 
 @tailwind base;
 @tailwind components;
@@ -10,9 +11,99 @@
 $rose-pompadour: #ED7A9B;
 $moonstone-blue: #73A9C2;
 
-// Define the light theme using these colors
+// Custom Rose Palette for proper pink primary color
+// Based on Material Design palette structure with rose-pompadour as the 40 tone
+$rose-palette: (
+  0: #000000,
+  10: #3e0016,
+  20: #5e1129,
+  25: #701a34,
+  30: #832440,
+  35: #962f4c,
+  40: #ED7A9B,
+  // Primary brand color
+  50: #ff8fa8,
+  60: #ffb1c0,
+  70: #ffd0d8,
+  80: #ED7A9B,
+  90: #fff0f2,
+  95: #fff8f8,
+  98: #fffbfb,
+  99: #fffefe,
+  100: #ffffff,
+  secondary: (0: #000000,
+    10: #2b151a,
+    20: #42292e,
+    25: #4e3439,
+    30: #5b3f44,
+    35: #684a50,
+    40: #75565b,
+    50: #8f6e74,
+    60: #aa888d,
+    70: #c6a2a7,
+    80: #e3bcc2,
+    90: #ffd9de,
+    95: #ffecee,
+    98: #fff8f7,
+    99: #fffbff,
+    100: #ffffff,
+  ),
+  neutral: (0: #000000,
+    10: #201a1b,
+    20: #352f30,
+    25: #413a3b,
+    30: #4d4546,
+    35: #595151,
+    40: #655d5d,
+    50: #7e7576,
+    60: #998f8f,
+    70: #b4a9a9,
+    80: #d0c4c4,
+    90: #ede0e0,
+    95: #fbeeee,
+    98: #fff8f7,
+    99: #fffbff,
+    100: #ffffff,
+  ),
+  neutral-variant: (0: #000000,
+    10: #231718,
+    20: #392c2d,
+    25: #443738,
+    30: #504243,
+    35: #5c4d4e,
+    40: #69595a,
+    50: #827172,
+    60: #9d8b8c,
+    70: #b8a5a6,
+    80: #d4c0c1,
+    90: #f1dcdc,
+    95: #ffebeb,
+    98: #fff8f7,
+    99: #fffbff,
+    100: #ffffff,
+  ),
+  error: (0: #000000,
+    10: #410002,
+    20: #690005,
+    25: #7e0007,
+    30: #93000a,
+    35: #a80710,
+    40: #ba1a1a,
+    50: #de3730,
+    60: #ff5449,
+    70: #ff897d,
+    80: #ffb4ab,
+    90: #ffdad6,
+    95: #ffedea,
+    98: #fff8f7,
+    99: #fffbff,
+    100: #ffffff,
+  ),
+);
+
+// Define the light theme using custom rose palette for primary
 $light-theme: mat.define-theme((color: (theme-type: light,
-        primary: mat.$magenta-palette,
+        primary: $rose-palette,
         tertiary: mat.$cyan-palette,
       ),
       typography: (brand-family: 'Roboto Flex',
@@ -22,9 +113,10 @@ $light-theme: mat.define-theme((color: (theme-type: light,
       )));
 
 $dark-theme: mat.define-theme((color: (theme-type: dark,
-        primary: mat.$magenta-palette,
+        primary: $rose-palette,
         tertiary: mat.$cyan-palette,
       )));
+
 
 // ===== THEME VARIABLES =====
 // Light theme is now a premium light aesthetic (not plain white)
@@ -77,9 +169,9 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
 .light-theme {
   // Material System Colors (Light Theme Overrides)
   --mat-sys-surface-container-low: #ffffff;
-  --mat-sys-surface-container: #f8fafc;
-  --mat-sys-surface-container-high: #f1f5f9;
-  --mat-sys-surface-variant: rgba(0, 0, 0, 0.08); // Slightly more visible variant bg
+  --mat-sys-surface-container: #fffdf5; // Cream
+  --mat-sys-surface-container-high: #fbf9e6; // Darker cream
+  --mat-sys-surface-variant: rgba(251, 249, 230, 0.5); // Cream-tinted variant
   --mat-sys-on-surface: #020617; // Slate 950 - High contrast black
   --mat-sys-on-surface-variant: #1e293b; // Slate 800 - High contrast dark grey
   --mat-sys-outline-variant: rgba(0, 0, 0, 0.25); // Much more visible outlines
@@ -89,7 +181,7 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   --mat-sys-tertiary-container: #e0f2fe;
   --mat-sys-on-tertiary-container: #0c4a6e;
 
-  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
+  --theme-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #fffdf5 100%);
   --theme-surface: rgba(255, 255, 255, 0.7);
   --theme-surface-elevated: #ffffff;
   --theme-text-primary: #020617; // Slate 950
@@ -219,4 +311,78 @@ body {
   @extend .skeleton-pulse;
   display: block;
   width: 100%;
+}
+
+/* ==============================================
+   Material Form Field Outline Fixes
+   Fix vertical bar rendering issues (MDC notched-outline gaps)
+   ============================================== */
+// Fix outline notch gaps that appear as vertical bars
+.mat-mdc-form-field.mat-form-field-appearance-outline {
+  /* Proper spacing for subscript container */
+  --mat-form-field-subscript-text-size: 10px;
+
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__trailing {
+    border-color: var(--theme-border) !important;
+  }
+
+  .mdc-notched-outline__notch {
+    border-right: none !important;
+    /* Fix vertical line bug */
+  }
+
+  border-bottom-color: var(--theme-border) !important;
+  border-right-color: var(--theme-border) !important;
+
+  // Focused state
+  &.mat-focused {
+
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__trailing,
+    .mdc-notched-outline__notch {
+      border-color: var(--primary-color) !important;
+      border-width: 2px !important;
+    }
+  }
+}
+
+// Fix MDC notched outline alignment
+::ng-deep .mat-mdc-form-field-infix {
+  min-height: 48px;
+}
+
+// Ensure filter fields have consistent styling
+.filter-field.mat-mdc-form-field {
+  .mat-mdc-text-field-wrapper {
+    background: var(--mat-sys-surface-variant);
+    border-radius: 12px;
+  }
+
+  .mdc-notched-outline__leading {
+    border-radius: 12px 0 0 12px !important;
+  }
+
+  .mdc-notched-outline__trailing {
+    border-radius: 0 12px 12px 0 !important;
+  }
+}
+
+// Fix mat-card contrast in light mode
+.mat-mdc-card {
+  background-color: var(--mat-sys-surface-container-low, var(--theme-surface)) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+// Fix mat-dialog surface in dark/light modes
+.mat-mdc-dialog-surface {
+  background-color: var(--mat-sys-surface-container-high, var(--theme-surface-elevated)) !important;
+  color: var(--theme-text-primary) !important;
+
+  // Ensure title and content have correct color inheritance
+  .mat-mdc-dialog-title,
+  .mat-mdc-dialog-content,
+  .mat-mdc-dialog-actions {
+    color: var(--theme-text-primary) !important;
+  }
 }

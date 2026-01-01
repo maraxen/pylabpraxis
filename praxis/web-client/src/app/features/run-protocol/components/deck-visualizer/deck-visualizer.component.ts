@@ -57,7 +57,7 @@ import { DeckViewComponent } from '@shared/components/deck-view/deck-view.compon
       min-height: 0;
       overflow: hidden;
       border-radius: 8px;
-      background: white;
+      background: transparent;
       display: flex;
       flex-direction: column;
     }

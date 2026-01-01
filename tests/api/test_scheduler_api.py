@@ -128,7 +128,7 @@ async def test_list_schedule_entries(
     schedule_entry: ScheduleEntryOrm,
 ):
     """Test listing schedule entries via GET /entries."""
-    response = await client.get("/api/v1/scheduler/entries/")
+    response = await client.get("/api/v1/scheduler/entries")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)

@@ -4,6 +4,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MachineListComponent } from './components/machine-list/machine-list.component';
 import { ResourceAccordionComponent } from './components/resource-accordion/resource-accordion.component';
 import { DefinitionsListComponent } from './components/definitions-list/definitions-list.component';
@@ -26,6 +27,7 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatButtonModule,
     MatDialogModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     MachineListComponent,
     ResourceAccordionComponent,
     DefinitionsListComponent,
@@ -45,10 +47,17 @@ import { ActivatedRoute, Router } from '@angular/router';
               Discover Hardware
             </button>
           }
-          <button mat-flat-button class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-5 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5" (click)="openAddAsset()" [disabled]="isLoading()">
-            <mat-icon>add</mat-icon>
-            Add {{ assetTypeLabel() }}
-          </button>
+          <span [matTooltip]="selectedIndex === 3 ? 'Adding definitions manually is not supported yet. Please sync from backend.' : ''">
+            <button 
+              mat-flat-button 
+              class="!bg-gradient-to-br !from-primary !to-primary-dark !text-white !rounded-xl !px-6 !py-5 !font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed" 
+              (click)="openAddAsset()" 
+              [disabled]="isLoading() || selectedIndex === 3"
+            >
+              <mat-icon>add</mat-icon>
+              Add {{ assetTypeLabel() }}
+            </button>
+          </span>
         </div>
       </div>
 
@@ -80,7 +89,7 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Machines</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative">
+            <div class="h-full overflow-y-auto bg-[var(--mat-sys-surface-variant)] relative">
               @if (isLoading()) {
                 <div class="absolute inset-0 bg-[var(--mat-sys-surface-variant)] backdrop-blur-sm z-10 flex items-center justify-center">
                   <mat-spinner diameter="40"></mat-spinner>
@@ -97,7 +106,7 @@ import { ActivatedRoute, Router } from '@angular/router';
                 <span class="font-medium">Resources</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)] relative">
+            <div class="h-full overflow-y-auto bg-[var(--mat-sys-surface-variant)] relative">
               @if (isLoading()) {
                 <div class="absolute inset-0 bg-[var(--mat-sys-surface-variant)] backdrop-blur-sm z-10 flex items-center justify-center">
                   <mat-spinner diameter="40"></mat-spinner>
@@ -110,11 +119,11 @@ import { ActivatedRoute, Router } from '@angular/router';
           <mat-tab>
             <ng-template mat-tab-label>
               <div class="flex items-center gap-2 px-2 py-1">
-                <mat-icon class="!w-5 !h-5 !text-[20px]">library_books</mat-icon>
-                <span class="font-medium">Definitions</span>
+                <mat-icon class="!w-5 !h-5 !text-[20px]">inventory_2</mat-icon>
+                <span class="font-medium">Registry</span>
               </div>
             </ng-template>
-            <div class="h-full overflow-hidden bg-[var(--mat-sys-surface-variant)]">
+            <div class="h-full overflow-y-auto bg-[var(--mat-sys-surface-variant)]">
               <app-definitions-list></app-definitions-list>
             </div>
           </mat-tab>
@@ -204,9 +213,9 @@ export class AssetsComponent implements OnInit, OnDestroy {
       } else if (type === 'resource') {
         this.selectedIndex = 2;
         this.assetTypeLabel.set('Resource');
-      } else if (type === 'definition') {
+      } else if (type === 'registry' || type === 'definition') {
         this.selectedIndex = 3;
-        this.assetTypeLabel.set('Definition');
+        this.assetTypeLabel.set('Registry Item');
       } else {
         this.selectedIndex = 0;
         this.assetTypeLabel.set('Asset');
@@ -237,8 +246,8 @@ export class AssetsComponent implements OnInit, OnDestroy {
         type = 'resource';
         break;
       case 3:
-        this.assetTypeLabel.set('Definition');
-        type = 'definition';
+        this.assetTypeLabel.set('Registry Item');
+        type = 'registry';
         break;
     }
 
@@ -272,7 +281,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
       // For now let's open machine dialog as default
       this.openAddMachine();
     } else {
-      alert('Adding definitions manually is not supported yet. Please sync from backend.');
+      // Registry tab - button is disabled, but keeping this for safety
     }
   }
 

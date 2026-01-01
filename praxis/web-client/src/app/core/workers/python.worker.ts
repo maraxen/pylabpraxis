@@ -3,9 +3,10 @@
 import { loadPyodide, PyodideInterface } from 'pyodide';
 
 let pyodide: PyodideInterface;
+let pyConsole: any; // PyodideConsole instance
 
 interface PythonMessage {
-  type: 'INIT' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'PLR_COMMAND' | 'STDOUT' | 'STDERR' | 'RAW_IO' | 'RAW_IO_RESPONSE';
+  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE';
   id?: string;
   payload?: any;
 }
@@ -25,14 +26,6 @@ addEventListener('message', async (event) => {
   }
 
   const { type, id, payload } = data as PythonMessage;
-
-  // Handle redirected output (from Python)
-  // The structure from web_bridge is { type: 'STDOUT'|'STDERR', payload: string }
-  // We need to attach the currentExecutionId to it for the frontend service
-  if ((type === 'STDOUT' || type === 'STDERR') && currentExecutionId) {
-    postMessage({ type, id: currentExecutionId, payload });
-    return;
-  }
 
   // Handle RAW_IO messages from Python (forward to Angular main thread)
   if (type === 'RAW_IO') {
@@ -56,40 +49,22 @@ addEventListener('message', async (event) => {
   try {
     switch (type) {
       case 'INIT':
-        // Load Pyodide
-        pyodide = await loadPyodide({
-          indexURL: 'assets/pyodide/'
-        });
-
-        // Install micropip for package management
-        await pyodide.loadPackage('micropip');
-
-        // Load WebBridge Python code
-        const response = await fetch('assets/python/web_bridge.py');
-        const bridgeCode = await response.text();
-        pyodide.FS.writeFile('web_bridge.py', bridgeCode);
-
-        // Bootstrap REPL environment (redirects stdout/stderr)
-        const bridge = pyodide.pyimport('web_bridge');
-        bridge.bootstrap_repl();
-
-        postMessage({ type: 'INIT_COMPLETE', id });
+        await initializePyodide(id);
         break;
 
+      case 'PUSH':
       case 'EXEC':
-        if (!pyodide) throw new Error('Pyodide not initialized');
+        // Both PUSH and EXEC now use the console's push method
+        if (!pyodide || !pyConsole) throw new Error('Pyodide not initialized');
         currentExecutionId = id;
         try {
-          // runPythonAsync returns the result of the last expression
-          const result = await pyodide.runPythonAsync(payload.code);
-          postMessage({ type: 'EXEC_COMPLETE', id, payload: result });
+          await executePush(id!, payload.code);
         } finally {
           currentExecutionId = undefined;
         }
         break;
 
       case 'PLR_COMMAND':
-        // Handle commands from LiquidHandlerBackend
         postMessage({ type: 'PLR_COMMAND', payload });
         break;
 
@@ -104,18 +79,42 @@ addEventListener('message', async (event) => {
           currentExecutionId = undefined;
         }
         break;
+
       case 'COMPLETE':
+        if (!pyodide || !pyConsole) throw new Error('Pyodide not initialized');
+        try {
+          // Use Console.complete() - returns (completions: list[str], start: int)
+          const resultProxy = pyConsole.complete(payload.code);
+          const result = resultProxy.toJs();
+          resultProxy.destroy();
+
+          // result is [completions_list, start_index]
+          const completions = result[0] || [];
+          const matches = completions.map((name: string) => ({
+            name,
+            type: 'unknown',
+            description: ''
+          }));
+          postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches } });
+        } catch (err: any) {
+          console.error('Completion error:', err);
+          postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches: [] } });
+        }
+        break;
+
+      case 'SIGNATURES':
+        // PyodideConsole doesn't have built-in signature help
+        // We can try to use Jedi if available, or return empty
         if (!pyodide) throw new Error('Pyodide not initialized');
         try {
           const bridge = pyodide.pyimport('web_bridge');
-          const completionsProxy = bridge.get_completions(payload.code);
-          const completions = completionsProxy.toJs();
-          completionsProxy.destroy(); // valid memory management specific to pyodide proxies
-          postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches: completions } });
+          const signaturesProxy = bridge.get_signatures(payload.code);
+          const signatures = signaturesProxy.toJs();
+          signaturesProxy.destroy();
+          postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures } });
         } catch (err: any) {
-          // Fallback or error
-          console.error('Completion error:', err);
-          postMessage({ type: 'COMPLETE_RESULT', id, payload: { matches: [] } });
+          // Signature help is optional, just return empty
+          postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures: [] } });
         }
         break;
     }
@@ -127,3 +126,123 @@ addEventListener('message', async (event) => {
     });
   }
 });
+
+// Expose callbacks for Python to call
+(self as any).handlePythonOutput = (type: string, content: string) => {
+  if (currentExecutionId) {
+    postMessage({ type, id: currentExecutionId, payload: content });
+  } else {
+    // Output without an ID (e.g. background logs)
+    // Send as 'stdout'/'stderr' event or log?
+    // For specific testability, let's log to console which shows in browser console
+    console.log(`[Python ${type}]: ${content}`);
+
+    // Also try to send to main thread if it accepts global messages (optional)
+    // But our service maps by ID, so it might be dropped.
+  }
+};
+
+async function initializePyodide(id?: string) {
+  // Load Pyodide with core files from local assets, packages from CDN
+  pyodide = await loadPyodide({
+    indexURL: 'assets/pyodide/',
+    lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
+  });
+
+  // Install micropip for package management
+  await pyodide.loadPackage('micropip');
+
+  // Install basic dependencies including PLR and Jedi
+  // Note: We use a try-catch for pylabrobot as it might have complex deps
+  try {
+    const micropip = pyodide.pyimport('micropip');
+    await micropip.install(['jedi', 'pylabrobot']);
+    console.log('PyLabRobot and Jedi installed successfully');
+  } catch (err) {
+    console.error('Failed to install PyLabRobot/Jedi:', err);
+  }
+
+  // Load WebBridge Python code (for RAW_IO and signature help)
+  const response = await fetch('assets/python/web_bridge.py');
+  const bridgeCode = await response.text();
+  pyodide.FS.writeFile('web_bridge.py', bridgeCode);
+
+  // Create PyodideConsole with stream callbacks
+  const consoleCode = `
+from pyodide.console import PyodideConsole
+import js
+import sys
+
+def stdout_callback(s):
+    # Use the exposed JS handler
+    js.handlePythonOutput("STDOUT", s)
+
+def stderr_callback(s):
+    js.handlePythonOutput("STDERR", s)
+
+# Create console with our callbacks
+console = PyodideConsole(
+    stdout_callback=stdout_callback,
+    stderr_callback=stderr_callback
+)
+
+# Import web_bridge to make it available
+import web_bridge
+
+# Bootstrap the REPL environment (redirects sys.stdout/stderr, auto-imports)
+web_bridge.bootstrap_repl(console.globals)
+
+console
+`;
+
+  const consoleProxy = await pyodide.runPythonAsync(consoleCode);
+  pyConsole = consoleProxy;
+
+  postMessage({ type: 'INIT_COMPLETE', id });
+}
+
+async function executePush(id: string, code: string) {
+  // PyodideConsole.push() returns a ConsoleFuture
+  // For multi-line code, we split by lines and push each
+  const lines = code.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    try {
+      const futureProxy = pyConsole.push(line);
+
+      const syntaxCheck = futureProxy.syntax_check;
+
+      if (syntaxCheck === 'syntax-error') {
+        futureProxy.destroy();
+        break;
+      }
+
+      if (syntaxCheck === 'complete') {
+        const resultProxy = await futureProxy;
+
+        if (resultProxy !== undefined && resultProxy !== null) {
+          const formatted = String(resultProxy);
+          if (formatted && formatted !== 'None' && formatted !== 'undefined') {
+            // result output
+            postMessage({ type: 'STDOUT', id, payload: formatted + '\n' });
+          }
+        }
+
+        if (typeof resultProxy?.destroy === 'function') {
+          resultProxy.destroy();
+        }
+      }
+
+      futureProxy.destroy();
+
+    } catch (err: any) {
+      console.error('Execution error:', err);
+      // Ensure error reaches frontend
+      postMessage({ type: 'STDERR', id, payload: String(err) + '\n' });
+    }
+  }
+
+  postMessage({ type: 'EXEC_COMPLETE', id, payload: null });
+}

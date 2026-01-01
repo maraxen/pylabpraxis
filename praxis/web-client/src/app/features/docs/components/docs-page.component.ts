@@ -24,6 +24,14 @@ import { catchError, of } from 'rxjs';
           <p>{{ error() }}</p>
         </div>
       } @else {
+        <div class="docs-header-actions">
+           @if (sourcePath()) {
+            <button class="source-btn" (click)="viewSource()" [attr.title]="sourcePath()">
+              <i class="material-icons">code</i>
+              <span>View Source</span>
+            </button>
+          }
+        </div>
         <article class="docs-article">
           @if (showSystemTopology()) {
             <app-system-topology></app-system-topology>
@@ -38,6 +46,38 @@ import { catchError, of } from 'rxjs';
       max-width: 900px;
       margin: 0 auto;
       padding: 32px 48px;
+      position: relative;
+    }
+
+    .docs-header-actions {
+      position: absolute;
+      top: 32px;
+      right: 48px;
+      z-index: 10;
+    }
+
+    .source-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--mat-sys-surface-variant);
+      border: 1px solid var(--theme-border);
+      color: var(--theme-text-secondary);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .source-btn:hover {
+      background: var(--theme-surface-elevated);
+      border-color: var(--primary-color);
+      color: var(--theme-text-primary);
+    }
+
+    .source-btn i {
+      font-size: 1.1rem;
     }
 
     .loading {
@@ -46,13 +86,13 @@ import { catchError, of } from 'rxjs';
       align-items: center;
       justify-content: center;
       min-height: 300px;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--theme-text-secondary);
     }
 
     .loading-spinner {
       width: 40px;
       height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
+      border: 3px solid var(--theme-border);
       border-top-color: var(--primary-color);
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -66,17 +106,17 @@ import { catchError, of } from 'rxjs';
     .error {
       text-align: center;
       padding: 48px;
-      color: rgba(255, 255, 255, 0.6);
+      color: var(--theme-text-secondary);
     }
 
     .error h2 {
-      color: white;
+      color: var(--theme-text-primary);
       margin-bottom: 8px;
     }
 
     /* Markdown Styling */
     .docs-article {
-      color: rgba(255, 255, 255, 0.9);
+      color: var(--theme-text-primary);
       line-height: 1.7;
     }
 
@@ -84,36 +124,36 @@ import { catchError, of } from 'rxjs';
       h1 {
         font-size: 2.5rem;
         font-weight: 700;
-        color: white;
+        color: var(--theme-text-primary);
         margin: 0 0 16px;
         padding-bottom: 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid var(--theme-border);
       }
 
       h2 {
         font-size: 1.75rem;
         font-weight: 600;
-        color: white;
+        color: var(--theme-text-primary);
         margin: 48px 0 16px;
       }
 
       h3 {
         font-size: 1.25rem;
         font-weight: 600;
-        color: white;
+        color: var(--theme-text-primary);
         margin: 32px 0 12px;
       }
 
       h4 {
         font-size: 1rem;
         font-weight: 600;
-        color: white;
+        color: var(--theme-text-primary);
         margin: 24px 0 8px;
       }
 
       p {
         margin: 0 0 16px;
-        color: rgba(255, 255, 255, 0.85);
+        color: var(--theme-text-secondary);
       }
 
       a {
@@ -130,15 +170,15 @@ import { catchError, of } from 'rxjs';
       code {
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         font-size: 0.9em;
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--mat-sys-surface-variant);
         padding: 2px 6px;
         border-radius: 4px;
-        color: #f8c555;
+        color: var(--primary-color);
       }
 
       pre {
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--mat-sys-surface-container);
+        border: 1px solid var(--theme-border);
         border-radius: 12px;
         padding: 20px;
         overflow-x: auto;
@@ -148,7 +188,7 @@ import { catchError, of } from 'rxjs';
       pre code {
         background: none;
         padding: 0;
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--theme-text-primary);
         font-size: 0.85rem;
         line-height: 1.6;
       }
@@ -160,7 +200,7 @@ import { catchError, of } from 'rxjs';
 
       li {
         margin-bottom: 8px;
-        color: rgba(255, 255, 255, 0.85);
+        color: var(--theme-text-secondary);
       }
 
       table {
@@ -173,39 +213,39 @@ import { catchError, of } from 'rxjs';
       th {
         text-align: left;
         padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: white;
+        background: var(--mat-sys-surface-variant);
+        border: 1px solid var(--theme-border);
+        color: var(--theme-text-primary);
         font-weight: 600;
       }
 
       td {
         padding: 12px 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.85);
+        border: 1px solid var(--theme-border);
+        color: var(--theme-text-secondary);
       }
 
       tr:hover td {
-        background: rgba(255, 255, 255, 0.02);
+        background: var(--mat-sys-surface-variant);
       }
 
       blockquote {
         margin: 16px 0;
         padding: 16px 20px;
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--mat-sys-surface-variant);
         border-left: 4px solid var(--primary-color);
         border-radius: 0 8px 8px 0;
       }
 
       blockquote p {
         margin: 0;
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--theme-text-secondary);
       }
 
       hr {
         border: none;
         height: 1px;
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--theme-border);
         margin: 32px 0;
       }
 
@@ -235,12 +275,13 @@ import { catchError, of } from 'rxjs';
       .admonition-title {
         font-weight: 600;
         margin-bottom: 8px;
+        color: var(--theme-text-primary);
       }
 
       /* Mermaid diagrams */
       .mermaid {
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: linear-gradient(145deg, var(--mat-sys-surface-variant) 0%, transparent 100%);
+        border: 1px solid var(--theme-border);
         border-radius: 16px;
         padding: 32px;
         margin: 24px 0;
@@ -340,7 +381,7 @@ export class DocsPageComponent {
         mainBkg: 'transparent',
 
         // Primary
-        primaryColor: '#f1f5f9',         // Slate 100
+        primaryColor: '#fbf9e6',         // Cream
         primaryTextColor: '#020617',     // Slate 950
         primaryBorderColor: '#ed7a9b',
 
@@ -352,7 +393,7 @@ export class DocsPageComponent {
         // Lines and Text
         lineColor: '#1e293b',            // Slate 800
         textColor: '#020617',
-        noteBkgColor: '#f8fafc',
+        noteBkgColor: '#fffdf5',         // Lightest cream
         noteTextColor: '#020617',
         noteBorderColor: '#73a9c2'
       }
@@ -360,6 +401,7 @@ export class DocsPageComponent {
   });
 
   markdownContent = signal<string>('');
+  sourcePath = signal<string | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
 
@@ -394,6 +436,7 @@ export class DocsPageComponent {
   private loadMarkdown(section: string, page: string): void {
     this.loading.set(true);
     this.error.set(null);
+    this.sourcePath.set(null);
 
     // Try to load from assets
     const path = `assets/docs/${section}/${page}.md`;
@@ -411,11 +454,19 @@ export class DocsPageComponent {
         next: (content) => {
           if (content) {
             let processedContent = content;
+
+            // Parse source metadata (Source: path/to/file)
+            const sourceMatch = content.match(/^Source:\s*(.+)$/m);
+            if (sourceMatch) {
+              this.sourcePath.set(sourceMatch[1].trim());
+              processedContent = processedContent.replace(/^Source:\s*.+$/m, '').trim();
+            }
+
             if (section === 'architecture' && page === 'overview') {
               // Strip out the System Diagram section + mermaid block
               // We'll replace it with the component
               // Regex matches "## System Diagram" until "## Layer Responsibilities"
-              processedContent = content.replace(/## System Diagram[\s\S]*?(?=## Layer Responsibilities)/, '');
+              processedContent = processedContent.replace(/## System Diagram[\s\S]*?(?=## Layer Responsibilities)/, '');
             }
             this.markdownContent.set(processedContent);
             this.loading.set(false);
@@ -429,5 +480,18 @@ export class DocsPageComponent {
           this.loading.set(false);
         }
       });
+  }
+
+  viewSource(): void {
+    const path = this.sourcePath();
+    if (path) {
+      // In a real app, this could open GitHub or a local editor protocol
+      // For now, we'll just log it or provide a visual hint
+      console.log('Viewing source at:', path);
+
+      // If we assume a GitHub repo:
+      const githubRepo = 'https://github.com/maraxen/pylabpraxis/blob/main/';
+      window.open(`${githubRepo}${path}`, '_blank');
+    }
   }
 }

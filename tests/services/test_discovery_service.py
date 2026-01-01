@@ -123,7 +123,7 @@ def test_extract_protocol_definitions_with_complex_signature(discovery_service, 
     assert parameters[1]["name"] == "b"
     assert parameters[1]["type_hint"] == "str"
     assert parameters[1]["optional"]
-    assert parameters[1]["default_value_repr"] == "'hello'"
+    assert parameters[1]["default_value_repr"] == '"hello"'
     assert parameters[2]["name"] == "c"
     assert parameters[2]["type_hint"] == "Optional[float]"
     assert parameters[2]["optional"]
@@ -154,7 +154,7 @@ def test_extract_protocol_definitions_with_pylabrobot_resource(discovery_service
     assets = definitions[0]["assets"]
     assert len(assets) == 1
     assert assets[0]["name"] == "plate"
-    assert assets[0]["type_hint"] == "Plate"
+    assert assets[0]["type_hint_str"] == "Plate"
 
 
 def test_extract_protocol_definitions_with_invalid_syntax(discovery_service, tmp_path):
@@ -279,11 +279,20 @@ async def test_discover_and_upsert_protocols_import_error(
 
 @pytest.mark.asyncio
 async def test_discover_and_sync_all_definitions(
-    discovery_service: DiscoveryService,
+    # discovery_service: DiscoveryService, # Don't use the fixture
+    mock_protocol_service: MagicMock,
     mock_resource_service: MagicMock,
     mock_machine_service: MagicMock,
 ):
     """Test that all definitions are discovered and synced."""
+    # Create service WITHOUT factory to force use of injected mocks
+    discovery_service = DiscoveryService(
+        db_session_factory=None,
+        protocol_definition_service=mock_protocol_service,
+        resource_type_definition_service=mock_resource_service,
+        machine_type_definition_service=mock_machine_service,
+    )
+
     # Mock discover_and_upsert_protocols since it's called internally
     # and we don't want to actually run file scanning in this unit test
     with patch.object(

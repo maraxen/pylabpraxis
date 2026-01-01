@@ -8,11 +8,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
 import { AssetService } from '../../services/asset.service';
-import { MachineDefinition, ResourceDefinition } from '../../models/asset.models';
+import { ResourceDefinition } from '../../models/asset.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { getMachineCategoryTooltip, getPropertyTooltip } from '@shared/constants/resource-tooltips';
+import { getPropertyTooltip } from '@shared/constants/resource-tooltips';
+import { MachineDefinitionAccordionComponent } from '../machine-definition-accordion/machine-definition-accordion.component';
 
 @Component({
   selector: 'app-definitions-list',
@@ -26,117 +27,86 @@ import { getMachineCategoryTooltip, getPropertyTooltip } from '@shared/constants
     MatInputModule,
     MatFormFieldModule,
     MatTabsModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    MachineDefinitionAccordionComponent
   ],
   template: `
     <div class="definitions-list-container">
       <mat-tab-group animationDuration="0ms">
-        <mat-tab label="Machine Definitions">
-          <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Filter Machine Definitions</mat-label>
-            <input matInput [formControl]="machineFilterControl">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-
-          <table mat-table [dataSource]="filteredMachineDefinitions()" class="mat-elevation-z2">
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef> Name </th>
-              <td mat-cell *matCellDef="let def"> {{ def.name }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="category">
-              <th mat-header-cell *matHeaderCellDef> Category </th>
-              <td mat-cell *matCellDef="let def">
-                <span [matTooltip]="getMachineCategoryTooltip(def.machine_category)">
-                  {{ def.machine_category || 'N/A' }}
-                </span>
-              </td>
-            </ng-container>
-
-            <ng-container matColumnDef="manufacturer">
-              <th mat-header-cell *matHeaderCellDef> Manufacturer </th>
-              <td mat-cell *matCellDef="let def"> {{ def.manufacturer || 'N/A' }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="model">
-              <th mat-header-cell *matHeaderCellDef> Model </th>
-              <td mat-cell *matCellDef="let def"> {{ def.model || 'N/A' }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef> Actions </th>
-              <td mat-cell *matCellDef="let def">
-                <button mat-icon-button color="primary" matTooltip="View Details">
-                  <mat-icon>info</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedMachineColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedMachineColumns;"></tr>
-
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="5">No machine definitions matching the filter "{{ machineFilterControl.value }}"</td>
-            </tr>
-          </table>
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <div class="flex items-center gap-2">
+              <mat-icon class="!w-5 !h-5 !text-[18px]">precision_manufacturing</mat-icon>
+              <span>Machine Types</span>
+            </div>
+          </ng-template>
+          <app-machine-definition-accordion></app-machine-definition-accordion>
         </mat-tab>
 
-        <mat-tab label="Resource Definitions">
-          <mat-form-field appearance="outline" class="filter-field">
-            <mat-label>Filter Resource Definitions</mat-label>
-            <input matInput [formControl]="resourceFilterControl">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <div class="flex items-center gap-2">
+              <mat-icon class="!w-5 !h-5 !text-[18px]">science</mat-icon>
+              <span>Resource Types</span>
+            </div>
+          </ng-template>
+          <div class="resource-tab-content">
+            <mat-form-field appearance="outline" class="filter-field">
+              <mat-label>Filter Resource Definitions</mat-label>
+              <input matInput [formControl]="resourceFilterControl">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
 
-          <table mat-table [dataSource]="filteredResourceDefinitions()" class="mat-elevation-z2">
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef> Name </th>
-              <td mat-cell *matCellDef="let def"> {{ def.name }} </td>
-            </ng-container>
+            <table mat-table [dataSource]="filteredResourceDefinitions()" class="mat-elevation-z2">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef> Name </th>
+                <td mat-cell *matCellDef="let def"> {{ def.name }} </td>
+              </ng-container>
 
-            <ng-container matColumnDef="type">
-              <th mat-header-cell *matHeaderCellDef> Type </th>
-              <td mat-cell *matCellDef="let def"> {{ def.resource_type || 'N/A' }} </td>
-            </ng-container>
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef> Type </th>
+                <td mat-cell *matCellDef="let def"> {{ def.resource_type || 'N/A' }} </td>
+              </ng-container>
 
-            <ng-container matColumnDef="manufacturer">
-              <th mat-header-cell *matHeaderCellDef> Manufacturer </th>
-              <td mat-cell *matCellDef="let def"> {{ def.manufacturer || 'N/A' }} </td>
-            </ng-container>
+              <ng-container matColumnDef="manufacturer">
+                <th mat-header-cell *matHeaderCellDef> Manufacturer </th>
+                <td mat-cell *matCellDef="let def"> {{ def.manufacturer || 'N/A' }} </td>
+              </ng-container>
 
-            <ng-container matColumnDef="model">
-              <th mat-header-cell *matHeaderCellDef> Model </th>
-              <td mat-cell *matCellDef="let def"> {{ def.model || 'N/A' }} </td>
-            </ng-container>
+              <ng-container matColumnDef="model">
+                <th mat-header-cell *matHeaderCellDef> Model </th>
+                <td mat-cell *matCellDef="let def"> {{ def.model || 'N/A' }} </td>
+              </ng-container>
 
-            <ng-container matColumnDef="consumable">
-              <th mat-header-cell *matHeaderCellDef> Consumable </th>
-              <td mat-cell *matCellDef="let def">
-                <mat-icon
-                  [color]="def.is_consumable ? 'primary' : 'warn'"
-                  [matTooltip]="def.is_consumable ? getPropertyTooltip('consumable') : 'Non-consumable: can be reused across protocols'"
-                >
-                  {{ def.is_consumable ? 'check_circle' : 'cancel' }}
-                </mat-icon>
-              </td>
-            </ng-container>
+              <ng-container matColumnDef="consumable">
+                <th mat-header-cell *matHeaderCellDef> Consumable </th>
+                <td mat-cell *matCellDef="let def">
+                  <mat-icon
+                    [color]="def.is_consumable ? 'primary' : 'warn'"
+                    [matTooltip]="def.is_consumable ? getPropertyTooltip('consumable') : 'Non-consumable: can be reused across protocols'"
+                  >
+                    {{ def.is_consumable ? 'check_circle' : 'cancel' }}
+                  </mat-icon>
+                </td>
+              </ng-container>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef> Actions </th>
-              <td mat-cell *matCellDef="let def">
-                <button mat-icon-button color="primary" matTooltip="View Details">
-                  <mat-icon>info</mat-icon>
-                </button>
-              </td>
-            </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef> Actions </th>
+                <td mat-cell *matCellDef="let def">
+                  <button mat-icon-button color="primary" matTooltip="View Details">
+                    <mat-icon>info</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedResourceColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedResourceColumns;"></tr>
+              <tr mat-header-row *matHeaderRowDef="displayedResourceColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedResourceColumns;"></tr>
 
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="6">No resource definitions matching the filter "{{ resourceFilterControl.value }}"</td>
-            </tr>
-          </table>
+              <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell" colspan="6">No resource definitions matching the filter "{{ resourceFilterControl.value }}"</td>
+              </tr>
+            </table>
+          </div>
         </mat-tab>
       </mat-tab-group>
     </div>
@@ -170,29 +140,14 @@ import { getMachineCategoryTooltip, getPropertyTooltip } from '@shared/constants
 export class DefinitionsListComponent {
   private assetService = inject(AssetService);
 
-  machineDefinitions = signal<MachineDefinition[]>([]);
-  filteredMachineDefinitions = signal<MachineDefinition[]>([]);
-  machineFilterControl = new FormControl('', { nonNullable: true });
-
   resourceDefinitions = signal<ResourceDefinition[]>([]);
   filteredResourceDefinitions = signal<ResourceDefinition[]>([]);
   resourceFilterControl = new FormControl('', { nonNullable: true });
 
-  displayedMachineColumns: string[] = ['name', 'category', 'manufacturer', 'model', 'actions'];
   displayedResourceColumns: string[] = ['name', 'type', 'manufacturer', 'model', 'consumable', 'actions'];
 
   constructor() {
-    this.loadMachineDefinitions();
     this.loadResourceDefinitions();
-
-    this.machineFilterControl.valueChanges.pipe(
-      takeUntilDestroyed(),
-      debounceTime(300),
-      distinctUntilChanged(),
-      startWith('')
-    ).subscribe(filterValue => {
-      this.applyMachineFilter(filterValue);
-    });
 
     this.resourceFilterControl.valueChanges.pipe(
       takeUntilDestroyed(),
@@ -204,31 +159,6 @@ export class DefinitionsListComponent {
     });
   }
 
-  private loadMachineDefinitions(): void {
-    this.assetService.getMachineDefinitions().subscribe(
-      (data) => {
-        this.machineDefinitions.set(data);
-        this.applyMachineFilter(this.machineFilterControl.value);
-      },
-      (error) => {
-        console.error('Error fetching machine definitions:', error);
-        // TODO: Integrate global error handling / snackbar
-      }
-    );
-  }
-
-  private applyMachineFilter(filterValue: string): void {
-    const lowerCaseFilter = filterValue.toLowerCase();
-    this.filteredMachineDefinitions.set(
-      this.machineDefinitions().filter(def =>
-        def.name.toLowerCase().includes(lowerCaseFilter) ||
-        def.machine_category?.toLowerCase().includes(lowerCaseFilter) ||
-        def.manufacturer?.toLowerCase().includes(lowerCaseFilter) ||
-        def.model?.toLowerCase().includes(lowerCaseFilter)
-      )
-    );
-  }
-
   private loadResourceDefinitions(): void {
     this.assetService.getResourceDefinitions().subscribe(
       (data) => {
@@ -237,7 +167,6 @@ export class DefinitionsListComponent {
       },
       (error) => {
         console.error('Error fetching resource definitions:', error);
-        // TODO: Integrate global error handling / snackbar
       }
     );
   }
@@ -252,10 +181,6 @@ export class DefinitionsListComponent {
         def.model?.toLowerCase().includes(lowerCaseFilter)
       )
     );
-  }
-
-  getMachineCategoryTooltip(category: string | undefined): string {
-    return category ? getMachineCategoryTooltip(category) : '';
   }
 
   getPropertyTooltip(property: string): string {

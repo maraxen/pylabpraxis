@@ -121,16 +121,34 @@ class ScheduleEntryResponse(PraxisBaseModel):
   status: ScheduleStatusEnum
   priority: int
   scheduled_at: datetime | None
-  started_at: datetime | None
-  completed_at: datetime | None
-  estimated_duration_ms: int | None
-  estimated_resource_count: int | None
-  analysis_details: dict[str, Any] | None = Field(alias="analysis_details_json")
-  scheduling_metadata: dict[str, Any] | None = Field(
-    alias="scheduling_metadata_json",
+  # Map ORM field names to response field names via aliases
+  started_at: datetime | None = Field(
+    default=None,
+    validation_alias="execution_started_at",
   )
-  error_details: dict[str, Any] | None = Field(alias="error_details_json")
-  status_details: str | None
+  completed_at: datetime | None = Field(
+    default=None,
+    validation_alias="execution_completed_at",
+  )
+  estimated_duration_ms: int | None = None
+  estimated_resource_count: int | None = Field(
+    default=None,
+    validation_alias="required_asset_count",
+  )
+  # These fields may not exist in ORM - make them optional with defaults
+  analysis_details: dict[str, Any] | None = Field(
+    default=None,
+    validation_alias="asset_requirements_json",
+  )
+  scheduling_metadata: dict[str, Any] | None = Field(
+    default=None,
+    validation_alias="user_params_json",
+  )
+  error_details: str | None = Field(
+    default=None,
+    validation_alias="last_error_message",
+  )
+  status_details: str | None = None
   resource_reservations: list[ResourceReservationResponse] | None = None
 
 
@@ -358,7 +376,7 @@ class ScheduleEntryCreate(PraxisBaseModel):
 
   model_config = ConfigDict(from_attributes=True)
 
-  name: str = Field(..., description="Unique name for the schedule entry")
+  # name field is inherited from PraxisBaseModel with default_factory
 
   protocol_run_accession_id: uuid.UUID = Field(
     ...,
@@ -395,3 +413,49 @@ class ScheduleEntryUpdate(PraxisBaseModel):
   last_error_message: str | None = None
   execution_started_at: datetime | None = None
   execution_completed_at: datetime | None = None
+
+
+class AssetReservationResponse(PraxisBaseModel):
+
+  """Response model for asset reservations (from AssetReservationOrm)."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  protocol_run_accession_id: uuid.UUID
+  schedule_entry_accession_id: uuid.UUID
+  asset_type: str
+  asset_name: str
+  asset_accession_id: uuid.UUID | None = None
+  status: ResourceReservationStatus
+  redis_lock_key: str
+  reserved_at: datetime | None = None
+  released_at: datetime | None = None
+  expires_at: datetime | None = None
+  required_capabilities: dict[str, Any] | None = Field(
+    default=None,
+    alias="required_capabilities_json",
+  )
+  estimated_usage_duration_ms: int | None = None
+
+
+class AssetReservationListResponse(PraxisBaseModel):
+
+  """Response model for listing asset reservations."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  reservations: list[AssetReservationResponse]
+  total_count: int
+  active_count: int
+
+
+class ReleaseReservationResponse(PraxisBaseModel):
+
+  """Response model for releasing an asset reservation."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  asset_key: str
+  released: bool
+  message: str
+  released_count: int = 0

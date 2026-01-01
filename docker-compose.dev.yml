@@ -1,0 +1,20 @@
+# Development override - ephemeral data (no persistent volumes)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# This configuration uses anonymous volumes instead of named volumes.
+# Data is automatically deleted when containers are removed with `down -v`.
+
+services:
+  keycloak-postgres:
+    # Override named volume with anonymous volume (deleted on `down -v`)
+    volumes:
+      - /var/lib/postgresql/data
+
+  praxis-db:
+    # Override named volume with anonymous volume (deleted on `down -v`)
+    volumes:
+      - /var/lib/postgresql/data
+
+  redis:
+    # Redis is already ephemeral by default, but ensure no persistence
+    command: redis-server --save "" --appendonly no

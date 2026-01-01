@@ -70,28 +70,25 @@ The navigation rail currently shows only icons with small labels beneath. For fe
 
 ## Protocol Queue and Reservation Management
 
-**Added:** 2025-12-24  
-**Priority:** High  
+**Added:** 2025-12-24
+**Updated:** 2025-12-31
+**Priority:** ~~High~~ Low (Core issues resolved)
 **Area:** Backend - Scheduler / Protocol Execution
 
-**Issue:**
-The scheduler uses **in-memory** asset reservations (`_asset_reservations` dict). When a run is scheduled, assets are reserved in memory. If the server restarts, these reservations are lost BUT the database still shows runs in `queued` status. This causes:
+**Original Issue:**
+The scheduler used **in-memory** asset reservations. Server restarts caused orphaned reservations and "Asset already reserved" errors.
 
-1. Assets remain "orphaned" as reserved after server restart
-2. New runs fail with "Asset already reserved" errors
-3. No visibility into current reservation state
+**Status: MOSTLY RESOLVED**
 
-**Immediate Workaround:**
-Restart the backend server to clear stale in-memory reservations.
+Core reservation persistence and inspection are now implemented:
 
-**Improvements Needed:**
+- [x] **Persistent Reservations**: `AssetReservationOrm` is now the source of truth. The in-memory `_asset_reservations_cache` is just a performance cache.
+- [x] **Startup Recovery**: `recover_stale_runs()` scans for stuck `QUEUED`/`PREPARING` runs on startup and marks them as `FAILED`.
+- [x] **Reservation Inspection API**: `GET /api/v1/scheduler/reservations` lists all active reservations with filtering options.
+- [x] **Reservation Clearing API**: `DELETE /api/v1/scheduler/reservations/{asset_key}` manually releases stuck reservations.
 
-- [ ] **Reservation Inspection API** (Admin only): `GET /scheduler/reservations` to view current in-memory reservations
-- [ ] **Reservation Clearing API** (Admin only): `DELETE /scheduler/reservations/{asset_key}` to manually release stuck reservations
-- [ ] **Startup Recovery**: On server startup, scan for runs stuck in `QUEUED`/`PREPARING` status and either:
-  - Resume scheduling them
-  - Mark them as `FAILED` with appropriate message
-- [ ] **Persistent Reservations**: Store reservations in database with `AssetReservationOrm` instead of in-memory dict
+**Remaining Items (Lower Priority):**
+
 - [ ] **User Permissions for Run Management**:
   - Admin users can cancel any run
   - Regular users can only cancel their own runs
@@ -99,7 +96,7 @@ Restart the backend server to clear stale in-memory reservations.
 
 **Files Affected:**
 
-- `praxis/backend/core/scheduler.py` - In-memory `_asset_reservations` dict
-- `praxis/backend/api/protocols.py` - Cancel endpoint with permission checks
-- `praxis/backend/api/scheduler.py` - Reservation inspection endpoints
-- `praxis/backend/models/orm/schedule.py` - `AssetReservationOrm` for persistent reservations
+- `praxis/backend/core/scheduler.py` - Now uses `AssetReservationOrm` for persistence
+- `praxis/backend/api/scheduler.py` - New reservation inspection/clearing endpoints
+- `praxis/backend/models/orm/schedule.py` - `AssetReservationOrm` model
+- `praxis/backend/models/pydantic_internals/scheduler.py` - Response models for reservation APIs

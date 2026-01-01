@@ -84,10 +84,10 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
     .command-palette-container {
       width: 600px;
       max-width: 90vw;
-      background: var(--theme-surface-elevated);
+      background: var(--mat-sys-surface-container-high);
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: var(--glass-shadow);
+      box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
       border: 1px solid var(--theme-border);
     }
 
@@ -131,13 +131,17 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
 
       button {
         transition: background-color 0.15s ease;
+
+        &:hover:not(.selected-item) {
+          background-color: var(--mat-sys-surface-variant) !important;
+        }
       }
 
       .selected-item {
-        /* Distinct background */
-        background-color: var(--mat-sys-secondary-container) !important;
+        /* Distinct background using primary color with transparency */
+        background-color: rgba(237, 122, 155, 0.15) !important;
         position: relative;
-        
+
         /* Side bar indicator */
         &::before {
           content: '';
@@ -146,24 +150,30 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
           top: 0;
           bottom: 0;
           width: 4px;
-          background-color: var(--mat-sys-on-secondary-container); 
+          background-color: var(--primary-color, #ED7A9B);
           border-radius: 0 4px 4px 0;
         }
 
         /* Ensure text contrast is correct */
-        &, .mat-mdc-list-item-title, .mat-icon {
-           color: var(--mat-sys-on-secondary-container) !important;
-           font-weight: 500; /* Make text slightly bolder */
-        }
-        
-        mat-icon {
-          color: var(--mat-sys-on-secondary-container) !important;
+        .mat-mdc-list-item-title {
+           color: var(--theme-text-primary) !important;
+           font-weight: 600 !important;
         }
 
-        /* Ensure description also has correct contrast, maybe slightly diminished */
+        mat-icon {
+          color: var(--primary-color, #ED7A9B) !important;
+        }
+
+        /* Description with good contrast */
         .description {
-          color: var(--mat-sys-on-secondary-container) !important;
-          opacity: 0.8;
+          color: var(--theme-text-secondary) !important;
+        }
+
+        /* Highlight shortcut badge */
+        .shortcut-badge {
+          background: rgba(237, 122, 155, 0.2) !important;
+          border-color: var(--primary-color, #ED7A9B) !important;
+          color: var(--primary-color, #ED7A9B) !important;
         }
       }
 

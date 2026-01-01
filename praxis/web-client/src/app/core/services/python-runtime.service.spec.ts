@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { PythonRuntimeService } from './python-runtime.service';
+import { firstValueFrom } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('PythonRuntimeService', () => {
@@ -28,9 +29,9 @@ describe('PythonRuntimeService', () => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(PythonRuntimeService);
   });
-  
+
   afterEach(() => {
-     vi.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should be created', () => {
@@ -45,32 +46,37 @@ describe('PythonRuntimeService', () => {
     // Simulate init complete
     const initCall = mockWorker.postMessage.mock.calls[0];
     const initId = initCall[0].id;
-    
+
     mockWorker.onmessage({ data: { type: 'INIT_COMPLETE', id: initId } });
-    
+
     // Allow promise microtasks to resolve so isReady becomes true
     await new Promise(resolve => setTimeout(resolve, 0));
-    
+
     expect(service.isReady()).toBe(true);
-    
+
     // Clear previous calls to focus on EXEC
     mockWorker.postMessage.mockClear();
 
+    // Mock crypto.randomUUID
+    const uuidSpy = vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid' as any);
+
     // Now execute
-    const execPromise = service.execute('print("hello")');
-    
+    const execPromise = firstValueFrom(service.execute('print("hello")'));
+
     // Allow ensuringReady to pass
     await new Promise(resolve => setTimeout(resolve, 0));
-    
+
     const execCall = mockWorker.postMessage.mock.calls[0];
     expect(execCall[0].type).toBe('EXEC');
+    expect(execCall[0].id).toBe('test-uuid');
     expect(execCall[0].payload).toEqual({ code: 'print("hello")' });
-    
+
     // Simulate response
-    const execId = execCall[0].id;
-    mockWorker.onmessage({ data: { type: 'EXEC_COMPLETE', id: execId, payload: 'hello' } });
-    
+    mockWorker.onmessage({ data: { type: 'EXEC_COMPLETE', id: 'test-uuid', payload: 'hello' } });
+
     const result = await execPromise;
-    expect(result).toBe('hello');
+    expect(result).toEqual({ type: 'result', content: 'hello' });
+
+    uuidSpy.mockRestore();
   });
 });

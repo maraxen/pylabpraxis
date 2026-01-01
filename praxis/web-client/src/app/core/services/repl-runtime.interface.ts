@@ -5,6 +5,25 @@ export interface ReplOutput {
     content: string;
 }
 
+/**
+ * Structured completion item with metadata from Jedi.
+ */
+export interface CompletionItem {
+    name: string;
+    type: 'function' | 'class' | 'module' | 'instance' | 'statement' | 'param' | 'keyword' | string;
+    description?: string;
+}
+
+/**
+ * Function signature information for parameter hints.
+ */
+export interface SignatureInfo {
+    name: string;
+    params: string[];
+    index: number; // Current parameter index
+    docstring?: string;
+}
+
 export interface ReplRuntime {
     /**
      * Connect to the runtime environment (WebSocket or Web Worker).
@@ -29,6 +48,12 @@ export interface ReplRuntime {
 
     /**
      * Get tab completions for the code at the cursor position.
+     * Returns structured completion items with type metadata.
      */
-    getCompletions(code: string, cursor: number): Promise<string[]>;
+    getCompletions(code: string, cursor: number): Promise<CompletionItem[]>;
+
+    /**
+     * Get function signature help for the code at the cursor position.
+     */
+    getSignatures?(code: string, cursor: number): Promise<SignatureInfo[]>;
 }

@@ -5,8 +5,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { AppStore } from '@core/store/app.store';
-import { StatusBarComponent } from '@core/components/status-bar/status-bar.component';
 import { ModeService } from '@core/services/mode.service';
+import { ExecutionService } from '@features/run-protocol/services/execution.service';
+import { ExecutionStatus } from '@features/run-protocol/models/execution.models';
 import { filter } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 
@@ -20,15 +21,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
     RouterLinkActive,
     MatIconModule,
     MatTooltipModule,
-    MatButtonModule,
-    StatusBarComponent
+    MatButtonModule
   ],
   template: `
     <div class="shell-layout">
       <!-- Thin Sidebar Rail -->
       <nav class="sidebar-rail">
         <!-- Logo / Home -->
-        <a class="nav-item logo-item" [routerLink]="modeService.isBrowserMode() ? '/app/home' : '/'" matTooltip="Home" matTooltipPosition="right">
+        <a class="nav-item logo-item" [routerLink]="modeService.isBrowserMode() ? '/app/home' : (store.auth().isAuthenticated ? '/app/home' : '/')" matTooltip="Home" matTooltipPosition="right">
           <div class="logo-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
@@ -42,6 +42,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
         <a class="nav-item" routerLink="/app/run" routerLinkActive="active" matTooltip="Run Protocol" matTooltipPosition="right">
           <mat-icon>play_circle</mat-icon>
           <span class="nav-label">Run</span>
+        </a>
+        <a class="nav-item" routerLink="/app/monitor" routerLinkActive="active" matTooltip="Execution Monitor" matTooltipPosition="right">
+          <mat-icon>monitor_heart</mat-icon>
+          <span class="nav-label">Monitor</span>
         </a>
 
         <div class="nav-divider"></div>
@@ -92,34 +96,26 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
         <div class="nav-divider"></div>
 
-        <!-- Toggles -->
-        @if (isInApp()) {
-          <button
-            class="nav-item control-btn"
-            [class.active]="store.simulationMode()"
-            (click)="store.toggleSimulationMode()"
-            [matTooltip]="store.simulationMode() ? 'Simulation Mode ON' : 'LIVE Hardware Mode'"
-            matTooltipPosition="right">
-            <mat-icon>{{ store.simulationMode() ? 'science' : 'precision_manufacturing' }}</mat-icon>
-            <span class="nav-label">{{ store.simulationMode() ? 'Sim' : 'Live' }}</span>
-          </button>
-        }
 
         <button
-          class="nav-item control-btn"
+          class="nav-item control-btn theme-toggle"
           (click)="cycleTheme()"
           [matTooltip]="'Theme: ' + (store.theme() | titlecase)"
           matTooltipPosition="right">
           <mat-icon>{{ themeIcon() }}</mat-icon>
-          <span class="nav-label">Theme</span>
+          <span class="nav-label small">{{ store.theme() }}</span>
         </button>
 
-        @if (modeService.isBrowserMode()) {
-          <div class="mode-badge" [matTooltip]="'Running in ' + modeService.modeLabel() + ' mode'" matTooltipPosition="right">
-            <mat-icon>{{ modeService.isDemoMode() ? 'science' : 'cloud_off' }}</mat-icon>
-            <span class="nav-label">{{ modeService.modeLabel() }}</span>
-          </div>
-        } @else if (store.auth().isAuthenticated) {
+        <div 
+          class="mode-badge" 
+          [class]="systemStatus().color"
+          [matTooltip]="systemStatus().message" 
+          matTooltipPosition="right">
+          <mat-icon>{{ systemStatus().icon }}</mat-icon>
+          <span class="nav-label">{{ modeService.modeLabel() }}</span>
+        </div>
+
+        @if (store.auth().isAuthenticated) {
           <button
             class="nav-item control-btn"
             (click)="logout()"
@@ -128,7 +124,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
             <mat-icon>logout</mat-icon>
             <span class="nav-label">Logout</span>
           </button>
-        } @else {
+        } @else if (!modeService.isBrowserMode()) {
           <a
             class="nav-item"
             routerLink="/login"
@@ -145,9 +141,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
         <main class="main-content">
           <router-outlet></router-outlet>
         </main>
-        @if (isInApp()) {
-          <app-status-bar></app-status-bar>
-        }
       </div>
     </div>
   `,
@@ -274,10 +267,37 @@ import { toSignal } from '@angular/core/rxjs-interop';
       height: 56px;
       border-radius: 12px;
       margin: 2px 0;
-      background: var(--mat-sys-tertiary-container);
-      border: 1px solid var(--mat-sys-tertiary);
-      color: var(--mat-sys-on-tertiary-container);
+      background: var(--mat-sys-surface-container-high);
+      border: 1px solid var(--mat-sys-outline-variant);
+      color: var(--mat-sys-on-surface-variant);
       gap: 2px;
+    }
+
+    .mode-badge.good {
+      background: rgba(76, 175, 80, 0.15);
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    .mode-badge.attention {
+      background: rgba(255, 152, 0, 0.15);
+      border-color: #ff9800;
+      color: #ff9800;
+    }
+
+    .mode-badge.problem {
+      background: rgba(244, 67, 54, 0.15);
+      border-color: #f44336;
+      color: #f44336;
+    }
+
+    .theme-toggle {
+      height: 48px;
+    }
+
+    .nav-label.small {
+      font-size: 8px;
+      opacity: 0.6;
     }
 
     .mode-badge mat-icon {
@@ -333,6 +353,39 @@ export class UnifiedShellComponent {
   store = inject(AppStore);
   router = inject(Router);
   modeService = inject(ModeService);
+  executionService = inject(ExecutionService);
+
+  readonly systemStatus = computed(() => {
+    const isBrowser = this.modeService.isBrowserMode();
+    const isConnected = this.executionService.isConnected();
+    const run = this.executionService.currentRun();
+    const mode = this.modeService.modeLabel();
+
+    // Problem State: Disconnected (non-browser) or run failed
+    if ((!isBrowser && !isConnected && (mode === 'Production' || mode === 'Lite')) || run?.status === ExecutionStatus.FAILED) {
+      return {
+        color: 'problem',
+        icon: 'error_outline',
+        message: run?.status === ExecutionStatus.FAILED ? `Run Failed: ${run.protocolName}` : 'System Disconnected'
+      };
+    }
+
+    // Attention State: Running, pending or cancelled
+    if (run?.status === ExecutionStatus.RUNNING || run?.status === ExecutionStatus.PENDING || run?.status === ExecutionStatus.CANCELLED) {
+      return {
+        color: 'attention',
+        icon: run.status === ExecutionStatus.RUNNING ? 'running_with_errors' : 'hourglass_empty',
+        message: `Protocol ${run.status}: ${run.protocolName}`
+      };
+    }
+
+    // Good State: Everything else
+    return {
+      color: 'good',
+      icon: isBrowser ? 'cloud_done' : 'check_circle_outline',
+      message: `System Ready - ${mode} Mode`
+    };
+  });
 
   // Check if current route is in /app/*
   isInApp(): boolean {

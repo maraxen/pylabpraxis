@@ -64,7 +64,54 @@
   * `python.worker.ts`: RAW_IO and RAW_IO_RESPONSE message handling.
   * `PythonRuntimeService.handleRawIO()`: Routes commands to `HardwareDiscoveryService`.
   * `HardwareDiscoveryService`: Added `openPort()`, `closePort()`, `writeToPort()`, `readFromPort()`, `readLineFromPort()`.
-* [ ] **6. E2E Test**: Pending hardware testing (scheduled for tomorrow).
+* [ ] **6. E2E Test**: Pending hardware testing - **⏳ Deferred (user unavailable)**
+
+### Browser SQL with Preloaded DB (P2)
+
+* [ ] **SQL.js Configuration**:
+  * Use Pyodide SQL.js with a preloaded `.db` file.
+  * Load from persistent file in the repo.
+  * Helps with GitHub Pages deployment.
+
+* [ ] **Database Contents**:
+  * Capability type definitions (synced from PLR).
+  * All production data EXCEPT scheduling.
+  * Protocol definitions, resources, machines, decks.
+
+* [ ] **Implementation**:
+  * Create script to generate production-like `.db` file.
+  * Load on browser mode initialization.
+  * Ensure CST (capability schema types) are validated and up-to-date.
+
+### Enhanced SqliteService - Full Browser Backend (P2)
+
+**Goal**: Expand `SqliteService` to provide full backend functionality in browser mode without relying on mock data.
+
+* [ ] **Database Schema Parity (Automated)**:
+  * **Single Source of Truth**: Use Python SQLAlchemy ORM models as the definition.
+  * **Codegen Pipeline**: Create a build script that:
+    1. Introspects SQLAlchemy models to generate a `schema.sql` (SQLite DDL).
+    2. Generates TypeScript interfaces (`schema.d.ts`) matching the ORM models.
+  * Update `SqliteService` to initialize from this generated `schema.sql`.
+
+* [ ] **TypeScript Service Layer**:
+  * Implement CRUD operations for all entities (`createProtocolRun`, `updateMachine`, etc.).
+  * Port essential business logic from Python services to TypeScript.
+  * Must handle relationships (e.g., protocol runs → protocol definitions).
+
+* [ ] **Real Data Flow**:
+  * When user starts a protocol in browser mode, create actual `ProtocolRun` record.
+  * Track run status updates in sql.js.
+  * Execution Monitor reads from sql.js instead of mock data.
+
+* [ ] **Persistence**:
+  * Export sql.js database to IndexedDB for cross-session persistence.
+  * Auto-load on app startup.
+  * Optional: Export/Import database files.
+
+* [ ] **Testing**:
+  * Unit tests for TypeScript service layer.
+  * E2E tests for browser mode data flow.
 
 ### State Persistence
 

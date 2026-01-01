@@ -179,7 +179,17 @@ Added `capabilities_config` field to `DiscoveredClass` for carrying schema throu
 - Updated `machine-dialog.component.ts` with JSON capability input field
 - Added TypeScript interfaces for `MachineCapabilityConfigSchema` and `CapabilityConfigField`
 - User can specify `user_configured_capabilities` as JSON during machine creation
-- **Future**: Dynamic form generation from capability schema
+
+### 3.4 Dynamic Form Generation ✅ COMPLETED 2025-12-30
+
+> **See**: [dynamic_form_generation.md](./dynamic_form_generation.md) for full implementation plan.
+
+Replace JSON textarea with auto-generated forms:
+
+- [x] Backend: Create capability config templates per machine type
+- [x] Backend: Generate schemas during PLR static analysis
+- [x] Frontend: Create `DynamicCapabilityFormComponent`
+- [x] Frontend: Integrate into MachineDialogComponent
 
 ---
 
@@ -214,23 +224,42 @@ Added `capabilities_config` field to `DiscoveredClass` for carrying schema throu
 
 ---
 
-## Phase 5: LibCST Protocol Inspection - ✅ PHASE 1 COMPLETE 2025-12-30
+## Phase 5: Deep Protocol Inspection - ✅ PHASE 1 COMPLETE 2025-12-30
 
-### 5.1 Protocol Function Parser ✅
+> **Note**: This phase is now aligned with [protocol_inspection.md](./protocol_inspection.md). See that document for detailed implementation status.
 
-Extend static analysis to parse `@protocol` decorated functions:
+### 5.1 Protocol Function Parser ✅ COMPLETE
 
-- Extract parameter types and defaults
-- Identify PLR asset references (`Plate`, `TipRack`, etc.)
-- Build capability requirement graph
+Implemented in `praxis/backend/utils/plr_static_analysis/visitors/protocol_discovery.py`:
 
-### 5.2 Asset Requirement Extraction
+- [x] `ProtocolFunctionVisitor(cst.CSTVisitor)` for LibCST-based parsing
+- [x] Handle `@protocol_function` decorator detection (simple name, call, attribute)
+- [x] Extract function parameters with type hints
+- [x] Extract function docstrings
+- [x] Identify PLR asset parameters vs regular parameters
+- [x] Build `ProtocolFunctionInfo` Pydantic model
+- [x] Discovery service updated to use LibCST (replaced AST-based `ProtocolVisitor`)
 
-```python
-class ProtocolAssetExtractor:
-    def extract_requirements(self, protocol_file: Path) -> ProtocolRequirements:
-        """Parse protocol and extract all PLR asset requirements."""
-        # Returns: required plates, tip racks, machines with capabilities
+### 5.2 Requirements Integration ✅ COMPLETED 2025-12-30
+
+Link protocol discovery to capability matching (see [protocol_inspection.md](./protocol_inspection.md) Phase 2):
+
+- [x] After extracting function metadata, run `ProtocolRequirementExtractor` on function body
+- [x] Store `ProtocolRequirements` in `ProtocolFunctionInfo`
+- [x] ORM: Add `hardware_requirements_json` JSONB field to `FunctionProtocolDefinitionOrm`
+- [x] Add `machine_type` to protocol definition (inferred from requirements)
+
+### 5.3 Call Graph Analysis (Future)
+
+- [ ] Extract function calls within protocol body
+- [ ] Identify nested protocol function calls
+- [ ] Build dependency DAG for protocol execution order
+
+### 5.4 Resource Flow Analysis (Future)
+
+- [ ] Track PLR resource usage through function body
+- [ ] Identify resource allocation/deallocation patterns
+- [ ] Detect potential resource conflicts
 
 ---
 
@@ -249,6 +278,7 @@ class ProtocolAssetExtractor:
 ### 6.3 Placement Validation
 
 - Real-time validation of resource placement on deck based on physical constraints and protocol needs.
+
 ```
 
 ---
@@ -294,6 +324,6 @@ class ProtocolAssetExtractor:
 
 1. ✅ All 15+ PLR machine types discoverable (21 frontends, 70 backends across 15 types)
 2. ✅ Backend-frontend mapping 100% accurate (classification priority fixed)
-3. ✅ User can configure optional capabilities during machine setup (Phase 3 MVP)
+3. ✅ User can configure optional capabilities during machine setup (Phase 3 Complete)
 4. ✅ Protocol requirements match to available hardware (Phase 4 - Complete)
-5. ✅ No runtime PLR imports during discovery (LibCST-based static analysis)
+5. ✅ Deep Protocol Inspection (Phase 5 - Phase 1 & 2 Complete)

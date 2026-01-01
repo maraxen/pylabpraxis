@@ -64,18 +64,28 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
           }
         </div>
 
-        <!-- Definitions Card -->
+        <!-- Registry Card -->
         <div class="group relative bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-2xl p-5 flex items-center gap-4 hover:bg-surface-elevated transition-all cursor-pointer"
-             (click)="navigateTo('definition')">
+             (click)="navigateTo('registry')">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-            <mat-icon class="text-purple-400">library_books</mat-icon>
+            <mat-icon class="text-purple-400">inventory_2</mat-icon>
           </div>
           <div class="flex flex-col">
             <span class="text-2xl font-bold text-sys-text-primary">{{ totalDefinitionsCount() }}</span>
-            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Definitions</span>
+            <span class="text-xs font-medium text-sys-text-tertiary uppercase tracking-wide">Registry Types</span>
+          </div>
+          <div class="absolute top-4 right-4 text-[10px] font-medium text-sys-text-tertiary bg-[var(--mat-sys-surface-variant)] px-2 py-0.5 rounded border border-[var(--theme-border)]">
+            Hardware Definitions
           </div>
         </div>
       </section>
+
+      <!-- Section Labels -->
+      <div class="flex items-center gap-4 px-1">
+        <span class="text-xs font-bold text-sys-text-tertiary uppercase tracking-wider">Inventory</span>
+        <div class="flex-1 h-px bg-[var(--theme-border)]"></div>
+        <span class="text-[10px] text-sys-text-tertiary">What you have</span>
+      </div>
 
       <!-- Main Content Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -101,9 +111,9 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">usb</mat-icon>
                Discover Hardware
              </button>
-             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="navigateTo('definition')">
+             <button mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-secondary !justify-start !px-4 !py-6 hover:!bg-[var(--mat-sys-surface-variant)] hover:!border-primary/50 hover:!text-primary transition-all group" (click)="navigateTo('registry')">
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">search</mat-icon>
-               Browse Definitions
+               Browse Registry
              </button>
           </div>
         </section>
@@ -269,7 +279,7 @@ export class AssetDashboardComponent implements OnInit, OnDestroy {
     );
   }
 
-  navigateTo(type: 'machine' | 'resource' | 'definition') {
+  navigateTo(type: 'machine' | 'resource' | 'registry') {
     this.router.navigate([], {
       queryParams: { type: type },
       queryParamsHandling: 'merge'

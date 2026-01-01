@@ -1,175 +1,225 @@
 # Praxis Development Roadmap
 
-**Last Updated**: 2025-12-30
-**Current Phase**: Architecture Refinement & Asset Management
+**Last Updated**: 2026-01-01
+**Current Phase**: Post-MVP Polish & Merge Preparation
 
 ---
 
-## Strategic Goals
+## Executive Summary
 
-1. **Robust Asset Management**
-    * Move beyond simple CRUD to deep PLR introspection.
-    * Enable "discover hardware" as the primary means of adding machines in Browser Mode.
-        * Differentiate between Frontend (PLR capability) and Backend (Driver) clearly.
-        * Support complex hardware capabilities (channels, optional modules) via proper metadata.
+The `angular_refactor` branch has achieved MVP status for all major features. Remaining work focuses on:
 
-    1. **Application Modes Strategy**
-        * **Browser Mode (Pure)**: Zero-install, runs entirely in browser.
-            * **Runtime**: Pyodide (WASM) running the Python Service Layer.
-            * **Storage**: SQLite-in-WASM (via SQLAlchemy Repository pattern).
-            * **IO Layer**: `WebBridgeBackend` (Python) -> Angular -> WebSerial.
-        * **Demo Mode**: Browser Mode + Pre-loaded "fake" assets/protocols.
-        * **Lite Mode**: SQLite backend, low resource footprint.
-        * **Production Mode**: Full Postgres/Redis/FastAPI stack.
+1. **UI/UX Polish** - Production-ready experience
+2. **Full Implementations** - Completing VMP (stub) features
+3. **Technical Debt** - Critical backend issues
+4. **Pre-Merge Cleanup** - Code quality (Linting, Typing, DRY)
 
-    2. **Static Analysis & Graph Building**
-        * **Tooling**: Use `LibCST` (Python) for robust, safe protocol parsing.
-        * **Goal**: Extract DAGs and metadata without runtime execution risks.
-        * **Decision**: Explicitly NOT rewriting backend in Rust at this stage.
-
-    3. **Visualization Evolution**
-        * **REWRITE**: Transition from "Deck Visualizer" to "Workcell Visualizer".
-    * Remove legacy PLR visualizer components.
-    * Implement configurable, multi-window views for complex workcells.
-
-2. **Interactive REPL**
-    * Complete the PLR REPL implementation.
-    * Finish the terminal UI and keyboard interaction layer.
+> 📊 **See [DEVELOPMENT_MATRIX.md](./DEVELOPMENT_MATRIX.md)** for a complete list of all **105 remaining items** with priority (P1-P4) and difficulty (S/M/L/XL) ratings.
 
 ---
 
-## Priority Matrix
+## Priority 1: Critical (Must Fix Before Merge)
 
-| Area | Critical Items | Backlog |
-|------|----------------|---------|
-| **Asset Management** | PLR Inspection, Hardware Discovery, Capabilities | [backlog/asset_management.md](./backlog/asset_management.md) |
-| **Capability Tracking** | Classification Fix, Machine Type Coverage, User Config | [backlog/capability_tracking.md](./backlog/capability_tracking.md) |
-| **Modes & Deploy** | Browser Mode State, Routing Logic, Auth Strategy | [backlog/modes_and_deployment.md](./backlog/modes_and_deployment.md) |
-| **Visualizer** | Rewrite to Workcell Visualizer | [backlog/ui-ux.md](./backlog/ui-ux.md) |
-| **REPL** | Terminal UI, Keyboard events | [backlog/repl.md](./backlog/repl.md) |
+### Technical Debt - Backend
+
+| Item | Description | Backlog |
+|------|-------------|---------|
+| ~~**Persistent Reservations**~~ | ~~Asset reservations are in-memory; lost on restart~~ | ✅ Complete |
+| **Scheduler Coverage** | ~22% coverage, tests need DB running | [backend.md](./backlog/backend.md) |
+
+### UI/UX Bugs
+
+| Item | Description | Backlog |
+|------|-------------|---------|
+| ~~**Purple Buttons/Toggles**~~ | ~~Some buttons purple instead of pink in light mode~~ | ✅ Resolved |
+| ~~**Asset Dashboard Scrolling**~~ | ~~Scrolling buggy within asset components~~ | ✅ Resolved |
+| ~~**Protocol Setup Scrolling**~~ | ~~Parameter/deck selection won't scroll~~ | ✅ Resolved |
+| ~~**Run Protocol Rendering**~~ | ~~Blank screen on downstream steps~~ | ✅ Resolved |
+| ~~**Form Field Visual Bug**~~ | ~~Vertical line/notch in mat-form-field outlines~~ | ✅ Resolved |
+| ~~**Command Palette Selection**~~ | ~~Up/Down selection not visually responsive~~ | ✅ Resolved |
+| ~~**Light Theme Buttons**~~ | ~~Rendering anomalies in light mode~~ | ✅ Resolved |
+| ~~**Deck Resource Adding**~~ | ~~Buggy behavior when adding resources to deck~~ | ✅ Resolved |
 
 ---
 
-## High Priority Tasks
+## Priority 2: High (MVP → Full Implementation)
 
-### 1. Asset Management & PLR Inspection
+### REPL Polish
 
-* [x] **PLR Assessment**: Enumerate machine types, identifiers, capabilities (channels, pumps).
-* [x] **Metadata Parsing**: Parse capabilities into chips (e.g., "8-channel", "96-channel").
-* [x] **Machine Types**: Backend vs Frontend differentiation in UI.
-* [x] **Collapsible Menus**: Hierarchical view for machine types (Type -> Manufacturer -> Model).
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| Completion Popup UI | ✅ Done | Replaced inline columns with floating popup (Needs manual polish) | [repl.md](./backlog/repl.md) |
+| Signature Help | ✅ Done | Show function params on `(` key | [repl_autocompletion.md](./backlog/repl_autocompletion.md) |
+| Auto-scroll | ⚠️ Partial | Terminal scrolls but alignment improved | [repl.md](./backlog/repl.md) |
+| Split Streams | ✅ Done | Distinguish stdout/stderr/return | [repl.md](./backlog/repl.md) |
+| **PLR Tooling Integration** | ⏳ Pending | Deep PLR integration (autofill, IO shim) | [repl.md](./backlog/repl.md) |
 
-**Known Issues** (see [backlog/capability_tracking.md](./backlog/capability_tracking.md)):
+### Capability Configuration
 
-* [x] ~~Classification bug: LiquidHandler misclassified as Resource due to inheritance.~~ FIXED 2025-12-30
-* [x] ~~Only 2 machine types covered; PLR has 15+ (HeaterShaker, Centrifuge, Pump, etc.).~~ FIXED 2025-12-30 - Now discovers 21 frontends, 70 backends across 15 machine types
-* [x] ~~Backend-frontend mapping broken due to classification issue.~~ FIXED 2025-12-30
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| **Dynamic Form Generation** | ✅ Done | Conditional visibility, validation, accessibility | [dynamic_form_generation.md](./backlog/dynamic_form_generation.md) |
 
-### 2. Browser Runtime & Analysis (New)
+### Protocol Inspection
 
-* [x] **LibCST Parsing**: Static analysis for machine/backend discovery & protocol inspection (plr_static_analysis module).
-* [x] **Pyodide Runtime**: WASM-based Python execution in browser (WebWorker + python.worker.ts).
-* [x] **Basic WebBridge**: web_bridge.py with high-level WebBridgeBackend overrides.
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| Requirements Integration | ✅ Done | Link ProtocolRequirementExtractor to discovery | [protocol_inspection.md](./backlog/protocol_inspection.md) |
+| ORM Updates | ✅ Done | Add `inferred_requirements` to protocol definitions | [protocol_inspection.md](./backlog/protocol_inspection.md) |
 
-**IO Layer Shimming**: ✅ COMPLETED 2025-12-30
+### Documentation & Infrastructure
 
-* [x] **WebBridgeIO Class**: Generic IO shim in `web_bridge.py` that replaces `self.io` transport layer.
-* [x] **Serial/USB Dispatch**: RAW_IO messages routed via `python.worker.ts` to Angular.
-* [x] **Async Read/Write**: UUID-based request correlation with asyncio futures.
-* [x] **Generic Patcher**: `patch_io_for_browser()` + `create_browser_machine()` factory.
-* [x] **Angular Integration**: `PythonRuntimeService.handleRawIO()` routes to `HardwareDiscoveryService` port I/O methods.
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| Mermaid Theming | ✅ Done | Consistent Light/Dark mode diagrams | [docs.md](./backlog/docs.md) |
+| API Documentation | ⏳ Pending | Auto-generated API docs | [docs.md](./backlog/docs.md) |
+| Code Quality | ⏳ Pending | Ruff, Ty, Frontend Linting, DRY | [cleanup.md](./backlog/cleanup.md) |
 
-### 3. Application Modes
+### Execution Monitor
 
-* [x] **ModeService**: Centralized mode detection with computed signals.
-* [x] **Browser Mode**: Implemented LocalStorage persistence adapter with state export/import.
-* [x] **No-Login Flow**: AuthGuard bypassed in Browser/Demo modes, login/logout hidden in UI.
-* [x] **Home Routing**: Splash page auto-redirects to Dashboard in browser mode.
-* [ ] **Tunneling Instructions**: UI for Production mode to expose local hardware. (Deferred)
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| Sidebar Access | ✅ Done | Add Monitor to sidebar navigation | [execution_monitor.md](./backlog/execution_monitor.md) |
+| Active Runs Panel | ✅ Done | Real-time view of running protocols | [execution_monitor.md](./backlog/execution_monitor.md) |
+| Run History Table | ✅ Done | Paginated history with filtering | [execution_monitor.md](./backlog/execution_monitor.md) |
+| Run Detail View | ✅ Done | Detailed view with logs and timeline | [execution_monitor.md](./backlog/execution_monitor.md) |
 
-### 3. Visualizer Rewrite
+### Deck Visualizer
 
-* [x] **Workcell Visualizer**: New architecture for multi-window deck views.
-* [x] **Remove Legacy**: Strip out old iframe/PLR-based visualization components.
-* [x] **Configurability**: Allow user to arrange deck views/windows (LocalStorage persistence).
+| Item | Status | Description | Backlog |
+|------|--------|-------------|---------|
+| Rails/Carriers/Slots | ⏳ Pending | Semantic rendering of deck structure | [deck_view.md](./backlog/deck_view.md) |
+| Tip/Well Status | ⏳ Pending | Individual item visualization | [deck_view.md](./backlog/deck_view.md) |
+| **Guided Deck Setup** | ⏳ Pending | Interactive step-by-step physical setup guide | [deck_view.md](./backlog/deck_view.md) |
 
-**Deck View Improvements** (Needed):
+---
 
-* [x] **Slots/Rails**: Dynamic rendering of deck slots, rails, and mounting positions.
-* [x] **Itemized Resources**: Show individual wells, tips, tubes within containers.
-* [x] **Dimensions**: Use actual PLR resource dimensions for accurate scaling.
-* [ ] **PLR Theming**: Match original PLR visualizer aesthetic while keeping app theme consistency.
-* [x] **Resource Placement**: Fix buggy "add resource to deck" workflow.
+## Priority 3: Medium (Post-Merge Enhancements)
 
-### 4. REPL
+### Backend
 
-* [x] **Terminal UI**: Implemented keyboard history (Up/Down) and `Ctrl+L` clearing.
-* [ ] **Completion**: Implement Jedi-based autocompletion.
+| Item | Description | Backlog |
+|------|-------------|---------|
+| Service Layer Coverage | Increase coverage on deck.py, protocol_definition.py, user.py | [backend.md](./backlog/backend.md) |
+| Protocol Decorator Enhancements | Parameterized data views | [backend.md](./backlog/backend.md) |
+| User-Specified Deck | Support explicit deck layout in protocol | [backend.md](./backlog/backend.md) |
+| **Registry vs Inventory** | Split Definition vs Physical Instance | [asset_management.md](./backlog/asset_management.md) |
+| **Full VMP Implementation** | Scheduler, Persistent Reservations, mDNS | [backend.md](./backlog/backend.md) |
 
-### 5. UI/UX Polish
+### Frontend
 
-#### Command Palette
+| Item | Description | Backlog |
+|------|-------------|---------|
+| Data Visualization Dashboard | Dedicated route with protocol selector | [ui-ux.md](./backlog/ui-ux.md) |
+| Navigation Breadcrumbs | Deep navigation review | [ui-ux.md](./backlog/ui-ux.md) |
+| Drag & Drop Deck | Drag resources into deck slots | [deck_view.md](./backlog/deck_view.md) |
 
-* [ ] **Keyboard Nav**: Fix up/down arrow active state and scrolling.
-* [ ] **Visuals**: Improve responsiveness for selected items.
+### Modes & Deployment
 
-#### Theming
+| Item | Description | Backlog |
+|------|-------------|---------|
+| **Enhanced SqliteService** | Full browser backend with real data (not mocks) | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
+| E2E Hardware Test | Test WebBridgeIO with real hardware | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
+| Production Tunneling UI | Help text for exposing local hardware | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
 
-* [ ] **Light/Dark Toggle**: Buttons toggle but background doesn't change in light mode.
-* [ ] **Light Theme Contrast**: Fix text contrast and button rendering bugs.
+---
 
-#### Scrolling & Layout
+## Priority 4: Low (Future)
 
-* [ ] **Component Scrolling**: Fix buggy scrolling behavior within components.
-* [ ] **Deck Setup**: Fix rendering issues in setup step (related to deck visualization).
+### Advanced Features
 
-### 6. Capability Tracking System (New)
+| Item | Description | Backlog |
+|------|-------------|---------|
+| Protocol DAG Extraction | Call graph and resource flow analysis | [protocol_inspection.md](./backlog/protocol_inspection.md) |
+| Resource Constraint Matching | Match protocol needs to inventory | [capability_tracking.md](./backlog/capability_tracking.md) |
+| Advanced Scheduling | Discrete event simulation, multi-workcell | [backend.md](./backlog/backend.md) |
+| Spatial Workcell View | Physical layout of workcells in space | [ui-ux.md](./backlog/ui-ux.md) |
 
-See [backlog/capability_tracking.md](./backlog/capability_tracking.md) for full details.
+### Pre-Merge Cleanup
 
-**Phase 1 - Fix Core Issues (Immediate)**: ✅ COMPLETED 2025-12-30
+| Item | Description | Backlog |
+|------|-------------|---------|
+| Naming Consistency | "Praxis" not "PyLabPraxis", "machines" not "instruments" | [cleanup.md](./backlog/cleanup.md) |
+| Remove Dead Code | Unused imports, commented blocks | [cleanup.md](./backlog/cleanup.md) |
+| Console.log Cleanup | Remove development artifacts | [cleanup.md](./backlog/cleanup.md) |
 
-* [x] Fix classification priority: Machine bases before Resource bases.
-* [x] Expand machine type discovery to all 15+ PLR types.
-* [x] Fix backend-frontend mapping.
+---
 
-**Phase 2 - Generic Capability Model (Short-term)**: ✅ COMPLETED 2025-12-30
+## Completed Features ✅
 
-* [x] Machine-type-specific capability schemas (15 machine types covered).
-* [x] Extend capability extraction for all machine types.
-* [x] Created `plr-capability-update.md` prompt for future PLR updates.
+### Core Infrastructure
 
-**Phase 3 - User-Configurable Capabilities (Medium-term)**: ✅ MVP COMPLETED 2025-12-30
+- [x] Angular 21 + Material 3 + Tailwind architecture
+- [x] FastAPI backend with SQLAlchemy + PostgreSQL
+- [x] WebSocket log streaming
+- [x] Keycloak authentication (Production mode)
 
-* [x] Backend config schema for optional capabilities (`CapabilityConfigField`, `MachineCapabilityConfigSchema`).
-* [x] ORM updates for user-configured capabilities (`user_configured_capabilities`, `capabilities_config`).
-* [x] Frontend dialog for machine setup with JSON capability input (MVP).
-* [ ] Dynamic form generation from capability schema (future enhancement).
+### PLR Integration
 
-**Phase 4 - Protocol Capability Matching (MVP)**: ✅ MVP COMPLETED 2025-12-30
+- [x] LibCST-based static analysis (21 frontends, 70 backends, 15 machine types)
+- [x] Protocol discovery with ProtocolFunctionVisitor
+- [x] ProtocolRequirementExtractor for capability inference
+- [x] Machine capability schemas (15 types)
 
-* [x] Extract protocol asset requirements via LibCST (ProtocolRequirementExtractor).
-* [x] Match protocol requirements to available hardware capabilities (CapabilityMatcherService).
-* [x] Integrate requirement extraction into DiscoveryService.
-* [x] UI Integration (show compatibility warnings in wizard) - ✅ COMPLETED 2025-12-30
-* [ ] Generalized requirement extraction (backlog).
+### Browser Mode
 
-**Phase 5 - Deep Protocol Inspection (Future)**:
+- [x] Pyodide runtime with WebWorker
+- [x] WebBridgeIO for hardware IO shimming
+- [x] LocalStorage persistence adapter
+- [x] ModeService with no-login flow
+- [x] CDN package loading (micropip)
 
-* [ ] Full AST analysis of protocol logic flow (deferred).
+### Visualizer
 
-**Phase 6 - Resource Matching & Constraints (Future)**:
+- [x] Workcell Visualizer architecture
+- [x] PLR theming (all resource types)
+- [x] Dark/light theme support
+- [x] Configurable deck windows
 
-* [ ] Extract resource constraints (volume, bottom type, wells) from protocol AST.
-* [ ] Match protocol resource needs against available lab inventory.
+### REPL
+
+- [x] xterm.js terminal UI
+- [x] Jedi-based autocompletion (MVP)
+- [x] Command history (Up/Down)
+- [x] Ctrl+L clear
+
+### Protocol Wizard
+
+- [x] Deck Setup with FQN-based matching
+- [x] Autofill indicators
+- [x] Capability matching UI
+- [x] Machine selection step
+- [ ] **Wizard State Persistence** - Form hydration on refresh | [protocol_execution.md](./backlog/protocol_execution.md)
 
 ---
 
 ## Branch Strategy
 
-* **Current Goal**: Prepare `angular_refactor` for merge into `main`.
-* **Blockers**: Asset Management refactor, Visualizer rewrite.
+- **Current Branch**: `angular_refactor`
+- **Target**: Merge into `main` after Priority 1 items resolved
+- **Status**: MVP complete, polish phase
 
 ---
 
-*For completed items, see [archive/completed_2025_12_30.md](./archive/completed_2025_12_30.md).*
+## Backlog Index
+
+| Document | Focus |
+|----------|-------|
+| [asset_management.md](./backlog/asset_management.md) | PLR inspection, discovery, bulk operations |
+| [backend.md](./backlog/backend.md) | Services, APIs, execution |
+| [capability_tracking.md](./backlog/capability_tracking.md) | Machine capabilities, user config, matching |
+| [cleanup.md](./backlog/cleanup.md) | Code quality, naming, pre-merge |
+| [deck_view.md](./backlog/deck_view.md) | Deck visualizer structure, interaction |
+| [docs.md](./backlog/docs.md) | Documentation, guides, tutorials |
+| [dynamic_form_generation.md](./backlog/dynamic_form_generation.md) | Capability config forms |
+| [execution_monitor.md](./backlog/execution_monitor.md) | Run monitoring, history, filtering |
+| [modes_and_deployment.md](./backlog/modes_and_deployment.md) | Browser/Lite/Production modes |
+| [protocol_inspection.md](./backlog/protocol_inspection.md) | LibCST protocol analysis |
+| [repl.md](./backlog/repl.md) | REPL features, UI polish |
+| [repl_autocompletion.md](./backlog/repl_autocompletion.md) | Jedi completion phases |
+| [ui-ux.md](./backlog/ui-ux.md) | General UI/UX items |
+| [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) | Known debt items |
+
+---
+
+*For archived items, see [archive/](./archive/).*

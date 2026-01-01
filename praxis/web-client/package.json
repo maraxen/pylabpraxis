@@ -4,7 +4,10 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:dev": "../../scripts/dev-frontend.sh",
+    "start:browser": "ng serve --configuration=browser",
     "build": "ng build",
+    "build:browser": "ng build --configuration=browser",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

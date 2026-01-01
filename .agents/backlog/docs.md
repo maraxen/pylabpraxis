@@ -1,7 +1,7 @@
 # Documentation Backlog
 
 **Area Owner**: All
-**Last Updated**: 2025-12-29
+**Last Updated**: 2026-01-01
 
 ---
 
@@ -10,10 +10,13 @@
 ### Build & Infrastructure
 
 - [x] Configure MkDocs for documentation site
-- [x] Enable Mermaid rendering in MkDocs
+- [x] Enable Mermaid rendering in MkDocs - **✅ Configured in mkdocs.yml**
 - [x] Enable Mermaid rendering in Angular App (ngx-markdown)
+- [x] **Mermaid Theming**:
+  - Debug diagram displays to be more consistent. - **✅ Complete**
+  - Implement full light/dark mode toggling for diagrams. - **✅ Complete**
 - [ ] Add `mkdocstrings` for automatic API documentation from docstrings
-- [ ] Deprecate and remove remaining Sphinx configuration (`conf.py`, `.rst` files)
+- [ ] Deprecate and remove remaining Sphinx configuration - **⚠️ 17 .rst files still in docs/**
 - [ ] Build pipeline (CI/CD integration for MkDocs)
 
 ### Demo Documentation
@@ -38,15 +41,15 @@
 
 ### User Guides
 
-- [ ] Audit and rename legacy "PyLabPraxis" to "Praxis" in all documents
+- [ ] Audit and rename legacy "PyLabPraxis" to "Praxis" in all documents - **⚠️ 32 refs remain**
 - [x] Getting started guide (Quickstart)
-- [ ] Protocol authoring guide
+- [x] Protocol authoring guide - **✅ `docs/user-guide/protocols.md` (339 lines)**
 - [ ] Resource management guide
 - [ ] Deck configuration guide
 
 ### Developer Guides
 
-- [ ] Contributing guide
+- [x] Contributing guide - **✅ `CONTRIBUTING.md` (61 lines)**
 - [ ] Local development setup
 - [ ] Testing patterns (consolidate from tests/*.md)
 - [ ] Code style guide

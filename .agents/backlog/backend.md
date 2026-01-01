@@ -1,20 +1,21 @@
 # Backend Backlog
 
 **Area Owner**: Backend
-**Last Updated**: 2025-12-29
+**Last Updated**: 2025-12-30
 
 ---
 
 ## High Priority
 
-### PLR Definitions Sync
+### PLR Definitions Sync - ✅ COMPLETE
 
 - [x] Curated demo dataset created (`plr-definitions.ts`)
 - [x] Demo interceptor wired for type definitions
+- [x] LibCST-based static analysis for machine/resource discovery
+- [x] Pyodide runtime with WebBridge integration
 - [ ] Disable the "+ Add Definition" button until sync is complete
-- [ ] Dynamic backend introspection (optional for demo)
 
-### Machine Autodiscovery + REPL
+### Machine Autodiscovery + REPL - ✅ CORE COMPLETE
 
 - [x] Hardware discovery service (`services/hardware_discovery.py`)
   - [x] `discover_serial_ports()` - List available serial ports
@@ -32,9 +33,20 @@
   - [x] WebUSB API integration
   - [x] PLR device inference from VID/PID
   - [x] Configuration schema support
-- [ ] Hardware connection UI component
+- [ ] Hardware connection UI component (polish)
 - [ ] Hardware connection management (Redis state)
-- [ ] Full REPL WebSocket interface
+- [ ] Full REPL WebSocket interface (Production mode)
+
+### Browser Runtime & Analysis - ✅ COMPLETE
+
+- [x] **LibCST Parsing**:
+  - [x] `PLRSourceParser` for machine/backend/resource discovery
+  - [x] `ProtocolFunctionVisitor` for protocol extraction
+  - [x] `ProtocolRequirementExtractor` for capability inference
+- [x] **Pyodide Runtime**:
+  - [x] `pylabrobot` mocking and WebBridgeBackend
+  - [x] `WebBridgeIO` for generic machine IO
+  - [x] CDN package loading (micropip, etc.)
 
 ### Protocol Decorator Enhancements
 
@@ -42,20 +54,19 @@
 - [ ] Example protocols demonstrating data view usage
 - [ ] Minimal implementation for demo
 
-### Browser Runtime & Analysis (New)
-
-- [ ] **LibCST Parsing**:
-  - [ ] Prototype script to parse `simple_transfer.py` via `LibCST`.
-  - [ ] Extract asset requirements and parameter types safely.
-- [ ] **Pyodide Spike**:
-  - [ ] Verify `pylabrobot` installation in WASM environment.
-  - [ ] Create `WebBridgeBackend` Python shim for IO interception.
-
 ### User-Specified Deck Configuration
 
 - [ ] Support fully user-specified deck via functions in protocol file
 - [ ] Deck constraint validation
+- [ ] Deck constraint validation
 - [ ] Override auto-layout with explicit positions
+
+### Full Implementation of VMP Features (Stubs)
+
+- [ ] **Scheduler**: Eliminate ~22% coverage; implement robust scheduling logic (currently VMP). Test files exist but need DB.
+- [x] **Persistent Reservations**: ✅ Complete - Now uses `AssetReservationOrm` database storage.
+- [ ] **Hardware Scanning**: ⚠️ Stubbed - `discover_network_devices()` returns empty list.
+- [ ] **Asset Resolution**: Improve logic for resolving abstract requirements to physical assets.
 
 ---
 
@@ -69,16 +80,27 @@
 
 ### Service Layer Coverage
 
-- [ ] `services/scheduler.py` - 0% coverage
-- [ ] `services/user.py` - 0% coverage
-- [ ] `services/deck.py` - 26% coverage
-- [ ] `services/protocol_definition.py` - 21% coverage
+**Validated 2025-12-31:**
+
+- [x] **user.py** - ✅ 25 tests (478 lines) in `test_user_service.py`
+- [x] **deck.py** - ✅ 15 tests (303 lines) in `test_deck_service.py`
+- [x] **protocol_definition.py** - ✅ 8 tests (238 lines) in `test_protocol_definition_service.py`
+- [ ] **scheduler.py** - ~22% coverage (tests exist but need DB)
+- [ ] Other services - audit needed
+
+### Dual DB Testing (P2)
+
+- [ ] **SQLite Support**: Ensure test suite runs with SQLite (current).
+- [ ] **PostgreSQL Support**: Run test suite against PostgreSQL.
+- [ ] **CI Configuration**: Add GitHub Actions matrix for both DBs.
+- [ ] **Migration Testing**: Verify Alembic migrations on both DBs.
 
 ### Technical Debt (from TECHNICAL_DEBT.md)
 
-- [ ] Persistent asset reservations (currently in-memory)
+- [x] **Persistent asset reservations** - ✅ Complete (uses `AssetReservationOrm`)
 - [ ] POST /resources/ API error fix
 - [ ] Reservation inspection/clearing APIs
+- [ ] Consumables auto-assignment improvements
 
 ---
 
@@ -100,7 +122,7 @@
 
 ## Completed (Archive Reference)
 
-- [x] Protocol discovery via AST parsing
+- [x] Protocol discovery via AST parsing → LibCST migration complete
 - [x] Backend execution flow (`ExecutionMixin`)
 - [x] WebSocket log streaming
 - [x] Simulation flag flow through stack
@@ -109,6 +131,9 @@
 - [x] Hardware discovery service foundation
 - [x] Hardware API endpoints (discover, connect, disconnect, register, repl)
 - [x] Frontend WebSerial/WebUSB service with PLR inference
+- [x] LibCST-based PLR static analysis (21 frontends, 70 backends, 15 machine types)
+- [x] Pyodide WebBridge with IO layer shimming
+- [x] Jedi-based REPL autocompletion
 
 ### Cached PLR Definitions for Frontend
 

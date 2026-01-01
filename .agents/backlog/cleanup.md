@@ -9,15 +9,15 @@
 
 ### Naming Consistency
 
-- [ ] Rename "PyLabPraxis" to "Praxis" globally
+- [ ] Rename "PyLabPraxis" to "Praxis" globally - **⚠️ 32 refs in docs/**
   - [ ] Documentation files (.md)
   - [ ] Code comments
   - [ ] UI strings / branding
   - [ ] Package metadata
-- [ ] Unite wording: "machines" not "instruments"
-  - [ ] Frontend labels and text
-  - [ ] Backend variable names (where safe)
-  - [ ] Documentation
+- [x] Unite wording: "machines" not "instruments" - **✅ Complete (0 occurrences found)**
+  - [x] Frontend labels and text
+  - [x] Backend variable names
+  - [x] Documentation
 
 ### Codebase Standards Review
 
@@ -25,15 +25,18 @@
 - [ ] Consistent code formatting (ruff)
 - [ ] Type annotations cleanup (ty check)
 - [ ] Remove dead code / commented blocks
+- [ ] **Frontend Linting**: Ensure ESLint/Prettier are running and passing (Angular).
+- [ ] **DRY Enforcement**: Identify and refactor duplicated logic (Separation of Concerns).
 - [ ] Consolidate duplicate utilities
 
 ### Pre-Merge Cleanup
 
 - [ ] Remove development artifacts
-- [ ] Clean up console.log / print statements
+- [ ] Clean up console.log / print statements - **⚠️ ~40 console.logs in app/**
 - [ ] Verify all TODO comments are tracked or resolved
 - [ ] Update .gitignore if needed
 - [ ] Verify no secrets in codebase
+- [ ] Remove legacy Sphinx files - **⚠️ 17 .rst files in docs/**
 
 ---
 
@@ -66,8 +69,8 @@
 
 ### Performance
 
-- [ ] Bundle size optimization (currently 775KB, target 500KB)
-- [ ] Lazy loading audit
+- [ ] Bundle size optimization (currently ~9.3MB uncompressed dist)
+- [x] Lazy loading audit - **✅ `loadChildren` used on all feature routes**
 - [ ] API response time audit
 
 ### Code Organization

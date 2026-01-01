@@ -20,20 +20,68 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
     const url = req.url;
     const method = req.method;
 
-    // Protocol definitions - return array from SQLite
+    // Protocol definitions - return full mock data with assets
+    // (SQLite only stores basic columns, not the full object with assets)
     if (url.includes('/protocols/definitions') && method === 'GET') {
-        return sqliteService.getProtocols();
+        return of(MOCK_PROTOCOLS);
     }
 
-    // Protocol runs - return array from SQLite
+    // Protocol run queue - return active/running runs
+    if (url.includes('/protocols/runs/queue') && method === 'GET') {
+        const activeRuns = MOCK_PROTOCOL_RUNS.filter(r =>
+            ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status)
+        ).map(r => ({
+            accession_id: r.accession_id,
+            name: r.protocol_name,
+            status: r.status,
+            created_at: r.created_at,
+            protocol_name: r.protocol_name,
+        }));
+        return of(activeRuns);
+    }
+
+    // Protocol run records (history) - return all runs for pagination
+    if (url.includes('/protocols/runs/records') && method === 'GET') {
+        // Check if this is a single record request
+        const recordMatch = url.match(/\/protocols\/runs\/records\/([a-f0-9-]+)$/);
+        if (recordMatch) {
+            const runId = recordMatch[1];
+            const run = MOCK_PROTOCOL_RUNS.find(r => r.accession_id === runId);
+            if (run) {
+                return of({
+                    ...run,
+                    name: run.protocol_name,
+                    start_time: (run as any).started_at,
+                    end_time: (run as any).completed_at,
+                    duration_ms: run.status === 'COMPLETED' ? 262000 : null,
+                    logs: [
+                        'Starting protocol execution...',
+                        'Initializing liquid handler...',
+                        'Loading deck configuration...',
+                        `Executing ${run.protocol_name}...`,
+                        run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
+                    ],
+                });
+            }
+            return of(null);
+        }
+        // Return list with consistent field names
+        return of(MOCK_PROTOCOL_RUNS.map(r => ({
+            accession_id: r.accession_id,
+            name: r.protocol_name,
+            status: r.status,
+            created_at: r.created_at,
+            start_time: (r as any).started_at,
+            end_time: (r as any).completed_at,
+            duration_ms: r.status === 'COMPLETED' ? 262000 : null,
+            protocol_name: r.protocol_name,
+            protocol_accession_id: r.protocol_definition_accession_id,
+        })));
+    }
+
+    // Protocol runs - return array from SQLite (legacy fallback)
     if (url.includes('/protocols/runs') && method === 'GET' && !url.match(/\/protocols\/runs\/[a-f0-9-]+$/)) {
         return sqliteService.getProtocolRuns();
-    }
-
-    // Single protocol run (parse ID from URL)
-    if (url.match(/\/protocols\/runs\/[a-f0-9-]+$/) && method === 'GET') {
-        const id = url.split('/').pop();
-        return sqliteService.getProtocolRun(id!);
     }
 
     // PLR Resource type definitions (comprehensive list)
@@ -212,6 +260,27 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
             status: 'registered',
             message: `Machine '${body?.name}' registered successfully (demo mode)`,
         });
+    }
+
+    // Protocol compatibility check - return compatible machines
+    if (url.match(/\/protocols\/[a-f0-9-]+\/compatibility$/) && method === 'GET') {
+        // Return mock compatibility data with available machines
+        // Filter to liquid handlers only for demo
+        const liquidHandlers = MOCK_MACHINES.filter(m => m.type === 'liquid_handler');
+        const mockCompatibility = liquidHandlers.map(machine => ({
+            machine: {
+                accession_id: machine.accession_id,
+                name: machine.name,
+                machine_type: machine.type || 'liquid_handler',
+            },
+            compatibility: {
+                is_compatible: true,
+                missing_capabilities: [],
+                matched_capabilities: ['liquid_handling', 'pipetting'],
+                warnings: [],
+            }
+        }));
+        return of(mockCompatibility);
     }
 
     // Hardware REPL command

@@ -99,6 +99,9 @@ export interface CapabilityConfigField {
   options?: string[];
   help_text?: string;
   depends_on?: string;
+  required?: boolean;
+  min?: number;
+  max?: number;
 }
 export interface ResourceDefinition {
   accession_id: string;

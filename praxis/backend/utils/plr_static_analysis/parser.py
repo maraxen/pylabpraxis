@@ -263,6 +263,9 @@ class PLRSourceParser:
     # Build type-specific machine capabilities
     cls.machine_capabilities = extractor.build_machine_capabilities()
 
+    # Build user-configurable capability schema (for dynamic forms)
+    cls.capabilities_config = extractor.build_capabilities_config()
+
     # Update abstract status if we found abstract methods
     if extractor.has_abstract_methods:
       cls.is_abstract = True

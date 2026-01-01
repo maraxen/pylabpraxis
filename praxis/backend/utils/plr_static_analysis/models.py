@@ -22,6 +22,9 @@ class CapabilityConfigField(BaseModel):
   options: list[str] | None = None  # For select/multiselect
   help_text: str | None = None
   depends_on: str | None = None  # Conditional visibility
+  required: bool = False  # Whether field is required
+  min: float | None = None  # Minimum value for number fields
+  max: float | None = None  # Maximum value for number fields
 
 
 class MachineCapabilityConfigSchema(BaseModel):
@@ -107,6 +110,7 @@ class ProtocolFunctionInfo(BaseModel):
   # Raw data for backward compatibility with discovery service dicts
   raw_assets: list[dict[str, Any]] = Field(default_factory=list)
   raw_parameters: list[dict[str, Any]] = Field(default_factory=list)
+  hardware_requirements: dict[str, Any] | None = None
 
 
 # =============================================================================

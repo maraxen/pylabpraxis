@@ -1,57 +1,137 @@
 # UI/UX Backlog
 
 **Area Owner**: Frontend
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-01-01
 
 ---
 
-## High Priority
+## Critical (P1)
 
-### Workcell Visualizer (REWRITE)
+### Purple Buttons/Toggles in Light Mode - ✅ RESOLVED 2026-01-01
 
-- [x] **Architectural Rewrite**:
-  - Abandon legacy `DeckVisualizer` (iframe/PLR component).
-  - Implement **Workcell Visualizer**: A configurable canvas of "Deck Windows".
-  - Allow users to open/close/arrange windows for different decks/machines.
-- [x] **Configurability**:
-  - Persist window layout in LocalStorage.
-- [ ] **Future**: Spatial relationship mapping (workcells in space).
+- [x] Some buttons and toggles are purple instead of classic pink.
+- [x] Identify affected components and update to use correct theme colors.
 
-### Command Palette
+### Asset Dashboard Scrolling - ✅ RESOLVED 2026-01-01
 
-- [ ] **Visual Responsiveness**:
-  - Add active state styling for Up/Down arrow selection.
-  - Ensure selection scrolls into view.
+- [x] Fix buggy scrolling behavior within asset components.
+- [x] Ensure vertical scrollbars appear correctly in nested views.
 
-### Theme & Polish
+### Parameter/Deck Selection Scrolling (Protocol Setup) - ✅ RESOLVED 2026-01-01
 
-- [ ] **Light Theme Debugging**:
-  - [x] Fix text contrast issues.
-  - [ ] Fix button rendering anomalies in Light mode.
-- [ ] **Deck Setup Step**:
-  - **Critical**: Required assets are not showing up for selection.
-  - **Critical**: UI does not indicate which items have been autofilled.
-  - Generaly debug rendering issues in the Protocol Wizard's deck setup phase.
+- [x] Parameter and deck selection screens in protocol setup won't scroll.
+- [x] Investigate `mat-stepper` CSS overflow issues.
+- [x] **Regression Fix**: Fixed blank screen on downstream steps by correctly collapsing inactive steps (`.mat-horizontal-stepper-content-current`).
+
+### mat-form-field Visual Bug (Notched Outline) - ✅ RESOLVED 2026-01-01
+
+- [x] Vertical line appearing in the notch of `mat-form-field` when using outline appearance.
+- [x] Global fix in `styles.scss` removing `border-right` from `.mdc-notched-outline__notch`.
 
 ---
 
-## Medium Priority
+## High Priority (P2)
 
-### Data Visualization Dashboard
+### Filter Search Bar Line Bug - ✅ RESOLVED 2025-12-31
 
-- [ ] Create dedicated data viz route.
-- [ ] Add protocol selector dropdown.
-- [ ] Link experiment cards to dashboards.
+- [x] Weird line appearing down the middle of filter search bars.
+- [x] Consistent issue throughout the app - find global CSS cause.
+
+### Activity History Linking
+
+- [ ] Activity history items don't link to anything.
+- [ ] Link each item to its Execution Monitor page.
+
+### Remove Quick Links Section
+
+- [ ] Home dashboard "Quick Links" serve no purpose.
+- [ ] All items are accessible via navbar - remove entire section.
+
+### Command Palette - ✅ RESOLVED 2025-12-31
+
+- [x] **Visual Responsiveness**: Fixed active state styling.
+
+### Light Theme Polish - ✅ RESOLVED 2025-12-31
+
+- [x] **Text Contrast**: Fixed.
+- [x] **Button Rendering**: Fixed.
+- [x] **Color Tuning**: Fixed.
+- [x] **Docs Sidebar**: Fixed white text in light mode (2026-01-01).
+- [x] **Mermaid Diagrams**: Fixed light mode text visibility (2026-01-01).
+
+### REPL UI Polish
+
+See [repl.md](./repl.md) for detailed items.
+
+---
+
+## Medium Priority (P3)
+
+### Gentle Gradient Background
+
+- [ ] Add subtle gradient within background for both light and dark mode.
+- [ ] Should enhance visual depth without being distracting.
+
+### Loading Skeletons
+
+- [ ] Replace generic spinners with skeleton loaders.
+- [ ] Apply to: protocol cards, asset lists, deck view.
+
+### Command Palette Spacing
+
+- [ ] Fix spacing of keyboard shortcuts and tags in command palette.
 
 ### Navigation
 
 - [ ] Review breadcrumbs for deep navigation.
 - [ ] Responsive check (Mobile/Tablet validation).
 
+### Deck Visualizer
+
+See [deck_view.md](./deck_view.md) for detailed items.
+
 ---
 
-## Completed (Archive Reference)
+## Low Priority
+
+### Future Enhancements
+
+- [ ] Spatial relationship mapping (workcells in space)
+- [ ] Dynamic form generation from capability schemas
+
+---
+
+## Completed - ✅
+
+### Workcell Visualizer (REWRITE)
+
+- [x] **Architectural Rewrite**:
+  - Abandoned legacy `DeckVisualizer` (iframe/PLR component).
+  - Implemented **Workcell Visualizer**: A configurable canvas of "Deck Windows".
+  - Allow users to open/close/arrange windows for different decks/machines.
+- [x] **Configurability**:
+  - Persist window layout in LocalStorage.
+- [x] **PLR Theming**:
+  - Dark/light theme support with CSS variables
+  - All PLR resource types styled (plates, tip racks, troughs, carriers, lids, petri dishes, tubes, adapters)
+
+### Deck Setup Step (FIXED 2025-12-30)
+
+- [x] ~~**Critical**: Required assets are not showing up for selection.~~ Improved FQN-based matching logic.
+- [x] ~~**Critical**: UI does not indicate which items have been autofilled.~~ Added autofill badges and summary.
+- [x] Added loading/empty states, match quality indicators, and better UX.
+
+### General Polish
 
 - [x] Chip Hover Information (Tooltips).
 - [x] Visual Polish (Spacing, Gradients).
 - [x] Command Palette (Alt/Option mapping).
+- [x] Text contrast in light theme.
+
+---
+
+## Related Backlogs
+
+- [repl.md](./repl.md) - REPL-specific UI items
+- [deck_view.md](./deck_view.md) - Deck visualizer items
+- [cleanup.md](./cleanup.md) - Pre-merge cleanup

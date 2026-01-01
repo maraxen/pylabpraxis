@@ -7,8 +7,9 @@ Agent documentation and coordination for Praxis development.
 ## Quick Start
 
 1. **[ROADMAP.md](./ROADMAP.md)** - Current priorities and status
-2. **[backlog/](./backlog/)** - Detailed task tracking by area
-3. **[reference/](./reference/)** - Product specs and guides
+2. **[DEVELOPMENT_MATRIX.md](./DEVELOPMENT_MATRIX.md)** - All items with priority/difficulty ratings
+3. **[backlog/](./backlog/)** - Detailed task tracking by area
+4. **[reference/](./reference/)** - Product specs and guides
 
 ---
 

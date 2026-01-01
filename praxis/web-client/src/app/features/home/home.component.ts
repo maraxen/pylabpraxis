@@ -14,6 +14,7 @@ import { map, interval, Subscription } from 'rxjs';
 import { AssetService } from '../assets/services/asset.service';
 import { ProtocolService } from '../protocols/services/protocol.service';
 import { ExecutionService } from '../run-protocol/services/execution.service';
+import { ModeService } from '@core/services/mode.service';
 import { Machine, Resource } from '../assets/models/asset.models';
 import { ProtocolDefinition } from '../protocols/models/protocol.models';
 import { ExecutionStatus } from '../run-protocol/models/execution.models';
@@ -55,10 +56,12 @@ interface RecentRun {
             <mat-icon>play_circle</mat-icon>
             Run Protocol
           </a>
-          <a mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-[var(--mat-sys-surface-variant)] transition-all" routerLink="/app/protocols">
-            <mat-icon>schedule</mat-icon>
-            Schedule
-          </a>
+          @if (!modeService.isBrowserMode()) {
+            <a mat-stroked-button class="!border-[var(--theme-border)] !text-sys-text-primary !rounded-xl !px-6 !py-6 flex items-center gap-2 flex-1 md:flex-none justify-center hover:bg-[var(--mat-sys-surface-variant)] transition-all" routerLink="/app/protocols">
+              <mat-icon>schedule</mat-icon>
+              Schedule
+            </a>
+          }
         </div>
       </header>
 
@@ -207,35 +210,6 @@ interface RecentRun {
               }
             </div>
           </section>
-
-          <!-- Quick Links -->
-          <section class="bg-surface border border-[var(--theme-border)] rounded-3xl overflow-hidden backdrop-blur-xl">
-            <div class="p-5 border-b border-[var(--theme-border)] bg-[var(--mat-sys-surface-variant)]">
-              <h2 class="text-lg font-semibold text-sys-text-primary flex items-center gap-2">
-                <mat-icon class="text-purple-400">apps</mat-icon>
-                Quick Links
-              </h2>
-            </div>
-            <div class="grid grid-cols-2 gap-3 p-4">
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/assets">
-                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">precision_manufacturing</mat-icon>
-                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Machines</span>
-              </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/protocols">
-                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">assignment</mat-icon>
-                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Protocols</span>
-              </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/visualizer">
-                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">view_in_ar</mat-icon>
-                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Visualizer</span>
-              </a>
-              <a class="flex flex-col items-center justify-center gap-2 p-4 bg-[var(--mat-sys-surface-variant)] border border-[var(--theme-border)] rounded-xl hover:bg-primary/10 hover:border-primary/30 transition-all group" routerLink="/app/settings">
-                <mat-icon class="text-sys-text-tertiary group-hover:text-primary transition-colors">settings</mat-icon>
-                <span class="text-sm font-medium text-sys-text-primary group-hover:text-sys-text-primary transition-colors">Settings</span>
-              </a>
-            </div>
-          </section>
-        </div>
       </div>
     </div>
   `,
@@ -255,6 +229,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private assetService = inject(AssetService);
   private protocolService = inject(ProtocolService);
   private executionService = inject(ExecutionService);
+  public modeService = inject(ModeService);
   private subscription = new Subscription();
 
   // Stats signals

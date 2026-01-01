@@ -24,10 +24,11 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
   - [x] `MachineTypeDefinitionService` now uses `PLRSourceParser` for static analysis.
   - [x] Deprecation warnings added to old runtime inspection functions in `plr_inspection.py`.
 
-**Known Issues** (tracked in [capability_tracking.md](./capability_tracking.md)):
-- Classification bug: `LiquidHandler` inherits from both `Resource` and `Machine`, currently misclassified.
-- Only 2 machine types covered (LiquidHandler, PlateReader); PLR has 15+.
-- Capabilities are Hamilton-specific; need generic schemas per machine type.
+**Known Issues** (see [capability_tracking.md](./capability_tracking.md) for full status):
+
+- [x] ~~Classification bug: LiquidHandler misclassified.~~ FIXED
+- [x] ~~Expansion of machine types.~~ FIXED
+- [x] ~~Generic capability schemas.~~ FIXED
 
 ### Frontend
 
@@ -60,12 +61,41 @@ The core requirement is to inspect `pylabrobot` to dynamically generate machine 
 ## 3. Relationship Visualization (Phase 2)
 
 - [ ] "What's where" spatial view for machines (breadcrumbs).
-- [ ] Protocol requirements → asset matching UI.
+- [x] Protocol requirements → asset matching UI - COMPLETED 2025-12-30.
 - [ ] Context-aware add dialogs (suggest compatible resources).
+
+### Registry vs Inventory (Conceptual Model)
+
+- [ ] **Data Model Separation**:
+  - **Registry (Definitions)**: Abstract "Types" of resources (e.g., "Corning 96-well Plate").
+  - **Inventory (Instances)**: Physical instances with unique IDs/barcodes (e.g., "Plate #1024").
+- [ ] **UI Distinction**:
+  - Separate views for managing "What we *can* use" vs "What we *have*".
 
 ---
 
-## 4. Bulk & Advanced (Phase 3)
+## 4. Groupings & Organization (P3)
+
+### Machine Groupings (Inventory)
+
+- [ ] **PLR Type Hierarchy**: Group by `LiquidHandler > STAR > STARlet`.
+- [ ] **Location/Workcell Chips**: Show location as chips or column.
+- [ ] **Capability Chips**: Show capabilities as color-coded chips.
+- [ ] **Collapsible Accordions**: Expand/collapse by high-level machine type.
+
+### Machine Groupings (Registry)
+
+- [ ] **Collapsible by Machine Type**: LiquidHandler, PlateReader, HeaterShaker, etc.
+- [ ] **Capability Chips**: Filter/display by capability.
+
+### Resource Groupings (Registry)
+
+- [ ] **Group by Type/Category**: Plates, TipRacks, Carriers, Reservoirs.
+- [ ] **Chips for Capacity**: `[96-well]`, `[300µL tips]`, etc.
+
+---
+
+## 5. Bulk & Advanced (Phase 4)
 
 - [ ] Multi-select mode with floating action bar.
 - [ ] Expert mode toggle (show FQNs, backends, drivers).

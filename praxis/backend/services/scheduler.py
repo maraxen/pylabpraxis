@@ -109,7 +109,7 @@ class ScheduleEntryCRUDService(
     # Create a new ScheduleEntryOrm
     schedule_entry = self.model(
       **obj_in.model_dump(
-        exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id"},
+        exclude={"accession_id", "created_at", "updated_at", "protocol_run_accession_id", "status"},
       ),
       status=ScheduleStatusEnum.QUEUED,
       protocol_run=protocol_run,

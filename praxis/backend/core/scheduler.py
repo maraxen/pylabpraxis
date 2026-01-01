@@ -5,13 +5,17 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from praxis.backend.models.enums.asset import AssetReservationStatusEnum, AssetType
+from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.models.orm.protocol import (
   FunctionProtocolDefinitionOrm,
   ProtocolRunOrm,
   ProtocolRunStatusEnum,
 )
+from praxis.backend.models.orm.schedule import AssetReservationOrm, ScheduleEntryOrm
 from praxis.backend.models.pydantic_internals.protocol import (
   AssetConstraintsModel,
   AssetRequirementModel,
@@ -84,9 +88,12 @@ class ProtocolScheduler:
     self.protocol_run_service = protocol_run_service
     self.protocol_definition_service = protocol_definition_service
 
+    # In-memory cache for active schedules (also persisted via ScheduleEntryOrm)
     self._active_schedules: dict[uuid.UUID, ScheduleEntry] = {}
-    self._asset_reservations: dict[str, set[uuid.UUID]] = {}
-    logger.info("ProtocolScheduler initialized.")
+    # Asset reservations are now persisted in the database via AssetReservationOrm
+    # The in-memory dict is kept as a cache for performance but is no longer the source of truth
+    self._asset_reservations_cache: dict[str, set[uuid.UUID]] = {}
+    logger.info("ProtocolScheduler initialized with database-backed reservations.")
 
   async def analyze_protocol_requirements(
     self,
@@ -146,46 +153,134 @@ class ProtocolScheduler:
     self,
     requirements: list[RuntimeAssetRequirement],
     protocol_run_id: uuid.UUID,
+    db_session: AsyncSession | None = None,
+    schedule_entry_id: uuid.UUID | None = None,
   ) -> bool:
-    """Reserve assets for a protocol run."""
+    """Reserve assets for a protocol run.
+    
+    This method checks the database for existing active reservations and creates
+    new AssetReservationOrm records for each required asset. Reservations are
+    persisted to survive server restarts.
+    
+    Args:
+        requirements: List of asset requirements to reserve.
+        protocol_run_id: UUID of the protocol run requesting reservations.
+        db_session: Optional active database session. If not provided, a new one is created.
+        schedule_entry_id: Optional schedule entry ID to associate reservations with.
+    
+    Returns:
+        True if all assets were successfully reserved.
+        
+    Raises:
+        AssetAcquisitionError: If any asset is already reserved or reservation fails.
+    """
     logger.info(
       "Attempting to reserve %d assets for run %s",
       len(requirements),
       protocol_run_id,
     )
 
-    reserved_assets: list[str] = []
-
-    try:
+    created_reservations: list[AssetReservationOrm] = []
+    
+    async def _do_reserve(session: AsyncSession) -> bool:
+      nonlocal created_reservations
+      
       for requirement in requirements:
         asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
-        if asset_key not in self._asset_reservations:
-          self._asset_reservations[asset_key] = set()
 
-        if self._asset_reservations[asset_key]:
-          error_msg = (
-            f"Asset {asset_key} is already reserved by runs: {self._asset_reservations[asset_key]}"
-          )
+        # First check the in-memory cache for conflicts (faster than DB query)
+        if asset_key in self._asset_reservations_cache:
+          conflicting_runs = self._asset_reservations_cache[asset_key] - {protocol_run_id}
+          if conflicting_runs:
+            error_msg = f"Asset {asset_key} is already reserved by runs: {list(str(r) for r in conflicting_runs)}"
+            logger.warning(error_msg)
+            # Rollback created reservations from session and cache
+            for res in created_reservations:
+              await session.delete(res)
+              # Also clean up cache entries for this run
+              res_key = res.redis_lock_key
+              if res_key in self._asset_reservations_cache:
+                self._asset_reservations_cache[res_key].discard(protocol_run_id)
+                if not self._asset_reservations_cache[res_key]:
+                  del self._asset_reservations_cache[res_key]
+            raise AssetAcquisitionError(error_msg)
+
+        # Also check database for existing active reservations (in case cache is stale)
+        existing_query = select(AssetReservationOrm).where(
+          AssetReservationOrm.redis_lock_key == asset_key,
+          AssetReservationOrm.status.in_([
+            AssetReservationStatusEnum.PENDING,
+            AssetReservationStatusEnum.ACTIVE,
+            AssetReservationStatusEnum.RESERVED,
+          ]),
+        )
+        result = await session.execute(existing_query)
+        existing_reservations = result.scalars().all()
+        
+        # Exclude reservations for the same run (re-reservation scenario)
+        conflicting = [r for r in existing_reservations if r.protocol_run_accession_id != protocol_run_id]
+        
+        if conflicting:
+          conflicting_runs = [str(r.protocol_run_accession_id) for r in conflicting]
+          error_msg = f"Asset {asset_key} is already reserved by runs: {conflicting_runs}"
           logger.warning(error_msg)
-          await self._release_reservations(reserved_assets, protocol_run_id)
+          # Rollback created reservations from session and cache
+          for res in created_reservations:
+            await session.delete(res)
+            # Also clean up cache entries for this run
+            res_key = res.redis_lock_key
+            if res_key in self._asset_reservations_cache:
+              self._asset_reservations_cache[res_key].discard(protocol_run_id)
+              if not self._asset_reservations_cache[res_key]:
+                del self._asset_reservations_cache[res_key]
           raise AssetAcquisitionError(error_msg)
-
-        self._asset_reservations[asset_key].add(protocol_run_id)
-        requirement.reservation_id = uuid7()
-        reserved_assets.append(asset_key)
+        
+        # Create new reservation
+        reservation_id = uuid7()
+        reservation = AssetReservationOrm(
+          name=f"reservation_{requirement.asset_definition.name}_{reservation_id.hex[:8]}",
+          protocol_run_accession_id=protocol_run_id,
+          schedule_entry_accession_id=schedule_entry_id or protocol_run_id,
+          asset_type=AssetType.ASSET,
+          asset_accession_id=requirement.asset_definition.accession_id,
+          asset_name=requirement.asset_definition.name,
+          redis_lock_key=asset_key,
+          redis_lock_value=str(reservation_id),
+          lock_timeout_seconds=3600,
+          status=AssetReservationStatusEnum.ACTIVE,
+          released_at=None,
+        )
+        session.add(reservation)
+        created_reservations.append(reservation)
+        requirement.reservation_id = reservation_id
+        
+        # Update cache
+        if asset_key not in self._asset_reservations_cache:
+          self._asset_reservations_cache[asset_key] = set()
+        self._asset_reservations_cache[asset_key].add(protocol_run_id)
+        
         logger.debug(
           "Reserved asset %s for run %s (reservation: %s)",
           asset_key,
           protocol_run_id,
-          requirement.reservation_id,
+          reservation_id,
         )
-
+      
+      await session.flush()  # Ensure IDs are generated without committing
       logger.info(
         "Successfully reserved all %d assets for run %s",
         len(requirements),
         protocol_run_id,
       )
       return True
+
+    try:
+      if db_session:
+        return await _do_reserve(db_session)
+      async with self.db_session_factory() as session:
+        result = await _do_reserve(session)
+        await session.commit()
+        return result
 
     except AssetAcquisitionError:
       raise
@@ -194,7 +289,6 @@ class ProtocolScheduler:
         "Error during asset reservation for run %s",
         protocol_run_id,
       )
-      await self._release_reservations(reserved_assets, protocol_run_id)
       msg = f"Unexpected error during asset reservation: {e!s}"
       raise AssetAcquisitionError(msg) from e
 
@@ -202,14 +296,47 @@ class ProtocolScheduler:
     self,
     asset_keys: list[str],
     protocol_run_id: uuid.UUID,
+    db_session: AsyncSession | None = None,
   ) -> None:
-    """Release asset reservations for a protocol run."""
-    for asset_key in asset_keys:
-      if asset_key in self._asset_reservations:
-        self._asset_reservations[asset_key].discard(protocol_run_id)
-        if not self._asset_reservations[asset_key]:
-          del self._asset_reservations[asset_key]
-        logger.debug("Released reservation for asset %s", asset_key)
+    """Release asset reservations for a protocol run.
+    
+    Updates the status of reservations in the database to RELEASED
+    and clears the in-memory cache.
+    """
+    async def _do_release(session: AsyncSession) -> None:
+      for asset_key in asset_keys:
+        # Find and update the reservation in the database
+        query = select(AssetReservationOrm).where(
+          AssetReservationOrm.redis_lock_key == asset_key,
+          AssetReservationOrm.protocol_run_accession_id == protocol_run_id,
+          AssetReservationOrm.status.in_([
+            AssetReservationStatusEnum.PENDING,
+            AssetReservationStatusEnum.ACTIVE,
+            AssetReservationStatusEnum.RESERVED,
+          ]),
+        )
+        result = await session.execute(query)
+        reservation = result.scalar_one_or_none()
+        
+        if reservation:
+          reservation.status = AssetReservationStatusEnum.RELEASED
+          reservation.released_at = datetime.now(timezone.utc)
+          logger.debug("Released reservation for asset %s in database", asset_key)
+        
+        # Update cache
+        if asset_key in self._asset_reservations_cache:
+          self._asset_reservations_cache[asset_key].discard(protocol_run_id)
+          if not self._asset_reservations_cache[asset_key]:
+            del self._asset_reservations_cache[asset_key]
+
+    if db_session:
+      await _do_release(db_session)
+    else:
+      async with self.db_session_factory() as session:
+        await _do_release(session)
+        await session.commit()
+
+
 
   async def schedule_protocol_execution(
     self,
@@ -401,10 +528,17 @@ class ProtocolScheduler:
 
       for requirement in schedule_entry.required_assets:
         asset_key = f"{requirement.asset_type}:{requirement.asset_definition.name}"
-        if asset_key in self._asset_reservations:
-          self._asset_reservations[asset_key].discard(protocol_run_id)
-          if not self._asset_reservations[asset_key]:
-            del self._asset_reservations[asset_key]
+        if asset_key in self._asset_reservations_cache:
+          self._asset_reservations_cache[asset_key].discard(protocol_run_id)
+          if not self._asset_reservations_cache[asset_key]:
+            del self._asset_reservations_cache[asset_key]
+      
+      # Release in database
+      asset_keys = [
+        f"{r.asset_type}:{r.asset_definition.name}" 
+        for r in schedule_entry.required_assets
+      ]
+      await self._release_reservations(asset_keys, protocol_run_id)
 
       del self._active_schedules[protocol_run_id]
 
@@ -464,9 +598,9 @@ class ProtocolScheduler:
           protocol_run_id
         )
         # Even if not in active schedule, we should ensure any stray reservations are cleared
-        # This is a safety measure
+        # This is a safety measure - check both cache and database
         reserved_assets_to_clear: list[str] = []
-        for asset_key, reserved_by_set in self._asset_reservations.items():
+        for asset_key, reserved_by_set in self._asset_reservations_cache.items():
             if protocol_run_id in reserved_by_set:
                 reserved_assets_to_clear.append(asset_key)
         

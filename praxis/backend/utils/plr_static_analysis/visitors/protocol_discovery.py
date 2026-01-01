@@ -1,6 +1,7 @@
 """LibCST visitor for discovering protocol functions."""
 
 import libcst as cst
+from typing import Any
 
 from praxis.backend.utils.plr_static_analysis.models import (
   ProtocolFunctionInfo,
@@ -142,6 +143,7 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
       parameters=params_info,
       raw_assets=raw_assets,
       raw_parameters=raw_parameters,
+      hardware_requirements=self._extract_requirements(node),
     )
     
     self.definitions.append(definition)
@@ -149,3 +151,28 @@ class ProtocolFunctionVisitor(BasePLRVisitor):
   def _type_annotation_to_string(self, node: cst.BaseExpression) -> str:
     """Convert a type annotation node to a string representation."""
     return cst.Module([]).code_for_node(node)
+
+  def _extract_requirements(self, node: cst.FunctionDef) -> dict[str, Any] | None:
+    """Extract hardware requirements from the function body."""
+    from praxis.backend.utils.plr_static_analysis.visitors.protocol_requirement_extractor import (
+      ProtocolRequirementExtractor,
+    )
+
+    try:
+      # Create a dummy module to wrap the function body for visitation
+      # We clone the body to avoid modifying the original tree if that matters,
+      # but here we just need to visit it.
+      # A simple way is to use the extractor directly on the function node
+      # but the extractor expects to visit Call nodes.
+      
+      extractor = ProtocolRequirementExtractor()
+      node.visit(extractor)
+      requirements_model = extractor.build_requirements()
+      
+      # Convert to dict for JSON serialization
+      return requirements_model.model_dump(exclude_none=True)
+    except Exception:
+        # If extraction fails, we don't want to fail discovery
+        # Log it? The visitor doesn't have a logger handy, passing one might be good.
+        # For now, safe fail.
+        return None

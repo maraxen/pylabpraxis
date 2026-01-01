@@ -1,5 +1,7 @@
 # Architecture Overview
 
+Source: praxis/backend/core/protocols/orchestrator.py
+
 Praxis is designed as a modular, service-oriented system for laboratory automation. This document provides a comprehensive overview of the architecture, components, and data flow.
 
 ## System Diagram

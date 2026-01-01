@@ -1,6 +1,7 @@
 """Tests for PLR static analysis module."""
 
 import pytest
+import libcst as cst
 
 from praxis.backend.utils.plr_static_analysis import (
   DiscoveredClass,
@@ -336,9 +337,78 @@ class TestCapabilityExtraction:
       assert hs.machine_capabilities is not None
 
 
+class TestCapabilityConfigTemplates:
+  """Tests for capability configuration templates."""
+
+  def test_get_liquid_handler_template(self):
+    """Test getting liquid handler config template."""
+    from praxis.backend.utils.plr_static_analysis.capability_config_templates import (
+      get_config_template,
+    )
+
+    template = get_config_template(PLRClassType.LIQUID_HANDLER)
+    assert template is not None
+    assert template.machine_type == "liquid_handler"
+
+    # Check expected fields exist
+    field_names = [f.field_name for f in template.config_fields]
+    assert "num_channels" in field_names
+    assert "has_iswap" in field_names
+    assert "has_core96" in field_names
+
+  def test_get_plate_reader_template(self):
+    """Test getting plate reader config template."""
+    from praxis.backend.utils.plr_static_analysis.capability_config_templates import (
+      get_config_template,
+    )
+
+    template = get_config_template(PLRClassType.PLATE_READER)
+    assert template is not None
+    assert template.machine_type == "plate_reader"
+
+    field_names = [f.field_name for f in template.config_fields]
+    assert "has_absorbance" in field_names
+    assert "has_fluorescence" in field_names
+
+  def test_backend_type_maps_to_frontend_template(self):
+    """Test that backend types correctly map to frontend templates."""
+    from praxis.backend.utils.plr_static_analysis.capability_config_templates import (
+      get_config_template,
+    )
+
+    # LH_BACKEND should get LIQUID_HANDLER template
+    template = get_config_template(PLRClassType.LH_BACKEND)
+    assert template is not None
+    assert template.machine_type == "liquid_handler"
+
+  def test_no_template_for_resources(self):
+    """Test that resources return None (no config template)."""
+    from praxis.backend.utils.plr_static_analysis.capability_config_templates import (
+      get_config_template,
+    )
+
+    template = get_config_template(PLRClassType.RESOURCE)
+    assert template is None
+
+  def test_parser_populates_capabilities_config(self):
+    """Test that the parser populates capabilities_config on machine classes."""
+    plr_root = find_plr_source_root()
+    parser = PLRSourceParser(plr_root, use_cache=False)
+
+    machines = parser.discover_machine_classes()
+    # Find a liquid handler or backend
+    lh_machines = [m for m in machines if m.class_type in (PLRClassType.LIQUID_HANDLER, PLRClassType.LH_BACKEND)]
+
+    if lh_machines:
+      lh = lh_machines[0]
+      # Should have capabilities_config populated
+      assert lh.capabilities_config is not None
+      assert lh.capabilities_config.machine_type == "liquid_handler"
+
+
 class TestProtocolFunctionVisitor:
   """Tests for ProtocolFunctionVisitor."""
-  
+
   def test_basic_protocol_function(self):
     """Test extracting a basic protocol function."""
     from praxis.backend.utils.plr_static_analysis.visitors.protocol_discovery import (

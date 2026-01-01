@@ -7,6 +7,9 @@ services:
       POSTGRES_PASSWORD: test_password
     ports:
       - "5433:5432" # Host port 5433 matches local development convention
+    # Use tmpfs for test database - data lives in RAM, auto-deleted on stop
+    tmpfs:
+      - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
       interval: 2s

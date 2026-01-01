@@ -1,7 +1,7 @@
 """Tests for core/scheduler.py."""
 
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -12,6 +12,27 @@ from praxis.backend.models.pydantic_internals.protocol import (
 from praxis.backend.models.pydantic_internals.runtime import RuntimeAssetRequirement
 from praxis.backend.utils.errors import AssetAcquisitionError
 from praxis.backend.utils.uuid import uuid7
+
+
+def create_async_session_factory() -> MagicMock:
+    """Create a mock async session factory suitable for `async with` usage.
+    
+    Returns a MagicMock that supports `async with session_factory() as session:` pattern
+    with an AsyncMock session that has common DB methods mocked.
+    """
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+    mock_session.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_session.add = MagicMock()
+    mock_session.delete = AsyncMock()
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+    
+    mock_factory = MagicMock()
+    mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+    
+    return mock_factory
 
 
 class TestScheduleEntry:
@@ -91,7 +112,7 @@ class TestProtocolSchedulerInit:
     def test_protocol_scheduler_initializes_empty_schedules(self) -> None:
         """Test that ProtocolScheduler initializes with empty schedules."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -103,14 +124,14 @@ class TestProtocolSchedulerInit:
     def test_protocol_scheduler_initializes_empty_reservations(self) -> None:
         """Test that ProtocolScheduler initializes with empty reservations."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
         )
 
-        assert isinstance(scheduler._asset_reservations, dict)
-        assert len(scheduler._asset_reservations) == 0
+        assert isinstance(scheduler._asset_reservations_cache, dict)
+        assert len(scheduler._asset_reservations_cache) == 0
 
 
 class TestAnalyzeProtocolRequirements:
@@ -121,7 +142,7 @@ class TestAnalyzeProtocolRequirements:
     async def test_analyze_protocol_requirements_basic(self) -> None:
         """Test basic protocol requirements analysis."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -146,7 +167,7 @@ class TestAnalyzeProtocolRequirements:
     async def test_analyze_protocol_requirements_returns_list(self) -> None:
         """Test that analyze_protocol_requirements returns a list."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -173,7 +194,7 @@ class TestReserveAssets:
     async def test_reserve_assets_empty_list_succeeds(self) -> None:
         """Test that reserving empty asset list succeeds."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -188,7 +209,7 @@ class TestReserveAssets:
     async def test_reserve_assets_single_asset_succeeds(self) -> None:
         """Test that reserving a single available asset succeeds."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -217,7 +238,7 @@ class TestReserveAssets:
     async def test_reserve_assets_already_reserved_fails(self) -> None:
         """Test that reserving an already-reserved asset fails."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -250,7 +271,7 @@ class TestReserveAssets:
     async def test_reserve_assets_multiple_assets_succeeds(self) -> None:
         """Test that reserving multiple available assets succeeds."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -287,7 +308,7 @@ class TestCancelScheduledRun:
     async def test_cancel_nonexistent_run_returns_false(self) -> None:
         """Test that canceling nonexistent run returns False."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -302,7 +323,7 @@ class TestCancelScheduledRun:
     async def test_cancel_scheduled_run_removes_from_active(self) -> None:
         """Test that canceling a run removes it from active schedules."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -325,7 +346,7 @@ class TestCancelScheduledRun:
     async def test_cancel_scheduled_run_releases_assets(self) -> None:
         """Test that canceling a run releases asset reservations."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -361,7 +382,7 @@ class TestCancelScheduledRun:
 
         assert result is True
         asset_key = "asset:test_asset"
-        assert asset_key not in scheduler._asset_reservations
+        assert asset_key not in scheduler._asset_reservations_cache
 
 
 class TestGetScheduleStatus:
@@ -372,7 +393,7 @@ class TestGetScheduleStatus:
     async def test_get_schedule_status_nonexistent_returns_none(self) -> None:
         """Test that getting status for nonexistent run returns None."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -387,7 +408,7 @@ class TestGetScheduleStatus:
     async def test_get_schedule_status_returns_dict(self) -> None:
         """Test that get_schedule_status returns status dictionary."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -423,7 +444,7 @@ class TestListActiveSchedules:
     async def test_list_active_schedules_empty(self) -> None:
         """Test that list_active_schedules returns empty list initially."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -438,7 +459,7 @@ class TestListActiveSchedules:
     async def test_list_active_schedules_returns_all_schedules(self) -> None:
         """Test that list_active_schedules returns all active schedules."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -463,7 +484,7 @@ class TestListActiveSchedules:
     async def test_list_active_schedules_sorted_by_time(self) -> None:
         """Test that list_active_schedules returns schedules sorted by time."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -500,7 +521,7 @@ class TestQueueExecutionTask:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -524,7 +545,7 @@ class TestQueueExecutionTask:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -550,7 +571,7 @@ class TestQueueExecutionTask:
         mock_task_queue.send_task = Mock(side_effect=Exception("Queue error"))
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -576,7 +597,7 @@ class TestProtocolSchedulerIntegration:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -627,11 +648,28 @@ class TestScheduleProtocolExecution:
         mock_task_queue = Mock()
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
-        # Create mock services
+        # Create mock protocol run and definition
+        protocol_run_id = uuid7()
+        protocol_def_id = uuid7()
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
+        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
+
+        # Create mock services that return the mocks
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_run_service.update = AsyncMock()
 
         mock_protocol_definition_service = Mock()
+        mock_protocol_definition_service.get = AsyncMock(return_value=mock_protocol_def)
 
         # Create mock session factory
         mock_session = AsyncMock()
@@ -649,23 +687,9 @@ class TestScheduleProtocolExecution:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run
-        protocol_run_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
-        mock_protocol_def.name = "test_protocol"
-        mock_protocol_def.version = "1.0.0"
-        mock_protocol_def.assets = []
-        mock_protocol_def.preconfigure_deck = False
-        mock_protocol_def.deck_param_name = None
-
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
-        mock_protocol_run.top_level_protocol_definition_accession_id = uuid7()
-
-        # Execute
+        # Execute - pass protocol_run_id, not the mock object
         result = await scheduler.schedule_protocol_execution(
-            mock_protocol_run, {"param1": "value1"},
+            protocol_run_id, {"param1": "value1"},
         )
 
         # Verify
@@ -682,8 +706,16 @@ class TestScheduleProtocolExecution:
 
         from praxis.backend.models.orm.protocol import ProtocolRunOrm
 
-        # Mock services
+        # Create mock protocol run without attached definition
+        protocol_run_id = uuid7()
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = None
+        mock_protocol_run.top_level_protocol_definition_accession_id = uuid7()
+
+        # Mock services - get returns the run, but protocol def returns None
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_definition_service = Mock()
         mock_protocol_definition_service.get = AsyncMock(return_value=None)
 
@@ -702,15 +734,8 @@ class TestScheduleProtocolExecution:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run without attached definition
-        protocol_run_id = uuid7()
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = None
-        mock_protocol_run.top_level_protocol_definition_accession_id = uuid7()
-
         # Execute - should return False when definition not found
-        result = await scheduler.schedule_protocol_execution(mock_protocol_run, {})
+        result = await scheduler.schedule_protocol_execution(protocol_run_id, {})
 
         assert result is False
         assert protocol_run_id not in scheduler._active_schedules
@@ -733,11 +758,28 @@ class TestScheduleProtocolExecution:
         mock_task_queue = Mock()
         mock_task_queue.send_task = Mock(side_effect=Exception("Queue error"))
 
+        # Create mock protocol run and definition
+        protocol_run_id = uuid7()
+        protocol_def_id = uuid7()
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
+        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
+
         # Mock services
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_run_service.update = AsyncMock()
 
         mock_protocol_definition_service = Mock()
+        mock_protocol_definition_service.get = AsyncMock(return_value=mock_protocol_def)
 
         # Create mock session factory
         mock_session = AsyncMock()
@@ -755,20 +797,8 @@ class TestScheduleProtocolExecution:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run
-        protocol_run_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
-        mock_protocol_def.name = "test_protocol"
-        mock_protocol_def.version = "1.0.0"
-        mock_protocol_def.assets = []
-        mock_protocol_def.preconfigure_deck = False
-
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
-
         # Execute - queue failure should cause cleanup
-        result = await scheduler.schedule_protocol_execution(mock_protocol_run, {})
+        result = await scheduler.schedule_protocol_execution(protocol_run_id, {})
 
         # Should return False and clean up schedule
         assert result is False
@@ -790,11 +820,28 @@ class TestScheduleProtocolExecution:
         mock_task_queue = Mock()
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
+        # Create mock protocol run and definition
+        protocol_run_id = uuid7()
+        protocol_def_id = uuid7()
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def.name = "test_protocol"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
+        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
+
         # Mock services
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_run_service.update = AsyncMock()
 
         mock_protocol_definition_service = Mock()
+        mock_protocol_definition_service.get = AsyncMock(return_value=mock_protocol_def)
 
         # Create mock session factory
         mock_session = AsyncMock()
@@ -812,22 +859,10 @@ class TestScheduleProtocolExecution:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run
-        protocol_run_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
-        mock_protocol_def.name = "test_protocol"
-        mock_protocol_def.version = "1.0.0"
-        mock_protocol_def.assets = []
-        mock_protocol_def.preconfigure_deck = False
-
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
-
         # Execute with initial state
         initial_state = {"key": "value", "counter": 42}
         result = await scheduler.schedule_protocol_execution(
-            mock_protocol_run, {}, initial_state,
+            protocol_run_id, {}, initial_state,
         )
 
         # Verify initial_state passed to queue
@@ -846,7 +881,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
         from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -880,7 +915,7 @@ class TestAnalyzeProtocolRequirementsWithDeck:
         from praxis.backend.models.orm.protocol import FunctionProtocolDefinitionOrm
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -910,7 +945,7 @@ class TestReleaseReservations:
     async def test_release_reservations_single_asset(self) -> None:
         """Test releasing a single asset reservation."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -919,19 +954,19 @@ class TestReleaseReservations:
         # Manually add reservation
         protocol_run_id = uuid7()
         asset_key = "asset:test_asset"
-        scheduler._asset_reservations[asset_key] = {protocol_run_id}
+        scheduler._asset_reservations_cache[asset_key] = {protocol_run_id}
 
         # Release
         await scheduler._release_reservations([asset_key], protocol_run_id)
 
         # Verify removed
-        assert asset_key not in scheduler._asset_reservations
+        assert asset_key not in scheduler._asset_reservations_cache
 
     @pytest.mark.asyncio
     async def test_release_reservations_multiple_assets(self) -> None:
         """Test releasing multiple asset reservations."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -941,20 +976,20 @@ class TestReleaseReservations:
         protocol_run_id = uuid7()
         asset_keys = ["asset:asset1", "asset:asset2", "asset:asset3"]
         for key in asset_keys:
-            scheduler._asset_reservations[key] = {protocol_run_id}
+            scheduler._asset_reservations_cache[key] = {protocol_run_id}
 
         # Release all
         await scheduler._release_reservations(asset_keys, protocol_run_id)
 
         # Verify all removed
         for key in asset_keys:
-            assert key not in scheduler._asset_reservations
+            assert key not in scheduler._asset_reservations_cache
 
     @pytest.mark.asyncio
     async def test_release_reservations_shared_asset(self) -> None:
         """Test releasing reservation when asset is shared by multiple runs."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -964,21 +999,21 @@ class TestReleaseReservations:
         run_id_1 = uuid7()
         run_id_2 = uuid7()
         asset_key = "asset:shared_asset"
-        scheduler._asset_reservations[asset_key] = {run_id_1, run_id_2}
+        scheduler._asset_reservations_cache[asset_key] = {run_id_1, run_id_2}
 
         # Release only first run's reservation
         await scheduler._release_reservations([asset_key], run_id_1)
 
         # Asset should still exist with second run
-        assert asset_key in scheduler._asset_reservations
-        assert run_id_2 in scheduler._asset_reservations[asset_key]
-        assert run_id_1 not in scheduler._asset_reservations[asset_key]
+        assert asset_key in scheduler._asset_reservations_cache
+        assert run_id_2 in scheduler._asset_reservations_cache[asset_key]
+        assert run_id_1 not in scheduler._asset_reservations_cache[asset_key]
 
     @pytest.mark.asyncio
     async def test_release_reservations_nonexistent_asset(self) -> None:
         """Test releasing reservation for non-existent asset (no error)."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1000,7 +1035,7 @@ class TestReserveAssetsExceptionHandling:
     async def test_reserve_assets_partial_rollback_on_conflict(self) -> None:
         """Test that conflicts trigger rollback of partial reservations."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1043,8 +1078,8 @@ class TestReserveAssetsExceptionHandling:
 
         # First asset should not be reserved by protocol_run_id
         first_key = "asset:first_asset"
-        if first_key in scheduler._asset_reservations:
-            assert protocol_run_id not in scheduler._asset_reservations[first_key]
+        if first_key in scheduler._asset_reservations_cache:
+            assert protocol_run_id not in scheduler._asset_reservations_cache[first_key]
 
 
 # Note: TestCancelScheduledRunExceptionHandling removed due to difficulty mocking
@@ -1071,11 +1106,28 @@ class TestScheduleProtocolExecutionEdgeCases:
         mock_task_queue = Mock()
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
+        # Create mock protocol run and definition
+        protocol_run_id = uuid7()
+        protocol_def_id = uuid7()
+        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
+        mock_protocol_def.name = "test"
+        mock_protocol_def.version = "1.0.0"
+        mock_protocol_def.assets = []
+        mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
+        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
+
         # Mock services
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_run_service.update = AsyncMock()
 
         mock_protocol_definition_service = Mock()
+        mock_protocol_definition_service.get = AsyncMock(return_value=mock_protocol_def)
 
         # Create mock session factory
         mock_session = AsyncMock()
@@ -1093,21 +1145,9 @@ class TestScheduleProtocolExecutionEdgeCases:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run
-        protocol_run_id = uuid7()
-        mock_protocol_def = Mock(spec=FunctionProtocolDefinitionOrm)
-        mock_protocol_def.name = "test"
-        mock_protocol_def.version = "1.0.0"
-        mock_protocol_def.assets = []
-        mock_protocol_def.preconfigure_deck = False
-
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = mock_protocol_def
-
         # Execute with None params - should not raise
         result = await scheduler.schedule_protocol_execution(
-            mock_protocol_run, None,
+            protocol_run_id, None,
         )
 
         # Should succeed even with None params
@@ -1132,7 +1172,7 @@ class TestQueueExecutionTaskEdgeCases:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1158,7 +1198,7 @@ class TestQueueExecutionTaskEdgeCases:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1189,7 +1229,7 @@ class TestReserveAssetsEdgeCases:
     async def test_reserve_assets_multiple_runs_different_assets(self) -> None:
         """Test that different runs can reserve different assets simultaneously."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1231,13 +1271,13 @@ class TestReserveAssetsEdgeCases:
         assert result2 is True
 
         # Both reservations should exist
-        assert len(scheduler._asset_reservations) == 2
+        assert len(scheduler._asset_reservations_cache) == 2
 
     @pytest.mark.asyncio
     async def test_reserve_assets_creates_reservation_sets(self) -> None:
         """Test that reserve_assets properly initializes reservation sets."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1258,16 +1298,16 @@ class TestReserveAssetsEdgeCases:
         protocol_run_id = uuid7()
 
         # Verify no reservations initially
-        assert "asset:test_asset" not in scheduler._asset_reservations
+        assert "asset:test_asset" not in scheduler._asset_reservations_cache
 
         # Reserve the asset
         result = await scheduler.reserve_assets([asset_req], protocol_run_id)
 
         assert result is True
         # Verify reservation set was created
-        assert "asset:test_asset" in scheduler._asset_reservations
-        assert isinstance(scheduler._asset_reservations["asset:test_asset"], set)
-        assert protocol_run_id in scheduler._asset_reservations["asset:test_asset"]
+        assert "asset:test_asset" in scheduler._asset_reservations_cache
+        assert isinstance(scheduler._asset_reservations_cache["asset:test_asset"], set)
+        assert protocol_run_id in scheduler._asset_reservations_cache["asset:test_asset"]
 
 
 # Note: TestAnalyzeProtocolRequirementsWithAssets removed due to pydantic validation
@@ -1300,9 +1340,19 @@ class TestScheduleProtocolExecutionWithFetch:
         mock_protocol_def.version = "1.0.0"
         mock_protocol_def.assets = []
         mock_protocol_def.preconfigure_deck = False
+        mock_protocol_def.deck_param_name = None
+
+        # Create mock protocol run WITHOUT attached definition
+        protocol_run_id = uuid7()
+        protocol_def_id = uuid7()
+        mock_protocol_run = Mock(spec=ProtocolRunOrm)
+        mock_protocol_run.accession_id = protocol_run_id
+        mock_protocol_run.top_level_protocol_definition = None  # Not attached
+        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
 
         # Mock services
         mock_protocol_run_service = Mock()
+        mock_protocol_run_service.get = AsyncMock(return_value=mock_protocol_run)
         mock_protocol_run_service.update = AsyncMock()
 
         mock_protocol_definition_service = Mock()
@@ -1324,16 +1374,8 @@ class TestScheduleProtocolExecutionWithFetch:
             protocol_definition_service=mock_protocol_definition_service,
         )
 
-        # Create mock protocol run WITHOUT attached definition
-        protocol_run_id = uuid7()
-        protocol_def_id = uuid7()
-        mock_protocol_run = Mock(spec=ProtocolRunOrm)
-        mock_protocol_run.accession_id = protocol_run_id
-        mock_protocol_run.top_level_protocol_definition = None  # Not attached
-        mock_protocol_run.top_level_protocol_definition_accession_id = protocol_def_id
-
-        # Execute
-        result = await scheduler.schedule_protocol_execution(mock_protocol_run, {})
+        # Execute - pass protocol_run_id, not the mock object
+        result = await scheduler.schedule_protocol_execution(protocol_run_id, {})
 
         # Verify definition service was called to fetch
         mock_protocol_definition_service.get.assert_called_once()
@@ -1348,7 +1390,7 @@ class TestReserveAssetsPartialRollback:
     async def test_reserve_assets_conflict_on_second_asset_releases_first(self) -> None:
         """Test that conflict on second asset releases the first one."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1391,12 +1433,12 @@ class TestReserveAssetsPartialRollback:
         # Verify first asset was released (not left in reservations)
         asset1_key = "asset:free_asset"
         # Either key doesn't exist, or new_run_id is not in the set
-        if asset1_key in scheduler._asset_reservations:
-            assert new_run_id not in scheduler._asset_reservations[asset1_key]
+        if asset1_key in scheduler._asset_reservations_cache:
+            assert new_run_id not in scheduler._asset_reservations_cache[asset1_key]
 
         # Second asset should still be reserved by other_run_id
         asset2_key = "asset:reserved_asset"
-        assert other_run_id in scheduler._asset_reservations[asset2_key]
+        assert other_run_id in scheduler._asset_reservations_cache[asset2_key]
 
 
 class TestSchedulerQueueTaskWithoutScheduleEntry:
@@ -1413,7 +1455,7 @@ class TestSchedulerQueueTaskWithoutScheduleEntry:
         mock_task_queue.send_task = Mock(return_value=mock_task_result)
 
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=mock_task_queue,
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1437,7 +1479,7 @@ class TestReleaseReservationsWithSharedAssets:
     async def test_release_reservations_empty_list(self) -> None:
         """Test releasing empty asset list (no-op)."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1450,7 +1492,7 @@ class TestReleaseReservationsWithSharedAssets:
     async def test_release_reservations_only_removes_specified_run(self) -> None:
         """Test that release only removes the specified run ID."""
         scheduler = ProtocolScheduler(
-            db_session_factory=Mock(),
+            db_session_factory=create_async_session_factory(),
             task_queue=Mock(),
             protocol_run_service=Mock(),
             protocol_definition_service=Mock(),
@@ -1460,16 +1502,16 @@ class TestReleaseReservationsWithSharedAssets:
         run1 = uuid7()
         run2 = uuid7()
         asset_key = "asset:shared"
-        scheduler._asset_reservations[asset_key] = {run1, run2}
+        scheduler._asset_reservations_cache[asset_key] = {run1, run2}
 
         # Release only run1
         await scheduler._release_reservations([asset_key], run1)
 
         # run2 should still be there
-        assert asset_key in scheduler._asset_reservations
-        assert run2 in scheduler._asset_reservations[asset_key]
-        assert run1 not in scheduler._asset_reservations[asset_key]
+        assert asset_key in scheduler._asset_reservations_cache
+        assert run2 in scheduler._asset_reservations_cache[asset_key]
+        assert run1 not in scheduler._asset_reservations_cache[asset_key]
 
         # Now release run2 - should remove the key entirely
         await scheduler._release_reservations([asset_key], run2)
-        assert asset_key not in scheduler._asset_reservations
+        assert asset_key not in scheduler._asset_reservations_cache

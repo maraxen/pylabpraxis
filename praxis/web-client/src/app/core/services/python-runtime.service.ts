@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, Subject, from, of } from 'rxjs';
-import { ReplOutput, ReplRuntime } from './repl-runtime.interface';
+import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
 import { HardwareDiscoveryService } from './hardware-discovery.service';
 
 interface WorkerResponse {
@@ -100,7 +100,7 @@ export class PythonRuntimeService implements ReplRuntime {
     console.warn('Interrupt not fully supported in Pyodide without worker restart');
   }
 
-  async getCompletions(code: string, _cursor: number): Promise<string[]> {
+  async getCompletions(code: string, _cursor: number): Promise<CompletionItem[]> {
     console.log('PythonRuntimeService.getCompletions called with:', code);
     if (!this.worker) return [];
 
@@ -111,17 +111,13 @@ export class PythonRuntimeService implements ReplRuntime {
         if (data.id === id && data.type === 'COMPLETE_RESULT') {
           console.log('Component received COMPLETE_RESULT:', data.payload);
           worker?.removeEventListener('message', handler);
-          resolve(data.payload.matches || []);
+          // Matches are now CompletionItem[] from the updated worker
+          const matches = data.payload.matches || [];
+          resolve(matches);
         }
       };
 
       worker!.addEventListener('message', handler);
-
-      // Use sendMessage wrapper but we need access to the resolve promise for custom handling
-      // or just manually postMessage since sendMessage uses responseMap which expects generic success.
-      // Actually sendMessage expects a single response type.
-      // Let's use direct postMessage to avoid confusing the existing responseMap logic 
-      // if COMPLETE_RESULT isn't handled by handleMessage globally yet.
       worker!.postMessage({ type: 'COMPLETE', id, payload: { code } });
 
       // Timeout
@@ -129,7 +125,33 @@ export class PythonRuntimeService implements ReplRuntime {
         console.warn('Completion timed out');
         worker?.removeEventListener('message', handler);
         resolve([]);
-      }, 1000);
+      }, 5000);
+    });
+  }
+
+  async getSignatures(code: string, _cursor: number): Promise<SignatureInfo[]> {
+    console.log('PythonRuntimeService.getSignatures called with:', code);
+    if (!this.worker) return [];
+
+    const id = crypto.randomUUID();
+    const worker = this.worker;
+    return new Promise((resolve) => {
+      const handler = ({ data }: MessageEvent) => {
+        if (data.id === id && data.type === 'SIGNATURE_RESULT') {
+          console.log('Component received SIGNATURE_RESULT:', data.payload);
+          worker?.removeEventListener('message', handler);
+          resolve(data.payload.signatures || []);
+        }
+      };
+
+      worker!.addEventListener('message', handler);
+      worker!.postMessage({ type: 'SIGNATURES', id, payload: { code } });
+
+      setTimeout(() => {
+        console.warn('Signature help timed out');
+        worker?.removeEventListener('message', handler);
+        resolve([]);
+      }, 5000);
     });
   }
 

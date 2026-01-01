@@ -1,4 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
+import { DynamicCapabilityFormComponent } from './dynamic-capability-form.component';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors, FormControl } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -41,7 +42,8 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
     MatAutocompleteModule,
     MatChipsModule,
     MatIconModule,
-    MatDividerModule
+    MatDividerModule,
+    DynamicCapabilityFormComponent
   ],
   template: `
     <h2 mat-dialog-title>Add New Machine</h2>
@@ -134,12 +136,22 @@ const jsonValidator = (control: AbstractControl): ValidationErrors | null => {
            <mat-error *ngIf="form.get('connection_info')?.hasError('invalidJson')">Invalid JSON format</mat-error>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" *ngIf="selectedDefinition">
-          <mat-label>User Configured Capabilities (JSON)</mat-label>
-          <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
-           <mat-error *ngIf="form.get('user_configured_capabilities')?.hasError('invalidJson')">Invalid JSON format</mat-error>
-           <mat-hint>Configure optional modules (e.g. iSWAP, CoRe96) for this specific machine unit.</mat-hint>
-        </mat-form-field>
+        <div *ngIf="selectedDefinition?.capabilities_config; else legacyInput" class="border rounded-lg p-3 bg-white flex flex-col gap-2">
+            <div class="text-sm font-medium text-gray-700">Configuration</div>
+            <app-dynamic-capability-form
+                [config]="selectedDefinition!.capabilities_config"
+                (valueChange)="updateCapabilities($event)">
+            </app-dynamic-capability-form>
+        </div>
+
+        <ng-template #legacyInput>
+            <mat-form-field appearance="outline" *ngIf="selectedDefinition">
+              <mat-label>User Configured Capabilities (JSON)</mat-label>
+              <textarea matInput formControlName="user_configured_capabilities" placeholder='{"has_iswap": true, "has_core96": true}' rows="2"></textarea>
+               <mat-error *ngIf="form.get('user_configured_capabilities')?.hasError('invalidJson')">Invalid JSON format</mat-error>
+               <mat-hint>Configure optional modules (e.g. iSWAP, CoRe96) for this specific machine unit.</mat-hint>
+            </mat-form-field>
+        </ng-template>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -248,6 +260,12 @@ export class MachineDialogComponent implements OnInit {
       description: def.description || '',
       machine_definition_accession_id: def.accession_id,
       backend_driver: 'sim', // Reset to sim on new selection
+    });
+  }
+
+  updateCapabilities(val: any) {
+    this.form.patchValue({
+      user_configured_capabilities: JSON.stringify(val)
     });
   }
 
