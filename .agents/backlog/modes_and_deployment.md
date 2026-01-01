@@ -66,52 +66,24 @@
   * `HardwareDiscoveryService`: Added `openPort()`, `closePort()`, `writeToPort()`, `readFromPort()`, `readLineFromPort()`.
 * [ ] **6. E2E Test**: Pending hardware testing - **⏳ Deferred (user unavailable)**
 
-### Browser SQL with Preloaded DB (P2)
+### Browser SQL with Preloaded DB & Enhanced SqliteService (P2)
 
-* [ ] **SQL.js Configuration**:
-  * Use Pyodide SQL.js with a preloaded `.db` file.
-  * Load from persistent file in the repo.
-  * Helps with GitHub Pages deployment.
+> **Detailed implementation plan**: See [browser_sqlite_schema_sync.md](./browser_sqlite_schema_sync.md)
 
-* [ ] **Database Contents**:
-  * Capability type definitions (synced from PLR).
-  * All production data EXCEPT scheduling.
-  * Protocol definitions, resources, machines, decks.
+**Summary**: This feature creates a complete browser-mode database solution with:
 
-* [ ] **Implementation**:
-  * Create script to generate production-like `.db` file.
-  * Load on browser mode initialization.
-  * Ensure CST (capability schema types) are validated and up-to-date.
+1. **Schema Codegen Pipeline**: Python script that introspects SQLAlchemy ORM models → generates SQLite DDL + TypeScript interfaces
+2. **PLR-Preloaded Database**: A `.db` file with all PLR machine/resource/deck definitions baked in
+3. **TypeScript Service Layer**: Full CRUD operations with relationship handling
+4. **Persistence**: IndexedDB for cross-session state
 
-### Enhanced SqliteService - Full Browser Backend (P2)
+**Key Deliverables**:
+- `scripts/generate_browser_db.py` - Generates `praxis.db` with PLR data
+- `praxis/web-client/src/assets/db/praxis.db` - Prebuilt database (~1-5 MB)
+- `praxis/web-client/src/app/core/db/schema.d.ts` - Generated TypeScript interfaces
+- Enhanced `SqliteService` with repository pattern
 
-**Goal**: Expand `SqliteService` to provide full backend functionality in browser mode without relying on mock data.
-
-* [ ] **Database Schema Parity (Automated)**:
-  * **Single Source of Truth**: Use Python SQLAlchemy ORM models as the definition.
-  * **Codegen Pipeline**: Create a build script that:
-    1. Introspects SQLAlchemy models to generate a `schema.sql` (SQLite DDL).
-    2. Generates TypeScript interfaces (`schema.d.ts`) matching the ORM models.
-  * Update `SqliteService` to initialize from this generated `schema.sql`.
-
-* [ ] **TypeScript Service Layer**:
-  * Implement CRUD operations for all entities (`createProtocolRun`, `updateMachine`, etc.).
-  * Port essential business logic from Python services to TypeScript.
-  * Must handle relationships (e.g., protocol runs → protocol definitions).
-
-* [ ] **Real Data Flow**:
-  * When user starts a protocol in browser mode, create actual `ProtocolRun` record.
-  * Track run status updates in sql.js.
-  * Execution Monitor reads from sql.js instead of mock data.
-
-* [ ] **Persistence**:
-  * Export sql.js database to IndexedDB for cross-session persistence.
-  * Auto-load on app startup.
-  * Optional: Export/Import database files.
-
-* [ ] **Testing**:
-  * Unit tests for TypeScript service layer.
-  * E2E tests for browser mode data flow.
+**Excludes** (server-only): Scheduling, reservations, user accounts
 
 ### State Persistence
 

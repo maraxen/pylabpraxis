@@ -50,11 +50,14 @@ These items are needed to make the REPL feel production-ready:
 
 ### 3. PLR Environment & Execution
 
-* [ ] **PLR Environment Integration (P2)**:
-  * Focus on `PyodideConsole` environment.
-  * Ensure `LiquidHandler`, `Plate`, `TipRack` are in globals and autocompletable.
-  * **Critical**: Integrate `WebBridgeIO` shim into the console environment so `await lh.setup()` works.
-
+* [x] **Integration with PLR Tooling**
+  * [x] Ensure `await lh.setup()` works in browser shim.
+  * [x] Verify `WebBridgeIO` routing.
+  * [x] Ensure correct context (e.g. `LiquidHandler`, `Plate`) is available in REPL.
+* [x] **Manual Autocomplete / Signature Help**
+  * [x] Debug why `os.` + Tab works in test but fail in manual.
+  * [x] Verify popup positioning and Z-index within terminal container.
+  * [x] Ensure `ngZone` change detection triggers for async worker responses.
 * [x] **Resource/Machine Context**:
   * [x] Auto-import `LiquidHandler`, `Plate`, `TipRack` (via `web_bridge.py` bootstrap).
 

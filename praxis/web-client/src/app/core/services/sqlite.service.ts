@@ -1,85 +1,465 @@
+/**
+ * SQLite Service for Browser-Mode Database Operations
+ *
+ * This service provides a sql.js-based database for browser-only mode.
+ * It uses the auto-generated schema from SQLAlchemy ORM models and
+ * provides repository-based access to all entities.
+ *
+ * Key Features:
+ * - Loads prebuilt database with PLR definitions (if available)
+ * - Falls back to fresh database with schema.sql
+ * - Provides typed repositories for all entities
+ * - Maintains compatibility with existing mock data
+ */
 
 import { Injectable } from '@angular/core';
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
-import { from, Observable, of } from 'rxjs';
-import { map, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, from, Observable, of } from 'rxjs';
+import { catchError, filter, map, shareReplay, switchMap, take, tap } from 'rxjs/operators';
+
+// Type imports
+import type {
+    Asset,
+    ProtocolRun,
+    FunctionProtocolDefinition,
+    Machine,
+    Resource,
+    Workcell,
+} from '../db/schema';
+import {
+    createRepositories,
+    type Repositories,
+    type ProtocolRunRepository,
+    type ProtocolDefinitionRepository,
+    type MachineRepository,
+    type MachineDefinitionRepository,
+    type ResourceRepository,
+    type ResourceDefinitionRepository,
+    type DeckRepository,
+    type DeckDefinitionRepository,
+    type DeckPositionRepository,
+    type WorkcellRepository,
+} from '../db/repositories';
+
+// Legacy mock data imports (for fallback seeding)
 import { MOCK_PROTOCOLS } from '../../../assets/demo-data/protocols';
 import { MOCK_PROTOCOL_RUNS } from '../../../assets/demo-data/protocol-runs';
 import { MOCK_RESOURCES } from '../../../assets/demo-data/resources';
 import { MOCK_MACHINES } from '../../../assets/demo-data/machines';
+
+export interface SqliteStatus {
+    initialized: boolean;
+    source: 'prebuilt' | 'schema' | 'legacy' | 'none';
+    tableCount: number;
+    error?: string;
+}
 
 @Injectable({
     providedIn: 'root'
 })
 export class SqliteService {
     private db$: Observable<Database>;
+    private dbInstance: Database | null = null;
+    private repositories: Repositories | null = null;
+    private statusSubject = new BehaviorSubject<SqliteStatus>({
+        initialized: false,
+        source: 'none',
+        tableCount: 0
+    });
+
+    public readonly status$ = this.statusSubject.asObservable();
 
     constructor() {
         this.db$ = from(this.initDb()).pipe(
+            tap(db => {
+                this.dbInstance = db;
+                this.repositories = createRepositories(db);
+            }),
             shareReplay(1)
         );
     }
 
+    /**
+     * Get the database instance (async)
+     */
+    public getDatabase(): Observable<Database> {
+        return this.db$;
+    }
+
+    /**
+     * Get repositories for typed database access
+     */
+    public getRepositories(): Observable<Repositories> {
+        return this.db$.pipe(
+            map(() => {
+                if (!this.repositories) {
+                    throw new Error('Repositories not initialized');
+                }
+                return this.repositories;
+            })
+        );
+    }
+
+    // ============================================
+    // Repository Accessors (for convenience)
+    // ============================================
+
+    public get protocolRuns(): Observable<ProtocolRunRepository> {
+        return this.getRepositories().pipe(map(r => r.protocolRuns));
+    }
+
+    public get protocolDefinitions(): Observable<ProtocolDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.protocolDefinitions));
+    }
+
+    public get machines(): Observable<MachineRepository> {
+        return this.getRepositories().pipe(map(r => r.machines));
+    }
+
+    public get machineDefinitions(): Observable<MachineDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.machineDefinitions));
+    }
+
+    public get resources(): Observable<ResourceRepository> {
+        return this.getRepositories().pipe(map(r => r.resources));
+    }
+
+    public get resourceDefinitions(): Observable<ResourceDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.resourceDefinitions));
+    }
+
+    public get decks(): Observable<DeckRepository> {
+        return this.getRepositories().pipe(map(r => r.decks));
+    }
+
+    public get deckDefinitions(): Observable<DeckDefinitionRepository> {
+        return this.getRepositories().pipe(map(r => r.deckDefinitions));
+    }
+
+    public get deckPositions(): Observable<DeckPositionRepository> {
+        return this.getRepositories().pipe(map(r => r.deckPositions));
+    }
+
+    public get workcells(): Observable<WorkcellRepository> {
+        return this.getRepositories().pipe(map(r => r.workcells));
+    }
+
+    // ============================================
+    // Database Initialization
+    // ============================================
+
     private async initDb(): Promise<Database> {
         try {
             const SQL = await initSqlJs({
-                // Locate the wasm file. We'll need to make sure this is served correctly.
-                // In Angular, putting it in assets/ is usually the way.
                 locateFile: file => `./assets/wasm/${file}`
             });
-            const db = new SQL.Database();
-            this.seedDatabase(db);
-            console.log('[SqliteService] Database initialized successfully');
+
+            // Try loading prebuilt database first
+            let db = await this.tryLoadPrebuiltDb(SQL);
+
+            if (!db) {
+                // Fall back to fresh database with generated schema
+                db = await this.tryLoadSchemaDb(SQL);
+            }
+
+            if (!db) {
+                // Final fallback: legacy inline schema with mock data
+                db = this.createLegacyDb(SQL);
+            }
+
+            const tableCount = this.getTableCount(db);
+            console.log(`[SqliteService] Database initialized with ${tableCount} tables`);
+
             return db;
         } catch (error) {
             console.error('[SqliteService] Failed to initialize database:', error);
-            // Re-throw to propagate the error through the observable chain
+            this.statusSubject.next({
+                initialized: false,
+                source: 'none',
+                tableCount: 0,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
             throw new Error(`SQLite initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
-    private seedDatabase(db: Database): void {
+    /**
+     * Try to load the prebuilt database with PLR definitions
+     */
+    private async tryLoadPrebuiltDb(SQL: SqlJsStatic): Promise<Database | null> {
+        try {
+            const response = await fetch('./assets/db/praxis.db');
+            if (!response.ok) {
+                console.log('[SqliteService] Prebuilt database not available');
+                return null;
+            }
+
+            const arrayBuffer = await response.arrayBuffer();
+            const dbArray = new Uint8Array(arrayBuffer);
+            const db = new SQL.Database(dbArray);
+
+            // Verify the database is valid
+            const tables = this.getTableCount(db);
+            if (tables > 0) {
+                console.log('[SqliteService] Loaded prebuilt database with PLR definitions');
+                this.statusSubject.next({
+                    initialized: true,
+                    source: 'prebuilt',
+                    tableCount: tables
+                });
+                return db;
+            }
+
+            db.close();
+            return null;
+        } catch {
+            console.log('[SqliteService] Could not load prebuilt database, trying schema.sql');
+            return null;
+        }
+    }
+
+    /**
+     * Try to create database using generated schema.sql
+     */
+    private async tryLoadSchemaDb(SQL: SqlJsStatic): Promise<Database | null> {
+        try {
+            const response = await fetch('./assets/db/schema.sql');
+            if (!response.ok) {
+                console.log('[SqliteService] schema.sql not available');
+                return null;
+            }
+
+            const schema = await response.text();
+            const db = new SQL.Database();
+
+            // Execute schema
+            db.run(schema);
+
+            // Seed with mock data for development
+            this.seedMockData(db);
+
+            const tables = this.getTableCount(db);
+            console.log('[SqliteService] Created database from schema.sql');
+            this.statusSubject.next({
+                initialized: true,
+                source: 'schema',
+                tableCount: tables
+            });
+
+            return db;
+        } catch (error) {
+            console.warn('[SqliteService] Could not create database from schema.sql:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Create legacy database with inline schema (fallback)
+     */
+    private createLegacyDb(SQL: SqlJsStatic): Database {
+        const db = new SQL.Database();
+        this.seedLegacyDatabase(db);
+        const tables = this.getTableCount(db);
+        this.statusSubject.next({
+            initialized: true,
+            source: 'legacy',
+            tableCount: tables
+        });
+        return db;
+    }
+
+    private getTableCount(db: Database): number {
+        const result = db.exec("SELECT COUNT(*) FROM sqlite_master WHERE type='table'");
+        return result.length > 0 ? (result[0].values[0][0] as number) : 0;
+    }
+
+    // ============================================
+    // Mock Data Seeding
+    // ============================================
+
+    private seedMockData(db: Database): void {
+        try {
+            // Generate UUIDs for mock data
+            const generateUuid = () => crypto.randomUUID();
+            const now = new Date().toISOString();
+
+            // Seed protocol definitions
+            MOCK_PROTOCOLS.forEach(p => {
+                const stmt = db.prepare(`
+                    INSERT OR IGNORE INTO function_protocol_definitions
+                    (accession_id, name, fqn, description, is_top_level, version, created_at, updated_at, properties_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+                stmt.run([
+                    p.accession_id || generateUuid(),
+                    p.name,
+                    `demo.protocols.${p.name.replace(/\s+/g, '_').toLowerCase()}`,
+                    (p as any).description || null,
+                    p.is_top_level ? 1 : 0,
+                    (p as any).version || '1.0.0',
+                    now,
+                    now,
+                    JSON.stringify({})
+                ]);
+                stmt.free();
+            });
+
+            // Seed protocol runs - need valid protocol definition references
+            const protocolDefs = db.exec('SELECT accession_id FROM function_protocol_definitions LIMIT 1');
+            if (protocolDefs.length > 0 && protocolDefs[0].values.length > 0) {
+                const defaultProtocolId = protocolDefs[0].values[0][0] as string;
+
+                MOCK_PROTOCOL_RUNS.forEach(r => {
+                    const stmt = db.prepare(`
+                        INSERT OR IGNORE INTO protocol_runs
+                        (accession_id, top_level_protocol_definition_accession_id, status, created_at, updated_at, properties_json, name)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    stmt.run([
+                        r.accession_id || generateUuid(),
+                        (r as any).protocol_definition_accession_id || defaultProtocolId,
+                        r.status || 'pending',
+                        r.created_at || now,
+                        now,
+                        JSON.stringify({}),
+                        `Run ${r.accession_id?.slice(-6) || 'unknown'}`
+                    ]);
+                    stmt.free();
+                });
+            }
+
+            // Seed assets, machines, and resources require more complex setup
+            // For now, seed basic machine data into assets table
+            MOCK_MACHINES.forEach(m => {
+                const assetId = m.accession_id || generateUuid();
+
+                // Insert into assets table first
+                const assetStmt = db.prepare(`
+                    INSERT OR IGNORE INTO assets
+                    (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+                assetStmt.run([
+                    assetId,
+                    'MACHINE',
+                    m.name,
+                    (m as any).fqn || `machines.${m.name.replace(/\s+/g, '_').toLowerCase()}`,
+                    now,
+                    now,
+                    JSON.stringify({})
+                ]);
+                assetStmt.free();
+
+                // Insert into machines table
+                const machineStmt = db.prepare(`
+                    INSERT OR IGNORE INTO machines
+                    (accession_id, machine_category, status, created_at, updated_at, properties_json, name, asset_type, fqn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+                machineStmt.run([
+                    assetId,
+                    (m as any).type || 'Unknown',
+                    (m as any).status || 'OFFLINE',
+                    now,
+                    now,
+                    JSON.stringify(m),
+                    m.name,
+                    'MACHINE',
+                    (m as any).fqn || `machines.${m.name.replace(/\s+/g, '_').toLowerCase()}`
+                ]);
+                machineStmt.free();
+            });
+
+            // Seed resources
+            MOCK_RESOURCES.forEach(r => {
+                const assetId = r.accession_id || generateUuid();
+
+                // Insert into assets table first
+                const assetStmt = db.prepare(`
+                    INSERT OR IGNORE INTO assets
+                    (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+                assetStmt.run([
+                    assetId,
+                    'RESOURCE',
+                    r.name,
+                    (r as any).fqn || `resources.${r.name.replace(/\s+/g, '_').toLowerCase()}`,
+                    now,
+                    now,
+                    JSON.stringify({})
+                ]);
+                assetStmt.free();
+
+                // Insert into resources table
+                const resourceStmt = db.prepare(`
+                    INSERT OR IGNORE INTO resources
+                    (accession_id, status, created_at, updated_at, properties_json, name, asset_type, fqn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+                resourceStmt.run([
+                    assetId,
+                    (r as any).status || 'unknown',
+                    now,
+                    now,
+                    JSON.stringify(r),
+                    r.name,
+                    'RESOURCE',
+                    (r as any).fqn || `resources.${r.name.replace(/\s+/g, '_').toLowerCase()}`
+                ]);
+                resourceStmt.free();
+            });
+
+            console.log('[SqliteService] Mock data seeded successfully');
+        } catch (error) {
+            console.warn('[SqliteService] Error seeding mock data:', error);
+        }
+    }
+
+    /**
+     * Legacy database setup (inline schema for fallback)
+     */
+    private seedLegacyDatabase(db: Database): void {
         // Create tables
         db.run(`
-      CREATE TABLE IF NOT EXISTS protocols (
-        accession_id TEXT PRIMARY KEY,
-        name TEXT,
-        description TEXT,
-        is_top_level BOOLEAN,
-        version TEXT,
-        parameters_json TEXT
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS protocols (
+                accession_id TEXT PRIMARY KEY,
+                name TEXT,
+                description TEXT,
+                is_top_level BOOLEAN,
+                version TEXT,
+                parameters_json TEXT
+            );
+        `);
 
         db.run(`
-      CREATE TABLE IF NOT EXISTS protocol_runs (
-        accession_id TEXT PRIMARY KEY,
-        protocol_accession_id TEXT,
-        status TEXT,
-        created_at TEXT,
-        parameters_json TEXT,
-        user_params_json TEXT
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS protocol_runs (
+                accession_id TEXT PRIMARY KEY,
+                protocol_accession_id TEXT,
+                status TEXT,
+                created_at TEXT,
+                parameters_json TEXT,
+                user_params_json TEXT
+            );
+        `);
 
         db.run(`
-      CREATE TABLE IF NOT EXISTS resources (
-        accession_id TEXT PRIMARY KEY,
-        name TEXT,
-        type TEXT,
-        properties_json TEXT
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS resources (
+                accession_id TEXT PRIMARY KEY,
+                name TEXT,
+                type TEXT,
+                properties_json TEXT
+            );
+        `);
 
         db.run(`
-      CREATE TABLE IF NOT EXISTS machines (
-        accession_id TEXT PRIMARY KEY,
-        name TEXT,
-        type TEXT,
-        properties_json TEXT
-      );
-    `);
-
+            CREATE TABLE IF NOT EXISTS machines (
+                accession_id TEXT PRIMARY KEY,
+                name TEXT,
+                type TEXT,
+                properties_json TEXT
+            );
+        `);
 
         // Seed Data
         const insertProtocol = db.prepare("INSERT INTO protocols VALUES (?, ?, ?, ?, ?, ?)");
@@ -116,7 +496,7 @@ export class SqliteService {
             insertResource.run([
                 r.accession_id,
                 r.name,
-                (r as any).type || 'unknown', // Default to unknown if missing
+                (r as any).type || 'unknown',
                 JSON.stringify(r)
             ]);
         });
@@ -133,22 +513,38 @@ export class SqliteService {
         });
         insertMachine.free();
 
-
-        console.log('[SqliteService] Database seeded with mock data');
+        console.log('[SqliteService] Legacy database seeded with mock data');
     }
+
+    // ============================================
+    // Legacy API (backwards compatibility)
+    // ============================================
 
     public getProtocols(): Observable<any[]> {
         return this.db$.pipe(
             map(db => {
+                // Try new schema first
+                try {
+                    const res = db.exec("SELECT * FROM function_protocol_definitions");
+                    if (res.length > 0) {
+                        return this.resultToObjects(res[0]).map(p => ({
+                            ...p,
+                            is_top_level: p.is_top_level === 1 || p.is_top_level === true,
+                            parameters: p.hardware_requirements_json ? JSON.parse(p.hardware_requirements_json as string) : null
+                        }));
+                    }
+                } catch {
+                    // Fall back to legacy table
+                }
+
                 const res = db.exec("SELECT * FROM protocols");
                 if (res.length === 0) return [];
-                return this.resultToObjects(res[0]);
-            }),
-            map(protocols => protocols.map(p => ({
-                ...p,
-                is_top_level: p.is_top_level === 1 || p.is_top_level === 'true', // SQLite boolean check
-                parameters: p.parameters_json ? JSON.parse(p.parameters_json) : null
-            })))
+                return this.resultToObjects(res[0]).map(p => ({
+                    ...p,
+                    is_top_level: p.is_top_level === 1 || p.is_top_level === 'true',
+                    parameters: p.parameters_json ? JSON.parse(p.parameters_json as string) : null
+                }));
+            })
         );
     }
 
@@ -157,15 +553,13 @@ export class SqliteService {
             map(db => {
                 const res = db.exec("SELECT * FROM protocol_runs");
                 if (res.length === 0) return [];
-                return this.resultToObjects(res[0]);
-            }),
-            map(runs => runs.map(r => ({
-                ...r,
-                parameters: r.parameters_json ? JSON.parse(r.parameters_json) : null,
-                user_params: r.user_params_json ? JSON.parse(r.user_params_json) : null,
-                // Reconstruct nested protocol object if needed by UI, or fetch join
-                protocol: { accession_id: r.protocol_accession_id, name: 'Unknown' }
-            })))
+                return this.resultToObjects(res[0]).map(r => ({
+                    ...r,
+                    parameters: r.parameters_json ? JSON.parse(r.parameters_json as string) : null,
+                    user_params: r.user_params_json ? JSON.parse(r.user_params_json as string) : null,
+                    protocol: { accession_id: r.protocol_accession_id || r.top_level_protocol_definition_accession_id, name: 'Unknown' }
+                }));
+            })
         );
     }
 
@@ -178,11 +572,35 @@ export class SqliteService {
     public createProtocolRun(run: any): Observable<any> {
         return this.db$.pipe(
             map(db => {
+                // Try new schema first
+                try {
+                    const protocolDefs = db.exec('SELECT accession_id FROM function_protocol_definitions LIMIT 1');
+                    if (protocolDefs.length > 0 && protocolDefs[0].values.length > 0) {
+                        const stmt = db.prepare(`
+                            INSERT INTO protocol_runs
+                            (accession_id, top_level_protocol_definition_accession_id, status, created_at, updated_at, properties_json, name)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `);
+                        const now = new Date().toISOString();
+                        stmt.run([
+                            run.accession_id,
+                            run.protocol_definition_accession_id || protocolDefs[0].values[0][0],
+                            run.status || 'QUEUED',
+                            run.created_at || now,
+                            now,
+                            JSON.stringify({}),
+                            run.name || `Run ${run.accession_id.slice(-6)}`
+                        ]);
+                        stmt.free();
+                        return run;
+                    }
+                } catch {
+                    // Fall back to legacy
+                }
+
                 const stmt = db.prepare("INSERT INTO protocol_runs VALUES (?, ?, ?, ?, ?, ?)");
                 const params = run.parameters ? JSON.stringify(run.parameters) : null;
                 const userParams = run.user_params ? JSON.stringify(run.user_params) : null;
-
-                // Handle both property names for protocol ID and fallback to null
                 const protocolId = run.protocol_definition_accession_id || run.protocol_accession_id || null;
 
                 stmt.run([
@@ -199,14 +617,49 @@ export class SqliteService {
         );
     }
 
-
-    private resultToObjects(res: { columns: string[], values: any[][] }): any[] {
+    private resultToObjects(res: { columns: string[], values: any[][] }): Record<string, any>[] {
         return res.values.map(row => {
-            const obj: any = {};
+            const obj: Record<string, any> = {};
             res.columns.forEach((col, i) => {
                 obj[col] = row[i];
             });
             return obj;
+        });
+    }
+
+    // ============================================
+    // Database Export/Import
+    // ============================================
+
+    /**
+     * Export the current database as a Uint8Array
+     */
+    public exportDatabase(): Observable<Uint8Array> {
+        return this.db$.pipe(
+            map(db => db.export())
+        );
+    }
+
+    /**
+     * Import a database from a Uint8Array
+     */
+    public async importDatabase(data: Uint8Array): Promise<void> {
+        const SQL = await initSqlJs({
+            locateFile: file => `./assets/wasm/${file}`
+        });
+
+        if (this.dbInstance) {
+            this.dbInstance.close();
+        }
+
+        this.dbInstance = new SQL.Database(data);
+        this.repositories = createRepositories(this.dbInstance);
+
+        const tableCount = this.getTableCount(this.dbInstance);
+        this.statusSubject.next({
+            initialized: true,
+            source: 'prebuilt',
+            tableCount
         });
     }
 }

@@ -132,6 +132,9 @@ import { FilterState } from './run-filters.component';
 export class RunHistoryTableComponent implements OnInit {
     readonly runHistoryService = inject(RunHistoryService);
 
+    /** Filter state from parent */
+    readonly filters = input<FilterState | null>(null);
+
     readonly runs = signal<RunSummary[]>([]);
     readonly isLoading = signal(true);
     readonly totalRuns = signal(0);
@@ -140,18 +143,32 @@ export class RunHistoryTableComponent implements OnInit {
     readonly pageSize = 10;
     private currentOffset = 0;
 
+    constructor() {
+        // React to filter changes
+        effect(() => {
+            const currentFilters = this.filters();
+            // Reset to first page when filters change
+            this.currentOffset = 0;
+            this.loadRuns();
+        });
+    }
+
     ngOnInit(): void {
-        this.loadRuns();
+        // Initial load handled by effect
     }
 
     loadRuns(): void {
         this.isLoading.set(true);
+        const currentFilters = this.filters();
+
         this.runHistoryService
             .getRunHistory({
                 limit: this.pageSize,
                 offset: this.currentOffset,
-                sort_by: 'created_at',
-                sort_order: 'desc',
+                status: currentFilters?.status?.length ? currentFilters.status : undefined,
+                protocol_id: currentFilters?.protocol_id ?? undefined,
+                sort_by: currentFilters?.sort_by ?? 'created_at',
+                sort_order: currentFilters?.sort_order ?? 'desc',
             })
             .subscribe({
                 next: (runs) => {

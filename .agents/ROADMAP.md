@@ -118,7 +118,8 @@ The `angular_refactor` branch has achieved MVP status for all major features. Re
 
 | Item | Description | Backlog |
 |------|-------------|---------|
-| **Enhanced SqliteService** | Full browser backend with real data (not mocks) | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
+| **Enhanced SqliteService** | Full browser backend with PLR-preloaded DB, TypeScript service layer | [browser_sqlite_schema_sync.md](./backlog/browser_sqlite_schema_sync.md) |
+| **Browser DB with PLR Data** | Pre-built .db with all PLR machines, resources, decks | [browser_sqlite_schema_sync.md](./backlog/browser_sqlite_schema_sync.md) |
 | E2E Hardware Test | Test WebBridgeIO with real hardware | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
 | Production Tunneling UI | Help text for exposing local hardware | [modes_and_deployment.md](./backlog/modes_and_deployment.md) |
 
@@ -207,6 +208,7 @@ The `angular_refactor` branch has achieved MVP status for all major features. Re
 |----------|-------|
 | [asset_management.md](./backlog/asset_management.md) | PLR inspection, discovery, bulk operations |
 | [backend.md](./backlog/backend.md) | Services, APIs, execution |
+| [browser_sqlite_schema_sync.md](./backlog/browser_sqlite_schema_sync.md) | Browser SQLite with PLR data, schema codegen |
 | [capability_tracking.md](./backlog/capability_tracking.md) | Machine capabilities, user config, matching |
 | [cleanup.md](./backlog/cleanup.md) | Code quality, naming, pre-merge |
 | [deck_view.md](./backlog/deck_view.md) | Deck visualizer structure, interaction |

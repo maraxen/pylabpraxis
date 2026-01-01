@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ActiveRunsPanelComponent } from './components/active-runs-panel.component';
 import { RunHistoryTableComponent } from './components/run-history-table.component';
+import { RunFiltersComponent, FilterState } from './components/run-filters.component';
 
 /**
  * Main dashboard for the Execution Monitor feature.
@@ -19,6 +20,7 @@ import { RunHistoryTableComponent } from './components/run-history-table.compone
     MatIconModule,
     ActiveRunsPanelComponent,
     RunHistoryTableComponent,
+    RunFiltersComponent,
   ],
   template: `
     <div class="p-6 max-w-screen-2xl mx-auto">
@@ -36,9 +38,18 @@ import { RunHistoryTableComponent } from './components/run-history-table.compone
       <!-- Active Runs Panel -->
       <app-active-runs-panel></app-active-runs-panel>
 
+      <!-- Filters -->
+      <app-run-filters (filtersChange)="onFiltersChange($event)"></app-run-filters>
+
       <!-- Run History Table -->
-      <app-run-history-table></app-run-history-table>
+      <app-run-history-table [filters]="currentFilters()"></app-run-history-table>
     </div>
   `,
 })
-export class ExecutionMonitorComponent { }
+export class ExecutionMonitorComponent {
+  readonly currentFilters = signal<FilterState | null>(null);
+
+  onFiltersChange(filters: FilterState): void {
+    this.currentFilters.set(filters);
+  }
+}

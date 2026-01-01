@@ -1,8 +1,8 @@
 import {
-    Component,
-    Input,
-    Output,
-    EventEmitter,
+  Component,
+  Input,
+  Output,
+  EventEmitter,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SignatureInfo } from '../../../core/services/repl-runtime.interface';
@@ -12,10 +12,10 @@ import { SignatureInfo } from '../../../core/services/repl-runtime.interface';
  * Displays function signatures with highlighted current parameter.
  */
 @Component({
-    selector: 'app-signature-help',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-signature-help',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
     <div
       class="signature-popup"
       [style.left.px]="x"
@@ -40,9 +40,9 @@ import { SignatureInfo } from '../../../core/services/repl-runtime.interface';
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     .signature-popup {
-      position: fixed;
+      position: absolute;
       z-index: 9999;
       background: var(--mat-sys-surface-container-high);
       border: 1px solid var(--mat-sys-outline);
@@ -92,13 +92,13 @@ import { SignatureInfo } from '../../../core/services/repl-runtime.interface';
   `]
 })
 export class SignatureHelpComponent {
-    @Input() signatures: SignatureInfo[] = [];
-    @Input() x = 0;
-    @Input() y = 0;
+  @Input() signatures: SignatureInfo[] = [];
+  @Input() x = 0;
+  @Input() y = 0;
 
-    @Output() closed = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
 
-    close(): void {
-        this.closed.emit();
-    }
+  close(): void {
+    this.closed.emit();
+  }
 }

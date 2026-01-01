@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit, effect } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject, AfterViewInit, effect, NgZone } from '@angular/core';
 import { AppStore } from '../../core/store/app.store';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -79,7 +79,7 @@ import { SignatureHelpComponent } from './components/signature-help.component';
     }
     .repl-terminal-wrapper {
       flex-grow: 1;
-      overflow: hidden;
+      overflow: visible;
       background: var(--mat-sys-surface-container-low);
       border: 1px solid var(--mat-sys-outline-variant);
       border-radius: 4px;
@@ -97,6 +97,7 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
   private pythonRuntime = inject(PythonRuntimeService);
   private backendRepl = inject(BackendReplService);
   private store = inject(AppStore);
+  private ngZone = inject(NgZone);
 
   private terminal!: Terminal;
   private fitAddon!: FitAddon;
@@ -397,28 +398,28 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
     // Extract the token being completed (for filtering/replacing)
     const tokenMatch = this.inputBuffer.match(/[a-zA-Z_][a-zA-Z0-9_.]*$/);
     this.currentToken = tokenMatch ? tokenMatch[0] : '';
-    console.log('Completing token:', this.currentToken);
 
     // Pass full source code for context-aware completions (Jedi needs full context)
     const fullSource = this.inputBuffer;
     const cursorPosition = this.inputBuffer.length;
 
     this.runtime.getCompletions(fullSource, cursorPosition).then(matches => {
-      console.log('Matches:', matches);
-      if (matches.length === 0) {
-        return;
-      }
+      this.ngZone.run(() => {
+        if (matches.length === 0) {
+          return;
+        }
 
-      if (matches.length === 1) {
-        // Single match - auto-complete immediately
-        this.applyCompletion(matches[0]);
-      } else {
-        // Multiple matches - show popup
-        this.completionItems = matches;
-        this.updatePopupPosition();
-      }
+        if (matches.length === 1) {
+          // Single match - auto-complete immediately
+          this.applyCompletion(matches[0]);
+        } else {
+          // Multiple matches - show popup
+          this.completionItems = matches;
+          this.updatePopupPosition();
+        }
+      });
     }).catch(err => {
-      console.error('Completion error:', err);
+      // Completion error
     });
   }
 
@@ -426,17 +427,18 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.runtime.getSignatures) return;
 
     this.runtime.getSignatures(this.inputBuffer, this.inputBuffer.length).then(signatures => {
-      if (signatures && signatures.length > 0) {
-        this.signatureItems = signatures;
-        this.updatePopupPosition();
-        // Adjust Y up for signature help (above line)
-        this.popupY -= 40;
-      }
+      this.ngZone.run(() => {
+        if (signatures && signatures.length > 0) {
+          this.signatureItems = signatures;
+          this.updatePopupPosition();
+          // Adjust Y up for signature help (above line)
+          this.popupY -= 40;
+        }
+      });
     });
   }
 
   onCompletionSelected(item: CompletionItem) {
-    console.log('Selection made:', item);
     this.applyCompletion(item);
     this.closeCompletionPopup();
   }
@@ -450,8 +452,6 @@ export class ReplComponent implements OnInit, AfterViewInit, OnDestroy {
     } else if (!this.currentToken) {
       suffix = name;
     }
-
-    console.log('Applying completion:', { name, currentToken: this.currentToken, suffix });
 
     if (suffix) {
       this.inputBuffer += suffix;

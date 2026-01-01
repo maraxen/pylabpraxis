@@ -1,15 +1,15 @@
 import {
-    Component,
-    Input,
-    Output,
-    EventEmitter,
-    HostListener,
-    ElementRef,
-    OnChanges,
-    SimpleChanges,
-    inject,
-    AfterViewInit,
-    ViewChild,
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  HostListener,
+  ElementRef,
+  OnChanges,
+  SimpleChanges,
+  inject,
+  AfterViewInit,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,10 +20,10 @@ import { CompletionItem } from '../../../core/services/repl-runtime.interface';
  * Displays completion items with type icons and keyboard navigation.
  */
 @Component({
-    selector: 'app-completion-popup',
-    standalone: true,
-    imports: [CommonModule, MatIconModule],
-    template: `
+  selector: 'app-completion-popup',
+  standalone: true,
+  imports: [CommonModule, MatIconModule],
+  template: `
     <div
       class="completion-popup"
       [style.left.px]="x"
@@ -52,9 +52,9 @@ import { CompletionItem } from '../../../core/services/repl-runtime.interface';
       </ul>
     </div>
   `,
-    styles: [`
+  styles: [`
     .completion-popup {
-      position: fixed;
+      position: absolute;
       z-index: 9999;
       background: var(--mat-sys-surface-container-high);
       border: 1px solid var(--mat-sys-outline);
@@ -122,70 +122,70 @@ import { CompletionItem } from '../../../core/services/repl-runtime.interface';
   `]
 })
 export class CompletionPopupComponent implements OnChanges, AfterViewInit {
-    @ViewChild('popup') popupRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('popup') popupRef?: ElementRef<HTMLDivElement>;
 
-    @Input() items: CompletionItem[] = [];
-    @Input() x = 0;
-    @Input() y = 0;
+  @Input() items: CompletionItem[] = [];
+  @Input() x = 0;
+  @Input() y = 0;
 
-    @Output() selected = new EventEmitter<CompletionItem>();
-    @Output() closed = new EventEmitter<void>();
+  @Output() selected = new EventEmitter<CompletionItem>();
+  @Output() closed = new EventEmitter<void>();
 
-    selectedIndex = 0;
+  selectedIndex = 0;
 
-    private iconMap: Record<string, string> = {
-        function: 'functions',
-        class: 'class',
-        module: 'folder',
-        instance: 'data_object',
-        keyword: 'code',
-        param: 'input',
-        statement: 'code',
-        unknown: 'help_outline',
-    };
+  private iconMap: Record<string, string> = {
+    function: 'functions',
+    class: 'class',
+    module: 'folder',
+    instance: 'data_object',
+    keyword: 'code',
+    param: 'input',
+    statement: 'code',
+    unknown: 'help_outline',
+  };
 
-    ngOnChanges(changes: SimpleChanges): void {
-        if (changes['items'] && this.items.length > 0) {
-            this.selectedIndex = 0;
-        }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['items'] && this.items.length > 0) {
+      this.selectedIndex = 0;
     }
+  }
 
-    ngAfterViewInit(): void {
-        // Focus management if needed
+  ngAfterViewInit(): void {
+    // Focus management if needed
+  }
+
+  getIconForType(type: string): string {
+    return this.iconMap[type] || this.iconMap['unknown'];
+  }
+
+  selectItem(index: number): void {
+    this.selectedIndex = index;
+    this.emitSelection();
+  }
+
+  moveSelection(delta: number): void {
+    if (this.items.length === 0) return;
+    this.selectedIndex = (this.selectedIndex + delta + this.items.length) % this.items.length;
+    this.scrollToSelected();
+  }
+
+  emitSelection(): void {
+    if (this.items.length > 0 && this.selectedIndex >= 0) {
+      this.selected.emit(this.items[this.selectedIndex]);
     }
+  }
 
-    getIconForType(type: string): string {
-        return this.iconMap[type] || this.iconMap['unknown'];
+  close(): void {
+    this.closed.emit();
+  }
+
+  private scrollToSelected(): void {
+    const popup = this.popupRef?.nativeElement;
+    if (!popup) return;
+
+    const selectedEl = popup.querySelector('.completion-item.selected') as HTMLElement;
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ block: 'nearest' });
     }
-
-    selectItem(index: number): void {
-        this.selectedIndex = index;
-        this.emitSelection();
-    }
-
-    moveSelection(delta: number): void {
-        if (this.items.length === 0) return;
-        this.selectedIndex = (this.selectedIndex + delta + this.items.length) % this.items.length;
-        this.scrollToSelected();
-    }
-
-    emitSelection(): void {
-        if (this.items.length > 0 && this.selectedIndex >= 0) {
-            this.selected.emit(this.items[this.selectedIndex]);
-        }
-    }
-
-    close(): void {
-        this.closed.emit();
-    }
-
-    private scrollToSelected(): void {
-        const popup = this.popupRef?.nativeElement;
-        if (!popup) return;
-
-        const selectedEl = popup.querySelector('.completion-item.selected') as HTMLElement;
-        if (selectedEl) {
-            selectedEl.scrollIntoView({ block: 'nearest' });
-        }
-    }
+  }
 }

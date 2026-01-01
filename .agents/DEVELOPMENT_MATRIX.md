@@ -94,7 +94,7 @@
 | ~~Sidebar Access~~ | ~~P2~~ | ~~S~~ | - | ✅ Resolved 2025-12-31 |
 | ~~Active Runs Panel~~ | ~~P2~~ | ~~M~~ | - | ✅ Resolved 2026-01-01 |
 | ~~Run History Table~~ | ~~P2~~ | ~~L~~ | - | ✅ Resolved 2026-01-01 |
-| Run Filters Component | P2 | M | [execution_monitor.md](./backlog/execution_monitor.md) | Filter by protocol/status/date |
+| ~~Run Filters Component~~ | ~~P2~~ | ~~M~~ | - | ✅ Resolved 2026-01-01 |
 | ~~Run Detail View~~ | ~~P2~~ | ~~L~~ | - | ✅ Resolved 2026-01-01 |
 | Filter Runs by Protocol (Data Viz) | P3 | M | [execution_monitor.md](./backlog/execution_monitor.md) | Multi-select filter like protocol picker |
 | Run Timeline Visualization | P3 | L | [execution_monitor.md](./backlog/execution_monitor.md) | Visual phase representation |
@@ -107,7 +107,7 @@
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
 | ~~Scheduler Test Coverage~~ | ~~P1~~ | ~~L~~ | - | ✅ Resolved 2026-01-01 |
-| Browser SQL with Preloaded DB | P2 | L | [modes_and_deployment.md](./backlog/modes_and_deployment.md) | SQL.js with .db file (caps, all except scheduling) |
+| Browser SQL with Preloaded DB | P2 | XL | [browser_sqlite_schema_sync.md](./backlog/browser_sqlite_schema_sync.md) | SQL.js with PLR-preloaded .db file (schema codegen, TypeScript layer) |
 | Dual DB Testing (SQLite + PostgreSQL) | P2 | M | [backend.md](./backlog/backend.md) | Run test suite against both databases |
 | POST /resources/ API Fix | P2 | M | [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) | Endpoint returns 500 errors |
 | ~~Service Layer Coverage (user.py)~~ | ~~P3~~ | ~~M~~ | - | ✅ Complete: 25 tests, 478 lines |
@@ -178,7 +178,7 @@
 
 | Item | Priority | Difficulty | Backlog | Description |
 |------|----------|------------|---------|-------------|
-| Enhanced SqliteService | P2 | XL | [modes_and_deployment.md](./backlog/modes_and_deployment.md) | Full browser backend with real data (TypeScript service layer, schema parity) |
+| Enhanced SqliteService | P2 | XL | [browser_sqlite_schema_sync.md](./backlog/browser_sqlite_schema_sync.md) | Full browser backend with real data (TypeScript service layer, schema parity) |
 | E2E Hardware Test | P2 | M | [modes_and_deployment.md](./backlog/modes_and_deployment.md) | Test WebBridgeIO with real hardware |
 | Browser-Only Add Machine Enforce | P3 | M | [modes_and_deployment.md](./backlog/modes_and_deployment.md) | Disable manual IP/Host in browser |
 | Production Tunneling UI | P3 | M | [modes_and_deployment.md](./backlog/modes_and_deployment.md) | Help text for local hardware exposure |

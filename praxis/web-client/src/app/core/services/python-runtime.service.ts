@@ -107,10 +107,13 @@ export class PythonRuntimeService implements ReplRuntime {
     const id = crypto.randomUUID();
     const worker = this.worker; // Capture for closure
     return new Promise((resolve) => {
+      let timeoutId: any;
+
       const handler = ({ data }: MessageEvent) => {
         if (data.id === id && data.type === 'COMPLETE_RESULT') {
           console.log('Component received COMPLETE_RESULT:', data.payload);
           worker?.removeEventListener('message', handler);
+          clearTimeout(timeoutId);
           // Matches are now CompletionItem[] from the updated worker
           const matches = data.payload.matches || [];
           resolve(matches);
@@ -121,7 +124,7 @@ export class PythonRuntimeService implements ReplRuntime {
       worker!.postMessage({ type: 'COMPLETE', id, payload: { code } });
 
       // Timeout
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         console.warn('Completion timed out');
         worker?.removeEventListener('message', handler);
         resolve([]);
@@ -136,10 +139,13 @@ export class PythonRuntimeService implements ReplRuntime {
     const id = crypto.randomUUID();
     const worker = this.worker;
     return new Promise((resolve) => {
+      let timeoutId: any;
+
       const handler = ({ data }: MessageEvent) => {
         if (data.id === id && data.type === 'SIGNATURE_RESULT') {
           console.log('Component received SIGNATURE_RESULT:', data.payload);
           worker?.removeEventListener('message', handler);
+          clearTimeout(timeoutId);
           resolve(data.payload.signatures || []);
         }
       };
@@ -147,7 +153,7 @@ export class PythonRuntimeService implements ReplRuntime {
       worker!.addEventListener('message', handler);
       worker!.postMessage({ type: 'SIGNATURES', id, payload: { code } });
 
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         console.warn('Signature help timed out');
         worker?.removeEventListener('message', handler);
         resolve([]);
